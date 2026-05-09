@@ -89,6 +89,8 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData, st
                     {activePage === PageType.MENU && (
                         <>
                             <MenuPageSettingsNew
+                                businessCategory={storeDetails?.businessCategory}
+                                businessType={storeDetails?.businessType}
                                 projectData={projectData}
                                 setProjectData={setProjectData}
                             />

@@ -6,14 +6,21 @@
  * Advanced options are collapsed and hidden by default.
  */
 
-import { Collapse, Divider, Flex, Input, Switch, Typography, theme } from 'antd';
+import { Card, Collapse, Divider, Flex, Input, Switch, Typography, theme } from 'antd';
 import { getLocalizedDraftText, updateLocalizedText } from '@lib/localization/text';
+import {
+    findMatchingMenuDesignPreset,
+    getMenuDesignPresetPatch,
+    getOwnerSelectableMenuLayouts,
+    getPreferredMenuLayoutForMood,
+    getRecommendedMenuDesignPresets,
+    type MenuDesignPreset,
+} from '@lib/menu/menuDesignPresets';
 import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
 import { useTranslations } from 'next-intl';
-import { LuFileText, LuImage, LuList, LuSettings2 } from 'react-icons/lu';
+import { LuFileText, LuImage, LuList, LuSettings2, LuSparkles } from 'react-icons/lu';
 import { Project } from '../../types';
 import {
-    getCompatibleLayouts,
     MenuLayout,
     MenuMood,
     resolveMenuDesignConfig
@@ -27,11 +34,15 @@ const { Text } = Typography;
 interface MenuPageSettingsNewProps {
     projectData: Project;
     setProjectData: (project: Project) => void;
+    businessType?: string;
+    businessCategory?: string;
 }
 
 const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     projectData,
     setProjectData,
+    businessType,
+    businessCategory,
 }) => {
     const t = useTranslations('MobileDesignEditor');
     const { token } = theme.useToken();
@@ -46,16 +57,21 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     const specialNoteLanguage = projectData?.defaultLanguage || 'en';
     const specialNote = getLocalizedDraftText(projectData?.menuSettings?.specialNote, specialNoteLanguage, '');
     const specialNoteSuggestions = getMenuSpecialNoteSuggestions(t);
+    const recommendedPresets = getRecommendedMenuDesignPresets({ businessType, businessCategory });
+    const selectedPreset = findMatchingMenuDesignPreset({
+        mood: currentMood,
+        layout: currentLayout,
+        accentColor: projectData?.config?.design?.brand?.accentColor,
+        showItemPrices,
+        showImages,
+        showCategoryIcons,
+        showCategoryTabs,
+    });
 
     // G06 Constitutional limit: 140 characters max
     const SERVICE_CHARGE_MAX_LENGTH = 140;
 
     const handleMoodChange = (mood: MenuMood) => {
-        const compatibleLayouts = getCompatibleLayouts(mood);
-        const nextLayout = compatibleLayouts.includes(currentLayout)
-            ? currentLayout
-            : compatibleLayouts[0];
-
         setProjectData({
             ...projectData,
             config: {
@@ -65,7 +81,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     menu: {
                         ...projectData?.config?.design?.menu,
                         mood,
-                        layout: nextLayout,
+                        layout: getPreferredMenuLayoutForMood(mood),
                     },
                 },
             },
@@ -73,7 +89,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     };
 
     const handleLayoutChange = (layout: MenuLayout) => {
-        if (!getCompatibleLayouts(currentMood).includes(layout)) return;
+        if (!getOwnerSelectableMenuLayouts(currentMood).includes(layout)) return;
 
         setProjectData({
             ...projectData,
@@ -84,6 +100,27 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     menu: {
                         ...projectData?.config?.design?.menu,
                         layout,
+                    },
+                },
+            },
+        });
+    };
+
+    const handlePresetApply = (preset: MenuDesignPreset) => {
+        const patch = getMenuDesignPresetPatch(preset);
+        setProjectData({
+            ...projectData,
+            config: {
+                ...projectData?.config,
+                design: {
+                    ...projectData?.config?.design,
+                    menu: {
+                        ...projectData?.config?.design?.menu,
+                        ...patch.menu,
+                    },
+                    brand: {
+                        ...projectData?.config?.design?.brand,
+                        ...patch.brand,
                     },
                 },
             },
@@ -191,6 +228,57 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
 
     return (
         <Flex vertical gap={20}>
+            <Card
+                size="small"
+                title={(
+                    <Flex align="center" gap={8}>
+                        <LuSparkles size={14} />
+                        <Text>{t('quickStart')}</Text>
+                    </Flex>
+                )}
+                styles={{ body: { padding: 12 } }}
+            >
+                <Flex vertical gap={10}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                        {selectedPreset
+                            ? `${selectedPreset.label}: ${selectedPreset.description}`
+                            : t('recommendedStyleHelper')}
+                    </Text>
+                    <Flex vertical gap={8}>
+                        {recommendedPresets.map((preset) => {
+                            const isSelected = selectedPreset?.key === preset.key;
+                            return (
+                                <button
+                                    key={preset.key}
+                                    onClick={() => handlePresetApply(preset)}
+                                    style={{
+                                        background: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
+                                        border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
+                                        borderRadius: 10,
+                                        color: token.colorText,
+                                        cursor: 'pointer',
+                                        padding: '10px 12px',
+                                        textAlign: 'left',
+                                    }}
+                                    type="button"
+                                >
+                                    <Flex align="center" gap={10}>
+                                        <span aria-hidden>{preset.emoji}</span>
+                                        <Flex vertical gap={2}>
+                                            <Text strong>{preset.label}</Text>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{preset.description}</Text>
+                                            <Text type="secondary" style={{ fontSize: 11 }}>{preset.recommendedFor}</Text>
+                                        </Flex>
+                                    </Flex>
+                                </button>
+                            );
+                        })}
+                    </Flex>
+                </Flex>
+            </Card>
+
+            <Divider style={{ margin: '4px 0' }} />
+
             <MenuMoodSelector
                 value={currentMood}
                 onChange={handleMoodChange}

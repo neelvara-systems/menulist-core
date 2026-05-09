@@ -375,6 +375,8 @@ export default function MenuUploadSheet({
                 const languageCodes = currentProjectLanguages?.length ? currentProjectLanguages : ['en'];
                 const projectPayload: ProjectCreationPayload = {
                     name: result?.identity?.businessName || t('myMenu'),
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
                     languages: languageCodes,
                     defaultLanguage: languageCodes[0] || 'en',
                 };
@@ -413,7 +415,11 @@ export default function MenuUploadSheet({
             let projectId = currentProjectId || null;
             if (!projectId) {
                 setStatusText(t('menuUploadCreatingProject'));
-                const newProject = await addProject({ name: t('myMenu') });
+                const newProject = await addProject({
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
+                    name: t('myMenu'),
+                });
                 if (!newProject?.projectId) {
                     throw new Error(t('menuUploadCreateProjectFailed'));
                 }

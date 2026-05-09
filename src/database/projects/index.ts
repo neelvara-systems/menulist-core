@@ -47,6 +47,7 @@ import {
     buildSummaryProjectPayload,
 } from "@lib/firestore/summaryProjectsWriter";
 import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
+import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import {
@@ -555,7 +556,10 @@ export const uploadProjectFile = async (
 // PROJECT CRUD OPERATIONS
 // ═══════════════════════════════════════════════════════════════
 
-export const addProject = async (data: Partial<ProjectMetadata>) => {
+export const addProject = async (data: Partial<ProjectMetadata> & {
+    businessCategory?: string;
+    businessType?: string;
+}) => {
     return await apiCallComposer(
         async () => {
             const isActive = data.active !== false;
@@ -567,6 +571,13 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
                 ? updateLocalizedText(undefined, data.description, projectLanguage, 'en')
                 : toLocalizedText(data.description as any, projectLanguage);
             const resolvedName = resolveProjectSummaryName(localizedName, "Untitled");
+            const recommendedDesignPreset = getRecommendedMenuDesignPresets({
+                businessCategory: data.businessCategory,
+                businessType: data.businessType,
+            })[0];
+            const designPresetPatch = recommendedDesignPreset
+                ? getMenuDesignPresetPatch(recommendedDesignPreset)
+                : null;
 
             // Generate project ID
             let projectId = data.projectId;
@@ -590,13 +601,16 @@ export const addProject = async (data: Partial<ProjectMetadata>) => {
                 config: {
                     design: {
                         menu: {
-                            mood: DEFAULTS.menu.mood,
-                            layout: DEFAULTS.menu.layout,
-                            showItemPrices: DEFAULTS.menu.showItemPrices,
-                            showImages: DEFAULTS.menu.showImages,
-                            showCategoryIcons: DEFAULTS.menu.showCategoryIcons,
-                            showCategoryTabs: DEFAULTS.menu.showCategoryTabs,
+                            ...(designPresetPatch?.menu || {
+                                mood: DEFAULTS.menu.mood,
+                                layout: DEFAULTS.menu.layout,
+                                showItemPrices: DEFAULTS.menu.showItemPrices,
+                                showImages: DEFAULTS.menu.showImages,
+                                showCategoryIcons: DEFAULTS.menu.showCategoryIcons,
+                                showCategoryTabs: DEFAULTS.menu.showCategoryTabs,
+                            }),
                         },
+                        ...(designPresetPatch?.brand ? { brand: designPresetPatch.brand } : {}),
                     },
                 },
             });

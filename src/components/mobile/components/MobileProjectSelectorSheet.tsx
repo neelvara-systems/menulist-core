@@ -460,6 +460,8 @@ export default function MobileProjectSelectorSheet({
                 const currentDefault = projects.find((project) => project.isDefault === true);
                 const result = await addProject({
                     active: formActive,
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
                     defaultLanguage: formSelectedLanguage,
                     description: localizedDescription,
                     isDefault: formIsDefault,

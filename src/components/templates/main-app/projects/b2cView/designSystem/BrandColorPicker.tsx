@@ -1,12 +1,12 @@
 /**
- * Brand Color Picker
+ * Theme Color Picker
  * 
- * Simple, non-technical UI for restaurant owners to set their brand color.
+ * Simple, non-technical UI for restaurant owners to set their menu theme color.
  * Uses preset swatches + optional custom picker.
  * 
  * UX Philosophy:
  * - Show presets first (most users won't need custom)
- * - "Use my brand color" toggle makes it clear this is optional
+ * - "Use custom theme color" toggle makes it clear this is optional
  * - Visual feedback with live preview dot
  */
 
@@ -52,7 +52,7 @@ const BrandColorPicker: React.FC<BrandColorPickerProps> = ({
             <Flex align="center" justify="space-between">
                 <Flex align="center" gap={8}>
                     <LuPalette size={16} />
-                    <Text>Use my brand color</Text>
+                    <Text>Use custom theme color</Text>
                 </Flex>
                 <Switch
                     checked={isEnabled}
@@ -64,7 +64,7 @@ const BrandColorPicker: React.FC<BrandColorPickerProps> = ({
             {isEnabled && (
                 <Flex vertical gap={12} style={{ paddingLeft: 24 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        Pick a color that matches your business
+                        Pick a highlight color for this menu
                     </Text>
 
                     <Flex gap={8} wrap="wrap">

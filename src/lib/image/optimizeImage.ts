@@ -21,6 +21,19 @@ export interface OptimizeImageOptions {
     format?: 'image/jpeg' | 'image/webp';
 }
 
+export interface OptimizeImageToBudgetOptions extends OptimizeImageOptions {
+    /** Final target size in KB */
+    maxSizeKB?: number;
+    /** Lowest acceptable JPEG/WebP quality before resizing further */
+    minQuality?: number;
+    /** Amount to reduce quality on each pass */
+    qualityStep?: number;
+    /** Amount to reduce dimensions when quality alone is not enough */
+    dimensionStep?: number;
+    /** Smallest max dimension we will use before returning the best result */
+    minDimension?: number;
+}
+
 export interface OptimizedImage {
     /** Optimized image as data URL */
     dataUrl: string;
@@ -197,6 +210,55 @@ export async function optimizeImages(
 }
 
 /**
+ * Optimize an image until it fits a final delivery budget.
+ *
+ * Used for customer-facing backgrounds where owners may upload normal phone
+ * photos, but the public menu must still stay fast.
+ */
+export async function optimizeImageToBudget(
+    source: File | Blob | string,
+    options: OptimizeImageToBudgetOptions = {}
+): Promise<OptimizedImage> {
+    const maxSizeBytes = (options.maxSizeKB ?? 800) * 1024;
+    const startingDimension = options.maxDimension ?? DEFAULT_OPTIONS.maxDimension;
+    const minDimension = options.minDimension ?? 900;
+    const minQuality = options.minQuality ?? 0.48;
+    const qualityStep = options.qualityStep ?? 0.08;
+    const dimensionStep = options.dimensionStep ?? 0.85;
+    const format = options.format ?? DEFAULT_OPTIONS.format;
+    const startingQuality = options.quality ?? DEFAULT_OPTIONS.quality;
+
+    let dimension = startingDimension;
+    let bestResult: OptimizedImage | null = null;
+
+    while (dimension >= minDimension) {
+        for (let quality = startingQuality; quality >= minQuality; quality -= qualityStep) {
+            const optimized = await optimizeImage(source, {
+                format,
+                maxDimension: dimension,
+                quality: Number(quality.toFixed(2)),
+            });
+
+            if (!bestResult || optimized.optimizedSize < bestResult.optimizedSize) {
+                bestResult = optimized;
+            }
+
+            if (optimized.optimizedSize <= maxSizeBytes) {
+                return optimized;
+            }
+        }
+
+        dimension = Math.floor(dimension * dimensionStep);
+    }
+
+    if (!bestResult) {
+        throw new Error('Failed to optimize image');
+    }
+
+    return bestResult;
+}
+
+/**
  * Check if an image needs optimization based on dimensions
  */
 export function needsOptimization(
@@ -250,4 +312,13 @@ export const MENU_IMAGE_CONFIG = {
     quality: 0.7,
     format: 'image/jpeg' as const,
     maxFileSizeBytes: 2 * 1024 * 1024, // 2MB
+};
+
+export const MENU_BACKGROUND_IMAGE_CONFIG = {
+    maxDimension: 1400,
+    quality: 0.72,
+    format: 'image/jpeg' as const,
+    maxSizeKB: 800,
+    minQuality: 0.48,
+    minDimension: 900,
 };

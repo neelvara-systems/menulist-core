@@ -19,8 +19,8 @@ export enum MenuMood {
     CLEAN = 'clean',       // M1: Light, professional (clinics/salons/cafes)
     WARM = 'warm',         // M2: Warm & inviting (family restaurants)
     PREMIUM = 'premium',   // M3: Premium & minimal (fine dining) - formerly ELEGANT
-    BOLD = 'bold',         // M4: Bold & energetic (bars/clubs) - formerly VIBRANT
-    FAST = 'fast',         // M5: Utility & fast (QSRs/high-volume)
+    BOLD = 'bold',         // M4: Bold & social (bars/clubs) - formerly VIBRANT
+    FAST = 'fast',         // M5: Fast & direct (QSRs/high-volume)
 }
 
 export enum MenuLayout {
@@ -234,7 +234,7 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         floatingElements: false,
     },
     [MenuMood.BOLD]: {
-        label: 'Bold & Energetic',
+        label: 'Bold & Social',
         description: 'Bars, burgers, nightlife',
         // Container - Pure black
         background: '#000000',
@@ -283,8 +283,8 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         floatingElements: false,
     },
     [MenuMood.FAST]: {
-        label: 'Utility & Fast',
-        description: 'QSRs, food courts, high volume',
+        label: 'Fast & Direct',
+        description: 'Counters, QSRs, high-volume menus',
         // Container - Minimal (Constitutional M5)
         background: '#f5f5f5',
         backgroundOverlay: 'linear-gradient(rgba(245, 245, 245, 0.9), rgba(245, 245, 245, 0.9))',
@@ -375,7 +375,7 @@ export const MENU_LAYOUTS: Record<MenuLayout, MenuLayoutConfig> = {
     },
     [MenuLayout.TABS]: {
         label: 'Tabs',
-        description: 'Category tabs navigation',
+        description: 'Legacy tabbed sections',
         type: 'vertical',
         itemsPerRow: 1,
         showImages: true,
@@ -391,11 +391,11 @@ export const MENU_LAYOUTS: Record<MenuLayout, MenuLayoutConfig> = {
 // Constitutional Mood × Layout Compatibility Matrix
 // Per Digital Menu Output Constitution Part III
 export const MOOD_LAYOUT_COMPATIBILITY: Record<MenuMood, MenuLayout[]> = {
-    [MenuMood.CLEAN]: [MenuLayout.LIST, MenuLayout.GRID, MenuLayout.TABS],      // M1: Clean first, light grid allowed
-    [MenuMood.WARM]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID, MenuLayout.TABS], // M2: All layouts work
-    [MenuMood.PREMIUM]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.TABS],     // M3: List or card only (no grid)
-    [MenuMood.BOLD]: [MenuLayout.CARD, MenuLayout.GRID, MenuLayout.TABS],        // M4: Card or grid
-    [MenuMood.FAST]: [MenuLayout.LIST, MenuLayout.TABS],                         // M5: List only (speed priority)
+    [MenuMood.CLEAN]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.WARM]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.PREMIUM]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.BOLD]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.FAST]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
 };
 
 export function isLayoutCompatible(mood: MenuMood, layout: MenuLayout): boolean {
@@ -447,6 +447,8 @@ export interface ResolvedMenuDesignConfig extends Record<string, any> {
 export function resolveMenuDesignConfig(menuConfig: Record<string, any> | null | undefined): ResolvedMenuDesignConfig {
     const rawConfig = menuConfig || {};
     const mood = normalizeMenuMood(menuConfig?.mood);
+    const hasLegacyTabsLayout = typeof menuConfig?.layout === 'string'
+        && menuConfig.layout.toLowerCase() === MenuLayout.TABS;
     const layout = normalizeMenuLayout(menuConfig?.layout, mood);
 
     return {
@@ -456,7 +458,7 @@ export function resolveMenuDesignConfig(menuConfig: Record<string, any> | null |
         showItemPrices: rawConfig.showItemPrices ?? true,
         showImages: rawConfig.showImages ?? true,
         showCategoryIcons: rawConfig.showCategoryIcons ?? true,
-        showCategoryTabs: rawConfig.showCategoryTabs ?? false,
+        showCategoryTabs: rawConfig.showCategoryTabs ?? hasLegacyTabsLayout,
     };
 }
 

@@ -11,6 +11,7 @@ export const PERFORMANCE_BUDGET = {
     // Per-image limits (in KB)
     MAX_IMAGE_SIZE_KB: 500,           // Individual item images
     MAX_BACKGROUND_SIZE_KB: 800,      // Background images can be slightly larger
+    MAX_BACKGROUND_SOURCE_SIZE_KB: 10240, // Owners can upload normal photos; we compress before publish
 
     // Total page budget (in KB)
     MAX_TOTAL_IMAGE_WEIGHT_KB: 2000,  // 2MB total for all images on page
@@ -43,20 +44,26 @@ export interface ImageValidationResult {
 export function validateImageUpload(
     file: File,
     existingImagesKB: number,
-    type: 'item' | 'background'
+    type: 'item' | 'background',
+    stage: 'source' | 'final' = 'final'
 ): ImageValidationResult {
     const fileSizeKB = file.size / 1024;
 
     // Determine max size based on type
     const maxSize = type === 'background'
-        ? PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB
+        ? stage === 'source'
+            ? PERFORMANCE_BUDGET.MAX_BACKGROUND_SOURCE_SIZE_KB
+            : PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB
         : PERFORMANCE_BUDGET.MAX_IMAGE_SIZE_KB;
 
     // Check 1: Individual file size limit
     if (fileSizeKB > maxSize) {
+        const maxSizeLabel = maxSize >= 1024
+            ? `${Math.round(maxSize / 1024)}MB`
+            : `${maxSize}KB`;
         return {
             allowed: false,
-            reason: `Image too large (${Math.round(fileSizeKB)}KB). Maximum allowed: ${maxSize}KB. Please compress the image.`,
+            reason: `Image too large (${Math.round(fileSizeKB)}KB). Maximum allowed: ${maxSizeLabel}. Please choose a smaller image.`,
         };
     }
 

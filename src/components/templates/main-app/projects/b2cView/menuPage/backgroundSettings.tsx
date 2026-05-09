@@ -1,5 +1,6 @@
+import { MENU_BACKGROUND_IMAGE_CONFIG, optimizeImageToBudget } from '@lib/image/optimizeImage';
 import { validateImageQuality } from '@lib/imageQualityGuard';
-import { validateImageUpload } from '@lib/performanceBudget';
+import { PERFORMANCE_BUDGET, validateImageUpload } from '@lib/performanceBudget';
 import { removeObjRef } from '@util/utils';
 import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, Upload, message, theme } from 'antd';
 import type { Color } from 'antd/es/color-picker';
@@ -175,15 +176,8 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                 return false;
             }
 
-            // Check 2: Individual file size (existing check, keep for backward compatibility)
-            const isLt2M = file.size / 1024 / 1024 < 2;
-            if (!isLt2M) {
-                message.error('Image must be smaller than 2MB!');
-                return false;
-            }
-
-            // Check 3: Constitutional Performance Budget (G03)
-            const budgetValidation = validateImageUpload(file, 0, 'background');
+            // Check 2: Source image budget. Final image is compressed below the public menu budget.
+            const budgetValidation = validateImageUpload(file, 0, 'background', 'source');
 
             if (!budgetValidation.allowed) {
                 message.error(budgetValidation.reason);
@@ -198,9 +192,13 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                 return false;
             }
 
-            // All checks passed, proceed with upload
+            const didProcessImage = await handleImageUpload(file);
+            if (!didProcessImage) {
+                return false;
+            }
+
+            // All checks passed, keep local upload state
             setFileList([fileData]);
-            handleImageUpload(file);
             return false;
         },
         onRemove: () => {
@@ -211,14 +209,18 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
     };
 
     const handleImageUpload = async (file: File) => {
-        // Convert the image to base64
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => {
-            const base64String = reader.result as string;
-            handleChange('backgroundImage', base64String);
-        };
-        return false;
+        try {
+            const optimized = await optimizeImageToBudget(file, MENU_BACKGROUND_IMAGE_CONFIG);
+            if (optimized.optimizedSize > PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB * 1024) {
+                message.error('Image could not be compressed enough. Please choose a simpler background image.');
+                return false;
+            }
+            handleChange('backgroundImage', optimized.dataUrl);
+            return true;
+        } catch {
+            message.error('Failed to process image. Please try another image.');
+            return false;
+        }
     };
 
     const handleOpenGallery = (e: React.MouseEvent) => {

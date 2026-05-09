@@ -820,6 +820,8 @@ function ProjectsPage() {
                     description: localizedDescription,
                     projectImage: savedProjectImage,
                     active: values.active !== false,
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
                     isDefault: shouldBeDefault,
                     defaultLanguage: projectFormSelectedLanguage,
                 });
@@ -1351,6 +1353,8 @@ function ProjectsPage() {
                         try {
                             const projectPayload: ProjectCreationPayload = {
                                 name: result?.identity?.businessName || 'New menu',
+                                businessCategory: storeDetails?.businessCategory,
+                                businessType: storeDetails?.businessType,
                                 ...(sourceProject.languages?.length ? { languages: sourceProject.languages } : {}),
                                 ...(sourceProject.defaultLanguage ? { defaultLanguage: sourceProject.defaultLanguage } : {}),
                             };
