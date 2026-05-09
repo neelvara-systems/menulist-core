@@ -15,21 +15,25 @@ function DeviceFrame({
     fromPage = "b2c",
     activePage = PageType.OBP
 }: DeviceFrameProps) {
+    const isEditorPreview = fromPage === "b2c";
+    const isEmbeddedMobilePreview = fromPage === "mobile-design-preview";
+    const usesInternalScroll = isEditorPreview || isEmbeddedMobilePreview;
+
     return (
         <div style={{
-            maxWidth: fromPage === "b2c"
+            maxWidth: isEditorPreview
                 ? (activeDeviceType === 'mobile' ? 400 : activeDeviceType === 'tablet' ? 768 : '100%')
                 : '100%',
             margin: '0 auto',
             width: '100%',
-            height: fromPage === "b2c" ? 'calc(100dvh - 140px)' : 'auto',
-            overflowY: fromPage === "b2c" ? 'auto' : 'visible',
-            border: fromPage === "b2c" ? '2px solid lightgray' : 'unset',
-            boxShadow: fromPage === "b2c" ? '0px 5px 10px #c1bbbbad' : 'unset',
-            borderRadius: fromPage === "b2c" ? 20 : 0,
+            height: isEditorPreview ? 'calc(100dvh - 140px)' : isEmbeddedMobilePreview ? '100%' : 'auto',
+            overflowY: usesInternalScroll ? 'auto' : 'visible',
+            border: isEditorPreview ? '2px solid lightgray' : 'unset',
+            boxShadow: isEditorPreview ? '0px 5px 10px #c1bbbbad' : 'unset',
+            borderRadius: isEditorPreview ? 20 : 0,
             transition: 'max-width 0.3s',
             position: 'relative',
-            background: fromPage === "b2c" ? backgroundColor : 'unset',
+            background: usesInternalScroll ? backgroundColor : 'unset',
             zIndex: 100,
         }}>
             {children}

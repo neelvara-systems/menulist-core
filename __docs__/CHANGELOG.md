@@ -12,11 +12,13 @@
 
 - **Media image profiles added** — Menu item, project, menu background, business logo, digital screen slide, cover, and gallery images now share one purpose-based profile layer for upload type, source limit, aspect ratio, output dimension, and compression budget.
 - **Image preparation centralized** — Desktop and mobile item-image, project-image, background-image, logo, digital screen slide, and OBP photo upload paths now prepare images through the shared media contract before saving.
+- **Prepared media identity added** — Prepared images now carry media ID, checksum, version, status, named variants, focal point, Blob output, dominant color, and transparency policy metadata.
 - **Photo shape options restricted by purpose** — AI menu photo shape selection now shows only menu-safe ratios instead of every social-media shape.
 
 ### Fixed
 
 - **Logo save path hardened** — Desktop logo reset/save no longer treats an existing Firebase URL as a fresh upload, and the store DAL preserves non-base64 logo URLs defensively.
+- **Logo Storage path versioned** — Changed business logos now save under a fingerprinted Storage path so public caches do not depend on overwriting one object.
 - **Media profile budgets enforced** — Prepared images now fail when they cannot fit the configured KB budget instead of silently saving an oversized best effort.
 - **Manual adjust rotation corrected** — Rotate framing now accounts for rotated image bounds and drag direction.
 - **OBP gallery cleanup added** — Replaced or removed Official Business Page gallery photos are queued and deleted from Firebase Storage after the store save succeeds.
@@ -27,8 +29,13 @@
 
 ## May 9, 2026 — Client Menu: Interaction Hardening
 
+### Added
+
+- **Mobile menu design preview added** — The mobile Menu Design screen now keeps a visible `Preview` action in the bottom bar and opens a full-screen customer-menu preview using the same public renderer as desktop. The sheet clearly marks the view as preview-only and uses the current unsaved draft without publishing it.
+
 ### Fixed
 
+- **Owner previews no longer affect customer analytics or URLs** — Shared menu preview mode disables customer analytics, menu session-state writes, feedback prompts, and public URL/hash mutations while preserving the same visual renderer.
 - **Public menu image data no longer crashes item details** — Item images now pass through a tolerant public-image normalizer before PDP galleries, featured cards, item cards, metadata, and quality checks read them, so legacy object-shaped image data cannot break the customer menu.
 - **Installed menu PWA interaction stability improved** — PDP close no longer remounts the sticky search/sections row, item taps blur any active search input before opening details, and top-of-menu PDP scroll lock avoids fixed-body hit-test glitches on iPhone PWAs.
 - **Large PDP content stays contained and scrollable** — Item details keep a capped modal/sheet height, allow touch scrolling inside the PDP, and keep the close control reachable while long descriptions, options, or metadata scroll.

@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
+import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
@@ -9,7 +9,7 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { generateScreenToken } from "@lib/screen/utils";
-import { generateStoragePath } from "@lib/storage/pathGenerator";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import {
     Campaign,
     CampaignExport,
@@ -1183,20 +1183,19 @@ export const uploadScreenSlide = async (
             const slideId = `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             let imageUrl = data.url;
 
-            // Upload to Firebase Storage if base64
-            if (data.url?.includes('base64')) {
-                const path = generateStoragePath({
-                    collection: PLATFORM_SUMMARY,
-                    fileType: 'screen_slides',
-                    session,
-                    fileId: slideId
-                });
-
-                imageUrl = await uploadBase64ToStorage({
-                    fileId: slideId,
-                    url: data.url,
-                    path,
-                    type: data.type
+            // Upload prepared media to immutable profile-aware Storage path
+            if (data.blob || isDataUrl(data.url)) {
+                imageUrl = await uploadPreparedMediaImage({
+                    blob: data.blob,
+                    contentType: data.type,
+                    dataUrl: data.url,
+                    entityId: data.mediaEntityId || slideId,
+                    mediaChecksum: data.mediaChecksum,
+                    mediaId: data.mediaId,
+                    profile: 'digitalScreenSlide',
+                    storeId: session.sId,
+                    tenantId: session.tId,
+                    variant: 'full',
                 });
             }
 

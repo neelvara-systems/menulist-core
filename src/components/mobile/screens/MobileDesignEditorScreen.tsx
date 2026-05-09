@@ -37,7 +37,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuChevronDown, LuLink2, LuPalette, LuX } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuChevronDown, LuEye, LuLink2, LuPalette, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
@@ -48,6 +48,7 @@ import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { MENU_SHEET_BODY_STYLE, MENU_SHEET_CONTAINER_STYLE } from '../sheets/menuSheetLayout';
 
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
+const MobileMenuDesignPreviewSheet = dynamic(() => import('../sheets/MobileMenuDesignPreviewSheet'), { ssr: false });
 
 const SERVICE_CHARGE_MAX_LENGTH = 140;
 
@@ -83,6 +84,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const [isPublishing, setIsPublishing] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [isPreviewSheetOpen, setIsPreviewSheetOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [isRecommendedStylesSheetOpen, setIsRecommendedStylesSheetOpen] = useState(false);
@@ -389,7 +391,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 title={t('title')}
             />
 
-            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 128px' }} vertical>
+            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 190px' }} vertical>
                 <ProjectSelectorTrigger
                     clickable={isProjectSelectorClickable}
                     currentProject={{
@@ -702,7 +704,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             </Flex>
 
             <Flex
-                gap={12}
+                gap={8}
                 style={{
                     backdropFilter: 'blur(10px)',
                     backgroundColor: token.colorBgContainer,
@@ -712,13 +714,32 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                     position: 'sticky',
                     zIndex: 20,
                 }}
+                vertical
             >
-                <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset} size="large">
-                    {tSettings('reset')}
+                <Button
+                    block
+                    color="primary"
+                    disabled={isPublishing}
+                    fill="outline"
+                    icon={<LuEye size={18} />}
+                    onClick={() => setIsPreviewSheetOpen(true)}
+                    size="large"
+                >
+                    {hasChanges ? t('previewChanges') : t('previewMenu')}
                 </Button>
-                <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={() => void handleSave()} size="large">
-                    {tSettings('saveChanges')}
-                </Button>
+                {hasChanges ? (
+                    <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35, textAlign: 'center' }}>
+                        {t('previewUnsavedHint')}
+                    </Text>
+                ) : null}
+                <Flex gap={12}>
+                    <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset} size="large">
+                        {tSettings('reset')}
+                    </Button>
+                    <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={() => void handleSave()} size="large">
+                        {tSettings('saveChanges')}
+                    </Button>
+                </Flex>
             </Flex>
 
             <ColorPickerSheet
@@ -877,6 +898,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 title={tShare('directOfferingLink', { offering: labels.offeringTitle })}
                 url={withSource(menuUrl, 'qr')}
                 visible={isQrSheetOpen}
+            />
+            <MobileMenuDesignPreviewSheet
+                businessType={storeDetails?.businessType}
+                onClose={() => setIsPreviewSheetOpen(false)}
+                projectData={draftProjectData}
+                storeDetails={storeDetails}
+                visible={isPreviewSheetOpen}
             />
         </Flex>
     );

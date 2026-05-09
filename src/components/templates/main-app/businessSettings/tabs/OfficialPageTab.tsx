@@ -3,7 +3,6 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { dataUrlToBlob } from '@lib/image/optimizeImage';
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
@@ -144,7 +143,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             }
             setPhotoUploading(index);
             try {
-                const url = await uploadOBPPhoto(dataUrlToBlob(prepared.dataUrl), { tId: session.tId, sId: session.sId }, index);
+                const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
                 const updated = [...photos];
                 if (updated[index] && updated[index] !== url) {
                     queuePhotoDelete(updated[index]);

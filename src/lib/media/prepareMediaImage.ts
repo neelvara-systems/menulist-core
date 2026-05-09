@@ -7,23 +7,58 @@ import {
     MediaAspectRatioValue,
     MediaImageProfile,
     MediaImageType,
+    MediaImageVariantId,
     parseMediaAspectRatio,
 } from './imageProfiles';
+import { getDataUrlBlob, getMediaFileExtension } from './mediaStorage';
+
+export type PreparedMediaStatus = 'draft' | 'processing' | 'ready' | 'failed';
+
+export interface PreparedMediaFocalPoint {
+    x: number;
+    y: number;
+}
+
+export interface PreparedMediaVariant {
+    blob: Blob;
+    dataUrl: string;
+    fileName: string;
+    height: number;
+    id: MediaImageVariantId;
+    mimeType: string;
+    sizeBytes: number;
+    width: number;
+}
 
 export interface PreparedMediaImage {
+    animationPolicy: 'static-only';
     aspectRatio: MediaAspectRatioValue;
+    blob: Blob;
+    blurHash?: string;
+    checksum: string;
     compressionRatio: number;
     crop: Required<MediaImageCropIntent>;
     dataUrl: string;
+    dominantColor?: string;
+    exifNormalized: boolean;
+    focalPoint: PreparedMediaFocalPoint;
     height: number;
     imageType: MediaImageType;
+    mediaId: string;
     mimeType: string;
     originalHeight: number;
     originalSize: number;
     originalWidth: number;
+    primaryVariant: MediaImageVariantId;
+    profile: MediaImageType;
+    publicUrl?: string;
     sizeBytes: number;
     sourceName?: string;
     sourceDataUrl?: string;
+    status: PreparedMediaStatus;
+    transparency: 'preserved' | 'removed';
+    variants: Partial<Record<MediaImageVariantId, PreparedMediaVariant>>;
+    version: number;
     width: number;
 }
 
@@ -42,10 +77,42 @@ export interface PrepareMediaImageOptions {
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
+const PREPARED_MEDIA_VERSION = 1;
 
 function estimateDataUrlSize(dataUrl: string): number {
     const base64 = dataUrl.split(',')[1] || dataUrl;
     return Math.round((base64.length * 3) / 4);
+}
+
+function fallbackHash(input: string): string {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < input.length; index += 1) {
+        hash ^= input.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+async function sha256Hex(input: string): Promise<string> {
+    if (typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+        return Array.from(new Uint8Array(digest))
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    return fallbackHash(input);
+}
+
+function buildMediaId(imageType: MediaImageType, checksum: string): string {
+    return `${imageType}_${checksum.slice(0, 16)}`;
+}
+
+function buildFocalPoint(crop: Required<MediaImageCropIntent>): PreparedMediaFocalPoint {
+    return {
+        x: clamp(crop.centerX, 0, 1),
+        y: clamp(crop.centerY, 0, 1),
+    };
 }
 
 function bytesToMB(bytes: number): string {
@@ -59,6 +126,46 @@ function normalizeMimeType(type?: string): string {
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
+}
+
+function toHexColor(red: number, green: number, blue: number): string {
+    return `#${[red, green, blue]
+        .map((channel) => clamp(Math.round(channel), 0, 255).toString(16).padStart(2, '0'))
+        .join('')}`;
+}
+
+function sampleDominantColor(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    fallback: string,
+): string {
+    try {
+        const step = Math.max(1, Math.floor(Math.sqrt((width * height) / 1600)));
+        const data = ctx.getImageData(0, 0, width, height).data;
+        let red = 0;
+        let green = 0;
+        let blue = 0;
+        let count = 0;
+
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
+                const offset = (y * width + x) * 4;
+                const alpha = data[offset + 3];
+                if (alpha < 32) continue;
+                red += data[offset];
+                green += data[offset + 1];
+                blue += data[offset + 2];
+                count += 1;
+            }
+        }
+
+        if (!count) return fallback;
+
+        return toHexColor(red / count, green / count, blue / count);
+    } catch {
+        return fallback;
+    }
 }
 
 function normalizeCropIntent(crop?: MediaImageCropIntent): Required<MediaImageCropIntent> {
@@ -255,7 +362,7 @@ function renderProfileImage(
     dimension: number,
     quality: number,
     crop?: Required<MediaImageCropIntent>,
-): { dataUrl: string; height: number; sizeBytes: number; width: number } {
+): { blob: Blob; dataUrl: string; dimension: number; dominantColor: string; height: number; mimeType: string; quality: number; sizeBytes: number; width: number } {
     const targetRatio = parseMediaAspectRatio(aspectRatio);
     const { width, height } = getOutputDimensions(targetRatio, dimension);
     const canvas = document.createElement('canvas');
@@ -271,8 +378,8 @@ function renderProfileImage(
     ctx.imageSmoothingQuality = 'high';
     ctx.clearRect(0, 0, width, height);
 
-    if (profile.outputFormat === 'image/jpeg') {
-        ctx.fillStyle = '#ffffff';
+    if (!profile.preserveTransparency || profile.outputFormat === 'image/jpeg') {
+        ctx.fillStyle = profile.backgroundColor === 'transparent' ? '#ffffff' : profile.backgroundColor;
         ctx.fillRect(0, 0, width, height);
     }
 
@@ -284,12 +391,25 @@ function renderProfileImage(
         drawCover(ctx, img, width, height);
     }
 
+    const dominantColor = sampleDominantColor(ctx, width, height, profile.backgroundColor === 'transparent' ? '#ffffff' : profile.backgroundColor);
     const dataUrl = canvas.toDataURL(profile.outputFormat, quality);
+    const blob = getDataUrlBlob(dataUrl);
+    const mimeType = getDataUrlMimeType(dataUrl, profile.outputFormat);
     const sizeBytes = estimateDataUrlSize(dataUrl);
     canvas.width = 0;
     canvas.height = 0;
 
-    return { dataUrl, height, sizeBytes, width };
+    return {
+        blob,
+        dataUrl,
+        dimension,
+        dominantColor,
+        height,
+        mimeType,
+        quality,
+        sizeBytes,
+        width,
+    };
 }
 
 export function drawMediaImagePreview(
@@ -314,8 +434,8 @@ export function drawMediaImagePreview(
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
-    if (profile.outputFormat === 'image/jpeg') {
-        ctx.fillStyle = '#ffffff';
+    if (!profile.preserveTransparency || profile.outputFormat === 'image/jpeg') {
+        ctx.fillStyle = profile.backgroundColor === 'transparent' ? '#ffffff' : profile.backgroundColor;
         ctx.fillRect(0, 0, cssWidth, cssHeight);
     }
     drawManualCrop(ctx, img, profile, cssWidth, cssHeight, normalizedCrop);
@@ -371,6 +491,117 @@ async function validateSourceBlob(blob: Blob, profile: MediaImageProfile): Promi
     return readFileAsDataUrl(blob);
 }
 
+function buildPreparedVariant(
+    rendered: ReturnType<typeof renderProfileImage>,
+    id: MediaImageVariantId,
+    mediaId: string,
+): PreparedMediaVariant {
+    return {
+        blob: rendered.blob,
+        dataUrl: rendered.dataUrl,
+        fileName: `${mediaId}_${id}.${getMediaFileExtension(rendered.mimeType)}`,
+        height: rendered.height,
+        id,
+        mimeType: rendered.mimeType,
+        sizeBytes: rendered.sizeBytes,
+        width: rendered.width,
+    };
+}
+
+function renderProfileVariants(
+    img: HTMLImageElement,
+    profile: MediaImageProfile,
+    aspectRatio: MediaAspectRatioValue,
+    maxDimension: number,
+    quality: number,
+    crop?: Required<MediaImageCropIntent>,
+): Array<ReturnType<typeof renderProfileImage> & { id: MediaImageVariantId }> {
+    return profile.variants.map((variant) => ({
+        ...renderProfileImage(
+            img,
+            profile,
+            aspectRatio,
+            Math.min(variant.maxDimension, maxDimension),
+            quality,
+            crop,
+        ),
+        id: variant.id,
+    }));
+}
+
+async function buildPreparedMediaImage(params: {
+    aspectRatio: MediaAspectRatioValue;
+    crop: Required<MediaImageCropIntent>;
+    imageType: MediaImageType;
+    originalHeight: number;
+    originalSize: number;
+    originalWidth: number;
+    profile: MediaImageProfile;
+    renderedVariants: Array<ReturnType<typeof renderProfileImage> & { id: MediaImageVariantId }>;
+    sourceDataUrl?: string;
+    sourceName?: string;
+}): Promise<PreparedMediaImage> {
+    const {
+        aspectRatio,
+        crop,
+        imageType,
+        originalHeight,
+        originalSize,
+        originalWidth,
+        profile,
+        renderedVariants,
+        sourceDataUrl,
+        sourceName,
+    } = params;
+    const primaryRendered = renderedVariants.find((variant) => variant.id === profile.primaryVariant)
+        || renderedVariants[renderedVariants.length - 1];
+
+    if (!primaryRendered) {
+        throw new Error('Could not prepare image.');
+    }
+
+    const checksum = await sha256Hex(primaryRendered.dataUrl);
+    const mediaId = buildMediaId(imageType, checksum);
+    const variants = renderedVariants.reduce<Partial<Record<MediaImageVariantId, PreparedMediaVariant>>>(
+        (acc, rendered) => {
+            acc[rendered.id] = buildPreparedVariant(rendered, rendered.id, mediaId);
+            return acc;
+        },
+        {},
+    );
+    const primaryVariant = variants[profile.primaryVariant] || buildPreparedVariant(primaryRendered, primaryRendered.id, mediaId);
+
+    return {
+        animationPolicy: profile.animationPolicy,
+        aspectRatio,
+        blob: primaryVariant.blob,
+        checksum,
+        compressionRatio: originalSize > 0 ? primaryVariant.sizeBytes / originalSize : 1,
+        crop,
+        dataUrl: primaryVariant.dataUrl,
+        dominantColor: primaryRendered.dominantColor,
+        exifNormalized: true,
+        focalPoint: buildFocalPoint(crop),
+        height: primaryVariant.height,
+        imageType,
+        mediaId,
+        mimeType: primaryVariant.mimeType,
+        originalHeight,
+        originalSize,
+        originalWidth,
+        primaryVariant: primaryVariant.id,
+        profile: imageType,
+        sizeBytes: primaryVariant.sizeBytes,
+        sourceDataUrl,
+        sourceName,
+        status: 'ready',
+        transparency: profile.preserveTransparency ? 'preserved' : 'removed',
+        variants,
+        version: PREPARED_MEDIA_VERSION,
+        width: primaryVariant.width,
+    };
+}
+
 async function prepareRawMediaImage(
     source: File | Blob | string,
     imageType: MediaImageType,
@@ -391,21 +622,48 @@ async function prepareRawMediaImage(
     const mimeType = isBlob(source)
         ? normalizeMimeType(source.type) || getDataUrlMimeType(dataUrl, profile.outputFormat)
         : getDataUrlMimeType(dataUrl, profile.outputFormat);
+    const blob = getDataUrlBlob(dataUrl);
+    const checksum = await sha256Hex(dataUrl);
+    const mediaId = buildMediaId(imageType, checksum);
+    const variant: PreparedMediaVariant = {
+        blob,
+        dataUrl,
+        fileName: `${mediaId}_${profile.primaryVariant}.${getMediaFileExtension(mimeType)}`,
+        height: img.naturalHeight,
+        id: profile.primaryVariant,
+        mimeType,
+        sizeBytes: typeof source === 'string' ? estimateDataUrlSize(dataUrl) : source.size,
+        width: img.naturalWidth,
+    };
 
     return {
+        animationPolicy: profile.animationPolicy,
         aspectRatio,
+        blob,
+        checksum,
         compressionRatio: 1,
         crop,
         dataUrl,
+        exifNormalized: false,
+        focalPoint: buildFocalPoint(crop),
         height: img.naturalHeight,
         imageType,
+        mediaId,
         mimeType,
         originalHeight: img.naturalHeight,
         originalSize,
         originalWidth: img.naturalWidth,
+        primaryVariant: profile.primaryVariant,
+        profile: imageType,
         sizeBytes: typeof source === 'string' ? estimateDataUrlSize(dataUrl) : source.size,
         sourceName,
         sourceDataUrl: dataUrl,
+        status: 'ready',
+        transparency: profile.preserveTransparency ? 'preserved' : 'removed',
+        variants: {
+            [profile.primaryVariant]: variant,
+        },
+        version: PREPARED_MEDIA_VERSION,
         width: img.naturalWidth,
     };
 }
@@ -459,22 +717,26 @@ export async function prepareMediaImage(
                 bestResult = result;
             }
             if (result.sizeBytes <= maxBytes) {
-                return {
+                const renderedVariants = renderProfileVariants(
+                    img,
+                    profile,
                     aspectRatio,
-                    compressionRatio: originalSize > 0 ? result.sizeBytes / originalSize : 1,
+                    result.dimension,
+                    result.quality,
+                    options.crop ? crop : undefined,
+                );
+                return buildPreparedMediaImage({
+                    aspectRatio,
                     crop,
-                    dataUrl: result.dataUrl,
-                    height: result.height,
                     imageType,
-                    mimeType: getDataUrlMimeType(result.dataUrl, profile.outputFormat),
                     originalHeight: img.naturalHeight,
                     originalSize,
                     originalWidth: img.naturalWidth,
-                    sizeBytes: result.sizeBytes,
-                    sourceName,
+                    profile,
+                    renderedVariants,
                     sourceDataUrl,
-                    width: result.width,
-                };
+                    sourceName,
+                });
             }
             quality -= 0.08;
         }

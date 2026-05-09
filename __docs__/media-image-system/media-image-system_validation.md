@@ -21,6 +21,10 @@ Result: passed.
 ## Code Review Notes
 
 - ChatGPT's server-side Sharp/CDN recommendation is documented as a later migration contract, not implemented now, because the current repo uses Firebase Storage and client-side DAL image preparation.
+- ChatGPT's canonical identity, variant, focal point, transparency, minimum-dimension, static-animation, EXIF normalization, and immutable cache feedback is accepted and now reflected in the media profile contract.
+- `prepareMediaImage` now returns `mediaId`, `checksum`, `version`, `status`, primary Blob/data URL compatibility output, named variants, focal point, dominant color, EXIF normalization state, and transparency policy.
+- The current DAL still persists the primary image URL in existing fields. This preserves existing owner/public flows while keeping the prepared media contract ready for future media asset documents and variant-aware storage.
+- Business logo Storage writes now use a fingerprinted nested path instead of overwriting `stores/logos/{storeId}`.
 - Desktop and mobile item, project, background, logo, and Official Business Page photo paths now use shared media profiles or shared preparation.
 - Desktop and mobile Digital Screens custom-slide uploads now use the `digitalScreenSlide` media profile.
 - Project image, menu background, business logo, Official Business Page gallery, and Digital Screens custom-slide surfaces now use the shared `MediaImageCard` presentation shell.

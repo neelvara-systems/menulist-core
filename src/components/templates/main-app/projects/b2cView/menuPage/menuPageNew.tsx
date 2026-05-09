@@ -92,6 +92,7 @@ interface MenuPageNewProps {
     businessType?: string;
     precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
     restoreStoredLanguage?: boolean;
+    previewMode?: boolean;
 }
 
 const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefined => {
@@ -174,9 +175,13 @@ function MenuPageNew({
     from,
     businessType,
     precomputedBlocks,
-    restoreStoredLanguage = true
+    restoreStoredLanguage = true,
+    previewMode = false
 }: MenuPageNewProps) {
-    const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
+    const resolvedAnalyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
+    const analyticsPreferences = previewMode
+        ? { ...resolvedAnalyticsPreferences, trackLocation: false, trackMenuViews: false }
+        : resolvedAnalyticsPreferences;
     const { trackMenuItemTap } = useContext(AnalyticsContext);
     const isPublicSurface = from === 'main-website';
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -460,6 +465,10 @@ function MenuPageNew({
     // P0.2 - Restore state from sessionStorage on mount (runs once when categories load)
     useEffect(() => {
         if (typeof window === 'undefined') return;
+        if (previewMode) {
+            setStateRestored(true);
+            return;
+        }
         if (stateRestored) return; // Only restore once
         if (allCategories.length === 0) return; // Wait for categories
 
@@ -492,7 +501,7 @@ function MenuPageNew({
         }
 
         setStateRestored(true);
-    }, [storageKey, allCategories, stateRestored, restoreScrollPosition]);
+    }, [storageKey, allCategories, stateRestored, restoreScrollPosition, previewMode]);
 
     // Set first category as active on mount (only if not restored from session)
     useEffect(() => {
@@ -504,6 +513,7 @@ function MenuPageNew({
     // P0.2 - Save state to sessionStorage on scroll/filter change
     useEffect(() => {
         if (typeof window === 'undefined') return;
+        if (previewMode) return;
 
         let saveTimeout: NodeJS.Timeout;
         const container = scrollContainerRef.current;
@@ -538,7 +548,7 @@ function MenuPageNew({
             container?.removeEventListener('scroll', saveState);
             clearTimeout(saveTimeout);
         };
-    }, [storageKey, activeFilter, activeCategory, allCategories, getScrollPosition]);
+    }, [storageKey, activeFilter, activeCategory, allCategories, getScrollPosition, previewMode]);
 
     const showTabsBar = !isDesktop && showCategoryTabs;
     const showSectionsControl = !isDesktop && allCategories.length >= 2;
@@ -874,19 +884,21 @@ function MenuPageNew({
         const categoryName = getMenuText(category?.name)
             || (typeof item.category === 'object' ? getMenuText(item.category) : undefined);
         const trackedItemName = getMenuText(item.name, 'Menu item');
-        trackMenuItemTap({
-            itemId: item.id,
-            name: trackedItemName,
-            category: categoryName,
-            categoryId,
-            categoryName,
-            price: showItemPrices
-                ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
-                : undefined,
-            currency: currencyCode,
-        });
+        if (!previewMode) {
+            trackMenuItemTap({
+                itemId: item.id,
+                name: trackedItemName,
+                category: categoryName,
+                categoryId,
+                categoryName,
+                price: showItemPrices
+                    ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
+                    : undefined,
+                currency: currencyCode,
+            });
+        }
 
-        setSelectedItemTrackView(true);
+        setSelectedItemTrackView(!previewMode);
         setSelectedItem(item);
 
         // G14: Push history state for back button support
@@ -898,16 +910,25 @@ function MenuPageNew({
         const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
         const basePath = getMenuBasePath();
 
-        historyPushedRef.current = true;
-        window.history.pushState(
-            { modal: 'item', itemId: item.id },
-            '',
-            `${basePath}/item/${urlSegment}`
-        );
-    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuBasePath, getMenuText, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+        if (!previewMode) {
+            historyPushedRef.current = true;
+            window.history.pushState(
+                { modal: 'item', itemId: item.id },
+                '',
+                `${basePath}/item/${urlSegment}`
+            );
+        }
+    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuBasePath, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
+        if (previewMode) {
+            historyPushedRef.current = false;
+            setSelectedItem(null);
+            setSelectedItemTrackView(true);
+            return;
+        }
+
         if (historyPushedRef.current) {
             historyPushedRef.current = false;
             setSelectedItem(null);
@@ -918,7 +939,7 @@ function MenuPageNew({
             setSelectedItem(null);
         }
         setSelectedItemTrackView(true);
-    }, [getMenuBasePath]);
+    }, [getMenuBasePath, previewMode]);
 
     const handlePdpClosed = useCallback(() => {
         if (selectedItemRef.current) return;
@@ -951,6 +972,7 @@ function MenuPageNew({
     // G14 - Direct link load: Open PDP if URL contains item path
     // Supports both new slug URLs (/menu/item/butter-chicken-abc123) and legacy ID URLs (/menu/item/item_abc123)
     useEffect(() => {
+        if (previewMode) return;
         if (allItems.length === 0) return; // Wait for items to load
 
         // Segment-based parsing (robust against query params, trailing slashes, locale prefixes)
@@ -983,7 +1005,7 @@ function MenuPageNew({
                 historyPushedRef.current = false;
             }
         }
-    }, [allItems, getMenuText]);
+    }, [allItems, getMenuText, previewMode]);
 
     const scrollToCategoryElement = useCallback((categoryId: string) => {
         const element = document.getElementById(`cat-${categoryId}`);
@@ -1008,9 +1030,10 @@ function MenuPageNew({
 
     const updateCategoryHash = useCallback((categoryId: string) => {
         if (typeof window === 'undefined') return;
+        if (previewMode) return;
 
         window.history.replaceState(null, '', `${getMenuBasePath()}#cat-${categoryId}`);
-    }, [getMenuBasePath]);
+    }, [getMenuBasePath, previewMode]);
 
     const centerCategoryTab = useCallback((categoryId: string, behavior: ScrollBehavior = 'auto') => {
         const container = categoryTabsContainerRef.current;
@@ -1104,7 +1127,8 @@ function MenuPageNew({
 
     // Styles
     const containerStyle: React.CSSProperties = {
-        minHeight: from === 'main-website' ? '100dvh' : 'calc(100dvh - 76px)',
+        minHeight: previewMode ? '100%' : from === 'main-website' ? '100dvh' : 'calc(100dvh - 76px)',
+        height: previewMode ? '100%' : undefined,
         background: backgroundImage
             ? `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url(${backgroundImage}) center/cover no-repeat fixed`
             : moodConfig.background,
@@ -1560,7 +1584,7 @@ function MenuPageNew({
                                 storeTimeZone: storeDetails?.timeZone,
                                 businessDayEndTime: storeDetails?.businessDayEndTime,
                             }}
-                            trackingEnabled={isDecisionBlockAnalyticsEnabled(storeDetails?.analytics)}
+                            trackingEnabled={!previewMode && isDecisionBlockAnalyticsEnabled(storeDetails?.analytics)}
                         />
                     )}
 
@@ -1969,6 +1993,7 @@ function MenuPageNew({
                     {/* Inline Feedback Nudge — timed prompt for customer feedback */}
                     {/* Only on live pages (not editor preview), only if feedback enabled */}
                     {from === 'main-website' &&
+                        !previewMode &&
                         FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK &&
                         !debouncedSearch &&
                         storeDetails?.feedbackEnabled !== false &&

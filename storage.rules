@@ -63,6 +63,10 @@ service firebase.storage {
     function isValidImageUpload() {
       return isValidImageType() && isValidSize();
     }
+
+    function isValidMediaProfile(profile) {
+      return profile.matches('^(menuItem|categoryImage|projectImage|menuBackground|businessLogo|businessCover|digitalScreenSlide|galleryImage)$');
+    }
     
     // ═══════════════════════════════════════════════════════════
     // TENANT-SCOPED STORAGE PATTERN (NEW)
@@ -106,6 +110,16 @@ service firebase.storage {
     match /changelog/files/{tId}/{sId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
       allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+
+    /**
+     * Prepared Media Images
+     * Path: media/{profile}/{tId}/{sId}/{entityId}/{fileId}
+     */
+    match /media/{profile}/{tId}/{sId}/{entityId}/{fileId} {
+      allow read: if true;
+      allow write: if belongsToStore(tId, sId) && isValidImageUpload() && isValidMediaProfile(profile);
       allow delete: if belongsToStore(tId, sId);
     }
     

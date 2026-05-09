@@ -11,6 +11,7 @@ import {
     logMenuChange,
 } from "@database/menuChangeLog";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
+import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import {
     collection,
     deleteField,
@@ -48,6 +49,8 @@ import {
 } from "@lib/firestore/summaryProjectsWriter";
 import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
+import type { MediaImageType, MediaImageVariantId } from "@lib/media/imageProfiles";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import {
@@ -1373,6 +1376,28 @@ export const uploadFile = async (
 ) => {
     let fileUrl: any = "";
     const docId = `${new Date().getTime()}-${data.uid}`;
+    const mediaProfileByFolder: Partial<Record<string, MediaImageType>> = {
+        assets: 'menuBackground',
+        itemImages: 'menuItem',
+        'project-images': 'projectImage',
+    };
+    const mediaProfile = (data.mediaProfile as MediaImageType | undefined) || mediaProfileByFolder[from];
+
+    if (data.blob || (mediaProfile && isDataUrl(data.url))) {
+        const session = await getActiveSession();
+        return uploadPreparedMediaImage({
+            blob: data.blob,
+            contentType: data.type,
+            dataUrl: data.url,
+            entityId: data.mediaEntityId || data.uid || docId,
+            mediaChecksum: data.mediaChecksum,
+            mediaId: data.mediaId,
+            profile: mediaProfile || 'menuItem',
+            storeId: session.sId,
+            tenantId: session.tId,
+            variant: data.mediaVariant as MediaImageVariantId | undefined,
+        });
+    }
 
     if (data.url) {
         if (data.url.includes("base64")) {

@@ -10,6 +10,13 @@ export interface GlobalAddressType {
 }
 
 export type UserUploadedFileType = {
+    blob?: Blob;
+    mediaChecksum?: string;
+    mediaEntityId?: string;
+    mediaId?: string;
+    mediaProfile?: string;
+    mediaVariant?: string;
+    mediaVersion?: number;
     source?: string;
     name?: string;
     size?: number;

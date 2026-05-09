@@ -24,6 +24,7 @@ interface MainContentRendererProps {
   businessType?: string;
   precomputedBlocks?: any | null;  // Precomputed Decision Blocks from Cloud Function
   restoreStoredLanguage?: boolean;
+  previewMode?: boolean;
 }
 
 function MainContentRenderer({
@@ -37,7 +38,8 @@ function MainContentRenderer({
   fromPage,
   businessType,
   precomputedBlocks,
-  restoreStoredLanguage
+  restoreStoredLanguage,
+  previewMode
 }: MainContentRendererProps) {
 
   const brandAccentColor = projectData?.config?.design?.brand?.accentColor;
@@ -80,6 +82,7 @@ function MainContentRenderer({
           businessType={businessType}
           precomputedBlocks={precomputedBlocks}
           restoreStoredLanguage={restoreStoredLanguage}
+          previewMode={previewMode}
         />
       )}
     </DeviceFrame>

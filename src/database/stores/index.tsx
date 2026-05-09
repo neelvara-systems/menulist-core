@@ -3,15 +3,17 @@ import { resolveBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { createDefaultRoles } from "@data/defaultRoles";
 import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
-import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
+import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import { collection, getDocs, query, where } from "@firebase/firestore";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from "@lib/auth/getActiveSession";
 import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
 import { TimeSlotPreset } from "@type/platform/store";
@@ -136,14 +138,17 @@ const updateLogoImage = async (data) => {
     const docRef = await getDocRef(`${docId}`);
 
     if (imageToUpdate) {
-        if (imageToUpdate?.includes('base64')) {
-            //upload logo image to firebase storage
-            logoUrl = await uploadBase64ToStorage({
-                fileId: docId,
-                url: imageToUpdate,
-                path: `${COLLECTION}/logos/${docId}`,
-                type: imageType
-            })
+        if (isDataUrl(imageToUpdate)) {
+            const session = await getActiveSession();
+            logoUrl = await uploadPreparedMediaImage({
+                contentType: imageType,
+                dataUrl: imageToUpdate,
+                entityId: docId,
+                profile: 'businessLogo',
+                storeId: docId || session.sId,
+                tenantId: data.tenantId || session.tId,
+                variant: 'full',
+            });
         }
         return logoUrl || imageToUpdate;
     } else return "";

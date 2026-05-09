@@ -11,7 +11,7 @@ Existing write paths remain:
 | Menu item image | 1 Storage object per saved image | Existing project save |
 | Project image | 1 Storage object when saved | Existing project summary/project metadata write |
 | Menu background | 1 Storage object on publish | Existing project publish write |
-| Business logo | 1 Storage object when logo changes | Existing store update write |
+| Business logo | 1 fingerprinted Storage object when logo changes | Existing store update write |
 | Official Business Page gallery image | 1 Storage object when photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
 | Digital screen slide | 1 Storage object when owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
 
@@ -30,6 +30,18 @@ The shared preparation layer reduces Storage and public bandwidth by resizing an
 - menu item images target 500KB or lower
 - backgrounds target 800KB or lower
 - logos target 350KB or lower with gentler quality
+
+The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Existing single-URL Firestore fields are preserved to avoid a schema migration in this implementation, so only the primary variant is persisted by current DAL paths.
+
+## Immutable Object Rule
+
+Prepared public media should not overwrite the same object path. New image content must produce a new path or media version so Firebase/CDN caches, PWAs, and Digital Screen devices do not serve stale images.
+
+Current status:
+
+- Project, item, menu background, OBP gallery, and digital screen uploads already use unique object paths.
+- Business logo upload now uses a prepared-data fingerprint under `stores/logos/{storeId}/{fingerprint}` instead of overwriting `stores/logos/{storeId}`.
+- Future media asset documents should use the canonical path helper: `{tenantId}/{profile}/{entityId}/{mediaId}_{variant}.{extension}`.
 
 ## Future Media Asset Documents
 

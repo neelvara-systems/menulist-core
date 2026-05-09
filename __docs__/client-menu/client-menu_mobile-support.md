@@ -50,7 +50,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 
 ## Owner Mobile Interaction
 
-Owners preview their customer-facing menu by tapping the share link from `MobileShareScreen`. No separate owner mobile UI needed — the public page IS already mobile-optimized.
+Owners can still open the saved customer-facing link from `MobileShareScreen`. The mobile Menu Design screen also has a persistent `Preview` action for draft design changes; it opens a full-screen preview-only sheet that renders the same public menu component without saving, tracking customer analytics, or mutating public menu URL/session state.
 
 ## Sub-Features
 

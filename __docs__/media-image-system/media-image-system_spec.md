@@ -18,18 +18,57 @@ Every saved image has one media purpose. That purpose decides:
 
 ## Image Profiles
 
-| Type | Default ratio | Allowed ratios | Max source | Output target | Public budget |
-| --- | --- | --- | --- | --- | --- |
-| Menu item | 1:1 | 1:1, 4:3 | 8MB | 1200px max | 500KB |
-| Category image | 4:3 | 4:3, 1:1 | 8MB | 1200px max | 500KB |
-| Project image | 16:9 | 16:9, 1:1 | 8MB | 1600px max | 650KB |
-| Menu background | 16:9 | 16:9 | 10MB | 1400px max | 800KB |
-| Business logo | 1:1 | 1:1 | 5MB | 512px max | 350KB |
-| Business cover | 16:9 | 16:9 | 10MB | 1600px max | 800KB |
-| Digital screen slide | 16:9 | 16:9 | 10MB | 1920px max | 500KB |
-| Gallery image | 4:3 | 4:3, 1:1 | 8MB | 1400px max | 700KB |
+| Type | Default ratio | Allowed ratios | Minimum source | Max source | Output target | Public budget |
+| --- | --- | --- | --- | --- | --- | --- |
+| Menu item | 1:1 | 1:1, 4:3 | 600x600 | 8MB | 1200px max | 500KB |
+| Category image | 4:3 | 4:3, 1:1 | 600x450 | 8MB | 1200px max | 500KB |
+| Project image | 16:9 | 16:9, 1:1 | 1200x675 | 8MB | 1600px max | 650KB |
+| Menu background | 16:9 | 16:9 | 1200x675 | 10MB | 1400px max | 800KB |
+| Business logo | 1:1 | 1:1 | 256x256 | 5MB | 512px max | 350KB |
+| Business cover | 16:9 | 16:9 | 1200x675 | 10MB | 1600px max | 800KB |
+| Digital screen slide | 16:9 | 16:9 | 1600x900 | 10MB | 1920px max | 500KB |
+| Gallery image | 4:3 | 4:3, 1:1 | 800x600 | 8MB | 1400px max | 700KB |
 
 Menu cover is intentionally not a separate profile. If a menu needs a cover-like preview, use `projectImage` so menu previews, share cards, and discovery cards do not drift into separate image contracts.
+
+## Canonical Prepared Image Contract
+
+`prepareMediaImage` returns one prepared media object with stable identity and presentation metadata:
+
+```ts
+interface PreparedMediaImage {
+  mediaId: string
+  profile: MediaImageType
+  version: number
+  status: 'ready'
+  checksum: string
+  publicUrl?: string
+  primaryVariant: MediaImageVariantId
+  variants: Partial<Record<MediaImageVariantId, PreparedMediaVariant>>
+  focalPoint: { x: number; y: number }
+  dominantColor?: string
+  blurHash?: string
+}
+```
+
+Existing save flows may still persist a single URL field, but the media layer must not be URL-only. The canonical identity, version, checksum, focal point, and variant names are part of the frozen contract for future media documents, CDN migration, AI regeneration, and cleanup tooling.
+
+## Variant Policy
+
+Every profile has named variants even when the current UI initially saves one URL:
+
+| Profile | Variants |
+| --- | --- |
+| Menu item | thumb, small, medium, large |
+| Category image | thumb, small, medium, large |
+| Project image | card, hero |
+| Menu background | mobile, desktop |
+| Business logo | thumb, full |
+| Business cover | card, hero |
+| Digital screen slide | desktop, full |
+| Gallery image | thumb, full |
+
+The current single persisted URL remains the profile primary variant. Future renderers can move to the named variant map without changing the profile identifiers.
 
 ## Format Rules
 
@@ -46,7 +85,39 @@ Rejected source files:
 - HEIC/HEIF
 - PDF or non-image files
 
-Logo output keeps PNG when transparency matters. Other managed images prefer compact public-safe output through the shared canvas optimizer.
+Logo output keeps PNG and preserves transparency. Transparency is removed for menu items, category images, project images, backgrounds, business covers, digital slides, and gallery images. Other managed images prefer compact public-safe output through the shared canvas optimizer.
+
+Animated public media is unsupported. GIF uploads are rejected, and accepted still-image formats are prepared into static outputs. Uploads are treated as static business presentation assets, not animation containers.
+
+All prepared outputs normalize browser-decoded orientation before canvas preparation and strip source EXIF metadata by writing a new image. The media layer stores `exifNormalized: true` for prepared outputs.
+
+## Storage Naming And Cache Rule
+
+Prepared media outputs are immutable. A changed image must create a new path or version rather than overwrite the same public object.
+
+Canonical future media paths follow:
+
+```txt
+{tenantId}/{profile}/{entityId}/{mediaId}_{variant}.{extension}
+```
+
+Example:
+
+```txt
+t1/menuItem/item123/menuItem_a82bd0c2_medium.webp
+```
+
+Current legacy single-URL DAL paths can continue while they migrate, but new profile-aware media code should use deterministic identity and variant names.
+
+## Focal Point Rule
+
+Manual crop stores the owner's subject center as normalized focal point coordinates:
+
+```ts
+{ x: 0.42, y: 0.31 }
+```
+
+If the owner does not manually adjust, MenuList uses the center point. Focal point metadata is required for project images, backgrounds, covers, digital slides, and gallery assets so future responsive crops and AI-generated assets can preserve the subject.
 
 ## Owner UX
 

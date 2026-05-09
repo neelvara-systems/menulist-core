@@ -7,7 +7,6 @@ import { deleteOBPPhotos, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getBrandName } from '@lib/businessIdentity/names';
-import { dataUrlToBlob } from '@lib/image/optimizeImage';
 import { updateLocalizedText } from '@lib/localization/text';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
@@ -238,7 +237,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
         setUploadingIndex(index);
         try {
-            const url = await uploadOBPPhoto(dataUrlToBlob(prepared.dataUrl), { tId: session.tId, sId: session.sId }, index);
+            const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
             const nextPhotos = [...formData.photos];
             if (nextPhotos[index] && nextPhotos[index] !== url) {
                 queuePhotoDelete(nextPhotos[index]);

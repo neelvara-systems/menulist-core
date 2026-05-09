@@ -9,13 +9,14 @@
  */
 
 import { firebaseStorage } from '@lib/firebase/firebaseClient';
+import { getMediaFileExtension } from '@lib/media/mediaStorage';
+import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
+import { uploadPreparedMediaImage } from '@database/storage/uploadPreparedMediaImage';
 import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
 
 function getPhotoExtension(mimeType?: string): string {
-    if (mimeType?.includes('webp')) return 'webp';
-    if (mimeType?.includes('png')) return 'png';
-    return 'jpg';
+    return getMediaFileExtension(mimeType || 'image/jpeg');
 }
 
 /**
@@ -29,7 +30,21 @@ export async function uploadOBPPhoto(
     file: File | Blob,
     session: { tId: number | string; sId: number | string },
     index: number,
+    prepared?: PreparedMediaImage,
 ): Promise<string> {
+    if (prepared) {
+        return uploadPreparedMediaImage({
+            blob: prepared.blob || file,
+            contentType: prepared.mimeType || file.type,
+            entityId: `gallery-${index}`,
+            prepared,
+            profile: 'galleryImage',
+            storeId: session.sId,
+            tenantId: session.tId,
+            variant: 'full',
+        });
+    }
+
     const fileId = `${Date.now()}-photo-${index}.${getPhotoExtension(file.type)}`;
     const storagePath = generateStoragePath({
         collection: 'stores',

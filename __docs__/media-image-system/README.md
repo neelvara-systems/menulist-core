@@ -12,6 +12,9 @@ It centralizes:
 - upload limits
 - output dimensions
 - compression budgets
+- media identity
+- named variants
+- focal point metadata
 - public rendering expectations
 
 ## Current Scope

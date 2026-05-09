@@ -78,6 +78,7 @@ function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewM
                 setActivePage={setActivePage}
                 activeLanguage={activeLanguage}
                 setActiveLanguage={setActiveLanguage}
+                previewMode
             />
         </Modal>
     )
