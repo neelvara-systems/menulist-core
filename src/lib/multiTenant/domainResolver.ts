@@ -167,8 +167,10 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/__growthos',
         '/__visualmeta',
         '/favicon.ico',
-        '/robots.txt',
-        '/sitemap.xml',
+        // Keep robots.txt and sitemap.xml out of this bypass list. Tenant
+        // domains must pass through middleware so they rewrite to
+        // /client/robots.txt and /client/sitemap.xml with per-store discovery
+        // metadata; platform domains still fall through without rewrite.
         '/manifest.json',
         '/sw.js',
         '/sw-customer.js',

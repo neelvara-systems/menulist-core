@@ -2,7 +2,7 @@
 
 > Standard category and classification vocabulary for cross-business discovery.
 > Phase 1A of Infrastructure Expansion.
-> Last Updated: March 10, 2026
+> Last Updated: May 9, 2026
 
 ---
 

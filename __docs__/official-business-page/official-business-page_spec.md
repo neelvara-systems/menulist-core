@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-**What:** A single, permanent business link that replaces every link a business currently shares — PDFs, Google Drive menus, Instagram profiles, random WhatsApp messages. Auto-generated from existing store data.
+**What:** A single, permanent business link that becomes the default customer answer instead of PDFs, Google Drive menus, Instagram profile links, and random WhatsApp messages. Auto-generated from existing store data.
 
 **Why:** Businesses today send fragmented links when customers ask for info. OBP gives them one canonical link that shows who they are, whether they're open, and how to reach them — with a single tap to their full menu. OBP is not a page system. It is a **link replacement protocol**.
 
@@ -25,7 +25,7 @@
 | ------------------------------------ | ------------------------------------------------------------------------------------------- |
 | Become the default link owners share | Owner stops sending PDFs/Zomato/Instagram and sends only MenuList link                      |
 | Instant access to business info      | Page loads in <1.5s on mobile 4G in India                                                   |
-| Always accurate                      | OBP reflects store changes within 60 seconds                                                |
+| Official source stays current        | OBP reflects store changes within 60 seconds                                                |
 | Brand spread                         | "Powered by MenuList" visible on every OBP page                                             |
 | Distribution surface                 | Thousands of MenuList links circulating in the wild                                         |
 | Link replacement rate                | Owner uses OBP link for ≥80% of customer interactions (replaces PDFs, Maps, manual replies) |
@@ -47,8 +47,8 @@
 | Segment                      | Current Behavior                                            | OBP Replacement                                           |
 | ---------------------------- | ----------------------------------------------------------- | --------------------------------------------------------- |
 | **WhatsApp-first** (primary) | Shares menu via images/PDF on WhatsApp multiple times daily | One-tap OBP share replaces all manual replies             |
-| **Google Maps dependent**    | Uses Google Maps link as main business reference            | OBP in GBP "Website" field captures all Google traffic    |
-| **Instagram bio linkers**    | Uses Instagram profile as business identity                 | OBP link in bio — faster, always updated, action-oriented |
+| **Google Maps dependent**    | Uses Google Maps link as main business reference            | OBP in GBP "Website" field gives Google visitors the official source |
+| **Instagram bio linkers**    | Uses Instagram profile as business identity                 | OBP link in bio — faster, updated from MenuList data, action-oriented |
 
 ---
 

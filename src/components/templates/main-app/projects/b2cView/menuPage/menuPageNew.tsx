@@ -36,6 +36,7 @@ import {
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage } from 'react-icons/lu';
@@ -58,6 +59,7 @@ import MenuFilters from '../output/MenuFilters';
 import MenuFooter from '../output/MenuFooter';
 import MenuHeader from '../output/MenuHeader';
 import MenuLanguageSwitcher from '../output/MenuLanguageSwitcher';
+import { menuSearchStateMotion, menuSpringTransition } from '../output/menuMotion';
 import MenuSearchBar from '../output/MenuSearchBar';
 import PDPModal from '../output/PDPModal';
 import ServiceChargeNote from '../output/ServiceChargeNote';
@@ -176,7 +178,13 @@ function MenuPageNew({
     const { trackMenuItemTap } = useContext(AnalyticsContext);
     const isPublicSurface = from === 'main-website';
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const categoryTabsContainerRef = useRef<HTMLDivElement | null>(null);
     const categoryTabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+    const activeCategoryIdRef = useRef<string | null>(null);
+    const categoryNavigationLockRef = useRef<{
+        id: string;
+        timeoutId: number | null;
+    } | null>(null);
     const getMenuBasePath = useCallback(() => {
         if (typeof window === 'undefined') return '/menu';
 
@@ -249,11 +257,48 @@ function MenuPageNew({
     // State
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [, setIsSearchFocused] = useState(false);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
     const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
+
+    useEffect(() => {
+        activeCategoryIdRef.current = activeCategory?.id || null;
+    }, [activeCategory?.id]);
+
+    const releaseCategoryNavigationLock = useCallback((categoryId?: string) => {
+        const currentLock = categoryNavigationLockRef.current;
+        if (!currentLock || (categoryId && currentLock.id !== categoryId)) return;
+
+        if (currentLock.timeoutId && typeof window !== 'undefined') {
+            window.clearTimeout(currentLock.timeoutId);
+        }
+
+        categoryNavigationLockRef.current = null;
+    }, []);
+
+    const beginCategoryNavigationLock = useCallback((categoryId: string) => {
+        if (typeof window === 'undefined') return;
+
+        const currentLock = categoryNavigationLockRef.current;
+        if (currentLock?.timeoutId) {
+            window.clearTimeout(currentLock.timeoutId);
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            releaseCategoryNavigationLock(categoryId);
+            window.dispatchEvent(new Event('scroll'));
+        }, 900);
+
+        categoryNavigationLockRef.current = { id: categoryId, timeoutId };
+    }, [releaseCategoryNavigationLock]);
+
+    useEffect(() => {
+        return () => {
+            releaseCategoryNavigationLock();
+        };
+    }, [releaseCategoryNavigationLock]);
 
     // Phase C: Filter chips state
     const [activeFilter, setActiveFilter] = useState<FilterType>(null);
@@ -475,7 +520,11 @@ function MenuPageNew({
 
     const showTabsBar = !isDesktop && showCategoryTabs;
     const showSectionsControl = !isDesktop && allCategories.length >= 2;
-    const stickyControlsOffset = isDesktop ? 96 : showTabsBar ? 124 : 76;
+    const stickyControlsTopBuffer = isDesktop ? 0 : 8;
+    const stickyControlsTopOffset = stickyControlsTopBuffer
+        ? `calc(${stickyControlsTopBuffer}px + env(safe-area-inset-top))`
+        : 0;
+    const stickyControlsOffset = isDesktop ? 96 : (showTabsBar ? 124 : 76) + stickyControlsTopBuffer;
 
     // Scroll spy - update active category based on scroll position
     // Activates for: desktop sidebar, tablet category tabs, or mobile with showCategoryTabs
@@ -487,25 +536,39 @@ function MenuPageNew({
             const container = getActiveScrollContainer();
             const scrollOriginTop = container?.getBoundingClientRect().top || 0;
             const targetTop = scrollOriginTop + stickyControlsOffset + 8;
+            const lockedCategoryId = categoryNavigationLockRef.current?.id;
 
-            let closestCategory = null;
-            let closestDistance = Infinity;
+            if (lockedCategoryId) {
+                const lockedElement = document.getElementById(`cat-${lockedCategoryId}`);
+                if (!lockedElement) {
+                    releaseCategoryNavigationLock(lockedCategoryId);
+                    return;
+                }
+
+                const lockedDistance = Math.abs(lockedElement.getBoundingClientRect().top - targetTop);
+                if (lockedDistance <= 28) {
+                    releaseCategoryNavigationLock(lockedCategoryId);
+                }
+                return;
+            }
+
+            let activeCandidate = allCategories[0] || null;
+            const activationLine = targetTop + 28;
 
             allCategories.forEach((cat: any) => {
                 const element = document.getElementById(`cat-${cat.id}`);
                 if (element) {
                     const rect = element.getBoundingClientRect();
-                    const distance = Math.abs(rect.top - targetTop);
 
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestCategory = cat;
+                    if (rect.top <= activationLine) {
+                        activeCandidate = cat;
                     }
                 }
             });
 
-            if (closestCategory && closestCategory.id !== activeCategory?.id) {
-                setActiveCategory(closestCategory);
+            if (activeCandidate && activeCandidate.id !== activeCategoryIdRef.current) {
+                activeCategoryIdRef.current = activeCandidate.id;
+                setActiveCategory(activeCandidate);
             }
         };
 
@@ -518,7 +581,7 @@ function MenuPageNew({
             window.removeEventListener('scroll', handleScroll);
             container?.removeEventListener('scroll', handleScroll);
         };
-    }, [allCategories, activeCategory?.id, enableScrollSpy, getActiveScrollContainer, stickyControlsOffset]);
+    }, [allCategories, enableScrollSpy, getActiveScrollContainer, releaseCategoryNavigationLock, stickyControlsOffset]);
 
     // #31: Progressive rendering observer — mark categories visible as they approach viewport
     useEffect(() => {
@@ -916,23 +979,54 @@ function MenuPageNew({
         window.history.replaceState(null, '', `${getMenuBasePath()}#cat-${categoryId}`);
     }, [getMenuBasePath]);
 
+    const centerCategoryTab = useCallback((categoryId: string, behavior: ScrollBehavior = 'auto') => {
+        const container = categoryTabsContainerRef.current;
+        const tab = categoryTabRefs.current[categoryId];
+        if (!container || !tab) return;
+
+        const containerRect = container.getBoundingClientRect();
+        const tabRect = tab.getBoundingClientRect();
+        const edgePadding = 20;
+        const isComfortablyVisible =
+            tabRect.left >= containerRect.left + edgePadding &&
+            tabRect.right <= containerRect.right - edgePadding;
+
+        if (isComfortablyVisible) return;
+
+        const targetLeft = Math.max(
+            0,
+            tab.offsetLeft - (container.clientWidth - tab.offsetWidth) / 2,
+        );
+
+        container.scrollTo({ left: targetLeft, behavior });
+    }, []);
+
     // Handle category selection (scroll to category)
     const handleCategorySelect = useCallback((category: any) => {
         if (category?.id) {
+            beginCategoryNavigationLock(category.id);
+            activeCategoryIdRef.current = category.id;
+            setActiveCategory(category);
+            centerCategoryTab(category.id, 'smooth');
+
             const didScroll = scrollToCategoryElement(category.id);
-            if (!didScroll) return;
+            if (!didScroll) {
+                releaseCategoryNavigationLock(category.id);
+                return;
+            }
             updateCategoryHash(category.id);
             setIsSearchFocused(false);
-            setActiveCategory(category);
             return;
         }
 
         setIsSearchFocused(false);
+        activeCategoryIdRef.current = category?.id || null;
         setActiveCategory(category);
-    }, [scrollToCategoryElement, updateCategoryHash]);
+    }, [beginCategoryNavigationLock, centerCategoryTab, releaseCategoryNavigationLock, scrollToCategoryElement, updateCategoryHash]);
 
     const handleBrowseCategorySelect = useCallback((category: any, source?: string) => {
         if (source === 'MENU-POPOVER-SYNC') {
+            activeCategoryIdRef.current = category?.id || null;
             setActiveCategory(category);
             return;
         }
@@ -948,7 +1042,7 @@ function MenuPageNew({
 
     const displayActiveCategory = debouncedSearch ? null : activeCategory;
     const activeCategoryTabId = displayActiveCategory?.id;
-    const isSearchCommandExpanded = false;
+    const isSearchCommandExpanded = isSearchFocused || Boolean(searchTerm);
 
     useEffect(() => {
         if (!pendingBrowseCategory || searchTerm || debouncedSearch) return;
@@ -964,19 +1058,13 @@ function MenuPageNew({
     useEffect(() => {
         if (isDesktop || !showTabsBar || !activeCategoryTabId) return;
 
-        const tab = categoryTabRefs.current[activeCategoryTabId];
-        if (!tab) return;
-
         const frame = requestAnimationFrame(() => {
-            tab.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-                inline: 'center',
-            });
+            const behavior = categoryNavigationLockRef.current?.id === activeCategoryTabId ? 'smooth' : 'auto';
+            centerCategoryTab(activeCategoryTabId, behavior);
         });
 
         return () => cancelAnimationFrame(frame);
-    }, [activeCategoryTabId, isDesktop, showTabsBar]);
+    }, [activeCategoryTabId, centerCategoryTab, isDesktop, showTabsBar]);
 
     // Styles
     const containerStyle: React.CSSProperties = {
@@ -999,7 +1087,7 @@ function MenuPageNew({
         boxSizing: 'border-box',
         overflowX: 'clip',
         overflowY: isPublicSurface ? 'visible' : 'auto',
-        scrollPaddingTop: `calc(72px + env(safe-area-inset-top))`,
+        scrollPaddingTop: `calc(${72 + stickyControlsTopBuffer}px + env(safe-area-inset-top))`,
         scrollPaddingBottom: `calc(96px + env(safe-area-inset-bottom))`,
     };
 
@@ -1012,17 +1100,15 @@ function MenuPageNew({
     };
     const stickyControlsStyle: React.CSSProperties = {
         position: 'sticky',
-        top: 0,
+        top: stickyControlsTopOffset,
         zIndex: 70,
         marginBottom: 16,
-        paddingTop: isMobile || isTablet ? 'calc(6px + env(safe-area-inset-top))' : 0,
+        paddingTop: 0,
         paddingBottom: showTabsBar ? 8 : 8,
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
-        contain: 'paint',
-        transform: 'translateZ(0)',
-        willChange: 'transform',
+        isolation: 'isolate',
     };
     const commandLayerStyle: React.CSSProperties = {
         display: 'flex',
@@ -1035,12 +1121,12 @@ function MenuPageNew({
         display: 'flex',
         flexShrink: 0,
         gap: 8,
-        maxWidth: isMobile ? 216 : 280,
-        opacity: 1,
-        overflow: 'visible',
-        pointerEvents: 'auto',
-        transform: 'translateX(0) scale(1)',
-        transition: 'opacity 0.14s ease, transform 0.14s ease',
+        maxWidth: isSearchCommandExpanded ? 0 : isMobile ? 216 : 280,
+        opacity: isSearchCommandExpanded ? 0 : 1,
+        overflow: isSearchCommandExpanded ? 'hidden' : 'visible',
+        pointerEvents: isSearchCommandExpanded ? 'none' : 'auto',
+        transform: isSearchCommandExpanded ? 'translateX(8px) scale(0.98)' : 'translateX(0) scale(1)',
+        transition: 'max-width 0.22s ease, opacity 0.16s ease, transform 0.18s ease',
         visibility: 'visible',
     };
     const categoryTabsStyle: React.CSSProperties = {
@@ -1056,7 +1142,6 @@ function MenuPageNew({
         marginBottom: 0,
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
-        scrollSnapType: 'x proximity',
         WebkitOverflowScrolling: 'touch',
     };
     const categoryNavRadius = Math.max(4, moodConfig.categoryStyle.borderRadius ?? 0);
@@ -1291,8 +1376,9 @@ function MenuPageNew({
                                 compact={!isDesktop}
                                 expanded={isSearchCommandExpanded}
                                 containerStyle={{
-                                    flex: '1 1 auto',
+                                    flex: isSearchCommandExpanded ? '1 1 100%' : '1 1 auto',
                                     minWidth: 0,
+                                    transition: 'flex-basis 0.22s ease, border-color 0.16s ease, background 0.16s ease',
                                 }}
                             />
 
@@ -1326,6 +1412,7 @@ function MenuPageNew({
 
                         {!isDesktop && showTabsBar && allCategories.length > 0 && (
                             <div
+                                ref={categoryTabsContainerRef}
                                 style={categoryTabsStyle}
                                 className="hide-scrollbar"
                             >
@@ -1361,13 +1448,12 @@ function MenuPageNew({
                                                 : moodConfig.bodyColor,
                                             fontFamily: moodConfig.bodyFont,
                                             fontSize: 13,
-                                            fontWeight: displayActiveCategory?.id === cat.id ? 600 : 500,
+                                            fontWeight: 600,
                                             whiteSpace: 'nowrap',
                                             textDecoration: 'none',
                                             cursor: 'pointer',
                                             transition: 'background 0.16s ease, border-color 0.16s ease, color 0.16s ease',
                                             flexShrink: 0,
-                                            scrollSnapAlign: 'start',
                                             WebkitTapHighlightColor: 'transparent',
                                         }}
                                     >
@@ -1432,37 +1518,45 @@ function MenuPageNew({
                         onFilterIntentChange={handleAttributeFilterIntentChange}
                         moodConfig={moodConfig}
                         businessType={effectiveBusinessType}
+                        businessCategory={storeDetails?.businessCategory}
                         isSearchActive={!!debouncedSearch}
                     />
 
-                    {debouncedSearch && filteredItems.length > 0 && (
-                        <div
-                            data-search-results-summary="true"
-                            style={searchResultSummaryStyle}
-                            aria-live="polite"
-                        >
-                            <span>
-                                {filteredItems.length} {filteredItems.length === 1 ? 'result' : 'results'}
-                                {' '}across {searchResultSectionCount} {searchResultSectionCount === 1 ? 'section' : 'sections'}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={clearSearch}
-                                style={{
-                                    background: 'transparent',
-                                    border: 0,
-                                    color: moodConfig.accentColor,
-                                    cursor: 'pointer',
-                                    fontFamily: moodConfig.bodyFont,
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    padding: 0,
-                                }}
+                    <AnimatePresence initial={false}>
+                        {debouncedSearch && filteredItems.length > 0 && (
+                            <motion.div
+                                key="search-results-summary"
+                                data-search-results-summary="true"
+                                initial={menuSearchStateMotion.initial}
+                                animate={menuSearchStateMotion.animate}
+                                exit={menuSearchStateMotion.exit}
+                                transition={menuSpringTransition}
+                                style={searchResultSummaryStyle}
+                                aria-live="polite"
                             >
-                                Show all
-                            </button>
-                        </div>
-                    )}
+                                <span>
+                                    {filteredItems.length} {filteredItems.length === 1 ? 'result' : 'results'}
+                                    {' '}across {searchResultSectionCount} {searchResultSectionCount === 1 ? 'section' : 'sections'}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 0,
+                                        color: moodConfig.accentColor,
+                                        cursor: 'pointer',
+                                        fontFamily: moodConfig.bodyFont,
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        padding: 0,
+                                    }}
+                                >
+                                    Show all
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Desktop: Sidebar + Content layout | Mobile/Tablet: Content only */}
                     <div style={{
@@ -1750,62 +1844,71 @@ function MenuPageNew({
                             )}
 
                             {/* No results state */}
-                            {debouncedSearch && filteredItems.length === 0 && (
-                                <div style={{
-                                    textAlign: 'center',
-                                    padding: 40,
-                                    color: moodConfig.bodyColor,
-                                    fontFamily: moodConfig.bodyFont,
-                                }}>
-                                    <div style={{ fontSize: 18, fontWeight: 600, color: moodConfig.headingColor }}>
-                                        No {labels.itemsPlural} found for &ldquo;{debouncedSearch}&rdquo;
-                                    </div>
-                                    <p style={{ margin: '10px auto 0', maxWidth: 420, lineHeight: 1.5 }}>
-                                        Try another spelling or browse a section below.
-                                    </p>
-                                    <div style={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        justifyContent: 'center',
-                                        gap: 8,
-                                        marginTop: 16,
-                                    }}>
-                                        <button
-                                            type="button"
-                                            onClick={clearSearch}
-                                            style={{
-                                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                borderRadius: categoryNavRadius,
-                                                padding: '8px 14px',
-                                                background: moodConfig.itemStyle.background,
-                                                color: moodConfig.accentColor,
-                                                fontFamily: moodConfig.bodyFont,
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            Show all
-                                        </button>
-                                        {suggestedCategories.map((category: any) => (
+                            <AnimatePresence initial={false}>
+                                {debouncedSearch && filteredItems.length === 0 && (
+                                    <motion.div
+                                        key="search-no-results"
+                                        initial={menuSearchStateMotion.initial}
+                                        animate={menuSearchStateMotion.animate}
+                                        exit={menuSearchStateMotion.exit}
+                                        transition={menuSpringTransition}
+                                        style={{
+                                            textAlign: 'center',
+                                            padding: 40,
+                                            color: moodConfig.bodyColor,
+                                            fontFamily: moodConfig.bodyFont,
+                                        }}
+                                    >
+                                        <div style={{ fontSize: 18, fontWeight: 600, color: moodConfig.headingColor }}>
+                                            No {labels.itemsPlural} found for &ldquo;{debouncedSearch}&rdquo;
+                                        </div>
+                                        <p style={{ margin: '10px auto 0', maxWidth: 420, lineHeight: 1.5 }}>
+                                            Try another spelling or browse a section below.
+                                        </p>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            justifyContent: 'center',
+                                            gap: 8,
+                                            marginTop: 16,
+                                        }}>
                                             <button
-                                                key={category.id}
                                                 type="button"
-                                                onClick={() => handleBrowseCategorySelect(category)}
+                                                onClick={clearSearch}
                                                 style={{
                                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                                     borderRadius: categoryNavRadius,
                                                     padding: '8px 14px',
                                                     background: moodConfig.itemStyle.background,
-                                                    color: moodConfig.bodyColor,
+                                                    color: moodConfig.accentColor,
                                                     fontFamily: moodConfig.bodyFont,
                                                     cursor: 'pointer',
                                                 }}
                                             >
-                                                {getMenuText(category.name, 'Category')}
+                                                Show all
                                             </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                                            {suggestedCategories.map((category: any) => (
+                                                <button
+                                                    key={category.id}
+                                                    type="button"
+                                                    onClick={() => handleBrowseCategorySelect(category)}
+                                                    style={{
+                                                        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                        borderRadius: categoryNavRadius,
+                                                        padding: '8px 14px',
+                                                        background: moodConfig.itemStyle.background,
+                                                        color: moodConfig.bodyColor,
+                                                        fontFamily: moodConfig.bodyFont,
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    {getMenuText(category.name, 'Category')}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 

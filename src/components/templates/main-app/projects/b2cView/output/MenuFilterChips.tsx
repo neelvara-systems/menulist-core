@@ -18,7 +18,7 @@
  * - Editor-configurable filters
  */
 
-import { FILTER_ALLOWLIST, getBusinessCategory, SystemFilter } from '@constant/common';
+import { FILTER_ALLOWLIST, resolveBusinessCategory, SystemFilter } from '@constant/common';
 import { useMemo } from 'react';
 import { LuLeaf, LuStar } from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';
@@ -91,6 +91,7 @@ interface MenuFilterChipsProps {
     onFilterIntentChange?: (filter: FilterType, label?: string) => void;
     moodConfig: MenuMoodConfig;
     businessType?: string;
+    businessCategory?: string;
     isSearchActive?: boolean;
 }
 
@@ -101,11 +102,12 @@ function MenuFilterChips({
     onFilterIntentChange,
     moodConfig,
     businessType,
+    businessCategory,
     isSearchActive = false,
 }: MenuFilterChipsProps) {
     // Layer 3: Get allowed filters for this business category
-    const businessCategory = getBusinessCategory(businessType);
-    const allowedFilters = FILTER_ALLOWLIST[businessCategory || ''] ?? [];
+    const resolvedBusinessCategory = resolveBusinessCategory(businessType, businessCategory);
+    const allowedFilters = FILTER_ALLOWLIST[resolvedBusinessCategory || ''] ?? [];
 
     // Layer 2: Normalize all items and count attributes
     const { visibleFilters, counts } = useMemo(() => {

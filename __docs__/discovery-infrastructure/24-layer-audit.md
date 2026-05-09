@@ -1,6 +1,7 @@
 # 24-Layer Infrastructure Audit — Post-Implementation Evidence
 
 > **Re-audited:** March 10, 2026 (after Phase 1-2 infrastructure expansion)
+> **Parity refreshed:** May 9, 2026
 > Each layer: Definition → Expected → Evidence → Status → What Changed
 
 ---
@@ -149,7 +150,7 @@
 
 ## Layer 14: Schema Compatibility Layer — ⚠️ PARTIAL+
 
-**Evidence (existing):** `src/lib/schema/index.ts` (343 lines, 10+ builders), 20+ business type → schema.org mappings.
+**Evidence (existing):** `src/lib/schema/index.ts` (465 lines, shared builders), 20+ business type → schema.org mappings.
 
 **Evidence (NEW — Phase 1C):**
 

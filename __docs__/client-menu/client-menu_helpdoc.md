@@ -2,7 +2,7 @@
 
 ## Quick Summary
 
-Your digital menu is what customers see when they scan your QR code. It shows your menu items, prices, and categories — always up to date, on any phone.
+Your digital menu is what customers see when they scan your QR code. It shows your menu items, prices, and categories from your latest published MenuList data, on any phone.
 
 ---
 

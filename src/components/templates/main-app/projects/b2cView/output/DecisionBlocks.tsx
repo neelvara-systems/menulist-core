@@ -651,6 +651,7 @@ export default function DecisionBlocks({
     }
 
     const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
+    const isSingleBlock = blocks.length === 1;
 
     return (
         <section
@@ -715,7 +716,7 @@ export default function DecisionBlocks({
                     paddingBottom: 8,
                     overscrollBehaviorX: 'contain',
                     scrollPaddingInline: 0,
-                    scrollSnapType: 'x proximity',
+                    scrollSnapType: isSingleBlock ? 'none' : 'x proximity',
                     WebkitOverflowScrolling: 'touch',
                     width: '100%',
                 }}
@@ -727,8 +728,8 @@ export default function DecisionBlocks({
                         gap: 10,
                         maxWidth: 'none',
                         minWidth: 0,
-                        paddingRight: 14,
-                        width: 'fit-content',
+                        paddingRight: isSingleBlock ? 0 : 14,
+                        width: isSingleBlock ? '100%' : 'fit-content',
                     }}
                 >
                     {blocks.map((rec) => {
@@ -784,11 +785,13 @@ export default function DecisionBlocks({
                                     overflow: 'hidden',
                                     padding: itemImage ? 10 : 12,
                                     position: 'relative',
-                                    scrollSnapAlign: 'start',
+                                    scrollSnapAlign: isSingleBlock ? 'none' : 'start',
                                     textAlign: 'left',
-                                    width: itemImage
-                                        ? 'min(calc(100vw - 48px), 316px)'
-                                        : 'min(calc(100vw - 56px), 292px)',
+                                    width: isSingleBlock
+                                        ? '100%'
+                                        : itemImage
+                                            ? 'min(calc(100vw - 48px), 316px)'
+                                            : 'min(calc(100vw - 56px), 292px)',
                                     WebkitTapHighlightColor: 'transparent',
                                 } as CSSProperties}
                             >

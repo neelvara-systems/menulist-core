@@ -2,7 +2,7 @@
 
 > Track data source, confidence, and lineage per field on menu/offering items.
 > Phase 1B of Infrastructure Expansion.
-> Last Updated: March 10, 2026
+> Last Updated: May 9, 2026
 
 ---
 
@@ -83,7 +83,7 @@ interface ItemProvenance {
 
 ### 3.4 Integration Flow
 
-When `ENABLE_INFRASTRUCTURE_PROVENANCE` is true:
+Intended integration when `ENABLE_INFRASTRUCTURE_PROVENANCE` is activated:
 
 1. **AI extraction completes** → `stampAIExtraction(extractionConfidence)` → stored as `item._provenance`
 2. **Owner edits item name** → `detectChangedFields()` → `stampOwnerEdit(existing, 'name')` → name provenance updated to `{source: 'owner_edit', confidence: 1.0}`
@@ -101,14 +101,14 @@ When `ENABLE_INFRASTRUCTURE_PROVENANCE` is true:
 
 | Integration               | How                                                  | When                   |
 | ------------------------- | ---------------------------------------------------- | ---------------------- |
-| AI Extraction Pipeline    | `stampAIExtraction()` called after Gemini extraction | During menu processing |
-| Editor Save               | `detectChangedFields()` + `stampOwnerEdit()` on save | Owner edits            |
-| Discovery Index (Phase 2) | Read `_provenance` confidence for trust scoring      | Nightly scheduler      |
+| AI Extraction Pipeline    | Not wired yet; intended call: `stampAIExtraction()` after Gemini extraction | During menu processing |
+| Editor Save               | Not wired yet; intended call: `detectChangedFields()` + `stampOwnerEdit()` on save | Owner edits            |
+| Discovery Index (Phase 2) | Not wired yet; intended read of `_provenance` confidence for trust scoring | Nightly scheduler      |
 | sanitizeForClient         | Strip `_provenance` before public exposure           | SSR page render        |
 
 ## 6. Feature Flag
 
-`ENABLE_INFRASTRUCTURE_PROVENANCE: false` — in both `src/config/features.ts` and `functions/src/constants/features.ts`
+`ENABLE_INFRASTRUCTURE_PROVENANCE: false` — in both `src/config/features.ts` and `functions/src/constants/features.ts`. The pure utilities exist, but no runtime save/extraction path stamps `_provenance` yet.
 
 ## 7. Security & Compliance
 

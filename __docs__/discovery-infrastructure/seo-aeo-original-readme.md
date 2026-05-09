@@ -13,11 +13,13 @@ This feature extends the existing Official Business Page (OBP) and digital menu 
 | Sales / Marketing   | [Marketing](./seo-aeo-discovery-infrastructure_marketing.md)           | Sales scripts, positioning, competitive analysis |
 | Potential Customers | [Website](./seo-aeo-discovery-infrastructure_website.md)               | Landing page content, SEO meta                   |
 | Existing Customers  | [Help Doc](./seo-aeo-discovery-infrastructure_helpdoc.md)              | Customer-facing help article                     |
-| Mobile              | [Mobile Support](./seo-aeo-discovery-infrastructure_mobile-support.md) | Mobile admission test (0/4 — desktop only)       |
+| Mobile              | [Mobile Support](./seo-aeo-discovery-infrastructure_mobile-support.md) | Owner-facing informational card on desktop/mobile |
 | Archive             | [ChatGPT Review](./_archive/chatgpt-review.md)                         | Original conversation critical review            |
 | Archive             | [ChatGPT Feedback R2](./_archive/chatgpt-feedback-round2.md)           | Post-implementation founder-level feedback       |
 
 **Status:** ✅ Phase 2 COMPLETE (Feb 22, 2026) — Schema enrichment + FAQ + BreadcrumbList + sitemap enhancement shipped.
+
+**May 9, 2026 parity note:** Active route files now live under `src/app/client/`. Tenant sitemaps index OBP plus active canonical project/outlet URLs; the universal `/menu` fallback is not indexed unless an owner has claimed that slug.
 
 ---
 
@@ -51,11 +53,11 @@ Enrich MenuList's existing OBP and menu pages with deeper schema.org structured 
 | File                                   | Purpose                                                                                                                                                                                       |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/lib/schema/index.ts`              | Shared schema.org utilities (buildAddress, buildGeoCoordinates, buildOpeningHours, buildSameAs, buildBreadcrumbList, buildFaqSchema, buildTempStatusSchema, getSchemaType, getMenuSchemaType) |
-| `src/app/_client/obp/OBPContent.tsx`   | OBP page — renders FAQ JSON-LD schema (Phase 2)                                                                                                                                               |
-| `src/app/_client/obp/schema.ts`        | OBP schema — uses shared utilities + geo, sameAs, priceRange, dateModified, business-specific @type                                                                                           |
-| `src/app/_client/[[...slug]]/page.tsx` | Menu schema — BreadcrumbList JSON-LD, dateModified, servesCuisine, availability, suitableForDiet (Phase 2)                                                                                    |
-| `src/app/_client/sitemap.ts`           | Sitemap — enhanced with `/menu` URL (Phase 2)                                                                                                                                                 |
-| `src/types/platform/store.ts`          | StoreDataType — `geo`, `priceRange`, `tempStatus` fields                                                                                                                                      |
+| `src/app/client/obp/OBPContent.tsx`   | OBP page — renders FAQ JSON-LD schema (Phase 2)                                                                                                                                               |
+| `src/app/client/obp/schema.ts`        | OBP schema — uses shared utilities + geo, sameAs, priceRange, dateModified, business-specific @type                                                                                           |
+| `src/app/client/[[...slug]]/page.tsx` | Menu schema — BreadcrumbList JSON-LD, dateModified, servesCuisine, availability, suitableForDiet (Phase 2)                                                                                    |
+| `src/app/client/sitemap.ts`           | Tenant sitemap — OBP + active canonical menu/outlet URLs; `/menu` is indexed only when owner-claimed                                                                                          |
+| `src/types/platform/store.ts`          | StoreDataType — `geo`, `priceRange`, `cuisineTypes`, `tempStatus` fields                                                                                                                       |
 
 ---
 
@@ -64,7 +66,7 @@ Enrich MenuList's existing OBP and menu pages with deeper schema.org structured 
 | Feature                          | Status              | Relationship                                                                                                     |
 | -------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Official Business Page (OBP)** | ✅ BUILT            | OBP is the canonical identity page this feature enriches                                                         |
-| **GBP Sync**                     | ✅ BUILT (flag OFF) | GBP sync is the first "distribution" layer — already done                                                        |
+| **GBP Sync**                     | ⚠️ FOUNDATION ONLY (flag OFF) | Store fields and docs exist, but OAuth/token runtime is disabled until API access is approved                   |
 | **Menu Schema**                  | ✅ BUILT            | Menu pages already generate Restaurant + Menu + MenuItem schema                                                  |
 | **Guest Feedback**               | ✅ BUILT            | Foundation for future reputation/review signals in schema                                                        |
 | **Store Data Model**             | ✅ EXISTS           | Contains 90%+ of fields needed for full schema generation                                                        |
@@ -114,9 +116,9 @@ No new feature flag needed. Schema enrichment is always active on public pages. 
 
 ## Architecture Decision
 
-**Zero new collections. Zero new API routes. Zero new feature flags.**
+**Zero new collections. Zero new API routes. Zero new feature flags for this schema enrichment work.**
 
-All schema enrichment is computed from existing store data at render time. New fields (`geo`, `priceRange`) are optional on StoreDataType — pages degrade gracefully if absent (Law 5: show less, not wrong).
+All schema enrichment is computed from existing store data at render time. New fields (`geo`, `priceRange`, `cuisineTypes`) are optional on StoreDataType — pages degrade gracefully if absent (Law 5: show less, not wrong).
 
 Shared utilities in `src/lib/schema/index.ts` are used by both OBP (`schema.ts`) and menu page (`page.tsx`). Single source of truth for address, geo, hours, sameAs, and businessType mapping.
 
@@ -151,7 +153,7 @@ Deepen schema.org output for richer search results.
 Only after infra is strong.
 
 - Onboard **10-25 premium SMBs** manually (not scale)
-- Observe: data completeness, schema accuracy, page performance, GBP sync behavior
+- Observe: data completeness, schema accuracy, page performance, and owner link placement. GBP API sync is disabled until prerequisites are approved.
 - Refine silently based on real-world structured data
 
 ---
@@ -171,6 +173,7 @@ For MenuList pages to be the cleanest SMB data source, every store document must
 | `phoneNumber`                    | Required    | Already enforced                  |
 | `socialMedia`                    | Recommended | Feeds sameAs for entity alignment |
 | `geo.latitude` + `geo.longitude` | Recommended | GeoCoordinates for local SEO/AEO  |
+| `cuisineTypes`                   | Recommended for food businesses | Feeds `servesCuisine` in schema |
 | `priceRange`                     | Recommended | AI search matching                |
 | `logo`                           | Required    | Already enforced                  |
 
@@ -206,8 +209,9 @@ This is a **data quality discipline**, not a code feature. Enforced through onbo
 | Feb 16, 2026 | **IMPLEMENTED:** Shared schema utilities, OBP + menu schema enrichment, StoreDataType fields (geo, priceRange) |
 | Feb 16, 2026 | ChatGPT feedback round 2 processed. 90-day roadmap locked. Entity consistency standard defined.                |
 | Feb 22, 2026 | **PHASE 2:** FAQ schema on OBP, BreadcrumbList on menu, dateModified + servesCuisine on menu, sitemap enhanced |
+| May 9, 2026  | **PARITY UPDATE:** Corrected `/client` paths, GBP sync status, sitemap indexing rules, and `cuisineTypes` store field |
 
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** February 22, 2026
+**Last Updated:** May 9, 2026

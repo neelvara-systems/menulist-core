@@ -37,7 +37,7 @@
 
 - `src/database/` — 40+ DAL modules (Firestore client SDK)
 - `src/lib/mce/` — Menu Correctness Engine (18 rules, 5 Laws)
-- `src/lib/schema/` — Schema.org structured data (343 lines)
+- `src/lib/schema/` — Schema.org structured data utilities (465 lines)
 - `src/lib/posSync/` — POS webhook infrastructure
 - `src/lib/publicApi/` — Platform Pull API auth
 - `functions/src/decisionBlocksScoring.ts` — Nightly scheduler (78K, 8 tasks)

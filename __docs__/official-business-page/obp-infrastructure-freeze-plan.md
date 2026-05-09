@@ -222,7 +222,7 @@ If a business has a Google review URL and we can reference their rating, we can 
 - [ ] When store has >1 published project AND ENABLE_OBP is true:
   - Show "View Menu" as dropdown or show multiple menu links on OBP
   - `/menu` route shows project selector (not just default)
-- **Reason:** Requires deeper routing changes in `_client/[[...slug]]/page.tsx`. Separate session.
+- **Reason:** Requires deeper routing changes in `client/[[...slug]]/page.tsx`. Separate session.
 
 ### Already Implemented (Session — Round 1)
 

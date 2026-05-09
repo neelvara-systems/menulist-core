@@ -29,7 +29,7 @@ The canonical public identity endpoint of a business powered by MenuList. This i
 
 ## One-Liner
 
-The official public identity page of a business — auto-generated, always live, always accurate.
+The official public identity page of a business — auto-generated, always live, and updated from store data.
 
 ## Problem Solved
 
@@ -69,14 +69,14 @@ Data Source:
 
 | File                                      | Purpose                                      |
 | ----------------------------------------- | -------------------------------------------- |
-| `src/app/_client/obp/OBPContent.tsx`      | Main OBP async server component (~670 lines) |
-| `src/app/_client/obp/BrandOBPContent.tsx` | Multi-store brand OBP (location selector)    |
-| `src/app/_client/obp/OBPSkeleton.tsx`     | Loading skeleton                             |
-| `src/app/_client/obp/OBPMenuCTA.tsx`      | Menu CTA with OBP→menu conversion tracking   |
-| `src/app/_client/obp/OBPAnalytics.tsx`    | Client island for page view tracking         |
-| `src/app/_client/obp/OBPActions.tsx`      | Client component for action click tracking   |
-| `src/app/_client/obp/obp.module.scss`     | Styles (SCSS, mobile-first)                  |
-| `src/app/_client/obp/schema.ts`           | Schema.org LocalBusiness JSON-LD             |
+| `src/app/client/obp/OBPContent.tsx`      | Main OBP async server component (~670 lines) |
+| `src/app/client/obp/BrandOBPContent.tsx` | Multi-store brand OBP (location selector)    |
+| `src/app/client/obp/OBPSkeleton.tsx`     | Loading skeleton                             |
+| `src/app/client/obp/OBPMenuCTA.tsx`      | Menu CTA with OBP→menu conversion tracking   |
+| `src/app/client/obp/OBPAnalytics.tsx`    | Client island for page view tracking         |
+| `src/app/client/obp/OBPActions.tsx`      | Client component for action click tracking   |
+| `src/app/client/obp/obp.module.scss`     | Styles (SCSS, mobile-first)                  |
+| `src/app/client/obp/schema.ts`           | Schema.org LocalBusiness JSON-LD             |
 
 ### Libraries (2 files)
 
@@ -99,7 +99,7 @@ Data Source:
 
 | File                                                  | Purpose                                      |
 | ----------------------------------------------------- | -------------------------------------------- |
-| `src/app/_client/[[...slug]]/page.tsx`                | Modified to intercept root when OBP enabled  |
+| `src/app/client/[[...slug]]/page.tsx`                | Modified to intercept root when OBP enabled  |
 | `src/config/features.ts`                              | `ENABLE_OBP` feature flag                    |
 | `src/types/platform/store.ts`                         | `publicPresence` field on StoreDataType      |
 | `src/lib/analytics/unified.ts`                        | OBP_VIEW + OBP_ACTION_CLICK + OBP_MENU_CLICK |

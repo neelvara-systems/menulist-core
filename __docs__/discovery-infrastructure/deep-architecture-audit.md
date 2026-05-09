@@ -5,6 +5,7 @@
 > **Method:** Full codebase audit with file:line evidence for every claim
 > **Auditor:** Cascade (full codebase access)
 > **Date:** March 10, 2026
+> **Parity refresh:** May 9, 2026
 > **Rule:** Every finding backed by exact file references. "NOT FOUND IN CODEBASE" used where applicable.
 
 ---
@@ -28,7 +29,7 @@ MenuList must **NEVER** become: discovery platform, ranking system, review platf
 | **Freshness Signals** | "internal only" | **~85%** | **+45%** |
 
 ### What ChatGPT Got Wrong
-- Assumed schema.org was 0-10% → actually **~90%** (498 lines, 18+ types)
+- Assumed schema.org was 0-10% → actually **~90%** (721 core schema lines, 18+ types)
 - Assumed geo coordinates missing → `store.geo: {lat, lng}` exists (`store.ts:252-255`)
 - Assumed priceRange missing → `store.priceRange` exists (`store.ts:258`)
 - Assumed no dietary tags → `item.tags: string[]` exists (`extractedData.types.ts:58`)
@@ -68,14 +69,14 @@ Tenant (tId: number)
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/lib/schema/index.ts` | 343 | Shared schema.org utilities (12 functions) |
-| `src/app/_client/obp/schema.ts` | 155 | OBP schema generation |
-| `src/app/_client/[[...slug]]/page.tsx` | 890 | Menu page SSR + schema injection |
-| `src/app/_client/robots.ts` | 34 | Per-store robots.txt |
-| `src/app/_client/sitemap.ts` | 46 | Per-store sitemap.xml |
-| `public/robots.txt` | 13 | Platform robots.txt |
-| `public/llms.txt` | 38 | LLM discovery document |
-| `public/llms-full.txt` | 146 | Extended LLM documentation |
+| `src/lib/schema/index.ts` | 465 | Shared schema.org utilities |
+| `src/app/client/obp/schema.ts` | 256 | OBP schema generation |
+| `src/app/client/[[...slug]]/page.tsx` | 1,777 | Menu page SSR + schema injection |
+| `src/app/client/robots.ts` | 62 | Per-store robots.txt |
+| `src/app/client/sitemap.ts` | 230 | Per-store sitemap.xml |
+| `public/robots.txt` | 40 | Platform robots.txt |
+| `public/llms.txt` | 37 | LLM discovery document |
+| `public/llms-full.txt` | 145 | Extended LLM documentation |
 | `src/lib/infrastructure/taxonomy/registry.ts` | 135 | Offering taxonomy system |
 | `src/lib/infrastructure/discovery/` | ~3 files | Business entity index |
 | `src/types/platform/store.ts` | 497 | Store entity definition |
@@ -92,22 +93,17 @@ Tenant (tId: number)
 
 | Requirement | Status | File Evidence |
 |------------|--------|---------------|
-| Platform robots.txt | ✅ | `public/robots.txt:2-3` — `User-agent: * / Allow: /` |
-| Per-store robots.txt | ✅ | `src/app/_client/robots.ts:11-33` — Dynamic per-subdomain |
-| Server-rendered HTML | ✅ | `src/app/_client/[[...slug]]/page.tsx` — Full Next.js SSR |
+| Platform robots.txt | ✅ | `public/robots.txt:1-40` — explicit search/AI crawler allows + internal disallows |
+| Per-store robots.txt | ✅ | `src/app/client/robots.ts:12-61` — Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules |
+| Server-rendered HTML | ✅ | `src/app/client/[[...slug]]/page.tsx` — Full Next.js SSR |
 | Platform sitemap | ✅ | `src/app/sitemap.ts:17-69` — 7 pages |
-| Per-store sitemap | ✅ | `src/app/_client/sitemap.ts:13-45` — OBP + /menu with lastModified |
-| Sitemap in robots | ✅ | `public/robots.txt:12` + `robots.ts:31` |
-| Crawl budget protection | ✅ | `public/robots.txt:6-9` — Blocks /admin/, /login/, /register/, /dashboard/ |
+| Per-store sitemap | ✅ | `src/app/client/sitemap.ts:167-229` — OBP + active canonical menu/outlet URLs with store/outlet `modifiedOn` |
+| Sitemap in robots | ✅ | `public/robots.txt:40` + `src/app/client/robots.ts:60` |
+| Crawl budget protection | ✅ | `public/robots.txt:30-37` — Blocks /admin/, /login/, /register/, /dashboard/, /api/, /editor/, /preview/ |
 | Bot-friendly rendering | ✅ | SSR = full HTML on first request |
 | Internal linking | ✅ | OBP → /menu, menu → OBP bidirectional |
 
-**GAPS:**
-1. **No explicit AI bot rules** — `User-agent: *` allows all bots, but no explicit GPTBot/ClaudeBot/PerplexityBot rules → LOW risk
-2. **No `Disallow: /api/`** in robots.txt → LOW risk (API routes return JSON)
-3. **Sitemap `lastModified` uses `new Date()`** instead of actual `store.modifiedOn` → MEDIUM risk (misleads freshness signal)
-
-**FIX:** Add explicit AI bot rules + `Disallow: /api/` to `public/robots.txt`. Wire `store.modifiedOn` into per-store sitemap.
+**May 9, 2026 parity update:** The original crawlability gaps are closed in active code. Platform and tenant robots now explicitly allow OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, and Bingbot, while disallowing internal paths. Tenant sitemap entries use store/outlet `modifiedOn` instead of request-time `new Date()`. Remaining limitation: menu project entries use the store/outlet modified timestamp, not a per-project modified timestamp.
 
 ---
 
@@ -126,10 +122,10 @@ Tenant (tId: number)
 | Location | Part of Store | `storeId` | ✅ | `store.ts:252-255` |
 
 **GAPS:**
-1. **No `servesCuisine` field on Store** — `store.businessType` exists but no cuisine field. Taxonomy has `cuisines.json` (20 types) but not wired to store → MEDIUM risk
+1. **Cuisine depends on owner/store data** — `StoreDataType.cuisineTypes` now exists and schema reads it, but not every store will have cuisine data filled → LOW risk
 2. **No globally unique item IDs** — IDs unique within project only → Intentionally outside doctrine
 
-**FIX:** Add `cuisineTypes?: string[]` to `StoreDataType`. Wire to schema.org `servesCuisine`.
+**May 9, 2026 parity update:** `cuisineTypes?: string[]` exists on `StoreDataType` and both OBP/menu schema output `servesCuisine` when present.
 
 ---
 
@@ -146,9 +142,9 @@ Tenant (tId: number)
 | Store → Location | `store.geo`, address fields | ✅ `address` + `geo` | `schema/index.ts:61-86` |
 | Store → Hours | `store.workingHours` | ✅ `openingHoursSpecification` | `schema/index.ts:93-114` |
 | Store → Social | `store.socialMedia` | ✅ `sameAs` | `schema/index.ts:121-142` |
-| Store → Cuisine | **NOT STORED** | ⚠️ Dead code at `page.tsx:550` | Field missing from type |
+| Store → Cuisine | `store.cuisineTypes[]` | ✅ `servesCuisine` when present | `src/types/platform/store.ts:330-333`, `src/app/client/[[...slug]]/page.tsx:926`, `src/app/client/obp/schema.ts:123` |
 
-**GAP:** `page.tsx:550` reads `storeData?.servesCuisine` but this field does not exist on `StoreDataType`. Dead code path.
+**May 9, 2026 parity update:** The old dead `servesCuisine` path has been replaced by `storeData.cuisineTypes`.
 
 ---
 
@@ -156,9 +152,9 @@ Tenant (tId: number)
 
 **ChatGPT said:** "0-10%" → **Actually: ~90% — THE BIGGEST MISS**
 
-**Total: 498 lines across 2 files, 18+ schema.org types**
+**Total: 721 lines across 2 core schema files, 18+ schema.org types**
 
-`src/lib/schema/index.ts` (343 lines) — 12 builder functions:
+`src/lib/schema/index.ts` (465 lines) — shared builder functions:
 - `buildAddress()` → PostalAddress ✅
 - `buildGeoCoordinates()` → GeoCoordinates ✅
 - `buildOpeningHours()` → OpeningHoursSpecification ✅
@@ -170,7 +166,7 @@ Tenant (tId: number)
 - `buildTempStatusSchema()` → specialOpeningHoursSpecification ✅
 - `getMenuSchemaType()` → Menu-specific type resolution ✅
 
-`src/app/_client/obp/schema.ts` (155 lines):
+`src/app/client/obp/schema.ts` (256 lines):
 - ReserveAction + OrderAction with EntryPoint ✅
 - paymentAccepted (Cash, Card, UPI) ✅
 - dateModified freshness signal ✅
@@ -183,9 +179,8 @@ Menu page (`page.tsx:504-582`):
 - `availability` (InStock/OutOfStock) per item ✅
 
 **GAPS:**
-1. **No `publisher: Organization`** — MenuList not identified as data publisher → LOW risk
-2. **Menu items capped** at 10 categories × 20 items (`page.tsx:554,559`) → Large menus partially represented
-3. **No ImageObject schema** on menu item images → LOW risk
+1. **Menu items capped** at 10 categories × 20 items (`page.tsx:941,947`) → Large menus partially represented
+2. **No ImageObject schema** on menu item images → LOW risk
 
 ---
 
@@ -221,8 +216,8 @@ Menu page (`page.tsx:504-582`):
 | Staleness detection | ✅ | 90-day cooldown nightly check — `functions/src/analytics/stalenessCheck.ts` |
 
 **GAPS:**
-1. **Sitemap lastModified not wired** to actual store/project modification dates → MEDIUM risk
-2. **No visible `lastUpdated` text** on public pages (only in schema.org) → LOW risk
+1. **Per-project sitemap freshness is coarse** — sitemap uses store/outlet `modifiedOn`, not each project document timestamp → LOW risk
+2. **No visible `lastUpdated` text** on public pages (schema.org + verified badge cover most of the need) → LOW risk
 
 ---
 
@@ -230,8 +225,8 @@ Menu page (`page.tsx:504-582`):
 
 | Endpoint | Status | Evidence |
 |----------|--------|----------|
-| `public/llms.txt` | ✅ | 38 lines — structured LLM discovery doc |
-| `public/llms-full.txt` | ✅ | 146 lines — full schema.org documentation |
+| `public/llms.txt` | ✅ | 37 lines — structured LLM discovery doc |
+| `public/llms-full.txt` | ✅ | 145 lines — full schema.org documentation |
 | Public API v1 (business) | ✅ | `GET /api/public/v1/business` — store details |
 | Public API v1 (menu) | ✅ | `GET /api/public/v1/menu` — full menu data |
 | POS Webhook Sync | ✅ | Push-based menu data delivery — feature-flagged |
@@ -297,13 +292,13 @@ The ChatGPT conversation suggested building:
 
 ## 5. Identified System Risks
 
-### Risk 1: Dead Code — `servesCuisine` (MEDIUM)
-- `page.tsx:550` reads `storeData?.servesCuisine` but field doesn't exist on `StoreDataType`
-- Schema.org output will never include cuisine data
-- AI queries like "japanese restaurants in pune" can't use MenuList data
+### Risk 1: Cuisine Coverage (LOW)
+- `cuisineTypes?: string[]` exists and schema emits `servesCuisine` when present
+- Gap is now data completeness, not code structure
+- Owner onboarding/settings should continue encouraging cuisine selection for food businesses
 
-### Risk 2: Sitemap Freshness Lie (MEDIUM)
-- `src/app/_client/sitemap.ts:34,41` uses `lastModified: new Date()` (current time)
+### Risk 2: Project-Level Sitemap Freshness (LOW)
+- Per-store sitemap now uses store/outlet `modifiedOn` for crawl freshness. Project-specific timestamps remain coarse because project entries inherit the store/outlet timestamp.
 - Should use actual `store.modifiedOn` or `project.lastPublishedAt`
 - AI engines may de-prioritize if they detect the timestamp is always "now"
 
@@ -312,9 +307,9 @@ The ChatGPT conversation suggested building:
 - Large menus (30+ categories, 50+ items) partially represented in schema.org
 - Most restaurants are under these limits, but some chains may exceed
 
-### Risk 4: No Publisher Identity (LOW)
-- MenuList itself not identified as `publisher: Organization` in schema.org
-- AI systems can still identify MenuList from URL patterns
+### Risk 4: Publisher Identity (RESOLVED)
+- OBP schema emits `publisher: Organization` at `src/app/client/obp/schema.ts:138-142`
+- Menu schema emits `publisher: Organization` at `src/app/client/[[...slug]]/page.tsx:1021-1025`
 
 ---
 
@@ -324,10 +319,9 @@ The ChatGPT conversation suggested building:
 
 | Gap | Priority | Effort | Impact |
 |-----|----------|--------|--------|
-| Add `cuisineTypes?: string[]` to StoreDataType | P1 | 30 min | Enables "cuisine + city" AI queries |
+| Increase cuisine completeness in owner settings/onboarding | P2 | 1-2 hrs | Improves "cuisine + city" AI queries |
 | Add explicit AI bot rules to robots.txt | P2 | 5 min | Signals intentional AI openness |
 | Wire actual timestamps into sitemap lastModified | P2 | 30 min | Accurate freshness signals |
-| Add `publisher: Organization` to schema output | P3 | 10 min | MenuList brand entity in knowledge graphs |
 | Add `Disallow: /api/` to robots.txt | P3 | 1 min | Clean crawl budget |
 | Auto-generate natural language summary on OBP | P3 | 2 hrs | Better LLM extraction |
 | Expose popular items on public pages | P3 | 2 hrs | Answer "what is X known for" queries |
@@ -348,10 +342,9 @@ The ChatGPT conversation suggested building:
 ## 7. Implementation Roadmap
 
 ### Phase A: Quick Wins (< 1 day)
-1. Add explicit GPTBot/ClaudeBot/PerplexityBot rules to `public/robots.txt`
-2. Add `Disallow: /api/` to `public/robots.txt`
-3. Add `publisher: { @type: Organization, name: MenuList }` to schema output
-4. Fix dead code: add `cuisineTypes?: string[]` to `StoreDataType` and wire to schema
+1. Keep crawler rules explicit on both platform and tenant robots.
+2. Improve project-level sitemap freshness only if summary data provides reliable timestamps.
+3. Keep cuisine completeness as an owner-data quality task, not schema plumbing.
 
 ### Phase B: Freshness Accuracy (1 day)
 1. Wire `store.modifiedOn` / `project.lastPublishedAt` into per-store sitemap `lastModified`
@@ -360,7 +353,7 @@ The ChatGPT conversation suggested building:
 ### Phase C: Content Enhancement (2-3 days)
 1. Auto-generate natural language summary on OBP from store data
 2. Expose Decision Intelligence top items on public pages as "Popular" section
-3. Add `servesCuisine` to schema.org when store has cuisine data
+3. Keep `servesCuisine` populated when store has cuisine data
 
 ### Phase D: Taxonomy Activation (When organic demand appears)
 1. Enable `ENABLE_INFRASTRUCTURE_TAXONOMY` flag
@@ -373,11 +366,10 @@ The ChatGPT conversation suggested building:
 
 | Priority | Action | Justification |
 |----------|--------|---------------|
-| **P0** | Fix dead `servesCuisine` code path | Dead code in production schema output |
-| **P1** | Add `cuisineTypes` to store type | Enables critical AI query category |
+| **P0** | Monitor sitemap freshness accuracy | Project-specific freshness is still coarse |
+| **P1** | Improve cuisine field completeness | Enables critical AI query category |
 | **P2** | Explicit AI bot rules in robots.txt | Industry standard signal |
 | **P2** | Fix sitemap lastModified accuracy | Correct freshness signals |
-| **P3** | Add publisher Organization schema | Brand entity in knowledge graphs |
 | **P3** | Natural language summaries on OBP | Better LLM answer extraction |
 | **P4** | Popular items section on public pages | Answers "known for" queries |
 | **DEFER** | Discovery pages (city/cuisine/dish) | Outside doctrine |
@@ -403,4 +395,4 @@ The ChatGPT conversation suggested building:
 | 13. AI Agent Access | unknown | **80%** | — |
 | **Weighted Average** | **~35%** | **~65%** | **+30%** |
 
-**Conclusion:** MenuList is substantially GEO/AEO ready. The remaining gaps are small enhancements (cuisine field, sitemap accuracy, publisher schema), not structural rebuilds. ChatGPT's 20-layer framework is strategically sound but its implementation estimates were significantly wrong due to zero code access. The schema.org implementation alone (498 lines, 18+ types) was the biggest miss.
+**Conclusion:** MenuList is substantially GEO/AEO ready. The remaining gaps are small enhancements around data completeness, project-level sitemap freshness, and future ecosystem feeds, not structural rebuilds. ChatGPT's 20-layer framework is strategically sound but its implementation estimates were significantly wrong due to zero code access. The schema.org implementation remains the biggest miss in the external assessment.

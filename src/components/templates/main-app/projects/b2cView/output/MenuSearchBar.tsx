@@ -164,25 +164,26 @@ function MenuSearchBar({
                     aria-label="Clear search"
                     style={{
                         position: 'absolute',
-                        right: 8,
+                        right: 9,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        width: 36,
-                        height: 36,
+                        width: 32,
+                        height: 32,
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: 0,
+                        border: `1px solid ${moodConfig.accentColor}30`,
                         borderRadius: 999,
-                        background: `${moodConfig.bodyColor}0f`,
+                        background: `${moodConfig.accentColor}18`,
+                        color: moodConfig.accentColor,
                         cursor: 'pointer',
                     }}
                 >
                     <LuX
-                        size={18}
+                        size={17}
                         strokeWidth={2.4}
                         style={{
-                            color: moodConfig.bodyColor,
+                            color: moodConfig.accentColor,
                             display: 'block',
                             flexShrink: 0,
                         }}

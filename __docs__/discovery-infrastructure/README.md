@@ -2,7 +2,7 @@
 
 > **Consolidated documentation** for AI discovery, machine readability, schema.org, GEO/AEO, and ecosystem interoperability.
 > Merged from: `seo-aeo-discovery-infrastructure/`, `infrastructure-gap-analysis/`, `discovery-infrastructure/`
-> Last Updated: March 10, 2026
+> Last Updated: May 9, 2026
 
 ---
 
@@ -25,12 +25,12 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 | [infrastructure-gap-analysis.md](./infrastructure-gap-analysis.md) | 24-layer infrastructure audit + implementation roadmap     | ✅ AUDITED (Mar 10, 2026)    |
 | [24-layer-audit.md](./24-layer-audit.md)                           | Post-implementation evidence per layer                     | ✅ RE-AUDITED (Mar 10, 2026) |
 
-### Infrastructure Systems (Built, Feature-Flagged OFF)
+### Infrastructure Systems (Built, Most Feature-Flagged OFF)
 
 | Document                                                                   | Layer                                                                       | Status                               |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------ |
 | [taxonomy-system.md](./taxonomy-system.md)                                 | Phase 1A — Offering Taxonomy (95+ categories, 20 cuisines, 14 dietary tags) | ✅ BUILT (flag OFF)                  |
-| [provenance-metadata.md](./provenance-metadata.md)                         | Phase 1B — Field-Level Provenance (6 trackable fields)                      | ✅ BUILT (flag OFF)                  |
+| [provenance-metadata.md](./provenance-metadata.md)                         | Phase 1B — Field-Level Provenance (6 trackable fields)                      | ✅ UTILITIES BUILT (flag OFF, not wired) |
 | [semantic-attributes.md](./semantic-attributes.md)                         | Phase 1C — Semantic Attribute Registry (17 attributes)                      | ✅ BUILT (flag OFF)                  |
 | [business-entity-index.md](./business-entity-index.md)                     | Phase 2A — Business Entity Index (types + builder)                          | ✅ BUILT (flag OFF, needs scheduler) |
 | [data-consumers-and-distribution.md](./data-consumers-and-distribution.md) | Consumer Map — Who uses this data, how                                      | ✅ DOCUMENTED                        |
@@ -43,7 +43,7 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 | [seo-aeo-discovery-infrastructure_marketing.md](./seo-aeo-discovery-infrastructure_marketing.md)           | Sales/marketing collateral                                   | ✅ COMPLETE |
 | [seo-aeo-discovery-infrastructure_website.md](./seo-aeo-discovery-infrastructure_website.md)               | Landing page content                                         | ✅ COMPLETE |
 | [seo-aeo-discovery-infrastructure_helpdoc.md](./seo-aeo-discovery-infrastructure_helpdoc.md)               | Customer help article                                        | ✅ COMPLETE |
-| [seo-aeo-discovery-infrastructure_mobile-support.md](./seo-aeo-discovery-infrastructure_mobile-support.md) | Mobile admission test (0/4 — desktop only)                   | ✅ COMPLETE |
+| [seo-aeo-discovery-infrastructure_mobile-support.md](./seo-aeo-discovery-infrastructure_mobile-support.md) | Owner-facing informational card shipped on desktop and mobile | ✅ COMPLETE |
 
 ### Archive
 
@@ -60,17 +60,17 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 
 | Schema Type                               | Where      | File                                           |
 | ----------------------------------------- | ---------- | ---------------------------------------------- |
-| Restaurant / LocalBusiness (20+ subtypes) | OBP + Menu | `src/lib/schema/index.ts:30-53`                |
-| Menu + MenuSection + MenuItem             | Menu pages | `src/app/_client/[[...slug]]/page.tsx:552-580` |
+| Restaurant / LocalBusiness (20+ subtypes) | OBP + Menu | `src/lib/schema/index.ts:32-151`, `src/lib/schema/index.ts:289-294` |
+| Menu + MenuSection + MenuItem             | Menu pages | `src/app/client/[[...slug]]/page.tsx`          |
 | Offer (price, currency, availability)     | Menu pages | Per-item in schema                             |
-| OpeningHoursSpecification                 | OBP + Menu | `src/lib/schema/index.ts:93-114`               |
-| PostalAddress                             | OBP + Menu | `src/lib/schema/index.ts:61-72`                |
-| GeoCoordinates                            | OBP + Menu | `src/lib/schema/index.ts:78-86`                |
-| BreadcrumbList                            | Menu pages | `src/lib/schema/index.ts:199-222`              |
-| FAQPage (auto-generated)                  | OBP pages  | `src/lib/schema/index.ts:229-284`              |
-| sameAs (social profiles)                  | OBP + Menu | `src/lib/schema/index.ts:121-142`              |
-| amenityFeature (14 attributes)            | OBP        | `src/lib/schema/index.ts:152-181`              |
-| ReserveAction + OrderAction               | OBP        | `src/app/_client/obp/schema.ts:108-147`        |
+| OpeningHoursSpecification                 | OBP + Menu | `src/lib/schema/index.ts:193-214`              |
+| PostalAddress                             | OBP + Menu | `src/lib/schema/index.ts:159-170`              |
+| GeoCoordinates                            | OBP + Menu | `src/lib/schema/index.ts:176-186`              |
+| BreadcrumbList                            | Menu pages | `src/lib/schema/index.ts:301-324`              |
+| FAQPage (auto-generated)                  | OBP pages  | `src/lib/schema/index.ts:344-423`              |
+| sameAs (social profiles)                  | OBP + Menu | `src/lib/schema/index.ts:221-243`              |
+| amenityFeature (14 attributes)            | OBP        | `src/lib/schema/index.ts:253-282`              |
+| ReserveAction + OrderAction               | OBP        | `src/app/client/obp/schema.ts:171-210`         |
 | dateModified (freshness)                  | OBP + Menu | Both schema generators                         |
 | servesCuisine                             | OBP + Menu | From `store.cuisineTypes[]`                    |
 | publisher (Organization: MenuList)        | OBP + Menu | Both schema generators                         |
@@ -82,12 +82,12 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 
 | Component                                   | File                                       | Status                                                                   |
 | ------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| Platform robots.txt (explicit AI bot rules) | `public/robots.txt`                        | ✅ GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
-| Per-store robots.txt                        | `src/app/_client/robots.ts`                | ✅ Dynamic per-subdomain                                                 |
+| Platform robots.txt (explicit AI bot rules) | `public/robots.txt:1-40`                   | ✅ OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
+| Per-store robots.txt                        | `src/app/client/robots.ts:12-61`           | ✅ Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules              |
 | Platform sitemap                            | `src/app/sitemap.ts`                       | ✅ 7 platform pages                                                      |
-| Per-store sitemap (real lastModified)       | `src/app/_client/sitemap.ts`               | ✅ OBP + /menu with actual store.modifiedOn                              |
+| Per-store sitemap (real lastModified)       | `src/app/client/sitemap.ts:167-229`        | ✅ OBP + active canonical menu/outlet URLs; store/outlet `modifiedOn` drives freshness |
 | SSR (server-side rendering)                 | Next.js SSR                                | ✅ Full HTML on first request                                            |
-| LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ 38 + 146 lines                                                        |
+| LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ 37 + 145 lines                                                        |
 
 ### Freshness & Truth Signals
 
@@ -118,12 +118,12 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 
 ```
 src/lib/schema/                    # Schema.org utilities (SHIPPED)
-├── index.ts                       # 343 lines — 12 builder functions
+├── index.ts                       # 465 lines — shared builder functions
 
-src/app/_client/obp/schema.ts     # OBP schema generator (SHIPPED)
-src/app/_client/[[...slug]]/page.tsx  # Menu schema generator (SHIPPED)
-src/app/_client/sitemap.ts         # Per-store sitemap (SHIPPED)
-src/app/_client/robots.ts          # Per-store robots.txt (SHIPPED)
+src/app/client/obp/schema.ts       # OBP schema generator (SHIPPED)
+src/app/client/[[...slug]]/page.tsx  # Menu schema generator (SHIPPED)
+src/app/client/sitemap.ts         # Per-store sitemap (SHIPPED)
+src/app/client/robots.ts          # Per-store robots.txt (SHIPPED)
 
 src/lib/infrastructure/            # Discovery infrastructure (BUILT, flags OFF)
 ├── taxonomy/                      # Offering taxonomy system
@@ -143,7 +143,7 @@ src/lib/infrastructure/            # Discovery infrastructure (BUILT, flags OFF)
 | Flag                                        | Default | Purpose                            |
 | ------------------------------------------- | ------- | ---------------------------------- |
 | `ENABLE_INFRASTRUCTURE_TAXONOMY`            | false   | Offering taxonomy mapping          |
-| `ENABLE_INFRASTRUCTURE_PROVENANCE`          | false   | Field-level provenance stamps      |
+| `ENABLE_INFRASTRUCTURE_PROVENANCE`          | false   | Field-level provenance utilities; no runtime stamping yet |
 | `ENABLE_INFRASTRUCTURE_SEMANTIC_ATTRIBUTES` | false   | Controlled dietary/attribute enums |
 | `ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX`     | false   | Cross-business entity index        |
 
@@ -264,3 +264,4 @@ MenuList is infrastructure, not SaaS. The primary metric is **dataset coverage**
 | Mar 10, 2026 | **CODE FIXES:** cuisineTypes on StoreDataType, explicit AI bot rules in robots.txt, publisher Organization in schema, sitemap real timestamps, Disallow /api/   |
 | Mar 10, 2026 | **DOC CONSOLIDATION:** Merged `seo-aeo-discovery-infrastructure/` + `infrastructure-gap-analysis/` into this folder                                             |
 | Mar 10, 2026 | **DOC UPDATE:** Added Entity Identity Rules (invariants), Item Similarity Matching documentation, Dataset Coverage Metrics, strengthened Doctrine Rules         |
+| May 9, 2026  | **PARITY UPDATE:** Corrected discovery copy to avoid Google/Maps/AI overclaims, updated `/client` route evidence, robots/sitemap status, flag defaults, and current llms.txt line counts |

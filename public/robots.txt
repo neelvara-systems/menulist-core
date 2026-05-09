@@ -1,4 +1,10 @@
 # Explicitly allow AI crawlers (GEO/AEO discovery infrastructure)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: GPTBot
 Allow: /
 

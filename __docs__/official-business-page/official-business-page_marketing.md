@@ -8,7 +8,7 @@
 
 ## Elevator Pitch (30 seconds)
 
-Every business sends different things when customers ask — PDF menus, Zomato links, Instagram, Google photos. MenuList gives them one official link they can share everywhere. Customers open it and instantly see the menu, hours, contact info, Google rating, and business photos. One link replaces everything — including your Google Business page and website.
+Every business sends different things when customers ask — PDF menus, Zomato links, Instagram, Google photos. MenuList gives them one official link they can share everywhere. Customers open it and instantly see the menu, hours, contact info, Google rating, and business photos. One link becomes the default answer while still working alongside Google Business Profile and any existing website.
 
 ---
 
@@ -34,7 +34,7 @@ MenuList auto-creates an official business page for every restaurant. It shows:
 - Their menu (one tap to full digital menu with conversion tracking)
 - Structured business info (hours, cuisine, price range, services, payment methods)
 
-The owner just shares one link. That's it. It replaces their Google page, website, and every PDF they've ever sent.
+The owner just shares one link. That's it. It replaces day-to-day PDFs and manual replies, and it gives their Google profile, Instagram bio, packaging, and website one clean official destination.
 
 ### Why This Matters
 
@@ -49,8 +49,8 @@ Once the owner starts using this link everywhere — Instagram bio, Google profi
 | Zomato/Swiggy   | Listing with competitors + commission  | Owned by business, no competitors, no commission |
 | BentoBox        | Restaurant websites (₹8,000-16,000/mo) | Free, auto-generated, no design needed           |
 | Linktree        | Link-in-bio page                       | Menu-native, live hours, structured data         |
-| Google Business | Listing on Google                      | Business-controlled, can't be suspended, no ads  |
-| PDF Menu        | Static document                        | Always live, always updated, one link forever    |
+| Google Business | Listing on Google                      | Business-controlled official destination to place on the profile |
+| PDF Menu        | Static document                        | Live public page updated from latest MenuList data |
 
 ---
 
@@ -100,7 +100,7 @@ Change your hours? Updated instantly. Change your phone? Updated instantly. Upda
 
 > Instagram is for photos and marketing. But when customers want menu, hours, or directions, they shouldn't scroll posts. This link gives everything instantly in one tap.
 
-### When client says: "I already have Google page"
+### When client says: "I already have a Google profile"
 
 > Google is for discovery. This is your official link you control and share everywhere. Google can change anytime, shows competitors, shows ads. This stays your permanent business link.
 
@@ -110,7 +110,7 @@ Change your hours? Updated instantly. Change your phone? Updated instantly. Upda
 
 ### When client says: "This is just a landing page"
 
-> This is not a landing page. It's your official business link — like a Google Business listing, but you control it. Fast, clean, always accurate.
+> This is not a landing page. It's your official business link — like a Google Business listing, but you control the source. Fast, clean, and updated from your MenuList business data.
 
 ### The Killer Closing Line
 
@@ -147,7 +147,7 @@ Change your hours? Updated instantly. Change your phone? Updated instantly. Upda
 
 ### Non-India Messaging
 
-"Your restaurant's official link. Menu, hours, contact — one page that's always up to date. Share it everywhere."
+"Your restaurant's official link. Menu, hours, contact — one page updated from your MenuList business data. Share it everywhere."
 
 ---
 
@@ -158,7 +158,7 @@ Change your hours? Updated instantly. Change your phone? Updated instantly. Upda
 - "Official business link"
 - "Your official page"
 - "One link for everything"
-- "Always up to date"
+- "Updated from your MenuList business data"
 - "Share everywhere"
 
 ### Never Use:

@@ -22,14 +22,14 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Read | Indexed? | Notes |
 |-----------|-----------|---------|-----------|-----------|----------|-------|
-| Store lookup (subdomain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`subdomain` + `active`) | `getDocs` with `where("subdomain", "==", ...)`, `limit(1)`. Cached via `unstable_cache` with 60s revalidate. File: `src/app/_client/[[...slug]]/page.tsx:83-100` |
-| Store lookup (custom domain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`customDomain` + `domainVerified` + `active`) | Same pattern as subdomain. File: `src/app/_client/[[...slug]]/page.tsx:104-122` |
-| Project metadata listing | `projects/{tId}/{sId}/metadata` | Page load (SSR) | Per unique visit (cached 60s) | 1-50 | Yes (`deleted` + `active`) | `getDocs` with `where("deleted", "==", false)`, `where("active", "==", true)`. Returns all active projects for slug matching. File: `src/app/_client/[[...slug]]/page.tsx:157-172` |
-| Project data fetch | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read | `getDoc` by ID. Heavy document (~50KB with full menu data). File: `src/app/_client/[[...slug]]/page.tsx:125-135` |
-| Decision Blocks fetch | `decisionBlocks` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read | `getDoc` by composite ID `{tId}_{sId}_{projectId}`. Optional — fails silently. File: `src/app/_client/[[...slug]]/page.tsx:138-154` |
-| Store details (full) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read via `getStoreById` | Parallel with decision blocks. File: `src/app/_client/[[...slug]]/page.tsx:613-617` |
-| Master project (multi-outlet) | `projects/{tId}/{sId}/{masterProjectId}` | Page load (SSR) | Only for outlet stores | 1 | Direct doc read | Only when `ENABLE_MULTI_OUTLET && projectData.masterProjectId`. File: `src/app/_client/[[...slug]]/page.tsx:216-229` |
-| SEO metadata (generateMetadata) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Same as store lookup | Duplicate read deduplicated by React `cache()`. File: `src/app/_client/[[...slug]]/page.tsx:303-360` |
+| Store lookup (subdomain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`subdomain` + `active`) | `getDocs` with `where("subdomain", "==", ...)`, `limit(1)`. Cached via `unstable_cache` with 60s revalidate. File: `src/app/client/[[...slug]]/page.tsx:83-100` |
+| Store lookup (custom domain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`customDomain` + `domainVerified` + `active`) | Same pattern as subdomain. File: `src/app/client/[[...slug]]/page.tsx:104-122` |
+| Project metadata listing | `projects/{tId}/{sId}/metadata` | Page load (SSR) | Per unique visit (cached 60s) | 1-50 | Yes (`deleted` + `active`) | `getDocs` with `where("deleted", "==", false)`, `where("active", "==", true)`. Returns all active projects for slug matching. File: `src/app/client/[[...slug]]/page.tsx:157-172` |
+| Project data fetch | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read | `getDoc` by ID. Heavy document (~50KB with full menu data). File: `src/app/client/[[...slug]]/page.tsx:125-135` |
+| Decision Blocks fetch | `decisionBlocks` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read | `getDoc` by composite ID `{tId}_{sId}_{projectId}`. Optional — fails silently. File: `src/app/client/[[...slug]]/page.tsx:138-154` |
+| Store details (full) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read via `getStoreById` | Parallel with decision blocks. File: `src/app/client/[[...slug]]/page.tsx:613-617` |
+| Master project (multi-outlet) | `projects/{tId}/{sId}/{masterProjectId}` | Page load (SSR) | Only for outlet stores | 1 | Direct doc read | Only when `ENABLE_MULTI_OUTLET && projectData.masterProjectId`. File: `src/app/client/[[...slug]]/page.tsx:216-229` |
+| SEO metadata (generateMetadata) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Same as store lookup | Duplicate read deduplicated by React `cache()`. File: `src/app/client/[[...slug]]/page.tsx:303-360` |
 
 ### Writes
 
@@ -114,11 +114,11 @@
 
 | Function | File | Operation Type |
 |----------|------|---------------|
-| `getStoreBySubdomain` | `src/app/_client/[[...slug]]/page.tsx:83` | Read (cached query) |
-| `getStoreByCustomDomain` | `src/app/_client/[[...slug]]/page.tsx:104` | Read (cached query) |
-| `getProjectData` | `src/app/_client/[[...slug]]/page.tsx:125` | Read (getDoc) |
-| `getPrecomputedDecisionBlocks` | `src/app/_client/[[...slug]]/page.tsx:138` | Read (getDoc) |
-| `getProjectBySlugOrDefault` | `src/app/_client/[[...slug]]/page.tsx:157` | Read (getDocs + getDoc) |
+| `getStoreBySubdomain` | `src/app/client/[[...slug]]/page.tsx:83` | Read (cached query) |
+| `getStoreByCustomDomain` | `src/app/client/[[...slug]]/page.tsx:104` | Read (cached query) |
+| `getProjectData` | `src/app/client/[[...slug]]/page.tsx:125` | Read (getDoc) |
+| `getPrecomputedDecisionBlocks` | `src/app/client/[[...slug]]/page.tsx:138` | Read (getDoc) |
+| `getProjectBySlugOrDefault` | `src/app/client/[[...slug]]/page.tsx:157` | Read (getDocs + getDoc) |
 | `getStoreById` | `src/database/stores/index.ts` | Read (getDoc) |
 | `resolveProjectForRender` | `src/lib/multiOutlet/index.ts` | Read (getDoc for master) |
 
@@ -126,6 +126,6 @@
 
 | Route | Method | Firebase Ops | Rate Limited? | Notes |
 |-------|--------|-------------|---------------|-------|
-| `/_client/[[...slug]]` (SSR) | GET | 4-6R + 0-1W | No (public) | Server-rendered page. Reads cached. Analytics write on client. |
-| `/_client/sitemap.ts` | GET | 1-2R | No (public) | Reads store + projects for sitemap XML |
-| `/_client/robots.ts` | GET | 0R | No (public) | Static response, no Firestore |
+| `/client/[[...slug]]` (SSR) | GET | 4-6R + 0-1W | No (public) | Server-rendered page. Reads cached. Analytics write on client. |
+| `/client/sitemap.ts` | GET | 1-2R | No (public) | Reads store + projects for sitemap XML |
+| `/client/robots.ts` | GET | 0R | No (public) | Static response, no Firestore |

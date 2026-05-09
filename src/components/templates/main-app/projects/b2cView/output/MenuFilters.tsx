@@ -30,6 +30,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { FEATURE_FLAGS } from '@config/features';
 import { getLocalizedText } from '@lib/localization/text';
 import { MenuMoodConfig } from '../designSystem';
+import { menuFadeTransition, menuPanelMotion, menuSpringTransition } from './menuMotion';
 
 interface Category {
     id: string;
@@ -172,15 +173,22 @@ function MenuFilters({
             }
         };
 
-        const handlePositionChange = () => updateAnchorPosition();
+        const handleResize = () => updateAnchorPosition();
+        const handleScreenScroll = (event: Event) => {
+            const target = event.target;
+            if (target instanceof Node && popoverRef.current?.contains(target)) return;
+            setShowCategories(false);
+        };
 
         window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('resize', handlePositionChange);
-        window.addEventListener('scroll', handlePositionChange, { passive: true });
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('scroll', handleScreenScroll, { capture: true, passive: true });
+        document.addEventListener('scroll', handleScreenScroll, { capture: true, passive: true });
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            window.removeEventListener('resize', handlePositionChange);
-            window.removeEventListener('scroll', handlePositionChange);
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('scroll', handleScreenScroll, true);
+            document.removeEventListener('scroll', handleScreenScroll, true);
         };
     }, [showCategories, updateAnchorPosition]);
 
@@ -332,32 +340,41 @@ function MenuFilters({
         </>
     );
 
-    const inlineCategoryPopover = mounted && isInline && showCategories ? createPortal(
-        <div
-            ref={popoverRef}
-            role="dialog"
-            aria-modal={false}
-            aria-label="Menu sections"
-            style={{
-                position: 'fixed',
-                right: useAnchoredInlinePopover ? anchorPosition.right : 12,
-                left: useAnchoredInlinePopover ? 'auto' : 12,
-                top: anchorPosition.top,
-                bottom: 'auto',
-                zIndex: 10021,
-                width: useAnchoredInlinePopover
-                    ? 'min(360px, calc(100vw - 24px))'
-                    : 'auto',
-                maxHeight: `min(${useAnchoredInlinePopover ? '440px' : '560px'}, calc(100vh - ${anchorPosition.top + 16}px))`,
-                overflow: 'hidden',
-                borderRadius: panelRadius,
-                background: moodConfig.background,
-                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                boxShadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
-            }}
-        >
-            {categoryPanelBody}
-        </div>,
+    const inlineCategoryPopover = mounted && isInline ? createPortal(
+        <AnimatePresence>
+            {showCategories && (
+                <motion.div
+                    ref={popoverRef}
+                    role="dialog"
+                    aria-modal={false}
+                    aria-label="Menu sections"
+                    initial={menuPanelMotion.initial}
+                    animate={menuPanelMotion.animate}
+                    exit={menuPanelMotion.exit}
+                    transition={menuSpringTransition}
+                    style={{
+                        position: 'fixed',
+                        right: useAnchoredInlinePopover ? anchorPosition.right : 12,
+                        left: useAnchoredInlinePopover ? 'auto' : 12,
+                        top: anchorPosition.top,
+                        bottom: 'auto',
+                        zIndex: 10021,
+                        width: useAnchoredInlinePopover
+                            ? 'min(360px, calc(100vw - 24px))'
+                            : 'auto',
+                        maxHeight: `min(${useAnchoredInlinePopover ? '440px' : '560px'}, calc(100vh - ${anchorPosition.top + 16}px))`,
+                        overflow: 'hidden',
+                        borderRadius: panelRadius,
+                        background: moodConfig.background,
+                        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                        boxShadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
+                        transformOrigin: useAnchoredInlinePopover ? 'top right' : 'top center',
+                    }}
+                >
+                    {categoryPanelBody}
+                </motion.div>
+            )}
+        </AnimatePresence>,
         document.body
     ) : null;
 
@@ -369,6 +386,7 @@ function MenuFilters({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        transition={menuFadeTransition}
                         onClick={() => setShowCategories(false)}
                         className="fixed inset-0 bg-black/50 z-40"
                         style={{
@@ -381,9 +399,10 @@ function MenuFilters({
                         }}
                     />
                     <motion.div
-                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                        initial={menuPanelMotion.initial}
+                        animate={menuPanelMotion.animate}
+                        exit={menuPanelMotion.exit}
+                        transition={menuSpringTransition}
                         className="fixed left-4 right-4 z-50 rounded-xl overflow-hidden"
                         role="dialog"
                         aria-modal={isInline}
@@ -414,6 +433,7 @@ function MenuFilters({
                             background: moodConfig.background,
                             border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                             boxShadow: '0 20px 44px rgba(0, 0, 0, 0.32)',
+                            transformOrigin: useAnchoredInlinePopover ? 'top right' : 'bottom right',
                         }}
                     >
                         {categoryPanelBody}

@@ -1,7 +1,7 @@
 # Data Consumers & Distribution — Who Uses MenuList Data and How
 
 > How AI engines, search crawlers, and external systems discover and consume MenuList's structured business data.
-> Last Updated: March 10, 2026
+> Last Updated: May 9, 2026
 
 ---
 
@@ -22,9 +22,9 @@ This document maps every data consumer type, how they discover MenuList data, wh
 | Discovery Method | How It Works | MenuList Status |
 |-----------------|-------------|-----------------|
 | **Web crawling** | AI engines crawl public web pages, parse HTML + JSON-LD | ✅ OBP + Menu pages are SSR with schema.org JSON-LD |
-| **llms.txt** | AI crawlers read `/llms.txt` (llmstxt.org standard) for site capability summary | ✅ `public/llms.txt` (38 lines) + `public/llms-full.txt` (146 lines) |
+| **llms.txt** | AI crawlers can read `/llms.txt` for site capability summary | ✅ `public/llms.txt` (37 lines) + `public/llms-full.txt` (145 lines) |
 | **Schema.org JSON-LD** | Embedded in every public page `<script type="application/ld+json">` | ✅ 10+ schema types: LocalBusiness, Restaurant, Menu, MenuItem, Offer, GeoCoordinates, OpeningHoursSpecification, etc. |
-| **Direct API** | Programmatic access via REST API | ⚠️ Public API v1 exists (feature-flagged OFF). Not yet ecosystem-grade. |
+| **Direct API** | Programmatic access via REST API | ✅ Public API v1 exists and is feature-flagged ON (`ENABLE_PUBLIC_API: true`); not yet ecosystem-grade. |
 
 **What they need from MenuList:**
 - Structured business identity (name, type, location, hours)
@@ -65,7 +65,7 @@ This document maps every data consumer type, how they discover MenuList data, wh
 |-----------------|-------------|-----------------|
 | **Googlebot crawling** | Crawls SSR pages, reads schema.org JSON-LD | ✅ All pages SSR, schema.org embedded |
 | **Sitemap** | `sitemap.xml` lists all crawlable URLs | ✅ `Sitemap: https://www.menulist.ai/sitemap.xml` in robots.txt |
-| **robots.txt** | Tells crawlers what to index | ✅ `public/robots.txt` — allows all, blocks admin/login/dashboard |
+| **robots.txt** | Tells crawlers what to index | ✅ `public/robots.txt` + tenant `src/app/client/robots.ts` — explicit search/AI crawler allows, internal paths blocked |
 | **Schema.org Rich Results** | JSON-LD enables Google rich results (restaurant info, FAQ, hours) | ✅ LocalBusiness, FAQPage, BreadcrumbList, OpeningHoursSpecification |
 
 **What they need:**
@@ -90,9 +90,10 @@ This document maps every data consumer type, how they discover MenuList data, wh
 
 | Method | How It Works | MenuList Status |
 |--------|-------------|-----------------|
-| **Menu link sync** | MenuList pushes menu URL to GBP via API | ✅ `store.gbp` integration (feature-flagged) |
-| **Hours verification** | MenuList verifies hours match between GBP and store | ✅ `store.gbpState.hoursStatus` |
-| **Link monitoring** | Nightly check that GBP menu link points to MenuList | ✅ Via nightly scheduler |
+| **Owner website/menu link guidance** | Owner can place the OBP/menu link in Google Business Profile | ✅ Guidance and store fields exist |
+| **Menu link sync via API** | MenuList pushes menu URL to GBP via API | ❌ Not active — `ENABLE_GBP_SYNC: false`; token DAL still throws until API access is approved |
+| **Hours verification** | MenuList verifies hours match between GBP and store | ⚠️ Data fields exist (`store.gbpState.hoursStatus`), runtime API sync is disabled |
+| **Link monitoring** | Nightly check that GBP menu link points to MenuList | ⚠️ Intended when GBP sync is enabled; do not present as active customer-facing behavior yet |
 
 ---
 
@@ -118,7 +119,7 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 
 | Method | How It Works | MenuList Status |
 |--------|-------------|-----------------|
-| **REST API v1** | `GET /api/public/v1/business` + `GET /api/public/v1/menu` | ✅ Exists (feature-flagged OFF) |
+| **REST API v1** | `GET /api/public/v1/business` + `GET /api/public/v1/menu` | ✅ Exists and flag is ON in `src/config/features.ts` |
 | **Authentication** | `X-API-Key` header, per-store API key (`ml_` + UUID) | ✅ `src/lib/publicApi/auth.ts` |
 | **Rate limiting** | 60 req/min per API key | ✅ Upstash Redis sliding window |
 
@@ -184,7 +185,7 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 
 ### Already Working (No Action Needed)
 1. ✅ schema.org JSON-LD on all public pages (10+ types)
-2. ✅ llms.txt + llms-full.txt (AI crawler discovery)
+2. ✅ llms.txt + llms-full.txt (platform AI crawler discovery)
 3. ✅ SSR rendering (no JS required for content)
 4. ✅ Canonical URLs with redirect chains
 5. ✅ robots.txt + sitemap.xml
@@ -216,7 +217,7 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 - **Method:** Google's own index + Knowledge Graph
 - **What it reads:** Crawled pages, schema.org, GBP data
 - **MenuList entry point:** Indexed pages + GBP menu link
-- **What helps:** schema.org JSON-LD, GBP integration, sitemap, structured hours/location
+- **What helps:** schema.org JSON-LD, owner-placed GBP website/menu link, sitemap, structured hours/location
 
 ### Voice Assistants (Google Assistant, Siri, Alexa)
 - **Method:** Knowledge Graph + structured data
@@ -229,11 +230,13 @@ Owner edits menu → 25s debounce → buildMenuSnapshot() → POST to webhook UR
 | Entry Point | URL / Path | Purpose | Consumer |
 |------------|-----------|---------|----------|
 | OBP Page | `https://{subdomain}.menulist.ai/` | Business identity + schema.org | All crawlers |
-| Menu Page | `https://{subdomain}.menulist.ai/menu` | Full menu + schema.org | All crawlers |
+| Menu Page | `https://{subdomain}.menulist.ai/{projectSlug}` or owner-claimed `/menu` | Full menu + schema.org | All crawlers |
 | llms.txt | `https://www.menulist.ai/llms.txt` | AI capability summary | AI engines |
 | llms-full.txt | `https://www.menulist.ai/llms-full.txt` | Extended schema docs | AI engines |
-| robots.txt | `https://www.menulist.ai/robots.txt` | Crawl permissions | All crawlers |
-| sitemap.xml | `https://www.menulist.ai/sitemap.xml` | URL list for indexing | Search engines |
+| Platform robots.txt | `https://www.menulist.ai/robots.txt` | Platform crawl permissions | All crawlers |
+| Tenant robots.txt | `https://{subdomain}.menulist.ai/robots.txt` | Tenant crawl permissions + tenant sitemap | All crawlers |
+| Platform sitemap.xml | `https://www.menulist.ai/sitemap.xml` | Platform URL list for indexing | Search engines |
+| Tenant sitemap.xml | `https://{subdomain}.menulist.ai/sitemap.xml` | OBP + active canonical menu/outlet URL list | Search engines |
 | API v1 Business | `GET /api/public/v1/business` | Store data (API key auth) | External apps |
 | API v1 Menu | `GET /api/public/v1/menu` | Menu data (API key auth) | External apps |
 | POS Webhook | Owner-configured URL | Menu snapshot push | POS systems |

@@ -5,12 +5,12 @@
  * print assets, social images, and copy use the right words
  * (e.g., "menu" for restaurants, "services" for salons).
  *
- * Uses getBusinessCategory() from shared businessTypes.ts.
+ * Uses resolveBusinessCategory() from shared businessTypes.ts.
  *
  * @see src/data/shared/businessTypes.ts
  */
 
-import { getBusinessCategory } from '@data/shared/businessTypes';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 
 export interface OfferingLabels {
     // ── Menu Kit (Print + Social assets) ──
@@ -404,7 +404,7 @@ const DEFAULT_LABELS = CATEGORY_LABELS.food;
  */
 export function getOfferingLabels(businessType?: string): OfferingLabels {
     if (!businessType) return DEFAULT_LABELS;
-    const category = getBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType);
     if (!category) return DEFAULT_LABELS;
     return CATEGORY_LABELS[category] || DEFAULT_LABELS;
 }

@@ -244,9 +244,9 @@ const hostname = request.headers.get("host");
 const domainInfo = resolveDomain(hostname);
 
 if (domainInfo.isClient && !shouldSkipRouting) {
-  // Rewrite to /_client route group
+  // Rewrite to /client route group
   const url = request.nextUrl.clone();
-  url.pathname = `/_client${pathname}`;
+  url.pathname = `/client${pathname}`;
   response = NextResponse.rewrite(url);
 
   // Pass tenant info via headers

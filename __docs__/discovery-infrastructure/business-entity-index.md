@@ -2,7 +2,7 @@
 
 > Cross-business queryable discovery index for AI systems and structured search.
 > Phase 2A of Infrastructure Expansion.
-> Last Updated: March 10, 2026
+> Last Updated: May 9, 2026
 
 ---
 
@@ -135,14 +135,14 @@ Flow:
 
 ## 7. Integration Points
 
-- **Nightly scheduler:** New task 9 in `decisionBlocksScoring.ts`
-- **Store deactivation:** Hook in store DAL to delete index entry
+- **Nightly scheduler:** Not wired yet. No `functions/src/infrastructure/discoveryIndexTask.ts` exists in the current codebase.
+- **Store deactivation:** Not wired yet. When this flag is activated, store deactivation must delete or mark the index entry inactive.
 - **Future Discovery API (Phase 4):** Queries this collection
 - **Future Feed Infrastructure (Phase 3):** Reads from this collection
 
 ## 8. Feature Flag
 
-`ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX: false` (both frontend + CF)
+`ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX: false` in both `src/config/features.ts` and `functions/src/constants/features.ts`.
 
 When OFF: No index documents written, no nightly task runs.
 
@@ -153,11 +153,11 @@ When OFF: No index documents written, no nightly task runs.
 | `src/lib/infrastructure/discovery/types.ts`          | Index document types                 |
 | `src/lib/infrastructure/discovery/indexBuilder.ts`   | Builds index from store/project data |
 | `src/lib/infrastructure/discovery/index.ts`          | Barrel exports                       |
-| `functions/src/infrastructure/discoveryIndexTask.ts` | Nightly scheduler task               |
+| `functions/src/infrastructure/discoveryIndexTask.ts` | Not present yet; planned scheduler task |
 
 ## 10. Security
 
 - Collection-level Firestore rules: read-only for authenticated users, write-only for Cloud Functions
 - No sensitive data in the collection (see §3)
 - Feature-flagged OFF by default
-- Index entries deleted when store deactivated
+- Store deactivation cleanup is not wired yet; when activated, the scheduler/DAL must delete or mark index entries inactive.

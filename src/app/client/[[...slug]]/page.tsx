@@ -54,7 +54,16 @@ import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
-import { buildAddress, buildBreadcrumbList, buildGeoCoordinates, buildOpeningHours, buildSameAs, getMenuSchemaType } from "@lib/schema";
+import {
+    buildAddress,
+    buildBreadcrumbList,
+    buildGeoCoordinates,
+    buildOpeningHours,
+    buildSameAs,
+    getMenuSchemaType,
+    getOfferingItemSchemaType,
+    isFoodBusinessCategory,
+} from "@lib/schema";
 import { slugify } from "@lib/utils/slugify";
 import ClientMenuRenderer from "@template/website/clientWebsite";
 import {
@@ -899,11 +908,24 @@ function generateSchemaOrgJsonLd(
         storeData?.businessType,
         storeData?.businessIndustry,
     );
-    const schemaType = getMenuSchemaType(effectiveBusinessType);
+    const schemaType = getMenuSchemaType(effectiveBusinessType, storeData?.businessCategory);
     const publicDescription = getPublicBusinessDescription(storeData, contentLanguage);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
     const showImages = projectData?.config?.design?.menu?.showImages ?? true;
     const freshness = getPublicMenuFreshness(projectData, storeData);
+    const catalogSchema = buildPublicCatalogStructuredData({
+        businessCategory: storeData?.businessCategory,
+        businessType: effectiveBusinessType,
+        canonicalUrl,
+        categories,
+        contentLanguage,
+        currencyCode: storeData?.currencyCode || 'USD',
+        freshness,
+        items,
+        projectData,
+        showImages,
+        showItemPrices,
+    });
 
     return {
         "@context": "https://schema.org",
@@ -924,106 +946,231 @@ function generateSchemaOrgJsonLd(
         ...(sameAs && { sameAs }),
         ...(freshness.dateModified && { dateModified: freshness.dateModified }),
         ...(storeData?.cuisineTypes?.length && { servesCuisine: storeData.cuisineTypes }),
-        menu: canonicalUrl,
-        hasMenu: {
-            "@type": "Menu",
-            identifier: projectData?.projectId || canonicalUrl,
-            ...(freshness.dateModified && { dateModified: freshness.dateModified }),
-            ...(freshness.menuVersion && {
-                additionalProperty: [
-                    {
-                        "@type": "PropertyValue",
-                        name: "menuVersion",
-                        value: freshness.menuVersion,
-                    },
-                ],
-            }),
-            hasMenuSection: categories.slice(0, 10).map((category: any) => ({
-                "@type": "MenuSection",
-                identifier: category.id,
-                name: getLocalizedValue(category.name, contentLanguage) || "Menu Section",
-                hasMenuItem: items
-                    .filter((item: any) => item.category === category.id)
-                    .slice(0, 20)
-                    .map((item: any) => {
-                        // #32: Build suitableForDiet from tags + dietaryTags
-                        const diets: string[] = [];
-                        const dietaryTags = getDecisionFactArray(item, "dietaryTags");
-                        const nutritionInfo = getNutritionFact(item);
-                        const duration = getDecisionFactNumber(item, "duration");
-                        const materials = getDecisionFactString(item, "materials");
-                        const warranty = getDecisionFactString(item, "warranty");
-                        const targetAudience = getDecisionFactString(item, "targetAudience");
-                        const skillLevel = getDecisionFactString(item, "skillLevel");
-                        const allergens = getDecisionFactArray(item, "allergens");
-                        const spiceLevel = getDecisionFactString(item, "spiceLevel");
-                        const itemName = getLocalizedValue(item.name, contentLanguage) || "Menu Item";
-                        const itemId = item.id ? String(item.id) : '';
-                        const itemUrl = itemId
-                            ? `${canonicalUrl}/item/${slugify(itemName)}-${itemId.slice(-6)}`
-                            : undefined;
-                        const itemImage = showImages ? item.images?.[0]?.url : undefined;
-                        const schemaPrice = showItemPrices && item.price !== undefined && item.price !== null
-                            ? String(item.price).replace(/[^0-9.]/g, "")
-                            : "";
-                        const itemProperties = [
-                            ...(duration ? [{ "@type": "PropertyValue", name: "duration", value: `${duration} minutes` }] : []),
-                            ...(materials ? [{ "@type": "PropertyValue", name: "material", value: materials }] : []),
-                            ...(warranty ? [{ "@type": "PropertyValue", name: "warranty", value: warranty }] : []),
-                            ...(targetAudience ? [{ "@type": "PropertyValue", name: "audience", value: targetAudience }] : []),
-                            ...(skillLevel ? [{ "@type": "PropertyValue", name: "skillLevel", value: skillLevel }] : []),
-                            ...(allergens.length ? [{ "@type": "PropertyValue", name: "allergens", value: allergens.join(", ") }] : []),
-                            ...(spiceLevel ? [{ "@type": "PropertyValue", name: "spiceLevel", value: spiceLevel }] : []),
-                        ].filter(Boolean);
-                        if (item.tags?.includes("Vegetarian") || dietaryTags.includes("vegetarian")) diets.push("https://schema.org/VegetarianDiet");
-                        if (dietaryTags.includes("vegan")) diets.push("https://schema.org/VeganDiet");
-                        if (dietaryTags.includes("gluten-free")) diets.push("https://schema.org/GlutenFreeDiet");
-                        if (dietaryTags.includes("halal")) diets.push("https://schema.org/HalalDiet");
-                        if (dietaryTags.includes("kosher")) diets.push("https://schema.org/KosherDiet");
-
-                        return {
-                            "@type": "MenuItem",
-                            ...(itemId && { identifier: itemId }),
-                            name: itemName,
-                            ...(itemUrl && { url: itemUrl }),
-                            ...(itemImage && { image: itemImage }),
-                            description:
-                                getLocalizedValue(item.description, contentLanguage) || "",
-                            ...(schemaPrice && {
-                                offers: {
-                                    "@type": "Offer",
-                                    price: schemaPrice,
-                                    priceCurrency: storeData?.currencyCode || "USD",
-                                    availability: item.available === false
-                                        ? "https://schema.org/OutOfStock"
-                                        : "https://schema.org/InStock",
-                                },
-                            }),
-                            ...(diets.length > 0 && {
-                                suitableForDiet: diets.length === 1 ? diets[0] : diets,
-                            }),
-                            ...(nutritionInfo?.calories && {
-                                nutrition: {
-                                    "@type": "NutritionInformation",
-                                    ...(nutritionInfo.calories && { calories: `${nutritionInfo.calories} calories` }),
-                                    ...(nutritionInfo.protein && { proteinContent: `${nutritionInfo.protein} g` }),
-                                    ...(nutritionInfo.carbs && { carbohydrateContent: `${nutritionInfo.carbs} g` }),
-                                    ...(nutritionInfo.fat && { fatContent: `${nutritionInfo.fat} g` }),
-                                    ...(nutritionInfo.servingSize && { servingSize: nutritionInfo.servingSize }),
-                                },
-                            }),
-                            // Owner-provided SMB metadata. AI generation is blocked from creating these fields.
-                            ...(itemProperties.length > 0 && { additionalProperty: itemProperties }),
-                        };
-                    }),
-            })),
-        },
+        ...catalogSchema,
         publisher: {
             "@type": "Organization",
             name: "MenuList",
             url: "https://www.menulist.ai",
         },
     };
+}
+
+function buildPublicCatalogStructuredData({
+    businessCategory,
+    businessType,
+    canonicalUrl,
+    categories,
+    contentLanguage,
+    currencyCode,
+    freshness,
+    items,
+    projectData,
+    showImages,
+    showItemPrices,
+}: {
+    businessCategory?: string;
+    businessType?: string;
+    canonicalUrl: string;
+    categories: any[];
+    contentLanguage: string;
+    currencyCode: string;
+    freshness: ReturnType<typeof getPublicMenuFreshness>;
+    items: any[];
+    projectData: any;
+    showImages: boolean;
+    showItemPrices: boolean;
+}): Record<string, any> {
+    const isFoodCatalog = isFoodBusinessCategory(businessType, businessCategory);
+    const catalogAdditionalProperty = freshness.menuVersion
+        ? [{
+            "@type": "PropertyValue",
+            name: "menuVersion",
+            value: freshness.menuVersion,
+        }]
+        : undefined;
+
+    const sections = categories.slice(0, 10).map((category: any) => {
+        const sectionItems = items
+            .filter((item: any) => item.category === category.id)
+            .slice(0, 20)
+            .map((item: any) => buildCatalogItemStructuredData({
+                businessCategory,
+                businessType,
+                canonicalUrl,
+                contentLanguage,
+                currencyCode,
+                isFoodCatalog,
+                item,
+                showImages,
+                showItemPrices,
+            }));
+
+        if (isFoodCatalog) {
+            return {
+                "@type": "MenuSection",
+                identifier: category.id,
+                name: getLocalizedValue(category.name, contentLanguage) || "Menu Section",
+                hasMenuItem: sectionItems,
+            };
+        }
+
+        return {
+            "@type": "OfferCatalog",
+            identifier: category.id,
+            name: getLocalizedValue(category.name, contentLanguage) || "Offer Category",
+            itemListElement: sectionItems,
+        };
+    });
+
+    if (isFoodCatalog) {
+        return {
+            menu: canonicalUrl,
+            hasMenu: {
+                "@type": "Menu",
+                identifier: projectData?.projectId || canonicalUrl,
+                ...(freshness.dateModified && { dateModified: freshness.dateModified }),
+                ...(catalogAdditionalProperty && { additionalProperty: catalogAdditionalProperty }),
+                hasMenuSection: sections,
+            },
+        };
+    }
+
+    return {
+        hasOfferCatalog: {
+            "@type": "OfferCatalog",
+            identifier: projectData?.projectId || canonicalUrl,
+            name: getLocalizedValue(projectData?.metadata?.name, contentLanguage) || "Offerings",
+            url: canonicalUrl,
+            ...(freshness.dateModified && { dateModified: freshness.dateModified }),
+            ...(catalogAdditionalProperty && { additionalProperty: catalogAdditionalProperty }),
+            itemListElement: sections,
+        },
+    };
+}
+
+function buildCatalogItemStructuredData({
+    businessCategory,
+    businessType,
+    canonicalUrl,
+    contentLanguage,
+    currencyCode,
+    isFoodCatalog,
+    item,
+    showImages,
+    showItemPrices,
+}: {
+    businessCategory?: string;
+    businessType?: string;
+    canonicalUrl: string;
+    contentLanguage: string;
+    currencyCode: string;
+    isFoodCatalog: boolean;
+    item: any;
+    showImages: boolean;
+    showItemPrices: boolean;
+}) {
+    const dietaryTags = getDecisionFactArray(item, "dietaryTags");
+    const nutritionInfo = getNutritionFact(item);
+    const itemName = getLocalizedValue(item.name, contentLanguage) || (isFoodCatalog ? "Menu Item" : "Offering");
+    const itemId = item.id ? String(item.id) : '';
+    const itemUrl = itemId
+        ? `${canonicalUrl}/item/${slugify(itemName)}-${itemId.slice(-6)}`
+        : undefined;
+    const itemImage = showImages ? item.images?.[0]?.url : undefined;
+    const schemaPrice = showItemPrices && item.price !== undefined && item.price !== null
+        ? String(item.price).replace(/[^0-9.]/g, "")
+        : "";
+    const itemProperties = buildCatalogItemAdditionalProperties(item);
+    const description = getLocalizedValue(item.description, contentLanguage) || "";
+
+    if (isFoodCatalog) {
+        const diets = buildDietSchemaValues(item, dietaryTags);
+
+        return {
+            "@type": "MenuItem",
+            ...(itemId && { identifier: itemId }),
+            name: itemName,
+            ...(itemUrl && { url: itemUrl }),
+            ...(itemImage && { image: itemImage }),
+            description,
+            ...(schemaPrice && {
+                offers: {
+                    "@type": "Offer",
+                    price: schemaPrice,
+                    priceCurrency: currencyCode,
+                    availability: item.available === false
+                        ? "https://schema.org/OutOfStock"
+                        : "https://schema.org/InStock",
+                },
+            }),
+            ...(diets.length > 0 && {
+                suitableForDiet: diets.length === 1 ? diets[0] : diets,
+            }),
+            ...(nutritionInfo?.calories && {
+                nutrition: {
+                    "@type": "NutritionInformation",
+                    ...(nutritionInfo.calories && { calories: `${nutritionInfo.calories} calories` }),
+                    ...(nutritionInfo.protein && { proteinContent: `${nutritionInfo.protein} g` }),
+                    ...(nutritionInfo.carbs && { carbohydrateContent: `${nutritionInfo.carbs} g` }),
+                    ...(nutritionInfo.fat && { fatContent: `${nutritionInfo.fat} g` }),
+                    ...(nutritionInfo.servingSize && { servingSize: nutritionInfo.servingSize }),
+                },
+            }),
+            // Owner-provided SMB metadata. AI generation is blocked from creating these fields.
+            ...(itemProperties.length > 0 && { additionalProperty: itemProperties }),
+        };
+    }
+
+    return {
+        "@type": "Offer",
+        ...(schemaPrice && {
+            price: schemaPrice,
+            priceCurrency: currencyCode,
+        }),
+        availability: item.available === false
+            ? "https://schema.org/OutOfStock"
+            : "https://schema.org/InStock",
+        itemOffered: {
+            "@type": getOfferingItemSchemaType(businessType, businessCategory),
+            ...(itemId && { identifier: itemId }),
+            name: itemName,
+            ...(itemUrl && { url: itemUrl }),
+            ...(itemImage && { image: itemImage }),
+            ...(description && { description }),
+            // Owner-provided SMB metadata. AI generation is blocked from creating these fields.
+            ...(itemProperties.length > 0 && { additionalProperty: itemProperties }),
+        },
+    };
+}
+
+function buildCatalogItemAdditionalProperties(item: any) {
+    const duration = getDecisionFactNumber(item, "duration");
+    const materials = getDecisionFactString(item, "materials");
+    const warranty = getDecisionFactString(item, "warranty");
+    const targetAudience = getDecisionFactString(item, "targetAudience");
+    const skillLevel = getDecisionFactString(item, "skillLevel");
+    const allergens = getDecisionFactArray(item, "allergens");
+    const spiceLevel = getDecisionFactString(item, "spiceLevel");
+
+    return [
+        ...(duration ? [{ "@type": "PropertyValue", name: "duration", value: `${duration} minutes` }] : []),
+        ...(materials ? [{ "@type": "PropertyValue", name: "material", value: materials }] : []),
+        ...(warranty ? [{ "@type": "PropertyValue", name: "warranty", value: warranty }] : []),
+        ...(targetAudience ? [{ "@type": "PropertyValue", name: "audience", value: targetAudience }] : []),
+        ...(skillLevel ? [{ "@type": "PropertyValue", name: "skillLevel", value: skillLevel }] : []),
+        ...(allergens.length ? [{ "@type": "PropertyValue", name: "allergens", value: allergens.join(", ") }] : []),
+        ...(spiceLevel ? [{ "@type": "PropertyValue", name: "spiceLevel", value: spiceLevel }] : []),
+    ].filter(Boolean);
+}
+
+function buildDietSchemaValues(item: any, dietaryTags: string[]) {
+    const diets: string[] = [];
+    if (item.tags?.includes("Vegetarian") || dietaryTags.includes("vegetarian")) diets.push("https://schema.org/VegetarianDiet");
+    if (dietaryTags.includes("vegan")) diets.push("https://schema.org/VeganDiet");
+    if (dietaryTags.includes("gluten-free")) diets.push("https://schema.org/GlutenFreeDiet");
+    if (dietaryTags.includes("halal")) diets.push("https://schema.org/HalalDiet");
+    if (dietaryTags.includes("kosher")) diets.push("https://schema.org/KosherDiet");
+    return diets;
 }
 
 // #30: Lazy language loading — reduce SSR payload for multi-language menus

@@ -44,7 +44,7 @@ This guide covers the complete implementation, UX recommendations, and setup ins
 │                                                                      │
 │   1. Parse hostname via resolveDomain()                             │
 │   2. Determine: platform | subdomain | custom | localhost           │
-│   3. If client domain → rewrite to /_client/*                       │
+│   3. If client domain → rewrite to /client/*                       │
 │   4. Pass tenant info via x-tenant-* headers                        │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
@@ -52,7 +52,7 @@ This guide covers the complete implementation, UX recommendations, and setup ins
            ▼                                          ▼
 ┌─────────────────────────┐            ┌─────────────────────────────┐
 │   PLATFORM ROUTES       │            │   CLIENT ROUTES              │
-│   /app/(website)/*      │            │   /app/_client/*             │
+│   /app/(website)/*      │            │   /app/client/*             │
 │                         │            │                              │
 │   • Landing page        │            │   • Menu page                │
 │   • About, Pricing      │            │   • Client sitemap.xml       │
@@ -85,8 +85,8 @@ const domainInfo = resolveDomain(hostname);
 | `menulist.ai`           | `platform`  | `/app/(website)/*`     |
 | `www.menulist.ai`       | `platform`  | `/app/(website)/*`     |
 | `app.menulist.ai`       | `platform`  | Reserved for dashboard |
-| `joespizza.menulist.ai` | `subdomain` | `/app/_client/*`       |
-| `joespizza.com`         | `custom`    | `/app/_client/*`       |
+| `joespizza.menulist.ai` | `subdomain` | `/app/client/*`       |
+| `joespizza.com`         | `custom`    | `/app/client/*`       |
 | `localhost:3000`        | `localhost` | Platform (dev)         |
 
 ### 3. Reserved Subdomains
@@ -133,7 +133,7 @@ src/
 │   │   ├── about-us/
 │   │   ├── pricing/
 │   │   └── ...
-│   └── _client/                          # Client menu routes
+│   └── client/                          # Client menu routes
 │       ├── layout.tsx                    # Minimal layout
 │       ├── sitemap.ts                    # Per-client sitemap
 │       ├── robots.ts                     # Per-client robots
@@ -343,7 +343,7 @@ await fetch("https://api.vercel.com/v9/projects/{projectId}/domains", {
 
 ### Debugging Headers
 
-Add to `_client/[[...slug]]/page.tsx`:
+Add to `client/[[...slug]]/page.tsx`:
 
 ```typescript
 console.log("Tenant headers:", {
@@ -362,7 +362,7 @@ console.log("Tenant headers:", {
 - [x] Domain resolver utility (`domainResolver.ts`)
 - [x] Domain lookup service (`domainLookup.ts`)
 - [x] Middleware domain routing
-- [x] Client route group (`/_client`)
+- [x] Client route group (`/client`)
 - [x] Client page with SEO metadata
 - [x] Client sitemap.ts
 - [x] Client robots.ts

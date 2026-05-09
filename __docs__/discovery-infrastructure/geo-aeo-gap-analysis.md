@@ -4,6 +4,7 @@
 > Source: `menulist-geo-aeo.md` (8,853 lines)
 > Auditor: Cascade (full codebase access)
 > Date: March 10, 2026
+> Parity refresh: May 9, 2026
 
 ---
 
@@ -19,14 +20,14 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 
 | Layer | ChatGPT Estimate | Actual (Codebase) | Key Evidence |
 |-------|-----------------|-------------------|--------------|
-| 1. Crawlability | "incomplete" | **~85% done** | SSR pages, robots.txt, per-store sitemap.xml, `Allow: /` for all bots |
+| 1. Crawlability | "incomplete" | **~90% done** | SSR pages, explicit AI/search robots rules, per-store sitemap.xml |
 | 2. Entity Graph | "~70% internal" | **~80% done** | Store entity (486 fields), Project/Item/Category entities, stable IDs, relationships |
-| 3. Schema Markup | "not implemented" (0-10%) | **~90% done** | `schema.ts` (155 lines), 10+ schema.org types, Restaurant+Menu+MenuItem+Offer+Hours+Geo+Breadcrumb+FAQ |
+| 3. Schema Markup | "not implemented" (0-10%) | **~90% done** | shared schema utilities + OBP/menu schema, Restaurant+Menu+MenuItem+Offer+Hours+Geo+Breadcrumb+FAQ |
 | 4. URL Architecture | "~50%" | **~70% done** | Stable subdomain URLs, slug permanence, previousSlugs redirects, canonical tags |
 | 5. Knowledge Graph | "~30%" | **~50% done** | Entity identity, sameAs links, schema.org publisher, GBP integration foundation |
 | 6. AI Retrieval | "~60%" | **~75% done** | SSR HTML with structured content, menu items as text (not images), semantic headings |
 | 7. AEO Citation | "~35%" | **~50% done** | FAQ schema, structured facts in JSON-LD, dateModified freshness signal |
-| 8. Geo Discovery | "~10%" | **~35% done** | GeoCoordinates on store, schema.org geo, open-now computation, address data |
+| 8. Geo Discovery | "~10%" | **~45% done** | GeoCoordinates on store, schema.org geo, open-now computation, address data, cuisineTypes field |
 | 9. Menu Discovery | "not started" | **~25% done** | Taxonomy system built (Phase 1A), dietary tags, offering tags (infrastructure layer) |
 
 ---
@@ -41,21 +42,21 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 
 | Requirement | Status | Evidence |
 |------------|--------|----------|
-| AI crawler access (robots.txt) | ✅ DONE | `public/robots.txt:2-3` — `User-agent: * / Allow: /` (allows ALL crawlers including GPTBot, ClaudeBot, PerplexityBot) |
-| Per-store robots.txt | ✅ DONE | `src/app/_client/robots.ts` — Dynamic per-subdomain robots with sitemap reference |
-| Server-rendered HTML | ✅ DONE | `src/app/_client/[[...slug]]/page.tsx` — Next.js SSR, full menu content in initial HTML response |
-| Per-store sitemap | ✅ DONE | `src/app/_client/sitemap.ts` — Dynamic sitemap per business (OBP root + /menu) with lastModified |
-| Sitemap reference | ✅ DONE | Both `public/robots.txt:12` and per-store `robots.ts:31` reference sitemap |
-| Crawl budget protection | ✅ DONE | `public/robots.txt:6-9` — Disallows /admin/, /login/, /register/, /dashboard/ |
+| AI crawler access (robots.txt) | ✅ DONE | `public/robots.txt:1-40` — explicit OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
+| Per-store robots.txt | ✅ DONE | `src/app/client/robots.ts:12-61` — Dynamic per-subdomain/custom-domain robots with sitemap reference |
+| Server-rendered HTML | ✅ DONE | `src/app/client/[[...slug]]/page.tsx` — Next.js SSR, full menu content in initial HTML response |
+| Per-store sitemap | ✅ DONE | `src/app/client/sitemap.ts:167-229` — Dynamic sitemap per business with OBP, active canonical menu URLs, outlet URLs, and store/outlet lastModified |
+| Sitemap reference | ✅ DONE | Both `public/robots.txt:40` and per-store `src/app/client/robots.ts:60` reference sitemap |
+| Crawl budget protection | ✅ DONE | `public/robots.txt:30-37` — Disallows /admin/, /login/, /register/, /dashboard/, /api/, /editor/, /preview/ |
 | Bot-friendly rendering | ✅ DONE | SSR means full HTML on first request, no JS required for content |
 | Internal linking | ✅ DONE | OBP links to /menu, menu links back to OBP |
 
-**What's missing:**
-- No explicit `User-agent: GPTBot` / `User-agent: ClaudeBot` rules (relies on `User-agent: *` wildcard — functionally equivalent but less explicit)
-- No city/cuisine discovery pages as crawler entry points (discovery pages are outside MenuList doctrine)
-- No `Disallow: /api/` in robots.txt (minor — API routes return JSON, not indexable HTML)
+**May 9, 2026 parity update:**
+- Explicit AI/search crawler rules are now present on platform and tenant robots.
+- `/api/`, `/editor/`, and `/preview/` are disallowed for generic crawlers.
+- City/cuisine discovery pages remain intentionally outside MenuList doctrine.
 
-**Actual score: ~85%** (ChatGPT guessed "incomplete")
+**Actual score: ~90%** (ChatGPT guessed "incomplete")
 
 ---
 
@@ -74,12 +75,12 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 | Attribute/Variant | ✅ name{lang}, price | ✅ `id` (namespaced: `{itemId}a{seq}`) | ✅ Item→Attribute (nested array) | `src/.../types/extractedData.types.ts:38` |
 | Location | ✅ address, city, state, country, postalCode | ✅ Part of Store | ✅ Store.geo (lat/lng) | `store.ts:252-255` |
 | Hours | ✅ `workingHours: Record<string, string>` | ✅ Part of Store | ✅ OpeningHoursSpecification in schema | `store.ts:101` |
-| Cuisine | ⚠️ Not a formal field on Store | — | — | Missing (but taxonomy system built in Phase 1A) |
+| Cuisine | ✅ `cuisineTypes?: string[]` | Part of Store | ✅ Emits `servesCuisine` when present | `src/types/platform/store.ts:330-333` |
 | Dietary Tags | ✅ `item.tags: string[]` (e.g., ["Vegetarian"]) | — | — | `extractedData.types.ts:58` |
 | Geo Coordinates | ✅ `store.geo: {latitude, longitude}` | — | — | `store.ts:252-255` |
 | Price Range | ✅ `store.priceRange: '$'|'$$'|'$$$'|'$$$$'` | — | — | `store.ts:258` |
 
-**ChatGPT incorrectly assumed:** geo coordinates missing, priceRange missing, cuisine missing. Reality: geo + priceRange exist on store. Cuisine is the only truly missing field (addressed by Phase 1A taxonomy).
+**ChatGPT incorrectly assumed:** geo coordinates, priceRange, and cuisine were missing. Reality: all three exist in the current store/schema model. Cuisine is still a data-completeness concern because owners must populate `cuisineTypes`.
 
 **Entity relationships exist and are externally exposed** via schema.org JSON-LD on every public page.
 
@@ -95,28 +96,28 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 
 | Schema Type | Status | File |
 |-------------|--------|------|
-| Restaurant / LocalBusiness | ✅ DONE | `src/app/_client/obp/schema.ts:30-91` — `generateOBPSchema()` with business-type-specific @type |
-| Menu | ✅ DONE | `src/app/_client/[[...slug]]/page.tsx` — hasMenu with MenuSection + MenuItem |
+| Restaurant / LocalBusiness | ✅ DONE | `src/app/client/obp/schema.ts:33-144` — `generateOBPSchema()` with business-type-specific @type |
+| Menu | ✅ DONE | `src/app/client/[[...slug]]/page.tsx` — hasMenu with MenuSection + MenuItem |
 | MenuSection | ✅ DONE | Generated from categories in menu page schema |
 | MenuItem | ✅ DONE | Generated from items with name, description, offers |
 | Offer (price) | ✅ DONE | Per-item Offer with price, priceCurrency, availability (InStock/OutOfStock) |
-| OpeningHoursSpecification | ✅ DONE | `src/lib/schema/index.ts:93-114` — `buildOpeningHours()` |
-| PostalAddress | ✅ DONE | `src/lib/schema/index.ts:61-72` — `buildAddress()` |
-| GeoCoordinates | ✅ DONE | `src/lib/schema/index.ts:78-86` — `buildGeoCoordinates()` |
-| BreadcrumbList | ✅ DONE | `src/lib/schema/index.ts:199-222` — `buildBreadcrumbList()` |
-| FAQPage | ✅ DONE | `src/lib/schema/index.ts:229-284` — `buildFaqSchema()` (auto-generated from hours/location/phone) |
-| sameAs (social) | ✅ DONE | `src/lib/schema/index.ts:121-142` — `buildSameAs()` (Instagram, Facebook, website) |
-| amenityFeature | ✅ DONE | `src/lib/schema/index.ts:152-181` — `buildAmenityFeatures()` (WiFi, outdoor seating, dietary, etc.) |
-| ReserveAction | ✅ DONE | `schema.ts:105-121` — reservation URL with EntryPoint |
-| OrderAction | ✅ DONE | `schema.ts:124-137` — ordering URL with EntryPoint |
-| dateModified | ✅ DONE | `schema.ts:80-84` — freshness signal for AI engines |
-| priceRange | ✅ DONE | `schema.ts:65` — $ to $$$$ |
-| paymentAccepted | ✅ DONE | `schema.ts:147-154` — Cash, Credit Card, UPI |
-| specialOpeningHours | ✅ DONE | `schema.ts:70` — tempStatus reflected in schema |
+| OpeningHoursSpecification | ✅ DONE | `src/lib/schema/index.ts:193-214` — `buildOpeningHours()` |
+| PostalAddress | ✅ DONE | `src/lib/schema/index.ts:159-170` — `buildAddress()` |
+| GeoCoordinates | ✅ DONE | `src/lib/schema/index.ts:176-186` — `buildGeoCoordinates()` |
+| BreadcrumbList | ✅ DONE | `src/lib/schema/index.ts:301-324` — `buildBreadcrumbList()` |
+| FAQPage | ✅ DONE | `src/lib/schema/index.ts:344-423` — `buildFaqSchema()` (auto-generated from hours/location/phone) |
+| sameAs (social) | ✅ DONE | `src/lib/schema/index.ts:221-243` — `buildSameAs()` (Instagram, Facebook, X/Twitter, LinkedIn, YouTube, website) |
+| amenityFeature | ✅ DONE | `src/lib/schema/index.ts:253-282` — `buildAmenityFeatures()` (WiFi, outdoor seating, dietary, etc.) |
+| ReserveAction | ✅ DONE | `src/app/client/obp/schema.ts:171-190` — reservation URL with EntryPoint |
+| OrderAction | ✅ DONE | `src/app/client/obp/schema.ts:193-205` — ordering URL with EntryPoint |
+| dateModified | ✅ DONE | `src/app/client/obp/schema.ts:118-122` — freshness signal for AI engines |
+| priceRange | ✅ DONE | `src/app/client/obp/schema.ts:101` — $ to $$$$ |
+| paymentAccepted | ✅ DONE | `src/app/client/obp/schema.ts:249-255` — Cash, Credit Card, UPI |
+| specialOpeningHours | ✅ DONE | `src/app/client/obp/schema.ts:106` — tempStatus reflected in schema |
 | VegetarianDiet | ✅ DONE | Per-item suitableForDiet on menu pages |
-| Business type mapping | ✅ DONE | `src/lib/schema/index.ts:30-53` — 20+ types → schema.org subtypes |
+| Business type mapping | ✅ DONE | `src/lib/schema/index.ts:32-151`, `src/lib/schema/index.ts:289-294` — business types → schema.org subtypes |
 
-**Total schema.org implementation:** 343 lines in `src/lib/schema/index.ts` + 155 lines in `src/app/_client/obp/schema.ts` = **498 lines of schema.org infrastructure.**
+**Total schema.org implementation:** 465 lines in `src/lib/schema/index.ts` + 256 lines in `src/app/client/obp/schema.ts` = **721 lines of core schema.org infrastructure.**
 
 ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage already in production.
 
@@ -158,12 +159,12 @@ ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage
 | Stable entity identity | ✅ DONE | storeId, projectId, item IDs — all permanent |
 | Public entity URL | ✅ DONE | `{subdomain}.menulist.ai` — canonical business URL |
 | sameAs (social links) | ✅ DONE | `buildSameAs()` — Instagram, Facebook, website |
-| GBP integration | ✅ DONE (flagged) | `store.gbp` — GBP account/location linking |
+| GBP integration | ⚠️ FOUNDATION ONLY | `ENABLE_GBP_SYNC: false`; token DAL still throws until API access is approved |
 | Entity attributes | ✅ DONE | 60+ store fields, businessAttributes, priceRange, geo |
 | dateModified freshness | ✅ DONE | Exposed in schema.org |
-| Organization schema | ⚠️ PARTIAL | MenuList as publisher not in schema (minor) |
+| Organization schema | ✅ DONE | MenuList publisher emitted by OBP and menu schema |
 | City entity linking | ❌ NOT DONE | Intentionally outside doctrine |
-| Cuisine entity linking | ⚠️ PARTIAL | `servesCuisine` in schema — but not a formal store field |
+| Cuisine entity linking | ⚠️ PARTIAL | `cuisineTypes` field + `servesCuisine`; depends on owner data completeness |
 | External Place ID | ⚠️ PARTIAL | GBP locationId stored but GBP API blocked |
 
 **Actual score: ~50%** (ChatGPT guessed 25-30%)
@@ -260,7 +261,7 @@ These layers from the ChatGPT conversation fall outside MenuList's core doctrine
 | 14. Internationalization | **~90% DONE** | 9 locales, multilingual items, RTL support |
 | 15. AI Discovery Monitoring | ~10% | Future — AI crawler detection, citation tracking |
 | 16. Defensive Infrastructure | **~70% DONE** | Rate limiting, Firestore rules, HMAC webhook signing |
-| 17. Distribution Layer | ~40% | GBP integration built (blocked), no Apple Maps/Bing |
+| 17. Distribution Layer | ~35% | Owner link distribution + public API/POS hooks exist; GBP API sync blocked/off; no Apple Maps/Bing |
 | 18. Data Moat | **~75% DONE** | Structured menu graph, MOL history, menu snapshots, MCE |
 | 19. AI Discovery Productization | ~5% | Future product features — AI discovery score, analytics |
 | 20. Long-Term Infrastructure | ~20% | Business entity index built (flagged OFF), taxonomy system built |
@@ -291,39 +292,35 @@ The GEO/AEO infrastructure should **enhance existing pages** (more schema depth,
 
 ## Critical Gaps (Within Doctrine)
 
-### Gap 1: No explicit AI crawler rules in robots.txt
-**Risk:** LOW — `User-agent: *` already allows all bots. Adding explicit rules is a nice-to-have.
-**Fix:** Add explicit GPTBot, ClaudeBot, PerplexityBot rules to robots.txt.
+### Gap 1: Project-level sitemap freshness is coarse
+**Risk:** LOW — sitemap uses store/outlet `modifiedOn`; individual project rows inherit that timestamp.
+**Fix:** Use per-project `lastPublishedAt` or `modifiedOn` in sitemap entries when cheaply available from the summary document.
 
-### Gap 2: No `servesCuisine` field on store
-**Risk:** MEDIUM — AI queries like "japanese restaurants in pune" need cuisine data.
-**Fix:** Add `cuisineTypes?: string[]` to StoreDataType. Use taxonomy system for controlled vocabulary.
+### Gap 2: Cuisine completeness depends on owner data
+**Risk:** LOW — schema supports `servesCuisine`, but AI queries like "japanese restaurants in pune" only benefit when owners fill `cuisineTypes`.
+**Fix:** Keep cuisine selection visible in owner business settings/onboarding for food businesses.
 
-### Gap 3: No natural language summary on public pages
-**Risk:** MEDIUM — LLMs extract sentences better than UI fragments.
-**Fix:** Generate auto-summary from store data: "{name} is a {businessType} in {city} known for {topItems}."
+### Gap 3: No generic machine change feed
+**Risk:** LOW — public pages and API exist, but there is no RSS/Atom/OpenAPI/change feed for external machine consumers.
+**Fix:** Add only when ecosystem demand appears; avoid building human discovery surfaces.
 
 ### Gap 4: No curated "popular dishes" section
 **Risk:** LOW — Full menu exists; AI can extract from full list.
 **Fix:** Expose Decision Intelligence top items on public pages (already computed nightly).
-
-### Gap 5: No MenuList Organization schema
-**Risk:** LOW — AI systems can still identify MenuList as publisher from URL pattern.
-**Fix:** Add `publisher: { @type: Organization, name: MenuList }` to schema output.
 
 ---
 
 ## Implementation Roadmap (Within Doctrine)
 
 ### Phase A: Quick Wins (1-2 days)
-1. Add explicit AI crawler rules to `public/robots.txt`
-2. Add `publisher: Organization` to schema output
-3. Add `servesCuisine` to schema output (derive from taxonomy or store metadata)
+1. Improve per-project sitemap freshness if summary data already contains a reliable timestamp
+2. Tighten cuisine completeness prompts for food businesses
+3. Keep public pages and sitemap as the canonical discovery source
 
 ### Phase B: Content Enhancement (2-3 days)
-1. Auto-generate natural language summary on OBP pages
-2. Expose popular items section on public pages (from Decision Intelligence)
-3. Add `Disallow: /api/` to robots.txt
+1. Expose popular items only if the source is owner-controlled or already computed reliably
+2. Add OpenAPI documentation for Public API v1 before pitching it as ecosystem-grade
+3. Do not add discovery/ranking pages for humans
 
 ### Phase C: Taxonomy Activation (When needed)
 1. Enable `ENABLE_INFRASTRUCTURE_TAXONOMY` flag
@@ -336,17 +333,17 @@ The GEO/AEO infrastructure should **enhance existing pages** (more schema depth,
 
 | Layer | ChatGPT Estimate | Actual Score | Delta |
 |-------|-----------------|-------------|-------|
-| 1. Crawlability | incomplete | **85%** | +45% |
+| 1. Crawlability | incomplete | **90%** | +50% |
 | 2. Entity Graph | 70% | **80%** | +10% |
 | 3. Schema Markup | 0-10% | **90%** | **+80%** |
 | 4. URL Architecture | 50% | **70%** | +20% |
 | 5. Knowledge Graph | 25-30% | **50%** | +20% |
 | 6. AI Retrieval | 60% | **75%** | +15% |
 | 7. AEO Citation | 35% | **50%** | +15% |
-| 8. Geo Discovery | 10-15% | **35%** | +20% |
+| 8. Geo Discovery | 10-15% | **45%** | +30% |
 | 9. Menu Discovery | 0% | **25%** | +25% |
-| **Average** | **~35%** | **~62%** | **+27%** |
+| **Average** | **~35%** | **~64%** | **+29%** |
 
-**Conclusion:** ChatGPT significantly underestimated MenuList's GEO/AEO readiness because it had no code access. The schema.org implementation alone (498 lines, 18+ schema types) was the biggest miss — ChatGPT rated it 0-10% when it's actually ~90% complete.
+**Conclusion:** ChatGPT significantly underestimated MenuList's GEO/AEO readiness because it had no code access. The schema.org implementation alone was the biggest miss — ChatGPT rated it 0-10% when it's actually ~90% complete.
 
 MenuList is already substantially GEO/AEO ready. The remaining gaps are small enhancements, not structural rebuilds.

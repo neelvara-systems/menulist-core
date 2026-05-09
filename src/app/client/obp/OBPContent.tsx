@@ -911,7 +911,10 @@ export default async function OBPContent({
         .slice(0, 4) as string[];
 
     // Schema.org
-    const schema = generateOBPSchema(store, obpUrl, contentLanguage, storeOverride ? 'store' : 'brand');
+    const schema = generateOBPSchema(store, obpUrl, contentLanguage, storeOverride ? 'store' : 'brand', {
+        hasPublishedMenu: hasMenu,
+        menuUrl,
+    });
     const faqSchema = buildFaqSchema(store, obpUrl, t, storeName);
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);

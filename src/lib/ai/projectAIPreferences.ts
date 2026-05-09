@@ -1,4 +1,4 @@
-import { getBusinessCategory } from '@data/shared/businessTypes';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import type { ImageGenerationConfigType, Project, ProjectAIPreferences, ProjectAIImagePreferences } from '@template/main-app/projects/types';
 
 export const DEFAULT_PROJECT_DESCRIPTION_LENGTH: NonNullable<ProjectAIPreferences['description']>['contentLength'] = 'Standard';
@@ -13,6 +13,10 @@ function includesBusinessTerm(businessType: string | undefined, terms: string[])
 }
 
 function resolveBusinessPresetCategory(businessType?: string): string {
+    const canonicalCategory = resolveBusinessCategory(businessType);
+    if (canonicalCategory) return canonicalCategory;
+
+    // Legacy fallback only for old/free-text stores that predate BUSINESS_TYPES.
     if (includesBusinessTerm(businessType, ['restaurant', 'cafe', 'coffee', 'bakery', 'cake', 'ice cream'])) return 'food';
     if (includesBusinessTerm(businessType, ['salon', 'spa', 'makeup', 'grooming', 'pet grooming'])) return 'service';
     if (includesBusinessTerm(businessType, ['clinic', 'dental', 'yoga', 'gym', 'fitness', 'trainer', 'wellness'])) return 'health';
@@ -20,7 +24,7 @@ function resolveBusinessPresetCategory(businessType?: string): string {
     if (includesBusinessTerm(businessType, ['photo', 'tattoo', 'art', 'music', 'florist', 'decor', 'tailor', 'handmade'])) return 'creative';
     if (includesBusinessTerm(businessType, ['real estate', 'law', 'financial', 'planner', 'coach', 'travel', 'contractor'])) return 'professional';
 
-    return getBusinessCategory(businessType) || 'default';
+    return 'default';
 }
 
 export function getRecommendedProjectAIPreferences(businessType?: string): Required<ProjectAIPreferences> {

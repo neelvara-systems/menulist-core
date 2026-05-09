@@ -2189,7 +2189,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/discovery-infrastructure/provenance-metadata.md
      */
-    ENABLE_INFRASTRUCTURE_PROVENANCE: true,
+    ENABLE_INFRASTRUCTURE_PROVENANCE: false,
 
     /**
      * Semantic Attribute Registry — Phase 1C

@@ -177,10 +177,10 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
                 width: '48px',
                 height: '48px',
                 borderRadius: '50%',
-                background: moodConfig.accentColor,
-                color: '#000',
-                border: 'none',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                background: `${moodConfig.accentColor}26`,
+                color: moodConfig.accentColor,
+                border: `1px solid ${moodConfig.accentColor}50`,
+                boxShadow: '0 8px 20px rgba(0, 0, 0, 0.14)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -191,7 +191,7 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
             className="active:scale-90"
             aria-label="Back to top"
         >
-            <LuArrowUp size={24} />
+            <LuArrowUp size={22} strokeWidth={2.4} />
         </a>
     );
 }

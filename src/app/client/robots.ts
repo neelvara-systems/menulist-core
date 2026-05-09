@@ -1,12 +1,34 @@
 /**
  * Client Menu Robots.txt
- * 
- * Generates robots.txt for client menus accessed via subdomain or custom domain.
- * Allows all crawlers to index the menu.
+ *
+ * Generates robots.txt for client menus and OBP pages accessed via subdomain
+ * or custom domain. Tenant domains are rewritten here by middleware so each
+ * business advertises its own sitemap instead of the platform sitemap.
  */
 
 import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
+
+const AI_AND_SEARCH_CRAWLERS = [
+    'OAI-SearchBot',
+    'ChatGPT-User',
+    'GPTBot',
+    'ClaudeBot',
+    'PerplexityBot',
+    'Google-Extended',
+    'Googlebot',
+    'Bingbot',
+];
+
+const DISALLOWED_INTERNAL_PATHS = [
+    '/admin/',
+    '/login/',
+    '/register/',
+    '/dashboard/',
+    '/api/',
+    '/editor/',
+    '/preview/',
+];
 
 export default function robots(): MetadataRoute.Robots {
     const headersList = headers();
@@ -24,10 +46,17 @@ export default function robots(): MetadataRoute.Robots {
     }
 
     return {
-        rules: {
-            userAgent: '*',
-            allow: '/',
-        },
+        rules: [
+            ...AI_AND_SEARCH_CRAWLERS.map((userAgent) => ({
+                userAgent,
+                allow: '/',
+            })),
+            {
+                userAgent: '*',
+                allow: '/',
+                disallow: DISALLOWED_INTERNAL_PATHS,
+            },
+        ],
         sitemap: `${baseUrl}/sitemap.xml`,
     };
 }

@@ -9,7 +9,7 @@
 ## Hero Section
 
 - **Headline:** One link for your entire business.
-- **Subheadline:** Menu, hours, contact — everything your customers need, always up to date.
+- **Subheadline:** Menu, hours, contact — everything your customers need, updated from your MenuList business data.
 - **CTA Text:** See how it works
 - **CTA Link:** #how-it-works
 
@@ -86,7 +86,7 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
 ## FAQ
 
 - **Q:** Is this a website?
-  **A:** No. It's your official business page — fast, clean, and always accurate. It works alongside your website if you have one.
+  **A:** No. It's your official business page — fast, clean, and updated from your MenuList business data. It works alongside your website if you have one.
 
 - **Q:** How much does it cost?
   **A:** Your official page is included with every MenuList account. No extra charge.
@@ -111,9 +111,9 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
 ## SEO Meta
 
 - **Page Title:** Official Business Page | MenuList — One Link for Your Business
-- **Meta Description:** Give your customers one link for your menu, hours, contact info, and Google reviews. Always up to date. Always accurate. Free with MenuList.
+- **Meta Description:** Give your customers one official link for your menu, hours, contact info, and Google reviews. Updates from your MenuList business data. Free with MenuList.
 - **OG Title:** One Link for Your Entire Business
-- **OG Description:** Menu, hours, contact, reviews — everything your customers need in one clean page. Always accurate.
+- **OG Description:** Menu, hours, contact, reviews — everything your customers need in one clean official page.
 - **Target Keywords:** restaurant official page, business link, digital menu link, restaurant landing page alternative, one link for restaurant, SMB presence page, business identity page
 
 ---
@@ -123,7 +123,7 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
 ### Use:
 
 - "Official page" / "official link"
-- "Always up to date" / "always accurate"
+- "Updated from your MenuList business data"
 - "One link" / "one page"
 - "Handled automatically"
 - "Included" / "no extra charge"

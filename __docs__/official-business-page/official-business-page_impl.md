@@ -215,7 +215,7 @@ OBPPage.tsx (Server Component — entry point)
 ### Data Fetching (in OBPContent)
 
 ```typescript
-// Reuse existing patterns from _client/[[...slug]]/page.tsx
+// Reuse existing patterns from client/[[...slug]]/page.tsx
 const storeData = await withRetry(() => withTimeout(getCachedStore(subdomain)));
 
 // Check if store has published menu
@@ -315,10 +315,10 @@ Primary implementation files:
 
 ## 11. Schema.org Structured Data
 
-**Updated Feb 16, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts`.
+**Updated May 9, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts` and only emits menu links when OBP has an active published menu.
 
 ```typescript
-// src/app/_client/obp/schema.ts — uses shared utilities
+// src/app/client/obp/schema.ts — uses shared utilities
 import {
   buildAddress,
   buildGeoCoordinates,
@@ -342,7 +342,10 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
     openingHoursSpecification: buildOpeningHours(storeData),
     sameAs: buildSameAs(storeData), // Social profile URLs
     dateModified: storeData.modifiedOn, // Freshness signal for AI
-    hasMenu: `https://${storeData.subdomain}.menulist.ai/menu`,
+    ...(hasPublishedMenu && {
+      menu: `${canonicalUrl}/menu`, // Food businesses
+      hasMenu: `${canonicalUrl}/menu`,
+    }),
   };
 }
 ```
@@ -360,7 +363,7 @@ The runtime implementation also accepts the resolved render language so localize
 - `getSchemaType()` — Maps `store.businessType` → schema.org subtypes (Restaurant, BeautySalon, etc.)
 - `getMenuSchemaType()` — Menu-specific variant (prefers food subtypes)
 
-**OBP-specific schema** (`src/app/_client/obp/schema.ts`):
+**OBP-specific schema** (`src/app/client/obp/schema.ts`):
 
 - `buildPotentialActions()` — ReserveAction + OrderAction with EntryPoint targets
 - `buildPaymentAccepted()` — paymentAccepted from businessAttributes (Cash, Credit Card, UPI)
@@ -373,7 +376,7 @@ The runtime implementation also accepts the resolved render language so localize
 
 ## 12. Routing Changes
 
-### Current Flow (`_client/[[...slug]]/page.tsx`)
+### Current Flow (`client/[[...slug]]/page.tsx`)
 
 ```
 Request: joespizza.menulist.ai/
@@ -429,7 +432,7 @@ Request: joespizza.menulist.ai/food-menu
 
 **WhatsApp Share (Primary Action):** Opens `wa.me/?text={encoded_message}` with prefilled message: `"{storeName} — menu, timings & contact:\n{obpUrl}"`. Tracked via `OBP_SHARE` event.
 
-**GBP Website Field Guidance:** Hint text below action buttons tells owners to add OBP link as their Google Business Profile "Website" field. This is the highest-leverage external distribution surface — all Google Maps visitors route through OBP.
+**GBP Website Field Guidance:** Hint text below action buttons tells owners to add the OBP link as their Google Business Profile "Website" field. This is the active, owner-controlled distribution path. API-based GBP sync remains hidden/off until Google API access and `ENABLE_GBP_SYNC` are approved.
 
 ### After Menu Publish (toast)
 
@@ -626,14 +629,14 @@ See `official-business-page_firebase.md` for detailed cost tracking.
 
 | File                                                           | Purpose                                                  | Lines |
 | -------------------------------------------------------------- | -------------------------------------------------------- | ----- |
-| `src/app/_client/obp/OBPContent.tsx`                           | Main OBP async server component (SSR)                    | ~670  |
-| `src/app/_client/obp/OBPSkeleton.tsx`                          | Loading skeleton for Suspense                            | ~70   |
-| `src/app/_client/obp/obp.module.scss`                          | SCSS styles (mobile-first)                               | ~305  |
-| `src/app/_client/obp/schema.ts`                                | Schema.org JSON-LD (@id, AggregateRating, image array)   | ~220  |
-| `src/app/_client/obp/OBPAnalytics.tsx`                         | Client island for page view tracking                     | ~50   |
-| `src/app/_client/obp/OBPActions.tsx`                           | Client component for action click tracking               | ~112  |
-| `src/app/_client/obp/OBPMenuCTA.tsx`                           | Client component for menu CTA with conversion tracking   | ~40   |
-| `src/app/_client/obp/BrandOBPContent.tsx`                      | Multi-store brand OBP (location selector)                | ~225  |
+| `src/app/client/obp/OBPContent.tsx`                            | Main OBP async server component (SSR)                    | ~670  |
+| `src/app/client/obp/OBPSkeleton.tsx`                           | Loading skeleton for Suspense                            | ~70   |
+| `src/app/client/obp/obp.module.scss`                           | SCSS styles (mobile-first)                               | ~305  |
+| `src/app/client/obp/schema.ts`                                 | Schema.org JSON-LD (@id, AggregateRating, image array)   | ~220  |
+| `src/app/client/obp/OBPAnalytics.tsx`                          | Client island for page view tracking                     | ~50   |
+| `src/app/client/obp/OBPActions.tsx`                            | Client component for action click tracking               | ~112  |
+| `src/app/client/obp/OBPMenuCTA.tsx`                            | Client component for menu CTA with conversion tracking   | ~40   |
+| `src/app/client/obp/BrandOBPContent.tsx`                       | Multi-store brand OBP (location selector)                | ~225  |
 | `src/lib/obp/hoursStatus.ts`                                   | Open/closed status calculator                            | ~152  |
 | `src/lib/obp/generateOBPUrl.ts`                                | URL generation helpers                                   | ~39   |
 | `src/database/multiOutlet/brandPropagation.ts`                 | Brand identity propagation utility                       | ~106  |
@@ -650,7 +653,7 @@ See `official-business-page_firebase.md` for detailed cost tracking.
 | `src/config/features.ts`                              | Added `ENABLE_OBP: false`                                                      |
 | `src/types/platform/store.ts`                         | Full `publicPresence` (15 fields) + `permanentlyClosed`                        |
 | `src/types/platform/tenant.ts`                        | Cleaned up — account vs platform-admin fields                                  |
-| `src/app/_client/[[...slug]]/page.tsx`                | OBP routing + AEO canonical title (`Name — Menu, Hours, Contact`)              |
+| `src/app/client/[[...slug]]/page.tsx`                 | OBP routing + AEO canonical title (`Name — Menu, Hours, Contact`)              |
 | `src/lib/analytics/unified.ts`                        | OBP_VIEW, OBP_ACTION_CLICK, OBP_MENU_CLICK, OBP_SHARE events + trackOBPShare() |
 | `src/database/ownerDashboard/index.ts`                | Added `getOBPMetrics()` DAL function                                           |
 | `src/components/.../businessSettings/index.tsx`       | Wired OBPLinkCard + OfficialPageTab + brand propagation                        |

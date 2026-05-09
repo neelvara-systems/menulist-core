@@ -2,7 +2,7 @@
 
 > Controlled vocabulary for business attributes with schema.org mappings.
 > Phase 1C of Infrastructure Expansion.
-> Last Updated: March 10, 2026
+> Last Updated: May 9, 2026
 
 ---
 

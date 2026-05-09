@@ -96,6 +96,7 @@ Final pass notes:
 | Featured cards should reflect category icon/emoji config | Agree with constraint | Reuse the existing category icon/emoji design setting; do not add a featured-only badge or force icons when the owner disables category icons. | `DecisionBlocks.tsx` now receives `showCategoryIcons` and renders the item category icon beside category metadata when enabled. |
 | Owner controls still said `Smart Recommendations` | Agree | Desktop and mobile owner controls should use the same mental model as the public menu: Featured section, Featured choice, Quick choice, and Value choice. | Desktop editor action/modal, mobile Menu tab/sheet, analytics settings, and feature copy now use Featured wording while preserving the existing settings path. |
 | Featured shortcuts must still open item detail | Required | Visual polish must not break decision-block click behavior or analytics. | Browser-verified a featured card opens the PDP overlay. |
+| PDP images need detail inspection across SMB types | Agree | Keep normal PDP images contain-fit for fast menu scanning, then provide an explicit fullscreen inspection layer for salons, retail, repair, portfolios, and other visual SMB offerings. | `PDPModal.tsx` now has an enlarge control, fullscreen image viewer, zoom in/out, reset, close, pan, keyboard image navigation, and the same theme-aware icon button treatment. |
 
 ---
 
@@ -348,7 +349,7 @@ This appendix exists because the source review had many small points inside the 
 | PDP image could crop instead of showing the full uploaded image | Accepted | PDP image rendering now uses `object-contain` inside the reserved modal image frame. |
 | Mobile search focus could trigger browser zoom | Accepted | Public menu search input uses 16px mobile font sizing and touch manipulation to avoid iOS zoom behavior. |
 | Featured/decision blocks could widen the full page horizontally | Accepted | The featured row remains a contained horizontal carousel, with max-width/min-width guards so page-level horizontal scroll is blocked. |
-| Category click should select and keep the active category visible in the horizontal rail | Accepted | Category tabs now use anchor semantics plus active-tab refs and `scrollIntoView({ inline: 'center' })` on mobile/tablet. |
+| Category click should select and keep the active category visible in the horizontal rail | Accepted | Category tabs use anchor semantics plus active-tab refs and direct tab-container centering on mobile/tablet. |
 | Category icon/title vertical alignment was uneven | Accepted, preserving owner choice | Shared `CategoryIcon` now renders icon and emoji choices in a stable inline-flex box; owner-selected emoji/icons are not removed. |
 | Category header divider felt partial | Accepted | Section divider now spans the content width with calmer opacity instead of a short partial underline. |
 
@@ -356,16 +357,27 @@ This appendix exists because the source review had many small points inside the 
 
 | Issue Found In Public Menu | Decision | Status |
 | --- | --- | --- |
-| Search focus hid `Sections` and language controls, and the expansion animation made the sticky row feel unstable | Accepted | Search now stays compact in the command row, side controls stay mounted/reachable, and the sticky row avoids width/max-width animation during scroll. |
+| Search focus hid `Sections` and language controls, and the expansion animation made the sticky row feel unstable | Accepted | Search expansion is preserved, side controls collapse through a stable transition, and controls return when search is cleared/blurred. |
+| Search expansion was removed while fixing sticky-row motion | Reversed | Search expands again on focus/type. The command row collapses side controls with a stable max-width/opacity transition instead of removing the behavior. |
+| PDP opening motion felt stronger than related menu popovers | Accepted | The PDP spring treatment is now centralized as a shared menu motion primitive and reused for transient panels such as `Sections`, language selection, search-result summary, and no-result recovery. |
 | Search clear icon looked like a dot and clear behavior was unclear | Accepted | Clear uses a larger explicit `LuX` glyph. In this menu context, clear exits search mode and blurs the input so the customer returns to browsing. |
 | `Sections` and language dropdowns could be clipped or covered by sticky/overflow containers | Accepted | Inline category and language popovers render through portals with fixed viewport anchoring. |
+| `Sections` popup stayed open while the page scrolled behind it | Accepted | Page-level scroll now closes the section popup; scrolling inside the section list itself remains allowed. |
+| Horizontal category tab could feel like it lagged or vibrated after click | Accepted | Intentional category jumps now lock the chosen category during smooth scroll, suppress intermediate scroll-spy updates, and center the tab rail directly only when the tab is not already comfortably visible. |
+| Passive scroll active-category tracking could flip between neighboring sections | Accepted | Scroll-spy now selects the last section that has crossed the sticky reading line instead of whichever header is nearest, reducing boundary flicker and forced rail motion. |
 | Zero-result search showed final-action CTAs already available in the footer | Accepted | Zero-result recovery now stays retrieval-focused: show all plus category recovery only. |
 | Featured carousel could still contribute to page-level horizontal overflow on small screens | Accepted | Featured row keeps its own horizontal scroll while card widths are capped against viewport width. |
+| Single featured card looked like a partial carousel card | Accepted | When only one featured choice renders, it takes the full available row width. |
 | Items without images showed blank image placeholders | Accepted | Public item cards now render image frames only when the item has an image URL. |
 | Mobile PDP was still centered and image viewing/closing could feel fragile | Accepted | PDP now becomes a bottom sheet on mobile, uses contain-fit image frames, supports arrows/dots plus touch swiping, and clears modal state immediately on close before history back. |
+| PDP gallery arrows could appear unresponsive while the next image was still loading | Accepted | PDP now mounts gallery images in the frame, eagerly loads non-primary slides, preloads gallery URLs through the browser image cache, and only fades to a target slide once it is decoded. |
+| Menu behind PDP remained scrollable on mobile/browser scroll | Accepted | PDP now applies a real document scroll lock while item details are open, freezes the background at its current position, keeps the modal content scrollable, and restores page scroll on close. |
+| PDP close/image controls drifted from the search clear button styling | Accepted | PDP close, previous image, and next image buttons now share the same accent-tint button treatment as the search clear control. |
 | PDP category identity was missing | Accepted with owner-control constraint | PDP category row now shows the category icon/emoji only when category icons are enabled and the category has an icon. |
 | Footer action buttons and terminal spacing felt label-heavy and loose | Accepted | Footer actions use compact icon/text chips; compact MenuList attribution no longer adds duplicate safe-area padding. |
 | Back-to-top was shifted upward after the category FAB was removed | Accepted | Back-to-top now sits at the bottom-right safe-area corner. |
+| Back-to-top color felt disconnected from active category navigation | Accepted | Back-to-top now uses the same accent-tint background, accent text color, and soft border family as active category navigation. |
+| Back-to-top returned the sticky search row flush against the device top edge | Accepted | Mobile/tablet sticky command controls now keep a small real top offset in addition to safe-area handling, and scroll padding uses the same buffer. |
 
 ## Verification
 

@@ -323,7 +323,7 @@ No owner action required
 │                                                                  │
 │   1. Parse hostname (resolveDomain)                             │
 │   2. Determine tenant type (subdomain vs custom)                │
-│   3. Rewrite to /_client/[[...slug]]                            │
+│   3. Rewrite to /client/[[...slug]]                            │
 │   4. Set headers (x-tenant-subdomain, x-tenant-type)            │
 └─────────────────────────────────────────────────────────────────┘
                               │

@@ -10,7 +10,7 @@
  * - sameAs: Social profile links for entity alignment
  * - priceRange: $/$$/$$$/$$$$
  * - dateModified: Freshness signal for AI engines
- * - openingHoursSpecification, address, hasMenu, telephone, etc.
+ * - openingHoursSpecification, address, catalog links, telephone, etc.
  *
  * @see __docs__/discovery-infrastructure/
  * @see __docs__/official-business-page/official-business-page_impl.md §9
@@ -23,6 +23,7 @@ import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescript
 import {
     buildAddress,
     buildAmenityFeatures,
+    buildPublicCatalogUrlSchema,
     buildGeoCoordinates,
     buildOpeningHours,
     buildSameAs,
@@ -35,6 +36,7 @@ export function generateOBPSchema(
     canonicalUrl: string,
     language?: string,
     identityScope: 'brand' | 'store' = 'brand',
+    options: { hasPublishedMenu?: boolean; menuUrl?: string } = {},
 ) {
     const contentLanguage = language || storeData?.defaultLanguage || storeData?.activeLanguages?.[0] || storeData?.language || 'en';
     const publicDisplayName = identityScope === 'store'
@@ -57,7 +59,11 @@ export function generateOBPSchema(
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
-    const schemaType = getSchemaType(storeData?.businessType);
+    const schemaType = getSchemaType(storeData?.businessType, storeData?.businessCategory);
+    const menuUrl = options.hasPublishedMenu
+        ? (options.menuUrl || buildMenuUrl(canonicalUrl))
+        : undefined;
+    const catalogName = publicDescriptor || (storeData?.businessCategory === 'food' ? 'Menu' : 'Offerings');
 
     // Reflect active tempStatus in schema (e.g., closed_today → show as closed today)
     const tempStatusSchema = buildTempStatusSchema(storeData?.tempStatus);
@@ -105,6 +111,7 @@ export function generateOBPSchema(
         ...(storeData?.publicPresence?.reservationUrl && {
             acceptsReservations: storeData.publicPresence.reservationUrl,
         }),
+        ...buildPublicCatalogUrlSchema(menuUrl, storeData?.businessType, storeData?.businessCategory, catalogName),
         ...buildPotentialActions(
             storeData?.publicPresence?.reservationUrl,
             storeData?.publicPresence?.orderUrl,
@@ -129,18 +136,17 @@ export function generateOBPSchema(
                 value: 'ClosedPermanently',
             },
         }),
-        ...(storeData?.subdomain && {
-            hasMenu: `https://${storeData.subdomain}.menulist.ai/menu`,
-        }),
-        ...(storeData?.customDomain && {
-            hasMenu: `https://${storeData.customDomain}/menu`,
-        }),
         publisher: {
             '@type': 'Organization',
             name: 'MenuList',
             url: 'https://www.menulist.ai',
         },
     };
+}
+
+function buildMenuUrl(canonicalUrl: string): string {
+    const base = canonicalUrl.replace(/\/$/, '');
+    return `${base}/menu`;
 }
 
 /**

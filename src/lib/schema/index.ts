@@ -8,7 +8,7 @@
  * @see __docs__/official-business-page/official-business-page_impl.md §9
  */
 
-import { getBusinessCategory } from '@data/shared/businessTypes';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 
 // ── Constants ──
 
@@ -150,6 +150,31 @@ const BUSINESS_TYPE_SCHEMA_KEYWORDS: Array<[string, string]> = [
     ['store', 'Store'],
 ];
 
+const FOOD_SCHEMA_TYPES = new Set([
+    'Restaurant',
+    'CafeOrCoffeeShop',
+    'Bakery',
+    'BarOrPub',
+    'FoodEstablishment',
+    'IceCreamShop',
+    'FastFoodRestaurant',
+]);
+
+const PRODUCT_OFFERING_SCHEMA_TYPES = new Set([
+    'Store',
+    'ClothingStore',
+    'JewelryStore',
+    'BookStore',
+    'ElectronicsStore',
+    'FurnitureStore',
+    'MusicStore',
+    'ShoeStore',
+    'PetStore',
+    'Florist',
+    'SportingGoodsStore',
+    'AutoDealer',
+]);
+
 // ── Builders ──
 
 /**
@@ -174,12 +199,14 @@ export function buildAddress(storeData: any) {
  * Returns undefined if no geo data available.
  */
 export function buildGeoCoordinates(storeData: any) {
-    if (!storeData?.geo?.latitude || !storeData?.geo?.longitude) return undefined;
+    const latitude = Number(storeData?.geo?.latitude);
+    const longitude = Number(storeData?.geo?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return undefined;
 
     return {
         '@type': 'GeoCoordinates' as const,
-        latitude: storeData.geo.latitude,
-        longitude: storeData.geo.longitude,
+        latitude,
+        longitude,
     };
 }
 
@@ -219,21 +246,22 @@ export function buildOpeningHours(storeData: any) {
 export function buildSameAs(storeData: any) {
     const links: string[] = [];
     const socialMedia = storeData?.socialMedia || {};
+    const addLink = (value: unknown, fallbackBase: string) => {
+        const raw = String(value || '').trim();
+        if (!raw) return;
+        const url = raw.startsWith('http') ? raw : `${fallbackBase}${raw.replace(/^@/, '')}`;
+        if (!links.includes(url)) links.push(url);
+    };
 
-    if (socialMedia.instagram) {
-        const ig = socialMedia.instagram;
-        links.push(ig.startsWith('http') ? ig : `https://instagram.com/${ig}`);
-    }
-    if (socialMedia.facebook) {
-        const fb = socialMedia.facebook;
-        links.push(fb.startsWith('http') ? fb : `https://facebook.com/${fb}`);
-    }
+    addLink(socialMedia.instagram, 'https://instagram.com/');
+    addLink(socialMedia.facebook, 'https://facebook.com/');
+    addLink(socialMedia.twitter, 'https://twitter.com/');
+    addLink(socialMedia.linkedin, 'https://linkedin.com/in/');
+    addLink(socialMedia.youtube, 'https://youtube.com/');
     if (storeData?.url) {
-        const url = storeData.url;
-        links.push(url.startsWith('http') ? url : `https://${url}`);
+        addLink(storeData.url, 'https://');
     } else if (socialMedia.website) {
-        const web = socialMedia.website;
-        links.push(web.startsWith('http') ? web : `https://${web}`);
+        addLink(socialMedia.website, 'https://');
     }
 
     return links.length > 0 ? links : undefined;
@@ -283,11 +311,72 @@ export function buildAmenityFeatures(attributes?: Record<string, boolean>) {
  * Maps store.businessType to schema.org subtypes.
  * Falls back to 'LocalBusiness' for unknown types.
  */
-export function getSchemaType(businessType?: string): string {
-    if (!businessType) return 'LocalBusiness';
-    const normalized = businessType.toLowerCase().trim();
-    if (BUSINESS_TYPE_SCHEMA_MAP[normalized]) return BUSINESS_TYPE_SCHEMA_MAP[normalized];
-    return BUSINESS_TYPE_SCHEMA_KEYWORDS.find(([keyword]) => normalized.includes(keyword))?.[1] || 'LocalBusiness';
+export function getSchemaType(businessType?: string, businessCategory?: string): string {
+    const normalized = businessType?.toLowerCase().trim() || '';
+    if (normalized && BUSINESS_TYPE_SCHEMA_MAP[normalized]) return BUSINESS_TYPE_SCHEMA_MAP[normalized];
+    const keywordMatch = normalized
+        ? BUSINESS_TYPE_SCHEMA_KEYWORDS.find(([keyword]) => normalized.includes(keyword))?.[1]
+        : undefined;
+    if (keywordMatch) return keywordMatch;
+
+    const category = resolveBusinessCategory(businessType, businessCategory);
+    if (category === 'food') return 'FoodEstablishment';
+    if (category === 'retail') return 'Store';
+
+    return 'LocalBusiness';
+}
+
+export function getSchemaBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
+    return resolveBusinessCategory(businessType, businessCategory);
+}
+
+export function isFoodSchemaType(schemaType: string): boolean {
+    return FOOD_SCHEMA_TYPES.has(schemaType);
+}
+
+export function isFoodBusinessCategory(businessType?: string, businessCategory?: string): boolean {
+    return isFoodSchemaType(getSchemaType(businessType, businessCategory))
+        || resolveBusinessCategory(businessType, businessCategory) === 'food';
+}
+
+export function getOfferingItemSchemaType(businessType?: string, businessCategory?: string): 'Product' | 'Service' {
+    const category = resolveBusinessCategory(businessType, businessCategory);
+    const schemaType = getSchemaType(businessType, businessCategory);
+    const normalized = businessType?.toLowerCase().trim() || '';
+
+    if (category === 'retail' || PRODUCT_OFFERING_SCHEMA_TYPES.has(schemaType)) {
+        return 'Product';
+    }
+
+    if (/(dealer|seller|store|shop|boutique|book|furniture|jewelry|equipment|florist|craft|product)/.test(normalized)) {
+        return 'Product';
+    }
+
+    return 'Service';
+}
+
+export function buildPublicCatalogUrlSchema(
+    catalogUrl: string | undefined,
+    businessType?: string,
+    businessCategory?: string,
+    catalogName: string = 'Offerings',
+): Record<string, any> {
+    if (!catalogUrl) return {};
+
+    if (isFoodBusinessCategory(businessType, businessCategory)) {
+        return {
+            menu: catalogUrl,
+            hasMenu: catalogUrl,
+        };
+    }
+
+    return {
+        hasOfferCatalog: {
+            '@type': 'OfferCatalog',
+            name: catalogName,
+            url: catalogUrl,
+        },
+    };
 }
 
 /**
@@ -439,22 +528,15 @@ export function buildTempStatusSchema(tempStatus?: {
  * Menu pages prefer Restaurant/FoodEstablishment types for hasMenu support.
  * Falls back to 'Restaurant' for food-related businesses, otherwise uses getSchemaType.
  */
-export function getMenuSchemaType(businessType?: string): string {
-    const schemaType = getSchemaType(businessType);
+export function getMenuSchemaType(businessType?: string, businessCategory?: string): string {
+    const schemaType = getSchemaType(businessType, businessCategory);
 
-    // For menu pages, food-related businesses should use Restaurant subtypes
-    // Non-food businesses fall through to their specific type
-    const foodTypes = [
-        'Restaurant', 'CafeOrCoffeeShop', 'Bakery', 'BarOrPub',
-        'FoodEstablishment', 'IceCreamShop', 'FastFoodRestaurant',
-    ];
-
-    if (foodTypes.includes(schemaType)) return schemaType;
+    if (isFoodSchemaType(schemaType)) return schemaType;
 
     // Only food-category unknowns should use Restaurant as the menu-page fallback.
     // Other SMB categories are still customer-facing offering pages, but they
     // must not be mislabeled as restaurants in structured data.
-    if (schemaType === 'LocalBusiness' && getBusinessCategory(businessType) === 'food') {
+    if (schemaType === 'LocalBusiness' && resolveBusinessCategory(businessType, businessCategory) === 'food') {
         return 'Restaurant';
     }
 

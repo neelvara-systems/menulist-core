@@ -1,9 +1,11 @@
 import GlobalLanguagesList from '@data/languages';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronDown, LuGlobe } from 'react-icons/lu';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
+import { menuFadeTransition, menuPanelMotion, menuSpringTransition } from './menuMotion';
 
 interface MenuLanguageSwitcherProps {
     projectData: Project;
@@ -95,72 +97,85 @@ function MenuLanguageSwitcher({
         };
     }, [showLangDropdown, updateAnchorPosition]);
 
-    const languageDropdown = mounted && showLangDropdown ? createPortal(
-        <>
-            <div
-                className="fixed inset-0"
-                style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 10018,
-                }}
-                onClick={() => setShowLangDropdown(false)}
-            />
-            <div
-                className="py-1 rounded-lg shadow-lg"
-                style={{
-                    position: 'fixed',
-                    right: anchorPosition.right,
-                    top: anchorPosition.top,
-                    zIndex: 10019,
-                    minWidth: 148,
-                    maxWidth: 'calc(100vw - 24px)',
-                    padding: 4,
-                    borderRadius: 10,
-                    background: moodConfig.background,
-                    border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                    boxShadow: '0 16px 32px rgba(0, 0, 0, 0.2)',
-                }}
-            >
-                {projectData.languages?.map((lang: string) => {
-                    const langInfo = GlobalLanguagesList.find(gl => gl.code === lang);
-                    const isActive = lang === activeLanguage;
-                    return (
-                        <button
-                            key={lang}
-                            type="button"
-                            onClick={() => {
-                                setActiveLanguage(lang);
-                                setShowLangDropdown(false);
-                            }}
-                            className="w-full text-left px-3 py-2.5 min-h-[44px] flex items-center gap-2 hover:opacity-80 transition-opacity"
-                            style={{
-                                width: '100%',
-                                minHeight: 44,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                padding: '10px 12px',
-                                border: 0,
-                                borderRadius: 8,
-                                color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,
-                                fontWeight: isActive ? 600 : 400,
-                                background: isActive ? `${moodConfig.accentColor}10` : 'transparent',
-                                fontFamily: moodConfig.bodyFont,
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                            }}
-                            dir={langInfo?.direction || 'ltr'}
-                        >
-                            <span className="text-sm">{langInfo?.nativeName || lang}</span>
-                            {langInfo?.name && langInfo.name !== langInfo.nativeName && (
-                                <span className="text-xs opacity-60">({langInfo.name})</span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-        </>,
+    const languageDropdown = mounted ? createPortal(
+        <AnimatePresence>
+            {showLangDropdown && (
+                <>
+                    <motion.div
+                        className="fixed inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={menuFadeTransition}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 10018,
+                        }}
+                        onClick={() => setShowLangDropdown(false)}
+                    />
+                    <motion.div
+                        className="py-1 rounded-lg shadow-lg"
+                        initial={menuPanelMotion.initial}
+                        animate={menuPanelMotion.animate}
+                        exit={menuPanelMotion.exit}
+                        transition={menuSpringTransition}
+                        style={{
+                            position: 'fixed',
+                            right: anchorPosition.right,
+                            top: anchorPosition.top,
+                            zIndex: 10019,
+                            minWidth: 148,
+                            maxWidth: 'calc(100vw - 24px)',
+                            padding: 4,
+                            borderRadius: 10,
+                            background: moodConfig.background,
+                            border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                            boxShadow: '0 16px 32px rgba(0, 0, 0, 0.2)',
+                            transformOrigin: 'top right',
+                        }}
+                    >
+                        {projectData.languages?.map((lang: string) => {
+                            const langInfo = GlobalLanguagesList.find(gl => gl.code === lang);
+                            const isActive = lang === activeLanguage;
+                            return (
+                                <button
+                                    key={lang}
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveLanguage(lang);
+                                        setShowLangDropdown(false);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 min-h-[44px] flex items-center gap-2 hover:opacity-80 transition-opacity"
+                                    style={{
+                                        width: '100%',
+                                        minHeight: 44,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '10px 12px',
+                                        border: 0,
+                                        borderRadius: 8,
+                                        color: isActive ? moodConfig.accentColor : moodConfig.bodyColor,
+                                        fontWeight: isActive ? 600 : 400,
+                                        background: isActive ? `${moodConfig.accentColor}10` : 'transparent',
+                                        fontFamily: moodConfig.bodyFont,
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                    }}
+                                    dir={langInfo?.direction || 'ltr'}
+                                >
+                                    <span className="text-sm">{langInfo?.nativeName || lang}</span>
+                                    {langInfo?.name && langInfo.name !== langInfo.nativeName && (
+                                        <span className="text-xs opacity-60">({langInfo.name})</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>,
         document.body
     ) : null;
 

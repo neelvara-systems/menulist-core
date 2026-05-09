@@ -141,8 +141,8 @@ Assumptions:
 
 | Function                   | File                                              | Operation Type |
 | -------------------------- | ------------------------------------------------- | -------------- |
-| `getStoreBySubdomain()`    | `src/app/_client/[[...slug]]/page.tsx` (existing) | Read (cached)  |
-| `getStoreByCustomDomain()` | `src/app/_client/[[...slug]]/page.tsx` (existing) | Read (cached)  |
+| `getStoreBySubdomain()`    | `src/app/client/[[...slug]]/page.tsx` (existing) | Read (cached)  |
+| `getStoreByCustomDomain()` | `src/app/client/[[...slug]]/page.tsx` (existing) | Read (cached)  |
 | `getStoreById()`           | `src/database/stores/index.ts` (existing)         | Read (cached)  |
 | `updateStore()`            | `src/database/stores/index.ts` (existing)         | Write (merge)  |
 
@@ -154,7 +154,7 @@ Assumptions:
 
 | Route                        | Method    | Firebase Ops  | Rate Limited? | Notes                                       |
 | ---------------------------- | --------- | ------------- | ------------- | ------------------------------------------- |
-| `_client/[[...slug]]/` (OBP) | GET (SSR) | 1-2R (cached) | CDN cache     | Public page, no API route                   |
+| `client/[[...slug]]/` (OBP) | GET (SSR) | 1-2R (cached) | CDN cache     | Public page, no API route                   |
 | No new API routes            | —         | —             | —             | OBP is server-rendered, no client API calls |
 
 ---

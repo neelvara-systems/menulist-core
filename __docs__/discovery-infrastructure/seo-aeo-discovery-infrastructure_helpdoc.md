@@ -8,7 +8,7 @@
 
 ## Quick Summary
 
-MenuList automatically makes your business easy to find on Google, Maps, and AI assistants like ChatGPT. When you set up your menu and business info, MenuList structures it so search engines can read it perfectly. You don't need to do anything extra.
+MenuList automatically publishes your business information in a format search engines and AI crawlers can read. When you keep your menu, hours, address, and contact details updated in MenuList, your official public page and menu pages stay structured and current. You don't need to do SEO work.
 
 ---
 
@@ -17,8 +17,8 @@ MenuList automatically makes your business easy to find on Google, Maps, and AI 
 When you enter your business details in MenuList — menu, hours, phone number, address — MenuList automatically:
 
 1. **Formats your data** so Google and AI can read it
-2. **Keeps it updated** — change your hours, and Google knows immediately
-3. **Makes you findable** — when customers search "restaurants near me", your info appears correctly
+2. **Keeps your official source updated** — change your hours, and your MenuList page, menu pages, sitemap, and structured data update
+3. **Makes your data easier to trust** — when search engines or AI crawlers read your page, they get current business information from one place
 
 This happens behind the scenes. You just run your business.
 
@@ -45,7 +45,7 @@ While MenuList handles the technical side automatically, you can improve your vi
 
 1. Go to **Settings** → **Business Profile**
 2. Make sure all fields are filled in
-3. Changes reflect automatically — no extra steps needed
+3. Changes update your MenuList public pages automatically — Google and other platforms refresh on their own crawl schedule
 
 ---
 
@@ -57,11 +57,11 @@ No. MenuList handles all the technical work. You just keep your business info up
 
 ### Will my business show up on Google?
 
-MenuList structures your data so Google can read it better. This improves your chances of appearing in search results and Maps. Google decides what to show — MenuList makes sure your data is clean and accurate for when it does.
+MenuList structures your data so Google can read it better. This improves the quality of the official source Google can crawl. Google decides what to show and when it refreshes.
 
 ### Does this work with ChatGPT and AI search?
 
-Yes. When customers ask AI assistants about local businesses, the AI looks for clean, structured data. MenuList provides exactly that.
+MenuList gives AI crawlers and browsing systems clean, structured public data to read. AI systems decide whether to use or cite a page.
 
 ### Is there a dashboard for this?
 
@@ -77,7 +77,7 @@ No. This is included with every MenuList account. No extra charge.
 
 - **Official Business Page** — Your official link that customers see when they open your MenuList URL
 - **Business Hours** — Live open/closed status shown on your page and in search results
-- **Google Business Profile Sync** — Keeps your Google listing in sync with MenuList (when enabled)
+- **Google Business Profile Link Guidance** — Add your MenuList link to your Google profile so Google visitors can reach the official page. API sync only appears when GBP Sync is approved and enabled for the account.
 
 ---
 
@@ -88,4 +88,4 @@ No. This is included with every MenuList account. No extra charge.
 
 ---
 
-**Last Updated:** February 16, 2026
+**Last Updated:** May 9, 2026
