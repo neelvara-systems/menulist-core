@@ -33,6 +33,7 @@ import {
     buildPublicMenuSearchQuery,
     matchesPublicMenuSearchDocument,
 } from '@lib/menu/publicMenuSearch';
+import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -262,10 +263,16 @@ function MenuPageNew({
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
     const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
+    const [stickyControlsRepaintTick, setStickyControlsRepaintTick] = useState(0);
+    const selectedItemRef = useRef<any>(null);
 
     useEffect(() => {
         activeCategoryIdRef.current = activeCategory?.id || null;
     }, [activeCategory?.id]);
+
+    useEffect(() => {
+        selectedItemRef.current = selectedItem;
+    }, [selectedItem]);
 
     const releaseCategoryNavigationLock = useCallback((categoryId?: string) => {
         const currentLock = categoryNavigationLockRef.current;
@@ -825,6 +832,11 @@ function MenuPageNew({
 
     // G14 - Handle item click with history state
     const handleItemClick = useCallback((item: any) => {
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+        setIsSearchFocused(false);
+
         if (item.available === false) {
             if (analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
                 const itemName = getMenuText(item.name, 'Unavailable Item');
@@ -893,12 +905,18 @@ function MenuPageNew({
         setSelectedItemTrackView(true);
     }, [getMenuBasePath]);
 
-    // G14 - Track selected item for popstate handler (avoids stale closure)
-    const selectedItemRef = useRef<any>(null);
-    useEffect(() => {
-        selectedItemRef.current = selectedItem;
-    }, [selectedItem]);
+    const handlePdpClosed = useCallback(() => {
+        if (selectedItemRef.current) return;
 
+        setIsSearchFocused(false);
+        setStickyControlsRepaintTick((current) => current + 1);
+        window.requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('scroll'));
+            window.dispatchEvent(new Event('resize'));
+        });
+    }, []);
+
+    // G14 - Track selected item for popstate handler (avoids stale closure)
     // G14 - Handle browser back button (popstate event)
     useEffect(() => {
         const handlePopState = () => {
@@ -1109,6 +1127,19 @@ function MenuPageNew({
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
         isolation: 'isolate',
+        transform: stickyControlsRepaintTick % 2 === 0 ? 'translateZ(0)' : 'translate3d(0, 0, 0)',
+        WebkitTransform: stickyControlsRepaintTick % 2 === 0 ? 'translateZ(0)' : 'translate3d(0, 0, 0)',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+    };
+    const stickyControlsTopCoverStyle: React.CSSProperties = {
+        position: 'absolute',
+        top: `calc(-${stickyControlsTopBuffer}px - env(safe-area-inset-top))`,
+        right: 0,
+        left: 0,
+        height: `calc(${stickyControlsTopBuffer}px + env(safe-area-inset-top))`,
+        background: moodConfig.background,
+        pointerEvents: 'none',
     };
     const commandLayerStyle: React.CSSProperties = {
         display: 'flex',
@@ -1364,6 +1395,9 @@ function MenuPageNew({
                     />
                     {/* Sticky command layer: retrieval first, section navigation second */}
                     <div style={stickyControlsStyle}>
+                        {stickyControlsTopBuffer > 0 && (
+                            <div aria-hidden="true" style={stickyControlsTopCoverStyle} />
+                        )}
                         <div style={commandLayerStyle}>
                             <MenuSearchBar
                                 searchTerm={searchTerm}
@@ -1715,7 +1749,7 @@ function MenuPageNew({
                                                     const itemDecisionChips = getItemDecisionChips(item);
 
                                                     // G10 ENFORCEMENT: Image quota per category
-                                                    const itemImageUrl = item.images?.[0]?.url;
+                                                    const itemImageUrl = getPrimaryPublicMenuImage(item);
                                                     const reserveItemImageSlot = shouldShowItemImages && !!itemImageUrl && itemIndex < layoutConfig.maxImagesPerCategory;
 
                                                     return (
@@ -1998,6 +2032,7 @@ function MenuPageNew({
             <PDPModal
                 item={selectedItem}
                 onClose={handleModalClose}
+                onClosed={handlePdpClosed}
                 language={activeLanguage}
                 moodConfig={moodConfig}
                 projectData={projectData}

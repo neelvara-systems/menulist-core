@@ -10,7 +10,7 @@
  * @see src/data/shared/businessTypes.ts — BUSINESS_CATEGORIES
  */
 
-import { getBusinessCategory } from '@data/shared/businessTypes';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import type { ItemDecisionFactKey } from '@lib/menu/itemDecisionFacts';
 
 // ═══════════════════════════════════════════════════════════════
@@ -319,7 +319,7 @@ export function getMetadataFieldKeysForBusiness(businessType?: string): Metadata
         return exactOverride;
     }
 
-    const category = getBusinessCategory(businessType) || 'food'; // default to food
+    const category = resolveBusinessCategory(businessType) || 'food'; // default to food
     return CATEGORY_METADATA_FIELDS[category] || CATEGORY_METADATA_FIELDS.food;
 }
 

@@ -10,7 +10,7 @@
  * This config maps business categories to appropriate labels.
  */
 
-import { getBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@constant/common';
 
 // Labels for availability status by business category
 export interface AvailabilityLabels {
@@ -72,7 +72,7 @@ const DEFAULT_LABELS: AvailabilityLabels = {
  * @returns Labels appropriate for that business type
  */
 export function getAvailabilityLabels(businessType?: string): AvailabilityLabels {
-    const category = getBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType);
     if (category && CATEGORY_LABELS[category]) {
         return CATEGORY_LABELS[category];
     }

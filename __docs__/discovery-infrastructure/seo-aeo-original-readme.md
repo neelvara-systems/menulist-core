@@ -67,7 +67,7 @@ Enrich MenuList's existing OBP and menu pages with deeper schema.org structured 
 | -------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Official Business Page (OBP)** | ✅ BUILT            | OBP is the canonical identity page this feature enriches                                                         |
 | **GBP Sync**                     | ⚠️ FOUNDATION ONLY (flag OFF) | Store fields and docs exist, but OAuth/token runtime is disabled until API access is approved                   |
-| **Menu Schema**                  | ✅ BUILT            | Menu pages already generate Restaurant + Menu + MenuItem schema                                                  |
+| **Catalog Schema**               | ✅ BUILT            | Food pages generate Menu/MenuItem schema; non-food SMB pages generate OfferCatalog/Offer schema                  |
 | **Guest Feedback**               | ✅ BUILT            | Foundation for future reputation/review signals in schema                                                        |
 | **Store Data Model**             | ✅ EXISTS           | Contains 90%+ of fields needed for full schema generation                                                        |
 | **Agent Readiness Strategy**     | ✅ BUILT            | Extends this feature with AI discovery layer (llms.txt, llms-full.txt). See `__docs__/agent-readiness-strategy/` |

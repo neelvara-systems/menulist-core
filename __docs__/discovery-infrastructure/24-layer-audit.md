@@ -45,7 +45,7 @@
 
 **Expected:** Standardized categories, consistent naming, duplicate detection across businesses.
 
-**Evidence (existing):** `BUSINESS_TYPES` (60+ types), `getBusinessCategory()` (7 derived), `BUSINESS_TYPE_SCHEMA_MAP` (20+ schema.org maps), structured currency/hours.
+**Evidence (existing):** `BUSINESS_CATEGORIES` owns schema/catalog/offering defaults; `BUSINESS_TYPES` (60+ types) owns category membership and precise subtype overrides; structured currency/hours.
 
 **Evidence (NEW — Phase 1A):**
 
@@ -150,7 +150,7 @@
 
 ## Layer 14: Schema Compatibility Layer — ⚠️ PARTIAL+
 
-**Evidence (existing):** `src/lib/schema/index.ts` (465 lines, shared builders), 20+ business type → schema.org mappings.
+**Evidence (existing):** `src/lib/schema/index.ts` (shared builders) consumes category-level schema defaults and type-level schema overrides from `src/data/shared/businessTypes.ts`.
 
 **Evidence (NEW — Phase 1C):**
 
@@ -182,7 +182,7 @@
 
 ## Layer 16: Cross-Business Taxonomy — ⚠️ PARTIAL+ (was PARTIAL)
 
-**Evidence (existing):** `BUSINESS_TYPES` (60+), `BUSINESS_CATEGORIES` (7), `BUSINESS_TYPE_SCHEMA_MAP` (20+).
+**Evidence (existing):** `BUSINESS_CATEGORIES` (7) with schema/catalog/offering defaults; `BUSINESS_TYPES` (60+) with subtype overrides only where needed.
 
 **Evidence (NEW — Phase 1A):**
 
@@ -248,7 +248,7 @@
 
 ## Layer 23: Machine-Readable Semantics — ⚠️ PARTIAL+
 
-**Evidence (existing):** schema.org JSON-LD (10+ types, 20+ business type mappings), llms.txt, llms-full.txt, per-item structured data.
+**Evidence (existing):** schema.org JSON-LD (category defaults + subtype overrides), llms.txt, llms-full.txt, per-item structured data.
 
 **Evidence (NEW — Phase 1C):** 17 semantic attributes with schema.org mappings, grouped vocabulary, `extractStoreSemanticProfile()`.
 

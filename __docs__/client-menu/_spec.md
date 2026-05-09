@@ -228,7 +228,7 @@ No owner action required
 | Component          | Implementation                        |
 | ------------------ | ------------------------------------- |
 | Dynamic Metadata   | Title, description, OG tags per store |
-| Schema.org JSON-LD | Restaurant + Menu structured data     |
+| Schema.org JSON-LD | Food businesses emit Menu structured data; non-food SMBs emit OfferCatalog structured data |
 | Per-client Sitemap | `{domain}/sitemap.xml`                |
 | Per-client Robots  | `{domain}/robots.txt`                 |
 | Canonical URLs     | Custom domain takes precedence        |

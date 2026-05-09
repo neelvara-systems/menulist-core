@@ -173,6 +173,7 @@ export default function MenuFooter({
         borderRadius: Math.max(12, moodConfig.itemStyle.borderRadius || 12),
         background: moodConfig.itemStyle.background,
         padding: '16px',
+        textAlign: 'center' as const,
     };
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
@@ -200,7 +201,7 @@ export default function MenuFooter({
                 boxSizing: 'border-box',
                 marginTop: '22px',
                 padding: '20px 0 0',
-                textAlign: 'left',
+                textAlign: 'center',
                 fontFamily: moodConfig.bodyFont,
                 color: moodConfig.bodyColor,
                 display: 'flex',
@@ -250,7 +251,7 @@ export default function MenuFooter({
                 <div style={{
                     display: 'flex',
                     flexWrap: 'wrap',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'center',
                     gap: '8px',
                     marginTop: '12px',
                 }}>
@@ -450,7 +451,7 @@ export default function MenuFooter({
             {socialLinks.length > 0 && (
                 <div style={{
                     display: 'flex',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'center',
                     alignItems: 'center',
                     gap: '8px',
                     marginTop: '12px',
@@ -492,7 +493,7 @@ export default function MenuFooter({
                     style={{
                         display: 'flex',
                         flexWrap: 'wrap',
-                        justifyContent: 'flex-start',
+                        justifyContent: 'center',
                         gap: '10px',
                         marginTop: '12px',
                     }}
@@ -542,7 +543,7 @@ export default function MenuFooter({
                 <nav
                     style={{
                         display: 'flex',
-                        justifyContent: 'flex-start',
+                        justifyContent: 'center',
                         gap: '8px',
                         marginTop: '14px',
                         width: '100%',

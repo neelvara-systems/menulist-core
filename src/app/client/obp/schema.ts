@@ -29,6 +29,7 @@ import {
     buildSameAs,
     buildTempStatusSchema,
     getSchemaType,
+    isFoodBusinessCategory,
 } from '@lib/schema';
 
 export function generateOBPSchema(
@@ -63,7 +64,7 @@ export function generateOBPSchema(
     const menuUrl = options.hasPublishedMenu
         ? (options.menuUrl || buildMenuUrl(canonicalUrl))
         : undefined;
-    const catalogName = publicDescriptor || (storeData?.businessCategory === 'food' ? 'Menu' : 'Offerings');
+    const catalogName = publicDescriptor || (isFoodBusinessCategory(storeData?.businessType, storeData?.businessCategory) ? 'Menu' : 'Offerings');
 
     // Reflect active tempStatus in schema (e.g., closed_today → show as closed today)
     const tempStatusSchema = buildTempStatusSchema(storeData?.tempStatus);

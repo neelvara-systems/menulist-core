@@ -13,7 +13,7 @@
  * This is accessibility infrastructure, not optional UX enhancement.
  */
 
-import { type MouseEvent, type PointerEvent, useEffect, useState } from 'react';
+import { type MouseEvent, type PointerEvent, type TouchEvent, useEffect, useState } from 'react';
 import { LuArrowUp } from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';
 
@@ -105,8 +105,13 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
         };
     }, [scrollContainerRef]);
 
-    const scrollToTop = (event?: MouseEvent<HTMLElement> | PointerEvent<HTMLElement>) => {
+    const stopPressPropagation = (event: PointerEvent<HTMLButtonElement> | TouchEvent<HTMLButtonElement>) => {
+        event.stopPropagation();
+    };
+
+    const scrollToTop = (event?: MouseEvent<HTMLButtonElement>) => {
         event?.preventDefault();
+        event?.stopPropagation();
         const container = scrollContainerRef.current;
         const topAnchor = document.querySelector('[data-menu-top-anchor]');
         const forceScrollTop = () => {
@@ -166,10 +171,11 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
     if (!isVisible) return null;
 
     return (
-        <a
-            href="#menu-top"
+        <button
+            type="button"
             onClick={scrollToTop}
-            onPointerDown={scrollToTop}
+            onPointerDown={stopPressPropagation}
+            onTouchStart={stopPressPropagation}
             style={{
                 position: 'fixed',
                 bottom: 'calc(16px + env(safe-area-inset-bottom))',
@@ -187,11 +193,13 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
                 justifyContent: 'center',
                 zIndex: 9601, // Above bottom prompts, below modals/popovers
                 transition: 'transform 0.2s, opacity 0.2s',
+                padding: 0,
+                WebkitTapHighlightColor: 'transparent',
             }}
             className="active:scale-90"
             aria-label="Back to top"
         >
             <LuArrowUp size={22} strokeWidth={2.4} />
-        </a>
+        </button>
     );
 }

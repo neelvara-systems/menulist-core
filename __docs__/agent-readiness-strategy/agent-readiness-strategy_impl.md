@@ -134,7 +134,7 @@ Key information about MenuList's data capabilities
 
 Extended version that includes:
 
-- Detailed schema.org type mapping (all 20+ business types)
+- Detailed schema.org type mapping from the shared category/type taxonomy
 - Menu data structure explanation
 - Hours format documentation
 - Example structured data output

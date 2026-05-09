@@ -1,8 +1,8 @@
 import HorizontalLogo from "@assets/logo/horizontal.svg";
 
 // Re-export business types from shared data (primary source for copy-paste to functions)
-export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCategory, normalizeBusinessCategory, resolveBusinessCategory } from "@data/shared/businessTypes";
-export type { BusinessCategory, BusinessType, SystemFilter } from "@data/shared/businessTypes";
+export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCatalogKind, getBusinessCategory, getBusinessCategoryConfig, getBusinessOfferingKind, getBusinessSchemaOrgType, getBusinessTypeConfig, normalizeBusinessCategory, resolveBusinessCategory } from "@data/shared/businessTypes";
+export type { BusinessCatalogKind, BusinessCategory, BusinessOfferingKind, BusinessType, SystemFilter } from "@data/shared/businessTypes";
 export const APP_NAME = 'MenulistAi'
 export const APP_TAGLINE = 'Your Second Brain'
 export const APP_THEME_COLOR = "#0054D0";
@@ -162,9 +162,8 @@ export const ASPECT_RATIOS_LIST = [
     { value: '4:3', width: 40, height: 30, title: "Landscape", useCase: "Best for Facebook, Google Business" }
 ];
 
-// BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, getBusinessCategory,
-// normalizeBusinessCategory, resolveBusinessCategory,
-// BusinessCategory, BusinessType, SystemFilter
+// BUSINESS_CATEGORIES, BUSINESS_TYPES, FILTER_ALLOWLIST, business type/category helpers,
+// BusinessCategory, BusinessCatalogKind, BusinessOfferingKind, BusinessType, SystemFilter
 // — All re-exported from @data/shared/businessTypes.ts (see top of file)
 // Primary source: src/data/shared/businessTypes.ts
 // Copy-paste target: functions/src/sharedData/businessTypes.ts

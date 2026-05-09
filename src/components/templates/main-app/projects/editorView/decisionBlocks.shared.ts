@@ -1,4 +1,4 @@
-import { getBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@constant/common';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { removeObjRef } from '@util/utils';
 import type { Project, ProjectFileType } from '../types/project.types';
@@ -183,5 +183,5 @@ export function applyDecisionBlockSettings(projectData: Project, nextSettings: D
 }
 
 export function getNormalizedDecisionBusinessType(businessType?: string) {
-    return getBusinessCategory(businessType);
+    return resolveBusinessCategory(businessType);
 }

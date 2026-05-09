@@ -5,12 +5,12 @@
  * which modes and scheduling options are available.
  *
  * Internal only — owner never sees template names or configuration.
- * System decides behavior based on getBusinessCategory() output.
+ * System decides behavior based on resolveBusinessCategory() output.
  *
  * @see __docs__/special-menu-switching/special-menu-switching_impl.md
  */
 
-import { getBusinessCategory } from "@data/shared/businessTypes";
+import { resolveBusinessCategory } from "@data/shared/businessTypes";
 import type {
     SpecialMenuBehaviorTemplate,
     SpecialMenuMode,
@@ -37,7 +37,7 @@ const CATEGORY_TEMPLATE_MAP: Record<string, SpecialMenuBehaviorTemplate> = {
 export function getBehaviorTemplate(
     businessType?: string,
 ): SpecialMenuBehaviorTemplate {
-    const category = getBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType);
     return CATEGORY_TEMPLATE_MAP[category || ""] || "occasional";
 }
 

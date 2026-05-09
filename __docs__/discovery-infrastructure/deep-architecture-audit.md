@@ -133,9 +133,9 @@ Tenant (tId: number)
 
 | Relationship | Storage | Schema Exposure | Evidence |
 |-------------|---------|----------------|----------|
-| Store → Project(s) | Nested subcollection | ✅ `hasMenu` | `obp/schema.ts:86-90` |
-| Project → Category[] | Array in extractedData | ✅ `hasMenuSection` | `page.tsx:554` |
-| Category → Item[] | `item.category === category.id` | ✅ `hasMenuItem` | `page.tsx:557-558` |
+| Store → Project(s) | Nested subcollection | ✅ `hasMenu` for food, `hasOfferCatalog` for non-food | `src/app/client/obp/schema.ts`, `src/app/client/[[...slug]]/page.tsx` |
+| Project → Category[] | Array in extractedData | ✅ `hasMenuSection` for food, nested `OfferCatalog` for non-food | `src/app/client/[[...slug]]/page.tsx` |
+| Category → Item[] | `item.category === category.id` | ✅ `hasMenuItem` for food, `Offer.itemOffered` for non-food | `src/app/client/[[...slug]]/page.tsx` |
 | Item → Price | `item.price: string` | ✅ `offers.price` | `page.tsx:565-574` |
 | Item → Availability | `item.available: boolean` | ✅ `InStock/OutOfStock` | `page.tsx:570-572` |
 | Item → Dietary | `item.tags[]` | ✅ `suitableForDiet` | `page.tsx:575-577` |
@@ -154,26 +154,27 @@ Tenant (tId: number)
 
 **Total: 721 lines across 2 core schema files, 18+ schema.org types**
 
-`src/lib/schema/index.ts` (465 lines) — shared builder functions:
+`src/lib/schema/index.ts` — shared builder functions:
 - `buildAddress()` → PostalAddress ✅
 - `buildGeoCoordinates()` → GeoCoordinates ✅
 - `buildOpeningHours()` → OpeningHoursSpecification ✅
 - `buildSameAs()` → sameAs array ✅
 - `buildAmenityFeatures()` → LocationFeatureSpecification (14 attributes) ✅
-- `getSchemaType()` → 20+ businessType → schema.org mapping ✅
+- `getSchemaType()` → consumes `src/data/shared/businessTypes.ts` category defaults plus type-level schema overrides ✅
 - `buildBreadcrumbList()` → BreadcrumbList ✅
 - `buildFaqSchema()` → FAQPage (auto-generated Q&A) ✅
 - `buildTempStatusSchema()` → specialOpeningHoursSpecification ✅
-- `getMenuSchemaType()` → Menu-specific type resolution ✅
+- `getMenuSchemaType()` → Food catalog type resolution while preserving non-food SMB schema types ✅
+- `buildPublicCatalogUrlSchema()` → `hasMenu` for food, `hasOfferCatalog` for non-food ✅
 
 `src/app/client/obp/schema.ts` (256 lines):
 - ReserveAction + OrderAction with EntryPoint ✅
 - paymentAccepted (Cash, Card, UPI) ✅
 - dateModified freshness signal ✅
-- hasMenu URL link ✅
+- hasMenu URL link for food, hasOfferCatalog URL link for non-food ✅
 
 Menu page (`page.tsx:504-582`):
-- Full `Menu → MenuSection → MenuItem → Offer` chain ✅
+- Full `Menu → MenuSection → MenuItem → Offer` chain for food and `OfferCatalog → Offer → Product/Service` chain for non-food ✅
 - Dual JSON-LD blocks (entity schema + BreadcrumbList) ✅
 - `suitableForDiet` for vegetarian items ✅
 - `availability` (InStock/OutOfStock) per item ✅
@@ -308,7 +309,7 @@ The ChatGPT conversation suggested building:
 - Most restaurants are under these limits, but some chains may exceed
 
 ### Risk 4: Publisher Identity (RESOLVED)
-- OBP schema emits `publisher: Organization` at `src/app/client/obp/schema.ts:138-142`
+- OBP schema emits `publisher: Organization` in `src/app/client/obp/schema.ts`
 - Menu schema emits `publisher: Organization` at `src/app/client/[[...slug]]/page.tsx:1021-1025`
 
 ---

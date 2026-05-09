@@ -10,15 +10,20 @@
 
 ### Fixed
 
+- **Public menu image data no longer crashes item details** — Item images now pass through a tolerant public-image normalizer before PDP galleries, featured cards, item cards, metadata, and quality checks read them, so legacy object-shaped image data cannot break the customer menu.
+- **Installed menu PWA interaction stability improved** — PDP close no longer remounts the sticky search/sections row, item taps blur any active search input before opening details, and top-of-menu PDP scroll lock avoids fixed-body hit-test glitches on iPhone PWAs.
+- **Large PDP content stays contained and scrollable** — Item details keep a capped modal/sheet height, allow touch scrolling inside the PDP, and keep the close control reachable while long descriptions, options, or metadata scroll.
+- **Back-to-top no longer opens the item underneath** — The scroll-to-top control now acts only on the completed click/tap and stops press propagation, preventing mobile tap retargeting into item cards below the floating button.
 - **Search command row stays stable** — Search no longer hides `Sections` or language controls while focused, the clear button exits search mode, and sticky-row width animation was removed.
 - **Sections and language popovers stay clickable** — Both controls now render above sticky/overflow containers instead of being clipped or covered.
 - **Category tab jumps stay stable** — Tapping a category now keeps the selected tab locked during the intentional smooth scroll, avoids intermediate scroll-spy tab changes, and centers the horizontal tab only when needed.
 - **Sticky menu controls hardened** — Search expansion is restored with a stable command-row animation, passive scroll category tracking now uses a deterministic section boundary, and the `Sections` popup closes when the page scrolls.
+- **PDP close restores top navigation immediately** — Closing item details now forces the sticky search and category row to repaint after scroll lock is released, avoiding the top-of-menu frozen/hidden state.
 - **Menu transient motion aligned** — `Sections`, language selection, search-result summary, no-result recovery, and PDP overlays now use the same restrained spring reveal pattern.
 - **Public menu icon controls refined** — Search clear, PDP close, PDP image arrows, and back-to-top controls now use calmer theme-aware sizing, background, and color treatment.
-- **Item detail is stronger on mobile** — PDP uses a mobile bottom sheet, contain-fit images, eager gallery preloading, swipe/arrow gallery controls, fullscreen image inspection with zoom controls, category identity when enabled, background scroll lock while open, and immediate close-state cleanup.
+- **Item detail is stronger on mobile** — PDP uses a mobile bottom sheet, contain-fit images, eager gallery preloading, bottom image controls, fullscreen image inspection with zoom controls, category identity when enabled, background scroll lock while open, and immediate close-state cleanup.
 - **Featured and item image layout tightened** — Featured cards remain inside their own carousel, a single featured card fills the row, and items without images no longer show blank image frames.
-- **Footer and navigation termination tightened** — Footer actions use compact icon/text chips, compact MenuList attribution avoids duplicate bottom spacing, back-to-top sits at the bottom-right safe-area corner, and the sticky command row keeps a small top buffer after returning to the top.
+- **Footer and navigation termination tightened** — Footer content and actions are centered, compact MenuList attribution avoids duplicate bottom spacing, back-to-top sits at the bottom-right safe-area corner, and the sticky command row keeps a covered top buffer after returning to the top.
 - **OBP footer spacing aligned** — Official Business Page footer utility controls and compact MenuList attribution now render as separate cards using the same quiet terminal spacing.
 
 ### Documentation

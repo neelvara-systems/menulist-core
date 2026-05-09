@@ -12,7 +12,7 @@
  * even if some blocks are disabled for that category (via enabledBlocks).
  */
 
-import { getBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@constant/common';
 
 // ============================================
 // TYPES
@@ -244,7 +244,7 @@ const DEFAULT_CONFIG: CategoryDecisionConfig = {
  * Get decision block configuration for a business type
  */
 export function getDecisionConfig(businessType?: string): CategoryDecisionConfig {
-    const category = getBusinessCategory(businessType);
+    const category = resolveBusinessCategory(businessType);
     if (category && CATEGORY_CONFIGS[category]) {
         return CATEGORY_CONFIGS[category];
     }
@@ -416,7 +416,7 @@ export function getReasonKey(
     reasonType: string,
     businessType?: string
 ): string {
-    const category = getBusinessCategory(businessType) || 'default';
+    const category = resolveBusinessCategory(businessType) || 'default';
     const blockReasons = DECISION_REASON_KEYS[blockType] as Record<string, Record<string, string>>;
 
     // Try category-specific key first

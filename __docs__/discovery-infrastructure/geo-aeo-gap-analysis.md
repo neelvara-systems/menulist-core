@@ -22,7 +22,7 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 |-------|-----------------|-------------------|--------------|
 | 1. Crawlability | "incomplete" | **~90% done** | SSR pages, explicit AI/search robots rules, per-store sitemap.xml |
 | 2. Entity Graph | "~70% internal" | **~80% done** | Store entity (486 fields), Project/Item/Category entities, stable IDs, relationships |
-| 3. Schema Markup | "not implemented" (0-10%) | **~90% done** | shared schema utilities + OBP/menu schema, Restaurant+Menu+MenuItem+Offer+Hours+Geo+Breadcrumb+FAQ |
+| 3. Schema Markup | "not implemented" (0-10%) | **~90% done** | shared schema utilities + OBP/catalog schema, food Menu/MenuItem and non-food OfferCatalog/Offer + Hours + Geo + Breadcrumb + FAQ |
 | 4. URL Architecture | "~50%" | **~70% done** | Stable subdomain URLs, slug permanence, previousSlugs redirects, canonical tags |
 | 5. Knowledge Graph | "~30%" | **~50% done** | Entity identity, sameAs links, schema.org publisher, GBP integration foundation |
 | 6. AI Retrieval | "~60%" | **~75% done** | SSR HTML with structured content, menu items as text (not images), semantic headings |
@@ -96,28 +96,28 @@ MenuList already has comprehensive schema.org JSON-LD, SSR rendering, sitemap in
 
 | Schema Type | Status | File |
 |-------------|--------|------|
-| Restaurant / LocalBusiness | ✅ DONE | `src/app/client/obp/schema.ts:33-144` — `generateOBPSchema()` with business-type-specific @type |
-| Menu | ✅ DONE | `src/app/client/[[...slug]]/page.tsx` — hasMenu with MenuSection + MenuItem |
-| MenuSection | ✅ DONE | Generated from categories in menu page schema |
-| MenuItem | ✅ DONE | Generated from items with name, description, offers |
+| Restaurant / Store / LocalBusiness | ✅ DONE | `src/app/client/obp/schema.ts` — `generateOBPSchema()` with business-type-specific @type |
+| Menu | ✅ DONE for food | `src/app/client/[[...slug]]/page.tsx` — food businesses emit hasMenu with MenuSection + MenuItem |
+| OfferCatalog | ✅ DONE for non-food | `src/app/client/[[...slug]]/page.tsx` — non-food SMBs emit hasOfferCatalog with Offer entries |
+| MenuItem / Product / Service | ✅ DONE | Generated from items with name, description, offers/properties based on business category |
 | Offer (price) | ✅ DONE | Per-item Offer with price, priceCurrency, availability (InStock/OutOfStock) |
-| OpeningHoursSpecification | ✅ DONE | `src/lib/schema/index.ts:193-214` — `buildOpeningHours()` |
-| PostalAddress | ✅ DONE | `src/lib/schema/index.ts:159-170` — `buildAddress()` |
-| GeoCoordinates | ✅ DONE | `src/lib/schema/index.ts:176-186` — `buildGeoCoordinates()` |
-| BreadcrumbList | ✅ DONE | `src/lib/schema/index.ts:301-324` — `buildBreadcrumbList()` |
-| FAQPage | ✅ DONE | `src/lib/schema/index.ts:344-423` — `buildFaqSchema()` (auto-generated from hours/location/phone) |
-| sameAs (social) | ✅ DONE | `src/lib/schema/index.ts:221-243` — `buildSameAs()` (Instagram, Facebook, X/Twitter, LinkedIn, YouTube, website) |
-| amenityFeature | ✅ DONE | `src/lib/schema/index.ts:253-282` — `buildAmenityFeatures()` (WiFi, outdoor seating, dietary, etc.) |
-| ReserveAction | ✅ DONE | `src/app/client/obp/schema.ts:171-190` — reservation URL with EntryPoint |
-| OrderAction | ✅ DONE | `src/app/client/obp/schema.ts:193-205` — ordering URL with EntryPoint |
-| dateModified | ✅ DONE | `src/app/client/obp/schema.ts:118-122` — freshness signal for AI engines |
-| priceRange | ✅ DONE | `src/app/client/obp/schema.ts:101` — $ to $$$$ |
-| paymentAccepted | ✅ DONE | `src/app/client/obp/schema.ts:249-255` — Cash, Credit Card, UPI |
-| specialOpeningHours | ✅ DONE | `src/app/client/obp/schema.ts:106` — tempStatus reflected in schema |
+| OpeningHoursSpecification | ✅ DONE | `src/lib/schema/index.ts` — `buildOpeningHours()` |
+| PostalAddress | ✅ DONE | `src/lib/schema/index.ts` — `buildAddress()` |
+| GeoCoordinates | ✅ DONE | `src/lib/schema/index.ts` — `buildGeoCoordinates()` |
+| BreadcrumbList | ✅ DONE | `src/lib/schema/index.ts` — `buildBreadcrumbList()` |
+| FAQPage | ✅ DONE | `src/lib/schema/index.ts` — `buildFaqSchema()` (auto-generated from hours/location/phone/catalog presence) |
+| sameAs (social) | ✅ DONE | `src/lib/schema/index.ts` — `buildSameAs()` (Instagram, Facebook, X/Twitter, LinkedIn, YouTube, website) |
+| amenityFeature | ✅ DONE | `src/lib/schema/index.ts` — `buildAmenityFeatures()` (WiFi, outdoor seating, dietary, etc.) |
+| ReserveAction | ✅ DONE | `src/app/client/obp/schema.ts` — reservation URL with EntryPoint |
+| OrderAction | ✅ DONE | `src/app/client/obp/schema.ts` — ordering URL with EntryPoint |
+| dateModified | ✅ DONE | `src/app/client/obp/schema.ts` — freshness signal for AI engines |
+| priceRange | ✅ DONE | `src/app/client/obp/schema.ts` — $ to $$$$ |
+| paymentAccepted | ✅ DONE | `src/app/client/obp/schema.ts` — Cash, Credit Card, UPI |
+| specialOpeningHours | ✅ DONE | `src/app/client/obp/schema.ts` — tempStatus reflected in schema |
 | VegetarianDiet | ✅ DONE | Per-item suitableForDiet on menu pages |
-| Business type mapping | ✅ DONE | `src/lib/schema/index.ts:32-151`, `src/lib/schema/index.ts:289-294` — business types → schema.org subtypes |
+| Business classification mapping | ✅ DONE | `src/data/shared/businessTypes.ts` owns category-level schema/catalog/offering defaults plus type-level subtype overrides; `src/lib/schema/index.ts` consumes it |
 
-**Total schema.org implementation:** 465 lines in `src/lib/schema/index.ts` + 256 lines in `src/app/client/obp/schema.ts` = **721 lines of core schema.org infrastructure.**
+**Total schema.org implementation:** Shared taxonomy in `src/data/shared/businessTypes.ts` plus schema builders in `src/lib/schema/index.ts` and OBP-specific schema in `src/app/client/obp/schema.ts`.
 
 ChatGPT estimated 0-10%. **Reality: ~90%** — comprehensive schema.org coverage already in production.
 

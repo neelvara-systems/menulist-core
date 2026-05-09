@@ -47,6 +47,7 @@ import {
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
+import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
 import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
@@ -1076,7 +1077,7 @@ function buildCatalogItemStructuredData({
     const itemUrl = itemId
         ? `${canonicalUrl}/item/${slugify(itemName)}-${itemId.slice(-6)}`
         : undefined;
-    const itemImage = showImages ? item.images?.[0]?.url : undefined;
+    const itemImage = showImages ? getPrimaryPublicMenuImage(item) : undefined;
     const schemaPrice = showItemPrices && item.price !== undefined && item.price !== null
         ? String(item.price).replace(/[^0-9.]/g, "")
         : "";
@@ -1313,7 +1314,7 @@ function buildContextMetadata({
         const itemDescription = getLocalizedValue(item.description, renderLanguage);
         const category = categories.find((entry: any) => entry?.id === item.category);
         const categoryName = getLocalizedValue(category?.name, renderLanguage);
-        const imageUrl = item?.images?.[0]?.url || defaultImageUrl;
+        const imageUrl = getPrimaryPublicMenuImage(item) || defaultImageUrl;
 
         return {
             title: `${itemName} | ${storeName}`,

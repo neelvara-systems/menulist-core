@@ -315,7 +315,7 @@ Primary implementation files:
 
 ## 11. Schema.org Structured Data
 
-**Updated May 9, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts` and only emits menu links when OBP has an active published menu.
+**Updated May 9, 2026** — Schema enriched with SEO/AEO improvements. Uses shared utilities from `src/lib/schema/index.ts`, resolves `businessCategory` from `src/data/shared/businessTypes.ts`, and only emits a public catalog link when OBP has an active published project.
 
 ```typescript
 // src/app/client/obp/schema.ts — uses shared utilities
@@ -330,7 +330,7 @@ import {
 export function generateOBPSchema(storeData: any, canonicalUrl: string) {
   return {
     "@context": "https://schema.org",
-    "@type": getSchemaType(storeData?.businessType), // Restaurant, BeautySalon, etc.
+    "@type": getSchemaType(storeData?.businessType, storeData?.businessCategory), // Restaurant, BeautySalon, Store, LocalBusiness, etc.
     name: storeData.name,
     image: storeData.logo,
     telephone: storeData.phoneNumber,
@@ -342,10 +342,11 @@ export function generateOBPSchema(storeData: any, canonicalUrl: string) {
     openingHoursSpecification: buildOpeningHours(storeData),
     sameAs: buildSameAs(storeData), // Social profile URLs
     dateModified: storeData.modifiedOn, // Freshness signal for AI
-    ...(hasPublishedMenu && {
-      menu: `${canonicalUrl}/menu`, // Food businesses
-      hasMenu: `${canonicalUrl}/menu`,
-    }),
+    ...buildPublicCatalogUrlSchema(
+      hasPublishedMenu ? `${canonicalUrl}/menu` : undefined,
+      storeData?.businessType,
+      storeData?.businessCategory,
+    ),
   };
 }
 ```
@@ -360,8 +361,9 @@ The runtime implementation also accepts the resolved render language so localize
 - `buildSameAs()` — Social profile URLs from `store.socialMedia` + `store.url`
 - `buildAmenityFeatures()` — LocationFeatureSpecification from `store.businessAttributes` (BTG Layer 12)
 - `buildTempStatusSchema()` — specialOpeningHoursSpecification from `store.tempStatus`
-- `getSchemaType()` — Maps `store.businessType` → schema.org subtypes (Restaurant, BeautySalon, etc.)
-- `getMenuSchemaType()` — Menu-specific variant (prefers food subtypes)
+- `getSchemaType()` — Maps `store.businessType` + `store.businessCategory` → schema.org subtypes (Restaurant, BeautySalon, Store, LocalBusiness, etc.)
+- `getMenuSchemaType()` — Public catalog page variant; food businesses use food schema types, non-food SMBs keep their business schema type
+- `buildPublicCatalogUrlSchema()` — Food businesses emit `menu`/`hasMenu`; non-food SMBs emit `hasOfferCatalog`
 
 **OBP-specific schema** (`src/app/client/obp/schema.ts`):
 

@@ -371,13 +371,22 @@ This appendix exists because the source review had many small points inside the 
 | Items without images showed blank image placeholders | Accepted | Public item cards now render image frames only when the item has an image URL. |
 | Mobile PDP was still centered and image viewing/closing could feel fragile | Accepted | PDP now becomes a bottom sheet on mobile, uses contain-fit image frames, supports arrows/dots plus touch swiping, and clears modal state immediately on close before history back. |
 | PDP gallery arrows could appear unresponsive while the next image was still loading | Accepted | PDP now mounts gallery images in the frame, eagerly loads non-primary slides, preloads gallery URLs through the browser image cache, and only fades to a target slide once it is decoded. |
+| PDP image action buttons merged into image colors | Accepted | PDP image actions now sit in a bottom overlay control cluster with a dark translucent backing and theme-aware buttons; fullscreen image controls use the same bottom toolbar treatment. |
 | Menu behind PDP remained scrollable on mobile/browser scroll | Accepted | PDP now applies a real document scroll lock while item details are open, freezes the background at its current position, keeps the modal content scrollable, and restores page scroll on close. |
 | PDP close/image controls drifted from the search clear button styling | Accepted | PDP close, previous image, and next image buttons now share the same accent-tint button treatment as the search clear control. |
+| Closing PDP from a top-of-menu featured item could leave sticky search/categories hidden or unclickable until scroll | Accepted | PDP scroll-lock cleanup now forces a two-frame scroll/resize repaint after body unlock. The sticky command row stays mounted and only receives a compositor repaint signal so search, sections, and language controls do not lose their hit targets. |
 | PDP category identity was missing | Accepted with owner-control constraint | PDP category row now shows the category icon/emoji only when category icons are enabled and the category has an icon. |
 | Footer action buttons and terminal spacing felt label-heavy and loose | Accepted | Footer actions use compact icon/text chips; compact MenuList attribution no longer adds duplicate safe-area padding. |
 | Back-to-top was shifted upward after the category FAB was removed | Accepted | Back-to-top now sits at the bottom-right safe-area corner. |
 | Back-to-top color felt disconnected from active category navigation | Accepted | Back-to-top now uses the same accent-tint background, accent text color, and soft border family as active category navigation. |
 | Back-to-top returned the sticky search row flush against the device top edge | Accepted | Mobile/tablet sticky command controls now keep a small real top offset in addition to safe-area handling, and scroll padding uses the same buffer. |
+| Sticky command-row top buffer exposed scrolled content behind it | Accepted | The sticky command row now paints a matching top cover behind the safe-area/buffer gap so menu content does not show through while scrolling. |
+| Footer content needed horizontal centering | Accepted | Business identity, actions, social links, policy links, language labels, and attribution now center-align as one footer system. |
+| Mobile PWA rotation felt incompatible | Existing policy kept | The tenant manifest already requests `portrait-primary` for installed customer PWAs. No artificial landscape blocker was added because mobile browsers may ignore it and public menus should remain accessible if a device is already rotated. |
+| PDP crashed when stored `item.images` was not an array | Accepted | Public rendering now normalizes image data before PDP galleries, featured cards, item cards, metadata, and image-quality checks read it, preserving owner data while avoiding customer-facing crashes. |
+| Installed iPhone PWA could feel like menu elements were rerendering or temporarily unclickable after repeated PDP opens/closes | Accepted | PDP now uses a lighter top-of-page scroll lock instead of always fixing the body, blurs active search input before opening item details, ignores stale close cleanup if another item is already open, and repaints sticky controls without remounting them. |
+| PDP content could become very long for SMB items with long descriptions, variants, metadata, or recovery actions | Accepted | PDP keeps a capped modal/sheet height with internal touch scrolling, no longer applies body-level `touch-action: none`, and keeps the close button sticky inside the scrollable detail surface. |
+| Back-to-top tap could also open the item card underneath it | Accepted | Back-to-top is now a button that scrolls only on the completed click/tap. Pointer/touch start only stops propagation, so the control does not disappear during pointerdown and retarget the final click to the item below. |
 
 ## Verification
 
@@ -391,6 +400,8 @@ This appendix exists because the source review had many small points inside the 
 - Local tenant-route runtime smoke passed on May 8, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: menu loaded, search returned results, PDP opened/closed, and category anchor navigation scrolled to the requested section.
 - `npx tsc --noEmit --incremental false` passed on May 9, 2026.
 - Local tenant-route browser smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: zero-result search no longer shows final-action CTAs, PDP opened/closed without leaving a stuck overlay, featured cards still open PDP, and category navigation updates the category hash.
+- Local tenant-route browser stress passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: five consecutive PDP open/close cycles kept search and `Sections` present and clickable, then `Sections` opened successfully.
+- PDP height smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: item detail opened with the capped scroll container and closed cleanly after the sticky-close/touch-scroll update.
 - `npm run build` passed on May 9, 2026. The existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
 
 ## Intentionally Deferred

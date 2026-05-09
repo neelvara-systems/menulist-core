@@ -22,7 +22,7 @@ This document tracks all SEO-related implementations in MenuListAi and provides 
 | Component                 | File                                       | Status      | Description                                                             |
 | ------------------------- | ------------------------------------------ | ----------- | ----------------------------------------------------------------------- |
 | **Dynamic Metadata**      | `/app/(website)/menu/[projectId]/page.tsx` | ✅ Complete | Next.js `generateMetadata` with SEO settings priority                   |
-| **Schema.org JSON-LD**    | `/app/(website)/menu/[projectId]/page.tsx` | ✅ Complete | Restaurant + Menu + OpeningHours + Address + Contact                    |
+| **Schema.org JSON-LD**    | `/app/(website)/menu/[projectId]/page.tsx` | ✅ Complete | Business type + food Menu or non-food OfferCatalog + hours/address/contact |
 | **SEO Settings Form**     | `/businessSettings/tabs/SeoTab.tsx`        | ✅ Complete | UI for tagline, meta title, description, keywords, canonical URL        |
 | **Dynamic Sitemap**       | `/app/sitemap.ts`                          | ✅ Complete | Next.js dynamic sitemap generation                                      |
 | **robots.txt**            | `/public/robots.txt`                       | ✅ Complete | Crawler directives with sitemap reference                               |
@@ -146,10 +146,12 @@ Based on current industry research and Google's guidelines.
 
 | Schema Type                  | Priority    | Status in MenuListAi                |
 | ---------------------------- | ----------- | ----------------------------------- |
-| Restaurant                   | 🔴 Critical | ✅ Implemented                      |
-| Menu                         | 🔴 Critical | ✅ Implemented                      |
-| MenuSection (categories)     | 🟡 High     | ✅ Implemented                      |
-| MenuItem (items with prices) | 🟡 High     | ✅ Implemented                      |
+| Restaurant / Store / LocalBusiness | 🔴 Critical | ✅ Implemented based on business type |
+| Menu                         | 🔴 Critical | ✅ Implemented for food businesses  |
+| MenuSection (categories)     | 🟡 High     | ✅ Implemented for food businesses  |
+| MenuItem (items with prices) | 🟡 High     | ✅ Implemented for food businesses  |
+| OfferCatalog                 | 🟡 High     | ✅ Implemented for non-food SMBs    |
+| Product / Service            | 🟡 High     | ✅ Implemented for non-food SMB items |
 | OpeningHoursSpecification    | 🟡 High     | ✅ Implemented (from workingHours)  |
 | PostalAddress                | 🟡 High     | ✅ Implemented (from store address) |
 | Contact (telephone, email)   | 🟡 High     | ✅ Implemented                      |

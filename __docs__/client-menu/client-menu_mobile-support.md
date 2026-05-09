@@ -31,6 +31,10 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Customer-facing category labels, item labels, and footer language actions must use localization fallback instead of active-language-only reads.
 - Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
 - Image-enabled layouts must not show blank image cards for items without images; broken image URLs may keep their reserved frame to avoid a late scroll jump.
+- Item image reads must use the public image normalizer so legacy object-shaped image data cannot crash mobile PDP galleries or featured/item cards.
+- PDP open/close must not remount the sticky command controls; iPhone PWA top-of-page detail views use lightweight scroll lock to avoid stale hit-test regions after close.
+- PDP content must remain inside a viewport-capped scroll container with touch scrolling enabled and the close control reachable during long detail scrolls.
+- Back-to-top must not perform scroll work on pointerdown; it scrolls on completed tap/click and stops press propagation so the item card below it cannot receive the same gesture.
 - Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.

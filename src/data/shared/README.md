@@ -32,7 +32,7 @@ Every file in this folder **MUST** be self-contained:
 
 | File | Contents | Used By |
 |------|----------|---------|
-| `businessTypes.ts` | BUSINESS_TYPES, BUSINESS_CATEGORIES, getBusinessCategory, normalizeBusinessCategory, resolveBusinessCategory, FILTER_ALLOWLIST | Publish pipeline, approve route, AI prompts |
+| `businessTypes.ts` | BUSINESS_TYPES, BUSINESS_CATEGORIES, category-level schema/catalog/offering defaults, type-level overrides, business-category helpers, FILTER_ALLOWLIST | Publish pipeline, approve route, AI prompts, public schema |
 | `defaultRoles.ts` | Role permissions, DEFAULT_ROLE_METADATA, createDefaultRoles | Store creation (onboarding, publish) |
 
 ### Country Data

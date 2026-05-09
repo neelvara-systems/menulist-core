@@ -28,6 +28,7 @@ import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlo
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
+import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
@@ -739,7 +740,7 @@ export default function DecisionBlocks({
                         if (!labels) return null;
 
                         const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, 'Menu item');
-                        const itemImage = rec.item.images?.[0]?.url;
+                        const itemImage = getPrimaryPublicMenuImage(rec.item);
                         const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
                         const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
                         const categoryMeta = categoryMetaById.get(rec.item.category);

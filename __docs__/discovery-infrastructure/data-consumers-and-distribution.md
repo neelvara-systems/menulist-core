@@ -23,7 +23,7 @@ This document maps every data consumer type, how they discover MenuList data, wh
 |-----------------|-------------|-----------------|
 | **Web crawling** | AI engines crawl public web pages, parse HTML + JSON-LD | ✅ OBP + Menu pages are SSR with schema.org JSON-LD |
 | **llms.txt** | AI crawlers can read `/llms.txt` for site capability summary | ✅ `public/llms.txt` (37 lines) + `public/llms-full.txt` (145 lines) |
-| **Schema.org JSON-LD** | Embedded in every public page `<script type="application/ld+json">` | ✅ 10+ schema types: LocalBusiness, Restaurant, Menu, MenuItem, Offer, GeoCoordinates, OpeningHoursSpecification, etc. |
+| **Schema.org JSON-LD** | Embedded in every public page `<script type="application/ld+json">` | ✅ 10+ schema types: LocalBusiness, Restaurant, Store, Menu, MenuItem, OfferCatalog, Offer, Product, Service, GeoCoordinates, OpeningHoursSpecification, etc. |
 | **Direct API** | Programmatic access via REST API | ✅ Public API v1 exists and is feature-flagged ON (`ENABLE_PUBLIC_API: true`); not yet ecosystem-grade. |
 
 **What they need from MenuList:**
@@ -34,7 +34,8 @@ This document maps every data consumer type, how they discover MenuList data, wh
 
 **What MenuList already provides:**
 - Every OBP page (`{business}.menulist.ai`) has full `LocalBusiness` JSON-LD
-- Every menu page (`{business}.menulist.ai/menu`) has `Restaurant` + `Menu` + `MenuItem` + `Offer` JSON-LD
+- Food catalog pages (`{business}.menulist.ai/menu`) have `Restaurant/FoodEstablishment` + `Menu` + `MenuItem` + `Offer` JSON-LD
+- Non-food catalog pages use the business type schema plus `OfferCatalog` + `Offer` + `Product` or `Service` JSON-LD
 - `llms.txt` provides structured capability summary following llmstxt.org standard
 - `llms-full.txt` provides extended documentation with exact schema.org type mappings
 - `dateModified` on every page for freshness evaluation
@@ -44,7 +45,7 @@ This document maps every data consumer type, how they discover MenuList data, wh
 ```
 1. Perplexity crawls joespizza.menulist.ai/menu
 2. Finds <script type="application/ld+json"> in HTML
-3. Parses Restaurant → hasMenu → hasMenuSection[] → hasMenuItem[]
+3. Parses Restaurant → hasMenu → hasMenuSection[] → hasMenuItem[] for food businesses, or LocalBusiness/Store → hasOfferCatalog for non-food SMBs
 4. Extracts: item names, prices, dietary tags, availability
 5. Answers user with structured menu data
 6. Cites joespizza.menulist.ai/menu as source

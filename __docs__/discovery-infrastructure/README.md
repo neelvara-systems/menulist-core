@@ -60,17 +60,18 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 
 | Schema Type                               | Where      | File                                           |
 | ----------------------------------------- | ---------- | ---------------------------------------------- |
-| Restaurant / LocalBusiness (20+ subtypes) | OBP + Menu | `src/lib/schema/index.ts:32-151`, `src/lib/schema/index.ts:289-294` |
-| Menu + MenuSection + MenuItem             | Menu pages | `src/app/client/[[...slug]]/page.tsx`          |
-| Offer (price, currency, availability)     | Menu pages | Per-item in schema                             |
-| OpeningHoursSpecification                 | OBP + Menu | `src/lib/schema/index.ts:193-214`              |
-| PostalAddress                             | OBP + Menu | `src/lib/schema/index.ts:159-170`              |
-| GeoCoordinates                            | OBP + Menu | `src/lib/schema/index.ts:176-186`              |
-| BreadcrumbList                            | Menu pages | `src/lib/schema/index.ts:301-324`              |
-| FAQPage (auto-generated)                  | OBP pages  | `src/lib/schema/index.ts:344-423`              |
-| sameAs (social profiles)                  | OBP + Menu | `src/lib/schema/index.ts:221-243`              |
-| amenityFeature (14 attributes)            | OBP        | `src/lib/schema/index.ts:253-282`              |
-| ReserveAction + OrderAction               | OBP        | `src/app/client/obp/schema.ts:171-210`         |
+| Restaurant / Store / LocalBusiness (category defaults + subtype overrides) | OBP + catalog pages | `src/data/shared/businessTypes.ts`, `src/lib/schema/index.ts`, `src/app/client/[[...slug]]/page.tsx` |
+| Menu + MenuSection + MenuItem             | Food catalog pages | `src/app/client/[[...slug]]/page.tsx`          |
+| OfferCatalog + Offer + Product/Service    | Non-food catalog pages | `src/app/client/[[...slug]]/page.tsx`       |
+| Offer (price, currency, availability)     | Catalog pages | Per-item in schema                             |
+| OpeningHoursSpecification                 | OBP + Menu | `src/lib/schema/index.ts`                      |
+| PostalAddress                             | OBP + Menu | `src/lib/schema/index.ts`                      |
+| GeoCoordinates                            | OBP + Menu | `src/lib/schema/index.ts`                      |
+| BreadcrumbList                            | Menu pages | `src/lib/schema/index.ts`                      |
+| FAQPage (auto-generated)                  | OBP pages  | `src/lib/schema/index.ts`                      |
+| sameAs (social profiles)                  | OBP + Menu | `src/lib/schema/index.ts`                      |
+| amenityFeature (14 attributes)            | OBP        | `src/lib/schema/index.ts`                      |
+| ReserveAction + OrderAction               | OBP        | `src/app/client/obp/schema.ts`                 |
 | dateModified (freshness)                  | OBP + Menu | Both schema generators                         |
 | servesCuisine                             | OBP + Menu | From `store.cuisineTypes[]`                    |
 | publisher (Organization: MenuList)        | OBP + Menu | Both schema generators                         |

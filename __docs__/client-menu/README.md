@@ -140,7 +140,11 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Desktop and mobile owner controls use the same public wording for this area: `Featured section`, `Featured choice`, `Quick choice`, and `Value choice`.
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and render image frames only when an item has an image.
+- Public image rendering normalizes legacy and current stored image shapes before cards, featured choices, PDP galleries, and metadata read item images.
+- PDP open/close keeps the sticky command row mounted and avoids fixed-body locking at the top of iPhone PWAs, reducing temporary unclickable states after repeated item views.
+- Large PDP content stays inside a capped scrollable modal/sheet, and the close control remains reachable while the item detail content scrolls.
 - Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, and owner-enabled category identity.
+- Back-to-top is isolated from item cards underneath it; it scrolls only on completed tap/click and does not trigger PDP for the covered item.
 - Footer business actions use compact icon/text chips while keeping platform attribution quiet.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution`.
 
@@ -150,6 +154,10 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-09 | Installed PWA interaction stability improved: PDP close no longer remounts sticky controls, active search is blurred before item details open, and top-of-page scroll lock is lighter on iPhone PWAs |
+| 2026-05-09 | PDP long-content handling tightened: modal/sheet height remains viewport-capped, internal touch scrolling is preserved, and close remains reachable while details scroll |
+| 2026-05-09 | Back-to-top tap isolation fixed so scrolling to top cannot also open the item card underneath the floating control |
+| 2026-05-09 | Public item image rendering now tolerates legacy object-shaped image data so PDP galleries and featured/item cards do not crash customer menus |
 | 2026-05-09 | Client menu interaction hardening: search controls stay reachable, Sections/language popovers render above sticky layers, PDP mobile bottom sheet/image viewing improved, blank image placeholders removed, and footer/back-to-top spacing tightened |
 | 2026-05-08 | Desktop and mobile owner Featured section controls now use the same Featured choice, Quick choice, and Value choice wording as the public menu |
 | 2026-05-08 | Featured cards now inherit owner-enabled category icon/emoji identity in their compact category metadata row without adding a separate badge system |

@@ -114,7 +114,7 @@ interface OfferingTag {
 | --------------------------------- | ------------------------------------------------------------------------ | ----------------- |
 | Discovery Index Builder (Phase 2) | `extractTaxonomyFromProject()` called by `buildBusinessEntityIndexDoc()` | Nightly scheduler |
 | AI Extraction (future)            | Extraction prompt uses taxonomy as category naming hint                  | During extraction |
-| Schema.org Enhancement (future)   | Canonical category → schema.org `hasMenuSection`                         | Page render       |
+| Schema.org Enhancement (future)   | Canonical category → schema.org `hasMenuSection` for food or `OfferCatalog` grouping for non-food | Page render       |
 | Public API v2 (future)            | Return `standardCategories` in API response                              | API call          |
 
 ## 6. Feature Flag

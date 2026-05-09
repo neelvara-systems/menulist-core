@@ -16,10 +16,11 @@ import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsConte
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getLocalizedText } from '@lib/localization/text';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
+import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronLeft, LuChevronRight, LuMaximize2, LuMinus, LuPlus, LuRotateCcw, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -29,6 +30,7 @@ import { menuBottomSheetMotion, menuDialogMotion, menuFadeTransition, menuSpring
 interface PDPModalProps {
     item: any;
     onClose: () => void;
+    onClosed?: () => void;
     language: string;
     moodConfig: MenuMoodConfig;
     projectData: Project;
@@ -49,6 +51,7 @@ interface PDPModalProps {
 function PDPModal({
     item,
     onClose,
+    onClosed,
     language,
     moodConfig,
     projectData,
@@ -73,7 +76,8 @@ function PDPModal({
     const imageTouchStartXRef = useRef<number | null>(null);
     const imageViewerDragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
     const primaryLanguage = projectData?.defaultLanguage || projectData?.languages?.[0] || 'en';
-    const imageCount = item?.images?.length || 0;
+    const images = useMemo(() => normalizePublicMenuImages(item?.images), [item?.images]);
+    const imageCount = images.length;
     const getModalText = useCallback(
         (value: unknown, fallback = '') => getLocalizedText(value as any, language, primaryLanguage, fallback),
         [language, primaryLanguage],
@@ -132,18 +136,30 @@ function PDPModal({
             bodyRight: body.style.right,
             bodyWidth: body.style.width,
         };
+        const shouldFixBody = scrollY > 1;
 
         html.style.overflow = 'hidden';
         html.style.overscrollBehavior = 'none';
         body.style.overflow = 'hidden';
         body.style.overscrollBehavior = 'none';
-        body.style.position = 'fixed';
-        body.style.top = `-${scrollY}px`;
-        body.style.left = '0';
-        body.style.right = '0';
-        body.style.width = '100%';
+
+        if (shouldFixBody) {
+            body.style.position = 'fixed';
+            body.style.top = `-${scrollY}px`;
+            body.style.left = '0';
+            body.style.right = '0';
+            body.style.width = '100%';
+        }
 
         return () => {
+            const restoreScrollPosition = () => {
+                if (shouldFixBody) {
+                    window.scrollTo(0, scrollY);
+                }
+                document.dispatchEvent(new Event('scroll'));
+                window.dispatchEvent(new Event('scroll'));
+            };
+
             html.style.overflow = previousStyles.htmlOverflow;
             html.style.overscrollBehavior = previousStyles.htmlOverscrollBehavior;
             body.style.overflow = previousStyles.bodyOverflow;
@@ -153,9 +169,21 @@ function PDPModal({
             body.style.left = previousStyles.bodyLeft;
             body.style.right = previousStyles.bodyRight;
             body.style.width = previousStyles.bodyWidth;
-            window.scrollTo(0, scrollY);
+            restoreScrollPosition();
+
+            // Mobile browsers can defer repainting sticky/fixed descendants
+            // after a fixed-body modal closes at scrollY 0. Force a cheap
+            // two-frame repaint so the command row is immediately visible and
+            // clickable instead of waiting for the customer's next scroll.
+            window.requestAnimationFrame(() => {
+                restoreScrollPosition();
+                window.requestAnimationFrame(() => {
+                    window.dispatchEvent(new Event('resize'));
+                    onClosed?.();
+                });
+            });
         };
-    }, [item?.id]);
+    }, [item?.id, onClosed]);
 
     useEffect(() => {
         if (item) {
@@ -209,9 +237,7 @@ function PDPModal({
     useEffect(() => {
         if (!item || typeof window === 'undefined') return;
 
-        const urls = (item.images || [])
-            .map((image: any) => image?.url)
-            .filter((url: unknown): url is string => typeof url === 'string' && url.trim().length > 0);
+        const urls = images.map((image) => image.url);
 
         if (urls.length === 0) return;
 
@@ -238,16 +264,16 @@ function PDPModal({
         return () => {
             cancelled = true;
         };
-    }, [item?.id, markImageLoaded]);
+    }, [images, item?.id, markImageLoaded]);
 
     useEffect(() => {
         if (!item) return;
 
-        const targetUrl = item.images?.[currentImageIndex]?.url;
+        const targetUrl = images[currentImageIndex]?.url;
         if (targetUrl && loadedImageUrls.has(targetUrl) && displayedImageIndex !== currentImageIndex) {
             setDisplayedImageIndex(currentImageIndex);
         }
-    }, [currentImageIndex, displayedImageIndex, item, loadedImageUrls]);
+    }, [currentImageIndex, displayedImageIndex, images, item, loadedImageUrls]);
 
     useEffect(() => {
         if (!item) return;
@@ -290,7 +316,6 @@ function PDPModal({
 
     if (!item || !mounted) return null;
 
-    const images = item.images || [];
     const hasMultipleImages = images.length > 1;
     const targetImageUrl = images[currentImageIndex]?.url;
     const currentViewerImageUrl = images[displayedImageIndex]?.url || targetImageUrl;
@@ -431,8 +456,58 @@ function PDPModal({
 
     const imageViewerControlStyle = (positionStyle: React.CSSProperties, disabled = false): React.CSSProperties => ({
         ...pdpIconButtonStyle(positionStyle, disabled),
-        background: `${moodConfig.accentColor}22`,
+        background: moodConfig.itemStyle.background,
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
+    });
+    const imageActionBarStyle: React.CSSProperties = {
+        alignItems: 'center',
+        background: 'rgba(10, 14, 24, 0.68)',
+        border: '1px solid rgba(255, 255, 255, 0.18)',
+        borderRadius: 999,
+        bottom: 12,
+        boxShadow: '0 12px 28px rgba(0, 0, 0, 0.28)',
+        display: 'inline-flex',
+        gap: 6,
+        padding: 6,
+        position: 'absolute',
+        right: 12,
+        zIndex: 4,
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+    };
+    const imageActionButtonStyle = (disabled = false): React.CSSProperties => ({
+        ...pdpIconButtonStyle({ position: 'relative' }, disabled),
+        background: moodConfig.itemStyle.background,
+        border: `1px solid ${moodConfig.accentColor}42`,
+        boxShadow: '0 6px 16px rgba(0, 0, 0, 0.18)',
+    });
+    const imageCountStyle: React.CSSProperties = {
+        color: '#fff',
+        fontFamily: moodConfig.bodyFont,
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: 0,
+        lineHeight: '18px',
+        minWidth: 34,
+        padding: '0 4px',
+        textAlign: 'center',
+    };
+    const imageViewerToolbarStyle: React.CSSProperties = {
+        ...imageActionBarStyle,
+        bottom: `calc(14px + env(safe-area-inset-bottom))`,
+        left: '50%',
+        right: 'auto',
+        transform: 'translateX(-50%)',
+        zIndex: 3,
+    };
+    const stickyCloseButtonStyle = pdpIconButtonStyle({
+        position: 'sticky',
+        top: 12,
+        zIndex: 8,
+        marginTop: 12,
+        marginRight: 12,
+        marginBottom: -44,
+        marginLeft: 'auto',
     });
 
     const modalContent = (
@@ -486,10 +561,13 @@ function PDPModal({
                                     ? 'min(92dvh, calc(100dvh - env(safe-area-inset-top) - 12px))'
                                     : '100%',
                                 overflowY: 'auto',
+                                minHeight: 0,
                                 borderRadius: isMobileSheet ? '18px 18px 0 0' : '16px',
                                 background: moodConfig.background,
                                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
                                 overscrollBehavior: 'contain',
+                                overscrollBehaviorY: 'contain',
+                                touchAction: 'pan-y',
                                 WebkitOverflowScrolling: 'touch',
                             }}
                             onClick={(event) => event.stopPropagation()}
@@ -497,14 +575,9 @@ function PDPModal({
                             {/* Close Button */}
                             <button
                                 onClick={onClose}
-                                className="absolute top-4 right-4 z-10 rounded-full transition-opacity hover:opacity-80"
+                                className="rounded-full transition-opacity hover:opacity-80"
                                 aria-label="Close item details"
-                                style={pdpIconButtonStyle({
-                                    position: 'absolute',
-                                    top: 12,
-                                    right: 12,
-                                    zIndex: 3,
-                                })}
+                                style={stickyCloseButtonStyle}
                             >
                                 <LuX size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
                             </button>
@@ -562,88 +635,45 @@ function PDPModal({
                                         />
                                     )}
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsImageViewerOpen(true)}
-                                        className="absolute left-3 top-3 z-10 rounded-full transition-opacity hover:opacity-80"
-                                        aria-label="Enlarge image"
-                                        style={pdpIconButtonStyle({
-                                            position: 'absolute',
-                                            left: 12,
-                                            top: 12,
-                                            zIndex: 3,
-                                        })}
+                                    <div
+                                        aria-label="Image controls"
+                                        style={imageActionBarStyle}
+                                        onClick={(event) => event.stopPropagation()}
                                     >
-                                        <LuMaximize2 size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                    </button>
-
-                                    {/* Image Navigation */}
-                                    {hasMultipleImages && (
-                                        <>
+                                        {hasMultipleImages && (
                                             <button
                                                 type="button"
                                                 onClick={prevImage}
-                                                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full transition-opacity hover:opacity-80"
                                                 aria-label="Previous image"
-                                                style={pdpIconButtonStyle({
-                                                    position: 'absolute',
-                                                    left: 12,
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                })}
+                                                style={imageActionButtonStyle()}
                                             >
                                                 <LuChevronLeft size={18} color={moodConfig.accentColor} strokeWidth={2.4} />
                                             </button>
+                                        )}
+                                        {hasMultipleImages && (
+                                            <span style={imageCountStyle} aria-live="polite">
+                                                {currentImageIndex + 1}/{imageCount}
+                                            </span>
+                                        )}
+                                        {hasMultipleImages && (
                                             <button
                                                 type="button"
                                                 onClick={nextImage}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full transition-opacity hover:opacity-80"
                                                 aria-label="Next image"
-                                                style={pdpIconButtonStyle({
-                                                    position: 'absolute',
-                                                    right: 12,
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                })}
+                                                style={imageActionButtonStyle()}
                                             >
                                                 <LuChevronRight size={18} color={moodConfig.accentColor} strokeWidth={2.4} />
                                             </button>
-
-                                            {/* Dots indicator */}
-                                            <div
-                                                className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5"
-                                                style={{
-                                                    position: 'absolute',
-                                                    left: '50%',
-                                                    bottom: 12,
-                                                    transform: 'translateX(-50%)',
-                                                    display: 'flex',
-                                                    gap: 6,
-                                                    alignItems: 'center',
-                                                }}
-                                            >
-                                                {images.map((_, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        onClick={() => setCurrentImageIndex(idx)}
-                                                        className={`w-2 h-2 rounded-full transition-colors ${idx === currentImageIndex ? 'bg-white' : 'bg-white/40'
-                                                            }`}
-                                                        aria-label={`Go to image ${idx + 1}`}
-                                                        style={{
-                                                            width: 8,
-                                                            height: 8,
-                                                            padding: 0,
-                                                            border: 0,
-                                                            borderRadius: 999,
-                                                            background: idx === currentImageIndex ? '#fff' : 'rgba(255, 255, 255, 0.45)',
-                                                            cursor: 'pointer',
-                                                        }}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsImageViewerOpen(true)}
+                                            aria-label="Enlarge image"
+                                            style={imageActionButtonStyle()}
+                                        >
+                                            <LuMaximize2 size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
@@ -1005,14 +1035,7 @@ function PDPModal({
                         >
                             <div
                                 onClick={(event) => event.stopPropagation()}
-                                style={{
-                                    display: 'flex',
-                                    gap: 8,
-                                    position: 'absolute',
-                                    right: 'calc(12px + env(safe-area-inset-right))',
-                                    top: 'calc(12px + env(safe-area-inset-top))',
-                                    zIndex: 2,
-                                }}
+                                style={imageViewerToolbarStyle}
                             >
                                 <button
                                     type="button"

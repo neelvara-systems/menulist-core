@@ -8,7 +8,12 @@
  * @see __docs__/official-business-page/official-business-page_impl.md §9
  */
 
-import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import {
+    getBusinessCatalogKind,
+    getBusinessOfferingKind,
+    getBusinessSchemaOrgType,
+    resolveBusinessCategory,
+} from '@data/shared/businessTypes';
 
 // ── Constants ──
 
@@ -23,13 +28,14 @@ const DAY_MAP: Record<string, string> = {
 };
 
 /**
- * Maps store.businessType values to schema.org @type.
- * Uses specific subtypes for better entity classification in search/AI.
- * Fallback: 'LocalBusiness' for unknown types.
+ * Legacy/free-text fallback for older stores or manually entered values that
+ * are not present in the canonical BUSINESS_TYPES taxonomy.
  *
- * @see https://schema.org/LocalBusiness (subtypes list)
+ * Canonical exact business type mapping lives in src/data/shared/businessTypes.ts.
+ *
+ * @see https://schema.org/LocalBusiness
  */
-const BUSINESS_TYPE_SCHEMA_MAP: Record<string, string> = {
+const LEGACY_BUSINESS_TYPE_SCHEMA_FALLBACK: Record<string, string> = {
     'restaurant': 'Restaurant',
     'cafe': 'CafeOrCoffeeShop',
     'coffee shop': 'CafeOrCoffeeShop',
@@ -312,8 +318,11 @@ export function buildAmenityFeatures(attributes?: Record<string, boolean>) {
  * Falls back to 'LocalBusiness' for unknown types.
  */
 export function getSchemaType(businessType?: string, businessCategory?: string): string {
+    const configuredSchema = getBusinessSchemaOrgType(businessType, businessCategory);
+    if (configuredSchema) return configuredSchema;
+
     const normalized = businessType?.toLowerCase().trim() || '';
-    if (normalized && BUSINESS_TYPE_SCHEMA_MAP[normalized]) return BUSINESS_TYPE_SCHEMA_MAP[normalized];
+    if (normalized && LEGACY_BUSINESS_TYPE_SCHEMA_FALLBACK[normalized]) return LEGACY_BUSINESS_TYPE_SCHEMA_FALLBACK[normalized];
     const keywordMatch = normalized
         ? BUSINESS_TYPE_SCHEMA_KEYWORDS.find(([keyword]) => normalized.includes(keyword))?.[1]
         : undefined;
@@ -335,11 +344,16 @@ export function isFoodSchemaType(schemaType: string): boolean {
 }
 
 export function isFoodBusinessCategory(businessType?: string, businessCategory?: string): boolean {
-    return isFoodSchemaType(getSchemaType(businessType, businessCategory))
+    return getBusinessCatalogKind(businessType, businessCategory) === 'menu'
+        || isFoodSchemaType(getSchemaType(businessType, businessCategory))
         || resolveBusinessCategory(businessType, businessCategory) === 'food';
 }
 
 export function getOfferingItemSchemaType(businessType?: string, businessCategory?: string): 'Product' | 'Service' {
+    const offeringKind = getBusinessOfferingKind(businessType, businessCategory);
+    if (offeringKind === 'product') return 'Product';
+    if (offeringKind === 'service') return 'Service';
+
     const category = resolveBusinessCategory(businessType, businessCategory);
     const schemaType = getSchemaType(businessType, businessCategory);
     const normalized = businessType?.toLowerCase().trim() || '';
@@ -363,7 +377,7 @@ export function buildPublicCatalogUrlSchema(
 ): Record<string, any> {
     if (!catalogUrl) return {};
 
-    if (isFoodBusinessCategory(businessType, businessCategory)) {
+    if (getBusinessCatalogKind(businessType, businessCategory) === 'menu') {
         return {
             menu: catalogUrl,
             hasMenu: catalogUrl,
@@ -427,9 +441,19 @@ function translateSchemaText(
     return value && value !== key ? value : fallback;
 }
 
-export function buildFaqSchema(storeData: any, canonicalUrl: string, t?: SchemaTranslator, displayName?: string) {
+export function buildFaqSchema(
+    storeData: any,
+    canonicalUrl: string,
+    t?: SchemaTranslator,
+    displayName?: string,
+    options: { hasPublishedCatalog?: boolean; catalogUrl?: string } = {},
+) {
     const faqs: { question: string; answer: string }[] = [];
     const storeName = displayName || storeData?.name || translateSchemaText(t, 'publicFallbackBusiness', {}, 'This business');
+    const catalogUrl = options.hasPublishedCatalog
+        ? (options.catalogUrl || `${canonicalUrl}/menu`)
+        : undefined;
+    const isFoodCatalog = isFoodBusinessCategory(storeData?.businessType, storeData?.businessCategory);
 
     // Q: Working hours
     if (storeData?.workingHours) {
@@ -467,11 +491,16 @@ export function buildFaqSchema(storeData: any, canonicalUrl: string, t?: SchemaT
         });
     }
 
-    // Q: Menu
-    faqs.push({
-        question: translateSchemaText(t, 'publicFaqMenuQuestion', { storeName }, `Where can I see the menu for ${storeName}?`),
-        answer: translateSchemaText(t, 'publicFaqMenuAnswer', { url: `${canonicalUrl}/menu` }, `You can view the full menu at ${canonicalUrl}/menu — it is always up to date.`),
-    });
+    if (catalogUrl) {
+        faqs.push({
+            question: isFoodCatalog
+                ? translateSchemaText(t, 'publicFaqMenuQuestion', { storeName }, `Where can I see the menu for ${storeName}?`)
+                : translateSchemaText(t, 'publicFaqCatalogQuestion', { storeName }, `Where can I see what ${storeName} offers?`),
+            answer: isFoodCatalog
+                ? translateSchemaText(t, 'publicFaqMenuAnswer', { url: catalogUrl }, `You can view the full menu at ${catalogUrl}. It is always up to date.`)
+                : translateSchemaText(t, 'publicFaqCatalogAnswer', { url: catalogUrl }, `You can view current offerings at ${catalogUrl}.`),
+        });
+    }
 
     if (faqs.length < 2) return undefined;
 
@@ -524,9 +553,9 @@ export function buildTempStatusSchema(tempStatus?: {
 }
 
 /**
- * Get the schema.org @type specifically for menu pages.
- * Menu pages prefer Restaurant/FoodEstablishment types for hasMenu support.
- * Falls back to 'Restaurant' for food-related businesses, otherwise uses getSchemaType.
+ * Get the schema.org @type specifically for public catalog pages.
+ * Food catalog pages prefer Restaurant/FoodEstablishment types for hasMenu support.
+ * Non-food SMB catalog pages preserve the business schema type and use OfferCatalog.
  */
 export function getMenuSchemaType(businessType?: string, businessCategory?: string): string {
     const schemaType = getSchemaType(businessType, businessCategory);

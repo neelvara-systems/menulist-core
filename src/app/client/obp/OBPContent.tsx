@@ -915,7 +915,10 @@ export default async function OBPContent({
         hasPublishedMenu: hasMenu,
         menuUrl,
     });
-    const faqSchema = buildFaqSchema(store, obpUrl, t, storeName);
+    const faqSchema = buildFaqSchema(store, obpUrl, t, storeName, {
+        hasPublishedCatalog: hasMenu,
+        catalogUrl: menuUrl,
+    });
 
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const trackingEnabled = analyticsPreferences.trackOfficialBusinessPage;

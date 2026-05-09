@@ -52,6 +52,7 @@ Update JSON-LD generation to:
 - include active public categories/items only;
 - include item identifiers, item URLs, images when public images are enabled, price only when public prices are enabled, and public metadata as `PropertyValue`.
 - keep `getMenuSchemaType()` aligned with `businessTypes.ts` so non-food SMB pages do not fall back to `Restaurant`.
+- emit `Menu/MenuSection/MenuItem` only for food businesses and `OfferCatalog/Offer/Product|Service` for non-food SMBs.
 - use `resolvePublicBusinessType()` before public schema/search rendering so generic stored plan values such as `B2C` do not hide the real SMB industry.
 
 ### 5. Low-Network Service Worker

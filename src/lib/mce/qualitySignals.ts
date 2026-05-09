@@ -17,6 +17,7 @@
 
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
+import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 
 export interface QualitySignal {
     id: string;
@@ -111,18 +112,7 @@ function isDescriptionMissing(item: ExtractedDataItem, languages: string[]): boo
 }
 
 function isImageMissing(item: ExtractedDataItem): boolean {
-    if (!item.images) return true;
-
-    if (Array.isArray(item.images)) {
-        return !item.images.some((image) => typeof image?.url === 'string' && image.url.trim().length > 0);
-    }
-
-    if (typeof item.images === 'object') {
-        return !Object.values(item.images as Record<string, any>)
-            .some((image) => typeof image?.url === 'string' && image.url.trim().length > 0);
-    }
-
-    return true;
+    return normalizePublicMenuImages(item.images).length === 0;
 }
 
 function hasCategoryIcon(category: ExtractedDataCategory): boolean {
