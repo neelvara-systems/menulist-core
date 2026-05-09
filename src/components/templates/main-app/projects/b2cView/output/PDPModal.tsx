@@ -10,6 +10,8 @@
  */
 
 import { ExtractedDataCategory } from '@template/main-app/projects/types';
+import CategoryIcon from '@atoms/CategoryIcon';
+import { FEATURE_FLAGS } from '@config/features';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getLocalizedText } from '@lib/localization/text';
@@ -17,7 +19,7 @@ import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } fr
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronLeft, LuChevronRight, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -34,6 +36,7 @@ interface PDPModalProps {
     currencyCode?: string;
     unavailableLabel?: string;
     trackView?: boolean;
+    showCategoryIcons?: boolean;
     recoveryActions?: Array<{
         label: string;
         href: string;
@@ -53,12 +56,15 @@ function PDPModal({
     currencyCode = 'INR',
     unavailableLabel,
     trackView = true,
+    showCategoryIcons = true,
     recoveryActions = [],
 }: PDPModalProps) {
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [category, setCategory] = useState<ExtractedDataCategory>();
     const [mounted, setMounted] = useState(false);
+    const [isMobileSheet, setIsMobileSheet] = useState(false);
+    const imageTouchStartXRef = useRef<number | null>(null);
     const primaryLanguage = projectData?.defaultLanguage || projectData?.languages?.[0] || 'en';
     const getModalText = useCallback(
         (value: unknown, fallback = '') => getLocalizedText(value as any, language, primaryLanguage, fallback),
@@ -68,6 +74,16 @@ function PDPModal({
     useEffect(() => {
         setMounted(true);
         return () => setMounted(false);
+    }, []);
+
+    useEffect(() => {
+        const updateViewportMode = () => {
+            setIsMobileSheet(window.matchMedia('(max-width: 767px)').matches);
+        };
+
+        updateViewportMode();
+        window.addEventListener('resize', updateViewportMode);
+        return () => window.removeEventListener('resize', updateViewportMode);
     }, []);
 
     useEffect(() => {
@@ -154,6 +170,25 @@ function PDPModal({
         setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
     };
 
+    const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+        imageTouchStartXRef.current = event.touches[0]?.clientX ?? null;
+    };
+
+    const handleImageTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+        if (!hasMultipleImages || imageTouchStartXRef.current === null) return;
+
+        const endX = event.changedTouches[0]?.clientX ?? imageTouchStartXRef.current;
+        const deltaX = endX - imageTouchStartXRef.current;
+        imageTouchStartXRef.current = null;
+
+        if (Math.abs(deltaX) < 42) return;
+        if (deltaX < 0) {
+            nextImage();
+        } else {
+            prevImage();
+        }
+    };
+
     const modalContent = (
         <AnimatePresence>
             {item && (
@@ -176,9 +211,9 @@ function PDPModal({
 
                     {/* Modal */}
                     <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                        initial={isMobileSheet ? { opacity: 1, y: '100%' } : { opacity: 0, y: 50, scale: 0.95 }}
+                        animate={isMobileSheet ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, scale: 1 }}
+                        exit={isMobileSheet ? { opacity: 1, y: '100%' } : { opacity: 0, y: 50, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                         className="fixed z-[60] flex items-center justify-center"
                         role="dialog"
@@ -186,10 +221,12 @@ function PDPModal({
                         aria-label={getModalText(item.name, 'Menu item details')}
                         style={{
                             position: 'fixed',
-                            inset: 'calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px',
+                            inset: isMobileSheet
+                                ? 'auto 0 0 0'
+                                : 'calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px',
                             zIndex: 10001,
                             display: 'flex',
-                            alignItems: 'center',
+                            alignItems: isMobileSheet ? 'flex-end' : 'center',
                             justifyContent: 'center',
                         }}
                     >
@@ -198,10 +235,12 @@ function PDPModal({
                             style={{
                                 position: 'relative',
                                 width: '100%',
-                                maxWidth: '42rem',
-                                maxHeight: '100%',
+                                maxWidth: isMobileSheet ? '100%' : '42rem',
+                                maxHeight: isMobileSheet
+                                    ? 'min(92dvh, calc(100dvh - env(safe-area-inset-top) - 12px))'
+                                    : '100%',
                                 overflowY: 'auto',
-                                borderRadius: '16px',
+                                borderRadius: isMobileSheet ? '18px 18px 0 0' : '16px',
                                 background: moodConfig.background,
                                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
                                 WebkitOverflowScrolling: 'touch',
@@ -238,14 +277,16 @@ function PDPModal({
                             {images.length > 0 && (
                                 <div
                                     className="relative w-full aspect-[4/3] bg-black/20"
+                                    onTouchStart={handleImageTouchStart}
+                                    onTouchEnd={handleImageTouchEnd}
                                     style={{
                                         position: 'relative',
                                         width: '100%',
-                                        aspectRatio: '4 / 3',
-                                        minHeight: 220,
-                                        maxHeight: '52vh',
+                                        height: isMobileSheet ? 'min(72vw, 46dvh)' : 'min(58vw, 52vh)',
+                                        minHeight: isMobileSheet ? 240 : 260,
                                         overflow: 'hidden',
                                         background: 'rgba(0, 0, 0, 0.12)',
+                                        touchAction: hasMultipleImages ? 'pan-y' : 'auto',
                                     }}
                                 >
                                     <Image
@@ -378,7 +419,9 @@ function PDPModal({
                                     <span
                                         className="text-sm mb-1 block"
                                         style={{
-                                            display: 'block',
+                                            alignItems: 'center',
+                                            display: 'inline-flex',
+                                            gap: 7,
                                             marginBottom: 6,
                                             color: moodConfig.bodyColor,
                                             fontSize: 14,
@@ -386,7 +429,15 @@ function PDPModal({
                                             opacity: 0.76,
                                         }}
                                     >
-                                        {getModalText(category.name)}
+                                        {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
+                                            <CategoryIcon
+                                                color={moodConfig.bodyColor}
+                                                defaultIcon="LuTag"
+                                                icon={category.icon}
+                                                size={14}
+                                            />
+                                        ) : null}
+                                        <span>{getModalText(category.name)}</span>
                                     </span>
                                 )}
 

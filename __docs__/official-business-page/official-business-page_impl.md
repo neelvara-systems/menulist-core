@@ -288,7 +288,7 @@ Primary implementation files:
 
 ## 10. Public Rendering Hardening
 
-**Updated May 3, 2026** — OBP public rendering now applies these guards:
+**Updated May 9, 2026** — OBP public rendering now applies these guards:
 
 - Quick actions wrap across rows when Call, WhatsApp, Directions, Reserve, and Order are all enabled.
 - Social links use the same social source family as the public menu footer: Instagram, Facebook, X/Twitter, LinkedIn, YouTube, WhatsApp, and Website.
@@ -297,6 +297,7 @@ Primary implementation files:
 - Owner-defined custom attributes render after controlled attributes, capped by settings UI.
 - OBP photos open an in-page preview on click.
 - Privacy, Terms, and Refund footer links are individually show/hide controlled.
+- Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled.
 - Compliance content can be edited from Official Business Page settings using the existing compliance override API.
 
 Primary implementation files:

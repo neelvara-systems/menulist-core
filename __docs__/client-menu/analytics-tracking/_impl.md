@@ -151,7 +151,7 @@ const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'rese
 - Fires only on final outbound action clicks
 - Reuses existing `publicPresence` action URLs and visibility toggles
 - Avoids tracking hover, scroll, and intermediate UI states
-- The same tracking path is reused in the footer, zero-result recovery state, and unavailable-item PDP recovery actions
+- The same tracking path is reused in the footer and unavailable-item PDP recovery actions; zero-result search now stays retrieval-only and does not duplicate footer CTAs
 - Writes immediately instead of waiting for the passive-event queue, because these are owner-facing conversion signals.
 
 ### Session Milestones and Category Interest

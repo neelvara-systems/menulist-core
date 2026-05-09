@@ -1,4 +1,5 @@
 import { PLATFORM_URL } from '@constant/urls';
+import type { CSSProperties } from 'react';
 
 interface PublicMenuListAttributionProps {
     mode?: 'full' | 'compact';
@@ -7,6 +8,7 @@ interface PublicMenuListAttributionProps {
     ctaLabel?: string | null;
     mutedColor?: string;
     accentColor?: string;
+    containerStyle?: CSSProperties;
 }
 
 const ctaHref = `${PLATFORM_URL}/create-menu`;
@@ -18,6 +20,7 @@ export default function PublicMenuListAttribution({
     ctaLabel = null,
     mutedColor = '#8a8f98',
     accentColor = '#111',
+    containerStyle,
 }: PublicMenuListAttributionProps) {
     const isCompact = mode === 'compact';
 
@@ -31,6 +34,7 @@ export default function PublicMenuListAttribution({
                 marginTop: isCompact ? 12 : 18,
                 paddingBottom: 'env(safe-area-inset-bottom)',
                 textAlign: 'center',
+                ...containerStyle,
             }}
         >
             <p

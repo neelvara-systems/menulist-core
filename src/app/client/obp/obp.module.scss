@@ -28,7 +28,7 @@ $obp-closed-color: #c62828;
   .actionButton,
   .info,
   .note,
-  .footer,
+  .footerCard,
   .outletCard {
     background: #171917;
     border-color: #2a2e29;
@@ -260,7 +260,8 @@ $obp-closed-color: #c62828;
     color: #777f75;
   }
 
-  .policyLinks a {
+  .policyLinks a,
+  .policyLinks span {
     color: #9da59a;
   }
 
@@ -298,7 +299,7 @@ $obp-closed-color: #c62828;
   width: 100%;
   max-width: $obp-max-width;
   margin: 0 auto;
-  padding: calc(18px + env(safe-area-inset-top)) 18px calc(38px + env(safe-area-inset-bottom));
+  padding: calc(18px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom));
 }
 
 .desktopLayout {
@@ -1359,16 +1360,34 @@ $obp-closed-color: #c62828;
 
 .footer {
   margin-top: auto;
-  padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
-  text-align: center;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.footerCard {
+  width: 100%;
+  padding: 14px;
   border: 1px solid $obp-border;
   border-radius: 14px;
   background: #fff;
 }
 
+.footerUtilityCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.footerBrandingCard {
+  padding: 13px 14px;
+}
+
 .footerSocials {
-  margin-bottom: 12px;
+  margin-bottom: 0;
 
   .socials {
     margin-bottom: 0;
@@ -1399,13 +1418,14 @@ $obp-closed-color: #c62828;
 }
 
 .policyLinks {
-  margin-top: 8px;
+  margin-top: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
 
-  a {
+  a,
+  span {
     color: #999;
     font-size: 11px;
     text-decoration: none;
@@ -1413,7 +1433,7 @@ $obp-closed-color: #c62828;
 }
 
 .themeToggle {
-  margin-top: 12px;
+  margin-top: 0;
   width: 38px;
   height: 38px;
   display: inline-flex;
@@ -1516,7 +1536,7 @@ $obp-closed-color: #c62828;
 @media (min-width: 900px) {
   .shell {
     max-width: $obp-desktop-width;
-    padding: calc(32px + env(safe-area-inset-top)) 36px calc(56px + env(safe-area-inset-bottom));
+    padding: calc(32px + env(safe-area-inset-top)) 36px calc(32px + env(safe-area-inset-bottom));
   }
 
   .languageSwitcher {
@@ -1777,7 +1797,15 @@ $obp-closed-color: #c62828;
   }
 
   .footer {
-    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    gap: 14px;
+  }
+
+  .footerCard {
+    padding: 18px;
+  }
+
+  .footerBrandingCard {
+    padding: 16px 18px;
   }
 
   .outletList {
@@ -1787,11 +1815,11 @@ $obp-closed-color: #c62828;
   }
 
   .footerSocials {
-    margin-bottom: 14px;
+    margin-bottom: 0;
   }
 
   .themeToggle {
-    margin-top: 16px;
+    margin-top: 0;
   }
 }
 

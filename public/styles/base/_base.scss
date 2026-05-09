@@ -32,7 +32,8 @@ a {
   text-decoration: none;
 }
 
-.scrollbar-hide {
+.scrollbar-hide,
+.hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 

@@ -352,6 +352,21 @@ This appendix exists because the source review had many small points inside the 
 | Category icon/title vertical alignment was uneven | Accepted, preserving owner choice | Shared `CategoryIcon` now renders icon and emoji choices in a stable inline-flex box; owner-selected emoji/icons are not removed. |
 | Category header divider felt partial | Accepted | Section divider now spans the content width with calmer opacity instead of a short partial underline. |
 
+## May 9, 2026 Follow-Up Interaction Hardening
+
+| Issue Found In Public Menu | Decision | Status |
+| --- | --- | --- |
+| Search focus hid `Sections` and language controls, and the expansion animation made the sticky row feel unstable | Accepted | Search now stays compact in the command row, side controls stay mounted/reachable, and the sticky row avoids width/max-width animation during scroll. |
+| Search clear icon looked like a dot and clear behavior was unclear | Accepted | Clear uses a larger explicit `LuX` glyph. In this menu context, clear exits search mode and blurs the input so the customer returns to browsing. |
+| `Sections` and language dropdowns could be clipped or covered by sticky/overflow containers | Accepted | Inline category and language popovers render through portals with fixed viewport anchoring. |
+| Zero-result search showed final-action CTAs already available in the footer | Accepted | Zero-result recovery now stays retrieval-focused: show all plus category recovery only. |
+| Featured carousel could still contribute to page-level horizontal overflow on small screens | Accepted | Featured row keeps its own horizontal scroll while card widths are capped against viewport width. |
+| Items without images showed blank image placeholders | Accepted | Public item cards now render image frames only when the item has an image URL. |
+| Mobile PDP was still centered and image viewing/closing could feel fragile | Accepted | PDP now becomes a bottom sheet on mobile, uses contain-fit image frames, supports arrows/dots plus touch swiping, and clears modal state immediately on close before history back. |
+| PDP category identity was missing | Accepted with owner-control constraint | PDP category row now shows the category icon/emoji only when category icons are enabled and the category has an icon. |
+| Footer action buttons and terminal spacing felt label-heavy and loose | Accepted | Footer actions use compact icon/text chips; compact MenuList attribution no longer adds duplicate safe-area padding. |
+| Back-to-top was shifted upward after the category FAB was removed | Accepted | Back-to-top now sits at the bottom-right safe-area corner. |
+
 ## Verification
 
 - `npx tsc --noEmit --incremental false` passed on May 7, 2026.
@@ -362,6 +377,9 @@ This appendix exists because the source review had many small points inside the 
 - `npx tsc --noEmit --incremental false` passed again on May 8, 2026.
 - Default worker-mode `npm run build` compiled and type-checked on May 8, 2026 but hit a Next build-worker `.next/server/chunks/2274.js` page-data race; `NEXT_PRIVATE_BUILD_WORKER=0 npm run build` passed. The same pre-existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
 - Local tenant-route runtime smoke passed on May 8, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: menu loaded, search returned results, PDP opened/closed, and category anchor navigation scrolled to the requested section.
+- `npx tsc --noEmit --incremental false` passed on May 9, 2026.
+- Local tenant-route browser smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: zero-result search no longer shows final-action CTAs, PDP opened/closed without leaving a stuck overlay, featured cards still open PDP, and category navigation updates the category hash.
+- `npm run build` passed on May 9, 2026. The existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
 
 ## Intentionally Deferred
 

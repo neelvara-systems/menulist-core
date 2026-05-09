@@ -172,7 +172,7 @@ export default function BackToTop({ scrollContainerRef, moodConfig }: BackToTopP
             onPointerDown={scrollToTop}
             style={{
                 position: 'fixed',
-                bottom: 'calc(112px + env(safe-area-inset-bottom))',
+                bottom: 'calc(16px + env(safe-area-inset-bottom))',
                 right: '16px',
                 width: '48px',
                 height: '48px',

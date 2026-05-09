@@ -1275,53 +1275,58 @@ export default async function OBPContent({
 
                     {/* ── Footer ── */}
                     <footer className={styles.footer}>
-                    {hasSocials && (
-                        <div className={styles.footerSocials}>
-                            <OBPExternalLinks
-                                tenantId={store?.tenantId}
-                                storeId={store?.storeId}
-                                trackingEnabled={trackingEnabled}
-                                storeTimeZone={store?.timeZone}
-                                businessDayEndTime={store?.businessDayEndTime}
-                                includeLocation={includeLocation}
-                                labels={{
-                                    facebook: t('publicSocialPlatforms.facebook'),
-                                    instagram: t('publicSocialPlatforms.instagram'),
-                                    linkedin: t('publicSocialPlatforms.linkedin'),
-                                    twitter: t('publicSocialPlatforms.twitter'),
-                                    website: t('publicSocialPlatforms.website'),
-                                    whatsapp: t('publicSocialPlatforms.whatsapp'),
-                                    youtube: t('publicSocialPlatforms.youtube'),
-                                }}
-                                socialAriaLabelTemplate={t('publicSocialLinkLabel', { platform: '{platform}' })}
-                                instagram={instagram}
-                                facebook={facebook}
-                                twitter={twitter}
-                                linkedin={linkedin}
-                                youtube={youtube}
-                                whatsapp={socialWhatsApp}
-                                website={website}
-                            />
-                        </div>
-                    )}
-                    <PublicMenuListAttribution
-                        mode="compact"
-                        surfaceLabel={t('publicOfficialPagePoweredBy')}
-                        rightsLabel={t('publicAllRightsReserved')}
-                        ctaLabel={null}
-                        mutedColor="#bbb"
-                    />
-                    {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && policyLinks.length > 0 && (
-                            <div className={styles.policyLinks}>
-                            {policyLinks.map((link) => (
-                                    <a key={link.href} href={link.href}>{link.label}</a>
-                            ))}
+                    <div className={`${styles.footerCard} ${styles.footerUtilityCard}`}>
+                        {hasSocials && (
+                            <div className={styles.footerSocials}>
+                                <OBPExternalLinks
+                                    tenantId={store?.tenantId}
+                                    storeId={store?.storeId}
+                                    trackingEnabled={trackingEnabled}
+                                    storeTimeZone={store?.timeZone}
+                                    businessDayEndTime={store?.businessDayEndTime}
+                                    includeLocation={includeLocation}
+                                    labels={{
+                                        facebook: t('publicSocialPlatforms.facebook'),
+                                        instagram: t('publicSocialPlatforms.instagram'),
+                                        linkedin: t('publicSocialPlatforms.linkedin'),
+                                        twitter: t('publicSocialPlatforms.twitter'),
+                                        website: t('publicSocialPlatforms.website'),
+                                        whatsapp: t('publicSocialPlatforms.whatsapp'),
+                                        youtube: t('publicSocialPlatforms.youtube'),
+                                    }}
+                                    socialAriaLabelTemplate={t('publicSocialLinkLabel', { platform: '{platform}' })}
+                                    instagram={instagram}
+                                    facebook={facebook}
+                                    twitter={twitter}
+                                    linkedin={linkedin}
+                                    youtube={youtube}
+                                    whatsapp={socialWhatsApp}
+                                    website={website}
+                                />
                             </div>
-                    )}
-                    <OBPThemeToggle
-                        switchToDarkLabel={t('publicSwitchToDarkTheme')}
-                        switchToLightLabel={t('publicSwitchToLightTheme')}
-                    />
+                        )}
+                        {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && policyLinks.length > 0 && (
+                            <div className={styles.policyLinks}>
+                                {policyLinks.map((link) => (
+                                    <a key={link.href} href={link.href}>{link.label}</a>
+                                ))}
+                            </div>
+                        )}
+                        <OBPThemeToggle
+                            switchToDarkLabel={t('publicSwitchToDarkTheme')}
+                            switchToLightLabel={t('publicSwitchToLightTheme')}
+                        />
+                    </div>
+                    <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
+                        <PublicMenuListAttribution
+                            mode="compact"
+                            surfaceLabel={t('publicOfficialPagePoweredBy')}
+                            rightsLabel={t('publicAllRightsReserved')}
+                            ctaLabel={null}
+                            mutedColor="#999"
+                            containerStyle={{ marginTop: 0, paddingBottom: 0 }}
+                        />
+                    </div>
                     </footer>
                 </div>
             </main>

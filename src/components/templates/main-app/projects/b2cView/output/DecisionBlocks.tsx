@@ -725,9 +725,10 @@ export default function DecisionBlocks({
                     style={{
                         display: 'flex',
                         gap: 10,
-                        minWidth: 'max-content',
+                        maxWidth: 'none',
+                        minWidth: 0,
                         paddingRight: 14,
-                        width: 'max-content',
+                        width: 'fit-content',
                     }}
                 >
                     {blocks.map((rec) => {
@@ -785,7 +786,9 @@ export default function DecisionBlocks({
                                     position: 'relative',
                                     scrollSnapAlign: 'start',
                                     textAlign: 'left',
-                                    width: itemImage ? 'min(82vw, 316px)' : 'min(74vw, 292px)',
+                                    width: itemImage
+                                        ? 'min(calc(100vw - 48px), 316px)'
+                                        : 'min(calc(100vw - 56px), 292px)',
                                     WebkitTapHighlightColor: 'transparent',
                                 } as CSSProperties}
                             >

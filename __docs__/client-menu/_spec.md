@@ -264,7 +264,7 @@ No owner action required
 | FR10 | Analytics track all events          | P1       | ✅     |
 | FR11 | Public category identity preserves owner-selected icon choices | P0 | ✅ |
 | FR12 | Public output uses localized fallback for menu/category/item labels | P0 | ✅ |
-| FR13 | Image-enabled layouts reserve stable image slots | P0 | ✅ |
+| FR13 | Image-enabled layouts render stable image frames only for items with images | P0 | ✅ |
 
 ### Non-Functional Requirements
 
@@ -287,7 +287,7 @@ No owner action required
 | Category identity | Public category icons must render through the shared icon system and preserve owner-selected icon choices, including `emoji:*` values. |
 | Navigation | Search and section navigation form the primary orientation/retrieval layer. Mobile/tablet menus keep them in one sticky command row, with `Sections` opening a bottom-sheet navigator instead of a disconnected floating menu button. |
 | Typography | Category headings must orient the user without becoming decorative title screens. Item names/descriptions use line limits to preserve scanning rhythm. |
-| Images | Images support item understanding. They cannot turn the menu into a feed, and missing/broken images must not collapse reserved layout space. |
+| Images | Images support item understanding. They cannot turn the menu into a feed; items without images should not show blank image cards, while broken image URLs may keep their already-rendered frame to avoid late scroll jumps. |
 | Footer | Business identity comes before platform attribution. MenuList attribution is quiet infrastructure metadata, not a growth-marketing CTA. |
 | Localization | Public labels must use the shared localization fallback path instead of reading only `activeLanguage`. |
 

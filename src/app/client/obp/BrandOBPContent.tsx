@@ -308,17 +308,22 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
 
                 {/* Footer */}
                 <footer className={styles.footer}>
-                    <PublicMenuListAttribution
-                        mode="compact"
-                        surfaceLabel={t('publicPoweredBy')}
-                        rightsLabel={t('publicAllRightsReserved')}
-                        ctaLabel={null}
-                        mutedColor="#bbb"
-                    />
-                    <OBPThemeToggle
-                        switchToDarkLabel={t('publicSwitchToDarkTheme')}
-                        switchToLightLabel={t('publicSwitchToLightTheme')}
-                    />
+                    <div className={`${styles.footerCard} ${styles.footerUtilityCard}`}>
+                        <OBPThemeToggle
+                            switchToDarkLabel={t('publicSwitchToDarkTheme')}
+                            switchToLightLabel={t('publicSwitchToLightTheme')}
+                        />
+                    </div>
+                    <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
+                        <PublicMenuListAttribution
+                            mode="compact"
+                            surfaceLabel={t('publicPoweredBy')}
+                            rightsLabel={t('publicAllRightsReserved')}
+                            ctaLabel={null}
+                            mutedColor="#999"
+                            containerStyle={{ marginTop: 0, paddingBottom: 0 }}
+                        />
+                    </div>
                 </footer>
             </div>
         </main>

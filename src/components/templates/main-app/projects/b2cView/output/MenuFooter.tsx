@@ -20,11 +20,23 @@
 
 import GlobalLanguagesList from '@data/languages';
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+import { FEATURE_FLAGS } from '@config/features';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { StoreDataType } from '@type/platform/store';
-import { LuFacebook, LuInstagram, LuLinkedin, LuMessageCircle, LuTwitter, LuYoutube } from 'react-icons/lu';
+import {
+    LuCalendarCheck,
+    LuFacebook,
+    LuInstagram,
+    LuLinkedin,
+    LuMapPin,
+    LuMessageCircle,
+    LuPhone,
+    LuShoppingBag,
+    LuTwitter,
+    LuYoutube,
+} from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';
 
 interface MenuFooterProps {
@@ -147,6 +159,21 @@ export default function MenuFooter({
     const socialLinks = storeDetails?.socialMedia
         ? Object.entries(storeDetails.socialMedia).filter(([_, url]) => url && url.trim())
         : [];
+    const policyLinks = FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES
+        ? [
+            publicPresence?.showPrivacyLink !== false ? { href: '/privacy', label: 'Privacy' } : null,
+            publicPresence?.showTermsLink !== false ? { href: '/terms', label: 'Terms' } : null,
+            publicPresence?.showRefundLink !== false ? { href: '/refund', label: 'Refund' } : null,
+        ].filter((link): link is { href: string; label: string } => Boolean(link))
+        : [];
+    const footerCardStyle = {
+        width: '100%',
+        boxSizing: 'border-box' as const,
+        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderRadius: Math.max(12, moodConfig.itemStyle.borderRadius || 12),
+        background: moodConfig.itemStyle.background,
+        padding: '16px',
+    };
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
         if (!shouldTrackMenuActions) return Promise.resolve();
@@ -167,20 +194,22 @@ export default function MenuFooter({
 
     return (
         <footer
-            className="py-6 px-4 text-center border-t"
+            className="py-6 px-4 text-center"
             style={{
                 width: '100%',
                 boxSizing: 'border-box',
-                borderColor: moodConfig.itemStyle.borderColor,
-                borderTop: `1px solid ${moodConfig.itemStyle.borderColor}`,
                 marginTop: '22px',
-                padding: '20px 0 calc(16px + env(safe-area-inset-bottom))',
+                padding: '20px 0 0',
                 textAlign: 'left',
                 fontFamily: moodConfig.bodyFont,
                 color: moodConfig.bodyColor,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
             }}
             aria-label="Business information"
         >
+            <div style={footerCardStyle}>
             {/*
              * T1-N-02 / A-09 + D-12 PUBLIC-ROUTING-DOCTRINE: the footer brand
              * links to the tenant's OBP root. After G-02 made the header logo
@@ -249,20 +278,10 @@ export default function MenuFooter({
                                 fontWeight: 600,
                                 fontFamily: moodConfig.bodyFont,
                             }}
+                            aria-label={displayPhone ? `Call ${displayPhone}` : 'Call'}
                         >
+                            <LuPhone size={16} aria-hidden="true" />
                             <span>Call</span>
-                            {displayPhone && (
-                                <span
-                                    style={{
-                                        color: moodConfig.bodyColor,
-                                        fontSize: 12,
-                                        fontWeight: 500,
-                                        opacity: 0.68,
-                                    }}
-                                >
-                                    {displayPhone}
-                                </span>
-                            )}
                         </a>
                     )}
                     {showWhatsApp && whatsappHref && (
@@ -285,6 +304,7 @@ export default function MenuFooter({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                gap: 8,
                                 padding: '8px 14px',
                                 fontSize: '14px',
                                 lineHeight: '20px',
@@ -292,7 +312,8 @@ export default function MenuFooter({
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
-                            WhatsApp
+                            <LuMessageCircle size={16} aria-hidden="true" />
+                            <span>WhatsApp</span>
                         </a>
                     )}
                     {showDirections && directionsHref && (
@@ -315,6 +336,7 @@ export default function MenuFooter({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                gap: 8,
                                 padding: '8px 14px',
                                 fontSize: '14px',
                                 lineHeight: '20px',
@@ -322,7 +344,8 @@ export default function MenuFooter({
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
-                            Directions
+                            <LuMapPin size={16} aria-hidden="true" />
+                            <span>Directions</span>
                         </a>
                     )}
                     {showReservation && publicPresence?.reservationUrl && (
@@ -345,6 +368,7 @@ export default function MenuFooter({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                gap: 8,
                                 padding: '8px 14px',
                                 fontSize: '14px',
                                 lineHeight: '20px',
@@ -352,7 +376,8 @@ export default function MenuFooter({
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
-                            Reserve
+                            <LuCalendarCheck size={16} aria-hidden="true" />
+                            <span>Reserve</span>
                         </a>
                     )}
                     {showOrder && publicPresence?.orderUrl && (
@@ -375,6 +400,7 @@ export default function MenuFooter({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                gap: 8,
                                 padding: '8px 14px',
                                 fontSize: '14px',
                                 lineHeight: '20px',
@@ -382,7 +408,8 @@ export default function MenuFooter({
                                 fontFamily: moodConfig.bodyFont,
                             }}
                         >
-                            Order
+                            <LuShoppingBag size={16} aria-hidden="true" />
+                            <span>Order</span>
                         </a>
                     )}
                 </div>
@@ -457,6 +484,36 @@ export default function MenuFooter({
                         );
                     })}
                 </div>
+            )}
+
+            {policyLinks.length > 0 && (
+                <nav
+                    aria-label="Policy links"
+                    style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'flex-start',
+                        gap: '10px',
+                        marginTop: '12px',
+                    }}
+                >
+                    {policyLinks.map((link) => (
+                        <a
+                            key={link.href}
+                            href={link.href}
+                            style={{
+                                color: moodConfig.bodyColor,
+                                fontSize: '12px',
+                                lineHeight: '18px',
+                                opacity: 0.58,
+                                textDecoration: 'none',
+                                fontFamily: moodConfig.bodyFont,
+                            }}
+                        >
+                            {link.label}
+                        </a>
+                    ))}
+                </nav>
             )}
 
             {/* Guest Feedback Link */}
@@ -541,13 +598,17 @@ export default function MenuFooter({
                     {menuVersion && `v${menuVersion}`}
                 </p>
             )}
+            </div>
 
-            <PublicMenuListAttribution
-                mode="compact"
-                rightsLabel={null}
-                mutedColor={moodConfig.bodyColor}
-                accentColor={moodConfig.accentColor}
-            />
+            <div style={{ ...footerCardStyle, padding: '13px 16px', textAlign: 'center' }}>
+                <PublicMenuListAttribution
+                    mode="compact"
+                    rightsLabel={null}
+                    mutedColor={moodConfig.bodyColor}
+                    accentColor={moodConfig.accentColor}
+                    containerStyle={{ marginTop: 0, paddingBottom: 0 }}
+                />
+            </div>
         </footer>
     );
 }

@@ -139,7 +139,9 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Featured cards reuse category icon/emoji identity only when the owner has category icons enabled for the menu design.
 - Desktop and mobile owner controls use the same public wording for this area: `Featured section`, `Featured choice`, `Quick choice`, and `Value choice`.
 - Category headings are structural markers, not decorative title screens.
-- Item cards preserve line limits, price alignment, text-first hierarchy, and stable image slots.
+- Item cards preserve line limits, price alignment, text-first hierarchy, and render image frames only when an item has an image.
+- Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, and owner-enabled category identity.
+- Footer business actions use compact icon/text chips while keeping platform attribution quiet.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution`.
 
 ---
@@ -148,6 +150,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-09 | Client menu interaction hardening: search controls stay reachable, Sections/language popovers render above sticky layers, PDP mobile bottom sheet/image viewing improved, blank image placeholders removed, and footer/back-to-top spacing tightened |
 | 2026-05-08 | Desktop and mobile owner Featured section controls now use the same Featured choice, Quick choice, and Value choice wording as the public menu |
 | 2026-05-08 | Featured cards now inherit owner-enabled category icon/emoji identity in their compact category metadata row without adding a separate badge system |
 | 2026-05-07 | Client menu retrieval foundation: fuzzy/transliteration search, compact multilingual search terms, active-item JSON-LD freshness, and bounded offline navigation fallback |

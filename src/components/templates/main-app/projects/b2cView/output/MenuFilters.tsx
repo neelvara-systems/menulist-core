@@ -332,7 +332,7 @@ function MenuFilters({
         </>
     );
 
-    const inlineCategoryPopover = mounted && isInline && showCategories ? (
+    const inlineCategoryPopover = mounted && isInline && showCategories ? createPortal(
         <div
             ref={popoverRef}
             role="dialog"
@@ -357,7 +357,8 @@ function MenuFilters({
             }}
         >
             {categoryPanelBody}
-        </div>
+        </div>,
+        document.body
     ) : null;
 
     const legacyCategoryPopover = mounted && !isInline ? createPortal(

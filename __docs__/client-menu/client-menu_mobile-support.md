@@ -1,6 +1,6 @@
 # Client Menu (Customer-Facing Digital Menu) — Mobile Support
 
-**Last Updated:** May 7, 2026
+**Last Updated:** May 9, 2026
 **Decision:** ✅ ALREADY MOBILE-FIRST — Public page, not inside owner MobileShell
 
 ---
@@ -17,8 +17,9 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 |--------|--------|-------|
 | Customer mobile browsing | ✅ | Mobile-first responsive design, 70%+ users on mobile |
 | Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator; public icons preserve owner-selected icon choices |
-| Item display (name/price/image) | ✅ | Responsive grid/list layouts with line limits and reserved image slots |
-| Search/filter | ✅ | Debounced fuzzy/transliteration search with stronger focus state, business-type placeholder, and compact sticky command-row behavior |
+| Item display (name/price/image) | ✅ | Responsive grid/list layouts with line limits; image frames render only for items that have images |
+| Search/filter | ✅ | Debounced fuzzy/transliteration search with 16px mobile input sizing, clear exits search mode, and compact sticky command-row behavior |
+| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, and category identity when enabled |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
 | Schema.org JSON-LD | ✅ | Server-side active menu data with real freshness fields |
 | Analytics tracking | ✅ | Device-independent |
@@ -29,8 +30,9 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 
 - Customer-facing category labels, item labels, and footer language actions must use localization fallback instead of active-language-only reads.
 - Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
-- Image-enabled layouts reserve thumbnail/card image space so missing or broken images do not move the user's scroll position.
+- Image-enabled layouts must not show blank image cards for items without images; broken image URLs may keep their reserved frame to avoid a late scroll jump.
 - Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
+- `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet; no extra marketing CTA is added to the mobile footer by default.

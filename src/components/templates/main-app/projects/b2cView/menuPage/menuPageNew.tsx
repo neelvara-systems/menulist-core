@@ -18,7 +18,6 @@ import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
-import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
 import { getLocalizedText } from '@lib/localization/text';
@@ -250,7 +249,7 @@ function MenuPageNew({
     // State
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [, setIsSearchFocused] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
@@ -820,8 +819,8 @@ function MenuPageNew({
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
         if (historyPushedRef.current) {
-            // Go back in history (will trigger popstate which clears selectedItem)
             historyPushedRef.current = false;
+            setSelectedItem(null);
             window.history.back();
         } else {
             // Direct close without history (e.g., direct link then close)
@@ -949,7 +948,7 @@ function MenuPageNew({
 
     const displayActiveCategory = debouncedSearch ? null : activeCategory;
     const activeCategoryTabId = displayActiveCategory?.id;
-    const isSearchCommandExpanded = isSearchFocused || searchTerm.trim().length > 0;
+    const isSearchCommandExpanded = false;
 
     useEffect(() => {
         if (!pendingBrowseCategory || searchTerm || debouncedSearch) return;
@@ -1021,6 +1020,9 @@ function MenuPageNew({
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
+        contain: 'paint',
+        transform: 'translateZ(0)',
+        willChange: 'transform',
     };
     const commandLayerStyle: React.CSSProperties = {
         display: 'flex',
@@ -1033,15 +1035,13 @@ function MenuPageNew({
         display: 'flex',
         flexShrink: 0,
         gap: 8,
-        maxWidth: isSearchCommandExpanded ? 0 : isMobile ? 216 : 280,
-        opacity: isSearchCommandExpanded ? 0 : 1,
-        overflow: 'hidden',
-        pointerEvents: isSearchCommandExpanded ? 'none' : 'auto',
-        transform: isSearchCommandExpanded ? 'translateX(8px) scale(0.98)' : 'translateX(0) scale(1)',
-        transition: isSearchCommandExpanded
-            ? 'max-width 0.18s ease, opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.18s'
-            : 'max-width 0.18s ease, opacity 0.14s ease, transform 0.14s ease',
-        visibility: isSearchCommandExpanded ? 'hidden' : 'visible',
+        maxWidth: isMobile ? 216 : 280,
+        opacity: 1,
+        overflow: 'visible',
+        pointerEvents: 'auto',
+        transform: 'translateX(0) scale(1)',
+        transition: 'opacity 0.14s ease, transform 0.14s ease',
+        visibility: 'visible',
     };
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
@@ -1120,7 +1120,7 @@ function MenuPageNew({
                 return {
                     ...baseStyle,
                     height: 1,
-                    width: 56,
+                    width: '100%',
                     background: dividerColor,
                 };
             case 'gradient':
@@ -1134,7 +1134,7 @@ function MenuPageNew({
                 return {
                     ...baseStyle,
                     height: 4,
-                    width: 44,
+                    width: '100%',
                     backgroundImage: `radial-gradient(circle, ${dividerColor} 1.5px, transparent 1.5px)`,
                     backgroundSize: '10px 4px',
                     backgroundRepeat: 'repeat-x',
@@ -1291,15 +1291,13 @@ function MenuPageNew({
                                 compact={!isDesktop}
                                 expanded={isSearchCommandExpanded}
                                 containerStyle={{
-                                    flex: isSearchCommandExpanded ? '1 1 100%' : '1 1 auto',
+                                    flex: '1 1 auto',
                                     minWidth: 0,
-                                    width: isSearchCommandExpanded ? '100%' : undefined,
                                 }}
                             />
 
                             <div
-                                aria-hidden={isSearchCommandExpanded}
-                                data-menu-search-side-controls={isSearchCommandExpanded ? 'hidden' : 'visible'}
+                                data-menu-search-side-controls="visible"
                                 style={searchSideControlsStyle}
                             >
                                 {showSectionsControl && (
@@ -1351,7 +1349,7 @@ function MenuPageNew({
                                             justifyContent: 'center',
                                             padding: '8px 12px',
                                             lineHeight: '18px',
-                                            borderRadius: categoryNavRadius,
+                                            borderRadius: 999,
                                             border: displayActiveCategory?.id === cat.id
                                                 ? `${Math.max(1, categoryNavBorderWidth)}px solid ${moodConfig.accentColor}50`
                                                 : `${categoryNavBorderWidth}px solid ${moodConfig.categoryStyle.borderColor}`,
@@ -1367,13 +1365,13 @@ function MenuPageNew({
                                             whiteSpace: 'nowrap',
                                             textDecoration: 'none',
                                             cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
+                                            transition: 'background 0.16s ease, border-color 0.16s ease, color 0.16s ease',
                                             flexShrink: 0,
                                             scrollSnapAlign: 'start',
                                             WebkitTapHighlightColor: 'transparent',
                                         }}
                                     >
-                                        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8, maxWidth: '100%', minWidth: 0 }}>
+                                        <span style={{ alignItems: 'center', display: 'inline-flex', gap: 8, lineHeight: 1, maxWidth: '100%', minWidth: 0 }}>
                                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && cat.icon ? (
                                                 <CategoryIcon
                                                     color={displayActiveCategory?.id === cat.id ? moodConfig.accentColor : moodConfig.bodyColor}
@@ -1551,10 +1549,9 @@ function MenuPageNew({
                         {/* Main menu content area */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Categories & Items */}
-                            {allCategories.map((category: any) => {
+                            {allCategories.map((category: any, categoryIndex: number) => {
                                 const items = getItemsForCategory(category.id);
                                 if (items.length === 0 && debouncedSearch) return null;
-                                const categoryHasImages = items.some((item: any) => !!item.images?.[0]?.url);
                                 const categoryHeaderFrameStyle = getCategoryHeaderFrameStyle();
                                 const renderedDividerStyle = getDividerStyle();
 
@@ -1568,11 +1565,12 @@ function MenuPageNew({
                                         data-category-id={category.id}
                                         style={{
                                             marginBottom: spacing.category,
+                                            marginTop: categoryIndex > 0 ? Math.max(12, Math.round(spacing.category * 0.45)) : 0,
                                             scrollMarginTop: `calc(${stickyControlsOffset + 16}px + env(safe-area-inset-top))`,
                                         }}
                                     >
                                         <header style={categoryHeaderFrameStyle}>
-                                            <div style={{ alignItems: 'center', display: 'flex', gap: 10 }}>
+                                            <div style={{ alignItems: 'center', display: 'flex', gap: 10, minHeight: 32 }}>
                                                 {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon ? (
                                                     <div
                                                         style={{
@@ -1584,6 +1582,7 @@ function MenuPageNew({
                                                             flexShrink: 0,
                                                             height: 28,
                                                             justifyContent: 'center',
+                                                            lineHeight: 1,
                                                             width: 28,
                                                         }}
                                                     >
@@ -1595,7 +1594,9 @@ function MenuPageNew({
                                                         />
                                                     </div>
                                                 ) : null}
-                                                <h2 style={categoryHeaderStyle}>{getMenuText(category.name, 'Category')}</h2>
+                                                <h2 style={{ ...categoryHeaderStyle, display: 'flex', alignItems: 'center', minHeight: 28 }}>
+                                                    {getMenuText(category.name, 'Category')}
+                                                </h2>
                                             </div>
                                             {renderedDividerStyle && <div style={renderedDividerStyle} />}
                                         </header>
@@ -1620,8 +1621,8 @@ function MenuPageNew({
                                                     const itemDecisionChips = getItemDecisionChips(item);
 
                                                     // G10 ENFORCEMENT: Image quota per category
-                                                    const reserveItemImageSlot = shouldShowItemImages && categoryHasImages && itemIndex < layoutConfig.maxImagesPerCategory;
                                                     const itemImageUrl = item.images?.[0]?.url;
+                                                    const reserveItemImageSlot = shouldShowItemImages && !!itemImageUrl && itemIndex < layoutConfig.maxImagesPerCategory;
 
                                                     return (
                                                         <article
@@ -1760,7 +1761,7 @@ function MenuPageNew({
                                         No {labels.itemsPlural} found for &ldquo;{debouncedSearch}&rdquo;
                                     </div>
                                     <p style={{ margin: '10px auto 0', maxWidth: 420, lineHeight: 1.5 }}>
-                                        Try another spelling, jump back into a section, or contact the business directly.
+                                        Try another spelling or browse a section below.
                                     </p>
                                     <div style={{
                                         display: 'flex',
@@ -1801,31 +1802,6 @@ function MenuPageNew({
                                             >
                                                 {getMenuText(category.name, 'Category')}
                                             </button>
-                                        ))}
-                                        {recoveryActions.map((action) => (
-                                            <a
-                                                key={action.label}
-                                                href={action.href}
-                                                onClick={(event) => trackBeforeNavigate({
-                                                    event,
-                                                    href: action.href,
-                                                    target: action.external ? '_blank' : undefined,
-                                                    track: action.track,
-                                                })}
-                                                target={action.external ? '_blank' : undefined}
-                                                rel={action.external ? 'noopener noreferrer' : undefined}
-                                                style={{
-                                                    border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                                    borderRadius: categoryNavRadius,
-                                                    padding: '8px 14px',
-                                                    background: moodConfig.itemStyle.background,
-                                                    color: moodConfig.accentColor,
-                                                    fontFamily: moodConfig.bodyFont,
-                                                    textDecoration: 'none',
-                                                }}
-                                            >
-                                                {action.label}
-                                            </a>
                                         ))}
                                     </div>
                                 </div>
@@ -1928,6 +1904,7 @@ function MenuPageNew({
                 unavailableLabel={unavailableLabel}
                 trackView={selectedItemTrackView}
                 recoveryActions={recoveryActions}
+                showCategoryIcons={showCategoryIcons}
             />
         </div>
     );

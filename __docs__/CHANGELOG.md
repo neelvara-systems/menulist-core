@@ -6,6 +6,21 @@
 
 ---
 
+## May 9, 2026 — Client Menu: Interaction Hardening
+
+### Fixed
+
+- **Search command row stays stable** — Search no longer hides `Sections` or language controls while focused, the clear button exits search mode, and sticky-row width animation was removed.
+- **Sections and language popovers stay clickable** — Both controls now render above sticky/overflow containers instead of being clipped or covered.
+- **Item detail is stronger on mobile** — PDP uses a mobile bottom sheet, contain-fit images, swipe/arrow gallery controls, category identity when enabled, and immediate close-state cleanup.
+- **Featured and item image layout tightened** — Featured cards remain inside their own carousel, and items without images no longer show blank image frames.
+- **Footer and navigation termination tightened** — Footer actions use compact icon/text chips, compact MenuList attribution avoids duplicate bottom spacing, and back-to-top sits at the bottom-right safe-area corner.
+- **OBP footer spacing aligned** — Official Business Page footer utility controls and compact MenuList attribution now render as separate cards using the same quiet terminal spacing.
+
+### Documentation
+
+- Updated `__docs__/client-menu/README.md`, `_impl.md`, `client-menu_mobile-support.md`, the ChatGPT UI/UX progress tracker, and `__docs__/official-business-page/official-business-page_impl.md`.
+
 ## May 8, 2026 — Client Menu: Featured Category Identity
 
 ### Changed

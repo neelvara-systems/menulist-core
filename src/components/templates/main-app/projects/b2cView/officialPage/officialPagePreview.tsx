@@ -242,17 +242,22 @@ export default function OfficialPagePreview({
                 ) : null}
 
                 <footer className={styles.footer}>
-                    <PublicMenuListAttribution
-                        mode="compact"
-                        surfaceLabel={t('publicOfficialPagePoweredBy')}
-                        rightsLabel={t('publicAllRightsReserved')}
-                        ctaLabel={null}
-                        mutedColor="#bbb"
-                    />
-                    <div className={styles.policyLinks}>
-                        {publicPresence.showPrivacyLink !== false ? <span>{t('publicPrivacy')}</span> : null}
-                        {publicPresence.showTermsLink !== false ? <span>{t('publicTerms')}</span> : null}
-                        {publicPresence.showRefundLink !== false ? <span>{t('publicRefund')}</span> : null}
+                    <div className={`${styles.footerCard} ${styles.footerUtilityCard}`}>
+                        <div className={styles.policyLinks}>
+                            {publicPresence.showPrivacyLink !== false ? <span>{t('publicPrivacy')}</span> : null}
+                            {publicPresence.showTermsLink !== false ? <span>{t('publicTerms')}</span> : null}
+                            {publicPresence.showRefundLink !== false ? <span>{t('publicRefund')}</span> : null}
+                        </div>
+                    </div>
+                    <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
+                        <PublicMenuListAttribution
+                            mode="compact"
+                            surfaceLabel={t('publicOfficialPagePoweredBy')}
+                            rightsLabel={t('publicAllRightsReserved')}
+                            ctaLabel={null}
+                            mutedColor="#999"
+                            containerStyle={{ marginTop: 0, paddingBottom: 0 }}
+                        />
                     </div>
                 </footer>
             </div>

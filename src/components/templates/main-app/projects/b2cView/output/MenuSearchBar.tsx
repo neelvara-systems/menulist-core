@@ -85,9 +85,9 @@ function MenuSearchBar({
 
     const clearSearch = () => {
         onSearchChange('');
-        setIsFocused(true);
-        onFocusChange?.(true);
-        inputRef.current?.focus();
+        setIsFocused(false);
+        onFocusChange?.(false);
+        inputRef.current?.blur();
     };
     const handleFocus = () => {
         setIsFocused(true);
@@ -107,8 +107,7 @@ function MenuSearchBar({
                 width: '100%',
                 marginTop: compact ? 0 : 8,
                 marginBottom: compact ? 0 : 16,
-                transition: 'flex 0.18s ease, flex-basis 0.18s ease, width 0.18s ease',
-                willChange: expanded ? 'flex-basis, width' : undefined,
+                transition: 'border-color 0.16s ease, background 0.16s ease',
                 ...containerStyle,
             }}
         >
@@ -149,6 +148,7 @@ function MenuSearchBar({
                     color: moodConfig.bodyColor,
                     fontFamily: moodConfig.bodyFont,
                     fontSize: isMobile ? 16 : 15,
+                    WebkitTextSizeAdjust: '100%',
                     lineHeight: '20px',
                     outline: 'none',
                     touchAction: 'manipulation',
@@ -174,11 +174,19 @@ function MenuSearchBar({
                         justifyContent: 'center',
                         border: 0,
                         borderRadius: 999,
-                        background: 'transparent',
+                        background: `${moodConfig.bodyColor}0f`,
                         cursor: 'pointer',
                     }}
                 >
-                    <LuX size={16} style={{ color: moodConfig.bodyColor }} />
+                    <LuX
+                        size={18}
+                        strokeWidth={2.4}
+                        style={{
+                            color: moodConfig.bodyColor,
+                            display: 'block',
+                            flexShrink: 0,
+                        }}
+                    />
                 </button>
             )}
         </div>
