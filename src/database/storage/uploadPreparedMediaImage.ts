@@ -22,6 +22,32 @@ function normalizeId(value: string | number | null | undefined, fallback: string
     return normalized || fallback;
 }
 
+async function getBlobFingerprint(blob: Blob): Promise<string> {
+    const buffer = await blob.arrayBuffer();
+
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const digest = await crypto.subtle.digest('SHA-256', buffer);
+        return Array.from(new Uint8Array(digest))
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('')
+            .slice(0, 16);
+    }
+
+    const bytes = new Uint8Array(buffer);
+    let hash = 0x811c9dc5;
+    const step = Math.max(1, Math.floor(bytes.length / 8000));
+
+    for (let index = 0; index < bytes.length; index += step) {
+        hash ^= bytes[index];
+        hash = Math.imul(hash, 0x01000193);
+    }
+
+    hash ^= bytes.length;
+    hash = Math.imul(hash, 0x01000193);
+
+    return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 export async function uploadPreparedMediaImage({
     blob,
     contentType,
@@ -44,10 +70,11 @@ export async function uploadPreparedMediaImage({
     }
 
     const uploadContentType = selectedVariant?.mimeType || prepared?.mimeType || contentType || uploadBlob.type || 'image/jpeg';
+    const blobFingerprint = dataUrl ? getMediaDataFingerprint(dataUrl) : await getBlobFingerprint(uploadBlob);
     const uploadMediaId = prepared?.mediaId
         || mediaId
-        || `${profile}_${getMediaDataFingerprint(dataUrl || `${Date.now()}-${entityId}`)}`;
-    const checksum = prepared?.checksum || mediaChecksum || getMediaDataFingerprint(dataUrl || uploadMediaId);
+        || `${profile}_${blobFingerprint}`;
+    const checksum = prepared?.checksum || mediaChecksum || blobFingerprint;
     const extension = getMediaFileExtension(uploadContentType);
     const path = buildMediaStoragePath({
         entityId: normalizeId(entityId, 'asset'),

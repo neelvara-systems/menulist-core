@@ -1,6 +1,5 @@
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
-import { validateImageUpload } from '@lib/performanceBudget';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { removeObjRef } from '@util/utils';
@@ -47,6 +46,7 @@ const ImageUploadSection = ({
                     alt={t('background')}
                     canAdjust={canAdjust}
                     helperText={t('backgroundUploadFormats')}
+                    imageType="menuBackground"
                     imageUrl={config?.backgroundImage}
                     onAdjust={onAdjust}
                     onRemove={config?.backgroundImage ? onRemove : undefined}
@@ -160,14 +160,6 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
             const isImage = file.type.startsWith('image/');
             if (!isImage) {
                 message.error('You can only upload image files!');
-                return false;
-            }
-
-            // Check 2: Source image budget. Final image is compressed below the public menu budget.
-            const budgetValidation = validateImageUpload(file, 0, 'menuBackground', 'source');
-
-            if (!budgetValidation.allowed) {
-                message.error(budgetValidation.reason);
                 return false;
             }
 

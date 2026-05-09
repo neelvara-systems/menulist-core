@@ -1361,6 +1361,7 @@ export default function MobileProjectSelectorSheet({
                                     accept={getMediaProfileAcceptAttribute('projectImage')}
                                     alt={`${formName || labels.offeringPhrase} preview`}
                                     canAdjust={Boolean(formProjectImageDraft?.sourceDataUrl)}
+                                    imageType="projectImage"
                                     imageUrl={formProjectImage}
                                     onAdjust={() => setIsProjectImageAdjustOpen(true)}
                                     onRemove={formProjectImage ? () => {

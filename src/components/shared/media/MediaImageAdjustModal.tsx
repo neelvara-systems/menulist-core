@@ -65,6 +65,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     const mediaSystemEnabled = isMediaImageSystemEnabled();
     const aspectRatio = useMemo(() => getSafeMediaAspectRatio(imageType, undefined), [imageType]);
     const numericAspectRatio = useMemo(() => parseMediaAspectRatio(aspectRatio), [aspectRatio]);
+    const previewMaxWidth = numericAspectRatio < 1 ? (isMobile ? 260 : 320) : undefined;
 
     const redraw = useCallback(() => {
         const canvas = canvasRef.current;
@@ -181,12 +182,14 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                 onPointerUp={handlePointerEnd}
                 ref={canvasRef}
                 style={{
+                    alignSelf: previewMaxWidth ? 'center' : undefined,
                     aspectRatio: numericAspectRatio,
                     background: token.colorFillAlter,
                     border: `1px solid ${token.colorBorderSecondary}`,
                     borderRadius: 8,
                     cursor: 'grab',
                     touchAction: 'none',
+                    maxWidth: previewMaxWidth,
                     width: '100%',
                 }}
             />

@@ -277,6 +277,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             alt={`${offeringName} preview`}
                             canAdjust={Boolean(projectImageDraft?.sourceDataUrl)}
                             helperText="Optional. This image appears on the Official Business Page menu card."
+                            imageType="projectImage"
                             imageUrl={projectImage}
                             onAdjust={() => setIsProjectImageAdjustOpen(true)}
                             onRemove={projectImage ? () => {

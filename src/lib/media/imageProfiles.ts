@@ -53,9 +53,7 @@ export interface MediaImageProfile {
     maxOutputSizeKB: number;
     maxSourceBytes: number;
     minDimension: number;
-    minHeight: number;
     minQuality: number;
-    minWidth: number;
     outputFormat: 'image/jpeg' | 'image/png' | 'image/webp';
     paddingRatio?: number;
     preserveTransparency: boolean;
@@ -78,10 +76,11 @@ export const MEDIA_ASPECT_RATIO_OPTIONS: MediaAspectRatioOption[] = [
     { value: '4:3', width: 40, height: 30, title: 'Landscape', useCase: 'Best for item photos' },
     { value: '16:9', width: 50, height: 28, title: 'Widescreen', useCase: 'Best for covers' },
     { value: '3:4', width: 30, height: 40, title: 'Portrait', useCase: 'Limited use' },
-    { value: '9:16', width: 25, height: 40, title: 'Mobile vertical', useCase: 'Social-only' },
+    { value: '9:16', width: 25, height: 40, title: 'Mobile vertical', useCase: 'Best for menu backgrounds' },
 ];
 
 const MB = 1024 * 1024;
+const OWNER_IMAGE_SOURCE_LIMIT = 15 * MB;
 
 export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
     menuItem: {
@@ -95,9 +94,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 8 * MB,
-        minWidth: 600,
-        minHeight: 600,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1200,
         outputFormat: 'image/webp',
         preserveTransparency: false,
@@ -125,9 +122,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 8 * MB,
-        minWidth: 600,
-        minHeight: 450,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1200,
         outputFormat: 'image/webp',
         preserveTransparency: false,
@@ -155,9 +150,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 8 * MB,
-        minWidth: 1200,
-        minHeight: 675,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1600,
         outputFormat: 'image/webp',
         preserveTransparency: false,
@@ -178,14 +171,12 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         description: 'Customer-facing menu background image.',
         allowedMimeTypes: MEDIA_ACCEPTED_IMAGE_MIME_TYPES,
         animationPolicy: 'static-only',
-        allowedAspectRatios: ['16:9'],
-        defaultAspectRatio: '16:9',
+        allowedAspectRatios: ['9:16'],
+        defaultAspectRatio: '9:16',
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 10 * MB,
-        minWidth: 1200,
-        minHeight: 675,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1400,
         outputFormat: 'image/jpeg',
         preserveTransparency: false,
@@ -211,9 +202,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: 'transparent',
         cropRequired: true,
         fit: 'contain',
-        maxSourceBytes: 5 * MB,
-        minWidth: 256,
-        minHeight: 256,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 512,
         outputFormat: 'image/png',
         paddingRatio: 0.84,
@@ -240,9 +229,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 10 * MB,
-        minWidth: 1200,
-        minHeight: 675,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1600,
         outputFormat: 'image/webp',
         preserveTransparency: false,
@@ -268,9 +255,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 10 * MB,
-        minWidth: 1600,
-        minHeight: 900,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1920,
         outputFormat: 'image/webp',
         preserveTransparency: false,
@@ -296,9 +281,7 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         backgroundColor: '#ffffff',
         cropRequired: true,
         fit: 'cover',
-        maxSourceBytes: 8 * MB,
-        minWidth: 800,
-        minHeight: 600,
+        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
         maxDimension: 1400,
         outputFormat: 'image/webp',
         preserveTransparency: false,
@@ -350,6 +333,26 @@ export function getSafeMediaAspectRatio(
 export function parseMediaAspectRatio(aspectRatio: MediaAspectRatioValue): number {
     const [width, height] = aspectRatio.split(':').map(Number);
     return width / height;
+}
+
+export function getMediaAspectRatioCss(aspectRatio: MediaAspectRatioValue): string {
+    const [width, height] = aspectRatio.split(':').map(Number);
+    return `${width} / ${height}`;
+}
+
+export function getMediaImageFrameAspectRatioCss(type: MediaImageType): string {
+    return getMediaAspectRatioCss(getMediaImageProfile(type).defaultAspectRatio);
+}
+
+export function getMediaImageCardFrameMaxWidth(type: MediaImageType, size: 'compact' | 'default' = 'default'): number | undefined {
+    const profile = getMediaImageProfile(type);
+    const ratio = parseMediaAspectRatio(profile.defaultAspectRatio);
+
+    if (ratio < 1) {
+        return size === 'compact' ? 180 : 220;
+    }
+
+    return undefined;
 }
 
 export function getMediaProfileAcceptAttribute(type: MediaImageType): string {

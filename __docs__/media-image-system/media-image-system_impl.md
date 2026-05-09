@@ -14,6 +14,7 @@ Create:
 Modify:
 
 - `src/config/features.ts`
+- `storage.rules`
 - `src/lib/image/optimizeImage.ts`
 - `src/lib/performanceBudget.ts`
 - `src/lib/image/projectImageGeneration.ts`
@@ -38,20 +39,22 @@ Modify:
 - `src/components/mobile/screens/MobileOfficialPageScreen.tsx`
 - `src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx`
 - `src/components/mobile/screens/MobileDigitalScreensScreen.tsx`
+- `src/database/storage/uploadBlobToStorage.ts`
+- `src/database/storage/uploadPreparedMediaImage.ts`
 - `__docs__/CHANGELOG.md`
 
 ## Implementation Steps
 
 1. Add a feature flag: `ENABLE_MEDIA_IMAGE_SYSTEM`.
-2. Add media image profiles with purpose-specific ratios, minimum dimensions, transparency rules, named variants, limits, output settings, and storage hints.
-3. Add a shared preparation function that validates source type/size/dimensions, crops to the selected allowed ratio, resizes, compresses, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/data URL compatibility output, named variants, focal point, dominant color, and source metadata.
+2. Add media image profiles with purpose-specific ratios, transparency rules, named variants, source limits, output settings, and storage hints.
+3. Add a shared preparation function that validates source type/size/dimensions, crops to the selected allowed ratio, resizes, compresses, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/local-preview data URL output, named variants, focal point, dominant color, and source metadata.
 4. Add a shared media image card for placeholder, local file upload, drag/drop, paste, preview, replace, adjust, remove, and reset actions.
 5. Add optional manual adjust UI for approved non-item profiles. The owner can drag, zoom, rotate, and reset framing, but the final resize, format, and compression still come from `prepareMediaImage`.
 6. Keep old optimizer exports (`MENU_IMAGE_CONFIG`, `MENU_BACKGROUND_IMAGE_CONFIG`) but derive them from media profiles.
 7. Replace per-surface ad hoc upload rules with the shared preparation function.
 8. Restrict AI image shape selectors to the menu item media profile and keep system-native ratio order first.
 9. Preserve existing Firebase Storage writes and public cache invalidation paths.
-10. Keep prepared outputs immutable. Legacy paths that can overwrite public media must move to a new versioned/fingerprinted path before being considered frozen.
+10. Keep prepared outputs immutable. Profile-aware public media saves must upload through Blob storage to `media/{profile}/{tenantId}/{storeId}/{entityId}/{mediaId}_{variant}.{extension}`.
 
 ## Key Decisions
 
@@ -80,9 +83,9 @@ Profiles expose named variants:
 
 The primary variant is still returned as `dataUrl` for compatibility with current DAL upload functions. The variant map is prepared now so future renderers can stop serving oversized single URLs without changing the media profile contract.
 
-### Data URL compatibility
+### Data URL boundary
 
-Current Firebase client DAL helpers still upload base64 data URLs. The media layer therefore keeps `dataUrl` as a compatibility field, but the canonical object also includes `blob` and per-variant `blob` values. New profile-aware upload code should prefer Blob/File or variant-aware paths instead of treating data URLs as the long-term storage contract.
+The media layer keeps `dataUrl` only for local preview and existing form state. Profile-aware saves use `uploadPreparedMediaImage`, which uploads a Blob to Firebase Storage. If a media caller still passes a prepared data URL into an existing DAL function, the DAL converts it back to a Blob before upload instead of using `uploadString(data_url)`.
 
 ### Manual adjust is intent-only
 
@@ -106,7 +109,7 @@ Official Business Page gallery images upload immediately because the existing fl
 
 ### Immutable cache behavior
 
-Prepared media outputs should be immutable. Current project, item, menu background, OBP gallery, and digital screen uploads already use unique object names. Business logo upload now uses a fingerprinted nested path, so a changed logo gets a new public Storage object instead of overwriting `stores/logos/{storeId}`.
+Prepared media outputs should be immutable. Current project, item, menu background, logo, OBP gallery, and digital screen uploads route through the profile-aware media uploader, so a changed image gets a new public Storage object instead of overwriting an old one.
 
 ### Static output and transparency
 

@@ -18,11 +18,15 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ColorPicker, InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuCalendar,
+    LuCrop,
     LuExternalLink,
+    LuEye,
+    LuImagePlus,
     LuMapPin,
     LuMessageSquare,
     LuMessageSquarePlus,
@@ -30,17 +34,24 @@ import {
     LuSmile,
     LuPhone,
     LuStar,
+    LuTrash2,
 } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Input, NavBar, Switch, Text, TextArea, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Popup, Switch, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
+
+const MobileOfficialPagePreviewSheet = dynamic(() => import('../sheets/MobileOfficialPagePreviewSheet'), { ssr: false });
 
 interface MobileOfficialPageScreenProps {
     onBack: () => void;
 }
+
+type PresenceFormData = ReturnType<typeof getInitialPresenceForm>;
+type LocalizedPresenceDrafts = ReturnType<typeof buildLocalizedPresenceDrafts>;
 
 function getInitialPresenceForm(storeDetails: any) {
     const initialPresence = storeDetails?.publicPresence || {};
@@ -84,14 +95,57 @@ function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
     );
 }
 
+function buildLocalizedPresence(storeDetails: any, localizedDrafts: LocalizedPresenceDrafts) {
+    return Object.entries(localizedDrafts).reduce((presence, [languageCode, draft]) => ({
+        ...presence,
+        descriptor: updateLocalizedText(
+            presence.descriptor,
+            draft.descriptor,
+            languageCode,
+            'en',
+        ),
+        knownFor: updateLocalizedText(
+            presence.knownFor,
+            draft.knownFor,
+            languageCode,
+            'en',
+        ),
+        specialNote: updateLocalizedText(
+            presence.specialNote,
+            draft.specialNote,
+            languageCode,
+            'en',
+        ),
+    }), {
+        descriptor: storeDetails?.publicPresence?.descriptor,
+        knownFor: storeDetails?.publicPresence?.knownFor,
+        specialNote: storeDetails?.publicPresence?.specialNote,
+    } as any);
+}
+
+function buildPublicPresenceDraft(storeDetails: any, nextPresence: PresenceFormData, localizedDrafts: LocalizedPresenceDrafts) {
+    const nextLocalizedPresence = buildLocalizedPresence(storeDetails, localizedDrafts);
+
+    return {
+        ...(storeDetails?.publicPresence || {}),
+        ...nextPresence,
+        descriptor: nextLocalizedPresence.descriptor,
+        knownFor: nextLocalizedPresence.knownFor,
+        specialNote: nextLocalizedPresence.specialNote,
+        photos: nextPresence.photos.filter(Boolean),
+    };
+}
+
 export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
     const tShare = useTranslations('MobileShare');
+    const tDesign = useTranslations('MobileDesignEditor');
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const session = useClientAuthSession();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { projectsList, selectedProjectId } = useMobileProjects();
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const [selectedLanguage, setSelectedLanguage] = useState(getStorePreferredLanguage(storeDetails));
     const [isSaving, setIsSaving] = useState(false);
@@ -103,8 +157,11 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     }>>({});
     const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
     const [photoDeleteQueue, setPhotoDeleteQueue] = useState<string[]>([]);
+    const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
+    const [isPreviewSheetOpen, setIsPreviewSheetOpen] = useState(false);
+    const replacePhotoInputRef = useRef<HTMLInputElement | null>(null);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
@@ -124,6 +181,25 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const photoSlots = useMemo(() => {
         return [...formData.photos.filter(Boolean), ''];
     }, [formData.photos]);
+    const previewStoreDetails = useMemo(() => {
+        if (!storeDetails) return null;
+
+        return {
+            ...storeDetails,
+            publicPresence: buildPublicPresenceDraft(storeDetails, formData, localizedDrafts),
+        };
+    }, [formData, localizedDrafts, storeDetails]);
+    const hasFeedbackTarget = useMemo(() => (
+        projectsList.some((project: any) => (
+            project?.active !== false
+            && project?.isSpecialMenu !== true
+            && (
+                project?.projectId === selectedProjectId
+                || project?.isDefault === true
+                || !selectedProjectId
+            )
+        ))
+    ), [projectsList, selectedProjectId]);
     const officialPageInfoContent = useMemo(() => (
         <Flex gap={8} style={{ maxWidth: 280 }} vertical>
             <Flex gap={2} vertical>
@@ -153,45 +229,14 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
-        const nextLocalizedPresence = Object.entries(localizedDrafts).reduce((presence, [languageCode, draft]) => ({
-            ...presence,
-            descriptor: updateLocalizedText(
-                presence.descriptor,
-                draft.descriptor,
-                languageCode,
-                'en',
-            ),
-            knownFor: updateLocalizedText(
-                presence.knownFor,
-                draft.knownFor,
-                languageCode,
-                'en',
-            ),
-            specialNote: updateLocalizedText(
-                presence.specialNote,
-                draft.specialNote,
-                languageCode,
-                'en',
-            ),
-        }), {
-            descriptor: storeDetails.publicPresence?.descriptor,
-            knownFor: storeDetails.publicPresence?.knownFor,
-            specialNote: storeDetails.publicPresence?.specialNote,
-        } as any);
+        const nextPublicPresence = buildPublicPresenceDraft(storeDetails, nextPresence, localizedDrafts);
         const payload = {
             businessCopyMeta: buildBusinessCopyManualOverrideMeta({
                 existingMeta: storeDetails?.businessCopyMeta,
                 fieldKeys: ['descriptor', 'knownFor', 'specialNote'],
             }),
             storeId: storeDetails.storeId,
-            publicPresence: {
-                ...(storeDetails.publicPresence || {}),
-                ...nextPresence,
-                descriptor: nextLocalizedPresence.descriptor,
-                knownFor: nextLocalizedPresence.knownFor,
-                specialNote: nextLocalizedPresence.specialNote,
-                photos: nextPresence.photos.filter(Boolean),
-            },
+            publicPresence: nextPublicPresence,
         };
 
         setStoreDetails((previous: any) => ({
@@ -286,11 +331,15 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         });
         setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
+    const activePhoto = activePhotoIndex != null ? photoSlots[activePhotoIndex] : '';
+    const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
+        setLocalizedDrafts(originalLocalizedDrafts);
         setPhotoDeleteQueue([]);
-    }, [originalFormData]);
+        setActivePhotoIndex(null);
+    }, [originalFormData, originalLocalizedDrafts]);
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
         withAnalyticsSource(
@@ -609,26 +658,96 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     <Flex gap={10} vertical>
                         <Text strong>{t('businessPhotos')}</Text>
                         <Text type="secondary">{t('businessPhotosHelp')}</Text>
-                        <Flex gap={10} wrap>
-                            {photoSlots.map((photo, index) => (
-                                <Card key={index} style={{ flex: '1 1 30%', minWidth: 92 }}>
-                                    <MediaImageCard
-                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
-                                        alt={t('photoLabel', { index: index + 1 })}
-                                        aspectRatio="4 / 3"
-                                        canAdjust={Boolean(photoDrafts[index]?.sourceDataUrl)}
-                                        imageUrl={photo}
-                                        isBusy={uploadingIndex === index}
-                                        onAdjust={() => setAdjustingPhotoIndex(index)}
-                                        onRemove={photo ? () => handlePhotoRemove(index) : undefined}
-                                        onSelectFile={(file) => { void handlePhotoUpload(file, index); }}
-                                        placeholderTitle={t('photoLabel', { index: index + 1 })}
-                                        showDropHint={false}
-                                        size="compact"
-                                    />
-                                </Card>
-                            ))}
-                        </Flex>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gap: 10,
+                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                            }}
+                        >
+                            {photoSlots.map((photo, index) => {
+                                const label = t('photoLabel', { index: index + 1 });
+                                const isUploading = uploadingIndex === index;
+
+                                if (!photo) {
+                                    return (
+                                        <MediaImageCard
+                                            key={index}
+                                            accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                            alt={label}
+                                            aspectRatio="4 / 3"
+                                            imageType="galleryImage"
+                                            isBusy={isUploading}
+                                            onSelectFile={(file) => { void handlePhotoUpload(file, index); }}
+                                            placeholderDescription="Tap to add"
+                                            placeholderTitle={label}
+                                            showDropHint={false}
+                                            size="compact"
+                                        />
+                                    );
+                                }
+
+                                return (
+                                    <button
+                                        aria-label={`${label} actions`}
+                                        key={index}
+                                        onClick={() => setActivePhotoIndex(index)}
+                                        style={{
+                                            appearance: 'none',
+                                            background: token.colorFillAlter,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            borderRadius: 12,
+                                            color: 'inherit',
+                                            cursor: 'pointer',
+                                            display: 'block',
+                                            overflow: 'hidden',
+                                            padding: 0,
+                                            position: 'relative',
+                                            textAlign: 'left',
+                                            width: '100%',
+                                        }}
+                                        type="button"
+                                    >
+                                        <div style={{ aspectRatio: '4 / 3', overflow: 'hidden', position: 'relative', width: '100%' }}>
+                                            <img
+                                                alt={label}
+                                                src={photo}
+                                                style={{
+                                                    display: 'block',
+                                                    height: '100%',
+                                                    objectFit: 'cover',
+                                                    width: '100%',
+                                                }}
+                                            />
+                                            {isUploading ? (
+                                                <Flex
+                                                    align="center"
+                                                    justify="center"
+                                                    style={{
+                                                        background: 'rgba(0,0,0,0.42)',
+                                                        color: '#fff',
+                                                        inset: 0,
+                                                        position: 'absolute',
+                                                    }}
+                                                >
+                                                    <DotLoading />
+                                                </Flex>
+                                            ) : null}
+                                            <div
+                                                style={{
+                                                    background: 'linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.58))',
+                                                    inset: 'auto 0 0 0',
+                                                    padding: '22px 10px 8px',
+                                                    position: 'absolute',
+                                                }}
+                                            >
+                                                <Text strong style={{ color: '#fff', fontSize: 13 }}>{label}</Text>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </Flex>
                 </Card>
 
@@ -733,19 +852,141 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
                         bottom: 0,
                         marginInline: -16,
-                        padding: '12px 16px',
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
                         position: 'sticky',
                         zIndex: 20,
                     }}
+                    vertical
                 >
-                    <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
-                        {tMobile('reset')}
+                    <Button
+                        block
+                        color="primary"
+                        disabled={isSaving}
+                        fill="outline"
+                        icon={<LuEye size={18} />}
+                        onClick={() => setIsPreviewSheetOpen(true)}
+                        size="large"
+                    >
+                        {isDirty ? tDesign('previewChanges') : tDesign('previewOfficialPage')}
                     </Button>
-                    <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={handleSave} size="large">
-                        {tMobile('saveChanges')}
-                    </Button>
+                    {isDirty ? (
+                        <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35, textAlign: 'center' }}>
+                            {tDesign('previewUnsavedHint')}
+                        </Text>
+                    ) : null}
+                    <Flex gap={12}>
+                        <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
+                            {tMobile('reset')}
+                        </Button>
+                        <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={handleSave} size="large">
+                            {tMobile('saveChanges')}
+                        </Button>
+                    </Flex>
                 </Flex>
             </Flex>
+            {previewStoreDetails ? (
+                <MobileOfficialPagePreviewSheet
+                    activeLanguage={selectedLanguage}
+                    hasFeedbackTarget={hasFeedbackTarget}
+                    onClose={() => setIsPreviewSheetOpen(false)}
+                    storeDetails={previewStoreDetails as any}
+                    visible={isPreviewSheetOpen}
+                />
+            ) : null}
+            <input
+                accept={getMediaProfileAcceptAttribute('galleryImage')}
+                onChange={(event) => {
+                    const file = Array.from(event.currentTarget.files || []).find((item) => item.type.startsWith('image/'));
+                    const index = activePhotoIndex;
+                    event.currentTarget.value = '';
+                    if (!file || index == null) return;
+                    setActivePhotoIndex(null);
+                    void handlePhotoUpload(file, index);
+                }}
+                ref={replacePhotoInputRef}
+                style={{ display: 'none' }}
+                type="file"
+            />
+            <Popup
+                bodyStyle={{ maxHeight: '82vh', padding: 0 }}
+                destroyOnClose
+                onMaskClick={() => setActivePhotoIndex(null)}
+                visible={activePhotoIndex != null && Boolean(activePhoto)}
+            >
+                <Flex style={{ maxHeight: '82vh' }} vertical>
+                    <NavBar onBack={() => setActivePhotoIndex(null)}>
+                        {activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 16 }} vertical>
+                        {activePhoto ? (
+                            <img
+                                alt={activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}
+                                src={activePhoto}
+                                style={{
+                                    aspectRatio: '4 / 3',
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 12,
+                                    display: 'block',
+                                    objectFit: 'cover',
+                                    width: '100%',
+                                }}
+                            />
+                        ) : null}
+                        <Flex gap={8}>
+                            <Button
+                                block
+                                disabled={uploadingIndex != null}
+                                fill="outline"
+                                onClick={() => replacePhotoInputRef.current?.click()}
+                                size="large"
+                                style={{ flex: 1, minWidth: 0, paddingInline: 8 }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuImagePlus size={18} />
+                                    <Text>Replace</Text>
+                                </Flex>
+                            </Button>
+                            {canAdjustActivePhoto ? (
+                                <Button
+                                    block
+                                    disabled={uploadingIndex != null}
+                                    fill="outline"
+                                    onClick={() => {
+                                        const index = activePhotoIndex;
+                                        setActivePhotoIndex(null);
+                                        if (index != null) setAdjustingPhotoIndex(index);
+                                    }}
+                                    size="large"
+                                    style={{ flex: 1, minWidth: 0, paddingInline: 8 }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuCrop size={18} />
+                                        <Text>Adjust</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                            <Button
+                                block
+                                color="danger"
+                                disabled={uploadingIndex != null}
+                                fill="outline"
+                                onClick={() => {
+                                    const index = activePhotoIndex;
+                                    setActivePhotoIndex(null);
+                                    if (index != null) handlePhotoRemove(index);
+                                }}
+                                size="large"
+                                style={{ flex: 1, minWidth: 0, paddingInline: 8 }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuTrash2 size={18} />
+                                    <Text>Remove</Text>
+                                </Flex>
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </Flex>
+            </Popup>
             <MobileQrCodeSheet
                 copyErrorMessage={tShare('couldNotCopy')}
                 copySuccessMessage={tShare('linkCopied')}

@@ -10,7 +10,6 @@ Every saved image has one media purpose. That purpose decides:
 
 - accepted file types
 - max source size
-- minimum dimensions
 - final aspect ratio choices
 - target output size
 - compression quality
@@ -18,18 +17,20 @@ Every saved image has one media purpose. That purpose decides:
 
 ## Image Profiles
 
-| Type | Default ratio | Allowed ratios | Minimum source | Max source | Output target | Public budget |
-| --- | --- | --- | --- | --- | --- | --- |
-| Menu item | 1:1 | 1:1, 4:3 | 600x600 | 8MB | 1200px max | 500KB |
-| Category image | 4:3 | 4:3, 1:1 | 600x450 | 8MB | 1200px max | 500KB |
-| Project image | 16:9 | 16:9, 1:1 | 1200x675 | 8MB | 1600px max | 650KB |
-| Menu background | 16:9 | 16:9 | 1200x675 | 10MB | 1400px max | 800KB |
-| Business logo | 1:1 | 1:1 | 256x256 | 5MB | 512px max | 350KB |
-| Business cover | 16:9 | 16:9 | 1200x675 | 10MB | 1600px max | 800KB |
-| Digital screen slide | 16:9 | 16:9 | 1600x900 | 10MB | 1920px max | 500KB |
-| Gallery image | 4:3 | 4:3, 1:1 | 800x600 | 8MB | 1400px max | 700KB |
+| Type | Default ratio | Allowed ratios | Max source | Output target | Public budget |
+| --- | --- | --- | --- | --- | --- |
+| Menu item | 1:1 | 1:1, 4:3 | 15MB | 1200px max | 500KB |
+| Category image | 4:3 | 4:3, 1:1 | 15MB | 1200px max | 500KB |
+| Project image | 16:9 | 16:9, 1:1 | 15MB | 1600px max | 650KB |
+| Menu background | 9:16 | 9:16 | 15MB | 1400px max | 800KB |
+| Business logo | 1:1 | 1:1 | 15MB | 512px max | 350KB |
+| Business cover | 16:9 | 16:9 | 15MB | 1600px max | 800KB |
+| Digital screen slide | 16:9 | 16:9 | 15MB | 1920px max | 500KB |
+| Gallery image | 4:3 | 4:3, 1:1 | 15MB | 1400px max | 700KB |
 
 Menu cover is intentionally not a separate profile. If a menu needs a cover-like preview, use `projectImage` so menu previews, share cards, and discovery cards do not drift into separate image contracts.
+
+Owner source images are not rejected for being below the final output size or having the wrong orientation. A normal phone photo is accepted for a menu background, then framed inside the mobile menu profile rectangle and prepared into MenuList's final dimensions and KB budget. The source-dimension guard exists only to reject corrupted or icon-sized files that are too small to prepare at all.
 
 ## Canonical Prepared Image Contract
 
@@ -51,7 +52,7 @@ interface PreparedMediaImage {
 }
 ```
 
-Existing save flows may still persist a single URL field, but the media layer must not be URL-only. The canonical identity, version, checksum, focal point, and variant names are part of the frozen contract for future media documents, CDN migration, AI regeneration, and cleanup tooling.
+Existing save flows persist the primary public URL field for compatibility, but the upload boundary is Blob-based and profile-aware. The canonical identity, version, checksum, focal point, and variant names are part of the frozen contract for future media documents, CDN migration, AI regeneration, and cleanup tooling.
 
 ## Variant Policy
 
@@ -68,7 +69,7 @@ Every profile has named variants even when the current UI initially saves one UR
 | Digital screen slide | desktop, full |
 | Gallery image | thumb, full |
 
-The current single persisted URL remains the profile primary variant. Future renderers can move to the named variant map without changing the profile identifiers.
+The current single persisted URL remains the profile primary variant. Future renderers can move to the named variant URL map without changing the profile identifiers.
 
 ## Format Rules
 
@@ -98,16 +99,16 @@ Prepared media outputs are immutable. A changed image must create a new path or 
 Canonical future media paths follow:
 
 ```txt
-{tenantId}/{profile}/{entityId}/{mediaId}_{variant}.{extension}
+media/{profile}/{tenantId}/{storeId}/{entityId}/{mediaId}_{variant}.{extension}
 ```
 
 Example:
 
 ```txt
-t1/menuItem/item123/menuItem_a82bd0c2_medium.webp
+media/menuItem/t1/s1/item123/menuItem_a82bd0c2_medium.webp
 ```
 
-Current legacy single-URL DAL paths can continue while they migrate, but new profile-aware media code should use deterministic identity and variant names.
+Current legacy non-media upload paths can continue while they migrate, but profile-aware media code must use the immutable `media/{profile}/...` path.
 
 ## Focal Point Rule
 
@@ -126,7 +127,7 @@ The owner sees only the controls that apply to the selected image type.
 Examples:
 
 - Menu item image: Square, Landscape
-- Menu background: Widescreen only
+- Menu background: Mobile vertical only
 - Logo: Square only
 - Project image: Widescreen, Square
 - Digital screen slide: Widescreen only

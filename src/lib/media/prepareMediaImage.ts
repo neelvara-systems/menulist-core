@@ -77,6 +77,7 @@ export interface PrepareMediaImageOptions {
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
+const MIN_USABLE_SOURCE_EDGE = 32;
 const PREPARED_MEDIA_VERSION = 1;
 
 function estimateDataUrlSize(dataUrl: string): number {
@@ -691,10 +692,8 @@ export async function prepareMediaImage(
         ? estimateDataUrlSize(source)
         : source.size;
 
-    if (img.naturalWidth < profile.minWidth || img.naturalHeight < profile.minHeight) {
-        throw new Error(
-            `${profile.label} is too small. Use at least ${profile.minWidth} x ${profile.minHeight}px.`,
-        );
+    if (img.naturalWidth < MIN_USABLE_SOURCE_EDGE || img.naturalHeight < MIN_USABLE_SOURCE_EDGE) {
+        throw new Error('Use a clear image. This file is too small to prepare.');
     }
 
     const maxBytes = profile.maxOutputSizeKB * BYTES_PER_KB;

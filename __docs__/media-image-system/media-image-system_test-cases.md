@@ -4,15 +4,16 @@
 
 | Case | Expected result |
 | --- | --- |
-| Upload JPG menu item image under 8MB | Accepted and prepared to menu item profile. |
+| Upload JPG menu item image under 15MB | Accepted and prepared to menu item profile. |
 | Upload SVG as menu item image | Rejected. |
 | Upload HEIC as logo | Rejected. |
-| Upload 12MB background | Rejected before save. |
+| Upload 12MB background | Accepted as source, framed into the mobile menu background profile, and compressed to public budget. |
 | Upload 7MB background | Accepted as source, compressed to public budget. |
-| Upload very small item image | Rejected with clear message. |
+| Upload 16MB background | Rejected by the source safety cap. |
+| Upload icon-sized/corrupted item image | Rejected with clear message. |
 | Upload logo | Prepared with square output and gentler quality. |
 | Upload digital screen slide | Accepted only as widescreen and prepared to the screen slide budget. |
-| Upload small digital screen slide | Rejected below the minimum screen-slide resolution. |
+| Upload small digital screen slide | Accepted when it is a valid image and prepared into the screen-slide frame. |
 | Select AI menu item shape | Only Square and Landscape are available. |
 
 ## Public Output

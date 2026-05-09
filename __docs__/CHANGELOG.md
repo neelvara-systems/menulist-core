@@ -13,12 +13,16 @@
 - **Media image profiles added** — Menu item, project, menu background, business logo, digital screen slide, cover, and gallery images now share one purpose-based profile layer for upload type, source limit, aspect ratio, output dimension, and compression budget.
 - **Image preparation centralized** — Desktop and mobile item-image, project-image, background-image, logo, digital screen slide, and OBP photo upload paths now prepare images through the shared media contract before saving.
 - **Prepared media identity added** — Prepared images now carry media ID, checksum, version, status, named variants, focal point, Blob output, dominant color, and transparency policy metadata.
+- **Prepared media upload path added** — Profile-aware media saves now upload Blob data to immutable `media/{profile}/{tenantId}/{storeId}/...` Storage paths instead of saving through the legacy base64 upload path.
 - **Photo shape options restricted by purpose** — AI menu photo shape selection now shows only menu-safe ratios instead of every social-media shape.
 
 ### Fixed
 
 - **Logo save path hardened** — Desktop logo reset/save no longer treats an existing Firebase URL as a fresh upload, and the store DAL preserves non-base64 logo URLs defensively.
-- **Logo Storage path versioned** — Changed business logos now save under a fingerprinted Storage path so public caches do not depend on overwriting one object.
+- **Logo Storage path versioned** — Changed business logos now save under an immutable media Storage path so public caches do not depend on overwriting one object.
+- **Source photo upload acceptance corrected** — Owner-uploaded photos are no longer rejected for being below a profile's final target dimensions; MenuList accepts valid photos, frames them into the profile shape, and prepares the final output internally.
+- **Menu background frame aligned to mobile menus** — Menu background upload and adjust previews now use a mobile-vertical frame instead of a wide banner frame.
+- **Mobile OBP photo grid cleaned up** — Business photos now show as clean two-column thumbnails on mobile; replace, adjust, and remove actions open from a photo action sheet.
 - **Media profile budgets enforced** — Prepared images now fail when they cannot fit the configured KB budget instead of silently saving an oversized best effort.
 - **Manual adjust rotation corrected** — Rotate framing now accounts for rotated image bounds and drag direction.
 - **OBP gallery cleanup added** — Replaced or removed Official Business Page gallery photos are queued and deleted from Firebase Storage after the store save succeeds.

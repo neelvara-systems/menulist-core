@@ -4,16 +4,16 @@
 
 This implementation does not add a new collection or extra Firestore write by itself.
 
-Existing write paths remain:
+Existing Firestore write paths remain. Storage writes for media-system images now use profile-aware immutable paths:
 
 | Flow | Storage write | Firestore write |
 | --- | --- | --- |
-| Menu item image | 1 Storage object per saved image | Existing project save |
-| Project image | 1 Storage object when saved | Existing project summary/project metadata write |
-| Menu background | 1 Storage object on publish | Existing project publish write |
-| Business logo | 1 fingerprinted Storage object when logo changes | Existing store update write |
-| Official Business Page gallery image | 1 Storage object when photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
-| Digital screen slide | 1 Storage object when owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
+| Menu item image | 1 Blob upload to `media/menuItem/{tId}/{sId}/...` | Existing project save |
+| Project image | 1 Blob upload to `media/projectImage/{tId}/{sId}/...` | Existing project summary/project metadata write |
+| Menu background | 1 Blob upload to `media/menuBackground/{tId}/{sId}/...` on publish | Existing project publish write |
+| Business logo | 1 Blob upload to `media/businessLogo/{tId}/{sId}/...` when logo changes | Existing store update write |
+| Official Business Page gallery image | 1 Blob upload to `media/galleryImage/{tId}/{sId}/...` when photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
+| Digital screen slide | 1 Blob upload to `media/digitalScreenSlide/{tId}/{sId}/...` when owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
 
 ## Reads
 
@@ -31,7 +31,9 @@ The shared preparation layer reduces Storage and public bandwidth by resizing an
 - backgrounds target 800KB or lower
 - logos target 350KB or lower with gentler quality
 
-The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Existing single-URL Firestore fields are preserved to avoid a schema migration in this implementation, so only the primary variant is persisted by current DAL paths.
+The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Existing single-URL Firestore fields are preserved to avoid a schema migration in this implementation, so the primary variant URL is persisted by current DAL paths.
+
+Local `dataUrl` values are preview/form-state only. Profile-aware saves convert to Blob before Firebase upload and do not call `uploadString(data_url)`.
 
 ## Immutable Object Rule
 
@@ -39,9 +41,9 @@ Prepared public media should not overwrite the same object path. New image conte
 
 Current status:
 
-- Project, item, menu background, OBP gallery, and digital screen uploads already use unique object paths.
-- Business logo upload now uses a prepared-data fingerprint under `stores/logos/{storeId}/{fingerprint}` instead of overwriting `stores/logos/{storeId}`.
-- Future media asset documents should use the canonical path helper: `{tenantId}/{profile}/{entityId}/{mediaId}_{variant}.{extension}`.
+- Project, item, menu background, OBP gallery, business logo, and digital screen uploads use immutable `media/{profile}/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{extension}` paths.
+- Firebase Storage rules allow writes to `media/{profile}/{tId}/{sId}/...` only for the authenticated owner store and only for known media profiles.
+- Future media asset documents should use the same canonical path helper.
 
 ## Future Media Asset Documents
 

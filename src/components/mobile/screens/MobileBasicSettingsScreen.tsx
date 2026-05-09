@@ -243,6 +243,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                         aspectRatio="1 / 1"
                         canAdjust={Boolean(selectedLogo?.sourceDataUrl)}
                         helperText="Best results: square PNG or JPG, at least 512 x 512 px. Keep the logo clear with some spacing around the edges."
+                        imageType="businessLogo"
                         imageFit="contain"
                         imageUrl={selectedLogo?.url || storeDetails.logo}
                         onAdjust={() => setIsLogoAdjustOpen(true)}

@@ -1114,6 +1114,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 aspectRatio="1 / 1"
                                 canAdjust={Boolean(selectedFile.sourceDataUrl)}
                                 helperText={t('uploadLogoDesc' as any)}
+                                imageType="businessLogo"
                                 imageFit="contain"
                                 imageUrl={selectedFile.url || storeDetails?.logo}
                                 onAdjust={() => setIsLogoAdjustOpen(true)}

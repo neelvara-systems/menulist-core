@@ -13,7 +13,8 @@ export const PERFORMANCE_BUDGET = {
     // Per-image limits (in KB)
     MAX_IMAGE_SIZE_KB: 500,           // Individual item images
     MAX_BACKGROUND_SIZE_KB: 800,      // Background images can be slightly larger
-    MAX_BACKGROUND_SOURCE_SIZE_KB: 10240, // Owners can upload normal photos; we compress before publish
+    MAX_SOURCE_UPLOAD_SIZE_KB: 15 * 1024, // Owners can upload normal phone photos; we compress before publish
+    MAX_BACKGROUND_SOURCE_SIZE_KB: 15 * 1024, // Kept for legacy callers; use source upload cap semantics
 
     // Total page budget (in KB)
     MAX_TOTAL_IMAGE_WEIGHT_KB: 2000,  // 2MB total for all images on page
@@ -42,7 +43,9 @@ function resolveMaxImageSizeKB(type: ImageBudgetType, stage: 'source' | 'final')
     }
 
     if (type === 'item') {
-        return PERFORMANCE_BUDGET.MAX_IMAGE_SIZE_KB;
+        return stage === 'source'
+            ? PERFORMANCE_BUDGET.MAX_SOURCE_UPLOAD_SIZE_KB
+            : PERFORMANCE_BUDGET.MAX_IMAGE_SIZE_KB;
     }
 
     const profile = getMediaImageProfile(type);
@@ -83,9 +86,10 @@ export function validateImageUpload(
         };
     }
 
-    // Check 2: Total page budget limit
+    // Check 2: Total page budget limit. Source uploads are prepared before public output,
+    // so page weight only applies to final media.
     const newTotalKB = existingImagesKB + fileSizeKB;
-    if (newTotalKB > PERFORMANCE_BUDGET.MAX_TOTAL_IMAGE_WEIGHT_KB) {
+    if (stage === 'final' && newTotalKB > PERFORMANCE_BUDGET.MAX_TOTAL_IMAGE_WEIGHT_KB) {
         return {
             allowed: false,
             reason: `Total image budget exceeded (${Math.round(newTotalKB)}KB / ${PERFORMANCE_BUDGET.MAX_TOTAL_IMAGE_WEIGHT_KB}KB). Remove some images first.`,

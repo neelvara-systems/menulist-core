@@ -138,6 +138,7 @@ export default function OwnerUploads({
                     canAdjust={Boolean(pendingSlide?.prepared.sourceDataUrl)}
                     disabled={!canUpload || uploading}
                     helperText={pendingSlide ? 'Save it now, or adjust the framing first.' : 'Upload posters, offers, or brand slides for Highlights.'}
+                    imageType="digitalScreenSlide"
                     imageUrl={pendingSlide?.prepared.dataUrl}
                     isBusy={uploading}
                     onAdjust={() => setIsPendingSlideAdjustOpen(true)}

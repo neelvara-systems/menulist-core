@@ -290,6 +290,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             canAdjust={Boolean(pendingSlide?.sourceDataUrl)}
                             disabled={!canUpload || uploading}
                             helperText={pendingSlide ? 'Save it now, or adjust the framing first.' : 'Upload posters, offers, or brand slides. They will also appear in Highlights automatically.'}
+                            imageType="digitalScreenSlide"
                             imageUrl={pendingSlide?.url}
                             isBusy={uploading}
                             onAdjust={() => setIsPendingSlideAdjustOpen(true)}

@@ -620,6 +620,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         alt={t('photoLabel', { index: idx + 1 })}
                                         aspectRatio="4 / 3"
                                         canAdjust={Boolean(photoDrafts[idx]?.sourceDataUrl)}
+                                        imageType="galleryImage"
                                         imageUrl={photo}
                                         isBusy={isUploading}
                                         onAdjust={() => setAdjustingPhotoIndex(idx)}

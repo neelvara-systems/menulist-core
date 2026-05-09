@@ -77,6 +77,7 @@ import OBPExternalLinks from "./OBPExternalLinks";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPMenuCTA from "./OBPMenuCTA";
 import OBPPhotoStrip from "./OBPPhotoStrip";
+import OBPResolvedSurface from "./OBPResolvedSurface";
 import OBPThemeToggle from "./OBPThemeToggle";
 import { getOBPTranslations } from "./i18n";
 import styles from "./obp.module.scss";
@@ -691,6 +692,20 @@ export default async function OBPContent({
     // and the full active-projects list for per-project CTA rendering.
     const menuInfo = await withTimeout(getObpMenuInfo(storeData.storeId, storeData.activeSpecialMenuId))
         .catch(() => ({ hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo));
+
+    return (
+        <OBPResolvedSurface
+            includeRuntime
+            isOutletSurface={Boolean(storeOverride)}
+            masterBrandName={masterBrandName}
+            masterCustomDomain={masterCustomDomain}
+            masterSubdomain={masterSubdomain}
+            menuInfo={menuInfo}
+            requestedLanguage={requestedLanguage}
+            store={storeData}
+        />
+    );
+
     const { hasMenu, defaultSlug, projects: activeProjects } = menuInfo;
 
     const store = storeData;

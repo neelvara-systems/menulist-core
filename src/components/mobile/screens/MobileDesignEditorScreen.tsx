@@ -28,7 +28,6 @@ import { getDataUrlMimeType, getMediaProfileAcceptAttribute } from '@lib/media/i
 import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
-import { validateImageUpload } from '@lib/performanceBudget';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -213,12 +212,6 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         handleBackgroundImageChange('');
     };
     const handleBackgroundImageSelect = async (file: File) => {
-        const validation = validateImageUpload(file, 0, 'menuBackground', 'source');
-        if (!validation.allowed) {
-            Toast.show({ content: validation.reason || t('failedToPublish'), duration: 2200 });
-            return false;
-        }
-
         try {
             const prepared = await prepareMediaImage(file, 'menuBackground');
             handleBackgroundImageChange(prepared.dataUrl);
@@ -660,6 +653,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     alt={t('background')}
                                     canAdjust={Boolean(backgroundImageDraft?.sourceDataUrl)}
                                     helperText={t('backgroundUploadFormats')}
+                                    imageType="menuBackground"
                                     imageUrl={backgroundImage}
                                     onAdjust={() => setIsBackgroundAdjustOpen(true)}
                                     onRemove={backgroundImage ? handleBackgroundImageRemove : undefined}
