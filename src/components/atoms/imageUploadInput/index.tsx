@@ -1,4 +1,7 @@
 import { IMAGE_COMPRESSION_LIMIT } from "@constant/common";
+import type { MediaImageType } from "@lib/media/imageProfiles";
+import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
+import { prepareMediaImage, toPreparedUploadName } from "@lib/media/prepareMediaImage";
 import { validateImageFile } from "@lib/security/magicBytesValidator";
 import { getBase64, getBase64Length, getCompressedImage } from "@util/utils";
 import { message } from "antd";
@@ -14,6 +17,7 @@ type PropsType = {
         active: boolean;
     };
     maxSizeMB?: number; // Maximum file size in MB (default: 10MB)
+    mediaImageType?: MediaImageType;
     multiple?: boolean; // Allow multiple file selection (default: false)
     onUploadProgress?: (progress: { current: number; total: number; fileName: string }) => void;
     onUploadCancel?: () => void;
@@ -23,6 +27,7 @@ function ImageUploadInput({
     fileInputRef,
     compression = true,
     maxSizeMB = 10,
+    mediaImageType,
     multiple = false,
     onUploadProgress,
     onUploadCancel,
@@ -68,7 +73,7 @@ function ImageUploadInput({
                     });
                 }
 
-                const result = await processSingleFile(file, maxSizeMB, compression, cropperConfiguarations, controller.signal);
+                const result = await processSingleFile(file, maxSizeMB, compression, cropperConfiguarations, controller.signal, mediaImageType);
 
                 if (result) {
                     validatedFiles.push(result);
@@ -108,12 +113,31 @@ function ImageUploadInput({
         maxSizeMB: number,
         compression: boolean,
         cropperConfiguarations: any,
-        signal: AbortSignal
+        signal: AbortSignal,
+        mediaImageType?: MediaImageType
     ) => {
 
         // Check for cancellation
         if (signal.aborted) {
             throw new DOMException('Upload cancelled', 'AbortError');
+        }
+
+        if (mediaImageType) {
+            try {
+                const prepared = await prepareMediaImage(file, mediaImageType);
+                return {
+                    crop: prepared.crop,
+                    name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                    size: prepared.sizeBytes,
+                    sourceDataUrl: prepared.sourceDataUrl,
+                    sourceName: prepared.sourceName,
+                    type: prepared.mimeType,
+                    url: prepared.dataUrl,
+                };
+            } catch (error) {
+                message.error(`${file.name}: ${error instanceof Error ? error.message : 'Could not prepare image.'}`);
+                return null;
+            }
         }
 
         // 1️⃣ CLIENT-SIDE VALIDATION: MIME Type Whitelist
@@ -233,7 +257,7 @@ function ImageUploadInput({
                     outline: "none",
                     position: "absolute",
                 }}
-                accept="image/*"
+                accept={mediaImageType ? getMediaProfileAcceptAttribute(mediaImageType) : "image/*"}
                 multiple={multiple}
                 ref={fileInputRef}
                 onChange={handleFileChange}

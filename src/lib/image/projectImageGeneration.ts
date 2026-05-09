@@ -1,6 +1,8 @@
 import { syncProjectToSummary, updateProjectMetadata, uploadFile } from '@database/projects';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getMediaImageProfile } from '@lib/media/imageProfiles';
+import { prepareMediaImage, toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import generateImageViaApi from '@services/ai/image/generateImageViaApi';
 import type {
     ImageGenerationConfigType,
@@ -71,7 +73,7 @@ const PROJECT_IMAGE_GENERATION_CONFIG: ImageGenerationConfigType = {
     referanceImage: null,
     generatedImages: [],
     loading: false,
-    aspectRatio: '1:1',
+    aspectRatio: getMediaImageProfile('projectImage').defaultAspectRatio,
     stylesCategory: 'Photorealism',
     styles: ['Natural Light'],
     lighting: ['soft natural light'],
@@ -379,7 +381,7 @@ function buildProjectImageDescription(params: ProjectImageCandidateParams) {
         businessGuidance.persona ? `Business photo style is ${businessGuidance.persona}` : null,
         businessGuidance.subjects.length ? `Relevant visual subjects include ${businessGuidance.subjects.join(', ')}` : null,
         businessGuidance.imageType ? `Use photo direction ${businessGuidance.imageType.type}: ${cleanPromptPhrase(businessGuidance.imageType.description)}` : null,
-        'Create one polished square cover image for the menu card, focused on the business offering, with no readable text, no logo, and no watermark',
+        'Create one polished widescreen menu card image, focused on the business offering, with no readable text, no logo, and no watermark',
     ].filter(Boolean);
 
     return {
@@ -475,11 +477,15 @@ export async function generateAndSaveProjectImageIfMissing(
         return { skippedReason: 'not-enough-data' };
     }
 
+    const preparedCandidate = await prepareMediaImage(candidate.dataUrl, 'projectImage', {
+        fileName: candidate.name,
+    });
+
     const imageUrl = await uploadFile({
-        name: candidate.name,
-        type: candidate.mimeType,
+        name: toPreparedUploadName(candidate.name, preparedCandidate.mimeType, candidate.name),
+        type: preparedCandidate.mimeType,
         uid: `${projectId}-generated-menu-cover`,
-        url: candidate.dataUrl,
+        url: preparedCandidate.dataUrl,
     } as any, 'project-images');
 
     if (!imageUrl) {

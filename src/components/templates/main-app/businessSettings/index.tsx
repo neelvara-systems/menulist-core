@@ -1,12 +1,12 @@
 "use client";
 
-import ImageUploadInput from "@atoms/imageUploadInput";
 import { FEATURE_FLAGS } from "@config/features";
 import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
 import { getScreenState } from "@database/campaigns";
 import { extractBrandChanges, propagateBrandToOutlets } from "@database/multiOutlet/brandPropagation";
 import { getPlatformSummary } from "@database/platformSummary";
 import { addStore, updateStore } from "@database/stores";
+import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
 import { updateTenantsStoreslist } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
@@ -22,6 +22,10 @@ import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncM
 import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
 import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage, getStoreSourceLanguage } from "@lib/localization/storeContent";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
+import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
+import MediaImageCard from "@/components/shared/media/MediaImageCard";
+import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from "@lib/media/prepareMediaImage";
+import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
     APP_TIME_FORMAT_COOKIES_KEY,
@@ -56,7 +60,6 @@ import {
     LuSparkles,
     LuTimer,
     LuTv,
-    LuUpload,
     LuUser,
 } from "react-icons/lu";
 import { SiGooglemybusiness } from "react-icons/si";
@@ -89,6 +92,17 @@ interface WorkingHourSlot {
     day: string;
     start: dayjs.Dayjs | null;
     end: dayjs.Dayjs | null;
+}
+
+type AdjustableUploadedFile = UserUploadedFileType & {
+    crop?: MediaImageCropIntent;
+    sourceDataUrl?: string;
+    sourceName?: string;
+};
+
+async function deleteQueuedOBPPhotos(photoUrls: unknown) {
+    if (!Array.isArray(photoUrls) || photoUrls.length === 0) return;
+    await deleteOBPPhotos(photoUrls);
 }
 
 function sanitizeSocialMediaMap(source?: Record<string, string> | null) {
@@ -257,14 +271,15 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     const dispatch = useAppDispatch();
     const [availableDateFormats, setAvailableDateFormats] =
         useState(DATE_FORMATS);
-    const [selectedFile, setSelectedFile] = useState<UserUploadedFileType>({
+    const [selectedFile, setSelectedFile] = useState<AdjustableUploadedFile>({
         name: "",
         size: 0,
         type: "",
         url: null,
     });
+    const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [activeSection, setActiveSection] = useState(0);
-    const fileInputRef = useRef(null);
+    const obpPhotoDeleteQueueRef = useRef<string[]>([]);
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>({});
     const [timeSlotPresets, setTimeSlotPresets] = useState(
         storeDetails?.timeSlotPresets || [],
@@ -279,6 +294,29 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         { day: "fri", start: null, end: null },
         { day: "sat", start: null, end: null },
     ]);
+
+    const handleLogoSelect = async (file: File) => {
+        try {
+            const prepared = await prepareMediaImage(file, 'businessLogo');
+            setSelectedFile({
+                crop: prepared.crop,
+                name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                size: prepared.sizeBytes,
+                sourceDataUrl: prepared.sourceDataUrl,
+                sourceName: prepared.sourceName,
+                type: prepared.mimeType,
+                url: prepared.dataUrl,
+            });
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : 'Could not prepare logo.');
+        }
+    };
+
+    const handleOBPPhotoDeleteQueued = (photoUrl: string) => {
+        if (!photoUrl || photoUrl.startsWith('data:')) return;
+        if (obpPhotoDeleteQueueRef.current.includes(photoUrl)) return;
+        obpPhotoDeleteQueueRef.current = [...obpPhotoDeleteQueueRef.current, photoUrl];
+    };
 
     // Feedback settings state
     const [feedbackEnabled, setFeedbackEnabled] = useState<boolean>(
@@ -357,6 +395,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         onGoogleLinkDismiss={() => {
                             // Silently dismiss — no persistence needed
                         }}
+                        onPhotoDeleteQueued={handleOBPPhotoDeleteQueued}
                     />
                     {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? (
                         <BusinessAttributesTab />
@@ -759,7 +798,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     };
 
     const addUpdateDetails = async (changesToUpload: any) => {
-        if (selectedFile.url) {
+        const obpPhotoDeleteQueue = [...obpPhotoDeleteQueueRef.current];
+        delete changesToUpload.__obpPhotoDeleteQueue;
+
+        if (selectedFile.url?.includes('base64')) {
             changesToUpload.imageToUpdate = selectedFile.url;
             changesToUpload.imageType = selectedFile.type;
         }
@@ -931,7 +973,20 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         .toLowerCase()
                         .replaceAll(" ", "_");
                 }
-                updateStore(updatedChanges).then((savedDetails) => {
+                updateStore(updatedChanges).then(async (savedDetails) => {
+                    await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
+                    obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
+                        (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+                    );
+                    if (savedDetails?.logo) {
+                        setSelectedFile({
+                            name: savedDetails.logo,
+                            size: 0,
+                            type: "",
+                            url: savedDetails.logo,
+                        });
+                    }
+
                     // Brand propagation: if master store changed brand fields, propagate to outlets
                     if (storeDetails?.isMaster && storeDetails?.tenantId) {
                         const brandChanges = extractBrandChanges({ ...updatedChanges, ...savedDetails });
@@ -985,6 +1040,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 });
             } else {
                 console.log("No changes detected.");
+                void deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
+                obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
+                    (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+                );
             }
         } else {
             console.log("changesToUpload create request", changesToUpload);
@@ -1001,7 +1060,11 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 tenantName: tenantDetails.name,
             };
 
-            addStore(changesToUpload).then((savedDetails) => {
+            addStore(changesToUpload).then(async (savedDetails) => {
+                await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
+                obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
+                    (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+                );
                 const tenantData = {
                     tenantId: tenantDetails.tenantId,
                     storesList: [
@@ -1044,43 +1107,27 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             zIndex: 1,
                         }}
                     >
-                        <Card hoverable onClick={() => fileInputRef.current.click()}>
-                            <Flex
-                                vertical
-                                gap={16}
-                                align="center"
-                                style={{ cursor: "pointer" }}
-                            >
-                                {selectedFile.url ? (
-                                    <img
-                                        src={selectedFile.url}
-                                        style={{ width: "auto", height: 100, borderRadius: 8 }}
-                                    />
-                                ) : (
-                                    <>
-                                        {storeDetails?.logo ? (
-                                            <img
-                                                src={storeDetails?.logo}
-                                                style={{ width: "auto", height: 100, borderRadius: 8 }}
-                                            />
-                                        ) : (
-                                            <Button
-                                                icon={<LuUpload />}
-                                                type="dashed"
-                                                style={{ height: 100, width: 100 }}
-                                            >
-                                                {t('uploadLogo' as any)}
-                                            </Button>
-                                        )}
-                                    </>
-                                )}
-                                <Typography.Text
-                                    type="secondary"
-                                    style={{ textAlign: "center" }}
-                                >
-                                    {t('uploadLogoDesc' as any)}
-                                </Typography.Text>
-                            </Flex>
+                        <Card>
+                            <MediaImageCard
+                                accept={getMediaProfileAcceptAttribute('businessLogo')}
+                                alt={storeDetails?.name || 'Business logo'}
+                                aspectRatio="1 / 1"
+                                canAdjust={Boolean(selectedFile.sourceDataUrl)}
+                                helperText={t('uploadLogoDesc' as any)}
+                                imageFit="contain"
+                                imageUrl={selectedFile.url || storeDetails?.logo}
+                                onAdjust={() => setIsLogoAdjustOpen(true)}
+                                onReset={selectedFile.sourceDataUrl ? () => setSelectedFile({
+                                    name: "",
+                                    size: 0,
+                                    type: "",
+                                    url: storeDetails?.logo || null,
+                                }) : undefined}
+                                onSelectFile={handleLogoSelect}
+                                placeholderDescription="Drop, paste, or choose a square logo."
+                                placeholderTitle={t('uploadLogo' as any)}
+                                size="compact"
+                            />
                         </Card>
                         <Menu
                             style={{ width: "100%" }}
@@ -1140,6 +1187,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                         <Button
                                             size="large"
                                             onClick={() => {
+                                                obpPhotoDeleteQueueRef.current = [];
                                                 form.setFieldsValue({
                                                     ...getBusinessSettingsInitialValues(storeDetails),
                                                     currencyCode: storeDetails?.currencyCode,
@@ -1181,11 +1229,25 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 </Flex>
             </Card>
 
-            <ImageUploadInput
-                onUploadFile={(selectedFile: UserUploadedFileType) =>
-                    setSelectedFile(selectedFile)
-                }
-                fileInputRef={fileInputRef}
+            <MediaImageAdjustModal
+                fileName={selectedFile.sourceName || selectedFile.name}
+                imageType="businessLogo"
+                initialCrop={selectedFile.crop}
+                onApply={(prepared) => {
+                    setSelectedFile((current) => ({
+                        ...current,
+                        crop: prepared.crop,
+                        name: prepared.sourceName || current.name,
+                        size: prepared.sizeBytes,
+                        sourceDataUrl: prepared.sourceDataUrl || current.sourceDataUrl,
+                        sourceName: prepared.sourceName || current.sourceName,
+                        type: prepared.mimeType,
+                        url: prepared.dataUrl,
+                    }));
+                }}
+                onClose={() => setIsLogoAdjustOpen(false)}
+                open={isLogoAdjustOpen}
+                sourceDataUrl={selectedFile.sourceDataUrl}
             />
         </motion.div>
     );

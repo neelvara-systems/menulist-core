@@ -219,6 +219,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                 </Flex>
 
                                 <AspectRatioSelector
+                                    imageType="menuItem"
                                     selectedAspectRatio={generationConfig.aspectRatio || '1:1'}
                                     onChange={(aspectRatio) => setGenerationConfig({ ...generationConfig, aspectRatio })}
                                 />

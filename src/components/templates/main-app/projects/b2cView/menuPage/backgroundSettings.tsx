@@ -1,13 +1,15 @@
-import { MENU_BACKGROUND_IMAGE_CONFIG, optimizeImageToBudget } from '@lib/image/optimizeImage';
-import { validateImageQuality } from '@lib/imageQualityGuard';
-import { PERFORMANCE_BUDGET, validateImageUpload } from '@lib/performanceBudget';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import { validateImageUpload } from '@lib/performanceBudget';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { removeObjRef } from '@util/utils';
-import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, Upload, message, theme } from 'antd';
+import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, message, theme } from 'antd';
 import type { Color } from 'antd/es/color-picker';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { LuGalleryVerticalEnd, LuRefreshCcw, LuTrash, LuUpload } from 'react-icons/lu';
+import { LuTrash } from 'react-icons/lu';
 import ColorPresetsDrawer from './colorPresetsDrawer';
 import GradientPicker from './GradientPicker';
 import { isGradientString } from './gradientUtils';
@@ -21,68 +23,45 @@ interface BackgroundSettingsProps {
 
 // Extracted reusable component for image upload UI
 const ImageUploadSection = ({
+    canAdjust,
     config,
-    uploadProps,
+    onAdjust,
+    onRemove,
     onOpenGallery,
+    onSelectFile,
     t,
 }: {
+    canAdjust?: boolean;
     config: any;
-    uploadProps: UploadProps;
+    onAdjust?: () => void;
+    onRemove: () => void;
     onOpenGallery: (e: React.MouseEvent) => void;
+    onSelectFile: (file: File) => void | Promise<void>;
     t: (key: string) => string;
 }) => {
-    const { token } = theme.useToken();
-
     return (
         <Flex vertical>
             <Card size='small'>
-                <Upload {...uploadProps}>
-                    <Flex vertical gap={8} align="center" style={{ cursor: 'pointer', width: '100%' }}>
-                        {!Boolean(config?.backgroundImage) ? (
-                            <Flex vertical align='center' gap={8} style={{ width: '100%', padding: 8 }}>
-                                <LuUpload size={24} />
-                                <span>{t('backgroundUploadPrompt')}</span>
-                                <span style={{ fontSize: '12px', color: '#666' }}>{t('backgroundUploadFormats')}</span>
-                                <Button
-                                    type='link'
-                                    style={{ marginTop: "auto" }}
-                                    onClick={onOpenGallery}
-                                    icon={<LuGalleryVerticalEnd />}
-                                >
-                                    {t('exploreGallery')}
-                                </Button>
-                            </Flex>
-                        ) : (
-                            <Flex gap={10}>
-                                <Flex style={{ width: '100%', height: 'auto', maxHeight: 200, border: `1px dashed ${token.colorBorder}`, borderRadius: 6 }}>
-                                    <img src={config?.backgroundImage} alt="" style={{ width: '100%', height: "100%", objectFit: "cover" }} />
-                                </Flex>
-                                <Flex vertical gap={8} style={{ width: 'max-content' }}>
-                                    <Button type='text' icon={<LuRefreshCcw />}>{t('replace')}</Button>
-                                    <Button
-                                        type='text'
-                                        danger
-                                        onClick={(e) => {
-                                            uploadProps.onRemove?.({} as any);
-                                            e.stopPropagation();
-                                        }}
-                                        icon={<LuTrash />}
-                                    >
-                                        {t('remove')}
-                                    </Button>
-                                    <Button
-                                        type='link'
-                                        style={{ marginTop: "auto" }}
-                                        onClick={onOpenGallery}
-                                        icon={<LuGalleryVerticalEnd />}
-                                    >
-                                        {t('gallery')}
-                                    </Button>
-                                </Flex>
-                            </Flex>
-                        )}
-                    </Flex>
-                </Upload>
+                <MediaImageCard
+                    accept={getMediaProfileAcceptAttribute('menuBackground')}
+                    alt={t('background')}
+                    canAdjust={canAdjust}
+                    helperText={t('backgroundUploadFormats')}
+                    imageUrl={config?.backgroundImage}
+                    onAdjust={onAdjust}
+                    onRemove={config?.backgroundImage ? onRemove : undefined}
+                    onSelectFile={onSelectFile}
+                    placeholderDescription={t('backgroundUploadFormats')}
+                    placeholderTitle={t('backgroundUploadPrompt')}
+                    replaceLabel={t('replace')}
+                />
+                <Button
+                    type='link'
+                    style={{ marginTop: 8, paddingInline: 0 }}
+                    onClick={onOpenGallery}
+                >
+                    {config?.backgroundImage ? t('gallery') : t('exploreGallery')}
+                </Button>
             </Card>
         </Flex>
     );
@@ -106,6 +85,12 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
 
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [isColorPresetsOpen, setIsColorPresetsOpen] = useState(false);
+    const [backgroundImageDraft, setBackgroundImageDraft] = useState<{
+        crop?: MediaImageCropIntent;
+        fileName?: string;
+        sourceDataUrl?: string;
+    } | null>(null);
+    const [isBackgroundAdjustOpen, setIsBackgroundAdjustOpen] = useState(false);
 
     // Parse existing background on initial load
     useEffect(() => {
@@ -158,12 +143,14 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
 
         // Reset local states
         setFileList([]);
+        setBackgroundImageDraft(null);
+        setIsBackgroundAdjustOpen(false);
         setColorValue('#ffffff'); // Reset to default or transparent
         setBackgroundMode('solid'); // Reset mode to default
     };
 
     const handleImageUploadProps = {
-        accept: "image/*",
+        accept: getMediaProfileAcceptAttribute('menuBackground'),
         maxCount: 1,
         fileList: fileList,
         beforeUpload: async (file: File) => {
@@ -177,18 +164,10 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
             }
 
             // Check 2: Source image budget. Final image is compressed below the public menu budget.
-            const budgetValidation = validateImageUpload(file, 0, 'background', 'source');
+            const budgetValidation = validateImageUpload(file, 0, 'menuBackground', 'source');
 
             if (!budgetValidation.allowed) {
                 message.error(budgetValidation.reason);
-                return false;
-            }
-
-            // Check 4: Constitutional Image Quality (G04) - Resolution & Aspect Ratio
-            const qualityValidation = await validateImageQuality(file);
-
-            if (!qualityValidation.allowed) {
-                message.error(qualityValidation.reason);
                 return false;
             }
 
@@ -203,6 +182,8 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
         },
         onRemove: () => {
             setFileList([]);
+            setBackgroundImageDraft(null);
+            setIsBackgroundAdjustOpen(false);
             handleChange('backgroundImage', '');
         },
         itemRender: () => null
@@ -210,15 +191,16 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
 
     const handleImageUpload = async (file: File) => {
         try {
-            const optimized = await optimizeImageToBudget(file, MENU_BACKGROUND_IMAGE_CONFIG);
-            if (optimized.optimizedSize > PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB * 1024) {
-                message.error('Image could not be compressed enough. Please choose a simpler background image.');
-                return false;
-            }
-            handleChange('backgroundImage', optimized.dataUrl);
+            const prepared = await prepareMediaImage(file, 'menuBackground');
+            handleChange('backgroundImage', prepared.dataUrl);
+            setBackgroundImageDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || file.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
             return true;
-        } catch {
-            message.error('Failed to process image. Please try another image.');
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : 'Failed to process image. Please try another image.');
             return false;
         }
     };
@@ -308,8 +290,13 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                             children: (
                                 <Flex vertical gap={8} style={{ marginTop: 16 }}>
                                     <ImageUploadSection
+                                        canAdjust={Boolean(backgroundImageDraft?.sourceDataUrl)}
                                         config={config}
-                                        uploadProps={handleImageUploadProps}
+                                        onAdjust={() => setIsBackgroundAdjustOpen(true)}
+                                        onRemove={() => handleImageUploadProps.onRemove()}
+                                        onSelectFile={async (file) => {
+                                            await handleImageUploadProps.beforeUpload(file);
+                                        }}
                                         onOpenGallery={handleOpenGallery}
                                         t={t}
                                     />
@@ -337,7 +324,11 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
             <ImageGalleryDrawer
                 open={isGalleryOpen}
                 onClose={() => setIsGalleryOpen(false)}
-                onImageSelect={(imageUrl) => handleChange('backgroundImage', imageUrl)}
+                onImageSelect={(imageUrl) => {
+                    setBackgroundImageDraft(null);
+                    setIsBackgroundAdjustOpen(false);
+                    handleChange('backgroundImage', imageUrl);
+                }}
                 uploadProps={handleImageUploadProps}
             />
             <ColorPresetsDrawer
@@ -372,6 +363,22 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                         handleChange('background', colorOrGradient);
                     }
                 }}
+            />
+            <MediaImageAdjustModal
+                fileName={backgroundImageDraft?.fileName}
+                imageType="menuBackground"
+                initialCrop={backgroundImageDraft?.crop}
+                onApply={(prepared) => {
+                    handleChange('backgroundImage', prepared.dataUrl);
+                    setBackgroundImageDraft({
+                        crop: prepared.crop,
+                        fileName: prepared.sourceName || backgroundImageDraft?.fileName,
+                        sourceDataUrl: prepared.sourceDataUrl || backgroundImageDraft?.sourceDataUrl,
+                    });
+                }}
+                onClose={() => setIsBackgroundAdjustOpen(false)}
+                open={isBackgroundAdjustOpen}
+                sourceDataUrl={backgroundImageDraft?.sourceDataUrl}
             />
         </Card>
     );

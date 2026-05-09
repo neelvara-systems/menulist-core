@@ -1,21 +1,30 @@
 'use client'
 
-import ImageUploadInput from '@atoms/imageUploadInput';
 import { BUSINESS_TYPES } from '@constant/common';
 import { updateStore } from '@database/stores';
 import { updateTenant } from '@database/tenants';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUpload, LuUser } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
+import { useCallback, useContext, useEffect, useState } from 'react';
+import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUser } from 'react-icons/lu';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileBasicSettingsScreenProps {
     onBack: () => void;
 }
+
+type AdjustableUploadedFile = UserUploadedFileType & {
+    crop?: MediaImageCropIntent;
+    sourceDataUrl?: string;
+    sourceName?: string;
+};
 
 const BUSINESS_TYPE_OPTIONS = BUSINESS_TYPES.map((businessType) => ({
     label: businessType.label,
@@ -51,9 +60,8 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails, tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const logoAltName = storeDetails?.tenantName || tenantDetails?.name || storeDetails?.name || 'logo';
-    const [selectedLogo, setSelectedLogo] = useState<UserUploadedFileType | null>(
+    const [selectedLogo, setSelectedLogo] = useState<AdjustableUploadedFile | null>(
         storeDetails?.logo
             ? {
                 name: logoAltName,
@@ -63,6 +71,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             }
             : null
     );
+    const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [formData, setFormData] = useState(getInitialFormData(storeDetails, tenantDetails));
     const [originalFormData, setOriginalFormData] = useState(() => getInitialFormData(storeDetails, tenantDetails));
     const [originalLogoUrl, setOriginalLogoUrl] = useState(storeDetails?.logo || '');
@@ -173,6 +182,23 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         }
     }, [formData, logoAltName, selectedLogo, setStoreDetails, setTenantDetails, storeDetails, t, tenantDetails?.name]);
 
+    const handleLogoSelect = useCallback(async (file: File) => {
+        try {
+            const prepared = await prepareMediaImage(file, 'businessLogo');
+            setSelectedLogo({
+                crop: prepared.crop,
+                name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                size: prepared.sizeBytes,
+                sourceDataUrl: prepared.sourceDataUrl,
+                sourceName: prepared.sourceName,
+                type: prepared.mimeType,
+                url: prepared.dataUrl,
+            });
+        } catch (error) {
+            Toast.show({ content: error instanceof Error ? error.message : 'Could not prepare logo.', duration: 1800 });
+        }
+    }, []);
+
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
         setSelectedLogo(
@@ -211,43 +237,30 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     </Flex>
                 </Card>
                 <Card>
-                    <Flex align="center" gap={12}>
-                        {(selectedLogo?.url || storeDetails.logo) ? (
-                            <Image
-                                alt={logoAltName}
-                                height={72}
-                                preview={false}
-                                src={selectedLogo?.url || storeDetails.logo}
-                                style={{ borderRadius: 12, objectFit: 'cover' }}
-                                width={72}
-                            />
-                        ) : (
-                            <Flex
-                                align="center"
-                                justify="center"
-                                style={{
-                                    background: token.colorFillAlter,
-                                    borderRadius: 14,
-                                    color: token.colorPrimary,
-                                    flexShrink: 0,
-                                    height: 72,
-                                    width: 72,
-                                }}
-                            >
-                                <LuUpload size={24} />
-                            </Flex>
-                        )}
-
-                        <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
-                            <Text type="secondary">
-                                Best results: square PNG or JPG, at least 512 x 512 px.
-                            </Text>
-                            <Text type="secondary">Keep the logo clear with some spacing around the edges.</Text>
-                            <Button onClick={() => fileInputRef.current?.click()} size="small">
-                                Upload New Logo
-                            </Button>
-                        </Flex>
-                    </Flex>
+                    <MediaImageCard
+                        accept={getMediaProfileAcceptAttribute('businessLogo')}
+                        alt={logoAltName}
+                        aspectRatio="1 / 1"
+                        canAdjust={Boolean(selectedLogo?.sourceDataUrl)}
+                        helperText="Best results: square PNG or JPG, at least 512 x 512 px. Keep the logo clear with some spacing around the edges."
+                        imageFit="contain"
+                        imageUrl={selectedLogo?.url || storeDetails.logo}
+                        onAdjust={() => setIsLogoAdjustOpen(true)}
+                        onReset={selectedLogo?.sourceDataUrl ? () => setSelectedLogo(
+                            storeDetails?.logo
+                                ? {
+                                    name: logoAltName,
+                                    size: 0,
+                                    type: '',
+                                    url: storeDetails.logo,
+                                }
+                                : null
+                        ) : undefined}
+                        onSelectFile={handleLogoSelect}
+                        placeholderDescription="Drop, paste, or choose a square logo."
+                        placeholderTitle="Upload logo"
+                        size="compact"
+                    />
                 </Card>
 
                 <Card>
@@ -435,9 +448,24 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                     </Button>
                 </Flex>
             </Flex>
-            <ImageUploadInput
-                fileInputRef={fileInputRef}
-                onUploadFile={(file: UserUploadedFileType) => setSelectedLogo(file)}
+            <MediaImageAdjustModal
+                fileName={selectedLogo?.sourceName || selectedLogo?.name}
+                imageType="businessLogo"
+                initialCrop={selectedLogo?.crop}
+                onApply={(prepared) => {
+                    setSelectedLogo((current) => ({
+                        crop: prepared.crop,
+                        name: prepared.sourceName || current?.name || logoAltName,
+                        size: prepared.sizeBytes,
+                        sourceDataUrl: prepared.sourceDataUrl || current?.sourceDataUrl,
+                        sourceName: prepared.sourceName || current?.sourceName,
+                        type: prepared.mimeType,
+                        url: prepared.dataUrl,
+                    }));
+                }}
+                onClose={() => setIsLogoAdjustOpen(false)}
+                open={isLogoAdjustOpen}
+                sourceDataUrl={selectedLogo?.sourceDataUrl}
             />
         </Flex>
     );

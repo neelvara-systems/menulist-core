@@ -145,7 +145,7 @@ const updateLogoImage = async (data) => {
                 type: imageType
             })
         }
-        return logoUrl;
+        return logoUrl || imageToUpdate;
     } else return "";
 }
 

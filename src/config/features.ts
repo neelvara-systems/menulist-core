@@ -2244,6 +2244,22 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_MENU_ENTRY: true,
 
     /**
+     * Media Image System
+     *
+     * Centralizes image purpose, ratio, upload limit, compression, and output
+     * preparation for menu item images, project images, menu backgrounds, and
+     * business logos.
+     *
+     * true: Current image upload surfaces use the shared media profiles.
+     * false: Upload surfaces keep their shell, but manual adjust is hidden and
+     * prepareMediaImage returns validated raw image data without profile
+     * crop/resize/compression.
+     *
+     * @see __docs__/media-image-system/
+     */
+    ENABLE_MEDIA_IMAGE_SYSTEM: true,
+
+    /**
      * Deployment build visibility for internal debugging.
      *
      * true: Allow on-demand build badge via ?v=1 query param

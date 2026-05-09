@@ -1,7 +1,10 @@
 'use client'
 
-import ImageUploadInput from '@atoms/imageUploadInput';
 import { getScreenState, initializeScreenState, removePinnedSlide, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -9,8 +12,8 @@ import type { ScreenSlide } from '@type/campaigns';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuImagePlus, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -18,6 +21,12 @@ interface MobileDigitalScreensScreenProps {
     onBack: () => void;
     onOpenDesignEditor?: () => void;
 }
+
+type AdjustableUploadedFile = UserUploadedFileType & {
+    crop?: MediaImageCropIntent;
+    sourceDataUrl?: string;
+    sourceName?: string;
+};
 
 const MAX_UPLOADS = 3;
 const UPLOAD_EXPIRY_DAYS = 14;
@@ -37,12 +46,13 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         storeDetails?.subdomain || '',
         storeDetails?.customDomain
     );
-    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [screenUrl, setScreenUrl] = useState('');
     const [ownerOverride, setOwnerOverride] = useState(false);
     const [pinnedSlides, setPinnedSlides] = useState<ScreenSlide[]>([]);
+    const [pendingSlide, setPendingSlide] = useState<AdjustableUploadedFile | null>(null);
+    const [isPendingSlideAdjustOpen, setIsPendingSlideAdjustOpen] = useState(false);
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
 
@@ -122,16 +132,40 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }
     };
 
-    const handleUploadSlide = async (file: UserUploadedFileType) => {
+    const handleUploadSlide = async (file: AdjustableUploadedFile) => {
         if (!canUpload) {
             Toast.show({ content: `Maximum ${MAX_UPLOADS} custom slides allowed`, duration: 2000 });
             return;
         }
 
+        setPendingSlide(file);
+        Toast.show({ content: 'Slide ready. Review and save it.', duration: 1400 });
+    };
+
+    const handleSelectSlideFile = async (file: File) => {
+        try {
+            const prepared = await prepareMediaImage(file, 'digitalScreenSlide');
+            await handleUploadSlide({
+                crop: prepared.crop,
+                name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                size: prepared.sizeBytes,
+                sourceDataUrl: prepared.sourceDataUrl,
+                sourceName: prepared.sourceName,
+                type: prepared.mimeType,
+                url: prepared.dataUrl,
+            });
+        } catch (error: any) {
+            Toast.show({ content: error?.message || t('failedToUpdate'), duration: 2000 });
+        }
+    };
+
+    const handleSavePendingSlide = async () => {
+        if (!pendingSlide) return;
         setUploading(true);
         try {
-            await uploadScreenSlide(file, file.name?.replace(/\.[^/.]+$/, '') || 'Custom Slide');
+            await uploadScreenSlide(pendingSlide, pendingSlide.name?.replace(/\.[^/.]+$/, '') || 'Custom Slide');
             Toast.show({ content: `Slide uploaded. Expires in ${UPLOAD_EXPIRY_DAYS} days.`, duration: 1800 });
+            setPendingSlide(null);
             await fetchState();
         } catch (error: any) {
             Toast.show({ content: error?.message || t('failedToUpdate'), duration: 2000 });
@@ -249,17 +283,29 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                 <Text strong>Your Custom Slides</Text>
                                 <Text type="secondary">{pinnedSlides.length}/{MAX_UPLOADS} used</Text>
                             </Flex>
-                            <Button
-                                disabled={!canUpload || uploading}
-                                onClick={() => fileInputRef.current?.click()}
-                                size="small"
-                            >
-                                <Flex align="center" gap={6}>
-                                    <LuImagePlus size={16} />
-                                    <Text>{uploading ? 'Uploading…' : 'Upload Image'}</Text>
+                        </Flex>
+
+                        <MediaImageCard
+                            accept={getMediaProfileAcceptAttribute('digitalScreenSlide')}
+                            canAdjust={Boolean(pendingSlide?.sourceDataUrl)}
+                            disabled={!canUpload || uploading}
+                            helperText={pendingSlide ? 'Save it now, or adjust the framing first.' : 'Upload posters, offers, or brand slides. They will also appear in Highlights automatically.'}
+                            imageUrl={pendingSlide?.url}
+                            isBusy={uploading}
+                            onAdjust={() => setIsPendingSlideAdjustOpen(true)}
+                            onRemove={pendingSlide ? () => setPendingSlide(null) : undefined}
+                            onSelectFile={(file) => { void handleSelectSlideFile(file); }}
+                            placeholderDescription={canUpload ? 'Drop, paste, or choose a widescreen slide.' : `Maximum ${MAX_UPLOADS} slides reached`}
+                            placeholderTitle={pendingSlide ? 'Slide ready' : 'Upload image'}
+                        />
+                        {pendingSlide ? (
+                            <Button block loading={uploading} onClick={() => void handleSavePendingSlide()} size="small">
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuCheck size={16} />
+                                    <Text>Save</Text>
                                 </Flex>
                             </Button>
-                        </Flex>
+                        ) : null}
 
                         {sortedSlides.length > 0 ? (
                             <Flex gap={10} vertical>
@@ -318,9 +364,25 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 </Card>
             </Flex>
 
-            <ImageUploadInput
-                fileInputRef={fileInputRef}
-                onUploadFile={(file: UserUploadedFileType) => void handleUploadSlide(file)}
+            <MediaImageAdjustModal
+                fileName={pendingSlide?.sourceName || pendingSlide?.name}
+                imageType="digitalScreenSlide"
+                initialCrop={pendingSlide?.crop}
+                onApply={(prepared) => {
+                    setPendingSlide((current) => current ? ({
+                        ...current,
+                        crop: prepared.crop,
+                        name: prepared.sourceName || current.name,
+                        size: prepared.sizeBytes,
+                        sourceDataUrl: prepared.sourceDataUrl || current.sourceDataUrl,
+                        sourceName: prepared.sourceName || current.sourceName,
+                        type: prepared.mimeType,
+                        url: prepared.dataUrl,
+                    }) : current);
+                }}
+                onClose={() => setIsPendingSlideAdjustOpen(false)}
+                open={isPendingSlideAdjustOpen}
+                sourceDataUrl={pendingSlide?.sourceDataUrl}
             />
         </Flex>
     );

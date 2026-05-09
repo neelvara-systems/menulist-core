@@ -6,12 +6,15 @@
  * Follows existing pattern: Client-side upload via DAL, not API route
  */
 
-import { ClockCircleOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { removePinnedSlide, uploadScreenSlide } from "@database/campaigns";
+import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
+import { prepareMediaImage, toPreparedUploadName, type PreparedMediaImage } from "@lib/media/prepareMediaImage";
+import MediaImageCard from "@/components/shared/media/MediaImageCard";
+import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import { ScreenSlide } from "@type/campaigns";
-import { getBase64 } from "@util/utils";
-import { Button, List, Popconfirm, theme, Typography, Upload, message } from "antd";
+import { Button, Flex, List, Popconfirm, theme, Typography, message } from "antd";
 import { useState } from "react";
+import { LuCheck, LuClock, LuTrash2 } from "react-icons/lu";
 
 const { Text } = Typography;
 
@@ -32,6 +35,11 @@ export default function OwnerUploads({
 }: OwnerUploadsProps) {
     const { token } = theme.useToken();
     const [uploading, setUploading] = useState(false);
+    const [pendingSlide, setPendingSlide] = useState<{
+        fileName: string;
+        prepared: PreparedMediaImage;
+    } | null>(null);
+    const [isPendingSlideAdjustOpen, setIsPendingSlideAdjustOpen] = useState(false);
 
     const canUpload = pinnedSlides.length < maxUploads;
 
@@ -44,18 +52,12 @@ export default function OwnerUploads({
         setUploading(true);
 
         try {
-            // Convert file to base64 using existing utility
-            const base64Url = await getBase64(file);
-            const caption = file.name.replace(/\.[^/.]+$/, ""); // Use filename without extension
-
-            // Upload via DAL (follows existing pattern from projects/tickets)
-            await uploadScreenSlide(
-                { url: base64Url, type: file.type, uid: `slide-${Date.now()}` },
-                caption
-            );
-
-            message.success(`Slide uploaded! Will expire in ${uploadExpiryDays} days`);
-            onSlideUploaded();
+            const prepared = await prepareMediaImage(file, 'digitalScreenSlide');
+            setPendingSlide({
+                fileName: file.name,
+                prepared,
+            });
+            message.success('Slide ready. Review and save it.');
 
         } catch (error: any) {
             message.error(error.message || 'Failed to upload slide');
@@ -64,6 +66,37 @@ export default function OwnerUploads({
         }
 
         return false; // Prevent default upload behavior
+    };
+
+    const handleSavePendingSlide = async () => {
+        if (!pendingSlide) return;
+
+        setUploading(true);
+        try {
+            const { fileName, prepared } = pendingSlide;
+            const preparedName = toPreparedUploadName(fileName, prepared.mimeType, fileName);
+            const caption = preparedName.replace(/\.[^/.]+$/, "");
+
+            // Upload via DAL (follows existing pattern from projects/tickets)
+            await uploadScreenSlide(
+                {
+                    name: preparedName,
+                    size: prepared.sizeBytes,
+                    type: prepared.mimeType,
+                    uid: `slide-${Date.now()}`,
+                    url: prepared.dataUrl,
+                },
+                caption
+            );
+
+            message.success(`Slide uploaded! Will expire in ${uploadExpiryDays} days`);
+            setPendingSlide(null);
+            onSlideUploaded();
+        } catch (error: any) {
+            message.error(error.message || 'Failed to upload slide');
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleDelete = async (slideId: string) => {
@@ -97,22 +130,28 @@ export default function OwnerUploads({
                     </Text>
                 </div>
 
-                <Upload
-                    accept="image/*"
-                    showUploadList={false}
-                    beforeUpload={handleUpload}
-                    disabled={!canUpload || uploading}
-                >
-                    <Button
-                        type="primary"
-                        icon={<UploadOutlined />}
-                        loading={uploading}
-                        disabled={!canUpload}
-                    >
-                        Upload Image
-                    </Button>
-                </Upload>
             </div>
+
+            <Flex gap={12} style={{ marginBottom: 16 }} vertical>
+                <MediaImageCard
+                    accept={getMediaProfileAcceptAttribute('digitalScreenSlide')}
+                    canAdjust={Boolean(pendingSlide?.prepared.sourceDataUrl)}
+                    disabled={!canUpload || uploading}
+                    helperText={pendingSlide ? 'Save it now, or adjust the framing first.' : 'Upload posters, offers, or brand slides for Highlights.'}
+                    imageUrl={pendingSlide?.prepared.dataUrl}
+                    isBusy={uploading}
+                    onAdjust={() => setIsPendingSlideAdjustOpen(true)}
+                    onRemove={pendingSlide ? () => setPendingSlide(null) : undefined}
+                    onSelectFile={(file) => { void handleUpload(file); }}
+                    placeholderDescription={canUpload ? 'Drop, paste, or choose a widescreen slide.' : `Maximum ${maxUploads} custom slides allowed.`}
+                    placeholderTitle={pendingSlide ? 'Slide ready' : 'Upload image'}
+                />
+                {pendingSlide ? (
+                    <Button icon={<LuCheck />} loading={uploading} onClick={() => void handleSavePendingSlide()} type="primary">
+                        Save slide
+                    </Button>
+                ) : null}
+            </Flex>
 
             {pinnedSlides.length > 0 ? (
                 <List
@@ -134,7 +173,7 @@ export default function OwnerUploads({
                                         <Button
                                             type="text"
                                             danger
-                                            icon={<DeleteOutlined />}
+                                            icon={<LuTrash2 />}
                                             size="small"
                                         />
                                     </Popconfirm>
@@ -165,7 +204,7 @@ export default function OwnerUploads({
                                     title={slide.caption || 'Custom Slide'}
                                     description={
                                         <span style={{ fontSize: 12 }}>
-                                            <ClockCircleOutlined style={{ marginRight: 4 }} />
+                                            <LuClock style={{ marginRight: 4 }} />
                                             {daysRemaining} days remaining
                                         </span>
                                     }
@@ -185,6 +224,20 @@ export default function OwnerUploads({
                     padding: 0;
                 }
             `}</style>
+            <MediaImageAdjustModal
+                fileName={pendingSlide?.fileName}
+                imageType="digitalScreenSlide"
+                initialCrop={pendingSlide?.prepared.crop}
+                onApply={(prepared) => {
+                    setPendingSlide((current) => current ? ({
+                        ...current,
+                        prepared,
+                    }) : current);
+                }}
+                onClose={() => setIsPendingSlideAdjustOpen(false)}
+                open={isPendingSlideAdjustOpen}
+                sourceDataUrl={pendingSlide?.prepared.sourceDataUrl}
+            />
         </div>
     );
 }

@@ -1,3 +1,5 @@
+import { getMediaImageProfile, type MediaImageType } from '@lib/media/imageProfiles';
+
 /**
  * Performance Budget Enforcement
  * 
@@ -30,6 +32,25 @@ export interface ImageValidationResult {
     reason?: string;
 }
 
+type ImageBudgetType = 'item' | 'background' | MediaImageType;
+
+function resolveMaxImageSizeKB(type: ImageBudgetType, stage: 'source' | 'final'): number {
+    if (type === 'background') {
+        return stage === 'source'
+            ? PERFORMANCE_BUDGET.MAX_BACKGROUND_SOURCE_SIZE_KB
+            : PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB;
+    }
+
+    if (type === 'item') {
+        return PERFORMANCE_BUDGET.MAX_IMAGE_SIZE_KB;
+    }
+
+    const profile = getMediaImageProfile(type);
+    return stage === 'source'
+        ? profile.maxSourceBytes / 1024
+        : profile.maxOutputSizeKB;
+}
+
 /**
  * Validate image upload against performance budget
  * 
@@ -44,17 +65,12 @@ export interface ImageValidationResult {
 export function validateImageUpload(
     file: File,
     existingImagesKB: number,
-    type: 'item' | 'background',
+    type: ImageBudgetType,
     stage: 'source' | 'final' = 'final'
 ): ImageValidationResult {
     const fileSizeKB = file.size / 1024;
 
-    // Determine max size based on type
-    const maxSize = type === 'background'
-        ? stage === 'source'
-            ? PERFORMANCE_BUDGET.MAX_BACKGROUND_SOURCE_SIZE_KB
-            : PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB
-        : PERFORMANCE_BUDGET.MAX_IMAGE_SIZE_KB;
+    const maxSize = resolveMaxImageSizeKB(type, stage);
 
     // Check 1: Individual file size limit
     if (fileSizeKB > maxSize) {

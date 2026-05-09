@@ -12,6 +12,12 @@ import { firebaseStorage } from '@lib/firebase/firebaseClient';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
 
+function getPhotoExtension(mimeType?: string): string {
+    if (mimeType?.includes('webp')) return 'webp';
+    if (mimeType?.includes('png')) return 'png';
+    return 'jpg';
+}
+
 /**
  * Upload a single OBP business photo to Firebase Storage
  * @param file - File or Blob to upload
@@ -24,7 +30,7 @@ export async function uploadOBPPhoto(
     session: { tId: number | string; sId: number | string },
     index: number,
 ): Promise<string> {
-    const fileId = `${Date.now()}-photo-${index}.jpg`;
+    const fileId = `${Date.now()}-photo-${index}.${getPhotoExtension(file.type)}`;
     const storagePath = generateStoragePath({
         collection: 'stores',
         fileType: 'obp-photos',
@@ -63,5 +69,26 @@ export async function deleteOBPPhoto(photoUrl: string): Promise<void> {
             return;
         }
         throw error;
+    }
+}
+
+export async function deleteOBPPhotos(photoUrls: Array<string | null | undefined>): Promise<void> {
+    const uniquePhotoUrls = Array.from(new Set(
+        photoUrls.filter((photoUrl): photoUrl is string => (
+            typeof photoUrl === 'string' &&
+            photoUrl.trim().length > 0 &&
+            !photoUrl.startsWith('data:')
+        )),
+    ));
+
+    if (uniquePhotoUrls.length === 0) return;
+
+    const results = await Promise.allSettled(
+        uniquePhotoUrls.map((photoUrl) => deleteOBPPhoto(photoUrl)),
+    );
+
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed) {
+        console.warn('[deleteOBPPhotos] Some OBP photo deletes failed.', failed.reason);
     }
 }

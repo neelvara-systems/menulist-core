@@ -8,6 +8,8 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage } from '@lib/media/prepareMediaImage';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -256,19 +258,17 @@ export default function ItemEditSheet({
     }), [canEditImageInline, draftItem, imagePreview, selectedLanguages]);
     const hasChanges = currentComparisonState !== initialComparisonState;
 
-    const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-            Toast.show({ content: t('imageTooLarge'), duration: 2000 });
-            return;
+        try {
+            const prepared = await prepareMediaImage(file, 'menuItem');
+            setImagePreview(prepared.dataUrl);
+        } catch (error) {
+            Toast.show({ content: error instanceof Error ? error.message : t('imageTooLarge'), duration: 2200 });
+        } finally {
+            if (imageInputRef.current) imageInputRef.current.value = '';
         }
-        const reader = new FileReader();
-        reader.onload = () => {
-            setImagePreview(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-        if (imageInputRef.current) imageInputRef.current.value = '';
     };
 
     const updateLocalizedField = (language: string, field: 'name' | 'description', value: string) => {
@@ -774,7 +774,7 @@ export default function ItemEditSheet({
                                     {isAddMode || !onManageImages ? (
                                         <>
                                             <input
-                                                accept="image/*"
+                                                accept={getMediaProfileAcceptAttribute('menuItem')}
                                                 onChange={handleImageInputChange}
                                                 ref={imageInputRef}
                                                 style={{ display: 'none' }}

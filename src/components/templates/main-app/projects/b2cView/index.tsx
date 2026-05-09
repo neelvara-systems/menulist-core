@@ -1,4 +1,5 @@
 import { publishProject, uploadFile } from "@database/projects";
+import { getDataUrlMimeType } from "@lib/media/imageProfiles";
 import { updateStore } from "@database/stores";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { resolveRenderLanguage } from "@lib/localization/languageResolver";
@@ -85,7 +86,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
 
                     const menuBg = projectCopy?.config?.design?.menu?.backgroundImage;
                     if (menuBg && menuBg.includes('base64')) {
-                        projectCopy.config.design.menu.backgroundImage = await uploadFile({ url: menuBg, type: 'image/png', uid: projectData.projectId }, 'assets');
+                        projectCopy.config.design.menu.backgroundImage = await uploadFile({ url: menuBg, type: getDataUrlMimeType(menuBg, 'image/jpeg'), uid: projectData.projectId }, 'assets');
                     }
 
                     const updatedProject: Project = await publishProject(projectCopy);

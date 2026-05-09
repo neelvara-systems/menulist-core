@@ -1,11 +1,13 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { getProjectLanguageLabel } from '@lib/localization/projectContent';
-import { getBase64 } from '@util/utils';
-import { Button, Flex, Form, FormInstance, Image, Input, Modal, Select, Switch, Upload, message, theme, Typography } from "antd";
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import { Button, Flex, Form, FormInstance, Input, Modal, Select, Switch, message, theme, Typography } from "antd";
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
-import { LuImagePlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
+import { useEffect, useState } from 'react';
+import { LuSparkles } from 'react-icons/lu';
 import { ProjectMetadata } from '../types';
 
 export interface ProjectFormData {
@@ -73,15 +75,31 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const currentProjectName = nameValue?.trim() || `This ${labels.offeringLower}`;
     const currentDefaultLabel = currentDefaultProjectName || `No default ${labels.offeringLower} is set yet`;
     const [isGeneratingProjectImage, setIsGeneratingProjectImage] = useState(false);
+    const [projectImageDraft, setProjectImageDraft] = useState<{
+        crop?: MediaImageCropIntent;
+        fileName?: string;
+        sourceDataUrl?: string;
+    } | null>(null);
+    const [isProjectImageAdjustOpen, setIsProjectImageAdjustOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setProjectImageDraft(null);
+        setIsProjectImageAdjustOpen(false);
+    }, [editingProject?.projectId, isOpen]);
 
     const handleProjectImageSelect = async (file: File) => {
         try {
-            const rawBase64 = await getBase64(file);
-            const optimized = await optimizeImage(rawBase64, MENU_IMAGE_CONFIG);
-            form.setFieldValue('projectImage', optimized.dataUrl);
+            const prepared = await prepareMediaImage(file, 'projectImage');
+            form.setFieldValue('projectImage', prepared.dataUrl);
+            setProjectImageDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || file.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
         } catch (error) {
             console.error('Failed to prepare project image:', error);
-            message.error('Could not prepare image. Please try again.');
+            message.error(error instanceof Error ? error.message : 'Could not prepare image. Please try again.');
         }
 
         return false;
@@ -102,6 +120,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 return;
             }
             form.setFieldValue('projectImage', generatedImage);
+            setProjectImageDraft(null);
             message.success('Menu image generated');
         } catch (error: any) {
             message.error(error?.message || 'Failed to generate menu image');
@@ -111,6 +130,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     };
 
     return (
+        <>
         <Modal
             title={editingProject ? `Edit ${offeringName}` : `Create New ${offeringName}`}
             open={isOpen}
@@ -252,61 +272,53 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 </Form.Item>
                 <Form.Item label={`${offeringName} Image`}>
                     <Flex gap={12} vertical>
-                        {projectImage ? (
-                            <Flex align="center" gap={12}>
-                                <Image
-                                    alt={`${offeringName} preview`}
-                                    height={88}
-                                    preview={false}
-                                    src={projectImage}
-                                    style={{ borderRadius: 12, objectFit: 'cover' }}
-                                    width={132}
-                                />
-                                <Flex gap={8} vertical>
-                                    <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
-                                        <Button icon={<LuImagePlus size={16} />}>Replace image</Button>
-                                    </Upload>
-                                    <Button
-                                        danger
-                                        icon={<LuTrash2 size={16} />}
-                                        onClick={() => form.setFieldValue('projectImage', null)}
-                                    >
-                                        Remove image
-                                    </Button>
-                                    {onGenerateProjectImage ? (
-                                        <Button
-                                            icon={<LuSparkles size={16} />}
-                                            loading={isGeneratingProjectImage}
-                                            onClick={handleGenerateProjectImage}
-                                        >
-                                            Regenerate image
-                                        </Button>
-                                    ) : null}
-                                </Flex>
-                            </Flex>
-                        ) : (
-                            <Flex align="center" gap={8} wrap="wrap">
-                                <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false}>
-                                    <Button icon={<LuImagePlus size={16} />}>Upload image</Button>
-                                </Upload>
-                                {onGenerateProjectImage ? (
-                                    <Button
-                                        icon={<LuSparkles size={16} />}
-                                        loading={isGeneratingProjectImage}
-                                        onClick={handleGenerateProjectImage}
-                                    >
-                                        Generate image
-                                    </Button>
-                                ) : null}
-                            </Flex>
-                        )}
-                        <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
-                            Optional. This image appears on the Official Business Page menu card.
-                        </span>
+                        <MediaImageCard
+                            accept={getMediaProfileAcceptAttribute('projectImage')}
+                            alt={`${offeringName} preview`}
+                            canAdjust={Boolean(projectImageDraft?.sourceDataUrl)}
+                            helperText="Optional. This image appears on the Official Business Page menu card."
+                            imageUrl={projectImage}
+                            onAdjust={() => setIsProjectImageAdjustOpen(true)}
+                            onRemove={projectImage ? () => {
+                                form.setFieldValue('projectImage', null);
+                                setProjectImageDraft(null);
+                            } : undefined}
+                            onSelectFile={(file) => { void handleProjectImageSelect(file); }}
+                            placeholderDescription="Drop, paste, or choose a menu image."
+                            placeholderTitle={`${offeringName} image`}
+                            replaceLabel="Replace"
+                            size="compact"
+                        />
+                        {onGenerateProjectImage ? (
+                            <Button
+                                icon={<LuSparkles size={16} />}
+                                loading={isGeneratingProjectImage}
+                                onClick={handleGenerateProjectImage}
+                            >
+                                {projectImage ? 'Regenerate image' : 'Generate image'}
+                            </Button>
+                        ) : null}
                     </Flex>
                 </Form.Item>
             </Form>
         </Modal>
+        <MediaImageAdjustModal
+            fileName={projectImageDraft?.fileName}
+            imageType="projectImage"
+            initialCrop={projectImageDraft?.crop}
+            onApply={(prepared) => {
+                form.setFieldValue('projectImage', prepared.dataUrl);
+                setProjectImageDraft({
+                    crop: prepared.crop,
+                    fileName: prepared.sourceName || projectImageDraft?.fileName,
+                    sourceDataUrl: prepared.sourceDataUrl || projectImageDraft?.sourceDataUrl,
+                });
+            }}
+            onClose={() => setIsProjectImageAdjustOpen(false)}
+            open={isProjectImageAdjustOpen}
+            sourceDataUrl={projectImageDraft?.sourceDataUrl}
+        />
+        </>
     );
 };
 

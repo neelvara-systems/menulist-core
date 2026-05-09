@@ -1,6 +1,7 @@
 'use client'
 
 import { getRecommendedProjectAIPreferences, getResolvedProjectAIPreferences, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
+import { getSafeMediaAspectRatio } from '@lib/media/imageProfiles';
 import { theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw } from 'react-icons/lu';
@@ -47,6 +48,13 @@ function getImageDefaults(businessType?: string) {
         || IMAGE_VIEW_TYPES[0];
 }
 
+function normalizeMenuItemImagePreferences(preferences: ProjectAIImagePreferences): ProjectAIImagePreferences {
+    return {
+        ...preferences,
+        aspectRatio: getSafeMediaAspectRatio('menuItem', preferences.aspectRatio),
+    };
+}
+
 export default function AIDefaultsSheet({
     businessType,
     onClose,
@@ -64,7 +72,7 @@ export default function AIDefaultsSheet({
     const imageDefaults = useMemo(() => getImageDefaults(businessType), [businessType]);
     const [descriptionLength, setDescriptionLength] = useState<DescriptionContentLength>(resolvedPreferences.description.contentLength);
     const [descriptionTone, setDescriptionTone] = useState<DescriptionTone>(resolvedPreferences.description.tone);
-    const [imagePreferences, setImagePreferences] = useState<ProjectAIImagePreferences>(resolvedPreferences.image);
+    const [imagePreferences, setImagePreferences] = useState<ProjectAIImagePreferences>(() => normalizeMenuItemImagePreferences(resolvedPreferences.image));
     const [isStyleSelectorOpen, setIsStyleSelectorOpen] = useState(false);
 
     useEffect(() => {
@@ -72,7 +80,7 @@ export default function AIDefaultsSheet({
         const nextResolved = getResolvedProjectAIPreferences(projectData, businessType);
         setDescriptionLength(nextResolved.description.contentLength);
         setDescriptionTone(nextResolved.description.tone);
-        setImagePreferences(nextResolved.image);
+        setImagePreferences(normalizeMenuItemImagePreferences(nextResolved.image));
     }, [businessType, projectData, visible]);
 
     const hasChanges = useMemo(() => {
@@ -93,13 +101,13 @@ export default function AIDefaultsSheet({
     const resetToSaved = () => {
         setDescriptionLength(resolvedPreferences.description.contentLength);
         setDescriptionTone(resolvedPreferences.description.tone);
-        setImagePreferences(resolvedPreferences.image);
+        setImagePreferences(normalizeMenuItemImagePreferences(resolvedPreferences.image));
     };
 
     const resetToRecommended = () => {
         setDescriptionLength(recommendedPreferences.description.contentLength);
         setDescriptionTone(recommendedPreferences.description.tone);
-        setImagePreferences(recommendedPreferences.image);
+        setImagePreferences(normalizeMenuItemImagePreferences(recommendedPreferences.image));
     };
 
     const selectedBackgroundColor = imagePreferences.backgroundColor || '#ffffff';
@@ -354,6 +362,7 @@ export default function AIDefaultsSheet({
                                 <Flex gap={8} vertical>
                                     <Text strong>Photo shape</Text>
                                     <AspectRatioSelector
+                                        imageType="menuItem"
                                         onChange={(aspectRatio) => setImagePreferences((current) => ({ ...current, aspectRatio }))}
                                         selectedAspectRatio={imagePreferences.aspectRatio || '1:1'}
                                     />

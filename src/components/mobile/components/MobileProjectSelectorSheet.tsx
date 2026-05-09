@@ -4,8 +4,11 @@ import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoade
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { generateProjectImageCandidate } from '@lib/image/projectImageGeneration';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -13,16 +16,15 @@ import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
-import { getBase64 } from '@util/utils';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { LuArchiveRestore, LuCopy, LuExternalLink, LuImagePlus, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
+import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import { Button, Card, Dialog, DotLoading, Flex, Image, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast, Upload } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
 type ProjectSheetProject = {
     active?: boolean;
@@ -183,6 +185,12 @@ export default function MobileProjectSelectorSheet({
     const [initialFormNameDrafts, setInitialFormNameDrafts] = useState<Record<string, string>>({});
     const [initialFormDescriptionDrafts, setInitialFormDescriptionDrafts] = useState<Record<string, string>>({});
     const [formProjectImage, setFormProjectImage] = useState<string | null>(null);
+    const [formProjectImageDraft, setFormProjectImageDraft] = useState<{
+        crop?: MediaImageCropIntent;
+        fileName?: string;
+        sourceDataUrl?: string;
+    } | null>(null);
+    const [isProjectImageAdjustOpen, setIsProjectImageAdjustOpen] = useState(false);
     const [formIsDefault, setFormIsDefault] = useState(false);
     const [formActive, setFormActive] = useState(true);
     const [formStartsAt, setFormStartsAt] = useState('');
@@ -298,6 +306,8 @@ export default function MobileProjectSelectorSheet({
         setInitialFormNameDrafts({});
         setInitialFormDescriptionDrafts({});
         setFormProjectImage(null);
+        setFormProjectImageDraft(null);
+        setIsProjectImageAdjustOpen(false);
         setFormIsDefault(false);
         setFormActive(true);
         setFormStartsAt('');
@@ -318,6 +328,8 @@ export default function MobileProjectSelectorSheet({
         setInitialFormNameDrafts({ [defaultLanguage]: '' });
         setInitialFormDescriptionDrafts({ [defaultLanguage]: '' });
         setFormProjectImage(null);
+        setFormProjectImageDraft(null);
+        setIsProjectImageAdjustOpen(false);
         setFormIsDefault(!projects.some((project) => project.isDefault === true));
         setFormActive(true);
         setFormStartsAt('');
@@ -374,6 +386,8 @@ export default function MobileProjectSelectorSheet({
         setInitialFormNameDrafts(nextNameDrafts);
         setInitialFormDescriptionDrafts(nextDescriptionDrafts);
         setFormProjectImage(project.projectImage || null);
+        setFormProjectImageDraft(null);
+        setIsProjectImageAdjustOpen(false);
         setFormIsDefault(project.isDefault === true);
         setFormActive(project.active !== false);
         setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
@@ -401,6 +415,8 @@ export default function MobileProjectSelectorSheet({
         setInitialFormNameDrafts(nextNameDrafts);
         setInitialFormDescriptionDrafts(nextDescriptionDrafts);
         setFormProjectImage(project.projectImage || null);
+        setFormProjectImageDraft(null);
+        setIsProjectImageAdjustOpen(false);
         setFormIsDefault(project.isDefault === true);
         setFormActive(true);
         setFormStartsAt('');
@@ -699,12 +715,16 @@ export default function MobileProjectSelectorSheet({
 
     const handleProjectImageSelect = async (file: File) => {
         try {
-            const rawBase64 = await getBase64(file);
-            const optimized = await optimizeImage(rawBase64, MENU_IMAGE_CONFIG);
-            setFormProjectImage(optimized.dataUrl);
+            const prepared = await prepareMediaImage(file, 'projectImage');
+            setFormProjectImage(prepared.dataUrl);
+            setFormProjectImageDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || file.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
         } catch (error) {
             console.error('Failed to prepare project image:', error);
-            Toast.show({ content: 'Could not prepare image. Please try again.', duration: 1800 });
+            Toast.show({ content: error instanceof Error ? error.message : 'Could not prepare image. Please try again.', duration: 1800 });
         }
 
         return false;
@@ -749,6 +769,7 @@ export default function MobileProjectSelectorSheet({
             }
 
             setFormProjectImage(candidate.dataUrl);
+            setFormProjectImageDraft(null);
             Toast.show({ content: 'Menu image generated', icon: 'success', duration: 1400 });
         } catch (error: any) {
             Toast.show({ content: error?.message || 'Failed to generate menu image', duration: 2200 });
@@ -1336,62 +1357,27 @@ export default function MobileProjectSelectorSheet({
                             <Flex gap={6} vertical>
                                 <Text strong>Menu image</Text>
                                 <Text type="secondary">Optional. This image appears on the Official Business Page menu card.</Text>
-                                {formProjectImage ? (
-                                    <Flex gap={10} vertical>
-                                        <Image
-                                            alt={`${formName || labels.offeringPhrase} preview`}
-                                            height={156}
-                                            preview={false}
-                                            src={formProjectImage}
-                                            style={{
-                                                border: `1px solid ${token.colorBorderSecondary}`,
-                                                borderRadius: 14,
-                                                objectFit: 'cover',
-                                                width: '100%',
-                                            }}
-                                            width="100%"
-                                        />
-                                        <Flex gap={8} style={{ width: '100%' }}>
-                                            <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false} style={{ flex: 1, minWidth: 0, width: '100%' }}>
-                                                <Button block fill="outline" size="small" style={{ width: '100%' }}>
-                                                    <Flex align="center" gap={6}>
-                                                        <LuImagePlus size={16} />
-                                                        <Text>Replace</Text>
-                                                    </Flex>
-                                                </Button>
-                                            </Upload>
-                                            <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small" style={{ flex: 1, minWidth: 0 }}>
-                                                <Flex align="center" gap={6}>
-                                                    <LuSparkles size={16} />
-                                                    <Text>Regenerate</Text>
-                                                </Flex>
-                                            </Button>
-                                        </Flex>
-                                        <Button color="danger" fill="none" onClick={() => setFormProjectImage(null)} size="small" style={{ alignSelf: 'center' }}>
-                                            <Flex align="center" gap={6}>
-                                                <LuTrash2 size={16} />
-                                                <Text>Remove image</Text>
-                                            </Flex>
-                                        </Button>
+                                <MediaImageCard
+                                    accept={getMediaProfileAcceptAttribute('projectImage')}
+                                    alt={`${formName || labels.offeringPhrase} preview`}
+                                    canAdjust={Boolean(formProjectImageDraft?.sourceDataUrl)}
+                                    imageUrl={formProjectImage}
+                                    onAdjust={() => setIsProjectImageAdjustOpen(true)}
+                                    onRemove={formProjectImage ? () => {
+                                        setFormProjectImage(null);
+                                        setFormProjectImageDraft(null);
+                                    } : undefined}
+                                    onSelectFile={(file) => { void handleProjectImageSelect(file); }}
+                                    placeholderDescription="Drop, paste, or choose a menu image."
+                                    placeholderTitle="Menu image"
+                                    size="compact"
+                                />
+                                <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small">
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuSparkles size={16} />
+                                        <Text>{formProjectImage ? 'Regenerate' : 'Generate'}</Text>
                                     </Flex>
-                                ) : (
-                                    <Flex gap={8} style={{ width: '100%' }}>
-                                        <Upload accept="image/*" beforeUpload={handleProjectImageSelect} showUploadList={false} style={{ flex: 1, minWidth: 0, width: '100%' }}>
-                                            <Button block fill="outline" size="small" style={{ width: '100%' }}>
-                                                <Flex align="center" gap={6}>
-                                                    <LuImagePlus size={16} />
-                                                    <Text>Upload</Text>
-                                                </Flex>
-                                            </Button>
-                                        </Upload>
-                                        <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small" style={{ flex: 1, minWidth: 0 }}>
-                                            <Flex align="center" gap={6}>
-                                                <LuSparkles size={16} />
-                                                <Text>Generate</Text>
-                                            </Flex>
-                                        </Button>
-                                    </Flex>
-                                )}
+                                </Button>
                             </Flex>
 
                             {formMode !== 'duplicate' ? (
@@ -1497,6 +1483,22 @@ export default function MobileProjectSelectorSheet({
                 title={qrSheet?.title || tShare('showQr')}
                 url={qrSheet?.url || ''}
                 visible={isQrSheetOpen}
+            />
+            <MediaImageAdjustModal
+                fileName={formProjectImageDraft?.fileName}
+                imageType="projectImage"
+                initialCrop={formProjectImageDraft?.crop}
+                onApply={(prepared) => {
+                    setFormProjectImage(prepared.dataUrl);
+                    setFormProjectImageDraft({
+                        crop: prepared.crop,
+                        fileName: prepared.sourceName || formProjectImageDraft?.fileName,
+                        sourceDataUrl: prepared.sourceDataUrl || formProjectImageDraft?.sourceDataUrl,
+                    });
+                }}
+                onClose={() => setIsProjectImageAdjustOpen(false)}
+                open={isProjectImageAdjustOpen}
+                sourceDataUrl={formProjectImageDraft?.sourceDataUrl}
             />
         </>
     );

@@ -55,7 +55,7 @@ None.
 
 | Operation          | Path Pattern                                          | Trigger                    | Size           | Notes                          |
 | ------------------ | ----------------------------------------------------- | -------------------------- | -------------- | ------------------------------ |
-| Owner slide upload | `MenuListAi/platform_summary/screen_slides/{slideId}` | Owner uploads custom image | Max 500KB each | Max 3 per store, 14-day expiry |
+| Owner slide upload | `MenuListAi/platform_summary/screen_slides/{slideId}` | Owner uploads custom image | Target max 500KB each after `digitalScreenSlide` preparation | Max 3 per store, 14-day expiry |
 
 ---
 

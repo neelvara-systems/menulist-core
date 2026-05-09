@@ -1,6 +1,7 @@
 import type { UserUploadedFileType } from '@type/common';
 
 export type PublicMenuImage = UserUploadedFileType & {
+    variants?: Partial<Record<'thumb' | 'small' | 'medium' | 'large' | 'original', string>>;
     url: string;
 };
 
@@ -47,5 +48,6 @@ export function normalizePublicMenuImages(images: unknown): PublicMenuImage[] {
 }
 
 export function getPrimaryPublicMenuImage(item: { images?: unknown } | null | undefined): string | undefined {
-    return normalizePublicMenuImages(item?.images)[0]?.url;
+    const image = normalizePublicMenuImages(item?.images)[0];
+    return image?.variants?.medium || image?.variants?.large || image?.url;
 }

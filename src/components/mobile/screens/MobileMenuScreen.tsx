@@ -17,6 +17,8 @@ import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { getDataUrlMimeType } from '@lib/media/imageProfiles';
+import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -826,14 +828,18 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
     const uploadItemImageInBackground = useCallback((itemId: string, imageData: string, imageName: string, uid: string) => {
         if (!imageData.includes('base64')) return;
+        const mimeType = getDataUrlMimeType(imageData, 'image/webp');
+        const preparedName = toPreparedUploadName(imageName, mimeType, imageName);
 
         void uploadFile({
             uid,
             url: imageData,
+            type: mimeType,
+            name: preparedName,
         } as any, 'itemImages')
             .then((uploadedImage) => {
                 if (uploadedImage) {
-                    updateItemImageFromUpload(itemId, uploadedImage, imageName);
+                    updateItemImageFromUpload(itemId, uploadedImage, preparedName);
                 }
             })
             .catch((error) => {

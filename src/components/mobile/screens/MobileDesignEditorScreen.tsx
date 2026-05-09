@@ -23,9 +23,12 @@ import {
     getRecommendedMenuDesignPresets,
     type MenuDesignPreset,
 } from '@lib/menu/menuDesignPresets';
-import { MENU_BACKGROUND_IMAGE_CONFIG, optimizeImageToBudget } from '@lib/image/optimizeImage';
 import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
-import { PERFORMANCE_BUDGET, validateImageUpload } from '@lib/performanceBudget';
+import { getDataUrlMimeType, getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import { validateImageUpload } from '@lib/performanceBudget';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -34,9 +37,9 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuChevronDown, LuImage, LuLink2, LuPalette, LuTrash2, LuUpload, LuX } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuChevronDown, LuLink2, LuPalette, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, Image, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast, Upload } from '../antd';
+import { Button, Card, DotLoading, Flex, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
@@ -84,6 +87,12 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [isRecommendedStylesSheetOpen, setIsRecommendedStylesSheetOpen] = useState(false);
     const [selectedRecommendedPresetKey, setSelectedRecommendedPresetKey] = useState<string>('');
+    const [backgroundImageDraft, setBackgroundImageDraft] = useState<{
+        crop?: MediaImageCropIntent;
+        fileName?: string;
+        sourceDataUrl?: string;
+    } | null>(null);
+    const [isBackgroundAdjustOpen, setIsBackgroundAdjustOpen] = useState(false);
 
     const menuDesign = resolveMenuDesignConfig(draftProjectData?.config?.design?.menu);
     const menuMood = menuDesign.mood;
@@ -152,6 +161,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         const cloned = cloneProjectData(selectedProject);
         setDraftProjectData(cloned);
         setSavedProjectData(cloneProjectData(cloned));
+        setBackgroundImageDraft(null);
+        setIsBackgroundAdjustOpen(false);
     }, [selectedProject]);
 
     useEffect(() => {
@@ -194,26 +205,28 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const handleCategoryTabsChange = (show: boolean) => updateDesign(['config', 'design', 'menu', 'showCategoryTabs'], show);
     const handleBrandColorChange = (color: string | undefined) => updateDesign(['config', 'design', 'brand', 'accentColor'], color);
     const handleBackgroundImageChange = (imageUrl: string) => updateDesign(['config', 'design', 'menu', 'backgroundImage'], imageUrl);
-    const handleBackgroundImageRemove = () => handleBackgroundImageChange('');
+    const handleBackgroundImageRemove = () => {
+        setBackgroundImageDraft(null);
+        setIsBackgroundAdjustOpen(false);
+        handleBackgroundImageChange('');
+    };
     const handleBackgroundImageSelect = async (file: File) => {
-        const validation = validateImageUpload(file, 0, 'background', 'source');
+        const validation = validateImageUpload(file, 0, 'menuBackground', 'source');
         if (!validation.allowed) {
             Toast.show({ content: validation.reason || t('failedToPublish'), duration: 2200 });
             return false;
         }
 
         try {
-            const optimized = await optimizeImageToBudget(file, MENU_BACKGROUND_IMAGE_CONFIG);
-            if (optimized.optimizedSize > PERFORMANCE_BUDGET.MAX_BACKGROUND_SIZE_KB * 1024) {
-                Toast.show({
-                    content: t('backgroundImageTooLargeAfterCompression'),
-                    duration: 2600,
-                });
-                return false;
-            }
-            handleBackgroundImageChange(optimized.dataUrl);
-        } catch {
-            Toast.show({ content: t('failedToPublish'), duration: 1800 });
+            const prepared = await prepareMediaImage(file, 'menuBackground');
+            handleBackgroundImageChange(prepared.dataUrl);
+            setBackgroundImageDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || file.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
+        } catch (error) {
+            Toast.show({ content: error instanceof Error ? error.message : t('failedToPublish'), duration: 1800 });
         }
         return false;
     };
@@ -274,7 +287,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             if (typeof menuBackgroundImage === 'string' && menuBackgroundImage.includes('base64')) {
                 normalizedDraft.config.design.menu.backgroundImage = await uploadFile({
                     url: menuBackgroundImage,
-                    type: 'image/png',
+                    type: getDataUrlMimeType(menuBackgroundImage, 'image/jpeg'),
                     uid: normalizedDraft.projectId || selectedProjectId || 'menu-background',
                 }, 'assets');
             }
@@ -315,6 +328,8 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const handleReset = () => {
         if (!savedProjectData || isPublishing || !hasChanges) return;
         setDraftProjectData(cloneProjectData(savedProjectData));
+        setBackgroundImageDraft(null);
+        setIsBackgroundAdjustOpen(false);
     };
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
@@ -638,89 +653,18 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         </Card>
                         <Card style={{ borderColor: token.colorBorderSecondary }}>
                             <Flex gap={12} vertical>
-                                {backgroundImage ? (
-                                    <div
-                                        style={{
-                                            aspectRatio: '16 / 7',
-                                            border: `1px solid ${token.colorBorderSecondary}`,
-                                            borderRadius: 12,
-                                            cursor: 'pointer',
-                                            overflow: 'hidden',
-                                            position: 'relative',
-                                            width: '100%',
-                                        }}
-                                        aria-label={t('background')}
-                                    >
-                                        <Image
-                                            alt={t('background')}
-                                            preview={{ mask: t('preview') }}
-                                            src={backgroundImage}
-                                            style={{
-                                                display: 'block',
-                                                height: '100%',
-                                                objectFit: 'cover',
-                                                width: '100%',
-                                            }}
-                                            wrapperStyle={{
-                                                display: 'block',
-                                                height: '100%',
-                                                width: '100%',
-                                            }}
-                                        />
-                                        <div
-                                            aria-hidden
-                                            style={{
-                                                background: 'rgba(0, 0, 0, 0.28)',
-                                                inset: 0,
-                                                pointerEvents: 'none',
-                                                position: 'absolute',
-                                            }}
-                                        />
-                                    </div>
-                                ) : (
-                                    <Flex
-                                        align="center"
-                                        justify="center"
-                                        style={{
-                                            aspectRatio: '16 / 6',
-                                            background: token.colorFillAlter,
-                                            border: `1px dashed ${token.colorBorder}`,
-                                            borderRadius: 12,
-                                            color: token.colorTextTertiary,
-                                            width: '100%',
-                                        }}
-                                    >
-                                        <Flex align="center" gap={6} vertical>
-                                            <LuImage size={22} />
-                                            <Text type="secondary">{t('noBackgroundImage')}</Text>
-                                        </Flex>
-                                    </Flex>
-                                )}
-                                <Flex align="center" gap={8} justify="space-between">
-                                    <Text type="secondary">{t('backgroundUploadFormats')}</Text>
-                                    <Flex gap={8}>
-                                        <Upload
-                                            accept="image/*"
-                                            beforeUpload={handleBackgroundImageSelect}
-                                            showUploadList={false}
-                                        >
-                                            <Button icon={<LuUpload size={16} />} size="small">
-                                                {backgroundImage ? t('replace') : t('image')}
-                                            </Button>
-                                        </Upload>
-                                        {backgroundImage ? (
-                                            <Button
-                                                color="danger"
-                                                fill="outline"
-                                                icon={<LuTrash2 size={16} />}
-                                                onClick={handleBackgroundImageRemove}
-                                                size="small"
-                                            >
-                                                {t('remove')}
-                                            </Button>
-                                        ) : null}
-                                    </Flex>
-                                </Flex>
+                                <MediaImageCard
+                                    accept={getMediaProfileAcceptAttribute('menuBackground')}
+                                    alt={t('background')}
+                                    canAdjust={Boolean(backgroundImageDraft?.sourceDataUrl)}
+                                    helperText={t('backgroundUploadFormats')}
+                                    imageUrl={backgroundImage}
+                                    onAdjust={() => setIsBackgroundAdjustOpen(true)}
+                                    onRemove={backgroundImage ? handleBackgroundImageRemove : undefined}
+                                    onSelectFile={(file) => { void handleBackgroundImageSelect(file); }}
+                                    placeholderDescription={t('backgroundUploadFormats')}
+                                    placeholderTitle={t('noBackgroundImage')}
+                                />
                             </Flex>
                         </Card>
                         <Flex gap={4} vertical>
@@ -785,6 +729,22 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 onClose={() => setIsColorPickerOpen(false)}
                 value={brandAccentColor}
                 visible={isColorPickerOpen}
+            />
+            <MediaImageAdjustModal
+                fileName={backgroundImageDraft?.fileName}
+                imageType="menuBackground"
+                initialCrop={backgroundImageDraft?.crop}
+                onApply={(prepared) => {
+                    handleBackgroundImageChange(prepared.dataUrl);
+                    setBackgroundImageDraft({
+                        crop: prepared.crop,
+                        fileName: prepared.sourceName || backgroundImageDraft?.fileName,
+                        sourceDataUrl: prepared.sourceDataUrl || backgroundImageDraft?.sourceDataUrl,
+                    });
+                }}
+                onClose={() => setIsBackgroundAdjustOpen(false)}
+                open={isBackgroundAdjustOpen}
+                sourceDataUrl={backgroundImageDraft?.sourceDataUrl}
             />
 
             <Popup

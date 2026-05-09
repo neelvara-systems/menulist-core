@@ -3,17 +3,28 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { dataUrlToBlob } from '@lib/image/optimizeImage';
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Typography, Upload, message, theme } from 'antd';
+import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import React, { forwardRef, useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
-import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuSmile, LuStar, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuSmile, LuStar } from 'react-icons/lu';
 import CompliancePagesSection from './CompliancePagesSection';
 import GoogleListingGuide from './GoogleListingGuide';
 
 const { Title, Text } = Typography;
+
+function normalizePhotoList(photos: unknown): string[] {
+    return Array.isArray(photos)
+        ? photos.filter((photo): photo is string => typeof photo === 'string' && photo.trim().length > 0)
+        : [];
+}
 
 interface OfficialPageTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -48,6 +59,7 @@ interface OfficialPageTabProps {
         googleLinkUpdatedAt?: string;
     };
     onPublicPresenceChange?: (field: string, value: any) => void;
+    onPhotoDeleteQueued?: (photoUrl: string) => void;
     onContentLanguageChange?: (language: string) => void;
     subdomain?: string;
     customDomain?: string;
@@ -62,6 +74,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         showDistributionTools = true,
         publicPresence = {},
         onPublicPresenceChange,
+        onPhotoDeleteQueued,
         onContentLanguageChange,
         subdomain,
         customDomain,
@@ -73,6 +86,13 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const session = useClientAuthSession();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
         const [photos, setPhotos] = useState<string[]>(publicPresence?.photos || []);
+        const lastAppliedPhotosKeyRef = useRef(JSON.stringify(normalizePhotoList(publicPresence?.photos)));
+        const [photoDrafts, setPhotoDrafts] = useState<Record<number, {
+            crop?: MediaImageCropIntent;
+            fileName?: string;
+            sourceDataUrl?: string;
+        }>>({});
+        const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
         const photoSlots = [...photos.filter(Boolean), ''];
         const officialPageUrl = generateOBPUrl(subdomain, customDomain);
         const localizedPresenceDrafts = Form.useWatch('__localizedPublicPresenceDrafts') || {};
@@ -82,6 +102,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const watchedDescriptor = Form.useWatch(['publicPresence', 'descriptor']);
         const watchedKnownFor = Form.useWatch(['publicPresence', 'knownFor']);
         const watchedSpecialNote = Form.useWatch(['publicPresence', 'specialNote']);
+        const watchedPhotos = Form.useWatch(['publicPresence', 'photos']);
         const watchedIconVariant = Form.useWatch(['publicPresence', 'iconVariant']) || publicPresence?.iconVariant || 'icons';
         const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
         const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
@@ -92,22 +113,52 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const reviewStatCol = compact ? { xs: 24 } : { xs: 24, md: 7 };
         const actionCol = compact ? { xs: 24 } : { xs: 24, md: 8 };
 
+        const queuePhotoDelete = (photoUrl?: string) => {
+            if (!photoUrl || photoUrl.startsWith('data:')) return;
+            onPhotoDeleteQueued?.(photoUrl);
+        };
+
+        const applyPhotos = (updated: string[]) => {
+            const cleanedPhotos = normalizePhotoList(updated);
+            lastAppliedPhotosKeyRef.current = JSON.stringify(cleanedPhotos);
+            setPhotos(updated);
+            form.setFieldValue(['publicPresence', 'photos'], cleanedPhotos);
+            onPublicPresenceChange?.('photos', cleanedPhotos);
+        };
+
         const handleToggle = (field: string) => (checked: boolean) => {
             onPublicPresenceChange?.(field, checked);
         };
 
-        const handlePhotoUpload = async (file: File, index: number) => {
+        const savePreparedPhoto = async (
+            prepared: PreparedMediaImage,
+            index: number,
+            fallbackDraft?: {
+                fileName?: string;
+                sourceDataUrl?: string;
+            },
+        ) => {
             if (!session?.tId || !session?.sId) {
                 message.error(t('sessionUnavailable'));
                 return;
             }
             setPhotoUploading(index);
             try {
-                const url = await uploadOBPPhoto(file, { tId: session.tId, sId: session.sId }, index);
+                const url = await uploadOBPPhoto(dataUrlToBlob(prepared.dataUrl), { tId: session.tId, sId: session.sId }, index);
                 const updated = [...photos];
+                if (updated[index] && updated[index] !== url) {
+                    queuePhotoDelete(updated[index]);
+                }
                 updated[index] = url;
-                setPhotos(updated);
-                onPublicPresenceChange?.('photos', updated.filter(Boolean));
+                applyPhotos(updated);
+                setPhotoDrafts((previous) => ({
+                    ...previous,
+                    [index]: {
+                        crop: prepared.crop,
+                        fileName: prepared.sourceName || fallbackDraft?.fileName,
+                        sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                    },
+                }));
                 message.success(t('photoUploaded'));
             } catch {
                 message.error(t('photoUploadFailed'));
@@ -116,11 +167,28 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             }
         };
 
+        const handlePhotoUpload = async (file: File, index: number) => {
+            try {
+                const prepared = await prepareMediaImage(file, 'galleryImage');
+                await savePreparedPhoto(prepared, index, {
+                    fileName: file.name,
+                    sourceDataUrl: prepared.sourceDataUrl,
+                });
+            } catch {
+                message.error(t('photoUploadFailed'));
+            }
+        };
+
         const handlePhotoRemove = (index: number) => {
             const updated = [...photos];
+            queuePhotoDelete(updated[index]);
             updated[index] = '';
-            setPhotos(updated);
-            onPublicPresenceChange?.('photos', updated.filter(Boolean));
+            applyPhotos(updated);
+            setPhotoDrafts((previous) => {
+                const next = { ...previous };
+                delete next[index];
+                return next;
+            });
         };
 
         useEffect(() => {
@@ -148,6 +216,17 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 },
             });
         }, [publicPresence]); // eslint-disable-line react-hooks/exhaustive-deps
+
+        useEffect(() => {
+            if (watchedPhotos === undefined) return;
+            const nextPhotos = normalizePhotoList(watchedPhotos);
+            const nextKey = JSON.stringify(nextPhotos);
+            if (nextKey === lastAppliedPhotosKeyRef.current) return;
+            lastAppliedPhotosKeyRef.current = nextKey;
+            setPhotos(nextPhotos);
+            setPhotoDrafts({});
+            setAdjustingPhotoIndex(null);
+        }, [watchedPhotos]);
 
         useEffect(() => {
             const visiblePresence = form.getFieldValue('publicPresence') || {};
@@ -537,61 +616,21 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             const isUploading = photoUploading === idx;
                             return (
                                 <Col key={idx} xs={8}>
-                                    {photo ? (
-                                        <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', aspectRatio: '4/3' }}>
-                                            <img
-                                                src={photo}
-                                                alt={t('photoLabel', { index: idx + 1 })}
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            />
-                                            <Button
-                                                size="small"
-                                                danger
-                                                icon={<LuTrash2 size={12} />}
-                                                onClick={() => handlePhotoRemove(idx)}
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: 4,
-                                                    right: 4,
-                                                    opacity: 0.85,
-                                                }}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <Upload
-                                            accept="image/*"
-                                            showUploadList={false}
-                                            beforeUpload={(file) => {
-                                                handlePhotoUpload(file, idx);
-                                                return false;
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    border: '1px dashed #d9d9d9',
-                                                    borderRadius: 8,
-                                                    aspectRatio: '4/3',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    flexDirection: 'column',
-                                                    gap: 4,
-                                                    color: '#bfbfbf',
-                                                    fontSize: 12,
-                                                    cursor: 'pointer',
-                                                }}
-                                            >
-                                                {isUploading ? (
-                                                    <span>{t('photoUploading')}</span>
-                                                ) : (
-                                                    <>
-                                                        <LuUpload size={20} />
-                                                        {t('photoLabel', { index: idx + 1 })}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </Upload>
-                                    )}
+                                    <MediaImageCard
+                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                        alt={t('photoLabel', { index: idx + 1 })}
+                                        aspectRatio="4 / 3"
+                                        canAdjust={Boolean(photoDrafts[idx]?.sourceDataUrl)}
+                                        imageUrl={photo}
+                                        isBusy={isUploading}
+                                        onAdjust={() => setAdjustingPhotoIndex(idx)}
+                                        onRemove={photo ? () => handlePhotoRemove(idx) : undefined}
+                                        onSelectFile={(file) => { void handlePhotoUpload(file, idx); }}
+                                        placeholderDescription={isUploading ? t('photoUploading') : undefined}
+                                        placeholderTitle={t('photoLabel', { index: idx + 1 })}
+                                        showDropHint={false}
+                                        size="compact"
+                                    />
                                 </Col>
                             );
                         })}
@@ -766,6 +805,18 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         </>
                     ) : null}
                 </Card>
+                <MediaImageAdjustModal
+                    fileName={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.fileName : undefined}
+                    imageType="galleryImage"
+                    initialCrop={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.crop : undefined}
+                    onApply={async (prepared) => {
+                        if (adjustingPhotoIndex == null) return;
+                        await savePreparedPhoto(prepared, adjustingPhotoIndex, photoDrafts[adjustingPhotoIndex]);
+                    }}
+                    onClose={() => setAdjustingPhotoIndex(null)}
+                    open={adjustingPhotoIndex != null}
+                    sourceDataUrl={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.sourceDataUrl : undefined}
+                />
             </>
         );
     },

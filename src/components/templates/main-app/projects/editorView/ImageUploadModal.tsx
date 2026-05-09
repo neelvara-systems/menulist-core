@@ -5,7 +5,8 @@ import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferenceP
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
 import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenPreferences';
-import { validateImageQuality } from '@lib/imageQualityGuard';
+import { getMediaProfileAcceptAttribute, getSafeMediaAspectRatio } from '@lib/media/imageProfiles';
+import { prepareMediaImage, toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { logger } from '@lib/monitoring/logger';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -15,7 +16,7 @@ import triggerBatchImageGenerationApi from '@services/ai/image/triggerBatchImage
 import { UserUploadedFileType } from '@type/common';
 import { InheritanceState } from '@type/multiOutlet.types';
 import { getISOStringDate } from '@util/dateTime';
-import { getBase64, getBase64Length, getCompressedImage, removeObjRef } from '@util/utils';
+import { removeObjRef } from '@util/utils';
 import type { UploadProps } from 'antd';
 import { Button, Flex, message, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -164,6 +165,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 }
                 : applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType);
         configWithPrefs.referanceImages = normalizeReferenceImages(configWithPrefs.referanceImages);
+        configWithPrefs.aspectRatio = getSafeMediaAspectRatio('menuItem', configWithPrefs.aspectRatio);
         setGenerationConfig(configWithPrefs);
         setBatchGenerationConfig(configWithPrefs);
         setActiveTab(preferredInitialTab);
@@ -408,7 +410,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const uploadProps: UploadProps = {
         name: 'file',
         multiple: true,
-        accept: 'image/png, image/jpeg, image/webp',
+        accept: getMediaProfileAcceptAttribute('menuItem'),
         listType: 'picture-card',
         maxCount: 10,
         className: 'upload-list-inline',
@@ -430,39 +432,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             return true;
         },
         beforeUpload: async (file) => {
-            // Check 1: File type validation
-            const isJpgOrPngOrWebp = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
-            if (!isJpgOrPngOrWebp) {
-                message.error('You can only upload JPG/PNG/WEBP file!');
-                return Upload.LIST_IGNORE;
-            }
-
-            // Check 2: Relaxed reference image quality validation
-            const qualityValidation = await validateImageQuality(file, 'reference');
-
-            if (!qualityValidation.allowed) {
-                message.error(qualityValidation.reason);
-                return Upload.LIST_IGNORE;
-            }
-
             try {
-                let url = await getBase64(file as any);
-                let finalSize = file.size;
-
-                if (file.size / 1024 / 1024 >= 2) {
-                    const compressedBase64 = await getCompressedImage(file as File, 0.6);
-                    if (compressedBase64) {
-                        url = compressedBase64 as string;
-                        finalSize = Math.round(getBase64Length(compressedBase64 as string));
-                    }
-                }
+                const prepared = await prepareMediaImage(file as File, 'menuItem');
 
                 const newImage: UserUploadedFileType = {
                     uid: file.uid,
-                    url,
-                    name: file.name,
-                    type: file.type,
-                    size: finalSize,
+                    url: prepared.dataUrl,
+                    name: toPreparedUploadName(file.name, prepared.mimeType, 'item-image'),
+                    type: prepared.mimeType,
+                    size: prepared.sizeBytes,
                 };
 
                 setSelectedImages((prevImages) => {
@@ -479,8 +457,8 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     return { ...prev, referanceImages: [...existingImages, newImage] };
                 });
             } catch (error) {
-                logger.error('Error getting base64', error);
-                message.error(`Error processing file ${file.name}`);
+                logger.error('Error preparing image', error);
+                message.error(error instanceof Error ? error.message : `Error processing file ${file.name}`);
             }
 
             // Keep this as a local preview flow. Actual upload happens only on the final save action.
@@ -496,7 +474,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             </p>
             <p className="ant-upload-text">Click or drag file(s) to this area to upload</p>
             <p className="ant-upload-hint">
-                Support for single or bulk upload. Max 10 images, 2MB per image. Allowed types: PNG, JPG, WEBP.
+                Support for single or bulk upload. Max 10 images. JPG, PNG, or WebP.
             </p>
         </Upload.Dragger>;
     };

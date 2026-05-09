@@ -3,16 +3,21 @@
 import { FEATURE_FLAGS } from '@config/features';
 import useViewportInfo from '@hook/useViewportInfo';
 import { updateStore } from '@database/stores';
-import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
+import { deleteOBPPhotos, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getBrandName } from '@lib/businessIdentity/names';
+import { dataUrlToBlob } from '@lib/image/optimizeImage';
 import { updateLocalizedText } from '@lib/localization/text';
+import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
+import MediaImageCard from '@/components/shared/media/MediaImageCard';
+import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ColorPicker, InputNumber, Upload, theme } from 'antd';
+import { ColorPicker, InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -26,10 +31,8 @@ import {
     LuSmile,
     LuPhone,
     LuStar,
-    LuTrash2,
-    LuUpload
 } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Image, Input, NavBar, Switch, Text, TextArea, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Switch, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
@@ -94,6 +97,13 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [selectedLanguage, setSelectedLanguage] = useState(getStorePreferredLanguage(storeDetails));
     const [isSaving, setIsSaving] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+    const [photoDrafts, setPhotoDrafts] = useState<Record<number, {
+        crop?: MediaImageCropIntent;
+        fileName?: string;
+        sourceDataUrl?: string;
+    }>>({});
+    const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
+    const [photoDeleteQueue, setPhotoDeleteQueue] = useState<string[]>([]);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const officialPageUrl = useMemo(
@@ -109,7 +119,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
     const isDirty =
         JSON.stringify(formData) !== JSON.stringify(originalFormData)
-        || JSON.stringify(localizedDrafts) !== JSON.stringify(originalLocalizedDrafts);
+        || JSON.stringify(localizedDrafts) !== JSON.stringify(originalLocalizedDrafts)
+        || photoDeleteQueue.length > 0;
 
     const photoSlots = useMemo(() => {
         return [...formData.photos.filter(Boolean), ''];
@@ -134,6 +145,11 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             </Flex>
         </Flex>
     ), [t]);
+
+    const queuePhotoDelete = useCallback((photoUrl?: string) => {
+        if (!photoUrl || photoUrl.startsWith('data:')) return;
+        setPhotoDeleteQueue((previous) => previous.includes(photoUrl) ? previous : [...previous, photoUrl]);
+    }, []);
 
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
         if (!storeDetails?.storeId) return;
@@ -187,6 +203,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
         try {
             await updateStore(payload as any);
+            await deleteOBPPhotos(photoDeleteQueue);
+            setPhotoDeleteQueue([]);
             setOriginalFormData(nextPresence);
             setOriginalLocalizedDrafts(localizedDrafts);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
@@ -199,13 +217,20 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         } finally {
             setIsSaving(false);
         }
-    }, [localizedDrafts, setStoreDetails, storeDetails, tMobile]);
+    }, [localizedDrafts, photoDeleteQueue, setStoreDetails, storeDetails, tMobile]);
 
     const handleSave = useCallback(() => {
         void updatePresence(formData);
     }, [formData, updatePresence]);
 
-    const handlePhotoUpload = async (file: File, index: number) => {
+    const savePreparedPhoto = async (
+        prepared: PreparedMediaImage,
+        index: number,
+        fallbackDraft?: {
+            fileName?: string;
+            sourceDataUrl?: string;
+        },
+    ) => {
         if (!session?.tId || !session?.sId) {
             Toast.show({ content: t('sessionUnavailable'), duration: 1500 });
             return false;
@@ -213,9 +238,20 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
         setUploadingIndex(index);
         try {
-            const url = await uploadOBPPhoto(file, { tId: session.tId, sId: session.sId }, index);
+            const url = await uploadOBPPhoto(dataUrlToBlob(prepared.dataUrl), { tId: session.tId, sId: session.sId }, index);
             const nextPhotos = [...formData.photos];
+            if (nextPhotos[index] && nextPhotos[index] !== url) {
+                queuePhotoDelete(nextPhotos[index]);
+            }
             nextPhotos[index] = url;
+            setPhotoDrafts((previous) => ({
+                ...previous,
+                [index]: {
+                    crop: prepared.crop,
+                    fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                },
+            }));
             setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
         } catch {
             Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
@@ -226,14 +262,35 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         return false;
     };
 
+    const handlePhotoUpload = async (file: File, index: number) => {
+        try {
+            const prepared = await prepareMediaImage(file, 'galleryImage');
+            await savePreparedPhoto(prepared, index, {
+                fileName: file.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
+        } catch {
+            Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
+        }
+
+        return false;
+    };
+
     const handlePhotoRemove = (index: number) => {
         const nextPhotos = [...formData.photos];
+        queuePhotoDelete(nextPhotos[index]);
         nextPhotos[index] = '';
+        setPhotoDrafts((previous) => {
+            const next = { ...previous };
+            delete next[index];
+            return next;
+        });
         setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
+        setPhotoDeleteQueue([]);
     }, [originalFormData]);
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
@@ -275,6 +332,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         const nextLocalizedDrafts = buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails));
         setLocalizedDrafts(nextLocalizedDrafts);
         setOriginalLocalizedDrafts(nextLocalizedDrafts);
+        setPhotoDeleteQueue([]);
     }, [storeDetails]);
 
     if (!FEATURE_FLAGS.ENABLE_OBP) {
@@ -555,25 +613,20 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         <Flex gap={10} wrap>
                             {photoSlots.map((photo, index) => (
                                 <Card key={index} style={{ flex: '1 1 30%', minWidth: 92 }}>
-                                    <Flex align="center" gap={8} vertical>
-                                        {photo ? (
-                                            <>
-                                                <Image alt={t('photoLabel', { index: index + 1 })} height={88} preview={false} src={photo} style={{ borderRadius: 8, objectFit: 'cover' }} width={88} />
-                                                <Button color="danger" fill="none" onClick={() => handlePhotoRemove(index)} size="small">
-                                                    <LuTrash2 size={16} />
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <Upload accept="image/*" beforeUpload={(file) => handlePhotoUpload(file, index)} showUploadList={false}>
-                                                <Button fill="outline" loading={uploadingIndex === index} size="small">
-                                                    <Flex align="center" gap={6}>
-                                                        <LuUpload size={16} />
-                                                        <Text>{t('photoLabel', { index: index + 1 })}</Text>
-                                                    </Flex>
-                                                </Button>
-                                            </Upload>
-                                        )}
-                                    </Flex>
+                                    <MediaImageCard
+                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                        alt={t('photoLabel', { index: index + 1 })}
+                                        aspectRatio="4 / 3"
+                                        canAdjust={Boolean(photoDrafts[index]?.sourceDataUrl)}
+                                        imageUrl={photo}
+                                        isBusy={uploadingIndex === index}
+                                        onAdjust={() => setAdjustingPhotoIndex(index)}
+                                        onRemove={photo ? () => handlePhotoRemove(index) : undefined}
+                                        onSelectFile={(file) => { void handlePhotoUpload(file, index); }}
+                                        placeholderTitle={t('photoLabel', { index: index + 1 })}
+                                        showDropHint={false}
+                                        size="compact"
+                                    />
                                 </Card>
                             ))}
                         </Flex>
@@ -707,6 +760,18 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 title={tShare('officialBusinessLink')}
                 url={withSource(officialPageUrl, 'qr')}
                 visible={isQrSheetOpen}
+            />
+            <MediaImageAdjustModal
+                fileName={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.fileName : undefined}
+                imageType="galleryImage"
+                initialCrop={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.crop : undefined}
+                onApply={async (prepared) => {
+                    if (adjustingPhotoIndex == null) return;
+                    await savePreparedPhoto(prepared, adjustingPhotoIndex, photoDrafts[adjustingPhotoIndex]);
+                }}
+                onClose={() => setAdjustingPhotoIndex(null)}
+                open={adjustingPhotoIndex != null}
+                sourceDataUrl={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.sourceDataUrl : undefined}
             />
         </Flex>
     );

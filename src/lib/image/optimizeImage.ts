@@ -1,3 +1,5 @@
+import { getMediaImageProfile } from '@lib/media/imageProfiles';
+
 /**
  * Image Optimization Utility for Menu Processing
  * 
@@ -306,7 +308,8 @@ export function getImageDimensions(file: File): Promise<{ width: number; height:
     });
 }
 
-// Image optimization configuration for menu processing
+// Image optimization configuration for menu processing.
+// This remains OCR/source-upload oriented, not the public item-image profile.
 export const MENU_IMAGE_CONFIG = {
     maxDimension: 1500,
     quality: 0.7,
@@ -314,11 +317,13 @@ export const MENU_IMAGE_CONFIG = {
     maxFileSizeBytes: 2 * 1024 * 1024, // 2MB
 };
 
+const MENU_BACKGROUND_PROFILE = getMediaImageProfile('menuBackground');
+
 export const MENU_BACKGROUND_IMAGE_CONFIG = {
-    maxDimension: 1400,
-    quality: 0.72,
-    format: 'image/jpeg' as const,
-    maxSizeKB: 800,
-    minQuality: 0.48,
-    minDimension: 900,
+    maxDimension: MENU_BACKGROUND_PROFILE.maxDimension,
+    quality: MENU_BACKGROUND_PROFILE.quality,
+    format: MENU_BACKGROUND_PROFILE.outputFormat as 'image/jpeg',
+    maxSizeKB: MENU_BACKGROUND_PROFILE.maxOutputSizeKB,
+    minQuality: MENU_BACKGROUND_PROFILE.minQuality,
+    minDimension: MENU_BACKGROUND_PROFILE.minDimension,
 };

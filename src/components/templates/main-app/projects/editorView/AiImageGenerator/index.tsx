@@ -1080,6 +1080,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                     </Flex>
 
                                                     <AspectRatioSelector
+                                                        imageType="menuItem"
                                                         selectedAspectRatio={generationConfig.aspectRatio || '1:1'}
                                                         onChange={(aspectRatio) => setGenerationConfig({ ...generationConfig, aspectRatio })}
                                                     />
