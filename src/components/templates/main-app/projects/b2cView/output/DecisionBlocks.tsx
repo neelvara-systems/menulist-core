@@ -597,38 +597,35 @@ export default function DecisionBlocks({
         const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
         const price = parseFloat(rec.item.price || '0');
 
-        if (!trackingEnabled) {
-            if (onItemClick) {
-                onItemClick(rec.item);
+        const revealInlineItem = () => {
+            const itemElement = document.getElementById(`item-${rec.item.id}`);
+            if (itemElement) {
+                itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                itemElement.classList.add('ring-2', 'ring-offset-2');
+                setTimeout(() => {
+                    itemElement.classList.remove('ring-2', 'ring-offset-2');
+                }, 2000);
             }
+        };
+
+        if (trackingEnabled) {
+            trackDecisionBlockClick(
+                rec.blockType,
+                rec.item.id,
+                itemName,
+                rec.item.category,
+                price,
+                { ...analyticsIds }
+            );
+        }
+
+        if (onItemClick) {
+            onItemClick(rec.item);
             return;
         }
 
-        // Track the click (pass analyticsIds for project-wise Firestore storage)
-        trackDecisionBlockClick(
-            rec.blockType,
-            rec.item.id,
-            itemName,
-            rec.item.category,
-            price,
-            { ...analyticsIds }
-        );
-
-        // Scroll to item
-        const itemElement = document.getElementById(`item-${rec.item.id}`);
-        if (itemElement) {
-            itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Add highlight effect
-            itemElement.classList.add('ring-2', 'ring-offset-2');
-            setTimeout(() => {
-                itemElement.classList.remove('ring-2', 'ring-offset-2');
-            }, 2000);
-        }
-
-        // Trigger item click callback (opens PDP modal)
-        if (onItemClick) {
-            onItemClick(rec.item);
-        }
+        // Fallback for non-modal renders: featured choice can still jump to the inline item.
+        revealInlineItem();
     }, [activeLanguage, onItemClick, trackingEnabled, analyticsIds]);
 
     // Track when blocks are rendered (once per session)
@@ -759,6 +756,7 @@ export default function DecisionBlocks({
 
                         return (
                             <button
+                                type="button"
                                 key={rec.blockType}
                                 onClick={() => handleClick(rec)}
                                 aria-label={[

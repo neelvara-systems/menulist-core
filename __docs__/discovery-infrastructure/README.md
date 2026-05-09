@@ -85,10 +85,10 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 | ------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
 | Platform robots.txt (explicit AI bot rules) | `public/robots.txt:1-40`                   | ✅ OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
 | Per-store robots.txt                        | `src/app/client/robots.ts:12-61`           | ✅ Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules              |
-| Platform sitemap                            | `src/app/sitemap.ts`                       | ✅ 7 platform pages                                                      |
+| Platform sitemap                            | `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts` | ✅ Shared platform route inventory; dynamic sitemap reads one source of truth |
 | Per-store sitemap (real lastModified)       | `src/app/client/sitemap.ts:167-229`        | ✅ OBP + active canonical menu/outlet URLs; store/outlet `modifiedOn` drives freshness |
 | SSR (server-side rendering)                 | Next.js SSR                                | ✅ Full HTML on first request                                            |
-| LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ 37 + 145 lines                                                        |
+| LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ Current category/type-aware public business data description          |
 
 ### Freshness & Truth Signals
 
@@ -120,6 +120,10 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 ```
 src/lib/schema/                    # Schema.org utilities (SHIPPED)
 ├── index.ts                       # 465 lines — shared builder functions
+
+src/lib/seo/                       # SEO/AEO discovery utilities (SHIPPED)
+├── discoveryPolicy.ts             # Platform pages, crawler allowlist, public disallow paths
+└── publicMetadata.ts              # Shared public preview metadata normalization
 
 src/app/client/obp/schema.ts       # OBP schema generator (SHIPPED)
 src/app/client/[[...slug]]/page.tsx  # Menu schema generator (SHIPPED)

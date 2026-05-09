@@ -15,6 +15,7 @@ import { publishProject, uploadFile } from '@database/projects';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, updateLocalizedText } from '@lib/localization/text';
+import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
 import { validateImageUpload } from '@lib/performanceBudget';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -24,7 +25,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuArrowLeft, LuCheck, LuImage, LuLayoutGrid, LuLayoutList, LuLayoutPanelTop, LuLink2, LuPalette, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuArrowLeft, LuCheck, LuChevronDown, LuChevronUp, LuImage, LuLayoutGrid, LuLayoutList, LuLayoutPanelTop, LuLink2, LuPalette, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Switch, Tag, Text, TextArea, Toast, Upload } from '../antd';
 import MobileLinkCard from '../components/MobileLinkCard';
@@ -118,6 +119,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
+    const [isRecommendedStylesExpanded, setIsRecommendedStylesExpanded] = useState(false);
 
     const menuDesign = resolveMenuDesignConfig(draftProjectData?.config?.design?.menu);
     const menuMood = menuDesign.mood;
@@ -132,6 +134,12 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const specialNote = getLocalizedDraftText(draftProjectData?.menuSettings?.specialNote, specialNoteLanguage, '');
     const compatibleLayouts = useMemo(() => getCompatibleLayouts(menuMood), [menuMood]);
     const defaultMoodColor = MENU_MOODS[menuMood]?.accentColor || '#059669';
+    const specialNoteSuggestions = useMemo(() => getMenuSpecialNoteSuggestions(t), [t]);
+    const selectedQuickPreset = useMemo(() => QUICK_PRESETS.find((preset) => (
+        menuMood === preset.mood &&
+        menuLayout === preset.layout &&
+        brandAccentColor === preset.accentColor
+    )) || null, [brandAccentColor, menuLayout, menuMood]);
     const resolvedProjectName = useMemo(
         () => getLocalizedText(
             draftProjectData?.name || selectedProjectSummary?.name,
@@ -261,6 +269,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             copy.config.design.brand = { ...copy.config.design.brand, accentColor: preset.accentColor };
             return copy;
         });
+        setIsRecommendedStylesExpanded(false);
         Toast.show({ content: t('appliedStyle', { name: preset.label }), duration: 1500 });
     };
 
@@ -425,6 +434,10 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             extra={<Text>{MENU_LAYOUTS[menuLayout]?.label || menuLayout}</Text>}
                         />
                         <List.Item
+                            title={<Text>{t('recommendedStyle')}</Text>}
+                            extra={<Text>{selectedQuickPreset?.label || t('customStyle')}</Text>}
+                        />
+                        <List.Item
                             title={<Text>{t('showItemPrices')}</Text>}
                             extra={<Tag color={showItemPrices ? 'success' : 'default'}>{showItemPrices ? t('on') : t('off')}</Tag>}
                         />
@@ -437,41 +450,56 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             extra={<Tag color={showCategoryIcons ? 'success' : 'default'}>{showCategoryIcons ? t('on') : t('off')}</Tag>}
                         />
                         <List.Item
-                            title={<Text>{t('categoryTabs')}</Text>}
-                            extra={<Tag color={showCategoryTabs ? 'success' : 'default'}>{showCategoryTabs ? t('on') : t('off')}</Tag>}
-                        />
-                        <List.Item
                             title={<Text>{t('background')}</Text>}
                             extra={<Tag color={backgroundImage ? 'success' : 'default'}>{backgroundImage ? t('image') : t('off')}</Tag>}
                         />
                     </List>
                 </Card>
                 <SectionCard title={t('quickStart')} subtitle={t('quickStartSubtitle')}>
-                    <Flex gap={8} wrap>
-                        {QUICK_PRESETS.map((preset) => {
-                            const isActive =
-                                menuMood === preset.mood &&
-                                menuLayout === preset.layout;
-                            return (
-                                <Card
-                                    key={preset.key}
-                                    onClick={() => applyQuickPreset(preset)}
-                                    style={{
-                                        backgroundColor: isActive ? token.colorPrimaryBg : token.colorBgContainer,
-                                        borderColor: isActive ? token.colorPrimary : token.colorBorderSecondary,
-                                        flex: '1 1 30%',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <Flex align="center" gap={6} vertical>
-                                        <Text>{preset.emoji}</Text>
-                                        <Text strong>{preset.label}</Text>
-                                        <Text type="secondary">{preset.description}</Text>
-                                    </Flex>
-                                </Card>
-                            );
-                        })}
+                    <Flex align="center" justify="space-between" gap={12}>
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Text strong>{selectedQuickPreset?.label || t('customStyle')}</Text>
+                            <Text type="secondary">
+                                {selectedQuickPreset?.description || t('recommendedStyleHelper')}
+                            </Text>
+                        </Flex>
+                        <Button
+                            fill="outline"
+                            onClick={() => setIsRecommendedStylesExpanded((previous) => !previous)}
+                            size="small"
+                            style={{ flex: '0 0 auto' }}
+                        >
+                            <Flex align="center" gap={4}>
+                                {isRecommendedStylesExpanded ? <LuChevronUp size={14} /> : <LuChevronDown size={14} />}
+                                <Text>{t('change')}</Text>
+                            </Flex>
+                        </Button>
                     </Flex>
+                    {isRecommendedStylesExpanded ? (
+                        <Flex gap={8} wrap>
+                            {QUICK_PRESETS.map((preset) => {
+                                const isActive = selectedQuickPreset?.key === preset.key;
+                                return (
+                                    <Card
+                                        key={preset.key}
+                                        onClick={() => applyQuickPreset(preset)}
+                                        style={{
+                                            backgroundColor: isActive ? token.colorPrimaryBg : token.colorBgContainer,
+                                            borderColor: isActive ? token.colorPrimary : token.colorBorderSecondary,
+                                            flex: '1 1 30%',
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        <Flex align="center" gap={6} vertical>
+                                            <Text>{preset.emoji}</Text>
+                                            <Text strong>{preset.label}</Text>
+                                            <Text type="secondary">{preset.description}</Text>
+                                        </Flex>
+                                    </Card>
+                                );
+                            })}
+                        </Flex>
+                    ) : null}
                 </SectionCard>
 
                 <SectionCard title={t('menuMood')} subtitle={t('menuMoodSubtitle')}>
@@ -517,6 +545,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     }}
                                 >
                                     <Flex align="center" gap={6} vertical>
+                                        <LayoutPreview layout={layoutKey} selected={isSelected} />
                                         {isSelected ? <LuCheck color={token.colorPrimary} size={14} /> : <Icon color={token.colorTextTertiary} size={16} />}
                                         <Text strong>{config.label}</Text>
                                         <Text type="secondary">{config.description}</Text>
@@ -588,7 +617,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             <div
                                 style={{
                                     aspectRatio: '16 / 7',
-                                    background: `url(${backgroundImage}) center/cover no-repeat`,
+                                    background: `linear-gradient(rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.28)), url(${backgroundImage}) center/cover no-repeat`,
                                     border: `1px solid ${token.colorBorderSecondary}`,
                                     borderRadius: 12,
                                     overflow: 'hidden',
@@ -635,6 +664,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                             ) : null}
                         </Flex>
                         <Text type="secondary">{t('backgroundUploadFormats')}</Text>
+                        <Text type="secondary">{t('backgroundReadabilityNote')}</Text>
                     </Flex>
                 </SectionCard>
 
@@ -647,6 +677,21 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         showCount
                         value={specialNote}
                     />
+                    <Flex gap={8} style={{ marginTop: 12 }} wrap="wrap">
+                        {specialNoteSuggestions.map((suggestion) => (
+                            <Tag
+                                key={suggestion}
+                                color={specialNote === suggestion ? 'primary' : undefined}
+                                onClick={() => handleServiceChargeChange(suggestion)}
+                                style={{ cursor: 'pointer', marginInlineEnd: 0 }}
+                            >
+                                {suggestion}
+                            </Tag>
+                        ))}
+                    </Flex>
+                    <Text type="secondary" style={{ marginTop: 8 }}>
+                        {t('specialNoteHelper')}
+                    </Text>
                 </SectionCard>
             </Flex>
 
@@ -717,6 +762,74 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
                 {children}
             </Flex>
         </Card>
+    );
+}
+
+function LayoutPreview({ layout, selected }: { layout: MenuLayout; selected: boolean }) {
+    const { token } = theme.useToken();
+    const accent = selected ? token.colorPrimary : token.colorTextTertiary;
+    const line = selected ? token.colorPrimaryBorder : token.colorBorderSecondary;
+    const fill = selected ? token.colorPrimaryBg : token.colorFillQuaternary;
+    const boxStyle = {
+        backgroundColor: fill,
+        border: `1px solid ${line}`,
+        borderRadius: 6,
+    };
+
+    if (layout === MenuLayout.GRID) {
+        return (
+            <div style={{ display: 'grid', gap: 4, gridTemplateColumns: 'repeat(2, 1fr)', height: 42, width: 56 }}>
+                {[0, 1, 2, 3].map((item) => <div key={item} style={boxStyle} />)}
+            </div>
+        );
+    }
+
+    if (layout === MenuLayout.CARD) {
+        return (
+            <Flex gap={4} style={{ width: 60 }} vertical>
+                {[0, 1].map((item) => (
+                    <Flex key={item} gap={4} style={{ ...boxStyle, padding: 4 }} vertical>
+                        <div style={{ backgroundColor: accent, borderRadius: 4, height: 8, opacity: 0.55 }} />
+                        <div style={{ backgroundColor: line, borderRadius: 4, height: 4, width: '72%' }} />
+                    </Flex>
+                ))}
+            </Flex>
+        );
+    }
+
+    if (layout === MenuLayout.TABS) {
+        return (
+            <Flex gap={4} style={{ width: 64 }} vertical>
+                <Flex gap={3}>
+                    {[0, 1, 2].map((item) => (
+                        <div
+                            key={item}
+                            style={{
+                                backgroundColor: item === 0 ? accent : fill,
+                                borderRadius: 999,
+                                height: 8,
+                                width: 18,
+                            }}
+                        />
+                    ))}
+                </Flex>
+                {[0, 1].map((item) => <div key={item} style={{ ...boxStyle, height: 12 }} />)}
+            </Flex>
+        );
+    }
+
+    return (
+        <Flex gap={4} style={{ width: 64 }} vertical>
+            {[0, 1, 2].map((item) => (
+                <Flex key={item} gap={4} style={{ ...boxStyle, padding: 4 }}>
+                    <div style={{ backgroundColor: accent, borderRadius: 4, height: 10, width: 12 }} />
+                    <Flex gap={3} style={{ flex: 1 }} vertical>
+                        <div style={{ backgroundColor: line, borderRadius: 4, height: 4, width: '88%' }} />
+                        <div style={{ backgroundColor: line, borderRadius: 4, height: 4, width: '58%' }} />
+                    </Flex>
+                </Flex>
+            ))}
+        </Flex>
     );
 }
 

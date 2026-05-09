@@ -58,7 +58,7 @@ None — analytics data is append-only / increment-only.
 
 | Resource | Operations/month | Unit Cost | Monthly Cost |
 |----------|-----------------|-----------|-------------|
-| Firestore Writes (events) | Up to 100,000 before coalescing; lower when customers generate multiple passive events in one short session | $0.18/100K | <= $0.18 |
+| Firestore Writes (events) | Up to 100,000 sessions before coalescing; lower when customers generate multiple events in one short session | $0.18/100K | <= $0.18 |
 | Firestore Reads (dashboard) | 50,000 | $0.06/100K | $0.03 |
 | Firestore Reads (scoring) | 60,000-90,000 | $0.06/100K | ~$0.04-$0.05 |
 | Cloud Functions | 30,000 | $0.40/M | $0.01 |
@@ -71,7 +71,7 @@ None — analytics data is append-only / increment-only.
 - **Allowed:** explicit, low-frequency intent signals such as menu opens, item opens, unique search terms, recommendation taps, unavailable-item taps, final CTA clicks, anonymous session milestones, and item-derived category interest.
 - **Rejected:** scroll depth, per-keystroke search, hover tracking, category scroll/open events, heartbeat/session pings, image impressions, and any passive event that would create steady write volume.
 - **Search rule:** one unique search term per store/project/session. This preserves demand signals without turning typing into write spam.
-- **Write coalescing rule:** passive/engagement counters may queue for a 15-second client-side window or 20 queued events and flush together. The queue is persisted in browser storage and retried on the next page load within the correction window. Final conversion actions must write immediately.
+- **Write coalescing rule:** public customer counters queue for a 15-second client-side window or 20 queued events and flush together. The queue is persisted in browser storage and retried on the next page load within the correction window. Final conversion actions are added to the local queue immediately, but they do not bypass coalescing with a separate Firestore write.
 - **Session milestone rule:** `menuSessions`, `engagedSessions`, `intentSessions`, and `actionSessions` are added to existing accepted writes using sessionStorage de-duplication. They must not create a second write path.
 - **Category-interest rule:** `viewsByCategory`, `clicksByCategory`, and `categoryNames` are written only when an item view/click is already being recorded.
 - **Language-usage rule:** `menuViewsByLanguage` and first-session `menuSessionsByLanguage` are attached to the existing menu-view write. A switched language only writes `languageAdoptions` after it stays active for the dwell window, with `languageNames` stored for dashboard labels.

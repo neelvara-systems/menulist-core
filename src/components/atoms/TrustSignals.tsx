@@ -32,6 +32,12 @@ interface TrustSignalsProps {
         fontFamily: string;
     };
     showBorder?: boolean;
+    /**
+     * Hide the offering/freshness context line when another nearby component
+     * already owns publish freshness. Keeps bottom menu metadata from repeating
+     * "updated today" twice.
+     */
+    showContextLine?: boolean;
 }
 
 /**
@@ -121,6 +127,7 @@ export default function TrustSignals({
     hoursLastUpdatedAt,
     theme,
     showBorder = true,
+    showContextLine = true,
 }: TrustSignalsProps) {
     const labels = getOfferingLabels(businessType);
     const offeringLabel = labels.offeringTitle;
@@ -155,7 +162,7 @@ export default function TrustSignals({
     // Build meta line: "Bandra West · Open now"
     const hasMetaLine = locationText || statusText;
     // Build context line: "Restaurant Menu · Updated Mar 17"
-    const hasContextLine = offeringLabel || freshnessText;
+    const hasContextLine = showContextLine && (offeringLabel || freshnessText);
 
     if (!hasMetaLine && !hasContextLine) return null;
 

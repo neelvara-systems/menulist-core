@@ -6,8 +6,9 @@
  * Advanced options are collapsed and hidden by default.
  */
 
-import { Collapse, Divider, Flex, Input, Switch, Typography } from 'antd';
+import { Collapse, Divider, Flex, Input, Switch, Typography, theme } from 'antd';
 import { getLocalizedDraftText, updateLocalizedText } from '@lib/localization/text';
+import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
 import { useTranslations } from 'next-intl';
 import { LuFileText, LuImage, LuList, LuSettings2 } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -33,6 +34,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     setProjectData,
 }) => {
     const t = useTranslations('MobileDesignEditor');
+    const { token } = theme.useToken();
     const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
     const currentMood = menuDesign.mood;
     const currentLayout = menuDesign.layout;
@@ -43,6 +45,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
     const specialNoteLanguage = projectData?.defaultLanguage || 'en';
     const specialNote = getLocalizedDraftText(projectData?.menuSettings?.specialNote, specialNoteLanguage, '');
+    const specialNoteSuggestions = getMenuSpecialNoteSuggestions(t);
 
     // G06 Constitutional limit: 140 characters max
     const SERVICE_CHARGE_MAX_LENGTH = 140;
@@ -239,7 +242,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
             <Flex align="center" justify="space-between">
                 <Flex align="center" gap={8}>
                     <LuList size={16} />
-                    <Text>{t('categoryTabsNavigation')}</Text>
+                    <Text>{t('categoryTabs')}</Text>
                 </Flex>
                 <Switch
                     checked={showCategoryTabs}
@@ -291,6 +294,27 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                                         autoSize={{ minRows: 2, maxRows: 3 }}
                                         style={{ fontSize: 13 }}
                                     />
+                                    <Flex gap={8} wrap="wrap">
+                                        {specialNoteSuggestions.map((suggestion) => (
+                                            <button
+                                                key={suggestion}
+                                                onClick={() => handlespecialNoteChange(suggestion)}
+                                                style={{
+                                                    background: specialNote === suggestion ? token.colorPrimaryBg : token.colorBgContainer,
+                                                    border: `1px solid ${specialNote === suggestion ? token.colorPrimary : token.colorBorder}`,
+                                                    borderRadius: 999,
+                                                    color: specialNote === suggestion ? token.colorPrimary : token.colorText,
+                                                    cursor: 'pointer',
+                                                    fontSize: 12,
+                                                    lineHeight: 1.4,
+                                                    padding: '6px 10px',
+                                                }}
+                                                type="button"
+                                            >
+                                                {suggestion}
+                                            </button>
+                                        ))}
+                                    </Flex>
                                     <Text type="secondary" style={{ fontSize: 11 }}>
                                         {t('specialNoteHelper')}
                                     </Text>

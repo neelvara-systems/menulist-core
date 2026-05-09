@@ -32,10 +32,11 @@ Enhance MenuList's machine-readable discovery layer (llms.txt, schema.org, struc
 
 MenuList already has **deep schema.org structured data** on OBP and menu pages. This strategy adds:
 
-1. **Enhanced `/llms.txt`** — Rebuilt from generic marketing copy to structured capability description following the llmstxt.org standard
-2. **New `/llms-full.txt`** — Extended version with detailed data format documentation for deeper LLM context
-3. **Feature flag placeholder** — `ENABLE_AGENT_DISCOVERY` for future agent-facing endpoints
-4. **Strategic documentation** — Long-term positioning guide for the B2A (Business-to-Agent) future
+1. **Enhanced `/llms.txt`** — Structured capability description following the llmstxt.org standard
+2. **`/llms-full.txt`** — Extended data format documentation for deeper LLM context
+3. **Shared discovery policy** — Platform sitemap and crawler rules now use shared route/crawler constants
+4. **Feature flag placeholder** — `ENABLE_AGENT_DISCOVERY` for future agent-facing endpoints
+5. **Strategic documentation** — Long-term positioning guide for the B2A (Business-to-Agent) future
 
 **What this is NOT:**
 - ❌ Public API / developer platform
@@ -53,8 +54,10 @@ MenuList already has **deep schema.org structured data** on OBP and menu pages. 
 | `public/llms-full.txt` | Extended LLM context with data format details | NEW |
 | `src/config/features.ts` | Feature flag placeholder | MODIFIED |
 | `src/lib/schema/index.ts` | Shared schema.org utilities (existing) | UNCHANGED |
-| `src/app/_client/obp/schema.ts` | OBP schema generator (existing) | UNCHANGED |
-| `src/app/_client/[[...slug]]/page.tsx` | Menu schema generator (existing) | UNCHANGED |
+| `src/lib/seo/discoveryPolicy.ts` | Shared platform route and crawler discovery policy | ADDED |
+| `src/lib/seo/publicMetadata.ts` | Shared public preview metadata normalization | ADDED |
+| `src/app/client/obp/schema.ts` | OBP schema generator (existing) | UNCHANGED |
+| `src/app/client/[[...slug]]/page.tsx` | Menu schema generator (existing) | UNCHANGED |
 
 ---
 
@@ -111,4 +114,4 @@ Currently a **placeholder only**. The llms.txt enhancement ships without a flag 
 ---
 
 **Document Signature:** Cascade (Lead Architect)
-**Last Updated:** February 19, 2026
+**Last Updated:** May 9, 2026

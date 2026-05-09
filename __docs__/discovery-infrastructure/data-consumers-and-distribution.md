@@ -22,7 +22,7 @@ This document maps every data consumer type, how they discover MenuList data, wh
 | Discovery Method | How It Works | MenuList Status |
 |-----------------|-------------|-----------------|
 | **Web crawling** | AI engines crawl public web pages, parse HTML + JSON-LD | ✅ OBP + Menu pages are SSR with schema.org JSON-LD |
-| **llms.txt** | AI crawlers can read `/llms.txt` for site capability summary | ✅ `public/llms.txt` (37 lines) + `public/llms-full.txt` (145 lines) |
+| **llms.txt** | AI crawlers can read `/llms.txt` for site capability summary | ✅ `public/llms.txt` + `public/llms-full.txt`; both describe the category/type-aware catalog model |
 | **Schema.org JSON-LD** | Embedded in every public page `<script type="application/ld+json">` | ✅ 10+ schema types: LocalBusiness, Restaurant, Store, Menu, MenuItem, OfferCatalog, Offer, Product, Service, GeoCoordinates, OpeningHoursSpecification, etc. |
 | **Direct API** | Programmatic access via REST API | ✅ Public API v1 exists and is feature-flagged ON (`ENABLE_PUBLIC_API: true`); not yet ecosystem-grade. |
 

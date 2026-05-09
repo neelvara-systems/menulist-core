@@ -69,14 +69,16 @@ Tenant (tId: number)
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/lib/schema/index.ts` | 465 | Shared schema.org utilities |
+| `src/lib/schema/index.ts` | 465+ | Shared schema.org utilities |
+| `src/lib/seo/discoveryPolicy.ts` | 140+ | Shared platform route and crawler discovery policy |
+| `src/lib/seo/publicMetadata.ts` | 60+ | Shared public preview metadata normalization |
 | `src/app/client/obp/schema.ts` | 256 | OBP schema generation |
 | `src/app/client/[[...slug]]/page.tsx` | 1,777 | Menu page SSR + schema injection |
 | `src/app/client/robots.ts` | 62 | Per-store robots.txt |
 | `src/app/client/sitemap.ts` | 230 | Per-store sitemap.xml |
 | `public/robots.txt` | 40 | Platform robots.txt |
-| `public/llms.txt` | 37 | LLM discovery document |
-| `public/llms-full.txt` | 145 | Extended LLM documentation |
+| `public/llms.txt` | current | LLM discovery document |
+| `public/llms-full.txt` | current | Extended LLM documentation |
 | `src/lib/infrastructure/taxonomy/registry.ts` | 135 | Offering taxonomy system |
 | `src/lib/infrastructure/discovery/` | ~3 files | Business entity index |
 | `src/types/platform/store.ts` | 497 | Store entity definition |
@@ -96,7 +98,7 @@ Tenant (tId: number)
 | Platform robots.txt | ✅ | `public/robots.txt:1-40` — explicit search/AI crawler allows + internal disallows |
 | Per-store robots.txt | ✅ | `src/app/client/robots.ts:12-61` — Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules |
 | Server-rendered HTML | ✅ | `src/app/client/[[...slug]]/page.tsx` — Full Next.js SSR |
-| Platform sitemap | ✅ | `src/app/sitemap.ts:17-69` — 7 pages |
+| Platform sitemap | ✅ | `src/lib/seo/discoveryPolicy.ts` + `src/app/sitemap.ts` — shared platform route inventory |
 | Per-store sitemap | ✅ | `src/app/client/sitemap.ts:167-229` — OBP + active canonical menu/outlet URLs with store/outlet `modifiedOn` |
 | Sitemap in robots | ✅ | `public/robots.txt:40` + `src/app/client/robots.ts:60` |
 | Crawl budget protection | ✅ | `public/robots.txt:30-37` — Blocks /admin/, /login/, /register/, /dashboard/, /api/, /editor/, /preview/ |
@@ -226,8 +228,8 @@ Menu page (`page.tsx:504-582`):
 
 | Endpoint | Status | Evidence |
 |----------|--------|----------|
-| `public/llms.txt` | ✅ | 37 lines — structured LLM discovery doc |
-| `public/llms-full.txt` | ✅ | 145 lines — full schema.org documentation |
+| `public/llms.txt` | ✅ | Structured LLM discovery doc |
+| `public/llms-full.txt` | ✅ | Full category/type-aware schema.org documentation |
 | Public API v1 (business) | ✅ | `GET /api/public/v1/business` — store details |
 | Public API v1 (menu) | ✅ | `GET /api/public/v1/menu` — full menu data |
 | POS Webhook Sync | ✅ | Push-based menu data delivery — feature-flagged |

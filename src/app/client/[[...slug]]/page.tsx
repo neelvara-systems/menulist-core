@@ -55,6 +55,7 @@ import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
+import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
 import {
     buildAddress,
     buildBreadcrumbList,
@@ -570,7 +571,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             ? `${storeName} — View menu, check hours, get directions, and contact details. Official business page.`
             : `View the digital menu for ${storeName}`
         );
-    const imageUrl = storeData.logo || "/images/default-menu-preview.png";
+    const imageUrl = storeData.logo || DEFAULT_PUBLIC_PREVIEW_IMAGE;
 
     // Build canonical URL based on domain type
     const requestBase = origin || (subdomain ? `https://${subdomain}.menulist.ai` : '');

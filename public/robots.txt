@@ -1,4 +1,5 @@
 # Explicitly allow AI crawlers (GEO/AEO discovery infrastructure)
+# Keep crawler and disallow policy in sync with src/lib/seo/discoveryPolicy.ts.
 User-agent: OAI-SearchBot
 Allow: /
 

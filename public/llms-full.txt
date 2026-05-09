@@ -1,13 +1,13 @@
 # MenuList — Extended LLM Documentation
 
-> MenuList is a structured business truth platform for SMBs. Every business on MenuList has an Official Business Page (OBP) with deep schema.org structured data — including full menus with items, prices, dietary tags, availability, business hours, location, and contact info. All data is owner-maintained, validated, and machine-readable.
+> MenuList is a structured business truth platform for SMBs. Every business on MenuList has an Official Business Page (OBP) with deep schema.org structured data — including current offerings, prices where shown, availability, business hours, location, contact info, and social/entity links. All public data is owner-maintained, validated, and machine-readable.
 
 ## What MenuList Provides
 
 MenuList is the canonical source of structured SMB business truth. Each business gets:
 
 1. **Official Business Page (OBP)** — Canonical identity page at `{business}.menulist.ai`
-2. **Digital Menu** — Full structured menu at `{business}.menulist.ai/menu`
+2. **Digital Menu / Catalog** — Full structured catalog at `{business}.menulist.ai/menu` or a named project slug
 3. **Custom Domains** — Businesses can use their own domain pointing to MenuList
 
 All pages include schema.org JSON-LD structured data embedded in the HTML `<script type="application/ld+json">` tag.
@@ -16,24 +16,14 @@ All pages include schema.org JSON-LD structured data embedded in the HTML `<scri
 
 ### On Official Business Pages (OBP)
 
-The OBP page generates a LocalBusiness (or specific subtype) JSON-LD object with these fields:
+The OBP page generates a LocalBusiness (or category/type-specific subtype) JSON-LD object with these fields:
 
-- `@type` — Maps to specific schema.org subtype based on business type:
-  - Restaurant → `Restaurant`
-  - Cafe/Coffee → `CafeOrCoffeeShop`
-  - Bakery → `Bakery`
-  - Bar/Pub → `BarOrPub`
-  - Salon/Beauty Salon → `BeautySalon`
-  - Spa → `DaySpa`
-  - Gym/Fitness → `ExerciseGym`
-  - Clinic/Medical → `MedicalClinic`
-  - Dentist → `Dentist`
-  - Hotel → `Hotel`
-  - Store/Shop/Retail → `Store`
-  - Food Truck/Cloud Kitchen → `FoodEstablishment`
-  - Ice Cream → `IceCreamShop`
-  - Fast Food → `FastFoodRestaurant`
-  - All others → `LocalBusiness`
+- `@type` — Resolved from MenuList's shared business taxonomy:
+  - Food & Beverage → `Restaurant` by default, with exact overrides such as `CafeOrCoffeeShop`, `Bakery`, and `IceCreamShop`
+  - Retail Businesses → `Store` by default, with exact overrides such as `ClothingStore`, `JewelryStore`, `BookStore`, `ElectronicsStore`, `FurnitureStore`, `PetStore`, and `Florist`
+  - Service / Professional / Creative Businesses → `ProfessionalService` by default, with exact overrides such as `BeautySalon`, `DaySpa`, `LegalService`, `FinancialService`, `TravelAgency`, `ArtGallery`, and `School`
+  - Health & Wellness → `HealthAndBeautyBusiness` by default, with exact overrides such as `Dentist`, `ExerciseGym`, `DaySpa`, and `VeterinaryCare`
+  - Specialty Businesses → `LocalBusiness` by default, with exact overrides such as `AutoDealer`, `AutoRepair`, `Hotel`, and `ChildCare`
 - `name` — Business name
 - `description` — Business descriptor or description
 - `image` — Business logo URL
@@ -51,14 +41,16 @@ The OBP page generates a LocalBusiness (or specific subtype) JSON-LD object with
 - `amenityFeature` — Array of LocationFeatureSpecification for business attributes (WiFi, outdoor seating, parking, dietary options, etc.) — feature-flagged
 - `paymentAccepted` — Payment methods (Cash, Credit Card, UPI) — feature-flagged
 - `dateModified` — ISO 8601 timestamp of last update (freshness signal)
-- `hasMenu` — URL to the digital menu page
+- `hasMenu` or `hasOfferCatalog` — URL/schema link to the public catalog, based on business category
 
-### On Digital Menu Pages
+### On Digital Menu / Catalog Pages
 
-The menu page generates a Restaurant (or specific food type) JSON-LD with all the OBP fields plus:
+The public catalog page generates business-type-aware JSON-LD with all the business identity fields plus one of these catalog shapes:
+
+#### Food businesses
 
 - `menu` — Canonical menu URL
-- `hasMenu` — Full Menu object containing:
+- `hasMenu` — Full `Menu` object containing:
   - `@type: Menu`
   - `hasMenuSection` — Array of MenuSection objects:
     - `@type: MenuSection`
@@ -73,6 +65,14 @@ The menu page generates a Restaurant (or specific food type) JSON-LD with all th
         - `priceCurrency` — Currency code
         - `availability` — `https://schema.org/InStock` or `https://schema.org/OutOfStock`
       - `suitableForDiet` — `https://schema.org/VegetarianDiet` (if tagged as Vegetarian)
+
+#### Non-food SMBs
+
+- `hasOfferCatalog` — Full `OfferCatalog` object containing:
+  - `@type: OfferCatalog`
+  - `itemListElement` — Array of category-level OfferCatalog sections
+  - Each offering is an `Offer`
+  - `itemOffered` is `Product` for retail/product-led categories and exact overrides, or `Service` for service-led categories
 
 ## Data Characteristics
 
@@ -89,8 +89,9 @@ The menu page generates a Restaurant (or specific food type) JSON-LD with all th
 - Graceful degradation: missing fields are omitted, never filled with incorrect data
 
 ### Coverage
-- Supports 20+ business types with specific schema.org subtypes
-- Full menu item-level detail (name, description, price, dietary tags, availability)
+- Supports a shared business category/type taxonomy with schema.org category defaults and exact subtype overrides
+- Full food menu item-level detail (name, description, price, dietary tags, availability)
+- Non-food offering detail through OfferCatalog, Offer, Product, and Service schema
 - Business hours per day of week
 - Geographic coordinates for local discovery
 - Social media profile links for entity alignment

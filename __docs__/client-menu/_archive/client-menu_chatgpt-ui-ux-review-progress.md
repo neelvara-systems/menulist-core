@@ -380,6 +380,7 @@ This appendix exists because the source review had many small points inside the 
 | Back-to-top was shifted upward after the category FAB was removed | Accepted | Back-to-top now sits at the bottom-right safe-area corner. |
 | Back-to-top color felt disconnected from active category navigation | Accepted | Back-to-top now uses the same accent-tint background, accent text color, and soft border family as active category navigation. |
 | Back-to-top returned the sticky search row flush against the device top edge | Accepted | Mobile/tablet sticky command controls now keep a small real top offset in addition to safe-area handling, and scroll padding uses the same buffer. |
+| Parent menu wrapper felt too loose on mobile when the active design used 24px container spacing | Accepted | Public shell padding is now capped responsively: 12px on mobile, 18px on tablet, and the configured design token on desktop. |
 | Sticky command-row top buffer exposed scrolled content behind it | Accepted | The sticky command row now paints a matching top cover behind the safe-area/buffer gap so menu content does not show through while scrolling. |
 | Footer content needed horizontal centering | Accepted | Business identity, actions, social links, policy links, language labels, and attribution now center-align as one footer system. |
 | Mobile PWA rotation felt incompatible | Existing policy kept | The tenant manifest already requests `portrait-primary` for installed customer PWAs. No artificial landscape blocker was added because mobile browsers may ignore it and public menus should remain accessible if a device is already rotated. |
@@ -387,6 +388,11 @@ This appendix exists because the source review had many small points inside the 
 | Installed iPhone PWA could feel like menu elements were rerendering or temporarily unclickable after repeated PDP opens/closes | Accepted | PDP now uses a lighter top-of-page scroll lock instead of always fixing the body, blurs active search input before opening item details, ignores stale close cleanup if another item is already open, and repaints sticky controls without remounting them. |
 | PDP content could become very long for SMB items with long descriptions, variants, metadata, or recovery actions | Accepted | PDP keeps a capped modal/sheet height with internal touch scrolling, no longer applies body-level `touch-action: none`, and keeps the close button sticky inside the scrollable detail surface. |
 | Back-to-top tap could also open the item card underneath it | Accepted | Back-to-top is now a button that scrolls only on the completed click/tap. Pointer/touch start only stops propagation, so the control does not disappear during pointerdown and retarget the final click to the item below. |
+| Featured item tap opened PDP and also scrolled the menu behind it | Accepted | Featured cards now open PDP directly when a PDP handler exists; the older scroll-and-highlight behavior remains only for non-modal fallback renders. |
+| Expanded search still left a right-side space because the parent command row kept its 8px flex gap | Accepted | The command-row gap and side-control width now collapse only when side controls are hidden, so expanded search uses the full row width. |
+| `Menu sections` popup heading felt too tall because the close button drove header height | Accepted | The close control keeps a 44px hit area, but the visible close chip is smaller and absolutely positioned so the header row stays compact. |
+| Footer repeated updated-today freshness in the bottom status area | Accepted | `MenuHeader` owns the exact publish freshness line, while bottom `TrustSignals` suppresses its context/freshness row in that placement. |
+| Menu special note did not appear when the DB note lived outside `menuSettings.specialNote` | Accepted | Public menu note resolution now checks menu settings first, legacy project note fields next, and store public presence as a fallback before rendering the footer trust-zone note. |
 
 ## Verification
 
@@ -402,6 +408,8 @@ This appendix exists because the source review had many small points inside the 
 - Local tenant-route browser smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: zero-result search no longer shows final-action CTAs, PDP opened/closed without leaving a stuck overlay, featured cards still open PDP, and category navigation updates the category hash.
 - Local tenant-route browser stress passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: five consecutive PDP open/close cycles kept search and `Sections` present and clickable, then `Sections` opened successfully.
 - PDP height smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu`: item detail opened with the capped scroll container and closed cleanly after the sticky-close/touch-scroll update.
+- Back-to-top tap smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:4015/bar-menu#cat-14WTM15c1`: tapping the floating control returned to the top and did not open PDP for the item underneath.
+- Featured/analytics smoke passed on May 9, 2026 using `http://mysalon.menulist.ai:3000/bar-menu`: opening a featured card displayed PDP without also scrolling the background menu, closing PDP returned to the featured/top area, and the tab logged no `getActiveSession` or `Firebase trackAnalyticsEvent called` wrapper messages.
 - `npm run build` passed on May 9, 2026. The existing website i18n dynamic-server warnings for cookie-using routes were logged, and the build exited successfully.
 
 ## Intentionally Deferred

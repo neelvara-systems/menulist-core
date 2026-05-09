@@ -201,6 +201,7 @@ function MenuFilters({
         : moodConfig.itemStyle.background;
     const categoryNavBorderWidth = moodConfig.categoryStyle.borderWidth ?? 1;
     const panelRadius = Math.max(8, moodConfig.itemStyle.borderRadius || categoryNavRadius);
+    const sectionPanelHeaderHeight = 49;
 
     const categoryPanelBody = (
         <>
@@ -211,7 +212,9 @@ function MenuFilters({
                     display: 'flex',
                     gap: 10,
                     justifyContent: 'space-between',
-                    padding: '12px 14px',
+                    minHeight: 48,
+                    padding: '8px 58px 8px 14px',
+                    position: 'relative',
                     borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
                 }}
             >
@@ -238,8 +241,8 @@ function MenuFilters({
                     aria-label="Close menu sections"
                     style={{
                         alignItems: 'center',
-                        background: `${moodConfig.accentColor}0f`,
-                        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                        background: 'transparent',
+                        border: 'none',
                         borderRadius: 999,
                         color: moodConfig.bodyColor,
                         cursor: 'pointer',
@@ -249,18 +252,38 @@ function MenuFilters({
                         justifyContent: 'center',
                         minHeight: 44,
                         minWidth: 44,
+                        padding: 0,
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
                         width: 44,
+                        WebkitTapHighlightColor: 'transparent',
                     }}
                 >
-                    <LuX size={16} />
+                    <span
+                        aria-hidden="true"
+                        style={{
+                            alignItems: 'center',
+                            background: `${moodConfig.accentColor}0f`,
+                            border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                            borderRadius: 999,
+                            display: 'inline-flex',
+                            height: 34,
+                            justifyContent: 'center',
+                            width: 34,
+                        }}
+                    >
+                        <LuX size={15} />
+                    </span>
                 </button>
             </div>
             <div
                 className="max-h-64 overflow-y-auto p-2"
                 style={{
                     maxHeight: isInline
-                        ? `calc(min(${useAnchoredInlinePopover ? '440px' : '560px'}, calc(100vh - ${anchorPosition.top + 16}px)) - 45px)`
-                        : 'calc(min(440px, 58vh) - 45px)',
+                        ? `calc(min(${useAnchoredInlinePopover ? '440px' : '560px'}, calc(100vh - ${anchorPosition.top + 16}px)) - ${sectionPanelHeaderHeight}px)`
+                        : `calc(min(440px, 58vh) - ${sectionPanelHeaderHeight}px)`,
                     overflowY: 'auto',
                     padding: 8,
                     WebkitOverflowScrolling: 'touch',

@@ -7,6 +7,15 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { appendPublicPath, getTenantBaseUrl } from '@constant/urls';
+import { getLocalizedText, getPrimaryLocalizedLanguage, type LocalizedTextValue } from '@lib/localization/text';
+
+type SlugSource = LocalizedTextValue | null | undefined;
+
+function resolveSlugSourceText(value: SlugSource): string {
+    if (typeof value === 'string') return value;
+    if (!value || typeof value !== 'object') return '';
+    return getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), '');
+}
 
 /**
  * Convert a string to a URL-safe slug
@@ -14,11 +23,10 @@ import { appendPublicPath, getTenantBaseUrl } from '@constant/urls';
  * @example slugify("Drinks & Bar") → "drinks-bar"
  * @example slugify("Café Spécial") → "cafe-special"
  */
-export function slugify(text: string): string {
+export function slugify(text: SlugSource): string {
     if (!text) return '';
 
-    return text
-        .toString()
+    return resolveSlugSourceText(text)
         .toLowerCase()
         .trim()
         // Replace accented characters with ASCII equivalents
@@ -70,7 +78,7 @@ export function slugMatches(slug: string, projectName: string): boolean {
 export function generateProjectUrl(
     subdomain?: string,
     customDomain?: string,
-    projectName?: string,
+    projectName?: SlugSource,
     isDefault?: boolean
 ): string {
     // Determine base URL

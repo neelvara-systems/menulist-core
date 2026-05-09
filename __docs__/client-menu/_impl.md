@@ -105,13 +105,14 @@ The public renderer keeps the project-wise `config.design.menu` mood/layout mode
 | ---- | -------------- | ---- |
 | Owner-controlled category identity | Public menu paths render category icons through `CategoryIcon`, preserving owner-selected Lucide and `emoji:*` values while retaining fallback icons for missing/legacy values. Featured cards inherit the same category icon/emoji identity only when category icons are enabled in the menu design. | `src/components/atoms/CategoryIcon/index.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx`, `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` |
 | Owner featured controls | Desktop and mobile owner controls use customer-facing Featured terminology instead of smart-recommendation wording, while retaining the existing decision-block settings path. | `src/components/templates/main-app/projects/editorView/editorActions.config.tsx`, `src/components/templates/main-app/projects/editorView/DecisionBlocksSettingsModal.tsx`, `src/components/mobile/components/MobileMenuCommandSheet.tsx`, `src/components/mobile/sheets/SmartRecommendationsSheet.tsx`, `public/locales/menulist.ai/*.json` |
-| Section navigator | Mobile/tablet menus place `Sections` in the sticky command row and open a portal-backed category navigator with localized fallback labels, active state, owner-selected icons, and item counts. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
+| Section navigator | Mobile/tablet menus place `Sections` in the sticky command row and open a portal-backed category navigator with localized fallback labels, active state, owner-selected icons, item counts, and a compact header whose close hit area does not inflate the heading row. | `src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx` |
 | Sticky retrieval layer | Search focus keeps `Sections` and language controls reachable, the clear action exits search mode, and category chips remain a lightweight rail below the command row. | `src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx` |
 | Card rhythm | Item titles/descriptions use line governance, price weight is restrained, and item image frames render only when an item has an image instead of showing blank placeholders. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` |
 | Public image normalization | Public menu output normalizes array, object-map, object-with-url, and string image values before cards, featured choices, PDP galleries, metadata, and image-quality checks read item images. | `src/lib/menu/publicMenuImages.ts`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx`, `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx`, `src/app/client/[[...slug]]/page.tsx`, `src/lib/mce/qualitySignals.ts` |
 | PWA interaction stability | PDP open blurs active search input, top-of-page PDP scroll lock avoids fixed-body locking on iPhone PWAs, and sticky command controls repaint after close without remounting search, sections, or language components. | `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx` |
 | Long PDP content handling | PDP modal/sheet height is capped to the viewport, scroll stays inside the detail surface, and the close control remains sticky while long item content scrolls. | `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx` |
 | PDP and footer polish | Public item detail opens as a desktop modal and mobile bottom sheet, uses contain-fit gallery images with touch swiping, shows category identity when enabled, and footer actions use compact icon/text chips. | `src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx`, `src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx`, `src/components/templates/main-app/projects/b2cView/output/BackToTop.tsx` |
+| Footer trust metadata | Bottom status keeps the exact publish timestamp from `MenuHeader`, suppresses duplicate freshness in `TrustSignals`, and resolves menu special notes from menu settings, legacy project fields, then store public presence fallback. | `src/components/atoms/TrustSignals.tsx`, `src/lib/menu/publicMenuSpecialNote.ts`, `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`, `src/components/templates/main-app/projects/b2cView/output/ServiceChargeNote.tsx` |
 | Back-to-top tap isolation | Back-to-top uses a real button, scrolls only on completed click/tap, and stops pointer/touch propagation so item cards under the floating control cannot receive the same tap. | `src/components/templates/main-app/projects/b2cView/output/BackToTop.tsx` |
 | Theme preset governance | Mood presets reduce decorative heading drift and strengthen light-theme containment without adding arbitrary owner design freedom. | `src/components/templates/main-app/projects/b2cView/designSystem/index.ts` |
 | Platform attribution | Default attribution is `Powered by MenuList` with no customer-facing marketing CTA unless a caller opts in. | `src/components/customer/PublicMenuListAttribution.tsx` |
@@ -523,7 +524,7 @@ Transition: 150ms for all interactive elements
 
 | File              | Change                                                                              |
 | ----------------- | ----------------------------------------------------------------------------------- |
-| `menuPageNew.tsx` | Added isDesktop/isTablet, responsive container, sidebar, grid columns, hover states |
+| `menuPageNew.tsx` | Added isDesktop/isTablet, responsive container, sidebar, grid columns, hover states, and device-capped public shell padding |
 | `deviceFrame.tsx` | Live site no longer constrains tablet/desktop width                                 |
 
 ---
@@ -550,6 +551,8 @@ unified.ts → trackEvent()
 unified.ts → trackFirebaseEvent()
     ↓
 database/analytics → trackAnalyticsEvent()
+    ↓
+Local analytics queue (client-side, persisted, 15s / 20-event flush)
     ↓
 Firestore: analytics/{tId}_{sId}_{projectId}_daily_{date}
 ```

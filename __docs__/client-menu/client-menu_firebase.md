@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu — QR code digital menu for restaurant customers  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Last Updated:** May 9, 2026
 **Priority:** HIGHEST — This is the most trafficked feature. Every customer scan = Firebase reads.
 
 ---
@@ -80,6 +80,7 @@
 - **`withTimeout(5s)`**: Prevents infinite SSR hangs on Firestore failures
 - **`withRetry(1)`**: One retry with 1s delay handles transient failures
 - **Per-store cache tags**: `menu-store-${sId}` enables precise invalidation on owner save
+- **Special note rendering is payload-only**: Public menus resolve special notes from the already-fetched project/store payload (`menuSettings.specialNote`, legacy project note fields, then `publicPresence.specialNote`). This adds no Firestore reads or writes.
 
 ### Potential Optimizations
 - **Increase cache TTL**: 60s → 300s for low-change menus (trade-off: stale data for 5 min)
@@ -102,7 +103,7 @@
 | Firestore Reads (project data) | 10,000 | $0.06/100K | $0.01 |
 | Firestore Reads (decision blocks) | 10,000 | $0.06/100K | $0.01 |
 | Firestore Reads (store details) | 10,000 | $0.06/100K | $0.01 |
-| Firestore Writes (analytics) | 100,000 (1 per scan) | $0.18/100K | $0.18 |
+| Firestore Writes (analytics) | Up to 100,000 sessions before queue coalescing | $0.18/100K | <= $0.18 |
 | Cloud Functions (scoring) | 1,000 (1/day × 1000 stores) | $0.40/million | $0.00 |
 | **Total** | | | **~$0.25/month** |
 

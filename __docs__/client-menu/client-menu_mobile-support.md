@@ -35,8 +35,15 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - PDP open/close must not remount the sticky command controls; iPhone PWA top-of-page detail views use lightweight scroll lock to avoid stale hit-test regions after close.
 - PDP content must remain inside a viewport-capped scroll container with touch scrolling enabled and the close control reachable during long detail scrolls.
 - Back-to-top must not perform scroll work on pointerdown; it scrolls on completed tap/click and stops press propagation so the item card below it cannot receive the same gesture.
+- Featured choices must open PDP directly on mobile when the public menu provides a PDP handler; they must not also scroll the underlying menu before the modal opens.
+- Public menu shell padding is capped by device: mobile uses 12px, tablet uses 18px, and desktop keeps the configured design spacing so small screens do not lose usable width.
 - Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
+- The `Sections` popup header must stay compact while preserving a reachable close tap target; the close button visual should not set the whole header height.
+- Expanded sticky search must not reserve the command-row side-control gap; the gap is present only when `Sections` or language controls are visible.
+- Footer freshness must not repeat on mobile: the publish row owns exact update time, and bottom trust signals show only location/open state in that placement.
+- Menu special notes must render in the footer trust zone when present in menu settings, legacy project note fields, or the store public note fallback.
+- Public mobile analytics must enter the local coalescing queue directly; it must not run through the authenticated DAL wrapper or fetch owner auth/session state per anonymous customer event.
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet; no extra marketing CTA is added to the mobile footer by default.

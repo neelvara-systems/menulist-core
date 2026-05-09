@@ -51,7 +51,7 @@ Customer-Facing Analytics tracks all customer interactions on the public menu to
 | `UNAVAILABLE_ITEM_ATTEMPT` | Tap on unavailable item | Track missed demand / stock friction |
 | `MENU_ACTION_CLICK`        | Final CTA click from menu footer or recovery UI | Track action intent without passive telemetry cost |
 
-Passive/engagement events may be coalesced on the client for a short flush window before writing to Firestore. Final action/conversion events are not delayed.
+Public customer analytics events are coalesced on the client for a short flush window before writing to Firestore. Final action/conversion events are persisted into the local queue immediately and flushed with the same queue, so a burst of menu view, featured tap, item open, search, and CTA activity can settle as one daily-document write.
 
 ### Session Milestones
 
@@ -221,8 +221,8 @@ Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_
 | Debounce window    | 1 second   | Block rapid-fire     |
 | Menu view cooldown | 30 seconds | Prevent refresh spam |
 | Search dedupe      | 1 unique term / session | Prevent per-keystroke writes |
-| Passive flush delay | 15 seconds | Coalesce low-priority counters |
-| Passive flush max | 20 queued events | Bound local queue size before flush |
+| Public flush delay | 15 seconds | Coalesce customer analytics counters |
+| Public flush max | 20 queued events | Bound local queue size before flush |
 
 ### Write Optimization
 

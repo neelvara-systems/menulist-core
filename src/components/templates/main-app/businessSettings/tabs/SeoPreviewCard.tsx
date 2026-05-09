@@ -1,6 +1,7 @@
 'use client';
 
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { buildPublicSharePreviewMeta } from '@lib/seo/publicMetadata';
 import { Flex, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuExternalLink, LuGlobe, LuMessageCircle } from 'react-icons/lu';
@@ -17,14 +18,6 @@ interface SeoPreviewCardProps {
     metaTitle?: string;
     subdomain?: string;
     tagline?: string;
-}
-
-function normalizeKeywords(keywords?: string[] | string) {
-    if (Array.isArray(keywords)) return keywords.map((item) => item.trim()).filter(Boolean);
-    return String(keywords || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
 }
 
 function stripProtocol(url: string) {
@@ -57,9 +50,17 @@ export default function SeoPreviewCard({
     const fallbackUrl = generateOBPUrl(subdomain, customDomain);
     const previewUrl = canonicalUrl?.trim() || fallbackUrl || 'https://your-public-link.com';
     const visibleUrl = stripProtocol(previewUrl);
-    const previewTitle = metaTitle?.trim() || `${normalizedName} | Menu`;
-    const previewDescription = metaDescription?.trim() || tagline?.trim() || `View the menu for ${normalizedName}`;
-    const keywordList = normalizeKeywords(keywords);
+    const previewMeta = buildPublicSharePreviewMeta({
+        businessName: normalizedName,
+        canonicalUrl: previewUrl,
+        keywords,
+        logoUrl,
+        menuUrl: previewUrl,
+        metaDescription,
+        metaTitle,
+        tagline,
+    });
+    const keywordList = previewMeta.keywords;
     const previewImageHeight = logoUrl ? 156 : 112;
     const whatsAppShellBackground = token.colorFillQuaternary;
     const whatsAppAccentBackground = token.colorSuccess;
@@ -171,8 +172,8 @@ export default function SeoPreviewCard({
                         >
                             {visibleUrl}
                         </Text>
-                        <Text strong style={{ fontSize: 15, lineHeight: 1.35, ...clampText(2) }}>{previewTitle}</Text>
-                        <Text type="secondary" style={{ lineHeight: 1.45, ...clampText(3) }}>{previewDescription}</Text>
+                        <Text strong style={{ fontSize: 15, lineHeight: 1.35, ...clampText(2) }}>{previewMeta.title}</Text>
+                        <Text type="secondary" style={{ lineHeight: 1.45, ...clampText(3) }}>{previewMeta.description}</Text>
                         <Flex align="center" gap={6}>
                             <LuExternalLink color={secondaryTextColor} size={14} />
                             <Text style={{ color: secondaryTextColor, fontSize: 12 }}>{t('previewTapHint')}</Text>
@@ -246,7 +247,7 @@ export default function SeoPreviewCard({
                                     ...clampText(2),
                                 }}
                             >
-                                {previewTitle}
+                                {previewMeta.title}
                             </Text>
 
                             <Text
@@ -257,7 +258,7 @@ export default function SeoPreviewCard({
                                     ...clampText(3),
                                 }}
                             >
-                                {previewDescription}
+                                {previewMeta.description}
                             </Text>
                         </Flex>
                     </div>
@@ -289,13 +290,13 @@ export default function SeoPreviewCard({
                         label="Open Graph / Twitter title"
                         tone="primary"
                         token={token}
-                        value={previewTitle}
+                        value={previewMeta.title}
                     />
                     <ResolvedMetaItem
                         label="Open Graph / Twitter description"
                         tone="neutral"
                         token={token}
-                        value={previewDescription}
+                        value={previewMeta.description}
                     />
                     <ResolvedMetaItem
                         label={t('canonicalUrl')}

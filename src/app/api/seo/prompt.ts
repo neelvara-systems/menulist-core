@@ -1,27 +1,8 @@
 import type { SeoGenerationRequest } from '@lib/validation/apiSchemas';
+import { normalizeMetaText } from '@lib/seo/publicMetadata';
 
 function listOrFallback(items?: string[], fallback = 'Not provided') {
     return items && items.length ? items.join(', ') : fallback;
-}
-
-function textOrFallback(value: unknown, fallback = 'Not provided') {
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed || fallback;
-    }
-
-    if (value && typeof value === 'object') {
-        const candidates = Object.values(value as Record<string, unknown>)
-            .filter((entry): entry is string => typeof entry === 'string')
-            .map((entry) => entry.trim())
-            .filter(Boolean);
-
-        if (candidates.length > 0) {
-            return candidates[0];
-        }
-    }
-
-    return fallback;
 }
 
 export default function seoPrompt(payload: SeoGenerationRequest) {
@@ -51,12 +32,12 @@ Business:
 - Country: ${store.country || 'Not provided'}
 - Address line: ${store.addressLine || 'Not provided'}
 - Existing description: ${store.description || 'Not provided'}
-- Current tagline to improve or replace: ${textOrFallback(store.tagline)}
+- Current tagline to improve or replace: ${normalizeMetaText(store.tagline, 'Not provided')}
 - Current Customer App short name: ${store.pwaShortName || 'Not provided'}
 - Active business attributes: ${listOrFallback(store.businessAttributes)}
 - Social media handles/links: ${listOrFallback(store.socialMedia)}
-- Public descriptor: ${textOrFallback(store.publicPresence?.descriptor)}
-- Known for: ${textOrFallback(store.publicPresence?.knownFor)}
+- Public descriptor: ${normalizeMetaText(store.publicPresence?.descriptor, 'Not provided')}
+- Known for: ${normalizeMetaText(store.publicPresence?.knownFor, 'Not provided')}
 - WhatsApp number present: ${store.publicPresence?.whatsappNumber ? 'Yes' : 'No'}
 - Google Maps URL present: ${store.publicPresence?.googleMapsUrl ? 'Yes' : 'No'}
 - Google Review URL present: ${store.publicPresence?.googleReviewUrl ? 'Yes' : 'No'}
@@ -65,8 +46,8 @@ Business:
 - Established year: ${store.publicPresence?.establishedYear || 'Not provided'}
 
 Menu:
-- Project name: ${textOrFallback(menu?.projectName)}
-- Project description: ${textOrFallback(menu?.projectDescription)}
+- Project name: ${normalizeMetaText(menu?.projectName, 'Not provided')}
+- Project description: ${normalizeMetaText(menu?.projectDescription, 'Not provided')}
 - Categories: ${listOrFallback(menu?.categories)}
 - Items: ${listOrFallback(menu?.items)}
 

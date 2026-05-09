@@ -55,6 +55,8 @@ trackFirebaseEvent()
     ↓
 database/analytics → trackAnalyticsEvent()
     ↓
+Local analytics queue (`localStorage` persisted, 15s / 20-event flush)
+    ↓
 Firestore: analytics/{tId}_{sId}_{projectId}_daily_{storeLocalDate}
     └── Includes query metadata: tId, sId, projectId, grain, surface, localDate, storeTimeZone
 ```
@@ -249,12 +251,14 @@ export async function trackAnalyticsEvent(
   storeTimeZone?: string
 ) {
   const date = getAnalyticsDateKey(new Date(), storeTimeZone);
-  if (isFinalConversionAction(updateData)) {
-    await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, date, storeTimeZone);
-  } else {
-    // Passive queue flushes after 15s or 20 queued events.
+  if (typeof window !== 'undefined') {
+    // Public customer analytics bypasses apiCallComposerClient so anonymous
+    // menu users do not trigger auth session checks or loader dispatches.
     enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, date, storeTimeZone);
+    return true;
   }
+
+  await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, date, storeTimeZone);
 }
 ```
 

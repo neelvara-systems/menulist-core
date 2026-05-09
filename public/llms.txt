@@ -1,35 +1,43 @@
 # MenuList
 
-> MenuList is a structured business truth platform for SMBs. Every business on MenuList has an Official Business Page (OBP) with deep schema.org structured data — including full menus with items, prices, dietary tags, availability, business hours, location, and contact info. All data is owner-maintained, validated, and machine-readable.
+> MenuList is a structured business truth platform for SMBs. Every business on MenuList has an Official Business Page (OBP) with deep schema.org structured data — including current offerings, prices where shown, availability, business hours, location, contact info, and social/entity links. All public data is owner-maintained, validated, and machine-readable.
 
-MenuList provides the most structured, accurate, owner-maintained SMB data on the internet. Each business page uses schema.org JSON-LD with types including Restaurant, Menu, MenuItem, Offer, LocalBusiness, PostalAddress, GeoCoordinates, and OpeningHoursSpecification.
+MenuList provides structured, owner-maintained SMB public business data. Each business page uses schema.org JSON-LD with category-aware types including Restaurant, Store, ProfessionalService, HealthAndBeautyBusiness, LocalBusiness, Menu, MenuItem, OfferCatalog, Offer, Product, Service, PostalAddress, GeoCoordinates, and OpeningHoursSpecification.
 
-- Every menu item is individually structured with name, description, price, currency, dietary info (VegetarianDiet), and availability (InStock/OutOfStock)
+- Food menu items are individually structured with name, description, price, currency, dietary info, and availability (InStock/OutOfStock)
+- Non-food SMB offerings are structured as OfferCatalog / Offer with Product or Service item types
 - Reservation and online ordering links with schema.org ReserveAction and OrderAction
 - Business attributes (WiFi, outdoor seating, dietary options, parking, payment methods) as LocationFeatureSpecification
 - Business hours use OpeningHoursSpecification with timezone-aware open/closed status
 - Location includes GeoCoordinates (latitude/longitude) for local discovery
-- Business type maps to specific schema.org subtypes (Restaurant, CafeOrCoffeeShop, Bakery, BeautySalon, DaySpa, ExerciseGym, etc.)
+- Business category and type map to schema.org defaults and exact subtype overrides from MenuList's shared business taxonomy
 - dateModified provides freshness signals for AI evaluation
 - sameAs links connect to verified social profiles (Instagram, Facebook, website)
 
 ## Public Business Pages
 
 - [Business OBP Pages](https://menulist.ai/): Each business has a subdomain (e.g., joespizza.menulist.ai) serving their Official Business Page with full schema.org LocalBusiness JSON-LD
-- [Digital Menu Pages](https://menulist.ai/): Each business menu is at /menu (e.g., joespizza.menulist.ai/menu) with Restaurant + Menu + MenuItem + Offer schema.org markup
+- [Digital Menu / Catalog Pages](https://menulist.ai/): Each business catalog is available at /menu or a named project slug with Menu schema for food businesses and OfferCatalog schema for non-food SMBs
 - [Extended LLM Context](https://www.menulist.ai/llms-full.txt): Detailed documentation of MenuList's data structure and schema.org implementation
 
 ## Platform Pages
 
 - [Homepage](https://www.menulist.ai/): Platform overview for business owners
+- [Product](https://www.menulist.ai/product): Product overview for MenuList public business presence
+- [Features](https://www.menulist.ai/features): Core MenuList capabilities
+- [How It Works](https://www.menulist.ai/how-it-works): Setup and publishing flow
+- [Pricing](https://www.menulist.ai/pricing): Plan and pricing information
+- [Multi Location](https://www.menulist.ai/multi-location): Multi-location business support
+- [Get Started](https://www.menulist.ai/get-started): Owner onboarding entry point
+- [Create Menu](https://www.menulist.ai/create-menu): Public menu creation entry point
 - [About Us](https://www.menulist.ai/about): Company mission and team information
 - [Contact Us](https://www.menulist.ai/contact): Support and inquiry details
-- [Blog](https://www.menulist.ai/blog): Articles about digital menus and business operations
+- [Trust & Security](https://www.menulist.ai/trust-security): Trust and security information
 
 ## Legal & Policies
 
-- [Terms of Service](https://www.menulist.ai/terms): Terms and conditions for the MenuList service
-- [Privacy Policy](https://www.menulist.ai/privacy): Data collection, use, and protection policies
+- [Terms of Service](https://www.menulist.ai/terms-of-service): Terms and conditions for the MenuList service
+- [Privacy Policy](https://www.menulist.ai/privacy-policy): Data collection, use, and protection policies
 - [Refund Policy](https://www.menulist.ai/refund-policy): Subscription payment and cancellation policies
 
 ## Optional

@@ -39,15 +39,6 @@ const getAnalyticsDashboardSummaryDocRef = (tId: string | number, sId: string | 
 const ANALYTICS_FLUSH_DELAY_MS = 15000;
 const ANALYTICS_FLUSH_MAX_EVENTS = 20;
 const ANALYTICS_QUEUE_STORAGE_KEY = 'menulist_pending_analytics_queue_v1';
-const IMMEDIATE_ANALYTICS_FIELDS = new Set([
-  'totalMenuActionClicks',
-  'totalOBPActionClicks',
-  'totalOBPMenuClicks',
-  'totalOBPLinkClicks',
-  'totalOBPShares',
-  'totalInstallStarted',
-  'totalInstalled',
-]);
 
 type QueuedAnalyticsWrite = {
   tenantId: string;
@@ -118,16 +109,6 @@ const reportAnalyticsQueueFlushError = (
     dateString: queued?.dateString,
     eventCount: queued?.eventCount,
   });
-};
-
-const shouldWriteImmediately = (updateData: Record<string, any>): boolean => {
-  return Object.keys(updateData).some((key) => (
-    IMMEDIATE_ANALYTICS_FIELDS.has(key) ||
-    key.startsWith('menuActionClicks.') ||
-    key.startsWith('obpActionClicks.') ||
-    key.startsWith('obpLinkClicks.') ||
-    key.startsWith('shortcutClicks.')
-  ));
 };
 
 const mergeQueuedAnalyticsData = (target: Record<string, any>, source: Record<string, any>) => {
@@ -623,31 +604,29 @@ export const trackAnalyticsEvent = async (
     return false;
   }
 
-  return await apiCallComposer(
-    async () => {
-      const dateString = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
+  try {
+    const dateString = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
 
-      // Update Firestore document with merge to avoid overwriting existing data
-      // COST OPTIMIZATION: Only write to daily document
-      // Summary document is updated by nightly Cloud Function (aggregateCustomerAnalytics)
-      // This keeps writes to one daily doc flush/action instead of fan-out writes.
-      // COST OPTIMIZATION: passive/engagement events are coalesced for a short
-      // window, so a menu view + item tap + search burst can become one write.
-      // Final conversion actions stay immediate because losing those events is
-      // more damaging to owner decision-making than saving a write.
-      if (shouldWriteImmediately(updateData)) {
-        await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
-      } else {
-        enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
-      }
-
-      // NOTE: Summary updates moved to Cloud Function for cost optimization
-      // See: functions/src/aggregateCustomerAnalytics.ts (TODO: implement)
-
+    // Public analytics must not go through apiCallComposerClient. That wrapper
+    // fetches auth/session state and dispatches global loaders per event, which
+    // is wrong for anonymous customer surfaces and defeats the local write queue.
+    if (typeof window !== 'undefined') {
+      enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
       return true;
-    },
-    "trackAnalyticsEvent"
-  );
+    }
+
+    // Server-side callers cannot rely on browser localStorage/timers, so keep
+    // the write direct outside the client queue.
+    await writeAnalyticsEventNow(updateData, tenantId, storeId, projectId, dateString, storeTimeZone, businessDayEndTime);
+    return true;
+  } catch (error) {
+    logger.error('[AnalyticsQueue] Failed to enqueue analytics event', error, {
+      tenantId,
+      storeId,
+      projectId,
+    });
+    return false;
+  }
 };
 
 /**

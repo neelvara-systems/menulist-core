@@ -8,27 +8,11 @@
 
 import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
-
-const AI_AND_SEARCH_CRAWLERS = [
-    'OAI-SearchBot',
-    'ChatGPT-User',
-    'GPTBot',
-    'ClaudeBot',
-    'PerplexityBot',
-    'Google-Extended',
-    'Googlebot',
-    'Bingbot',
-];
-
-const DISALLOWED_INTERNAL_PATHS = [
-    '/admin/',
-    '/login/',
-    '/register/',
-    '/dashboard/',
-    '/api/',
-    '/editor/',
-    '/preview/',
-];
+import {
+    DISCOVERY_CRAWLERS,
+    PUBLIC_DISCOVERY_DISALLOWED_PATHS,
+} from '@lib/seo/discoveryPolicy';
+import { PLATFORM_URL } from '@constant/urls';
 
 export default function robots(): MetadataRoute.Robots {
     const headersList = headers();
@@ -42,19 +26,19 @@ export default function robots(): MetadataRoute.Robots {
     } else if (subdomain) {
         baseUrl = `https://${subdomain}.menulist.ai`;
     } else {
-        baseUrl = 'https://menulist.ai';
+        baseUrl = PLATFORM_URL;
     }
 
     return {
         rules: [
-            ...AI_AND_SEARCH_CRAWLERS.map((userAgent) => ({
+            ...DISCOVERY_CRAWLERS.map((userAgent) => ({
                 userAgent,
                 allow: '/',
             })),
             {
                 userAgent: '*',
                 allow: '/',
-                disallow: DISALLOWED_INTERNAL_PATHS,
+                disallow: [...PUBLIC_DISCOVERY_DISALLOWED_PATHS],
             },
         ],
         sitemap: `${baseUrl}/sitemap.xml`,

@@ -9,7 +9,7 @@
 
 ## Architecture Overview
 
-This is a **lightweight infrastructure enhancement**, not a product feature. No new Firestore collections, no new API routes, no new UI components. Changes are limited to:
+This is a **lightweight infrastructure enhancement**, not a product feature. No new Firestore collections, no new API routes, no new UI components. The original Phase 1 changes were limited to:
 
 1. Static file enhancement (`public/llms.txt`)
 2. New static file (`public/llms-full.txt`)
@@ -18,8 +18,10 @@ This is a **lightweight infrastructure enhancement**, not a product feature. No 
 All changes leverage existing infrastructure:
 
 - Schema.org structured data (`src/lib/schema/index.ts`)
-- OBP page rendering (`src/app/_client/obp/`)
-- Menu page rendering (`src/app/_client/[[...slug]]/page.tsx`)
+- Shared business category/type taxonomy (`src/data/shared/businessTypes.ts`)
+- Shared SEO/discovery policy (`src/lib/seo/discoveryPolicy.ts`, `src/lib/seo/publicMetadata.ts`)
+- OBP page rendering (`src/app/client/obp/`)
+- Menu page rendering (`src/app/client/[[...slug]]/page.tsx`)
 
 ---
 

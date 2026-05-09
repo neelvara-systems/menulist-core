@@ -71,6 +71,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | Client Sanitization      | Internal metadata stripped before customer exposure | ✅     |
 | Public UI Governance     | Locked output primitives over project-wise presets  | ✅     |
 | Structured public truth  | JSON-LD aligned to active menu data and freshness   | ✅     |
+| Special note disclosure  | Menu/store DB note renders in the public menu footer trust zone | ✅     |
 
 ### Entry Points
 
@@ -135,6 +136,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
+- The `Sections` navigator header stays compact; close controls keep their tap target without creating a tall heading band.
 - Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
 - Featured cards reuse category icon/emoji identity only when the owner has category icons enabled for the menu design.
 - Desktop and mobile owner controls use the same public wording for this area: `Featured section`, `Featured choice`, `Quick choice`, and `Value choice`.
@@ -154,6 +156,11 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-09 | Sections popup header height reduced while preserving the close tap target |
+| 2026-05-09 | Expanded sticky search now removes the parent flex gap while side controls are hidden, so no right-side spacing artifact remains |
+| 2026-05-09 | Public menu analytics now bypasses the authenticated DAL wrapper and writes through the local coalescing queue first |
+| 2026-05-09 | Featured item taps now open PDP without also scrolling the underlying menu; inline scroll remains only as a non-modal fallback |
+| 2026-05-09 | Mobile public menu wrapper padding now caps at 12px on mobile and 18px on tablet while desktop keeps the configured design spacing |
 | 2026-05-09 | Installed PWA interaction stability improved: PDP close no longer remounts sticky controls, active search is blurred before item details open, and top-of-page scroll lock is lighter on iPhone PWAs |
 | 2026-05-09 | PDP long-content handling tightened: modal/sheet height remains viewport-capped, internal touch scrolling is preserved, and close remains reachable while details scroll |
 | 2026-05-09 | Back-to-top tap isolation fixed so scrolling to top cannot also open the item card underneath the floating control |

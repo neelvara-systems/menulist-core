@@ -34,6 +34,7 @@ import {
     matchesPublicMenuSearchDocument,
 } from '@lib/menu/publicMenuSearch';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
+import { getPublicMenuSpecialNote } from '@lib/menu/publicMenuSpecialNote';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -230,6 +231,11 @@ function MenuPageNew({
     const isMobile = activeDeviceType === 'mobile';
     const isTablet = activeDeviceType === 'tablet';
     const isDesktop = activeDeviceType === 'desktop';
+    const shellContainerPadding = isDesktop
+        ? spacing.container
+        : isTablet
+            ? Math.min(spacing.container, 18)
+            : Math.min(spacing.container, 12);
     const effectiveBusinessType = useMemo(
         () => resolvePublicBusinessType(
             businessType,
@@ -245,6 +251,15 @@ function MenuPageNew({
     const getMenuText = useCallback(
         (value: unknown, fallback = '') => getLocalizedText(value as any, activeLanguage, primaryLanguage, fallback),
         [activeLanguage, primaryLanguage],
+    );
+    const publicMenuSpecialNote = useMemo(
+        () => getPublicMenuSpecialNote({
+            projectData,
+            storeDetails,
+            language: activeLanguage,
+            primaryLanguage,
+        }),
+        [activeLanguage, primaryLanguage, projectData, storeDetails],
     );
 
     // Layout properties from config
@@ -1061,6 +1076,9 @@ function MenuPageNew({
     const displayActiveCategory = debouncedSearch ? null : activeCategory;
     const activeCategoryTabId = displayActiveCategory?.id;
     const isSearchCommandExpanded = isSearchFocused || Boolean(searchTerm);
+    const hasLanguageSwitcher = (projectData.languages?.length || 0) > 1;
+    const hasSearchSideControls = showSectionsControl || hasLanguageSwitcher;
+    const showSearchSideControls = hasSearchSideControls && !isSearchCommandExpanded;
 
     useEffect(() => {
         if (!pendingBrowseCategory || searchTerm || debouncedSearch) return;
@@ -1098,10 +1116,10 @@ function MenuPageNew({
 
     const scrollContentStyle: React.CSSProperties = {
         flex: 1,
-        paddingTop: `calc(${spacing.container}px + env(safe-area-inset-top))`,
-        paddingRight: spacing.container,
-        paddingBottom: `calc(${spacing.container}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 24}px)`,
-        paddingLeft: spacing.container,
+        paddingTop: `calc(${shellContainerPadding}px + env(safe-area-inset-top))`,
+        paddingRight: shellContainerPadding,
+        paddingBottom: `calc(${shellContainerPadding}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 24}px)`,
+        paddingLeft: shellContainerPadding,
         boxSizing: 'border-box',
         overflowX: 'clip',
         overflowY: isPublicSurface ? 'visible' : 'auto',
@@ -1144,7 +1162,7 @@ function MenuPageNew({
     const commandLayerStyle: React.CSSProperties = {
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: showSearchSideControls ? 8 : 0,
         marginBottom: showTabsBar ? 8 : 0,
     };
     const searchSideControlsStyle: React.CSSProperties = {
@@ -1152,13 +1170,15 @@ function MenuPageNew({
         display: 'flex',
         flexShrink: 0,
         gap: 8,
-        maxWidth: isSearchCommandExpanded ? 0 : isMobile ? 216 : 280,
-        opacity: isSearchCommandExpanded ? 0 : 1,
-        overflow: isSearchCommandExpanded ? 'hidden' : 'visible',
-        pointerEvents: isSearchCommandExpanded ? 'none' : 'auto',
-        transform: isSearchCommandExpanded ? 'translateX(8px) scale(0.98)' : 'translateX(0) scale(1)',
+        maxWidth: showSearchSideControls ? (isMobile ? 216 : 280) : 0,
+        minWidth: 0,
+        opacity: showSearchSideControls ? 1 : 0,
+        overflow: showSearchSideControls ? 'visible' : 'hidden',
+        pointerEvents: showSearchSideControls ? 'auto' : 'none',
+        transform: showSearchSideControls ? 'translateX(0) scale(1)' : 'translateX(8px) scale(0.98)',
         transition: 'max-width 0.22s ease, opacity 0.16s ease, transform 0.18s ease',
         visibility: 'visible',
+        width: showSearchSideControls ? 'auto' : 0,
     };
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
@@ -1985,6 +2005,7 @@ function MenuPageNew({
                                 timeZone={storeDetails?.timeZone}
                                 theme={bottomMetaTheme}
                                 showBorder={false}
+                                showContextLine={false}
                             />
                         )}
                     </section>
@@ -1997,7 +2018,7 @@ function MenuPageNew({
                       */}
 
                     {/* G06 - Service Charge Disclosure (Trust Zone - Pricing Truth) */}
-                    <ServiceChargeNote note={getLocalizedText(projectData?.menuSettings?.specialNote, activeLanguage, projectData?.defaultLanguage || 'en', '')} />
+                    <ServiceChargeNote note={publicMenuSpecialNote} />
 
                     {/* G09 - Contact/Location Display (Trust Zone - Business Identity) */}
                     <MenuFooter

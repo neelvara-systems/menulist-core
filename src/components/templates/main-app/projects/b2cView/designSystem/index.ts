@@ -88,10 +88,10 @@ export interface MenuMoodConfig {
 export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
     [MenuMood.CLEAN]: {
         label: 'Clean & Calm',
-        description: 'Professional, clinic-safe',
+        description: 'Modern cafes, premium casual dining',
         // Container - light but contained (Constitutional M1)
         background: '#f7f8fa',
-        backgroundOverlay: undefined,
+        backgroundOverlay: 'linear-gradient(rgba(247, 248, 250, 0.88), rgba(247, 248, 250, 0.88))',
         // Typography - Modern, readable
         headingFont: '"Inter", -apple-system, sans-serif',
         bodyFont: '"Inter", sans-serif',
@@ -137,10 +137,10 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
     },
     [MenuMood.WARM]: {
         label: 'Warm & Inviting',
-        description: 'Family restaurants, casual dining',
+        description: 'Family restaurants, comfort food',
         // Container - Warm light (Constitutional M2)
         background: '#FEF7ED',
-        backgroundOverlay: undefined,
+        backgroundOverlay: 'linear-gradient(rgba(254, 247, 237, 0.88), rgba(254, 247, 237, 0.88))',
         // Typography - Friendly
         headingFont: '"Inter", -apple-system, sans-serif',
         bodyFont: '"Inter", sans-serif',
@@ -186,10 +186,10 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
     },
     [MenuMood.PREMIUM]: {
         label: 'Premium & Minimal',
-        description: 'Fine dining, boutique cafes',
+        description: 'Fine dining, boutique concepts',
         // Container - Deep navy
         background: '#0f172a',
-        backgroundOverlay: undefined,
+        backgroundOverlay: 'linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9))',
         // Typography - restrained public information hierarchy
         headingFont: '"Inter", -apple-system, sans-serif',
         bodyFont: '"Inter", sans-serif',
@@ -235,10 +235,10 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
     },
     [MenuMood.BOLD]: {
         label: 'Bold & Energetic',
-        description: 'Bars, clubs, night venues',
+        description: 'Bars, burgers, nightlife',
         // Container - Pure black
         background: '#000000',
-        backgroundOverlay: undefined,
+        backgroundOverlay: 'linear-gradient(rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.88))',
         // Typography - Bold
         headingFont: '"Poppins", sans-serif',
         bodyFont: '"Inter", sans-serif',
@@ -287,7 +287,7 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         description: 'QSRs, food courts, high volume',
         // Container - Minimal (Constitutional M5)
         background: '#f5f5f5',
-        backgroundOverlay: undefined,
+        backgroundOverlay: 'linear-gradient(rgba(245, 245, 245, 0.9), rgba(245, 245, 245, 0.9))',
         // Typography - Utilitarian (STRUCTURAL: Smaller, tighter)
         headingFont: '"Inter", -apple-system, sans-serif',
         bodyFont: '"Inter", sans-serif',

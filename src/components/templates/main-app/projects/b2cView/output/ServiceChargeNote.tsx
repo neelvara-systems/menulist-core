@@ -1,15 +1,15 @@
 /**
- * Service Charge Note Component
+ * Menu Special Note Component
  * 
  * Constitutional G06 - Trust-critical disclosure
  * 
  * HARD RULES (DO NOT MODIFY):
- * - Renders only when specialNote is provided
+ * - Renders only when a menu/public special note is provided
  * - Fixed styling - cannot be overridden by moods/layouts
  * - Minimum 12px font size
  * - Neutral gray color (#6B7280)
  * - No animations, no accent colors, no hide toggles
- * - Auto-injected before LiveIndicator in menu footer
+ * - Auto-injected before business identity in menu footer
  * 
  * This is infrastructure text, not UI decoration.
  */
@@ -35,7 +35,7 @@ export default function ServiceChargeNote({ note }: ServiceChargeNoteProps) {
                 margin: '24px auto 16px',
                 fontSize: '12px', // Minimum size enforced
             }}
-            aria-label="Service charge disclosure"
+            aria-label="Menu special note"
         >
             {note}
         </p>
