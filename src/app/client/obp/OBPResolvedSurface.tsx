@@ -52,7 +52,8 @@ import OBPAnalytics from "./OBPAnalytics";
 import OBPCustomerAppMount from "./OBPCustomerAppMount";
 import OBPExternalLinks from "./OBPExternalLinks";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
-import OBPMenuCTA, type { OBPMenuCTAProjectEntry } from "./OBPMenuCTA";
+import OBPMenuCTA from "./OBPMenuCTA";
+import type { OBPMenuCTAProjectEntry } from "./OBPMenuCTA";
 import OBPPhotoStrip from "./OBPPhotoStrip";
 import OBPThemeToggle from "./OBPThemeToggle";
 import { getOBPTranslations } from "./i18n";
@@ -617,14 +618,18 @@ export default function OBPResolvedSurface({
     const identityPills = [areaContext, ...serviceModeTags.slice(0, 3), priceRange]
         .filter(Boolean)
         .slice(0, 4) as string[];
-    const schema = generateOBPSchema(store, obpUrl, contentLanguage, isOutletSurface ? 'store' : 'brand', {
-        hasPublishedMenu: hasMenu,
-        menuUrl,
-    });
-    const faqSchema = buildFaqSchema(store, obpUrl, t, storeName, {
-        hasPublishedCatalog: hasMenu,
-        catalogUrl: menuUrl,
-    });
+    const schema = includeRuntime
+        ? generateOBPSchema(store, obpUrl, contentLanguage, isOutletSurface ? 'store' : 'brand', {
+            hasPublishedMenu: hasMenu,
+            menuUrl,
+        })
+        : null;
+    const faqSchema = includeRuntime
+        ? buildFaqSchema(store, obpUrl, t, storeName, {
+            hasPublishedCatalog: hasMenu,
+            catalogUrl: menuUrl,
+        })
+        : null;
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const runtimeTrackingEnabled = includeRuntime && analyticsPreferences.trackOfficialBusinessPage;
     const includeLocation = analyticsPreferences.trackLocation;

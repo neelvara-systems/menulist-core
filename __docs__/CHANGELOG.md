@@ -6,6 +6,17 @@
 
 ---
 
+## May 10, 2026 — Client Menu: Public Hardening Pass
+
+### Fixed
+
+- **Top-of-menu PDP close stability improved** — Item details opened from featured choices now close through the item history state before the sticky command row repaints, reducing the iPhone/PWA case where search and category controls stayed hidden or unclickable until the next scroll.
+- **Installed PWA language bleed fixed** — Public menu page, language, and scroll state now use store/project-scoped keys, and the menu language switcher ignores the old global language preference key.
+- **Default-language descriptions preserved** — Compact multi-language menu payloads now keep the resolved initial render language description, so an English menu does not fall back to another language when no `?lang=` query is present.
+- **Exact search matches rank first** — Customer search now keeps exact visible item-name matches above partial, fuzzy, metadata, and description matches while preserving menu order for ties.
+- **Public footer and note alignment tightened** — Menu special notes center in the trust zone, the common Call / WhatsApp / Directions actions stay in one compact row, and menu attribution matches the compact OBP `Powered by MenuList. All rights reserved` treatment.
+- **Top language control compacted** — The sticky command-row language button now shows only the language initials; full language names remain inside the picker.
+
 ## May 9, 2026 — Media Image System
 
 ### Added

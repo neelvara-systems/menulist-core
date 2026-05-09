@@ -16,7 +16,7 @@ const ctaHref = `${PLATFORM_URL}/create-menu`;
 export default function PublicMenuListAttribution({
     mode = 'full',
     surfaceLabel = 'Powered by MenuList',
-    rightsLabel = null,
+    rightsLabel = 'All rights reserved',
     ctaLabel = null,
     mutedColor = '#8a8f98',
     accentColor = '#111',

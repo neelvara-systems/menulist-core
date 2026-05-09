@@ -1713,9 +1713,11 @@ async function MenuContent({
         : sanitized;
 
     // #30: Lazy language loading — reduce SSR payload for multi-language menus (3+ languages)
-    // Names kept in ALL languages (short strings, needed for instant language switching)
-    // Descriptions keep primary + initially requested language. Search uses compact terms for all languages.
-    const projectData = optimizeLanguagePayload(searchReadyProjectData, requestedLanguage);
+    // Names kept in ALL languages (short strings, needed for instant language switching).
+    // Descriptions keep primary + resolved initial render language. Using only the raw
+    // query language strips default-language descriptions when no ?lang= is present.
+    const initialProjectLanguage = resolveProjectPublicLanguage(searchReadyProjectData, storeDetails, requestedLanguage);
+    const projectData = optimizeLanguagePayload(searchReadyProjectData, initialProjectLanguage);
     const clientStoreDetails = serializeClientValue({
         ...storeDetails,
         ...(effectiveBusinessType && { businessType: effectiveBusinessType }),
@@ -1763,7 +1765,7 @@ async function MenuContent({
             ? `${baseUrl}${outletPrefix}/${canonicalProjectSlug}`
             : baseUrl);
 
-    const projectLanguage = resolveProjectPublicLanguage(projectData, storeDetails, requestedLanguage);
+    const projectLanguage = resolveProjectPublicLanguage(projectData, storeDetails, initialProjectLanguage);
     const schemaOrgJsonLd = generateSchemaOrgJsonLd(
         projectData,
         storeDetails,

@@ -52,10 +52,11 @@ const SCROLL_KEY = "scrollY";
 
 function getCustomerMenuStateKey(
     storeId: string | number | undefined,
+    projectStorageId: string | number | undefined,
     suffix: string,
 ): string | null {
-    if (!storeId) return null;
-    return `menulist_customerMenu_${storeId}_${suffix}`;
+    if (!storeId || !projectStorageId) return null;
+    return `menulist_customerMenu_${storeId}_${projectStorageId}_${suffix}`;
 }
 
 function readSessionValue(key: string | null): string | null {
@@ -96,16 +97,22 @@ function ClientMenuRenderer({
         ? resolveProjectPublicLanguage(projectData, storeDetails, requestedInitialLanguage)
         : getProjectDefaultLanguage(projectData, storeDetails);
     const shouldTrackLanguageUsage = Array.isArray(projectData?.languages) && projectData.languages.length > 1;
-    const pageStorageKey = getCustomerMenuStateKey(storeId, PAGE_KEY);
-    const languageStorageKey = getCustomerMenuStateKey(storeId, LANGUAGE_KEY);
-    const scrollStorageKey = getCustomerMenuStateKey(storeId, SCROLL_KEY);
+    const projectStorageId = projectId || projectData?.projectId || projectData?.id || projectData?.slug || "default";
+    const pageStorageKey = getCustomerMenuStateKey(storeId, projectStorageId, PAGE_KEY);
+    const languageStorageKey = getCustomerMenuStateKey(storeId, projectStorageId, LANGUAGE_KEY);
+    const scrollStorageKey = getCustomerMenuStateKey(storeId, projectStorageId, SCROLL_KEY);
 
     // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): public path opens directly to the menu.
     // The old intro screen is retired from the public surface per D-01.
     // Default to MENU unconditionally; ignore any legacy stored HOME value.
     const [activePage, setActivePage] = useState<PageType>(PageType.MENU);
     const [activeLanguage, setActiveLanguage] = useState<string>(() => {
-        return requestedInitialLanguage ? defaultLanguage : readSessionValue(languageStorageKey) || defaultLanguage;
+        if (requestedInitialLanguage) return defaultLanguage;
+
+        const storedLanguage = readSessionValue(languageStorageKey);
+        return storedLanguage
+            ? resolveProjectPublicLanguage(projectData, storeDetails, storedLanguage)
+            : defaultLanguage;
     });
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === activeLanguage)?.name || activeLanguage.toUpperCase();
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>(

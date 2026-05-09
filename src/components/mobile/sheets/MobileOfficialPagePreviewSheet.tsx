@@ -1,9 +1,10 @@
 'use client'
 
 import DeviceFrame from '@template/main-app/projects/b2cView/deviceFrame';
-import OfficialPagePreview from '@template/main-app/projects/b2cView/officialPage/officialPagePreview';
 import { PageType } from '@template/main-app/projects/b2cView/types';
+import PreviewNavigationGuard from '@/components/shared/PreviewNavigationGuard';
 import type { StoreDataType } from '@type/platform/store';
+import OBPResolvedSurface, { type ObpMenuInfo } from '@/app/client/obp/OBPResolvedSurface';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuEye, LuX } from 'react-icons/lu';
@@ -11,7 +12,7 @@ import { Flex, NavBar, Popup, Tag, Text } from '../antd';
 
 interface MobileOfficialPagePreviewSheetProps {
     activeLanguage: string;
-    hasFeedbackTarget?: boolean;
+    menuInfo: ObpMenuInfo;
     onClose: () => void;
     storeDetails: StoreDataType;
     visible: boolean;
@@ -19,7 +20,7 @@ interface MobileOfficialPagePreviewSheetProps {
 
 export default function MobileOfficialPagePreviewSheet({
     activeLanguage,
-    hasFeedbackTarget = false,
+    menuInfo,
     onClose,
     storeDetails,
     visible,
@@ -96,12 +97,14 @@ export default function MobileOfficialPagePreviewSheet({
                         backgroundColor={token.colorBgLayout}
                         fromPage="mobile-design-preview"
                     >
-                        <OfficialPagePreview
-                            activeDeviceType="mobile"
-                            activeLanguage={activeLanguage}
-                            hasFeedbackTarget={hasFeedbackTarget}
-                            storeDetails={storeDetails}
-                        />
+                        <PreviewNavigationGuard>
+                            <OBPResolvedSurface
+                                includeRuntime={false}
+                                menuInfo={menuInfo}
+                                requestedLanguage={activeLanguage}
+                                store={storeDetails}
+                            />
+                        </PreviewNavigationGuard>
                     </DeviceFrame>
                 </div>
             </Flex>

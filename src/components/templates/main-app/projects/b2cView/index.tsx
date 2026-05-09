@@ -179,6 +179,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     activeLanguage={activeLanguage}
                     setActiveLanguage={setActiveLanguage}
                     fromPage="b2c"
+                    previewMode
                 />
                 <B2CSidebar
                     activePage={activePage}

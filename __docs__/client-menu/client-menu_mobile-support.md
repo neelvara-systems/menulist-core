@@ -1,6 +1,6 @@
 # Client Menu (Customer-Facing Digital Menu) — Mobile Support
 
-**Last Updated:** May 9, 2026
+**Last Updated:** May 10, 2026
 **Decision:** ✅ ALREADY MOBILE-FIRST — Public page, not inside owner MobileShell
 
 ---
@@ -18,7 +18,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 | Customer mobile browsing | ✅ | Mobile-first responsive design, 70%+ users on mobile |
 | Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator; public icons preserve owner-selected icon choices |
 | Item display (name/price/image) | ✅ | Responsive grid/list layouts with line limits; image frames render only for items that have images |
-| Search/filter | ✅ | Debounced fuzzy/transliteration search with 16px mobile input sizing, clear exits search mode, and compact sticky command-row behavior |
+| Search/filter | ✅ | Debounced fuzzy/transliteration search with exact visible-name results first, 16px mobile input sizing, clear exits search mode, and compact sticky command-row behavior |
 | Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, and category identity when enabled |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
 | Schema.org JSON-LD | ✅ | Server-side active menu data with real freshness fields |
@@ -32,21 +32,25 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
 - Image-enabled layouts must not show blank image cards for items without images; broken image URLs may keep their reserved frame to avoid a late scroll jump.
 - Item image reads must use the public image normalizer so legacy object-shaped image data cannot crash mobile PDP galleries or featured/item cards.
-- PDP open/close must not remount the sticky command controls; iPhone PWA top-of-page detail views use lightweight scroll lock to avoid stale hit-test regions after close.
+- PDP close must not leave stale sticky-row hit-test regions; iPhone PWA top-of-page detail views use lightweight scroll lock, history-driven close, and a targeted command-row repaint after close.
 - PDP content must remain inside a viewport-capped scroll container with touch scrolling enabled and the close control reachable during long detail scrolls.
 - Back-to-top must not perform scroll work on pointerdown; it scrolls on completed tap/click and stops press propagation so the item card below it cannot receive the same gesture.
 - Featured choices must open PDP directly on mobile when the public menu provides a PDP handler; they must not also scroll the underlying menu before the modal opens.
 - Public menu shell padding is capped by device: mobile uses 12px, tablet uses 18px, and desktop keeps the configured design spacing so small screens do not lose usable width.
 - Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
+- The compact top-row language action shows only the language initials; the picker itself keeps full native language labels.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - The `Sections` popup header must stay compact while preserving a reachable close tap target; the close button visual should not set the whole header height.
 - Expanded sticky search must not reserve the command-row side-control gap; the gap is present only when `Sections` or language controls are visible.
 - Footer freshness must not repeat on mobile: the publish row owns exact update time, and bottom trust signals show only location/open state in that placement.
-- Menu special notes must render in the footer trust zone when present in menu settings, legacy project note fields, or the store public note fallback.
+- Menu special notes must render centered in the footer trust zone when present in menu settings, legacy project note fields, or the store public note fallback.
+- Call, WhatsApp, and Directions should stay in one compact footer row when those are the only primary actions; extra public actions can wrap.
+- Public menu language persistence must be project-scoped so an installed PWA cannot reuse a different menu's previous language selection.
+- Compact public payloads must preserve the resolved initial render language description so installed PWAs and browser tabs do not show a default-language control with another language's description text.
 - Public mobile analytics must enter the local coalescing queue directly; it must not run through the authenticated DAL wrapper or fetch owner auth/session state per anonymous customer event.
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
-- Platform attribution stays compact and quiet; no extra marketing CTA is added to the mobile footer by default.
+- Platform attribution stays compact and quiet, matches the OBP `Powered by MenuList. All rights reserved` treatment, and does not add a marketing CTA by default.
 
 ## Owner Mobile Interaction
 

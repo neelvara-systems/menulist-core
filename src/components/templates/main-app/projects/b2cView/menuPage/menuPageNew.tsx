@@ -32,6 +32,8 @@ import {
     buildPublicMenuSearchDocument,
     buildPublicMenuSearchQuery,
     matchesPublicMenuSearchDocument,
+    normalizePublicMenuSearchText,
+    rankPublicMenuSearchDocument,
 } from '@lib/menu/publicMenuSearch';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { getPublicMenuSpecialNote } from '@lib/menu/publicMenuSpecialNote';
@@ -672,6 +674,14 @@ function MenuPageNew({
         );
     }, [allItems, categoriesById]);
 
+    const visibleItemOrder = useMemo(() => {
+        const order = new Map<any, number>();
+        visibleItems.forEach((item: any, index: number) => {
+            order.set(item, index);
+        });
+        return order;
+    }, [visibleItems]);
+
     const categoryItemCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         visibleItems.forEach((item: any) => {
@@ -703,14 +713,16 @@ function MenuPageNew({
     // Filter items by search term and active filter
     const filteredItems = useMemo(() => {
         let items = visibleItems;
+        const query = debouncedSearch
+            ? buildPublicMenuSearchQuery(debouncedSearch, {
+                businessType: effectiveBusinessType,
+                businessCategory: storeDetails?.businessCategory,
+            })
+            : null;
 
         // Apply search filter
-        if (debouncedSearch) {
+        if (debouncedSearch && query) {
             if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION) {
-                const query = buildPublicMenuSearchQuery(debouncedSearch, {
-                    businessType: effectiveBusinessType,
-                    businessCategory: storeDetails?.businessCategory,
-                });
                 items = items.filter((item: any) => {
                     const document = searchDocumentsByItem.get(item);
                     if (!document) return false;
@@ -735,8 +747,33 @@ function MenuPageNew({
             });
         }
 
+        if (query && FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION && items.length > 1) {
+            const normalizedQueryText = normalizePublicMenuSearchText(debouncedSearch);
+            const getVisibleNameRank = (item: any): number => {
+                const visibleName = normalizePublicMenuSearchText(getMenuText(item.name));
+                if (!visibleName || !normalizedQueryText) return 9;
+                if (visibleName === normalizedQueryText) return 0;
+                if (visibleName.startsWith(normalizedQueryText)) return 1;
+                return 2;
+            };
+
+            items = [...items].sort((left: any, right: any) => {
+                const leftNameRank = getVisibleNameRank(left);
+                const rightNameRank = getVisibleNameRank(right);
+                if (leftNameRank !== rightNameRank) return leftNameRank - rightNameRank;
+
+                const leftDocument = searchDocumentsByItem.get(left);
+                const rightDocument = searchDocumentsByItem.get(right);
+                const leftRank = leftDocument ? rankPublicMenuSearchDocument(leftDocument, query) : 99;
+                const rightRank = rightDocument ? rankPublicMenuSearchDocument(rightDocument, query) : 99;
+
+                if (leftRank !== rightRank) return leftRank - rightRank;
+                return (visibleItemOrder.get(left) ?? 0) - (visibleItemOrder.get(right) ?? 0);
+            });
+        }
+
         return items;
-    }, [visibleItems, debouncedSearch, getMenuText, activeFilter, searchDocumentsByItem, effectiveBusinessType, storeDetails?.businessCategory]);
+    }, [visibleItems, debouncedSearch, getMenuText, activeFilter, searchDocumentsByItem, effectiveBusinessType, storeDetails?.businessCategory, visibleItemOrder]);
 
     const searchResultSectionCount = useMemo(() => {
         if (!debouncedSearch) return 0;
@@ -854,6 +891,7 @@ function MenuPageNew({
 
     // G14 - History Management: Track if we pushed state (to avoid double-back)
     const historyPushedRef = useRef(false);
+    const modalCloseFallbackTimerRef = useRef<number | null>(null);
 
     // G14 - Handle item click with history state
     const handleItemClick = useCallback((item: any) => {
@@ -931,14 +969,23 @@ function MenuPageNew({
 
         if (historyPushedRef.current) {
             historyPushedRef.current = false;
-            setSelectedItem(null);
             window.history.back();
+            if (modalCloseFallbackTimerRef.current) {
+                window.clearTimeout(modalCloseFallbackTimerRef.current);
+            }
+            modalCloseFallbackTimerRef.current = window.setTimeout(() => {
+                modalCloseFallbackTimerRef.current = null;
+                if (!selectedItemRef.current) return;
+                setSelectedItem(null);
+                setSelectedItemTrackView(true);
+                window.history.replaceState({}, '', getMenuBasePath());
+            }, 240);
         } else {
             // Direct close without history (e.g., direct link then close)
             window.history.replaceState({}, '', getMenuBasePath());
             setSelectedItem(null);
+            setSelectedItemTrackView(true);
         }
-        setSelectedItemTrackView(true);
     }, [getMenuBasePath, previewMode]);
 
     const handlePdpClosed = useCallback(() => {
@@ -959,6 +1006,10 @@ function MenuPageNew({
             // Intent-based: only close if PDP is actually open
             // Future-proof for other modals (language picker, filters, etc.)
             if (selectedItemRef.current) {
+                if (modalCloseFallbackTimerRef.current) {
+                    window.clearTimeout(modalCloseFallbackTimerRef.current);
+                    modalCloseFallbackTimerRef.current = null;
+                }
                 historyPushedRef.current = false;
                 setSelectedItem(null);
                 setSelectedItemTrackView(true);
@@ -966,7 +1017,13 @@ function MenuPageNew({
         };
 
         window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            if (modalCloseFallbackTimerRef.current) {
+                window.clearTimeout(modalCloseFallbackTimerRef.current);
+                modalCloseFallbackTimerRef.current = null;
+            }
+        };
     }, []);
 
     // G14 - Direct link load: Open PDP if URL contains item path
@@ -1438,7 +1495,7 @@ function MenuPageNew({
                         }}
                     />
                     {/* Sticky command layer: retrieval first, section navigation second */}
-                    <div style={stickyControlsStyle}>
+                    <div key={`menu-sticky-controls-${stickyControlsRepaintTick}`} style={stickyControlsStyle}>
                         {stickyControlsTopBuffer > 0 && (
                             <div aria-hidden="true" style={stickyControlsTopCoverStyle} />
                         )}

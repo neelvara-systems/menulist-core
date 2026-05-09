@@ -1,6 +1,6 @@
 import GlobalLanguagesList from '@data/languages';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuChevronDown, LuGlobe } from 'react-icons/lu';
 import { Project } from '../../types';
@@ -30,8 +30,13 @@ function MenuLanguageSwitcher({
     const [mounted, setMounted] = useState(false);
     const [anchorPosition, setAnchorPosition] = useState({ top: 64, right: 12 });
     const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const didCheckStoredLanguageRef = useRef(false);
     const hasMultipleLanguages = projectData.languages?.length > 1;
     const currentLangCode = activeLanguage?.toUpperCase().slice(0, 2) || 'EN';
+    const languageStorageKey = useMemo(() => {
+        const projectId = projectData?.projectId || (projectData as any)?.id || (projectData as any)?.slug;
+        return projectId ? `menulist_preferred_language_${projectId}` : null;
+    }, [projectData?.projectId, (projectData as any)?.id, (projectData as any)?.slug]);
 
     useEffect(() => {
         setMounted(true);
@@ -49,28 +54,34 @@ function MenuLanguageSwitcher({
     }, []);
 
     useEffect(() => {
-        if (activeLanguage) {
+        if (activeLanguage && languageStorageKey) {
+            if (restoreStoredLanguage && !didCheckStoredLanguageRef.current) return;
             try {
-                localStorage.setItem('menulist_preferred_language', activeLanguage);
+                localStorage.setItem(languageStorageKey, activeLanguage);
             } catch {
                 // Local storage may be unavailable in private browsing.
             }
         }
-    }, [activeLanguage]);
+    }, [activeLanguage, languageStorageKey, restoreStoredLanguage]);
 
     useEffect(() => {
-        if (!restoreStoredLanguage) return;
+        if (!restoreStoredLanguage || !languageStorageKey) {
+            didCheckStoredLanguageRef.current = true;
+            return;
+        }
 
         try {
-            const savedLang = localStorage.getItem('menulist_preferred_language');
+            const savedLang = localStorage.getItem(languageStorageKey);
             if (savedLang && projectData.languages?.includes(savedLang) && savedLang !== activeLanguage) {
                 setActiveLanguage(savedLang);
             }
         } catch {
             // Local storage may be unavailable in private browsing.
+        } finally {
+            didCheckStoredLanguageRef.current = true;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [projectData.languages, restoreStoredLanguage]);
+    }, [projectData.languages, restoreStoredLanguage, languageStorageKey]);
 
     const toggleDropdown = () => {
         if (!showLangDropdown) {
@@ -200,8 +211,9 @@ function MenuLanguageSwitcher({
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: compact ? 5 : 6,
-                    padding: compact ? '8px 10px' : '8px 12px',
+                    gap: compact ? 0 : 6,
+                    minWidth: compact ? 44 : undefined,
+                    padding: compact ? '8px 9px' : '8px 12px',
                     borderRadius: 10,
                     background: moodConfig.itemStyle.background,
                     color: moodConfig.bodyColor,
@@ -215,12 +227,14 @@ function MenuLanguageSwitcher({
                 aria-label="Select language"
                 aria-expanded={showLangDropdown}
             >
-                <LuGlobe size={16} />
+                {!compact && <LuGlobe size={16} />}
                 <span className="font-medium">{currentLangCode}</span>
-                <LuChevronDown
-                    size={14}
-                    className={`transition-transform ${showLangDropdown ? 'rotate-180' : ''}`}
-                />
+                {!compact && (
+                    <LuChevronDown
+                        size={14}
+                        className={`transition-transform ${showLangDropdown ? 'rotate-180' : ''}`}
+                    />
+                )}
             </button>
 
             {languageDropdown}

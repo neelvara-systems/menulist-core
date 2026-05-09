@@ -20,6 +20,7 @@ Add `src/lib/menu/publicMenuSearch.ts` with:
 - alias expansion for common menu/service/product/offering spellings, resolved through the shared `businessType` / `businessCategory` model in `src/data/shared/businessTypes.ts`;
 - bounded Levenshtein typo tolerance;
 - search document construction from item, category, attributes, tags, decision facts, and optional price;
+- search result ranking that places exact visible item-name matches before broader document matches;
 - compact `_publicSearch.terms` generation for the public payload.
 
 ### 2. Public Menu Wiring
@@ -29,6 +30,7 @@ Update `menuPageNew.tsx` to:
 - build category lookup once;
 - cache per-item search documents for the visible menu payload;
 - call the shared public search matcher instead of simple substring matching;
+- sort active search results by exact visible item-name match, then shared document rank, then original menu order;
 - keep filter chips after search;
 - keep current category grouping and ordering;
 - improve empty-state copy without noisy suggestions.
@@ -38,8 +40,10 @@ Update `menuPageNew.tsx` to:
 Update `src/app/client/[[...slug]]/page.tsx` to:
 
 - attach compact search terms after `sanitizeForClient()`;
-- preserve the requested language description in `optimizeLanguagePayload()`;
+- preserve the resolved initial render language description in `optimizeLanguagePayload()`;
 - keep primary-language description for fallback.
+- scope customer menu page/language/scroll state by store/project and keep language switcher local preferences project-specific so installed PWAs do not inherit stale global language state.
+- resolve the initial render language before compacting the SSR payload so default English menus do not fall back to another language's description when no `?lang=` query is present.
 
 ### 4. Structured Data
 

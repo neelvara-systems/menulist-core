@@ -7,6 +7,7 @@ MenuList public menus must help customers find, verify, and decide quickly. This
 ## User Outcomes
 
 - Customers can find items even when they mistype, use common phonetic spelling, or search across localized names, descriptions, categories, attributes, and item metadata.
+- Exact visible item-name matches appear before broader partial, fuzzy, or metadata matches.
 - Public schema represents the same current public menu truth that the customer can see.
 - Weak-network users get stable pages and a clear offline screen instead of layout jumps or stale cached menus.
 
@@ -57,6 +58,10 @@ Search must cover:
 - public decision facts and legacy metadata fields;
 - prices only when public prices are enabled.
 
+### FR-3A Exact Result Priority
+
+When a customer search exactly matches the visible item name in the active language, that item must rank before prefix, partial, fuzzy, category, description, metadata, or price matches. Original menu order remains the tie-breaker.
+
 ### FR-4 No Extra Firebase Cost
 
 Search must stay client-side and use the already-fetched public menu payload. No search API, Firestore query, or Cloud Function is introduced.
@@ -81,7 +86,9 @@ The public customer service worker must remain network-first and must not cache 
 
 ### FR-7 Multilingual Payload Governance
 
-For 3+ language menus, the public payload may stay compact, but the initially requested language description must be preserved alongside the primary language. Search may use a compact generated search index to avoid shipping every raw description.
+For 3+ language menus, the public payload may stay compact, but the resolved initial render language description must be preserved alongside the primary language even when no `?lang=` query is present. Search may use a compact generated search index to avoid shipping every raw description.
+
+Customer language persistence must be scoped by the current store/project. Old global language preference keys must not override the current menu language, especially inside installed PWAs.
 
 ## Non-Goals
 

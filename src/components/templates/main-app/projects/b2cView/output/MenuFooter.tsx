@@ -154,6 +154,14 @@ export default function MenuFooter({
             ? `${storeDetails.dialCode} ${storeDetails.phoneNumber}`
             : storeDetails.phoneNumber
         : '';
+    const visibleActionCount = [
+        showCall,
+        showWhatsApp,
+        showDirections,
+        showReservation,
+        showOrder,
+    ].filter(Boolean).length;
+    const useSingleRowActions = visibleActionCount > 1 && visibleActionCount <= 3 && !showReservation && !showOrder;
 
     // Get social media links that have values
     const socialLinks = storeDetails?.socialMedia
@@ -174,6 +182,38 @@ export default function MenuFooter({
         background: moodConfig.itemStyle.background,
         padding: '16px',
         textAlign: 'center' as const,
+    };
+    const contactActionsStyle: React.CSSProperties = useSingleRowActions ? {
+        display: 'grid',
+        gap: 8,
+        gridTemplateColumns: `repeat(${visibleActionCount}, minmax(0, 1fr))`,
+        marginTop: 12,
+        width: '100%',
+    } : {
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 12,
+    };
+    const contactActionStyle: React.CSSProperties = {
+        color: moodConfig.accentColor,
+        textDecoration: 'none',
+        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderRadius: 999,
+        minHeight: 40,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: useSingleRowActions ? '8px 8px' : '8px 14px',
+        fontSize: useSingleRowActions ? 13 : 14,
+        lineHeight: '20px',
+        fontWeight: 600,
+        fontFamily: moodConfig.bodyFont,
+        minWidth: 0,
+        width: useSingleRowActions ? '100%' : undefined,
+        whiteSpace: 'nowrap',
     };
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
@@ -248,13 +288,7 @@ export default function MenuFooter({
             )}
 
             {(showCall || showWhatsApp || showDirections || showReservation || showOrder) && (
-                <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    marginTop: '12px',
-                }}>
+                <div style={contactActionsStyle}>
                     {showCall && callHref && (
                         <a
                             href={callHref}
@@ -263,22 +297,7 @@ export default function MenuFooter({
                                 href: callHref,
                                 track: () => handleMenuAction('call'),
                             })}
-                            style={{
-                                color: moodConfig.accentColor,
-                                textDecoration: 'none',
-                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                borderRadius: 999,
-                                minHeight: 40,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                padding: '8px 14px',
-                                fontSize: '14px',
-                                lineHeight: '20px',
-                                fontWeight: 600,
-                                fontFamily: moodConfig.bodyFont,
-                            }}
+                            style={contactActionStyle}
                             aria-label={displayPhone ? `Call ${displayPhone}` : 'Call'}
                         >
                             <LuPhone size={16} aria-hidden="true" />
@@ -296,22 +315,7 @@ export default function MenuFooter({
                                 target: '_blank',
                                 track: () => handleMenuAction('whatsapp'),
                             })}
-                            style={{
-                                color: moodConfig.accentColor,
-                                textDecoration: 'none',
-                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                borderRadius: 999,
-                                minHeight: 40,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                padding: '8px 14px',
-                                fontSize: '14px',
-                                lineHeight: '20px',
-                                fontWeight: 600,
-                                fontFamily: moodConfig.bodyFont,
-                            }}
+                            style={contactActionStyle}
                         >
                             <LuMessageCircle size={16} aria-hidden="true" />
                             <span>WhatsApp</span>
@@ -328,22 +332,7 @@ export default function MenuFooter({
                                 target: '_blank',
                                 track: () => handleMenuAction('directions'),
                             })}
-                            style={{
-                                color: moodConfig.accentColor,
-                                textDecoration: 'none',
-                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                borderRadius: 999,
-                                minHeight: 40,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                padding: '8px 14px',
-                                fontSize: '14px',
-                                lineHeight: '20px',
-                                fontWeight: 600,
-                                fontFamily: moodConfig.bodyFont,
-                            }}
+                            style={contactActionStyle}
                         >
                             <LuMapPin size={16} aria-hidden="true" />
                             <span>Directions</span>
@@ -360,22 +349,7 @@ export default function MenuFooter({
                                 target: '_blank',
                                 track: () => handleMenuAction('reserve'),
                             })}
-                            style={{
-                                color: moodConfig.accentColor,
-                                textDecoration: 'none',
-                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                borderRadius: 999,
-                                minHeight: 40,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                padding: '8px 14px',
-                                fontSize: '14px',
-                                lineHeight: '20px',
-                                fontWeight: 600,
-                                fontFamily: moodConfig.bodyFont,
-                            }}
+                            style={contactActionStyle}
                         >
                             <LuCalendarCheck size={16} aria-hidden="true" />
                             <span>Reserve</span>
@@ -392,22 +366,7 @@ export default function MenuFooter({
                                 target: '_blank',
                                 track: () => handleMenuAction('order'),
                             })}
-                            style={{
-                                color: moodConfig.accentColor,
-                                textDecoration: 'none',
-                                border: `1px solid ${moodConfig.itemStyle.borderColor}`,
-                                borderRadius: 999,
-                                minHeight: 40,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                padding: '8px 14px',
-                                fontSize: '14px',
-                                lineHeight: '20px',
-                                fontWeight: 600,
-                                fontFamily: moodConfig.bodyFont,
-                            }}
+                            style={contactActionStyle}
                         >
                             <LuShoppingBag size={16} aria-hidden="true" />
                             <span>Order</span>
@@ -604,7 +563,7 @@ export default function MenuFooter({
             <div style={{ ...footerCardStyle, padding: '13px 16px', textAlign: 'center' }}>
                 <PublicMenuListAttribution
                     mode="compact"
-                    rightsLabel={null}
+                    rightsLabel="All rights reserved"
                     mutedColor={moodConfig.bodyColor}
                     accentColor={moodConfig.accentColor}
                     containerStyle={{ marginTop: 0, paddingBottom: 0 }}

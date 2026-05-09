@@ -31,9 +31,11 @@ export default function ServiceChargeNote({ note }: ServiceChargeNoteProps) {
                 color: '#6B7280', // Neutral gray - immutable
                 lineHeight: 1.4,
                 fontWeight: 400,
-                maxWidth: '90%',
+                maxWidth: 'min(90%, 720px)',
                 margin: '24px auto 16px',
                 fontSize: '12px', // Minimum size enforced
+                textAlign: 'center',
+                width: '100%',
             }}
             aria-label="Menu special note"
         >

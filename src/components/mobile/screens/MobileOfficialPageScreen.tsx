@@ -1,6 +1,7 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import type { ObpMenuInfo } from '@/app/client/obp/OBPResolvedSurface';
 import useViewportInfo from '@hook/useViewportInfo';
 import { updateStore } from '@database/stores';
 import { deleteOBPPhotos, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
@@ -189,17 +190,43 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             publicPresence: buildPublicPresenceDraft(storeDetails, formData, localizedDrafts),
         };
     }, [formData, localizedDrafts, storeDetails]);
-    const hasFeedbackTarget = useMemo(() => (
-        projectsList.some((project: any) => (
-            project?.active !== false
-            && project?.isSpecialMenu !== true
-            && (
-                project?.projectId === selectedProjectId
-                || project?.isDefault === true
-                || !selectedProjectId
-            )
-        ))
-    ), [projectsList, selectedProjectId]);
+    const previewMenuInfo = useMemo<ObpMenuInfo>(() => {
+        const empty: ObpMenuInfo = { hasMenu: false, defaultSlug: undefined, projects: [] };
+        const entries = (projectsList || []).filter((project: any) => project?.active !== false && project?.deleted !== true);
+        const regularProjects = entries.filter((project: any) => project?.isSpecialMenu !== true);
+        if (regularProjects.length === 0) return empty;
+
+        const defaultProject = regularProjects.find((project: any) => project?.isDefault === true)
+            || regularProjects.find((project: any) => project?.projectId === selectedProjectId)
+            || regularProjects[0];
+        const activeSpecialProject = entries.find((project: any) => (
+            project?.projectId === storeDetails?.activeSpecialMenuId
+            && project?.isSpecialMenu === true
+            && project?.specialMenuStatus === 'active'
+        ));
+        const orderedProjects = [
+            ...(activeSpecialProject ? [activeSpecialProject] : []),
+            defaultProject,
+            ...regularProjects.filter((project: any) => project !== defaultProject),
+        ];
+
+        return {
+            hasMenu: true,
+            defaultSlug: defaultProject?.slug || 'menu',
+            projects: orderedProjects
+                .map((project: any) => ({
+                    isDefault: project === defaultProject && project?.isSpecialMenu !== true,
+                    isSpecialMenu: project?.isSpecialMenu === true,
+                    name: project?.isSpecialMenu ? (project?.specialMenuDisplayName || project?.name) : project?.name,
+                    projectId: project?.projectId || 'preview',
+                    projectImage: project?.projectImage || null,
+                    slug: project?.slug || defaultProject?.slug || 'menu',
+                    specialMenuBaseProjectId: project?.specialMenuBaseProjectId,
+                    specialMenuDisplayName: project?.specialMenuDisplayName,
+                }))
+                .filter((project) => project.slug && project.name),
+        };
+    }, [projectsList, selectedProjectId, storeDetails?.activeSpecialMenuId]);
     const officialPageInfoContent = useMemo(() => (
         <Flex gap={8} style={{ maxWidth: 280 }} vertical>
             <Flex gap={2} vertical>
@@ -887,7 +914,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             {previewStoreDetails ? (
                 <MobileOfficialPagePreviewSheet
                     activeLanguage={selectedLanguage}
-                    hasFeedbackTarget={hasFeedbackTarget}
+                    menuInfo={previewMenuInfo}
                     onClose={() => setIsPreviewSheetOpen(false)}
                     storeDetails={previewStoreDetails as any}
                     visible={isPreviewSheetOpen}

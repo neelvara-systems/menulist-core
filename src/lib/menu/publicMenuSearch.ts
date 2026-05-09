@@ -13,6 +13,7 @@ type LocalizedValue = string | Record<string, unknown> | null | undefined;
 export interface PublicMenuSearchDocument {
     text: string;
     tokens: string[];
+    exactPhrases: string[];
 }
 
 export interface PublicMenuSearchQuery {
@@ -20,6 +21,7 @@ export interface PublicMenuSearchQuery {
     text: string;
     tokens: string[];
     tokenVariants: string[][];
+    phrases: string[];
 }
 
 interface PublicMenuBusinessContext {
@@ -492,6 +494,7 @@ export function buildPublicMenuSearchDocument(
     return {
         text: Array.from(textVariants).join(' '),
         tokens: Array.from(tokenVariants).slice(0, MAX_DOC_TOKENS),
+        exactPhrases: Array.from(textVariants),
     };
 }
 
@@ -514,6 +517,7 @@ export function buildPublicMenuSearchQuery(
         text,
         tokens,
         tokenVariants,
+        phrases: textVariants,
     };
 }
 
@@ -584,6 +588,30 @@ export function matchesPublicMenuSearchDocument(
     return query.tokenVariants.every((queryVariants) =>
         tokenMatches(queryVariants, document.tokens, documentTokenSet),
     );
+}
+
+export function rankPublicMenuSearchDocument(
+    document: PublicMenuSearchDocument,
+    query: PublicMenuSearchQuery,
+): number {
+    if (!query.tokens.length) return 0;
+
+    const queryPhrases = query.phrases.length ? query.phrases : [query.text].filter(Boolean);
+    const exactPhrases = document.exactPhrases || [];
+
+    if (queryPhrases.some((queryPhrase) => exactPhrases.some((phrase) => phrase === queryPhrase))) {
+        return 0;
+    }
+
+    if (queryPhrases.some((queryPhrase) => exactPhrases.some((phrase) => phrase.startsWith(queryPhrase)))) {
+        return 1;
+    }
+
+    if (queryPhrases.some((queryPhrase) => document.text.includes(queryPhrase))) {
+        return 2;
+    }
+
+    return 3;
 }
 
 export function attachPublicMenuSearchIndex(

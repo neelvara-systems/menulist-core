@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 8, 2026
+**Last Updated:** May 10, 2026
 
 ---
 
@@ -58,7 +58,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | Instant Availability     | Sold-out items fade instantly                       | ✅     |
 | Time-Based Categories    | Auto-switch by time                                 | ✅     |
 | Multi-language           | Customer language selection                         | ✅     |
-| Fuzzy menu search        | Client-side spelling/phonetic search across localized menu data | ✅     |
+| Fuzzy menu search        | Client-side spelling/phonetic search with exact visible-name matches ranked first | ✅     |
 | Analytics tracking       | Internal + optional GA4/FB Pixel per store          | ✅     |
 | Offline support          | PWA with service worker and no stale menu cache     | ✅     |
 | State persistence        | Scroll, filter preserved                            | ✅     |
@@ -135,6 +135,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
+- The compact top-row language control shows only the language initials; full language names remain inside the language picker.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - The `Sections` navigator header stays compact; close controls keep their tap target without creating a tall heading band.
 - Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
@@ -144,12 +145,15 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and render image frames only when an item has an image.
 - Public image rendering normalizes legacy and current stored image shapes before cards, featured choices, PDP galleries, and metadata read item images.
-- PDP open/close keeps the sticky command row mounted and avoids fixed-body locking at the top of iPhone PWAs, reducing temporary unclickable states after repeated item views.
+- PDP close waits for the item-history back event when the item URL was pushed, then forces a targeted sticky command-row repaint after scroll lock is released so iPhone PWAs do not leave stale hidden or unclickable controls at the top of the menu.
 - Large PDP content stays inside a capped scrollable modal/sheet, and the close control remains reachable while the item detail content scrolls.
 - Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, and owner-enabled category identity.
 - Back-to-top is isolated from item cards underneath it; it scrolls only on completed tap/click and does not trigger PDP for the covered item.
 - Footer business actions use compact icon/text chips while keeping platform attribution quiet.
-- Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution`.
+- The common Call / WhatsApp / Directions set stays in one compact row; extra actions can wrap instead of crowding.
+- Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution` and uses the same compact `Powered by MenuList. All rights reserved` treatment as other public pages.
+- Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
+- Compact multi-language payloads preserve the resolved initial render language description, not just the raw query language, so menus that default to English keep English descriptions on first load.
 
 ---
 
@@ -157,6 +161,9 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-10 | Public menu hardening: exact visible-name search ranking, project-scoped language persistence, compact top language button, single-row primary footer actions, centered special note, and aligned MenuList attribution |
+| 2026-05-10 | Multi-language payload hardening: compact public menus now preserve the resolved initial render language description when no `?lang=` query is present |
+| 2026-05-10 | PDP close path hardened for top-of-menu iPhone/PWA cases by letting history back close the modal and then repainting the sticky command row after scroll lock releases |
 | 2026-05-09 | Sections popup header height reduced while preserving the close tap target |
 | 2026-05-09 | Expanded sticky search now removes the parent flex gap while side controls are hidden, so no right-side spacing artifact remains |
 | 2026-05-09 | Public menu analytics now bypasses the authenticated DAL wrapper and writes through the local coalescing queue first |
@@ -189,4 +196,4 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 ---
 
-_Documentation Index — Last Updated: May 7, 2026_
+_Documentation Index — Last Updated: May 10, 2026_
