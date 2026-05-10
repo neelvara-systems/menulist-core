@@ -49,6 +49,10 @@ Final public search UX pass:
 
 - Browser-tested `http://mysalon.menulist.ai:4014/bar-menu` with tenant host routing.
 - Query `chay` returned `Chai` and `Masala chai` only after the fuzzy false-positive guard; `French omelette` no longer matched that phonetic query.
+- Query `chaisssss` returns the chai items through repeated-letter/plural recovery, without matching unrelated `choice`, `cheese`, or generic `tea` description text.
+- Query `chaies` returns chai items through bounded plural recovery, without matching unrelated egg or appam items.
+- Query `c` does not activate filtering and does not show a hard no-result state.
+- Query `11` finds `Irish coffee (available after 11am)` through numeric prefix matching against the `11am` token without matching unrelated numeric price tokens such as `115`.
 - Query `zzzzzz` showed the recovery empty state with `Show all`, section jump buttons, and business action fallbacks.
 - Search mode hides recommendation blocks and feedback nudge so results stay focused.
 - Active category styling is suppressed while search is active; section/category clicks from search clear the query, wait for full content to render, and then scroll to the selected section.

@@ -89,15 +89,16 @@ ChatGPT had zero awareness of these built features:
 4. InteractiveWorkflow  — How it works (moved UP from #10)
 5. PreparedForYou       — Everything prepared for you (unique features)
 6. SurfacesSection      — Where it appears
-7. SmartFeatures        — Stays correct automatically
-8. StatsSection         — Proof by numbers
-9. BusinessSection      — For serious businesses
-10. IndustrySection     — Who it's for (12 types)
-11. FaqSection          — Questions answered
-12. FinalCtaSection     — Close with transformation CTA
+7. CustomerBrowse       — Customer-facing menu browsing proof
+8. SmartFeatures        — Stays correct automatically
+9. StatsSection         — Proof by numbers
+10. BusinessSection     — For serious businesses
+11. IndustrySection     — Who it's for (12 types)
+12. FaqSection          — Questions answered
+13. FinalCtaSection     — Close with transformation CTA
 ```
 
-**Rationale:** After showing the transformation (Hero → Problem → Solution), immediately prove it works (Workflow). Then show unique capabilities (Prepared), distribution (Surfaces), and trust signals (Stats, Business, Industry).
+**Rationale:** After showing the transformation (Hero → Problem → Solution), immediately prove it works (Workflow). Then show unique capabilities (Prepared), distribution (Surfaces), customer-facing browsing quality (CustomerBrowse), and trust signals (SmartFeatures, Stats, Business, Industry).
 
 ---
 
@@ -154,6 +155,16 @@ ChatGPT had zero awareness of these built features:
 
 **New title:** "After you publish, the system handles the rest."
 **Rationale:** SmartFeatures was the thinnest homepage section. Now it's the "post-publish value" section — answering "what happens after you go live?" Transformation narrative: you publish → system handles everything.
+
+### CustomerBrowse (ADDED — v2.6 May 2026)
+
+**New section:** "Customers find what they want faster."
+
+- Placed after SurfacesSection so it answers what happens when customers actually open the menu.
+- Sells the customer-facing experience without exposing implementation details such as sticky command layers, modal portals, or smooth-scroll mechanics.
+- Proof points: search stays accessible, sections keep large menus browsable, language switching belongs inside the menu, and trust signals stay visible while customers browse.
+
+**Rationale:** The homepage already proves MenuList can publish a menu everywhere. This section proves the public menu itself helps customers browse, trust, and decide faster, which separates MenuList from basic QR menu tools.
 
 ### Sections UNCHANGED (content preserved)
 

@@ -16,6 +16,7 @@ These values are used by:
 - `src/constants/urls.ts`
 - Domain/subdomain settings UI labels
 - Share/feedback/screen URL generation
+- Cloud Functions server-to-server public cache revalidation
 
 ---
 
@@ -24,6 +25,15 @@ These values are used by:
 - `NEXT_PUBLIC_PLATFORM_DOMAIN`
 - `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`
 - `NEXT_PUBLIC_APP_URL`
+
+## Public Cache Revalidation
+
+Owner saves made from the app invalidate public menu/OBP cache through the same-origin `/api/revalidate/menu` route using the owner's authenticated session. Cloud Functions cannot use that browser session and cannot call `revalidateTag()` directly because the cache lives in the Next.js runtime. For direct Cloud Function writes, configure:
+
+- `NEXT_PUBLIC_APP_URL` in the Firebase Functions environment so Functions can reach the correct Next.js app origin.
+- `REVALIDATION_SECRET` in both Vercel and Firebase Secret Manager with the same value. Vercel uses it to authorize `/api/revalidate/menu`; Firebase Functions sends it in the `x-revalidate-secret` header.
+
+No other app URL variables are required for this path.
 
 ---
 

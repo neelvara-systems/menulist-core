@@ -29,6 +29,7 @@ export interface ProcessMenuImagesRequest {
     projectId?: string;
     fileId?: string;
     action?: string;
+    businessCategory?: string;
     businessType?: string;
 }
 
@@ -61,6 +62,9 @@ export interface MenuItem {
     categoryId: string;
     attributes?: MenuItemAttribute[];
     tags?: string[];
+    dietaryTags?: string[];
+    spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
+    duration?: number;
     confidence?: ExtractionConfidence;  // Infrastructure Compounding 10.1
 }
 
@@ -71,10 +75,19 @@ export interface MenuCategory {
     icon?: string;
 }
 
+export interface BusinessAttributeSuggestion {
+    key: string;
+    value: true;
+    confidence?: 'high' | 'medium' | 'low';
+    evidence?: string;
+    sourceFileIndex?: number;
+}
+
 export interface ExtractedMenuData {
     languages: MenuLanguage[];
     categories: MenuCategory[];
     items: MenuItem[];
+    businessAttributeSuggestions?: BusinessAttributeSuggestion[];
     fileMessages?: FileMessage[]; // Per-file warnings/errors from AI (Section 8.14)
 }
 

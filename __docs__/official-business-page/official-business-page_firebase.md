@@ -9,8 +9,8 @@
 
 - **Collections Used:** `stores` (existing), `analytics` (existing — OBP uses virtual `projectId='obp'`)
 - **Storage Buckets:** Firebase Storage for optional OBP cover and gallery photos through the shared media system
-- **Cloud Functions:** Shared nightly scheduler `computeDecisionBlocksScores` runs the OBP rollup helper
-- **Estimated Monthly Cost:** Negligible (~₹2-5/month per 1000 active stores including analytics)
+- **Cloud Functions:** Shared nightly scheduler `computeDecisionBlocksScores` runs the OBP rollup helper. First menu extraction also applies missing OBP business attribute defaults when evidence is high-confidence.
+- **Estimated Monthly Cost:** Negligible (~₹150/month per 1000 active stores under the traffic assumptions below). Extraction-derived attribute defaults add only a bounded one-read/optional-one-write path per applicable extraction.
 
 ---
 
@@ -30,7 +30,7 @@
 ### Writes
 
 | Operation              | Collection  | Trigger                                  | Frequency                   | Docs Written | Fields       | Notes                                                                                                                         |
-| ---------------------- | ----------- | ---------------------------------------- | --------------------------- | ------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
+| ---------------------- | ----------- | ---------------------------------------- | --------------------------- | ------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | Save OBP settings      | `stores`    | Owner updates Business Profile           | Rare (once then occasional) | 1            | merge update | Uses existing `updateStore()` DAL — `requestBodyComposer` adds timestamps                                                     |
 | Track OBP page view    | `analytics` | Customer visits OBP URL                  | Per visit (rate-limited)    | 1            | merge update | Daily doc: `{tId}_{sId}_obp_daily_{date}`. Uses `increment()` for atomic counters and includes `tId`, `sId`, `projectId`, `grain`, `surface`, `localDate`, `storeTimeZone` metadata in the same write. Rate-limited: 30s cooldown, 30 events/min. |
 | Track OBP action click | `analytics` | Customer clicks Call/WhatsApp/Directions/Reserve/Order | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `obpActionClicks.{call,whatsapp,directions,reserve,order}`. 1s debounce. |
@@ -38,6 +38,7 @@
 | Track OBP link click | `analytics` | Customer clicks Google review, Instagram, Facebook, or website from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPLinkClicks` and `obpLinkClicks.{google_review,instagram,facebook,website}`. |
 | Track OBP share action | `analytics` | Owner shares official business link from settings | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPShares` and `obpShares.{whatsapp,copy_link,copy_message}`. |
 | Track OBP language adoption | `analytics` | Customer switches language on a multi-language OBP and stays after the dwell window | Per accepted switch | 1 | merge update | Same daily doc. Tracks `obpLanguageAdoptions.{language}`. Single-language OBPs do not track language usage. Quick taps before dwell are ignored. |
+| Apply extraction-derived business attribute defaults | `stores` | First extraction auto-save or owner-approved re-extraction | Once per applicable extraction | 0-1 | merge update | Only fills missing `businessAttributes` keys. Existing owner-set `true`/`false` values are never overwritten. First extraction runs in Cloud Functions; re-extraction approval runs through desktop/mobile client paths. |
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
 
@@ -65,6 +66,7 @@
 | Function                            | Trigger                         | Reads                                                                      | Writes                                       | Notes                                                                                                                                                                                                                                           |
 | ----------------------------------- | ------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `aggregateOBPAnalyticsForStoreDate` (via `computeDecisionBlocksScores`) | Shared timezone-aware nightly store flow | Steady state: existing OBP dashboard-summary cache + settled daily doc. Rebuild fallback: OBP daily-doc range query when cache coverage is missing. | Weekly/monthly/summary/dashboard-summary docs only when data exists | OBP is settled first for the store-local date. Menu/customer-app analytics run only after OBP succeeds for that same date. Weekly, previous-week, MTD, yesterday, and dashboard-summary calculations reuse the compact cache in normal operation. The next run checks the previously settled local date for late passive writes and applies positive deltas. Writes `_obp_weekly_{week}`, `_obp_monthly_{month}`, `_obp_overall_summary`, and `_obp_dashboard_summary`. Flag: `ENABLE_OBP_ANALYTICS`. |
+| `processMenuImagesJobLogic` | First menu extraction job | Existing extraction/project reads plus 1 `stores/{storeId}` read only when defaults are evaluated | 1 project write; optional 1 store write | Auto-saves first extraction output, then applies missing OBP business attribute defaults from high-confidence `businessAttributeSuggestions` and deterministic dietary tags. Uses the existing `/api/revalidate/menu` endpoint for `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` tags when `NEXT_PUBLIC_APP_URL` and `REVALIDATION_SECRET` are configured in the Functions environment. |
 
 **Settlement state:** The shared scheduler stores per-store status in `platformSummary/nightlyState_{tId}_{sId}` and a per-date lock in `platformSummary/nightlyLock_{tId}_{sId}_{YYYY-MM-DD}`. This prevents duplicate runs and allows missed store-local dates to be caught up safely.
 
@@ -103,6 +105,7 @@
 - **One OBP nightly daily-range read:** OBP settlement fetches the required daily window once and reuses it in memory for weekly, monthly, lifetime, and dashboard-summary outputs.
 - **Server component:** No client-side Firestore SDK loaded
 - **Idempotent nightly summary:** Lifetime summary counters only advance when the settlement date is newer than `lastProcessedDate`.
+- **Extraction defaults are bounded:** Attribute defaulting reads the store once and writes only when at least one missing attribute can be safely filled.
 
 ### Potential Future Optimizations
 
@@ -112,7 +115,7 @@
 
 ### Warnings
 
-- None. This feature has the lowest Firebase cost profile of any customer-facing surface.
+- Cloud Functions cache revalidation depends on `REVALIDATION_SECRET` plus `NEXT_PUBLIC_APP_URL`. These are deployment environment values, not owner-facing feature flags. `REVALIDATION_SECRET` authorizes the server-to-server purge request, and `NEXT_PUBLIC_APP_URL` tells Firebase Functions which Next.js runtime owns `/api/revalidate/menu`. If either value is missing, first-extraction project/store changes still persist, but public pages may wait for normal cache expiry instead of instant tag revalidation.
 
 ---
 

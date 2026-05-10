@@ -74,12 +74,13 @@ function findFileIndexByUid(
 }
 
 function getMenuDataFromFiles(files: any[]) {
-    return files.reduce<{ categories: any[]; items: any[] }>((menuData, file) => {
+    return files.reduce<{ businessAttributeSuggestions: any[]; categories: any[]; items: any[] }>((menuData, file) => {
         const data = file?.extractedData?.data || {};
+        if (Array.isArray(data.businessAttributeSuggestions)) menuData.businessAttributeSuggestions.push(...data.businessAttributeSuggestions);
         if (Array.isArray(data.categories)) menuData.categories.push(...data.categories);
         if (Array.isArray(data.items)) menuData.items.push(...data.items);
         return menuData;
-    }, { categories: [], items: [] });
+    }, { businessAttributeSuggestions: [], categories: [], items: [] });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

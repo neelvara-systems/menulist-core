@@ -13,7 +13,7 @@
 import { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { FirestoreEvent, onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
-import { FUNCTION_OPTIONS } from '../config/secrets';
+import { FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { finalizePublishLogic } from '../logic/finalizePublish';
 import { processMenuImagesJobLogic } from '../logic/processMenuImagesJob';
 import { startGenerationLogic } from '../logic/startGeneration';
@@ -68,7 +68,14 @@ export const finalizePublish = onDocumentUpdated(
 
 // Menu Image Processing: Triggered when a new processing job doc is created
 export const processMenuImagesJob = onDocumentCreated(
-    { ...FUNCTION_OPTIONS.aiParallel, document: `${MENU_IMAGE_PROCESSING_JOBS_COLLECTION}/{jobId}` },
+    {
+        ...FUNCTION_OPTIONS.aiParallel,
+        secrets: [
+            ...FUNCTION_OPTIONS.aiParallel.secrets,
+            ...SECRET_GROUPS.PUBLIC_CACHE_REVALIDATION,
+        ],
+        document: `${MENU_IMAGE_PROCESSING_JOBS_COLLECTION}/{jobId}`,
+    },
     async (event: FirestoreEvent<QueryDocumentSnapshot | undefined, { jobId: string }>) => {
         const logger = functions.logger;
         const snap = event.data;

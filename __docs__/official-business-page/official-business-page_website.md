@@ -23,11 +23,11 @@ When customers ask for your menu, you dig through photos, PDFs, and links. They 
 
 ## Solution Statement
 
-MenuList creates one official page for your business. It shows your menu, hours, location, and contact details in one clean link. Share it everywhere — it stays accurate automatically.
+MenuList creates one official page for your business. It shows your menu, hours, location, Google rating, photos, social links, service options, payment methods, and contact actions in one clean link. Share it everywhere — it stays accurate automatically.
 
 ---
 
-## Feature Benefits (6 blocks)
+## Feature Benefits (7 blocks)
 
 ### 1. One Link Replaces Everything
 
@@ -55,11 +55,17 @@ Customers tap "View Menu" to see your full digital menu with items, prices, and 
 
 ### 5. Trust Built In
 
-Your Google rating, business photos, and verified hours appear automatically. Customers trust your page before they even visit. No fake reviews — just real signals.
+Your Google rating, business photos, open status, verified page signal, service options, payment methods, and customer actions appear in one place. Customers trust your page before they call, message, or visit. No fake reviews — just real signals.
 
-**Visual:** OBP page showing "4.5 ★ on Google (320)" + 3 business photos
+**Visual:** OBP page showing "Official Page", "4.5 ★ on Google (320)", service options, and business photos
 
-### 6. Two QR Codes — Share or Dine
+### 6. Built for Discovery
+
+Your official page carries structured business details like services, amenities, payment methods, dietary options, business type, language, and menu links. Customers can read it quickly, and search/discovery systems can understand what your business offers.
+
+**Visual:** OBP detail cards showing services, payments, dietary options, amenities, and social links
+
+### 7. Two QR Codes — Share or Dine
 
 Download a Share QR for Instagram bio and packaging, or a Menu QR for table tents. Each goes exactly where customers expect.
 
@@ -92,7 +98,7 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
   **A:** Your official page is included with every MenuList account. No extra charge.
 
 - **Q:** Can I customize the design?
-  **A:** You can update your logo, photos, contact details, Google review link, and accent color. The design stays clean and consistent so customers always get a fast, reliable experience.
+  **A:** You can update your logo, photos, contact details, Google review link, social links, business attributes, special note, and accent color. The design stays clean and consistent so customers always get a fast, reliable experience.
 
 - **Q:** What if I don't have a menu ready yet?
   **A:** Your page still works. It shows your business name, contact info, and a "Menu coming soon" message. You can start sharing the link immediately.
@@ -138,4 +144,4 @@ Download a Share QR for Instagram bio and packaging, or a Menu QR for table tent
 
 ---
 
-**Last Updated:** March 11, 2026
+**Last Updated:** May 10, 2026

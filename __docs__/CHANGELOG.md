@@ -8,12 +8,19 @@
 
 ## May 10, 2026 — Client Menu: Public Hardening Pass
 
+### Changed
+
+- **Main website trust copy aligned** — Homepage and feature copy now reflects the current public menu and Official Page customer proof: open status, recent updates, search/sections, photos, and clear Call / WhatsApp / Directions actions.
+
 ### Fixed
 
 - **Top-of-menu PDP close stability improved** — Item details opened from featured choices now close through the item history state without sticky-row repaint side effects, reducing the iPhone/PWA case where search and category controls stayed hidden or unclickable until the next scroll.
 - **Featured PDP close no longer moves category tabs** — Closing a featured item detail no longer remounts the sticky command row or dispatches synthetic scroll events, so the horizontal category rail stays where the customer left it.
-- **Sticky search row scroll jitter reduced** — The public menu sticky command row no longer uses compositor transform hints, and scroll-spy category updates are frame-throttled so the row does not repaint on every raw scroll event.
+- **Sticky search row scroll jitter reduced** — The public menu sticky command row no longer uses compositor transform hints, scroll-spy category updates are frame-throttled, and mobile keeps the sticky anchor at `top: 0` with internal safe-area padding so iPhone Chrome/PWA scrolling does not pull the row down and snap it back.
 - **Public menu search made stricter** — Short-token matching now avoids broad substring, broad Indic sentence transliteration, and category-leaking synonym matches, so service menus no longer return unrelated food searches such as `chai`.
+- **Public menu search false positives reduced** — One-character input no longer triggers a hard empty state, and chai-style typo recovery no longer matches unrelated `choice`, `cheese`, or generic `tea` description text.
+- **Public menu numeric search restored** — Two-character numeric queries now prefix-match alphanumeric tokens, so searching `11` finds item names like `Irish coffee (available after 11am)` without matching unrelated prices such as `115`.
+- **Deep-scroll search positioning fixed** — Starting a search while scrolled lower in the menu now brings the search result area back under the sticky command row instead of leaving filtered output outside the current viewport.
 - **Public menu touch behavior tightened** — Client menu pages now lock mobile pinch zoom, suppress text selection on menu/category controls, and keep footer/business content selectable.
 - **Logo and attribution treatment aligned** — Menu and OBP logos render without an extra wrapper border, feedback pages use only the shared public attribution, and digital screens now show the same quiet `Powered by MenuList. All rights reserved` line.
 - **Installed PWA language bleed fixed** — Public menu page, language, and scroll state now use store/project-scoped keys, and the menu language switcher ignores the old global language preference key.
@@ -21,6 +28,7 @@
 - **Exact search matches rank first** — Customer search now keeps exact visible item-name matches above partial, fuzzy, metadata, and description matches while preserving menu order for ties.
 - **Public footer and note alignment tightened** — Menu special notes center in the trust zone, the common Call / WhatsApp / Directions actions stay in one compact row, and menu attribution matches the compact OBP `Powered by MenuList. All rights reserved` treatment.
 - **Top language control compacted** — The sticky command-row language button now shows only the language initials; full language names remain inside the picker.
+- **Desktop menu polish tightened** — Featured choices now use a desktop grid instead of mobile scroller widths, and footer contact actions render as compact centered chips instead of stretching across the full card.
 
 ## May 9, 2026 — Media Image System
 

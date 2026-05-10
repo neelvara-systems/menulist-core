@@ -71,7 +71,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (12 sections, in order)
+## 4. Homepage Sections (13 sections, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -83,12 +83,13 @@ LocalisationProvider (locale from next-intl/server)
 | 4 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
 | 5 | Prepared For You | `PreparedForYouSection.tsx` |
 | 6 | Surfaces | `SurfacesSection.tsx` |
-| 7 | Smart Features | `SmartFeaturesSection.tsx` |
-| 8 | Stats | `StatsSection.tsx` |
-| 9 | Business | `BusinessSection.tsx` |
-| 10 | Industry | `IndustrySection.tsx` |
-| 11 | FAQ | `FaqSection.tsx` |
-| 12 | Final CTA | `FinalCtaSection.tsx` |
+| 7 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 8 | Smart Features | `SmartFeaturesSection.tsx` |
+| 9 | Stats | `StatsSection.tsx` |
+| 10 | Business | `BusinessSection.tsx` |
+| 11 | Industry | `IndustrySection.tsx` |
+| 12 | FAQ | `FaqSection.tsx` |
+| 13 | Final CTA | `FinalCtaSection.tsx` |
 
 **Dead code:** `HowItWorksSection.tsx` exists in `home/` but is NOT imported by `HomePage.tsx`. It was replaced by `InteractiveWorkflowSection.tsx` in v2.
 
@@ -103,7 +104,7 @@ src/components/website/
 ├── SchemaMarkup.tsx            — Homepage JSON-LD schema
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
-├── home/                       — 12 homepage sections + 1 dead file
+├── home/                       — 13 homepage sections + 1 dead file
 ├── about/AboutPage.tsx         — About page
 ├── contact/ContactPage.tsx     — Contact page
 ├── features/FeaturesPage.tsx   — Features page

@@ -1,19 +1,21 @@
-import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import * as functions from 'firebase-functions';
+import { DB_COLLECTIONS } from '../constants/database';
+import { firestoreAdmin } from '../firebaseAdmin';
 import {
     getAllowedBusinessAttributeKeysForCategory,
     getDietaryTagToBusinessAttributeMapForCategory,
     normalizeBusinessAttributeInferenceKey,
-} from '@data/shared/businessAttributeInference';
-import { matchDietaryTags } from '@lib/infrastructure/taxonomy/matcher';
+} from '../sharedData/businessAttributeInference';
+import { resolveBusinessCategory } from '../sharedData/businessTypes';
+import { revalidatePublicClientCacheForStore } from './publicCacheRevalidation';
 
 type BusinessAttributes = Record<string, boolean | undefined>;
 type BusinessAttributeSuggestionConfidence = 'high' | 'medium' | 'low';
 
-interface BusinessAttributeSuggestionLike {
-    key?: unknown;
-    value?: unknown;
-    confidence?: unknown;
-    evidence?: unknown;
+interface StoreLike {
+    businessAttributes?: BusinessAttributes;
+    businessCategory?: string;
+    businessType?: string;
 }
 
 interface MenuDataLike {
@@ -21,10 +23,10 @@ interface MenuDataLike {
     items?: any[];
 }
 
-interface StoreLike {
-    businessAttributes?: BusinessAttributes;
-    businessCategory?: string;
-    businessType?: string;
+interface BusinessAttributeSuggestionLike {
+    key?: unknown;
+    value?: unknown;
+    confidence?: unknown;
 }
 
 function collectTextValues(value: unknown): string[] {
@@ -43,15 +45,6 @@ function collectItemDietarySignals(item: any): string[] {
         ...collectTextValues(item?.dietaryTags),
         ...collectTextValues(item?.decisionFacts?.dietaryTags?.value),
     ];
-}
-
-function getAllowedAttributeKeys(store: StoreLike | null | undefined): Set<string> {
-    const category = resolveBusinessCategory(store?.businessType, store?.businessCategory);
-    return new Set(getAllowedBusinessAttributeKeysForCategory(category));
-}
-
-function normalizeAttributeKey(rawKey: unknown, allowedKeys: Set<string>): string | null {
-    return normalizeBusinessAttributeInferenceKey(rawKey, allowedKeys) || null;
 }
 
 function normalizeSuggestionConfidence(value: unknown): BusinessAttributeSuggestionConfidence | null {
@@ -73,16 +66,16 @@ function collectBusinessAttributeSuggestions(
     suggestions: unknown,
     allowedKeys: Set<string>,
 ): BusinessAttributes {
-    const nextAttributes: BusinessAttributes = {};
+    const attributes: BusinessAttributes = {};
 
     const applySuggestion = (rawKey: unknown, rawValue: unknown, rawConfidence?: unknown) => {
-        const attributeKey = normalizeAttributeKey(rawKey, allowedKeys);
+        const attributeKey = normalizeBusinessAttributeInferenceKey(rawKey, allowedKeys);
         if (!attributeKey || !isAffirmativeSuggestionValue(rawValue)) return;
 
         const confidence = normalizeSuggestionConfidence(rawConfidence);
         if (confidence !== 'high') return;
 
-        nextAttributes[attributeKey] = true;
+        attributes[attributeKey] = true;
     };
 
     if (Array.isArray(suggestions)) {
@@ -93,7 +86,7 @@ function collectBusinessAttributeSuggestions(
             if (!entry) return;
             applySuggestion(entry.key, entry.value, entry.confidence);
         });
-        return nextAttributes;
+        return attributes;
     }
 
     if (suggestions && typeof suggestions === 'object') {
@@ -107,41 +100,54 @@ function collectBusinessAttributeSuggestions(
         });
     }
 
-    return nextAttributes;
+    return attributes;
 }
 
-export function inferBusinessAttributesFromMenuData(
+function normalizeDietaryTagCandidates(value: string): string[] {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return [];
+
+    return Array.from(new Set([
+        normalized,
+        normalized.replace(/\s+/g, '_'),
+        normalized.replace(/\s+/g, '-'),
+        normalized.replace(/[^a-z0-9]+/g, ''),
+    ]));
+}
+
+function inferBusinessAttributesForStore(
     menuData: MenuDataLike | null | undefined,
     store: StoreLike | null | undefined,
 ): BusinessAttributes {
-    const allowedKeys = getAllowedAttributeKeys(store);
+    const category = resolveBusinessCategory(store?.businessType, store?.businessCategory);
+    const allowedKeys = new Set(getAllowedBusinessAttributeKeysForCategory(category));
     if (allowedKeys.size === 0) return {};
 
     const attributes = collectBusinessAttributeSuggestions(
         menuData?.businessAttributeSuggestions,
         allowedKeys,
     );
-    const itemTags = (menuData?.items || []).flatMap(collectItemDietarySignals);
-    if (itemTags.length === 0) return attributes;
 
-    const category = resolveBusinessCategory(store?.businessType, store?.businessCategory);
     const dietaryTagAttributeMap = getDietaryTagToBusinessAttributeMapForCategory(category);
     if (Object.keys(dietaryTagAttributeMap).length === 0) return attributes;
-    const matchedTags = matchDietaryTags(itemTags).matchedTags;
-    return matchedTags.reduce<BusinessAttributes>((nextAttributes, tag) => {
-        const attributeKey = dietaryTagAttributeMap[tag];
-        if (attributeKey) {
-            nextAttributes[attributeKey] = true;
-        }
-        return nextAttributes;
-    }, attributes);
+
+    (menuData?.items || []).flatMap(collectItemDietarySignals).forEach((tag) => {
+        normalizeDietaryTagCandidates(String(tag || '')).some((candidate) => {
+            const attributeKey = dietaryTagAttributeMap[candidate];
+            if (!attributeKey) return false;
+            attributes[attributeKey] = true;
+            return true;
+        });
+    });
+
+    return attributes;
 }
 
-export function getBusinessAttributesWithMenuDefaults(
+function getBusinessAttributesWithMenuDefaults(
     menuData: MenuDataLike | null | undefined,
     store: StoreLike | null | undefined,
 ): BusinessAttributes | null {
-    const inferredAttributes = inferBusinessAttributesFromMenuData(menuData, store);
+    const inferredAttributes = inferBusinessAttributesForStore(menuData, store);
     const existingAttributes = store?.businessAttributes || {};
     const nextAttributes: BusinessAttributes = { ...existingAttributes };
     let changed = false;
@@ -154,4 +160,34 @@ export function getBusinessAttributesWithMenuDefaults(
     });
 
     return changed ? nextAttributes : null;
+}
+
+export async function applyMenuDerivedBusinessAttributeDefaultsForStore(params: {
+    context: string;
+    menuData: MenuDataLike | null | undefined;
+    storeId: string | number;
+}): Promise<boolean> {
+    const storeId = String(params.storeId || '').trim();
+    if (!storeId) return false;
+
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId);
+    const storeSnap = await storeRef.get();
+    if (!storeSnap.exists) return false;
+
+    const storeData = storeSnap.data() as StoreLike;
+    const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(params.menuData, storeData);
+    if (!nextBusinessAttributes) return false;
+
+    await storeRef.update({ businessAttributes: nextBusinessAttributes });
+    await revalidatePublicClientCacheForStore(storeId, params.context);
+
+    functions.logger.info('[businessAttributeDefaults] Applied menu-derived business attribute defaults', {
+        storeId,
+        context: params.context,
+        appliedKeys: Object.keys(nextBusinessAttributes).filter((key) => (
+            nextBusinessAttributes[key] === true && storeData.businessAttributes?.[key] !== true
+        )),
+    });
+
+    return true;
 }

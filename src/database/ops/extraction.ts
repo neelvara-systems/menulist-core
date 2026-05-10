@@ -393,6 +393,7 @@ export async function retryExtractionJob(jobId: string): Promise<string> {
         })),
         targetLanguages: data.targetLanguages || [{ code: 'en', name: 'English' }],
         action: data.action || 'IMAGE_PROCESSING',
+        businessCategory: data.businessCategory,
         businessType: data.businessType,
         jobMode: data.jobMode || 'SINGLE_STORE',
         retriedFromJobId: jobId,

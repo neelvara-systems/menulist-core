@@ -64,6 +64,7 @@ export interface MenuImageProcessingJob {
         name: string;
     }[];
     action?: string;
+    businessCategory?: string;
     businessType?: string;
 
     // ─────────────────────────────────────────────────────────────
@@ -91,12 +92,22 @@ export interface MenuImageProcessingJob {
                     price?: string;
                 }>;
                 tags?: string[] | Record<string, string>;
+                dietaryTags?: string[];
+                spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
+                duration?: number;
                 active?: boolean;
             }>;
             languages: Array<{
                 name: string;
                 code: string;
                 isPrimary?: boolean;
+            }>;
+            businessAttributeSuggestions?: Array<{
+                key: string;
+                value: true;
+                confidence?: 'high' | 'medium' | 'low';
+                evidence?: string;
+                sourceFileIndex?: number;
             }>;
             fileMessages?: FileMessage[];
         };

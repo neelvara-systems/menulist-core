@@ -94,6 +94,9 @@ interface RawItemFromAI {
     price?: string | number; // AI may return number (e.g., 300) or string (e.g., "300")
     attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number; active?: boolean }> | Record<string, any>;
     tags?: string[] | Record<string, string>;
+    dietaryTags?: string[];
+    spiceLevel?: string;
+    duration?: number;
     active?: boolean;
     sourceFileIndex?: number;
 }
@@ -104,6 +107,13 @@ export interface CombinedAIResponse {
         languages?: Array<{ name: string; code: string; isPrimary?: boolean }>;
         categories?: CategoryWithSource[];
         items?: RawItemFromAI[];
+        businessAttributeSuggestions?: Array<{
+            key: string;
+            value: true;
+            confidence?: 'high' | 'medium' | 'low';
+            evidence?: string;
+            sourceFileIndex?: number;
+        }>;
         fileMessages?: FileMessage[]; // Per-file warnings/errors from AI (Section 8.14)
     };
     qualityScore?: number;

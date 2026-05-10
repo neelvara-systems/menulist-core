@@ -187,6 +187,7 @@ function MenuPageNew({
     const { trackMenuItemTap } = useContext(AnalyticsContext);
     const isPublicSurface = from === 'main-website';
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const searchResultsAnchorRef = useRef<HTMLDivElement | null>(null);
     const categoryTabsContainerRef = useRef<HTMLDivElement | null>(null);
     const categoryTabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
     const activeCategoryIdRef = useRef<string | null>(null);
@@ -259,6 +260,10 @@ function MenuPageNew({
     const getMenuText = useCallback(
         (value: unknown, fallback = '') => getLocalizedText(value as any, activeLanguage, primaryLanguage, fallback),
         [activeLanguage, primaryLanguage],
+    );
+    const getMenuAnalyticsText = useCallback(
+        (value: unknown, fallback = '') => getLocalizedText(value as any, primaryLanguage, primaryLanguage, fallback),
+        [primaryLanguage],
     );
     const publicMenuSpecialNote = useMemo(
         () => getPublicMenuSpecialNote({
@@ -555,7 +560,8 @@ function MenuPageNew({
     const showTabsBar = !isDesktop && showCategoryTabs;
     const showSectionsControl = !isDesktop && allCategories.length >= 2;
     const stickyControlsTopBuffer = isDesktop ? 0 : 8;
-    const stickyControlsTopOffset = stickyControlsTopBuffer
+    const stickyControlsTopOffset = 0;
+    const stickyControlsTopPadding = stickyControlsTopBuffer
         ? `calc(${stickyControlsTopBuffer}px + env(safe-area-inset-top))`
         : 0;
     const stickyControlsOffset = isDesktop ? 96 : (showTabsBar ? 124 : 76) + stickyControlsTopBuffer;
@@ -671,6 +677,14 @@ function MenuPageNew({
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    const normalizedDebouncedSearch = useMemo(
+        () => normalizePublicMenuSearchText(debouncedSearch),
+        [debouncedSearch],
+    );
+    const isSearchInputActive = debouncedSearch.trim().length > 0;
+    const isSearchFilteringActive = normalizedDebouncedSearch.length >= 2;
+    const searchHighlightTerm = isSearchFilteringActive ? debouncedSearch : '';
+
     // Get all items from project files
     const allItems = useMemo(() => {
         return projectData?.files?.flatMap(file =>
@@ -724,7 +738,7 @@ function MenuPageNew({
     // Filter items by search term and active filter
     const filteredItems = useMemo(() => {
         let items = visibleItems;
-        const query = debouncedSearch
+        const query = isSearchFilteringActive
             ? buildPublicMenuSearchQuery(debouncedSearch, {
                 businessType: effectiveBusinessType,
                 businessCategory: storeDetails?.businessCategory,
@@ -732,7 +746,7 @@ function MenuPageNew({
             : null;
 
         // Apply search filter
-        if (debouncedSearch && query) {
+        if (isSearchFilteringActive && query) {
             if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION) {
                 items = items.filter((item: any) => {
                     const document = searchDocumentsByItem.get(item);
@@ -759,7 +773,7 @@ function MenuPageNew({
         }
 
         if (query && FEATURE_FLAGS.ENABLE_PUBLIC_MENU_RETRIEVAL_FOUNDATION && items.length > 1) {
-            const normalizedQueryText = normalizePublicMenuSearchText(debouncedSearch);
+            const normalizedQueryText = normalizedDebouncedSearch;
             const getVisibleNameRank = (item: any): number => {
                 const visibleName = normalizePublicMenuSearchText(getMenuText(item.name));
                 if (!visibleName || !normalizedQueryText) return 9;
@@ -784,12 +798,12 @@ function MenuPageNew({
         }
 
         return items;
-    }, [visibleItems, debouncedSearch, getMenuText, activeFilter, searchDocumentsByItem, effectiveBusinessType, storeDetails?.businessCategory, visibleItemOrder]);
+    }, [visibleItems, debouncedSearch, getMenuText, activeFilter, searchDocumentsByItem, effectiveBusinessType, storeDetails?.businessCategory, visibleItemOrder, isSearchFilteringActive, normalizedDebouncedSearch]);
 
     const searchResultSectionCount = useMemo(() => {
-        if (!debouncedSearch) return 0;
+        if (!isSearchFilteringActive) return 0;
         return new Set(filteredItems.map((item: any) => item.category).filter(Boolean)).size;
-    }, [debouncedSearch, filteredItems]);
+    }, [isSearchFilteringActive, filteredItems]);
 
     const getItemDecisionChips = useCallback((item: any) => {
         const chips: Array<{ label: string; tone?: 'neutral' | 'warning' }> = [];
@@ -910,11 +924,17 @@ function MenuPageNew({
             document.activeElement.blur();
         }
         setIsSearchFocused(false);
+        const categoryId = typeof item.category === 'string' ? item.category : '';
+        const category = allCategories.find((cat: any) => cat.id === categoryId);
+        const analyticsCategoryName = getMenuAnalyticsText(category?.name)
+            || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
 
         if (item.available === false) {
             if (analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
-                const itemName = getMenuText(item.name, 'Unavailable Item');
-                void trackUnavailableItemAttempt(item.id, itemName, item.category, {
+                const itemName = getMenuAnalyticsText(item.name, 'Unavailable Item');
+                void trackUnavailableItemAttempt(item.id, itemName, analyticsCategoryName || item.category, {
+                    categoryId,
+                    categoryName: analyticsCategoryName,
                     tenantId: storeDetails.tenantId,
                     storeId: String(storeDetails.storeId),
                     projectId: projectData.projectId,
@@ -928,18 +948,14 @@ function MenuPageNew({
             return;
         }
 
-        const categoryId = typeof item.category === 'string' ? item.category : '';
-        const category = allCategories.find((cat: any) => cat.id === categoryId);
-        const categoryName = getMenuText(category?.name)
-            || (typeof item.category === 'object' ? getMenuText(item.category) : undefined);
-        const trackedItemName = getMenuText(item.name, 'Menu item');
+        const trackedItemName = getMenuAnalyticsText(item.name, 'Menu item');
         if (!previewMode) {
             trackMenuItemTap({
                 itemId: item.id,
                 name: trackedItemName,
-                category: categoryName,
+                category: analyticsCategoryName,
                 categoryId,
-                categoryName,
+                categoryName: analyticsCategoryName,
                 price: showItemPrices
                     ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
                     : undefined,
@@ -967,7 +983,7 @@ function MenuPageNew({
                 `${basePath}/item/${urlSegment}`
             );
         }
-    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuBasePath, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -1114,6 +1130,35 @@ function MenuPageNew({
         container.scrollTo({ left: targetLeft, behavior });
     }, []);
 
+    const scrollSearchResultsIntoView = useCallback((behavior: ScrollBehavior = 'smooth') => {
+        const anchor = searchResultsAnchorRef.current;
+        if (!anchor) return;
+
+        const container = getActiveScrollContainer();
+        const offset = stickyControlsOffset + 12;
+        const anchorRect = anchor.getBoundingClientRect();
+        const viewportTop = container?.getBoundingClientRect().top || 0;
+        const viewportBottom = container?.getBoundingClientRect().bottom || window.innerHeight;
+        const targetTop = viewportTop + offset;
+        const isComfortablyVisible =
+            anchorRect.top >= targetTop &&
+            anchorRect.top <= viewportBottom - 80;
+
+        if (isComfortablyVisible) return;
+
+        if (container) {
+            const containerTop = Math.max(
+                0,
+                container.scrollTop + anchorRect.top - container.getBoundingClientRect().top - offset,
+            );
+            container.scrollTo({ top: containerTop, behavior });
+            return;
+        }
+
+        const documentTop = Math.max(0, window.scrollY + anchorRect.top - offset);
+        window.scrollTo({ top: documentTop, behavior });
+    }, [getActiveScrollContainer, stickyControlsOffset]);
+
     // Handle category selection (scroll to category)
     const handleCategorySelect = useCallback((category: any) => {
         if (category?.id) {
@@ -1153,7 +1198,7 @@ function MenuPageNew({
         handleCategorySelect(category);
     }, [clearSearch, debouncedSearch, handleCategorySelect, searchTerm]);
 
-    const displayActiveCategory = debouncedSearch ? null : activeCategory;
+    const displayActiveCategory = isSearchFilteringActive ? null : activeCategory;
     const activeCategoryTabId = displayActiveCategory?.id;
     const isSearchCommandExpanded = isSearchFocused || Boolean(searchTerm);
     const hasLanguageSwitcher = (projectData.languages?.length || 0) > 1;
@@ -1172,6 +1217,22 @@ function MenuPageNew({
     }, [debouncedSearch, handleCategorySelect, pendingBrowseCategory, searchTerm]);
 
     useEffect(() => {
+        if (!isSearchFilteringActive) return;
+
+        let innerFrame = 0;
+        const outerFrame = window.requestAnimationFrame(() => {
+            innerFrame = window.requestAnimationFrame(() => {
+                scrollSearchResultsIntoView('smooth');
+            });
+        });
+
+        return () => {
+            window.cancelAnimationFrame(outerFrame);
+            if (innerFrame) window.cancelAnimationFrame(innerFrame);
+        };
+    }, [isSearchFilteringActive, normalizedDebouncedSearch, activeFilter, scrollSearchResultsIntoView]);
+
+    useEffect(() => {
         if (isDesktop || !showTabsBar || !activeCategoryTabId) return;
 
         const frame = requestAnimationFrame(() => {
@@ -1183,8 +1244,11 @@ function MenuPageNew({
     }, [activeCategoryTabId, centerCategoryTab, isDesktop, showTabsBar]);
 
     // Styles
+    const publicViewportMinHeight = from === 'main-website'
+        ? (isDesktop ? '100dvh' : '100svh')
+        : 'calc(100dvh - 76px)';
     const containerStyle: React.CSSProperties = {
-        minHeight: previewMode ? '100%' : from === 'main-website' ? '100dvh' : 'calc(100dvh - 76px)',
+        minHeight: previewMode ? '100%' : publicViewportMinHeight,
         height: previewMode ? '100%' : undefined,
         background: backgroundImage
             ? `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url(${backgroundImage}) center/cover no-repeat fixed`
@@ -1220,22 +1284,13 @@ function MenuPageNew({
         top: stickyControlsTopOffset,
         zIndex: 70,
         marginBottom: 16,
-        paddingTop: 0,
+        paddingTop: stickyControlsTopPadding,
         paddingBottom: showTabsBar ? 8 : 8,
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
         userSelect: 'none',
         WebkitUserSelect: 'none',
-    };
-    const stickyControlsTopCoverStyle: React.CSSProperties = {
-        position: 'absolute',
-        top: `calc(-${stickyControlsTopBuffer}px - env(safe-area-inset-top))`,
-        right: 0,
-        left: 0,
-        height: `calc(${stickyControlsTopBuffer}px + env(safe-area-inset-top))`,
-        background: moodConfig.background,
-        pointerEvents: 'none',
     };
     const commandLayerStyle: React.CSSProperties = {
         display: 'flex',
@@ -1497,9 +1552,6 @@ function MenuPageNew({
                     />
                     {/* Sticky command layer: retrieval first, section navigation second */}
                     <div data-menu-sticky-controls style={stickyControlsStyle}>
-                        {stickyControlsTopBuffer > 0 && (
-                            <div aria-hidden="true" style={stickyControlsTopCoverStyle} />
-                        )}
                         <div style={commandLayerStyle}>
                             <MenuSearchBar
                                 searchTerm={searchTerm}
@@ -1621,12 +1673,24 @@ function MenuPageNew({
                         )}
                     </div>
 
+                    <div
+                        ref={searchResultsAnchorRef}
+                        data-menu-search-results-anchor
+                        aria-hidden="true"
+                        style={{
+                            height: 1,
+                            pointerEvents: 'none',
+                            width: 1,
+                        }}
+                    />
+
                     {/* Decision Blocks - Recommendation section at top of menu */}
-                    {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS && !debouncedSearch && allItems.length > 0 && (
+                    {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS && !isSearchFilteringActive && allItems.length > 0 && (
                         <DecisionBlocks
                             items={allItems}
                             categories={allCategories}
                             activeLanguage={activeLanguage}
+                            primaryLanguage={primaryLanguage}
                             businessType={effectiveBusinessType}
                             moodConfig={moodConfig}
                             onItemClick={handleItemClick}
@@ -1655,11 +1719,11 @@ function MenuPageNew({
                         moodConfig={moodConfig}
                         businessType={effectiveBusinessType}
                         businessCategory={storeDetails?.businessCategory}
-                        isSearchActive={!!debouncedSearch}
+                        isSearchActive={isSearchFilteringActive}
                     />
 
                     <AnimatePresence initial={false}>
-                        {debouncedSearch && filteredItems.length > 0 && (
+                        {isSearchFilteringActive && filteredItems.length > 0 && (
                             <motion.div
                                 key="search-results-summary"
                                 data-search-results-summary="true"
@@ -1781,7 +1845,7 @@ function MenuPageNew({
                             {/* Categories & Items */}
                             {allCategories.map((category: any, categoryIndex: number) => {
                                 const items = getItemsForCategory(category.id);
-                                if (items.length === 0 && debouncedSearch) return null;
+                                if (items.length === 0 && isSearchFilteringActive) return null;
                                 const categoryHeaderFrameStyle = getCategoryHeaderFrameStyle();
                                 const renderedDividerStyle = getDividerStyle();
 
@@ -1930,7 +1994,7 @@ function MenuPageNew({
                                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                                                     <h3 style={itemNameStyle}>
-                                                                        {renderHighlightedText(itemName, debouncedSearch, moodConfig.accentColor)}
+                                                                        {renderHighlightedText(itemName, searchHighlightTerm, moodConfig.accentColor)}
                                                                     </h3>
                                                                     {showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (
                                                                         <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>
@@ -1949,7 +2013,7 @@ function MenuPageNew({
                                                                 )}
                                                                 {itemDescription && (
                                                                     <p style={itemDescStyle}>
-                                                                        {renderHighlightedText(itemDescription, debouncedSearch, moodConfig.accentColor)}
+                                                                        {renderHighlightedText(itemDescription, searchHighlightTerm, moodConfig.accentColor)}
                                                                     </p>
                                                                 )}
                                                                 {!isAvailable && (
@@ -1981,7 +2045,7 @@ function MenuPageNew({
 
                             {/* No results state */}
                             <AnimatePresence initial={false}>
-                                {debouncedSearch && filteredItems.length === 0 && (
+                                {isSearchFilteringActive && filteredItems.length === 0 && (
                                     <motion.div
                                         key="search-no-results"
                                         initial={menuSearchStateMotion.initial}
@@ -2061,7 +2125,7 @@ function MenuPageNew({
                     {from === 'main-website' &&
                         !previewMode &&
                         FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK &&
-                        !debouncedSearch &&
+                        !isSearchInputActive &&
                         storeDetails?.feedbackEnabled !== false &&
                         projectData?.menuSettings?.feedback !== false &&
                         projectData?.projectId && (

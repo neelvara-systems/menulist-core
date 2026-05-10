@@ -1616,6 +1616,13 @@ export const duplicateProject = async (
             const sess = await getActiveSession();
             const timestamp = Date.now().toString(36);
             const newProjectId = `${sess.tId}-${timestamp}-${sess.sId}`;
+            let projectSlug = slugify(resolveProjectSummaryName(localizedName, newName || 'untitled'));
+            if (isReservedProjectSlug(projectSlug)) {
+                projectSlug = `${projectSlug}-menu`;
+            }
+            if (await isSlugReservedByRecentlyDeleted(projectSlug)) {
+                projectSlug = `${projectSlug}-${timestamp}`;
+            }
 
             // 3. Deep clone project data
             const newProjectData = await requestBodyComposer({
@@ -1623,6 +1630,9 @@ export const duplicateProject = async (
                 projectId: newProjectId,
                 active: true,
                 deleted: false,
+                isDefault: false,
+                previousSlugs: [],
+                slug: projectSlug,
                 ...normalizeProjectLanguagePolicy({
                     languages: originalData.languages || [],
                     defaultLanguage: originalData.defaultLanguage,
@@ -1639,6 +1649,7 @@ export const duplicateProject = async (
                 projectImage: originalSummary.projectImage ?? null,
                 active: true,
                 isDefault: false,
+                slug: projectSlug,
             };
             await syncProjectToSummary(newProjectId, summaryData);
 

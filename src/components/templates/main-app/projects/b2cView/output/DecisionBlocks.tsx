@@ -27,6 +27,7 @@
 import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlockTranslation, getEnabledBlocks } from '@config/decisionBlocks';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
+import useDeviceType from '@hook/useDeviceType';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -43,6 +44,7 @@ interface DecisionBlocksProps {
     /** Categories for time-slot validation */
     categories?: ExtractedDataCategory[];
     activeLanguage: string;
+    primaryLanguage?: string;
     businessType?: string;
     moodConfig: MenuMoodConfig;
     onItemClick?: (item: ExtractedDataItem) => void;
@@ -492,6 +494,7 @@ export default function DecisionBlocks({
     items,
     categories = [],
     activeLanguage,
+    primaryLanguage = activeLanguage,
     businessType,
     moodConfig,
     onItemClick,
@@ -503,6 +506,8 @@ export default function DecisionBlocks({
     analyticsIds,
     trackingEnabled = true,
 }: DecisionBlocksProps) {
+    const { deviceType } = useDeviceType();
+    const isDesktopLayout = deviceType === 'desktop';
     const containerRef = useRef<HTMLDivElement>(null);
     const categoryMetaById = useMemo(() => {
         return new Map(categories.map((category) => [
@@ -513,6 +518,12 @@ export default function DecisionBlocks({
             },
         ]));
     }, [activeLanguage, categories]);
+    const categoryAnalyticsLabelById = useMemo(() => {
+        return new Map(categories.map((category) => [
+            category.id,
+            getLocalizedMenuText(category.name, primaryLanguage),
+        ]));
+    }, [categories, primaryLanguage]);
 
     /**
      * Translate reason key to localized text
@@ -594,8 +605,9 @@ export default function DecisionBlocks({
 
     // Handle block click
     const handleClick = useCallback((rec: ComputedBlock) => {
-        const itemName = rec.item.name?.[activeLanguage] || 'Unknown';
+        const itemName = getLocalizedMenuText(rec.item.name, primaryLanguage, 'Unknown');
         const price = parseFloat(rec.item.price || '0');
+        const analyticsCategoryName = categoryAnalyticsLabelById.get(rec.item.category) || rec.item.category;
 
         const revealInlineItem = () => {
             const itemElement = document.getElementById(`item-${rec.item.id}`);
@@ -613,9 +625,13 @@ export default function DecisionBlocks({
                 rec.blockType,
                 rec.item.id,
                 itemName,
-                rec.item.category,
+                analyticsCategoryName,
                 price,
-                { ...analyticsIds }
+                {
+                    ...analyticsIds,
+                    categoryId: rec.item.category,
+                    categoryName: analyticsCategoryName,
+                }
             );
         }
 
@@ -626,7 +642,7 @@ export default function DecisionBlocks({
 
         // Fallback for non-modal renders: featured choice can still jump to the inline item.
         revealInlineItem();
-    }, [activeLanguage, onItemClick, trackingEnabled, analyticsIds]);
+    }, [analyticsIds, categoryAnalyticsLabelById, onItemClick, primaryLanguage, trackingEnabled]);
 
     // Track when blocks are rendered (once per session)
     // Why not use menu_view? It fires even when blocks DON'T render (feature off, no items, TTL expired)
@@ -650,6 +666,7 @@ export default function DecisionBlocks({
 
     const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
     const isSingleBlock = blocks.length === 1;
+    const useHorizontalScroller = !isDesktopLayout && !isSingleBlock;
 
     return (
         <section
@@ -710,11 +727,11 @@ export default function DecisionBlocks({
                     contain: 'layout paint',
                     maxWidth: '100%',
                     minWidth: 0,
-                    overflowX: 'auto',
-                    paddingBottom: 8,
+                    overflowX: useHorizontalScroller ? 'auto' : 'hidden',
+                    paddingBottom: useHorizontalScroller ? 8 : 0,
                     overscrollBehaviorX: 'contain',
                     scrollPaddingInline: 0,
-                    scrollSnapType: isSingleBlock ? 'none' : 'x proximity',
+                    scrollSnapType: useHorizontalScroller ? 'x proximity' : 'none',
                     WebkitOverflowScrolling: 'touch',
                     width: '100%',
                 }}
@@ -722,12 +739,15 @@ export default function DecisionBlocks({
                 <div
                     className="flex"
                     style={{
-                        display: 'flex',
+                        display: isDesktopLayout ? 'grid' : 'flex',
                         gap: 10,
+                        gridTemplateColumns: isDesktopLayout
+                            ? `repeat(${blocks.length}, minmax(0, 1fr))`
+                            : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
-                        paddingRight: isSingleBlock ? 0 : 14,
-                        width: isSingleBlock ? '100%' : 'fit-content',
+                        paddingRight: useHorizontalScroller ? 14 : 0,
+                        width: isDesktopLayout || isSingleBlock ? '100%' : 'fit-content',
                     }}
                 >
                     {blocks.map((rec) => {
@@ -777,20 +797,22 @@ export default function DecisionBlocks({
                                     color: moodConfig.bodyColor,
                                     cursor: 'pointer',
                                     display: 'flex',
-                                    flexShrink: 0,
+                                    flexShrink: useHorizontalScroller ? 0 : 1,
                                     gap: itemImage ? 10 : 0,
                                     minHeight: 86,
                                     outline: 'none',
                                     overflow: 'hidden',
                                     padding: itemImage ? 10 : 12,
                                     position: 'relative',
-                                    scrollSnapAlign: isSingleBlock ? 'none' : 'start',
+                                    scrollSnapAlign: useHorizontalScroller ? 'start' : 'none',
                                     textAlign: 'left',
                                     userSelect: 'none',
                                     WebkitUserSelect: 'none',
                                     width: isSingleBlock
                                         ? '100%'
-                                        : itemImage
+                                        : isDesktopLayout
+                                            ? '100%'
+                                            : itemImage
                                             ? 'min(calc(100vw - 48px), 316px)'
                                             : 'min(calc(100vw - 56px), 292px)',
                                     WebkitTapHighlightColor: 'transparent',

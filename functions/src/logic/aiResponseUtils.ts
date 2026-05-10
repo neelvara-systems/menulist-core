@@ -13,7 +13,25 @@
  * - Data flows: Firebase (basic validation) → Frontend (full sanitization)
  */
 
-import { ExtractedMenuData } from '../types';
+import { BusinessAttributeSuggestion, ExtractedMenuData } from '../types';
+import { getAllBusinessAttributeInferenceKeys } from '../sharedData/businessAttributeInference';
+
+const SAFE_DIETARY_TAGS = new Set([
+    'vegetarian',
+    'vegan',
+    'gluten-free',
+    'gluten_free',
+    'glutenfree',
+    'halal',
+    'kosher',
+    'keto',
+    'dairy-free',
+    'organic',
+]);
+
+const SAFE_SPICE_LEVELS = new Set(['none', 'mild', 'medium', 'hot', 'very-hot']);
+
+const SAFE_BUSINESS_ATTRIBUTE_KEYS = new Set(getAllBusinessAttributeInferenceKeys());
 
 // ============================================================================
 // BASIC STRUCTURE VALIDATION (No external dependencies)
@@ -122,6 +140,48 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
         sourceFileIndex: typeof cat.sourceFileIndex === 'number' ? cat.sourceFileIndex : Number(cat.sourceFileIndex),
     }));
 
+    const normalizeStringArray = (value: unknown, allowlist?: Set<string>): string[] | undefined => {
+        if (!Array.isArray(value)) return undefined;
+        const normalized = value
+            .map((entry) => String(entry || '').trim().toLowerCase())
+            .filter((entry) => entry.length > 0)
+            .filter((entry) => !allowlist || allowlist.has(entry));
+        return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+    };
+
+    const normalizeBusinessAttributeSuggestions = (value: unknown): BusinessAttributeSuggestion[] | undefined => {
+        if (!Array.isArray(value)) return undefined;
+        const normalized = value
+            .map((entry: any) => {
+                if (!entry || typeof entry !== 'object') return null;
+                const key = typeof entry.key === 'string' ? entry.key.trim() : '';
+                if (!SAFE_BUSINESS_ATTRIBUTE_KEYS.has(key)) return null;
+                if (entry.value !== true) return null;
+
+                const rawConfidence = String(entry.confidence || '').trim().toLowerCase();
+                const confidence = ['high', 'medium', 'low'].includes(rawConfidence)
+                    ? rawConfidence as 'high' | 'medium' | 'low'
+                    : undefined;
+                const sourceFileIndex = typeof entry.sourceFileIndex === 'number'
+                    ? entry.sourceFileIndex
+                    : Number(entry.sourceFileIndex);
+                const evidence = typeof entry.evidence === 'string'
+                    ? entry.evidence.replace(/<[^>]*>/g, '').trim().slice(0, 160)
+                    : undefined;
+
+                return {
+                    key,
+                    value: true as const,
+                    ...(confidence ? { confidence } : {}),
+                    ...(evidence ? { evidence } : {}),
+                    ...(Number.isFinite(sourceFileIndex) ? { sourceFileIndex } : {}),
+                };
+            })
+            .filter((entry): entry is BusinessAttributeSuggestion => Boolean(entry));
+
+        return normalized.length > 0 ? normalized : undefined;
+    };
+
     // Normalize items with tags handling
     // Filter out items missing critical fields (name or id) to prevent invalid data reaching Firestore
     const items = (extractedData.items || []).filter((item: any) => {
@@ -170,6 +230,13 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             }
         }
 
+        const dietaryTags = normalizeStringArray(item.dietaryTags, SAFE_DIETARY_TAGS);
+        const rawSpiceLevel = String(item.spiceLevel || '').trim().toLowerCase();
+        const spiceLevel = SAFE_SPICE_LEVELS.has(rawSpiceLevel)
+            ? rawSpiceLevel as 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'
+            : undefined;
+        const duration = Number(item.duration);
+
         return {
             id: String(item.id),
             name: normalizedName,
@@ -187,6 +254,9 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
                         : (typeof attr.name === 'string' ? { en: attr.name } : {}),
                     price: attr.price,
                 })),
+            ...(dietaryTags ? { dietaryTags } : {}),
+            ...(spiceLevel ? { spiceLevel } : {}),
+            ...(Number.isFinite(duration) && duration > 0 ? { duration } : {}),
             // Only include confidence if AI returned it (saves document bytes)
             ...(normalizedConfidence ? { confidence: normalizedConfidence } : {}),
         };
@@ -220,6 +290,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             } : undefined,
         }))
         : undefined;
+    const businessAttributeSuggestions = normalizeBusinessAttributeSuggestions(extractedData.businessAttributeSuggestions);
 
     return {
         message: data.message || '',
@@ -227,6 +298,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             languages,
             categories,
             items,
+            ...(businessAttributeSuggestions ? { businessAttributeSuggestions } : {}),
             // Only include if there are fileMessages
             ...(fileMessages && fileMessages.length > 0 ? { fileMessages } : {}),
         }

@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
-**Status:** ✅ FINAL — Approved after ChatGPT Session 3 review + Discovery Infrastructure review (Mar 2026)  
-**Last Updated:** March 2026  
+**Status:** ✅ FINAL — Approved after ChatGPT Session 3 review + Discovery Infrastructure review (Mar 2026) + public menu/OBP hardening alignment (May 2026)
+**Last Updated:** May 10, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -110,27 +110,58 @@
 
 > Your menu reaches customers through every surface they already use.
 
-**Surface tiles (6):**
+**Surface tiles (7):**
 
 | #   | Surface         | Title                                           | Description                                            |
 | --- | --------------- | ----------------------------------------------- | ------------------------------------------------------ |
 | 1   | QR Menu         | Customers scan and see your current menu        | Items, prices, photos — always up to date on any phone |
 | 2   | Public Link     | One link for WhatsApp, Instagram, and packaging | Share everywhere. It stays accurate automatically.     |
-| 3   | Google Presence | Your Google listing stays correct               | Menu link, hours, and info kept in sync                |
-| 4   | Digital Screens | Your full menu on your shop TV                  | Categories, items, prices — updated automatically      |
-| 5   | PDF Export      | A clean PDF when you need one                   | For print, packaging, or internal use                  |
-| 6   | Official Page   | Your business information in one clean page     | Menu, hours, contact — everything customers need       |
+| 3   | Digital Screens | Your full menu on your shop TV                  | Categories, items, prices — updated automatically      |
+| 4   | PDF Export      | A clean PDF when you need one                   | For print, packaging, or internal use                  |
+| 5   | Official Page   | One official link for menu, hours, reviews, directions, and contact | Customers can view menus, see current status, call, WhatsApp, get directions, check photos, and switch language when available. |
+| 6   | Customer App    | Stay one tap away from repeat customers         | Customers can save your menu to their phone with your name and logo |
+| 7   | Google Business | Sync your menu to your Google listing           | Your menu data keeps your Google profile accurate automatically |
 
 **Discovery credibility note (below grid):**
 
-> Your menu pages are built to be found — by customers, Google, and the tools people use to discover restaurants.
+> Your menu pages are built to be found — by customers, Google, and the tools people use to discover businesses.
 
 **Notes:**
 
 - Concrete proof (Law 7) — shows exactly where it appears
 - Discovery note added Mar 2026: surfaces the benefit of search/AI infrastructure without exposing technical complexity (schema.org, JSON-LD, etc.)
+- Public menu/OBP hardening alignment added May 2026: homepage copy should sell visible proof customers actually see — open/closed state, recent update, search/sections, photos, and call/WhatsApp/directions actions.
 - Source material: `client-menu_website.md`, `digital-screens_website.md`, `official-business-page_website.md`, `gbp-sync_website.md`, `discovery-infrastructure/`
 - Each tile: icon (32px, brand color) + title + 1-line description
+
+---
+
+### Section 4A — Customer Browse Proof
+
+**Section heading:**
+
+> Customers find what they want faster.
+
+**Supporting text:**
+
+> A MenuList page is built for real browsing. Customers can search, jump sections, switch language, check details, and decide without asking staff.
+
+**Proof points (4):**
+
+| #   | Title                             | Description                                                                                                 |
+| --- | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 1   | Search is always within reach     | Customers can search large menus without losing their place. The search bar expands when needed and stays quiet when it is not in use. |
+| 2   | Sections keep big menus easy      | Categories behave like a clear table of contents. Customers can jump to drinks, services, lunch, desserts, or any section smoothly. |
+| 3   | Language is part of the menu      | If you publish more than one language, customers can choose the one they read best on the same public menu. |
+| 4   | Trust signals stay visible        | Business identity, open status, recent update, prices, item details, and actions all sit inside the customer-facing menu experience. |
+
+**Visual:** Customer-facing menu preview showing business identity, open/update state, search, section chips, item cards, and prices.
+
+**Notes:**
+
+- This section sells the public menu outcome, not implementation details.
+- Do not mention "smooth scroll", "modal overlay", "sticky command layer", or animation mechanics in visible website copy.
+- Source material: May 2026 public menu hardening — search expansion, section popover, smooth category navigation, clean item details, language switching, and trust metadata placement.
 
 ---
 
@@ -353,11 +384,11 @@
 **Key points:**
 
 - Professional descriptions for every item — written for you from your menu data
-- Menu images prepared for you — no photographer, no designer needed
+- Menu images and uploaded photos prepared for you — no photographer, no designer, no formatting needed
 - Multiple languages added with one click — no translator needed
 - Consistent quality across your entire menu — without you writing a single line
 
-**Source:** `ai-image-generation_website.md`, `description-generation_website.md`, `multi-language-translation_website.md`
+**Source:** `ai-image-generation_website.md`, `media-image-system_website.md`, `description-generation_website.md`, `multi-language-translation_website.md`
 
 **Note:** This is the Layer B section — surfaced as outcomes ("descriptions created", "images created"), never as technology ("AI generates", "neural network").
 
@@ -397,7 +428,7 @@
 **Surfaces (detailed):**
 
 1. **QR Menu** — Customers scan and see your current menu on any phone, any browser. Items, prices, photos — always accurate. No app download needed.
-2. **Official Business Page** — One clean page with your menu, hours, location, and contact. Share one link on WhatsApp, Instagram, packaging. Always up to date.
+2. **Official Business Page** — One official link with your menu, hours, location, Google rating, photos, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR. Always up to date.
 3. **Google Presence** — Your Google Business Profile stays aligned. Correct menu link, accurate hours. Connect once and forget about it.
 4. **Digital Screens** — Your full menu on your shop TV. Categories, items, prices. Sold-out items disappear. New items appear. Zero effort after setup.
 5. **PDF Export** — A clean, formatted PDF of your current menu. For print, packaging, or internal use.

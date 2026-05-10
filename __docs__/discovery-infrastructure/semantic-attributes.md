@@ -2,7 +2,7 @@
 
 > Controlled vocabulary for business attributes with schema.org mappings.
 > Phase 1C of Infrastructure Expansion.
-> Last Updated: May 9, 2026
+> Last Updated: May 10, 2026
 
 ---
 
@@ -77,6 +77,19 @@ StoreSemanticProfile { attributeIds: string[], byGroup: Record<group, string[]> 
 | Discovery Index Builder (Phase 2) | `extractStoreSemanticProfile()` called by `buildBusinessEntityIndexDoc()`      | Nightly scheduler |
 | Schema.org Enhancement (future)   | Replace hardcoded `ATTRIBUTE_LABELS` in `buildAmenityFeatures()` with registry | Page render       |
 | Public API v2 (future)            | Return `semanticAttributes` in structured API response                         | API call          |
+| Extraction-derived OBP defaults   | `businessAttributeSuggestions` and deterministic dietary tags fill missing `store.businessAttributes` only when evidence is high-confidence | First extraction auto-save; owner-approved re-extraction |
+
+### 5.1 Extraction Defaulting Guardrails
+
+Business attributes can be suggested by menu extraction, but owner-entered store truth stays authoritative.
+
+- Shared allowlist: `src/data/shared/businessAttributeInference.ts`
+- Functions mirror: `functions/src/sharedData/businessAttributeInference.ts`
+- First extraction path: `functions/src/logic/businessAttributeDefaults.ts`
+- Review/apply path: `src/lib/obp/inferBusinessAttributesFromMenu.ts` and `src/lib/extraction/applyChanges.ts`
+- AI suggestions must be positive and `confidence: "high"` before they can fill a missing store attribute.
+- Deterministic dietary inference uses canonical taxonomy tags, including `gluten_free`, so `glutenFree` is not missed when taxonomy normalization runs.
+- Existing `store.businessAttributes.<key> === true|false` is never overwritten by extraction.
 
 ## 6. Feature Flag
 

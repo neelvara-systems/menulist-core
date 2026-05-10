@@ -1,6 +1,7 @@
 import AnalyticsInsightsSection from './AnalyticsInsightsSection';
 import StickyCta from '../shared/StickyCta';
 import BusinessSection from './BusinessSection';
+import CustomerBrowseSection from './CustomerBrowseSection';
 import FaqSection from './FaqSection';
 import FinalCtaSection from './FinalCtaSection';
 import HeroSection from './HeroSection';
@@ -22,6 +23,7 @@ export default function HomePage() {
       <InteractiveWorkflowSection />
       <PreparedForYouSection />
       <SurfacesSection />
+      <CustomerBrowseSection />
       <SmartFeaturesSection />
       <AnalyticsInsightsSection />
       <StatsSection />

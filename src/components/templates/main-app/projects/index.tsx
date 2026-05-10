@@ -497,7 +497,7 @@ function ProjectsPage() {
         }
     }, [storeDetails?.businessCategory, storeDetails?.businessType, storeContextName, updateProjectImageInLocalState]);
 
-    const applyMenuDerivedBusinessAttributeDefaults = useCallback(async (menuData: { categories?: any[]; items?: any[] } | null | undefined) => {
+    const applyMenuDerivedBusinessAttributeDefaults = useCallback(async (menuData: { businessAttributeSuggestions?: unknown; categories?: any[]; items?: any[] } | null | undefined) => {
         if (!storeDetails?.storeId || !menuData?.items?.length) return;
         const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(menuData, storeDetails as any);
         if (!nextBusinessAttributes) return;
@@ -635,14 +635,18 @@ function ProjectsPage() {
             projectId: selectedProject?.projectId || activeProject?.projectId,
             projectSummary: selectedProject,
         });
-        void applyMenuDerivedBusinessAttributeDefaults(previewData);
+        const attributePreviewData = {
+            ...previewData,
+            businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
+        };
+        void applyMenuDerivedBusinessAttributeDefaults(attributePreviewData);
         setShowReviewScreen(false);
         setComparisonResult(null);
         setActiveProcessingJobId(null);
         setFileProcessingId(null);
         mutateProject(); // Refetch to get updated data
         setShowSuccessModal(true);
-    }, [activeProject, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
+    }, [activeJob?.result?.combinedData?.businessAttributeSuggestions, activeProject, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     const handleReviewDiscard = useCallback(() => {
         console.log('[ExtractionReview] Changes discarded');
@@ -1511,6 +1515,7 @@ function ProjectsPage() {
                 files: filesForJob,
                 targetLanguages,
                 projectId: targetProjectId,
+                businessCategory: storeDetails?.businessCategory,
                 businessType: storeDetails?.businessType,
             }),
             PROCESSING_TIMEOUT * filesToProcess.length,

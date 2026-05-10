@@ -38,6 +38,9 @@ export interface ExtractedDataItem {
     price?: string;
     attributes?: ExtractedDataItemAttribute[];
     tags?: string[];
+    dietaryTags?: string[];
+    spiceLevel?: string;
+    duration?: number;
     active?: boolean;
     available?: boolean;
 }
@@ -83,9 +86,14 @@ interface RawItemFromAI {
     price?: string | number; // AI may return number (e.g., 300) or string (e.g., "300")
     attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number; active?: boolean }> | Record<string, any>;
     tags?: string[] | Record<string, string>;
+    dietaryTags?: string[];
+    spiceLevel?: string;
+    duration?: number;
     active?: boolean;
     sourceFileIndex?: number;
 }
+
+const SAFE_SPICE_LEVELS = new Set(['none', 'mild', 'medium', 'hot', 'very-hot']);
 
 export interface CombinedAIResponse {
     message?: string;
@@ -160,6 +168,14 @@ function normalizeTags(tags: string[] | Record<string, string> | undefined): str
         .map(tag => stripHtml(tag));
 }
 
+function normalizeStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    const normalized = value
+        .map((entry) => typeof entry === 'string' ? stripHtml(entry).trim().toLowerCase() : String(entry || '').trim().toLowerCase())
+        .filter(Boolean);
+    return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -218,7 +234,17 @@ export function redistributeExtractedData(
                 return catFileIndex === index;
             })
             .map(item => {
-                const { sourceFileIndex, tags, categoryId, attributes: rawAttributes, price: rawPrice, ...rest } = item;
+                const {
+                    sourceFileIndex,
+                    tags,
+                    categoryId,
+                    attributes: rawAttributes,
+                    price: rawPrice,
+                    dietaryTags: rawDietaryTags,
+                    spiceLevel: rawSpiceLevelValue,
+                    duration: rawDuration,
+                    ...rest
+                } = item;
 
                 const resolvedCategory = (rest.category && rest.category !== 'undefined' && rest.category !== undefined)
                     ? rest.category
@@ -235,6 +261,14 @@ export function redistributeExtractedData(
 
                 const normalizedTags = normalizeTags(tags);
                 const normalizedPrice = rawPrice != null && rawPrice !== '' ? String(rawPrice) : '';
+                const dietaryTags = normalizeStringArray(rawDietaryTags);
+                const duration = typeof rawDuration === 'number' && rawDuration > 0 ? rawDuration : undefined;
+                const rawSpiceLevel = typeof rawSpiceLevelValue === 'string'
+                    ? stripHtml(rawSpiceLevelValue).trim().toLowerCase()
+                    : '';
+                const spiceLevel = SAFE_SPICE_LEVELS.has(rawSpiceLevel)
+                    ? rawSpiceLevel as 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'
+                    : undefined;
 
                 return {
                     ...rest,
@@ -244,6 +278,9 @@ export function redistributeExtractedData(
                     description: rest.description ? sanitizeMultilingualObject(rest.description, true) : undefined,
                     price: normalizedPrice,
                     tags: Array.isArray(normalizedTags) && normalizedTags.length > 0 ? normalizedTags : undefined,
+                    ...(dietaryTags ? { dietaryTags } : {}),
+                    ...(spiceLevel ? { spiceLevel } : {}),
+                    ...(duration ? { duration } : {}),
                     attributes: normalizedAttributes,
                     active: rest.active !== false
                 };

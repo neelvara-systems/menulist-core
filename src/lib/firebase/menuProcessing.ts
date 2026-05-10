@@ -47,6 +47,7 @@ export interface CreateJobParams {
     files: MenuFileToProcess[];
     targetLanguages: TargetLanguage[];
     action?: string;
+    businessCategory?: string;
     businessType?: string;
     /** Job mode for tracking extraction type */
     jobMode?: ExtractionJobMode;
@@ -118,6 +119,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         files,
         targetLanguages,
         action = "IMAGE_PROCESSING",
+        businessCategory,
         businessType,
         jobMode = "SINGLE_STORE",
         retriedFromJobId,
@@ -147,6 +149,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             name: l.name,
         })),
         action,
+        ...(businessCategory ? { businessCategory } : {}),
         ...(businessType ? { businessType } : {}),
         jobMode,
         status: 'pending',

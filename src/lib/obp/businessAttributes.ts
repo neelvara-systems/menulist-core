@@ -1,7 +1,10 @@
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import {
+    BusinessAttributeKind,
+    getBusinessAttributeKindForCategory,
+} from '@data/shared/businessAttributeInference';
 
 export type BusinessAttributeGroup = 'dietary' | 'amenity' | 'service' | 'payment';
-type BusinessAttributeKind = 'food' | 'retail' | 'service' | 'venue';
 
 export interface BusinessAttributeConfig {
     key: string;
@@ -48,11 +51,7 @@ export const BUSINESS_ATTRIBUTE_CONFIG: BusinessAttributeConfig[] = [
 
 function getBusinessKind(businessType?: string, businessCategory?: string): BusinessAttributeKind {
     const category = resolveBusinessCategory(businessType, businessCategory) || 'food';
-    if (category === 'food') return 'food';
-    if (category === 'retail') return 'retail';
-    if (category === 'venue') return 'venue';
-    if (['service', 'professional', 'creative', 'health', 'specialty'].includes(category)) return 'service';
-    return 'food';
+    return getBusinessAttributeKindForCategory(category);
 }
 
 export function getBusinessAttributeConfigForType(businessType?: string, businessCategory?: string): BusinessAttributeConfig[] {

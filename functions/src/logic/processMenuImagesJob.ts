@@ -25,6 +25,8 @@ import { hardenExtractedData } from "./extractionHardening";
 import { processMenuImagesLogic } from "./processMenuImages";
 import { buildExistingCategoriesMap, processParallelResponse } from "./redistributeUtils";
 import { getProject, saveFilesToProject } from "./saveFilesToProject";
+import { applyMenuDerivedBusinessAttributeDefaultsForStore } from "./businessAttributeDefaults";
+import { revalidatePublicClientCacheForStore } from "./publicCacheRevalidation";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIDENCE SUMMARY (Infrastructure Compounding 10.1)
@@ -212,6 +214,7 @@ export async function processMenuImagesJobLogic(
             targetLanguages: job.targetLanguages,
             projectId: job.projectId,
             action: job.action || "IMAGE_PROCESSING",
+            businessCategory: job.businessCategory,
             businessType: job.businessType,
         };
 
@@ -324,7 +327,10 @@ export async function processMenuImagesJobLogic(
         const existingCategories = existingProject?.files
             ? buildExistingCategoriesMap(existingProject.files, primaryLang)
             : undefined;
-        const businessCategory = resolveJobBusinessCategory(job.businessType || existingProject?.businessType, existingProject?.businessCategory);
+        const businessCategory = resolveJobBusinessCategory(
+            job.businessType || existingProject?.businessType,
+            job.businessCategory || existingProject?.businessCategory,
+        );
         const categoriesBeforeIconDefaults = result.data.data?.categories?.length || 0;
         result.data.data = {
             ...result.data.data,
@@ -439,6 +445,24 @@ export async function processMenuImagesJobLogic(
                 true, // enableAutoMerge
                 existingProject
             );
+
+            let businessAttributeDefaultsApplied = false;
+            try {
+                businessAttributeDefaultsApplied = await applyMenuDerivedBusinessAttributeDefaultsForStore({
+                    storeId: job.sId,
+                    menuData: result.data.data,
+                    context: 'processMenuImagesJob:firstExtraction',
+                });
+            } catch (attributeError: any) {
+                logger.warn(`[processMenuImagesJob] Business attribute defaults failed (non-blocking)`, {
+                    jobId,
+                    storeId: job.sId,
+                    error: attributeError?.message || String(attributeError),
+                });
+            }
+            if (!businessAttributeDefaultsApplied) {
+                await revalidatePublicClientCacheForStore(job.sId, 'processMenuImagesJob:firstExtractionProjectSave');
+            }
 
             logger.info(`[processMenuImagesJob] === STEP 6 SAVE TO PROJECT COMPLETE ===`, {
                 jobId,

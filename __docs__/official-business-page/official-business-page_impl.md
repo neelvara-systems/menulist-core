@@ -139,6 +139,30 @@ OBP settings are saved as part of the existing store update flow:
 
 No new API routes needed. The existing `updateStore()` DAL function handles all OBP field updates.
 
+### Extraction-Derived Business Attribute Defaults
+
+**Updated May 10, 2026** — Menu extraction can now suggest OBP business attributes as owner-editable defaults.
+
+This does **not** make AI the source of truth:
+
+- The controlled inference allowlist lives in `src/data/shared/businessAttributeInference.ts`.
+- The exact same file is mirrored to `functions/src/sharedData/businessAttributeInference.ts` for Cloud Functions.
+- First extraction auto-save applies missing `store.businessAttributes` defaults server-side in `functions/src/logic/processMenuImagesJob.ts`.
+- Re-extraction applies the same defaults only after the owner approves changes in the desktop/mobile review flow.
+- Existing owner values win. If the owner already set an attribute to `true` or `false`, extraction does not override it.
+- AI suggestions must be explicit positive suggestions with `confidence: "high"`. Dietary tags also use deterministic taxonomy matching for `vegetarian`, `vegan`, `halal`, and `glutenFree`.
+- The server-side first-extraction path revalidates the same public cache tags as owner saves: `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`.
+
+Primary implementation files:
+
+- `src/data/shared/businessAttributeInference.ts`
+- `functions/src/sharedData/businessAttributeInference.ts`
+- `src/lib/obp/inferBusinessAttributesFromMenu.ts`
+- `functions/src/logic/businessAttributeDefaults.ts`
+- `functions/src/logic/publicCacheRevalidation.ts`
+- `functions/src/logic/processMenuImagesJob.ts`
+- `src/lib/extraction/applyChanges.ts`
+
 ---
 
 ## 4. File Structure
@@ -307,6 +331,7 @@ Primary implementation files:
 - Privacy, Terms, and Refund footer links are individually show/hide controlled.
 - Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled.
 - Compliance content can be edited from Official Business Page settings using the existing compliance override API.
+- Business attribute defaults can be filled from high-confidence extraction evidence, but owner-entered `true`/`false` values remain authoritative.
 
 Primary implementation files:
 
@@ -314,6 +339,8 @@ Primary implementation files:
 - `src/app/client/obp/OBPPhotoStrip.tsx`
 - `src/app/client/obp/OBPExternalLinks.tsx`
 - `src/lib/obp/businessAttributes.ts`
+- `src/lib/obp/inferBusinessAttributesFromMenu.ts`
+- `src/data/shared/businessAttributeInference.ts`
 - `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx`
 - `src/components/templates/main-app/businessSettings/tabs/BusinessAttributesTab.tsx`
 - `src/components/mobile/screens/MobileOfficialPageScreen.tsx`

@@ -331,7 +331,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectImage(null);
         setFormProjectImageDraft(null);
         setIsProjectImageAdjustOpen(false);
-        setFormIsDefault(!projects.some((project) => project.isDefault === true));
+        setFormIsDefault(!hasRegularProject());
         setFormActive(true);
         setFormStartsAt('');
         setFormEndsAt('');
@@ -367,6 +367,11 @@ export default function MobileProjectSelectorSheet({
         )) || null
     );
 
+    const hasRegularProject = () => projects.some((project) => (
+        project.isSpecialMenu !== true &&
+        project.deleted !== true
+    ));
+
     const openEdit = async (project: ProjectSheetProject) => {
         const detailedProject = await loadDetailedProject(project);
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
@@ -389,7 +394,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectImage(project.projectImage || null);
         setFormProjectImageDraft(null);
         setIsProjectImageAdjustOpen(false);
-        setFormIsDefault(project.isDefault === true);
+        setFormIsDefault(false);
         setFormActive(project.active !== false);
         setFormStartsAt(toNativeDateTimeValue(project.specialMenuStartsAt));
         setFormEndsAt(toNativeDateTimeValue(project.specialMenuEndsAt));
@@ -482,22 +487,23 @@ export default function MobileProjectSelectorSheet({
 
             if (formMode === 'create') {
                 const currentDefault = projects.find((project) => project.isDefault === true);
+                const nextIsDefault = !hasRegularProject();
                 const result = await addProject({
                     active: formActive,
                     businessCategory: storeDetails?.businessCategory,
                     businessType: storeDetails?.businessType,
                     defaultLanguage: formSelectedLanguage,
                     description: localizedDescription,
-                    isDefault: formIsDefault,
+                    isDefault: nextIsDefault,
                     name: localizedName,
                     projectImage: savedProjectImage || null,
                 });
 
-                if (formIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
+                if (nextIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
                     await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
                 }
 
-                if (currentDefault?.projectId && formIsDefault && currentDefault.projectId !== result?.projectId) {
+                if (currentDefault?.projectId && nextIsDefault && currentDefault.projectId !== result?.projectId) {
                     upsertCachedProject({
                         ...(projectsById[currentDefault.projectId] || currentDefault),
                         ...currentDefault,
@@ -512,7 +518,7 @@ export default function MobileProjectSelectorSheet({
                         active: formActive,
                         description: localizedDescription,
                         defaultLanguage: formSelectedLanguage,
-                        isDefault: formIsDefault,
+                        isDefault: nextIsDefault,
                         name: localizedName,
                         projectId: result.projectId,
                         projectImage: savedProjectImage || null,
@@ -526,7 +532,6 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'duplicate' && formProjectId) {
-                const currentDefault = projects.find((project) => project.isDefault === true);
                 const result = await duplicateProject(
                     formProjectId,
                     nextName,
@@ -546,28 +551,13 @@ export default function MobileProjectSelectorSheet({
                     });
                 }
                 if (result?.projectId) {
-                    await updateProjectMetadata(result.projectId, { isDefault: formIsDefault });
-                }
-                if (formIsDefault && currentDefault?.projectId && currentDefault.projectId !== result?.projectId) {
-                    await updateProjectMetadata(currentDefault.projectId, { isDefault: false });
-                }
-
-                if (currentDefault?.projectId && formIsDefault && currentDefault.projectId !== result?.projectId) {
-                    upsertCachedProject({
-                        ...(projectsById[currentDefault.projectId] || currentDefault),
-                        ...currentDefault,
-                        isDefault: false,
-                        projectId: currentDefault.projectId,
-                    });
-                }
-                if (result?.projectId) {
                     upsertCachedProject({
                         ...(result.projectData || {}),
                         ...(result.summaryData || {}),
                         active: true,
                         description: localizedDescription,
                         defaultLanguage: formSelectedLanguage,
-                        isDefault: formIsDefault,
+                        isDefault: false,
                         name: localizedName,
                         projectId: result.projectId,
                         projectImage: savedProjectImage || null,
@@ -1408,7 +1398,7 @@ export default function MobileProjectSelectorSheet({
                                 </Flex>
                             ) : null}
 
-                            {!isEditingSpecialMenu ? (
+                            {formMode === 'edit' && !isEditingSpecialMenu ? (
                                 <Flex gap={8} vertical>
                                     <Flex align="center" justify="space-between" gap={12}>
                                         <Text strong>Default</Text>

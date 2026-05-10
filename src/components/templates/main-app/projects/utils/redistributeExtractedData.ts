@@ -28,11 +28,15 @@ interface RawItemFromAI {
     price?: string | number; // AI may return number (e.g., 300) or string (e.g., "300")
     attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number; active?: boolean }> | Record<string, any>; // Can be array or object
     tags?: string[] | Record<string, string>; // AI can return either format
+    dietaryTags?: string[];
+    spiceLevel?: string;
     active?: boolean;
     sourceFileIndex?: number;
     // Decision Intelligence fields
     duration?: number; // Time in minutes (prep time for food, service duration for others)
 }
+
+const SAFE_SPICE_LEVELS = new Set(['none', 'mild', 'medium', 'hot', 'very-hot']);
 
 // ============================================================================
 // SANITIZATION HELPERS (Match aiResponseUtils.ts)
@@ -84,6 +88,16 @@ function normalizeTags(tags: string[] | Record<string, string> | undefined): str
         .flatMap((tagString) => tagString.split(',').map(tag => tag.trim()))
         .filter(tag => tag.length > 0)
         .map(tag => DOMPurify.sanitize(tag, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }));
+}
+
+function normalizeStringArray(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    const normalized = value
+        .map((entry) => typeof entry === 'string'
+            ? DOMPurify.sanitize(entry, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim().toLowerCase()
+            : String(entry || '').trim().toLowerCase())
+        .filter(Boolean);
+    return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
 }
 
 interface CombinedAIResponse {
@@ -158,7 +172,17 @@ export function redistributeExtractedData(
             .map(item => {
                 // Remove sourceFileIndex and normalize/sanitize (matches aiResponseUtils.ts)
                 // Destructure all fields that need normalization to prevent empty {} from spreading
-                const { sourceFileIndex, tags, categoryId, attributes: rawAttributes, price: rawPrice, ...rest } = item;
+                const {
+                    sourceFileIndex,
+                    tags,
+                    categoryId,
+                    attributes: rawAttributes,
+                    price: rawPrice,
+                    dietaryTags: rawDietaryTags,
+                    spiceLevel: rawSpiceLevelValue,
+                    duration: rawDuration,
+                    ...rest
+                } = item;
                 // Use category if valid, otherwise fall back to categoryId
                 const resolvedCategory = (rest.category && rest.category !== 'undefined' && rest.category !== undefined)
                     ? rest.category
@@ -181,7 +205,14 @@ export function redistributeExtractedData(
                 const normalizedPrice = rawPrice != null && rawPrice !== '' ? String(rawPrice) : '';
 
                 // Extract duration if AI provided it (from menu text like "Ready in 5 min")
-                const duration = typeof item.duration === 'number' ? item.duration : undefined;
+                const duration = typeof rawDuration === 'number' ? rawDuration : undefined;
+                const dietaryTags = normalizeStringArray(rawDietaryTags);
+                const rawSpiceLevel = typeof rawSpiceLevelValue === 'string'
+                    ? DOMPurify.sanitize(rawSpiceLevelValue, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim().toLowerCase()
+                    : '';
+                const spiceLevel = SAFE_SPICE_LEVELS.has(rawSpiceLevel)
+                    ? rawSpiceLevel as 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'
+                    : undefined;
 
                 return {
                     ...rest,
@@ -194,7 +225,9 @@ export function redistributeExtractedData(
                     attributes: normalizedAttributes,
                     active: rest.active !== false,
                     available: true, // Default to available
-                    duration, // Prep time / service duration in minutes (Decision Intelligence)
+                    ...(dietaryTags ? { dietaryTags } : {}),
+                    ...(spiceLevel ? { spiceLevel } : {}),
+                    ...(duration ? { duration } : {}), // Prep time / service duration in minutes (Decision Intelligence)
                 };
             });
 

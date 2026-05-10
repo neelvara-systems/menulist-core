@@ -289,9 +289,6 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
         );
     }
 
-    if ((loading && !data) || (!overview && !overall)) return null;
-    if (mode === 'overall' && !overall) return null;
-
     const title =
         mode === 'overall'
             ? 'Official Business Page · Overall'
@@ -302,6 +299,25 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 : mode === 'monthly'
                     ? 'Official Business Page · This Month'
                     : 'Official Business Page';
+
+    if (loading && !data) {
+        return (
+            <Card
+                size="small"
+                title={(
+                    <Flex align="center" gap={8}>
+                        <LuGlobe color="#1d4ed8" size={16} />
+                        <Text strong>{title}</Text>
+                    </Flex>
+                )}
+            >
+                <Flex align="center" gap={8}>
+                    <DotLoading color="primary" />
+                    <Text type="secondary">Loading OBP activity</Text>
+                </Flex>
+            </Card>
+        );
+    }
 
     const selectedMetrics =
         mode === 'daily'
@@ -340,7 +356,9 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 </Flex>
             )}
         >
-            {mode === 'overall' ? null : mode === 'overview' ? (
+            {mode === 'overall' ? (
+                !overall ? <Text type="secondary">No lifetime OBP activity yet.</Text> : null
+            ) : mode === 'overview' ? (
                 <>
                     {overview?.wtd ? (
                         <>

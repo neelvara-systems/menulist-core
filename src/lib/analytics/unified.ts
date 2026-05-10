@@ -845,6 +845,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         if (data.itemName) {
           updateData[`itemNames.${data.itemId}`] = data.itemName;
         }
+        addCategoryInterestCounters(updateData, data, 'clicksByCategory');
         break;
 
       case TrackingEvent.MENU_ACTION_CLICK:
@@ -873,6 +874,10 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         updateData[`recommendationClicks.${data.blockType}`] = 1;
         updateData[`recommendationClicksByItem.${data.itemId}`] = 1;
         updateData[`hourlyRecommendationClicks.${hour}`] = 1;
+        addCategoryInterestCounters(updateData, data, 'clicksByCategory');
+        if (data.itemName) {
+          updateData[`itemNames.${data.itemId}`] = data.itemName;
+        }
         markEngagedIntentSession(updateData, sessionMilestones);
         break;
 

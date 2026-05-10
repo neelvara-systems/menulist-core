@@ -501,6 +501,8 @@ export default function MenuUploadSheet({
                     ? targetLanguages
                     : [{ code: 'en', name: 'English' }],
                 projectId: targetProjectId,
+                businessCategory: storeDetails?.businessCategory,
+                businessType: storeDetails?.businessType,
             });
 
             setProgress(100);

@@ -584,7 +584,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         updateProjectImageInMobileCache,
     ]);
 
-    const applyMenuDerivedBusinessAttributeDefaults = useCallback(async (menuDataLike: { categories?: any[]; items?: any[] } | null | undefined) => {
+    const applyMenuDerivedBusinessAttributeDefaults = useCallback(async (menuDataLike: { businessAttributeSuggestions?: unknown; categories?: any[]; items?: any[] } | null | undefined) => {
         if (!storeDetails?.storeId || !menuDataLike?.items?.length) return;
         const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(menuDataLike, storeDetails as any);
         if (!nextBusinessAttributes) return;
@@ -3357,6 +3357,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
                 onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
                 onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
+                onOpenDesignEditor={onOpenDesignEditor}
                 onRepairMenu={() => launchCommandAction(() => {
                     setBulkActionType('aiRepair');
                     setIsBulkActionsOpen(true);
@@ -3774,7 +3775,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             projectId: menuData.projectId,
                             projectSummary: selectedProjectSummary,
                         });
-                        void applyMenuDerivedBusinessAttributeDefaults(previewData);
+                        const attributePreviewData = {
+                            ...previewData,
+                            businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
+                        };
+                        void applyMenuDerivedBusinessAttributeDefaults(attributePreviewData);
                         setShowReviewSheet(false);
                         setComparisonResult(null);
                         setActiveProcessingState(null);

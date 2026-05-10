@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 2.4 (v2 Hype/Domination)  
+**Version:** 2.6 (v2 Customer Browse Proof)
 **Status:** ✅ IMPLEMENTED — Active  
-**Last Updated:** March 20, 2026  
+**Last Updated:** May 10, 2026
 **Workflow:** `.windsurf/workflows/website.md`
 
 ---
@@ -48,7 +48,7 @@
 | File                                                        | Purpose                                        |
 | ----------------------------------------------------------- | ---------------------------------------------- |
 | `src/app/(website)/layout.tsx`                              | Shared layout (locale, auth, theme, analytics) |
-| `src/app/(website)/page.tsx`                                | Homepage (client-side, 12 sections)            |
+| `src/app/(website)/page.tsx`                                | Homepage (client-side, 13 sections)            |
 | `src/app/(website)/WebsiteAuthProvider.tsx`                 | Auth context for pricing/onboarding flows      |
 | `src/components/website/home/HomePage.tsx`                  | Homepage section composition                   |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
@@ -105,3 +105,5 @@
 | 2.2     | Mar 2026 | **4 NEW FEATURES.** SmartFeatures expanded. Features page updated. i18n added                                                                                                                      |
 | 2.3     | Mar 2026 | **DOC REBUILD.** 7 historical docs archived. New `_impl.md` + `_spec.md` from codebase truth. SEO doc updated to match actual code metadata. Renamed `_marketing.md`                               |
 | 2.4     | Mar 2026 | **MARKETING REVIEW.** ChatGPT review (~40% accuracy). Sticky CTA on scroll. PONR commitment language in FinalCta. Ad scripts + distribution nudges + activation metric added to marketing playbook |
+| 2.5     | May 2026 | **PUBLIC TRUST ALIGNMENT.** Homepage and feature copy aligned with current public menu/Official Page behavior: open status, recent update, search/sections, photos, and clear customer actions.       |
+| 2.6     | May 2026 | **CUSTOMER BROWSE PROOF.** Homepage now shows how customers search, move through sections, switch language, verify freshness, and decide inside the public menu experience.                         |

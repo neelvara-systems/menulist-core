@@ -21,6 +21,7 @@
 import GlobalLanguagesList from '@data/languages';
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import { FEATURE_FLAGS } from '@config/features';
+import useDeviceType from '@hook/useDeviceType';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -111,6 +112,7 @@ export default function MenuFooter({
     analyticsIds,
     trackingEnabled = true,
 }: MenuFooterProps) {
+    const { isMobile } = useDeviceType();
     // Feedback visibility: Both store-level AND project-level must be enabled
     // Default: true if undefined (opt-out pattern)
     const showFeedback = projectId &&
@@ -162,6 +164,7 @@ export default function MenuFooter({
         showOrder,
     ].filter(Boolean).length;
     const useSingleRowActions = visibleActionCount > 1 && visibleActionCount <= 3 && !showReservation && !showOrder;
+    const useFullWidthActionGrid = isMobile && useSingleRowActions;
 
     // Get social media links that have values
     const socialLinks = storeDetails?.socialMedia
@@ -174,16 +177,16 @@ export default function MenuFooter({
             publicPresence?.showRefundLink !== false ? { href: '/refund', label: 'Refund' } : null,
         ].filter((link): link is { href: string; label: string } => Boolean(link))
         : [];
-    const footerCardStyle = {
+    const footerCardStyle: React.CSSProperties = {
         width: '100%',
         boxSizing: 'border-box' as const,
         border: `1px solid ${moodConfig.itemStyle.borderColor}`,
         borderRadius: Math.max(12, moodConfig.itemStyle.borderRadius || 12),
         background: moodConfig.itemStyle.background,
-        padding: '16px',
+        padding: isMobile ? '16px' : '20px 24px',
         textAlign: 'center' as const,
     };
-    const contactActionsStyle: React.CSSProperties = useSingleRowActions ? {
+    const contactActionsStyle: React.CSSProperties = useFullWidthActionGrid ? {
         display: 'grid',
         gap: 8,
         gridTemplateColumns: `repeat(${visibleActionCount}, minmax(0, 1fr))`,
@@ -193,26 +196,27 @@ export default function MenuFooter({
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: 8,
-        marginTop: 12,
+        gap: 10,
+        marginTop: 14,
     };
     const contactActionStyle: React.CSSProperties = {
         color: moodConfig.accentColor,
         textDecoration: 'none',
         border: `1px solid ${moodConfig.itemStyle.borderColor}`,
         borderRadius: 999,
-        minHeight: 40,
+        minHeight: isMobile ? 40 : 36,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        padding: useSingleRowActions ? '8px 8px' : '8px 14px',
-        fontSize: useSingleRowActions ? 13 : 14,
+        padding: useFullWidthActionGrid ? '8px 8px' : '8px 18px',
+        fontSize: 13,
         lineHeight: '20px',
         fontWeight: 600,
         fontFamily: moodConfig.bodyFont,
+        minInlineSize: useFullWidthActionGrid ? 0 : 132,
         minWidth: 0,
-        width: useSingleRowActions ? '100%' : undefined,
+        width: useFullWidthActionGrid ? '100%' : undefined,
         whiteSpace: 'nowrap',
     };
 

@@ -65,6 +65,7 @@ const SEARCH_FACT_LABELS: Record<ItemDecisionFactKey, string[]> = {
 const MAX_INDEX_TERMS = 96;
 const MAX_DOC_TOKENS = 320;
 const MAX_QUERY_TOKENS = 12;
+const MIN_SKELETON_LENGTH = 4;
 
 const TOKEN_ALIASES: Record<string, string[]> = {
     paneer: ['panir', 'panner', 'paneir', 'paner'],
@@ -98,7 +99,6 @@ const CATEGORY_TOKEN_ALIASES: Record<string, Record<string, string[]>> = {
     food: {
         coffee: ['cofee', 'kofi'],
         pizza: ['piza', 'pitsa'],
-        chai: ['tea'],
         tea: ['chai', 'chay', 'chaai'],
         burger: ['burgur'],
         sandwich: ['sandwitch'],
@@ -175,7 +175,7 @@ const CATEGORY_TOKEN_ALIASES: Record<string, Record<string, string[]>> = {
 const INDIC_WORD_ALIASES: Record<string, string> = {
     'पनीर': 'paneer panir panner',
     'टिक्का': 'tikka tika',
-    'चाय': 'chai chay tea',
+    'चाय': 'chai chay chaai',
     'मसाला': 'masala masaala',
     'डोसा': 'dosa dosai',
     'इडली': 'idli idly',
@@ -186,7 +186,7 @@ const INDIC_WORD_ALIASES: Record<string, string> = {
     'મેંદી': 'mehndi mehendi henna',
     'મેહંદી': 'mehndi mehendi henna',
     'પનીર': 'paneer panir panner',
-    'ચા': 'chai chay tea',
+    'ચા': 'chai chay chaai',
     'મસાલા': 'masala masaala',
     'ઢોસા': 'dosa dosai',
     'ઇડલી': 'idli idly',
@@ -377,36 +377,77 @@ const skeleton = (token: string): string =>
 
 const hasLatinVowel = (token: string): boolean => /[aeiou]/.test(token);
 
+const isNumericPrefixToken = (token: string): boolean =>
+    token.length >= 2 && /^\d+$/.test(token);
+
+const isNumberWithTextSuffix = (token: string): boolean =>
+    /^\d+[a-z]/.test(token);
+
+const getPluralStemVariants = (token: string): string[] => {
+    const stems = new Set<string>();
+
+    if (token.length >= 5 && token.endsWith('ies')) {
+        stems.add(token.slice(0, -3) + 'y');
+    }
+
+    if (token.length >= 5 && token.endsWith('es')) {
+        stems.add(token.slice(0, -2));
+    }
+
+    if (token.length >= 4 && token.endsWith('s')) {
+        stems.add(token.slice(0, -1));
+    }
+
+    return Array.from(stems)
+        .map((stem) => normalizePublicMenuSearchText(stem))
+        .filter((stem) => stem.length >= 3 && stem !== token);
+};
+
 const tokenize = (value: string): string[] =>
     normalizePublicMenuSearchText(value)
         .split(' ')
         .map((token) => token.trim())
         .filter(Boolean);
 
-const addTokenVariants = (tokens: Set<string>, token: string, businessCategory?: string) => {
+const addTokenVariants = (
+    tokens: Set<string>,
+    token: string,
+    businessCategory?: string,
+    options: { includeAliases?: boolean } = {},
+) => {
     const normalized = normalizePublicMenuSearchText(token);
     if (!normalized) return;
 
-    tokens.add(normalized);
+    const baseVariants = new Set<string>([normalized]);
+    getPluralStemVariants(normalized).forEach((stem) => baseVariants.add(stem));
 
     const folded = phoneticFold(normalized);
-    if (folded) tokens.add(folded);
+    if (folded) {
+        baseVariants.add(folded);
+        getPluralStemVariants(folded).forEach((stem) => baseVariants.add(stem));
+    }
 
-    const compact = skeleton(folded || normalized);
-    if (compact && compact !== normalized) tokens.add(compact);
+    for (const baseToken of Array.from(baseVariants)) {
+        tokens.add(baseToken);
 
-    const aliases = [
-        ...(TOKEN_ALIASES[normalized] || []),
-        ...(businessCategory ? CATEGORY_TOKEN_ALIASES[businessCategory]?.[normalized] || [] : []),
-    ];
+        const compact = skeleton(baseToken);
+        if (compact.length >= MIN_SKELETON_LENGTH && compact !== baseToken) {
+            tokens.add(compact);
+        }
 
-    for (const alias of aliases) {
-        for (const aliasToken of tokenize(alias)) {
-            tokens.add(aliasToken);
-            const aliasFolded = phoneticFold(aliasToken);
-            if (aliasFolded) tokens.add(aliasFolded);
-            const aliasSkeleton = skeleton(aliasFolded || aliasToken);
-            if (aliasSkeleton) tokens.add(aliasSkeleton);
+        const aliases = options.includeAliases === false ? [] : [
+            ...(TOKEN_ALIASES[baseToken] || []),
+            ...(businessCategory ? CATEGORY_TOKEN_ALIASES[businessCategory]?.[baseToken] || [] : []),
+        ];
+
+        for (const alias of aliases) {
+            for (const aliasToken of tokenize(alias)) {
+                tokens.add(aliasToken);
+                const aliasFolded = phoneticFold(aliasToken);
+                if (aliasFolded) tokens.add(aliasFolded);
+                const aliasSkeleton = skeleton(aliasFolded || aliasToken);
+                if (aliasSkeleton.length >= MIN_SKELETON_LENGTH) tokens.add(aliasSkeleton);
+            }
         }
     }
 };
@@ -494,7 +535,7 @@ export function buildPublicMenuSearchDocument(
         for (const textVariant of buildVariantsFromText(field)) {
             textVariants.add(textVariant);
             for (const token of tokenize(textVariant)) {
-                addTokenVariants(tokenVariants, token, businessCategory);
+                addTokenVariants(tokenVariants, token, businessCategory, { includeAliases: false });
             }
         }
     }
@@ -516,7 +557,7 @@ export function buildPublicMenuSearchQuery(
     const businessCategory = getResolvedBusinessCategory(options);
     const tokenVariants = tokens.map((token) => {
         const variants = new Set<string>();
-        addTokenVariants(variants, token, businessCategory);
+        addTokenVariants(variants, token, businessCategory, { includeAliases: true });
         return Array.from(variants);
     });
 
@@ -565,7 +606,13 @@ const tokenMatches = (queryVariants: string[], documentTokens: string[], documen
     for (const queryToken of queryVariants) {
         if (documentTokenSet.has(queryToken)) return true;
 
-        if (queryToken.length >= 3 && documentTokens.some((docToken) => docToken.startsWith(queryToken))) {
+        const hasPrefixMatch = documentTokens.some((docToken) => {
+            if (!docToken.startsWith(queryToken)) return false;
+            if (queryToken.length >= 3) return true;
+            return isNumericPrefixToken(queryToken) && isNumberWithTextSuffix(docToken);
+        });
+
+        if (hasPrefixMatch) {
             return true;
         }
 

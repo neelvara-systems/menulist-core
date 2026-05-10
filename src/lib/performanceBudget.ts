@@ -14,8 +14,8 @@ export const PERFORMANCE_BUDGET = {
     // Per-image limits (in KB)
     MAX_IMAGE_SIZE_KB: 500,           // Individual item images
     MAX_BACKGROUND_SIZE_KB: 800,      // Background images can be slightly larger
-    MAX_SOURCE_UPLOAD_SIZE_KB: 15 * 1024, // Owners can upload normal phone photos; we compress before publish
-    MAX_BACKGROUND_SOURCE_SIZE_KB: 15 * 1024, // Kept for legacy callers; use source upload cap semantics
+    MAX_SOURCE_UPLOAD_SIZE_KB: 50 * 1024, // Owners can upload normal phone photos; we compress before publish
+    MAX_BACKGROUND_SOURCE_SIZE_KB: 50 * 1024, // Kept for legacy callers; use source upload cap semantics
 
     // Total page budget (in KB)
     MAX_TOTAL_IMAGE_WEIGHT_KB: 2000,  // 2MB total for all images on page

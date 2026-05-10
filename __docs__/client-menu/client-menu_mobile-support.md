@@ -37,20 +37,24 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - PDP content must remain inside a viewport-capped scroll container with touch scrolling enabled and the close control reachable during long detail scrolls.
 - Back-to-top must not perform scroll work on pointerdown; it scrolls on completed tap/click and stops press propagation so the item card below it cannot receive the same gesture.
 - Featured choices must open PDP directly on mobile when the public menu provides a PDP handler; they must not also scroll the underlying menu before the modal opens.
+- Featured choices keep the horizontal scroller on mobile/tablet; the desktop-only grid treatment must not remove touch-friendly horizontal browsing on smaller screens.
 - Public menu shell padding is capped by device: mobile uses 12px, tablet uses 18px, and desktop keeps the configured design spacing so small screens do not lose usable width.
 - Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
 - The sticky command row must stay visually stable during vertical scroll; it avoids transform-based compositor hints, and scroll-spy category changes are frame-throttled.
+- On iPhone Chrome/PWA, the sticky command row must anchor at `top: 0`; any visual top gap or notch breathing room belongs inside row padding, not in a dynamic sticky `top` offset or negative cover layer.
 - The compact top-row language action shows only the language initials; the picker itself keeps full native language labels.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - The `Sections` popup header must stay compact while preserving a reachable close tap target; the close button visual should not set the whole header height.
 - Expanded sticky search must not reserve the command-row side-control gap; the gap is present only when `Sections` or language controls are visible.
 - Footer freshness must not repeat on mobile: the publish row owns exact update time, and bottom trust signals show only location/open state in that placement.
 - Menu special notes must render centered in the footer trust zone when present in menu settings, legacy project note fields, or the store public note fallback.
-- Call, WhatsApp, and Directions should stay in one compact footer row when those are the only primary actions; extra public actions can wrap.
+- Call, WhatsApp, and Directions should stay in one compact footer row when those are the only primary actions; mobile keeps equal-width touch targets, desktop uses centered compact chips, and extra public actions can wrap.
 - Public menu language persistence must be project-scoped so an installed PWA cannot reuse a different menu's previous language selection.
 - Compact public payloads must preserve the resolved initial render language description so installed PWAs and browser tabs do not show a default-language control with another language's description text.
 - Public mobile analytics must enter the local coalescing queue directly; it must not run through the authenticated DAL wrapper or fetch owner auth/session state per anonymous customer event.
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
+- One-character search input must not activate mobile filtering or show a hard no-result state. Typo recovery must stay explainable and avoid broad compressed-token false positives.
+- Starting search from a scrolled mobile position must bring the result area under the sticky command row so filtered output is immediately visible without manual scroll correction.
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet, matches the OBP `Powered by MenuList. All rights reserved` treatment, and does not add a marketing CTA by default.
 - Mobile public menus lock pinch zoom on the client route and suppress text selection on menu/category controls while keeping footer/business content selectable.

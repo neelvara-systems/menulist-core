@@ -410,6 +410,12 @@ function mergeExtractedData(
             })),
         } : undefined,
     }));
+    const adjustedBusinessAttributeSuggestions = (newData.businessAttributeSuggestions || []).map(suggestion => ({
+        ...suggestion,
+        sourceFileIndex: suggestion.sourceFileIndex !== undefined
+            ? suggestion.sourceFileIndex + sourceFileOffset
+            : sourceFileOffset,
+    }));
 
     // Merge categories (avoid duplicates by ID)
     const existingCategoryIds = new Set(accumulated.categories.map(c => String(c.id)));
@@ -422,11 +428,16 @@ function mergeExtractedData(
         ...(accumulated.fileMessages || []),
         ...adjustedFileMessages,
     ];
+    const mergedBusinessAttributeSuggestions = [
+        ...(accumulated.businessAttributeSuggestions || []),
+        ...adjustedBusinessAttributeSuggestions,
+    ];
 
     return {
         languages: accumulated.languages.length > 0 ? accumulated.languages : newData.languages,
         categories: [...accumulated.categories, ...uniqueNewCategories],
         items: [...accumulated.items, ...adjustedItems],
+        ...(mergedBusinessAttributeSuggestions.length > 0 ? { businessAttributeSuggestions: mergedBusinessAttributeSuggestions } : {}),
         // Only include fileMessages if there are any
         ...(mergedFileMessages.length > 0 ? { fileMessages: mergedFileMessages } : {}),
     };
@@ -457,7 +468,9 @@ async function processSingleBatch(
     existingContext: ExistingCategoriesContext | undefined,
     batchIndex: number,
     requestId: string,
-    totalBatches: number
+    totalBatches: number,
+    businessType?: string,
+    businessCategory?: string
 ): Promise<BatchResult> {
     const startTime = Date.now();
 
@@ -492,7 +505,7 @@ async function processSingleBatch(
                     contents: [createUserContent(contentParts)],
                     config: {
                         ...GENERATION_CONFIG,
-                        systemInstruction: getParallelProcessingPrompt(existingContext),
+                        systemInstruction: getParallelProcessingPrompt(existingContext, businessType, businessCategory),
                         safetySettings: SAFETY_SETTINGS,
                     },
                 });
@@ -632,7 +645,7 @@ export async function processMenuImagesLogic(
     const requestId = generateRequestId();
     const startTime = Date.now();
 
-    const { files, targetLanguages, projectId = 'N/A', fileId = 'N/A', action = 'IMAGE_PROCESSING' } = request;
+    const { files, targetLanguages, projectId = 'N/A', fileId = 'N/A', action = 'IMAGE_PROCESSING', businessType, businessCategory } = request;
 
     // Set Sentry context for this processing request
     Sentry.setProcessingContext({
@@ -728,7 +741,9 @@ export async function processMenuImagesLogic(
                 existingContext,
                 batchIndex,
                 requestId,
-                totalBatches
+                totalBatches,
+                businessType,
+                businessCategory
             );
 
             batchResults.push(batchResult);

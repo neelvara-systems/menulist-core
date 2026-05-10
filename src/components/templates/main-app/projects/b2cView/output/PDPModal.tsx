@@ -82,6 +82,10 @@ function PDPModal({
         (value: unknown, fallback = '') => getLocalizedText(value as any, language, primaryLanguage, fallback),
         [language, primaryLanguage],
     );
+    const getAnalyticsText = useCallback(
+        (value: unknown, fallback = '') => getLocalizedText(value as any, primaryLanguage, primaryLanguage, fallback),
+        [primaryLanguage],
+    );
     const markImageLoaded = useCallback((url?: string) => {
         if (!url) return;
 
@@ -188,15 +192,15 @@ function PDPModal({
                 ));
                 const categoryId = typeof item.category === 'string' ? item.category : '';
                 const categoryRecord = file?.extractedData?.data?.categories?.find((cat: any) => cat.id === categoryId);
-                const categoryName = getModalText(categoryRecord?.name)
-                    || (typeof item.category === 'object' ? getModalText(item.category) : undefined);
+                const analyticsCategoryName = getAnalyticsText(categoryRecord?.name)
+                    || (typeof item.category === 'object' ? getAnalyticsText(item.category) : undefined);
 
                 trackMenuItemView({
                     itemId: item.id,
-                    name: getModalText(item.name, 'Unknown Item'),
-                    category: categoryName,
+                    name: getAnalyticsText(item.name, 'Unknown Item'),
+                    category: analyticsCategoryName,
                     categoryId,
-                    categoryName,
+                    categoryName: analyticsCategoryName,
                     price: showItemPrices
                         ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
                         : undefined,
@@ -219,7 +223,7 @@ function PDPModal({
             });
             setCategory(file?.extractedData?.data?.categories?.find((cat: any) => cat.id === item.category));
         }
-    }, [currencyCode, getModalText, item, trackMenuItemView, projectData, showItemPrices, trackView]);
+    }, [currencyCode, getAnalyticsText, getModalText, item, trackMenuItemView, projectData, showItemPrices, trackView]);
 
     useEffect(() => {
         if (!item || typeof window === 'undefined') return;

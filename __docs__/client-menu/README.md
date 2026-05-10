@@ -136,11 +136,13 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
 - The sticky command row must not use compositor transform hacks; scroll-spy category updates are frame-throttled so normal vertical scrolling does not make the row vibrate.
+- Mobile public menus keep the sticky command row anchored at `top: 0`; visual spacing and safe-area breathing room live inside the row padding, and public mobile uses stable `svh` viewport height so iOS browser/PWA chrome changes do not make the row bounce.
 - The compact top-row language control shows only the language initials; full language names remain inside the language picker.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - The `Sections` navigator header stays compact; close controls keep their tap target without creating a tall heading band.
 - Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
 - Featured cards reuse category icon/emoji identity only when the owner has category icons enabled for the menu design.
+- Featured choices use a full-width grid on desktop and keep horizontal scrolling only on smaller touch layouts.
 - Desktop and mobile owner controls use the same public wording for this area: `Featured section`, `Featured choice`, `Quick choice`, and `Value choice`.
 - Mobile Menu Design includes a persistent preview-only action so owners can inspect draft design changes through the same public menu renderer before saving.
 - Category headings are structural markers, not decorative title screens.
@@ -152,13 +154,15 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, and owner-enabled category identity.
 - Back-to-top is isolated from item cards underneath it; it scrolls only on completed tap/click and does not trigger PDP for the covered item.
 - Footer business actions use compact icon/text chips while keeping platform attribution quiet.
-- The common Call / WhatsApp / Directions set stays in one compact row; extra actions can wrap instead of crowding.
+- The common Call / WhatsApp / Directions set stays in one compact row; desktop renders centered chips, mobile can use equal-width touch targets, and extra actions can wrap instead of crowding.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution` and uses the same compact `Powered by MenuList. All rights reserved` treatment as other public pages.
 - Customer-facing menu and category controls are non-selectable to avoid accidental text selection while tapping; footer identity and policy content remain selectable.
 - Public menu viewport locks mobile pinch zoom on the client surface to match the owner app shell and avoid accidental two-finger zoom states inside installed PWAs.
 - Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
 - Compact multi-language payloads preserve the resolved initial render language description, not just the raw query language, so menus that default to English keep English descriptions on first load.
+- Public search waits for at least two normalized characters before filtering, allows numeric prefix search for alphanumeric tokens such as `11am` without matching unrelated price tokens such as `115`, rejects ambiguous compressed token matches, and aliases expand customer queries rather than stored item meanings.
+- Starting a search from a deep scroll position must bring the result area back under the sticky command row so customers never have to manually scroll to find the filtered output.
 
 ---
 
@@ -166,6 +170,11 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-10 | Search false-positive hardening: one-character input no longer shows a no-result state, and chai typo recovery no longer matches unrelated choice/cheese/tea-description text |
+| 2026-05-10 | Desktop menu polish: featured choices use a desktop grid, and footer contact actions render as compact centered chips instead of full-width controls |
+| 2026-05-10 | Numeric search prefix support: two-character numeric queries such as `11` can match item text tokens such as `11am` without matching unrelated price tokens such as `115` |
+| 2026-05-10 | Deep-scroll search positioning: active search now scrolls the result area back under the sticky command row when the customer starts from lower in the menu |
+| 2026-05-10 | iOS sticky-row stabilization: mobile public menu sticky controls now anchor at `top: 0` with internal safe-area padding and stable viewport height to avoid scroll bounce on iPhone Chrome/PWA |
 | 2026-05-10 | Sticky search row stability: removed sticky-row transform hints and frame-throttled scroll-spy updates to reduce scroll vibration |
 | 2026-05-10 | Interaction/search hardening: featured PDP close no longer moves the category rail, public menu pinch zoom is locked, menu/category text selection is suppressed, and short-token search matching is stricter |
 | 2026-05-10 | Logo and attribution alignment: menu/OBP logos render without extra wrapper borders, and public branding stays on the shared `Powered by MenuList. All rights reserved` treatment |

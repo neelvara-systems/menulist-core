@@ -1,54 +1,42 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { LuBarChart3, LuMousePointerClick, LuPhoneCall, LuShieldCheck, LuTags } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
-const analyticsSignals = [
-  {
-    icon: LuMousePointerClick,
-    title: 'Menu sessions and intent',
-    desc: 'MenuList counts anonymous sessions, engaged sessions, intent sessions, and action sessions without creating customer profiles.',
-  },
-  {
-    icon: LuTags,
-    title: 'Category and item interest',
-    desc: 'Item views, item taps, category interest, searches, no-result searches, and unavailable-item taps stay visible to the owner.',
-  },
-  {
-    icon: LuPhoneCall,
-    title: 'Actions that show real intent',
-    desc: 'Calls, WhatsApp, directions, reservations, order clicks, shares, and official-page CTA taps are recorded as final customer actions.',
-  },
-  {
-    icon: LuBarChart3,
-    title: 'Source quality, not vanity traffic',
-    desc: 'The dashboard can show which source creates action: QR, WhatsApp, Instagram, Google, official page, shortcut, or direct visits.',
-  },
+const analyticsSignalMeta = [
+  { icon: LuMousePointerClick },
+  { icon: LuTags },
+  { icon: LuPhoneCall },
+  { icon: LuBarChart3 },
 ];
 
-const ownerVisibility = [
-  'Today so far, plus settled daily, weekly, monthly, and lifetime views',
-  'Engaged Sessions %, Intent Rate %, Action Rate %, and action rate by source',
-  'Top items, top categories, searches, no-result searches, and unavailable interest',
-  'Pro action summaries that turn the same metrics into a short owner action list',
-];
-
-const transparencyPoints = [
-  'Cost-safe batching for passive events; final customer actions are recorded immediately',
-  'Clear owner settings explain what is recorded by default',
-  'No customer names, emails, payment details, scroll heatmaps, hover activity, or per-keystroke tracking',
-  'Approximate location is optional and never stored as exact GPS coordinates in this analytics flow',
-];
+const OWNER_VISIBILITY_COUNT = 5;
+const TRANSPARENCY_POINT_COUNT = 4;
 
 export default function AnalyticsInsightsSection() {
+  const t = useTranslations('Website');
+  const analyticsSignals = analyticsSignalMeta.map((meta, index) => ({
+    ...meta,
+    title: t(`AnalyticsInsights.signal${index}Title`),
+    desc: t(`AnalyticsInsights.signal${index}Desc`),
+  }));
+  const ownerVisibility = Array.from({ length: OWNER_VISIBILITY_COUNT }, (_, index) => (
+    t(`AnalyticsInsights.ownerVisibility${index}`)
+  ));
+  const transparencyPoints = Array.from({ length: TRANSPARENCY_POINT_COUNT }, (_, index) => (
+    t(`AnalyticsInsights.transparency${index}`)
+  ));
+
   return (
     <SectionWrapper variant="subtle">
       <AnimateOnScroll>
         <SectionHeading
-          title="Your menu, understood after it goes live"
-          subtitle="MenuList records the small set of customer signals that help an owner decide what to fix, promote, or share next — without heavy passive tracking."
+          title={t('AnalyticsInsights.title')}
+          highlightedText={t('AnalyticsInsights.highlight')}
+          subtitle={t('AnalyticsInsights.subtitle')}
         />
       </AnimateOnScroll>
 
@@ -112,7 +100,7 @@ export default function AnalyticsInsightsSection() {
       >
         <AnimateStaggerChild index={analyticsSignals.length}>
           <div className="ws-card" style={{ height: '100%' }}>
-            <h3 className="ws-h3" style={{ fontSize: '1rem' }}>What the owner sees</h3>
+            <h3 className="ws-h3" style={{ fontSize: '1rem' }}>{t('AnalyticsInsights.ownerCardTitle')}</h3>
             <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--ws-space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
               {ownerVisibility.map((item) => (
                 <li key={item} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
@@ -141,7 +129,7 @@ export default function AnalyticsInsightsSection() {
               >
                 <LuShieldCheck size={20} color="var(--ws-brand-secondary)" />
               </div>
-              <h3 className="ws-h3" style={{ fontSize: '1rem', margin: 0 }}>Private and cost-safe by default</h3>
+              <h3 className="ws-h3" style={{ fontSize: '1rem', margin: 0 }}>{t('AnalyticsInsights.safetyCardTitle')}</h3>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--ws-space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
               {transparencyPoints.map((point) => (
@@ -165,7 +153,7 @@ export default function AnalyticsInsightsSection() {
             marginRight: 'auto',
           }}
         >
-          The customer menu stays simple. The owner dashboard shows what customers noticed, what they wanted, and which source brought real action.
+          {t('AnalyticsInsights.footer')}
         </p>
       </AnimateOnScroll>
     </SectionWrapper>

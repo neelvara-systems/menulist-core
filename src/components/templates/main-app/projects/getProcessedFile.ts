@@ -38,6 +38,7 @@ async function createProcessingJob({
   files,
   targetLanguages,
   projectId,
+  businessCategory,
   businessType,
   action = AI_ACTIONS_TYPES.IMAGE_PROCESSING
 }: ProcessedFileAPIParams): Promise<CreateJobResult> {
@@ -70,6 +71,7 @@ async function createProcessingJob({
         name: l.name,
       })) as TargetLanguage[],
       action,
+      businessCategory,
       businessType,
     });
 

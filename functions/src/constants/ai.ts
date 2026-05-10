@@ -22,7 +22,7 @@ export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
  * Extraction prompt version — increment when parallelProcessingPrompt.ts changes
  * Stored in job metadata for debugging extraction quality regressions
  */
-export const EXTRACTION_PROMPT_VERSION = "parallel_v2";
+export const EXTRACTION_PROMPT_VERSION = "parallel_v3";
 
 export const GENERATION_CONFIG = {
     temperature: 0.2,

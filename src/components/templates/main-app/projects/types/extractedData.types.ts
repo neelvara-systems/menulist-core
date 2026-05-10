@@ -135,6 +135,14 @@ export interface ExtractedDataLanguage {
     isPrimary: boolean; // True for detected/source language, false for translations
 }
 
+export interface BusinessAttributeSuggestion {
+    key: string;
+    value: true;
+    confidence?: 'high' | 'medium' | 'low';
+    evidence?: string;
+    sourceFileIndex?: number;
+}
+
 export interface ExtractedData {
     message?: string; // Deprecated - use processingMessages instead
     processingMessages?: FileMessage[]; // Per-file warnings/errors (Section 8.14)
@@ -142,5 +150,6 @@ export interface ExtractedData {
         categories: ExtractedDataCategory[];
         items: ExtractedDataItem[];
         languages: ExtractedDataLanguage[];
+        businessAttributeSuggestions?: BusinessAttributeSuggestion[];
     };
 }

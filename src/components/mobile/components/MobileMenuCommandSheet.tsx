@@ -5,7 +5,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
-import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
+import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPalette, LuPen, LuPlus, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from '../sheets/menuSheetLayout';
 
@@ -29,6 +29,7 @@ interface MobileMenuCommandSheetProps {
     onAIDefaults: () => void;
     onGenerateDescriptions: () => void;
     onManageLanguages: () => void;
+    onOpenDesignEditor?: () => void;
     onRepairMenu: () => void;
     onPreview: () => void;
     onTextCase: () => void;
@@ -52,6 +53,7 @@ export default function MobileMenuCommandSheet({
     onAIDefaults,
     onGenerateDescriptions,
     onManageLanguages,
+    onOpenDesignEditor,
     onRepairMenu,
     onPreview,
     onTextCase,
@@ -154,6 +156,13 @@ export default function MobileMenuCommandSheet({
             description: `See how customers view this ${labels.offeringLower}.`,
             onClick: onPreview,
         },
+        ...(onOpenDesignEditor ? [{
+            key: 'design',
+            icon: <LuPalette style={{ fontSize: 20 }} />,
+            title: 'Menu Design',
+            description: 'Edit colors, layout, images, and customer-facing menu style.',
+            onClick: onOpenDesignEditor,
+        }] : []),
         {
             key: 'upload-menu',
             icon: <LuCamera style={{ fontSize: 20 }} />,
@@ -186,7 +195,7 @@ export default function MobileMenuCommandSheet({
             description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
         },
-    ], [labels.offeringLower, onAddItem, onCategories, onPreview, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
+    ], [labels.offeringLower, onAddItem, onCategories, onOpenDesignEditor, onPreview, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
         <Flex

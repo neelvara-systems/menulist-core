@@ -618,7 +618,11 @@ export default function OBPResolvedSurface({
     const cuisineTypes = store?.cuisineTypes || [];
     const priceRange = store?.priceRange;
     const hasStructuredInfo = !!(allHours || serviceModeTags.length || paymentTags.length || cuisineTypes.length || priceRange);
-    const identityPills = [areaContext, ...serviceModeTags.slice(0, 3), priceRange]
+    const identityPills = [
+        ...(isOutletSurface && areaContext ? [areaContext] : []),
+        ...serviceModeTags.slice(0, 3),
+        priceRange,
+    ]
         .filter(Boolean)
         .slice(0, 4) as string[];
     const schema = includeRuntime

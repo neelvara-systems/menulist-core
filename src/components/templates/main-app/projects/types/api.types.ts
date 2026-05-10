@@ -93,5 +93,6 @@ export interface ProcessedFileAPIParams {
     projectId: string;
     fileId?: string; // Optional - only used for legacy tracking, job queue uses jobId instead
     action?: string;
+    businessCategory?: string;
     businessType?: string;
 }

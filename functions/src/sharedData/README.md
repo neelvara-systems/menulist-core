@@ -19,6 +19,7 @@ These files are **exact copies** of `src/data/shared/` (frontend primary source)
 | Backend (this folder) | Frontend (primary source) |
 |---|---|
 | `businessTypes.ts` | `src/data/shared/businessTypes.ts` |
+| `businessAttributeInference.ts` | `src/data/shared/businessAttributeInference.ts` |
 | `defaultRoles.ts` | `src/data/shared/defaultRoles.ts` |
 | `countryData.ts` | `src/components/atoms/phoneNumberInput/countryData.ts` |
 

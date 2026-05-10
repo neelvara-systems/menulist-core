@@ -61,6 +61,9 @@ export const SECRETS = {
     SENTRY_DSN: 'SENTRY_DSN',
     TELEGRAM_BOT_TOKEN: 'TELEGRAM_BOT_TOKEN',
     TELEGRAM_CHAT_ID: 'TELEGRAM_CHAT_ID',
+
+    // Public cache invalidation
+    REVALIDATION_SECRET: 'REVALIDATION_SECRET',
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -119,6 +122,11 @@ export const SECRET_GROUPS = {
     MONITORING: [
         SECRETS.TELEGRAM_BOT_TOKEN,
         SECRETS.TELEGRAM_CHAT_ID,
+    ] as string[],
+
+    /** Server-to-server cache invalidation for public menu/OBP pages */
+    PUBLIC_CACHE_REVALIDATION: [
+        SECRETS.REVALIDATION_SECRET,
     ] as string[],
 };
 

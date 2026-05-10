@@ -1,6 +1,5 @@
 'use client'
 
-import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
@@ -9,17 +8,16 @@ import type { OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { LuBarChart3, LuCalendar, LuEye, LuFlame, LuHeart, LuInfo, LuRefreshCw, LuShield, LuTrendingDown, LuTrendingUp, LuZap } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, List, NavBar, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, List, Popover, Tabs, Tag, Text, Title, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 // Customer App (installable PWA) metrics — store-scoped (projectId='customerApp').
-// Renders nothing when feature-flag off or no data yet, so it's safe to mount
-// unconditionally here alongside menu analytics.
+// Kept in Overview only so mobile matches the desktop analytics hierarchy.
 const MobileCustomerAppMetrics = dynamic(
     () => import('./dashboardSections/MobileCustomerAppMetrics'),
     { ssr: false },
@@ -38,7 +36,6 @@ interface MobileDashboardScreenProps {
     onOpenDesignEditor?: () => void;
 }
 
-const RISK_LABELS: Record<string, string> = { stable: 'Stable', watch: 'Watch', at_risk: 'At Risk' };
 const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 const FULL_WIDTH_TAG_STYLE = {
     display: 'block',
@@ -55,6 +52,48 @@ function formatUpdatedTime(value?: Date | string): string | null {
     if (Number.isNaN(parsed.getTime())) return null;
 
     return parsed.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+}
+
+function resolveDashboardText(value: unknown, language: string, fallback = ''): string {
+    if (typeof value === 'string') return value.trim() || fallback;
+    if (!value || typeof value !== 'object') return fallback;
+
+    const localized = value as Record<string, unknown>;
+    const direct = localized[language];
+    if (typeof direct === 'string' && direct.trim()) return direct.trim();
+    const english = localized.en;
+    if (typeof english === 'string' && english.trim()) return english.trim();
+    const firstValue = Object.values(localized).find((entry): entry is string => (
+        typeof entry === 'string' && entry.trim().length > 0
+    ));
+
+    return firstValue?.trim() || fallback;
+}
+
+function buildProjectAnalyticsLabels(project: any, language: string) {
+    const itemNames: Record<string, string> = {};
+    const categoryNames: Record<string, string> = {};
+    const files = Array.isArray(project?.files)
+        ? project.files
+        : Array.isArray(project?.projectData?.files)
+            ? project.projectData.files
+            : [];
+
+    files.forEach((file: any) => {
+        const data = file?.extractedData?.data;
+        (data?.categories || []).forEach((category: any) => {
+            if (!category?.id) return;
+            const label = resolveDashboardText(category.name, language, category.id);
+            if (label) categoryNames[category.id] = label;
+        });
+        (data?.items || []).forEach((item: any) => {
+            if (!item?.id) return;
+            const label = resolveDashboardText(item.name, language, item.id);
+            if (label) itemNames[item.id] = label;
+        });
+    });
+
+    return { categoryNames, itemNames };
 }
 
 export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: MobileDashboardScreenProps) {
@@ -86,46 +125,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     } : undefined);
     const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
 
-    useEffect(() => {
-        console.log('[MobileDashboard][Screen] project context', {
-            loadingProjects,
-            projectsList,
-            selectedProject,
-            selectedProjectId,
-            selectedProjectSummary,
-            storeId: storeDetails?.storeId || null,
-            tenantId: storeDetails?.tenantId || null,
-        });
-    }, [
-        loadingProjects,
-        projectsList,
-        selectedProject,
-        selectedProjectId,
-        selectedProjectSummary,
-        storeDetails?.storeId,
-        storeDetails?.tenantId,
-    ]);
-
-    useEffect(() => {
-        console.log('[MobileDashboard][Screen] owner dashboard data', {
-            currentViewMode: viewMode,
-            data,
-            loading,
-            loadingToday,
-            selectedProjectId,
-            showHistorical,
-        });
-    }, [data, loading, loadingToday, selectedProjectId, showHistorical, viewMode]);
-
-    useEffect(() => {
-        console.log('[MobileDashboard][Screen] obp dashboard data', {
-            data: obpDashboard.data,
-            loading: obpDashboard.loading,
-            loadingToday: obpDashboard.loadingToday,
-            storeId: storeDetails?.storeId || null,
-        });
-    }, [obpDashboard.data, obpDashboard.loading, obpDashboard.loadingToday, storeDetails?.storeId]);
-
     const viewModeLabel = viewMode === 'today'
         ? 'Today'
         : viewMode === 'overview'
@@ -153,23 +152,85 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         setViewMode(nextMode);
     }, [setViewMode]);
 
+    const dashboardLanguage = selectedProject?.defaultLanguage
+        || selectedProjectSummary?.defaultLanguage
+        || storeDetails?.defaultLanguage
+        || 'en';
+    const dashboardLabels = useMemo(
+        () => buildProjectAnalyticsLabels(selectedProject, dashboardLanguage),
+        [dashboardLanguage, selectedProject]
+    );
+    const enrichTopItems = useCallback((items?: any[]) => (
+        Array.isArray(items)
+            ? items.map((item) => ({
+                ...item,
+                name: dashboardLabels.itemNames[item.itemId] || item.name,
+            }))
+            : items
+    ), [dashboardLabels.itemNames]);
+    const enrichTopCategories = useCallback((categories?: any[]) => (
+        Array.isArray(categories)
+            ? categories.map((category) => ({
+                ...category,
+                name: dashboardLabels.categoryNames[category.categoryId] || category.name,
+            }))
+            : categories
+    ), [dashboardLabels.categoryNames]);
+    const enrichViewData = useCallback((viewData?: any) => (
+        viewData
+            ? {
+                ...viewData,
+                topCategories: enrichTopCategories(viewData.topCategories),
+                topItems: enrichTopItems(viewData.topItems),
+                unavailableItems: enrichTopItems(viewData.unavailableItems),
+            }
+            : viewData
+    ), [enrichTopCategories, enrichTopItems]);
+    const enrichedData = useMemo(() => {
+        if (!data) return data;
+        return {
+            ...data,
+            daily: enrichViewData(data.daily),
+            monthly: enrichViewData(data.monthly),
+            mtd: enrichViewData(data.mtd),
+            overall: data.overall
+                ? {
+                    ...data.overall,
+                    topCategories: enrichTopCategories(data.overall.topCategories),
+                    topItems: enrichTopItems(data.overall.topItems),
+                }
+                : data.overall,
+            overview: data.overview
+                ? {
+                    ...data.overview,
+                    mtd: enrichViewData(data.overview.mtd),
+                    wtd: enrichViewData(data.overview.wtd),
+                    yesterday: enrichViewData(data.overview.yesterday),
+                }
+                : data.overview,
+            today: enrichViewData(data.today),
+            weekly: enrichViewData(data.weekly),
+            wtd: enrichViewData(data.wtd),
+        };
+    }, [data, enrichTopCategories, enrichTopItems, enrichViewData]);
+
     const currentViewData = useMemo(() => {
         switch (viewMode) {
             case 'today':
-                return data?.today || null;
+                return enrichedData?.today || null;
             case 'daily':
-                return data?.daily || null;
+                return enrichedData?.daily || null;
             case 'weekly':
-                return data?.weekly || null;
+                return enrichedData?.weekly || null;
             case 'monthly':
-                return data?.monthly || null;
+                return enrichedData?.monthly || null;
             case 'overall':
-                return data?.overall || null;
+                return enrichedData?.overall || null;
             case 'overview':
             default:
-                return data?.overview || null;
+                return enrichedData?.overview || null;
         }
-    }, [data?.daily, data?.monthly, data?.overall, data?.overview, data?.today, data?.weekly, viewMode]);
+    }, [enrichedData?.daily, enrichedData?.monthly, enrichedData?.overall, enrichedData?.overview, enrichedData?.today, enrichedData?.weekly, viewMode]);
 
     if (loadingProjects || (!selectedProjectId && loadingProjects)) {
         return (
@@ -204,9 +265,9 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         );
     }
 
-    const overview = data?.overview;
-    const today = data?.today;
-    const overall = data?.overall;
+    const overview = enrichedData?.overview;
+    const today = enrichedData?.today;
+    const overall = enrichedData?.overall;
     const wtd = overview?.wtd;
     const mtd = overview?.mtd;
     const historicalWeeks = overview?.historicalWeeks || data?.historicalWeeks || [];
@@ -235,16 +296,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         if (overview.status === 'low_activity') return { color: 'warning', text: t('lowActivity') };
         return { color: 'default', text: t('waitingFirstScan') };
     })();
-    const trustColors: Record<string, string> = {
-        stable: token.colorPrimary,
-        strong: token.colorSuccess,
-        weak: token.colorWarning,
-    };
-    const riskColors: Record<string, string> = {
-        at_risk: token.colorError,
-        stable: token.colorSuccess,
-        watch: token.colorWarning,
-    };
     const stickyHistoricalHeaderStyle = {
         background: token.colorBgLayout,
         backdropFilter: 'blur(10px)',
@@ -312,14 +363,15 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         const hasUnavailable = Boolean(data?.unavailableItems?.length);
         const hasZeroResultSearches = Number(data?.metrics?.zeroResultSearches || 0) > 0;
 
-        if (!hasActions && !hasTopCategories && !hasTopLanguages && !hasTopFilters && !hasSearchTerms && !hasZeroResultTerms && !hasUnavailable && !hasZeroResultSearches) return null;
-
         return (
             <Card size="small" title={<Text strong>Customer Intent</Text>}>
                 <Flex gap={8} vertical>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
                     </Text>
+                    {!hasActions && !hasTopCategories && !hasTopLanguages && !hasTopFilters && !hasSearchTerms && !hasZeroResultTerms && !hasUnavailable && !hasZeroResultSearches ? (
+                        <Text type="secondary">No customer intent yet for this period.</Text>
+                    ) : null}
                     {hasActions ? (
                         <Text type="secondary">
                             {`Actions: Call ${data.menuActions?.call || 0}, WhatsApp ${data.menuActions?.whatsapp || 0}, Directions ${data.menuActions?.directions || 0}, Reserve ${data.menuActions?.reserve || 0}, Order ${data.menuActions?.order || 0}`}
@@ -462,20 +514,24 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         );
     };
 
-    const renderTopItems = (items?: any[]) => items?.length ? (
+    const renderTopItems = (items?: any[]) => (
         <Card size="small" title={<Text strong>{t('topItems')}</Text>}>
-            <List>
-                {items.slice(0, 5).map((item: any, index: number) => (
-                    <List.Item
-                        key={item.itemId || index}
-                        prefix={<Tag>{index + 1}</Tag>}
-                        extra={<Tag>{`${item.clicks} clicks`}</Tag>}
-                        title={<Text>{item.name || item.itemId}</Text>}
-                    />
-                ))}
-            </List>
+            {items?.length ? (
+                <List>
+                    {items.slice(0, 5).map((item: any, index: number) => (
+                        <List.Item
+                            key={item.itemId || index}
+                            prefix={<Tag>{index + 1}</Tag>}
+                            extra={<Tag>{`${item.clicks} clicks`}</Tag>}
+                            title={<Text>{item.name || item.itemId}</Text>}
+                        />
+                    ))}
+                </List>
+            ) : (
+                <Text type="secondary">No top items yet for this period.</Text>
+            )}
         </Card>
-    ) : null;
+    );
 
     const renderAiSummary = (summary?: any) => summary?.bulletPoints?.length ? (
         <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
@@ -490,7 +546,14 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
     const renderPeriodView = () => {
         const periodData = currentViewData as any;
 
-        if (!periodData || viewMode === 'today' || viewMode === 'overview' || viewMode === 'overall') return null;
+        if (viewMode === 'today' || viewMode === 'overview' || viewMode === 'overall') return null;
+        if (!periodData) {
+            return (
+                <Card size="small" title={<Text strong>{viewModeLabel}</Text>}>
+                    <Text type="secondary">No menu activity yet for this period.</Text>
+                </Card>
+            );
+        }
 
         const dateLabel = viewMode === 'daily' && periodData.date
             ? new Date(periodData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'long' })
@@ -511,8 +574,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         : dateLabel}
                 </Tag>
 
-                {renderAiSummary(periodData.aiSummary)}
-
                 <Card size="small" title={<Text strong>{viewModeLabel}</Text>}>
                     {renderMetricsCards(periodData.metrics)}
                     {viewMode === 'monthly' && periodData.daysWithData > 0 ? (
@@ -521,9 +582,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         </Text>
                     ) : null}
                 </Card>
-
-                {renderTopItems(periodData.topItems)}
-                {renderDemandAndActions(periodData)}
             </>
         );
     };
@@ -542,30 +600,17 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
                         {renderMetricTile('Unavailable Interest', overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
                     </Flex>
-                    {overall.menuActions ? (
-                        <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                            {`Actions: Call ${overall.menuActions.call}, WhatsApp ${overall.menuActions.whatsapp}, Directions ${overall.menuActions.directions}, Reserve ${overall.menuActions.reserve}, Order ${overall.menuActions.order}`}
-                        </Text>
-                    ) : null}
-                    {overall.topItems?.length ? (
-                        <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                            {`Top items: ${overall.topItems.slice(0, 3).map((item: any) => `${item.name || item.itemId} (${item.clicks} taps)`).join(', ')}`}
-                        </Text>
-                    ) : null}
                     {overall.firstDataDate ? (
                         <Text type="secondary">
                             {`Since ${new Date(overall.firstDataDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                         </Text>
                     ) : null}
                 </Card>
-            ) : null}
-
-            <MobileOBPMetricsCard
-                data={obpDashboard.data}
-                loading={obpDashboard.loading}
-                loadingToday={obpDashboard.loadingToday}
-                mode="overall"
-            />
+            ) : (
+                <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
+                    <Text type="secondary">No lifetime menu activity yet.</Text>
+                </Card>
+            )}
         </>
     );
 
@@ -574,13 +619,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             <MobileSettingsScreenHeader
                 description={t('subtitle', { offering: labels.offeringLower })}
                 onBack={onBack}
-                right={(
-                    <Flex align="center" gap={8}>
-                        <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
-                            <LuRefreshCw size={18} color={token.colorTextTertiary} />
-                        </Button>
-                    </Flex>
-                )}
                 title={t('title')}
             />
 
@@ -620,9 +658,16 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     </Card>
                 </div>
 
-                <Title level={5} style={{ margin: 0 }}>
-                    {viewMode === 'today' ? 'Today so far' : viewModeLabel}
-                </Title>
+                <Flex align="center" justify="space-between">
+                    <Title level={5} style={{ margin: 0 }}>
+                        {viewMode === 'today' ? 'Today so far' : viewModeLabel}
+                    </Title>
+                    {viewMode === 'today' ? (
+                        <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
+                            <LuRefreshCw size={18} color={token.colorTextTertiary} />
+                        </Button>
+                    ) : null}
+                </Flex>
 
                 {viewMode !== 'today' ? (
                     <Text type="secondary" style={{ fontSize: 12 }}>
@@ -655,10 +700,25 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                             loadingToday={obpDashboard.loadingToday}
                             mode="today"
                         />
+                        {renderTopItems(today?.topItems)}
+                        {renderDemandAndActions(today)}
                     </>
                 ) : viewMode === 'overall' ? (
                     <>
                         {renderOverallView()}
+                        <MobileOBPMetricsCard
+                            data={obpDashboard.data}
+                            loading={obpDashboard.loading}
+                            loadingToday={obpDashboard.loadingToday}
+                            mode="overall"
+                        />
+                        {renderTopItems(overall?.topItems)}
+                        {renderDemandAndActions(overall ? {
+                            ...overall,
+                            metrics: {
+                                zeroResultSearches: overall.lifetimeMetrics?.totalZeroResultSearches || 0,
+                            },
+                        } : null)}
 
                         {!overall && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
@@ -674,13 +734,15 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                 ) : viewMode !== 'overview' ? (
                     <>
                         {renderPeriodView()}
-
                         <MobileOBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}
                             loadingToday={obpDashboard.loadingToday}
                             mode={viewMode}
                         />
+                        {renderTopItems((currentViewData as any)?.topItems)}
+                        {renderDemandAndActions(currentViewData)}
+                        {renderAiSummary((currentViewData as any)?.aiSummary)}
 
                         {!currentViewData && !hasOBPCurrentViewData && !isOBPSettledPending ? (
                             <Card>
@@ -695,20 +757,13 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                     </>
                 ) : (
                     <>
-                        {wtd ? (
-                            <Card size="small" title={<Text strong>{t('last7Days')}</Text>}>
-                                {renderMetricsCards(wtd.metrics)}
-                            </Card>
-                        ) : null}
-                        <MobileOwnerActionPlanCard
-                            actionPlan={data?.ownerActionPlan || overview?.ownerActionPlan}
-                            confidence={data?.ownerConfidence || overview?.ownerConfidence}
-                            sourceQuality={data?.sourceQuality || overview?.sourceQuality || []}
-                            analyticsAiEntitlement={data?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
-                            title="Menu Intelligence Action Plan"
-                        />
-                        {renderDemandAndActions(wtd)}
-
+                        <Card size="small" title={<Text strong>{t('last7Days')}</Text>}>
+                            {wtd ? (
+                                renderMetricsCards(wtd.metrics)
+                            ) : (
+                                <Text type="secondary">No settled menu activity yet for the last 7 days.</Text>
+                            )}
+                        </Card>
                         <MobileOBPMetricsCard
                             data={obpDashboard.data}
                             loading={obpDashboard.loading}
@@ -717,6 +772,16 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         />
 
                         <MobileCustomerAppMetrics />
+                        {renderTopItems(wtd?.topItems)}
+                        {renderDemandAndActions(wtd)}
+
+                        <MobileOwnerActionPlanCard
+                            actionPlan={enrichedData?.ownerActionPlan || overview?.ownerActionPlan}
+                            confidence={enrichedData?.ownerConfidence || overview?.ownerConfidence}
+                            sourceQuality={enrichedData?.sourceQuality || overview?.sourceQuality || []}
+                            analyticsAiEntitlement={enrichedData?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
+                            title="Menu Intelligence Action Plan"
+                        />
 
                         {overview?.aiSummary?.bulletPoints?.length ? (
                             <Card size="small" title={<Text strong>{t('aiSummary')}</Text>}>
@@ -786,63 +851,6 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                                 ) : null}
                             </Card>
                         ) : null}
-                        {renderDemandAndActions(mtd)}
-
-                        {storeDetails?.healthSignals ? (
-                            (() => {
-                                const hs = storeDetails.healthSignals;
-                                const showTrust = FEATURE_FLAGS.ENABLE_TRUST_HEALTH_SIGNAL && hs.trust?.visible;
-                                const showLoyalty = FEATURE_FLAGS.ENABLE_LOYALTY_HEALTH_SIGNAL && hs.loyalty?.visible;
-                                const showRisk = FEATURE_FLAGS.ENABLE_RISK_DECLINE_DETECTION && hs.risk?.visible;
-                                if (!showTrust && !showLoyalty && !showRisk) return null;
-                                return (
-                                    <Card size="small" title={<Text strong>{t('businessHealth')}</Text>}>
-                                        <List>
-                                            {showTrust && hs.trust ? (
-                                                <List.Item
-                                                    key="trust"
-                                                    prefix={<LuShield color={trustColors[hs.trust.state] || token.colorPrimary} size={14} />}
-                                                    extra={<Tag color="processing">{hs.trust.state}</Tag>}
-                                                    title={<Text>{t('trust')}</Text>}
-                                                />
-                                            ) : null}
-                                            {showLoyalty && hs.loyalty ? (
-                                                <List.Item
-                                                    key="loyalty"
-                                                    prefix={<LuHeart color={trustColors[hs.loyalty.state] || token.colorPrimary} size={14} />}
-                                                    extra={<Tag color="processing">{hs.loyalty.state}</Tag>}
-                                                    title={<Text>{t('loyalty')}</Text>}
-                                                />
-                                            ) : null}
-                                            {showRisk && hs.risk ? (
-                                                <List.Item
-                                                    key="risk"
-                                                    prefix={<LuTrendingDown color={riskColors[hs.risk.state] || token.colorSuccess} size={14} />}
-                                                    extra={<Tag color="warning">{RISK_LABELS[hs.risk.state] || hs.risk.state}</Tag>}
-                                                    title={<Text>{t('health')}</Text>}
-                                                />
-                                            ) : null}
-                                        </List>
-                                    </Card>
-                                );
-                            })()
-                        ) : null}
-
-                        {wtd?.topItems?.length ? (
-                            <Card size="small" title={<Text strong>{t('topItems')}</Text>}>
-                                <List>
-                                    {wtd.topItems.slice(0, 5).map((item: any, index: number) => (
-                                        <List.Item
-                                            key={item.itemId || index}
-                                            prefix={<Tag>{index + 1}</Tag>}
-                                            extra={<Tag>{`${item.clicks} clicks`}</Tag>}
-                                            title={<Text>{item.name || item.itemId}</Text>}
-                                        />
-                                    ))}
-                                </List>
-                            </Card>
-                        ) : null}
-
                         {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>

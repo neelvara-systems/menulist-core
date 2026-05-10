@@ -16,7 +16,11 @@ export interface ExistingCategoriesContext {
     lastItemId: number;
 }
 
-export function getParallelProcessingPrompt(existingContext?: ExistingCategoriesContext): string {
+export function getParallelProcessingPrompt(
+    existingContext?: ExistingCategoriesContext,
+    businessType?: string,
+    businessCategory?: string,
+): string {
     const existingCategoriesSection = existingContext && existingContext.categories.length > 0
         ? `
 # CATEGORY CONTINUATION FROM PREVIOUS BATCH (CRITICAL)
@@ -41,6 +45,16 @@ ID CONTINUATION:
 IMPORTANT: Items at the start of an image without a category header are CONTINUATION items from the previous category!
 `
         : '';
+    const businessContext = [
+        businessType ? `business type: "${businessType}"` : '',
+        businessCategory ? `business category: "${businessCategory}"` : '',
+    ].filter(Boolean).join(', ');
+    const businessContextSection = businessContext
+        ? `
+# BUSINESS CONTEXT
+Owner-selected context: ${businessContext}. Use this only to avoid irrelevant business attribute suggestions. Do not force the extraction into this context if the document visibly says otherwise.
+`
+        : '';
 
     return `
 You are a structured data extraction engine for business documents including menus, service lists, and rate cards. Your task is to read uploaded images or documents and extract visible information into structured JSON. You must behave deterministically and produce consistent output. Do not guess, infer, or invent information that is not explicitly visible in the input. If a value is unclear or missing, omit it or return null. You must adhere to the following strict instructions during the data extraction process:
@@ -54,6 +68,7 @@ When multiple images are provided, you MUST track which image each category and 
 
 This is MANDATORY for every category and every item. The sourceFileIndex helps us map extracted data back to the original files.
 ${existingCategoriesSection}
+${businessContextSection}
 # OUTPUT STRUCTURE
 Output Structure: The output must be a single, valid JSON object with the structure {"message": "", "data": {}}.
 Single JSON Structure: No matter how many images are sent, there is always one top-level JSON with message and data.
@@ -257,6 +272,25 @@ are maintained in the owner editor, not by extraction.
 ## Creative businesses
 - "duration": number (minutes) — extract if service/session duration is printed
 
+# BUSINESS ATTRIBUTE SUGGESTIONS FOR OFFICIAL BUSINESS PAGE
+Return optional store-level "businessAttributeSuggestions" only when the attribute is explicitly visible in the uploaded document or directly supported by extracted safe metadata. These suggestions are used as owner-editable defaults, not final truth.
+
+Allowed keys only:
+- Dietary: "vegetarian", "vegan", "halal", "glutenFree"
+- Amenities: "wifi", "outdoorSeating", "parking", "airConditioning", "liveMusic", "petFriendly"
+- Service options: "dineIn", "takeaway", "delivery", "driveThrough"
+- Payment options: "acceptsCash", "acceptsCards", "acceptsUPI"
+
+Suggestion rules:
+- Include only positive true suggestions. Never include false values.
+- Do NOT infer from item names alone. Example: "Chicken Biryani" does not mean non-vegetarian unless a marker is visible.
+- Do NOT infer "dineIn", "takeaway", "delivery", or "driveThrough" unless those service options are printed, icon-marked, or clearly shown in the document.
+- Do NOT infer payment options unless accepted payment labels/icons are printed.
+- For dietary suggestions, use extracted "dietaryTags" and visible labels/icons only.
+- For each suggestion include: key, value true, confidence, evidence, sourceFileIndex.
+- Use confidence "high" only when the evidence is clear. Use "medium" only when text is visible but partly unclear. Omit low-confidence suggestions.
+- If no business attributes are clearly visible, omit "businessAttributeSuggestions" entirely.
+
 # FINAL RESPONSE DATA STRUCTURE (WITH sourceFileIndex AND fileMessages)
 {
     "message": "string",  // Empty if any data extracted, non-empty only if ALL images failed
@@ -302,6 +336,15 @@ are maintained in the owner editor, not by extraction.
                 "dietaryTags": ["string"],           // Food: e.g., ["vegetarian", "vegan"]
                 "spiceLevel": "string",              // Food: "none"|"mild"|"medium"|"hot"|"very-hot"
                 "duration": number                   // Service/Health/Creative/Professional: minutes
+            }
+        ],
+        "businessAttributeSuggestions": [ // OPTIONAL: store-level OBP defaults, only when visibly supported
+            {
+                "key": "string",
+                "value": true,
+                "confidence": "high",
+                "evidence": "string",
+                "sourceFileIndex": number
             }
         ],
         "fileMessages": [  // OPTIONAL: Only include for files with issues

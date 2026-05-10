@@ -80,7 +80,7 @@ export const MEDIA_ASPECT_RATIO_OPTIONS: MediaAspectRatioOption[] = [
 ];
 
 const MB = 1024 * 1024;
-const OWNER_IMAGE_SOURCE_LIMIT = 15 * MB;
+const OWNER_IMAGE_SOURCE_LIMIT = 50 * MB;
 
 export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
     menuItem: {
