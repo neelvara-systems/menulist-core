@@ -16,7 +16,8 @@
 - Mobile does not add a complex Canva-style editor.
 - Mobile preparation auto-prepares first, then exposes Adjust for project image, menu background, business logo, Official Business Page business cover, Official Business Page gallery photos, and Digital Screens custom slides.
 - Mobile item images do not get a manual adjust step; the shared item-image preparation remains fast and automatic.
-- Adjust supports profile-locked crop, drag, zoom, rotate, and reset. Final resize/compression still runs through `prepareMediaImage`.
+- Adjust supports profile-locked crop, drag, Fit to frame, slider zoom, two-finger pinch zoom on touch screens, rotate, and reset. Final resize/compression still runs through `prepareMediaImage`.
+- Mobile shows customer-frame previews for menu background and Official Business Page business cover, because those images affect what customers see first.
 - Touch targets remain at least 44px where actions already render as buttons.
 
 ## Mobile Surfaces Wired

@@ -25,6 +25,7 @@ import useDeviceType from '@hook/useDeviceType';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackMenuAction, type TrackingData } from '@lib/analytics/unified';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { StoreDataType } from '@type/platform/store';
 import {
     LuCalendarCheck,
@@ -163,6 +164,7 @@ export default function MenuFooter({
         showReservation,
         showOrder,
     ].filter(Boolean).length;
+    const homeHref = appendPublicLanguageParam('/', activeLanguage);
     const useSingleRowActions = visibleActionCount > 1 && visibleActionCount <= 3 && !showReservation && !showOrder;
     const useFullWidthActionGrid = isMobile && useSingleRowActions;
 
@@ -260,9 +262,9 @@ export default function MenuFooter({
              * links to the tenant's OBP root. After G-02 made the header logo
              * decorative on public pages, this is the canonical "back to
              * business home" affordance — must remain a real anchor.
-             */}
+            */}
             <a
-                href="/"
+                href={homeHref}
                 aria-label={`${businessName} — business home`}
                 style={{
                     color: moodConfig.headingColor,

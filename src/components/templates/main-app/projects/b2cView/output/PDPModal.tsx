@@ -15,17 +15,19 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getLocalizedText } from '@lib/localization/text';
+import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
+import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuChevronLeft, LuChevronRight, LuMaximize2, LuMinus, LuPlus, LuRotateCcw, LuX } from 'react-icons/lu';
+import { LuChevronLeft, LuChevronRight, LuMaximize2, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
-import { menuBottomSheetMotion, menuDialogMotion, menuFadeTransition, menuSpringTransition } from './menuMotion';
+import { menuBottomSheetMotion, menuDialogMotion, menuSpringTransition } from './menuMotion';
 
 interface PDPModalProps {
     item: any;
@@ -68,13 +70,10 @@ function PDPModal({
     const [displayedImageIndex, setDisplayedImageIndex] = useState(0);
     const [loadedImageUrls, setLoadedImageUrls] = useState<Set<string>>(new Set());
     const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
-    const [imageViewerZoom, setImageViewerZoom] = useState(1);
-    const [imageViewerPan, setImageViewerPan] = useState({ x: 0, y: 0 });
     const [category, setCategory] = useState<ExtractedDataCategory>();
     const [mounted, setMounted] = useState(false);
     const [isMobileSheet, setIsMobileSheet] = useState(false);
     const imageTouchStartXRef = useRef<number | null>(null);
-    const imageViewerDragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
     const primaryLanguage = projectData?.defaultLanguage || projectData?.languages?.[0] || 'en';
     const images = useMemo(() => normalizePublicMenuImages(item?.images), [item?.images]);
     const imageCount = images.length;
@@ -182,9 +181,6 @@ function PDPModal({
             setDisplayedImageIndex(0);
             setLoadedImageUrls(new Set());
             setIsImageViewerOpen(false);
-            setImageViewerZoom(1);
-            setImageViewerPan({ x: 0, y: 0 });
-            imageViewerDragRef.current = null;
 
             if (trackView) {
                 const file = projectData?.files?.find(f => (
@@ -270,46 +266,21 @@ function PDPModal({
         if (!item) return;
 
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (isImageViewerOpen) return;
+
             if (event.key === 'Escape') {
-                if (isImageViewerOpen) {
-                    setIsImageViewerOpen(false);
-                    setImageViewerZoom(1);
-                    setImageViewerPan({ x: 0, y: 0 });
-                    imageViewerDragRef.current = null;
-                    return;
-                }
-
                 onClose();
-                return;
-            }
-
-            if (isImageViewerOpen && event.key === 'ArrowRight' && imageCount > 1) {
-                event.preventDefault();
-                nextImage();
-                return;
-            }
-
-            if (isImageViewerOpen && event.key === 'ArrowLeft' && imageCount > 1) {
-                event.preventDefault();
-                prevImage();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [imageCount, isImageViewerOpen, item, nextImage, onClose, prevImage]);
-
-    useEffect(() => {
-        setImageViewerZoom(1);
-        setImageViewerPan({ x: 0, y: 0 });
-        imageViewerDragRef.current = null;
-    }, [currentImageIndex, item?.id]);
+    }, [isImageViewerOpen, item, onClose]);
 
     if (!item || !mounted) return null;
 
     const hasMultipleImages = images.length > 1;
     const targetImageUrl = images[currentImageIndex]?.url;
-    const currentViewerImageUrl = images[displayedImageIndex]?.url || targetImageUrl;
     const isWaitingForTargetImage = Boolean(
         targetImageUrl &&
         currentImageIndex !== displayedImageIndex &&
@@ -324,73 +295,6 @@ function PDPModal({
     const skillLevel = getDecisionFactString(item, 'skillLevel');
     const materials = getDecisionFactString(item, 'materials');
     const warranty = getDecisionFactString(item, 'warranty');
-
-    const closeImageViewer = () => {
-        setIsImageViewerOpen(false);
-        setImageViewerZoom(1);
-        setImageViewerPan({ x: 0, y: 0 });
-        imageViewerDragRef.current = null;
-    };
-
-    const setViewerZoom = (nextZoom: number | ((current: number) => number)) => {
-        setImageViewerZoom((current) => {
-            const resolved = typeof nextZoom === 'function' ? nextZoom(current) : nextZoom;
-            const clamped = Math.min(3, Math.max(1, resolved));
-
-            if (clamped === 1) {
-                setImageViewerPan({ x: 0, y: 0 });
-            }
-
-            return clamped;
-        });
-    };
-
-    const resetImageViewer = () => {
-        setImageViewerZoom(1);
-        setImageViewerPan({ x: 0, y: 0 });
-        imageViewerDragRef.current = null;
-    };
-
-    const startImageViewerPan = (clientX: number, clientY: number) => {
-        if (imageViewerZoom <= 1) return;
-
-        imageViewerDragRef.current = {
-            x: clientX,
-            y: clientY,
-            panX: imageViewerPan.x,
-            panY: imageViewerPan.y,
-        };
-    };
-
-    const moveImageViewerPan = (clientX: number, clientY: number) => {
-        const dragState = imageViewerDragRef.current;
-        if (!dragState || imageViewerZoom <= 1) return;
-
-        setImageViewerPan({
-            x: dragState.panX + clientX - dragState.x,
-            y: dragState.panY + clientY - dragState.y,
-        });
-    };
-
-    const endImageViewerPan = () => {
-        imageViewerDragRef.current = null;
-    };
-
-    const handleViewerWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        setViewerZoom((current) => current + (event.deltaY < 0 ? 0.2 : -0.2));
-    };
-
-    const handleViewerMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-        if (imageViewerZoom <= 1) return;
-
-        event.preventDefault();
-        startImageViewerPan(event.clientX, event.clientY);
-    };
-
-    const handleViewerMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-        moveImageViewerPan(event.clientX, event.clientY);
-    };
 
     const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         imageTouchStartXRef.current = event.touches[0]?.clientX ?? null;
@@ -411,23 +315,6 @@ function PDPModal({
         }
     };
 
-    const handleViewerTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-        const touch = event.touches[0];
-        if (!touch) return;
-
-        startImageViewerPan(touch.clientX, touch.clientY);
-    };
-
-    const handleViewerTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-        if (imageViewerZoom <= 1) return;
-
-        event.preventDefault();
-        const touch = event.touches[0];
-        if (!touch) return;
-
-        moveImageViewerPan(touch.clientX, touch.clientY);
-    };
-
     const pdpIconButtonStyle = (positionStyle: React.CSSProperties, disabled = false): React.CSSProperties => ({
         ...positionStyle,
         alignItems: 'center',
@@ -445,11 +332,6 @@ function PDPModal({
         width: 32,
     });
 
-    const imageViewerControlStyle = (positionStyle: React.CSSProperties, disabled = false): React.CSSProperties => ({
-        ...pdpIconButtonStyle(positionStyle, disabled),
-        background: moodConfig.itemStyle.background,
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
-    });
     const imageActionBarStyle: React.CSSProperties = {
         alignItems: 'center',
         background: 'rgba(10, 14, 24, 0.68)',
@@ -482,14 +364,6 @@ function PDPModal({
         minWidth: 34,
         padding: '0 4px',
         textAlign: 'center',
-    };
-    const imageViewerToolbarStyle: React.CSSProperties = {
-        ...imageActionBarStyle,
-        bottom: `calc(14px + env(safe-area-inset-bottom))`,
-        left: '50%',
-        right: 'auto',
-        transform: 'translateX(-50%)',
-        zIndex: 3,
     };
     const stickyCloseButtonStyle = pdpIconButtonStyle({
         position: 'sticky',
@@ -597,7 +471,7 @@ function PDPModal({
                                             <Image
                                                 key={`${imageUrl}-${imageIndex}`}
                                                 src={imageUrl}
-                                                alt={getModalText(item.name, 'Menu item')}
+                                                alt={getMenuItemImageAltText(getModalText(item.name, 'Menu item'))}
                                                 fill
                                                 className="object-contain"
                                                 style={{
@@ -1003,145 +877,21 @@ function PDPModal({
                         </div>
                     </motion.div>
 
-                    {isImageViewerOpen && currentViewerImageUrl && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={menuFadeTransition}
-                            role="dialog"
-                            aria-modal="true"
-                            aria-label="Image viewer"
-                            onClick={closeImageViewer}
-                            style={{
-                                alignItems: 'center',
-                                background: 'rgba(0, 0, 0, 0.92)',
-                                display: 'flex',
-                                inset: 0,
-                                justifyContent: 'center',
-                                padding: 'calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))',
-                                position: 'fixed',
-                                zIndex: 10030,
-                            }}
-                        >
-                            <div
-                                onClick={(event) => event.stopPropagation()}
-                                style={imageViewerToolbarStyle}
-                            >
-                                <button
-                                    type="button"
-                                    disabled={imageViewerZoom <= 1}
-                                    onClick={() => setViewerZoom((current) => current - 0.25)}
-                                    aria-label="Zoom out"
-                                    style={imageViewerControlStyle({ position: 'relative' }, imageViewerZoom <= 1)}
-                                >
-                                    <LuMinus size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={resetImageViewer}
-                                    aria-label="Reset image zoom"
-                                    style={imageViewerControlStyle({ position: 'relative' })}
-                                >
-                                    <LuRotateCcw size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={imageViewerZoom >= 3}
-                                    onClick={() => setViewerZoom((current) => current + 0.25)}
-                                    aria-label="Zoom in"
-                                    style={imageViewerControlStyle({ position: 'relative' }, imageViewerZoom >= 3)}
-                                >
-                                    <LuPlus size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={closeImageViewer}
-                                    aria-label="Close image viewer"
-                                    style={imageViewerControlStyle({ position: 'relative' })}
-                                >
-                                    <LuX size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                </button>
-                            </div>
-
-                            {hasMultipleImages && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            prevImage();
-                                        }}
-                                        aria-label="Previous image"
-                                        style={imageViewerControlStyle({
-                                            left: 'calc(12px + env(safe-area-inset-left))',
-                                            position: 'absolute',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            zIndex: 2,
-                                        })}
-                                    >
-                                        <LuChevronLeft size={18} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            nextImage();
-                                        }}
-                                        aria-label="Next image"
-                                        style={imageViewerControlStyle({
-                                            position: 'absolute',
-                                            right: 'calc(12px + env(safe-area-inset-right))',
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            zIndex: 2,
-                                        })}
-                                    >
-                                        <LuChevronRight size={18} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                    </button>
-                                </>
-                            )}
-
-                            <div
-                                onClick={(event) => event.stopPropagation()}
-                                onMouseDown={handleViewerMouseDown}
-                                onMouseMove={handleViewerMouseMove}
-                                onMouseUp={endImageViewerPan}
-                                onMouseLeave={endImageViewerPan}
-                                onTouchStart={handleViewerTouchStart}
-                                onTouchMove={handleViewerTouchMove}
-                                onTouchEnd={endImageViewerPan}
-                                onWheel={handleViewerWheel}
-                                style={{
-                                    cursor: imageViewerZoom > 1 ? 'grab' : 'default',
-                                    height: '100%',
-                                    maxHeight: 'calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
-                                    maxWidth: 'min(100%, 980px)',
-                                    overflow: 'hidden',
-                                    position: 'relative',
-                                    touchAction: 'none',
-                                    userSelect: 'none',
-                                    width: '100%',
-                                }}
-                            >
-                                <Image
-                                    src={currentViewerImageUrl}
-                                    alt={getModalText(item.name, 'Menu item image')}
-                                    fill
-                                    sizes="100vw"
-                                    style={{
-                                        objectFit: 'contain',
-                                        transform: `translate(${imageViewerPan.x}px, ${imageViewerPan.y}px) scale(${imageViewerZoom})`,
-                                        transition: imageViewerDragRef.current ? 'none' : 'transform 0.12s ease',
-                                    }}
-                                    priority
-                                    onLoad={() => markImageLoaded(currentViewerImageUrl)}
-                                    onError={() => markImageLoaded(currentViewerImageUrl)}
-                                />
-                            </div>
-                        </motion.div>
-                    )}
+                    <PublicImageViewer
+                        accentColor={moodConfig.accentColor}
+                        images={images.map((image: any) => ({
+                            alt: getMenuItemImageAltText(getModalText(item.name, 'Menu item')),
+                            url: image.url,
+                        }))}
+                        initialIndex={displayedImageIndex}
+                        onClose={() => setIsImageViewerOpen(false)}
+                        onIndexChange={(index) => {
+                            setCurrentImageIndex(index);
+                            setDisplayedImageIndex(index);
+                        }}
+                        open={isImageViewerOpen && images.length > 0}
+                        title="Image viewer"
+                    />
                 </>
             )}
         </AnimatePresence>

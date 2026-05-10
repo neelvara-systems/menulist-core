@@ -17,7 +17,13 @@
 | Upload small digital screen slide | Accepted when it is a valid image and prepared into the screen-slide frame. |
 | Select AI menu item shape | Only Square and Landscape are available. |
 | Upload OBP cover or gallery photo | Card immediately previews the prepared cropped output while upload runs, then persists the returned Firebase URL. |
+| OBP cover or gallery upload fails after preparation | Prepared preview stays visible with Retry; store field is not updated until the retry returns a Firebase URL. |
+| Remove failed OBP replacement draft | Failed draft is discarded and the previously saved public image remains intact. |
 | Upload any profile image | Owner preview uses the prepared primary image, not the raw source file. |
+| Tap Fit in Adjust preview | Image recenters and zooms out until the full source fits inside the profile frame. |
+| Pinch inside mobile Adjust preview | Two-finger pinch changes zoom between Fit-to-frame and 3x, matching the slider bounds. |
+| Upload menu background | Owner sees the prepared image in a customer menu frame with overlay/text treatment. |
+| Upload or generate business cover | Owner sees the prepared image in an Official Business Page-style frame. |
 
 ## Public Output
 
@@ -29,3 +35,6 @@
 | Project image appears on OBP card | Image is already prepared for project profile. |
 | Digital screen custom slide appears in Highlights | Image has already been prepared for the digital screen slide profile. |
 | Owner approved a prepared preview | Public screen shows the same framed/cropped visual via the persisted prepared Storage URL. |
+| Public item/project/business/gallery images render | Alt text is derived from item, project, or business names; decorative images use empty alt text. |
+| Tap OBP business photo thumbnail | Shared public image viewer opens with zoom, reset, pan, next/previous, mobile swipe, Escape close, and body scroll lock. |
+| Tap PDP image enlarge | Same shared public image viewer opens for menu item images, supports mobile swipe, and keeps image index in sync with the PDP carousel. |

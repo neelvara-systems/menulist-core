@@ -1717,6 +1717,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         setDisplayLanguage(firstLanguageWithMissingTranslations);
                     }
                     return { ...DEFAULT_FILTERS, qualityIssue: 'translationMissing' };
+                case 'projectContent':
+                    setBulkActionType('aiRepair');
+                    setIsBulkActionsOpen(true);
+                    return DEFAULT_FILTERS;
                 case 'categoryIcons':
                     return { ...DEFAULT_FILTERS, qualityIssue: 'categoryIconMissing' };
                 default:
@@ -2307,6 +2311,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 setBulkActionType('aiRepair');
                                 setIsBulkActionsOpen(true);
                             }}
+                            projectContent={menuData}
                             projectLanguages={menuData.languages}
                             showCategoryIcons={showCategoryIcons}
                             showItemPrices={showItemPrices}

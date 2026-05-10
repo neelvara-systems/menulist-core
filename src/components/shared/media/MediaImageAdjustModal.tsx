@@ -3,6 +3,7 @@ import useDeviceType from '@hook/useDeviceType';
 import { getMediaImageProfile, getSafeMediaAspectRatio, isMediaImageSystemEnabled, parseMediaAspectRatio, type MediaImageType } from '@lib/media/imageProfiles';
 import {
     drawMediaImagePreview,
+    getMediaImageFitToFrameZoom,
     getMediaImagePreviewDragDelta,
     prepareMediaImage,
     type MediaImageCropIntent,
@@ -10,7 +11,7 @@ import {
 } from '@lib/media/prepareMediaImage';
 import { Button, Flex, Modal, Typography, message, theme } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCheck, LuRefreshCcw, LuRotateCcw, LuRotateCw, LuX } from 'react-icons/lu';
+import { LuCheck, LuMaximize2, LuRefreshCcw, LuRotateCcw, LuRotateCw, LuX } from 'react-icons/lu';
 
 interface MediaImageAdjustModalProps {
     fileName?: string;
@@ -29,13 +30,27 @@ const DEFAULT_CROP: Required<MediaImageCropIntent> = {
     zoom: 1,
 };
 
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 3;
+
+function clampZoom(value: number, minZoom = MIN_ZOOM): number {
+    if (!Number.isFinite(value)) return DEFAULT_CROP.zoom;
+    return Math.min(MAX_ZOOM, Math.max(minZoom, value));
+}
+
 function normalizeCrop(crop?: MediaImageCropIntent): Required<MediaImageCropIntent> {
     return {
         centerX: typeof crop?.centerX === 'number' ? crop.centerX : DEFAULT_CROP.centerX,
         centerY: typeof crop?.centerY === 'number' ? crop.centerY : DEFAULT_CROP.centerY,
         rotation: typeof crop?.rotation === 'number' ? crop.rotation : DEFAULT_CROP.rotation,
-        zoom: typeof crop?.zoom === 'number' ? crop.zoom : DEFAULT_CROP.zoom,
+        zoom: clampZoom(typeof crop?.zoom === 'number' ? crop.zoom : DEFAULT_CROP.zoom),
     };
+}
+
+function getPointerDistance(points: Array<{ x: number; y: number }>): number {
+    if (points.length < 2) return 0;
+    const [first, second] = points;
+    return Math.hypot(second.x - first.x, second.y - first.y);
 }
 
 const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
@@ -57,6 +72,12 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
         x: number;
         y: number;
     } | null>(null);
+    const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+    const pinchRef = useRef<{
+        crop: Required<MediaImageCropIntent>;
+        distance: number;
+    } | null>(null);
+    const cropRef = useRef<Required<MediaImageCropIntent>>(normalizeCrop(initialCrop));
     const [crop, setCrop] = useState<Required<MediaImageCropIntent>>(normalizeCrop(initialCrop));
     const [isApplying, setIsApplying] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -67,6 +88,24 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     const numericAspectRatio = useMemo(() => parseMediaAspectRatio(aspectRatio), [aspectRatio]);
     const previewMaxWidth = numericAspectRatio < 1 ? (isMobile ? 260 : 320) : undefined;
 
+    const getPreviewFrame = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(1, rect.width || canvas.clientWidth || 320);
+        return {
+            height: Math.max(1, width / numericAspectRatio),
+            width,
+        };
+    }, [numericAspectRatio]);
+
+    const getFitZoom = useCallback((nextCrop: Required<MediaImageCropIntent> = cropRef.current) => {
+        const img = imageRef.current;
+        const frame = getPreviewFrame();
+        if (!img || !frame) return MIN_ZOOM;
+        return getMediaImageFitToFrameZoom(img, profile, frame.width, frame.height, nextCrop);
+    }, [getPreviewFrame, profile]);
+
     const redraw = useCallback(() => {
         const canvas = canvasRef.current;
         const img = imageRef.current;
@@ -75,9 +114,16 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     }, [aspectRatio, crop, profile]);
 
     useEffect(() => {
+        cropRef.current = crop;
+    }, [crop]);
+
+    useEffect(() => {
         if (!open) return;
         setCrop(normalizeCrop(initialCrop));
         setLoadError(null);
+        dragRef.current = null;
+        pinchRef.current = null;
+        pointersRef.current.clear();
     }, [initialCrop, open]);
 
     useEffect(() => {
@@ -118,8 +164,23 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
         if (!imageRef.current || !canvasRef.current) return;
         event.currentTarget.setPointerCapture(event.pointerId);
+        pointersRef.current.set(event.pointerId, {
+            x: event.clientX,
+            y: event.clientY,
+        });
+
+        if (pointersRef.current.size >= 2) {
+            const distance = getPointerDistance(Array.from(pointersRef.current.values()));
+            pinchRef.current = {
+                crop: cropRef.current,
+                distance,
+            };
+            dragRef.current = null;
+            return;
+        }
+
         dragRef.current = {
-            crop,
+            crop: cropRef.current,
             pointerId: event.pointerId,
             x: event.clientX,
             y: event.clientY,
@@ -127,6 +188,25 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     };
 
     const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+        if (pointersRef.current.has(event.pointerId)) {
+            pointersRef.current.set(event.pointerId, {
+                x: event.clientX,
+                y: event.clientY,
+            });
+        }
+
+        const pinch = pinchRef.current;
+        if (pinch && pointersRef.current.size >= 2) {
+            const distance = getPointerDistance(Array.from(pointersRef.current.values()));
+            if (pinch.distance > 0 && distance > 0) {
+                setCrop((current) => ({
+                    ...current,
+                    zoom: clampZoom(pinch.crop.zoom * (distance / pinch.distance), getFitZoom(current)),
+                }));
+            }
+            return;
+        }
+
         const drag = dragRef.current;
         const img = imageRef.current;
         const canvas = canvasRef.current;
@@ -150,8 +230,19 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     };
 
     const handlePointerEnd = (event: React.PointerEvent<HTMLCanvasElement>) => {
+        pointersRef.current.delete(event.pointerId);
+        pinchRef.current = null;
         if (dragRef.current?.pointerId === event.pointerId) {
             dragRef.current = null;
+        }
+        if (pointersRef.current.size === 1) {
+            const [remainingPointerId, remainingPoint] = Array.from(pointersRef.current.entries())[0];
+            dragRef.current = {
+                crop: cropRef.current,
+                pointerId: remainingPointerId,
+                x: remainingPoint.x,
+                y: remainingPoint.y,
+            };
         }
     };
 
@@ -170,6 +261,20 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
         } finally {
             setIsApplying(false);
         }
+    };
+
+    const handleFitToFrame = () => {
+        setCrop((current) => {
+            const nextCrop = {
+                ...current,
+                centerX: 0.5,
+                centerY: 0.5,
+            };
+            return {
+                ...nextCrop,
+                zoom: getFitZoom(nextCrop),
+            };
+        });
     };
 
     const preview = (
@@ -197,7 +302,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                 <Typography.Text type="danger">{loadError}</Typography.Text>
             ) : (
                 <Typography.Text type="secondary">
-                    Drag the image to frame it. MenuList keeps the final size and compression fixed.
+                    Drag the image to frame it. On mobile, pinch with two fingers to zoom. MenuList keeps the final size and compression fixed.
                 </Typography.Text>
             )}
             <Flex gap={10} vertical>
@@ -205,9 +310,9 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                     <Typography.Text style={{ flex: '0 0 48px' }}>Zoom</Typography.Text>
                     <input
                         aria-label="Zoom"
-                        max={3}
-                        min={1}
-                        onChange={(event) => setCrop((current) => ({ ...current, zoom: Number(event.target.value) }))}
+                        max={MAX_ZOOM}
+                        min={MIN_ZOOM}
+                        onChange={(event) => setCrop((current) => ({ ...current, zoom: clampZoom(Number(event.target.value), getFitZoom(current)) }))}
                         step={0.05}
                         style={{ width: '100%' }}
                         type="range"
@@ -216,6 +321,9 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                 </Flex>
                 <Flex align="center" gap={10} wrap="wrap">
                     <Typography.Text style={{ flex: '0 0 48px' }}>Rotate</Typography.Text>
+                    <Button icon={<LuMaximize2 size={16} />} onClick={handleFitToFrame}>
+                        Fit
+                    </Button>
                     <Button icon={<LuRotateCcw size={16} />} onClick={() => setCrop((current) => ({ ...current, rotation: current.rotation - 90 }))}>
                         Left
                     </Button>

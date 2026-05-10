@@ -151,16 +151,17 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - PDP close waits for the item-history back event when the item URL was pushed, then restores scroll without synthetic scroll/resize events so iPhone PWAs do not move the category rail while returning to the menu.
 - PDP close must not remount the sticky command row or dispatch synthetic scroll events; featured item PDPs close like regular item PDPs without moving the horizontal category rail.
 - Large PDP content stays inside a capped scrollable modal/sheet, and the close control remains reachable while the item detail content scrolls.
-- Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, and owner-enabled category identity.
+- Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, fullscreen pinch-to-zoom image inspection, and owner-enabled category identity.
 - Back-to-top is isolated from item cards underneath it; it scrolls only on completed tap/click and does not trigger PDP for the covered item.
 - Footer business actions use compact icon/text chips while keeping platform attribution quiet.
 - The common Call / WhatsApp / Directions set stays in one compact row; desktop renders centered chips, mobile can use equal-width touch targets, and extra actions can wrap instead of crowding.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution` and uses the same compact `Powered by MenuList. All rights reserved` treatment as other public pages.
 - Customer-facing menu and category controls are non-selectable to avoid accidental text selection while tapping; footer identity and policy content remain selectable.
 - Public menu viewport locks mobile pinch zoom on the client surface to match the owner app shell and avoid accidental two-finger zoom states inside installed PWAs.
+- Fullscreen PDP image inspection owns its own touch zoom, so customers can pinch product/service photos without zooming the entire menu surface.
 - Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
-- Compact multi-language payloads preserve the resolved initial render language description, not just the raw query language, so menus that default to English keep English descriptions on first load.
+- Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, and URLs must stay aligned when the customer changes language on the menu after arriving from OBP.
 - Public search waits for at least two normalized characters before filtering, allows numeric prefix search for alphanumeric tokens such as `11am` without matching unrelated price tokens such as `115`, rejects ambiguous compressed token matches, and aliases expand customer queries rather than stored item meanings.
 - Starting a search from a deep scroll position must bring the result area back under the sticky command row so customers never have to manually scroll to find the filtered output.
 
@@ -171,6 +172,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-10 | Search false-positive hardening: one-character input no longer shows a no-result state, and chai typo recovery no longer matches unrelated choice/cheese/tea-description text |
+| 2026-05-10 | Mobile grid output restored, fullscreen PDP image pinch zoom added, and public menu language switching now keeps item descriptions aligned with the selected language |
 | 2026-05-10 | Desktop menu polish: featured choices use a desktop grid, and footer contact actions render as compact centered chips instead of full-width controls |
 | 2026-05-10 | Numeric search prefix support: two-character numeric queries such as `11` can match item text tokens such as `11am` without matching unrelated price tokens such as `115` |
 | 2026-05-10 | Deep-scroll search positioning: active search now scrolls the result area back under the sticky command row when the customer starts from lower in the menu |

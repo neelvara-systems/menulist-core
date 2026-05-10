@@ -29,6 +29,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
 import useDeviceType from '@hook/useDeviceType';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
+import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
@@ -830,7 +831,7 @@ export default function DecisionBlocks({
                                     >
                                         <Image
                                             src={itemImage}
-                                            alt={itemName}
+                                            alt={getMenuItemImageAltText(itemName)}
                                             fill
                                             className="object-cover"
                                             sizes="58px"

@@ -56,6 +56,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
     // G06 - Service charge note is at menuSettings level (pricing truth, not design)
     const specialNoteLanguage = projectData?.defaultLanguage || 'en';
     const specialNote = getLocalizedDraftText(projectData?.menuSettings?.specialNote, specialNoteLanguage, '');
+    const previewTitle = getLocalizedDraftText(projectData?.name, specialNoteLanguage, 'Your digital menu');
     const specialNoteSuggestions = getMenuSpecialNoteSuggestions(t);
     const recommendedPresets = getRecommendedMenuDesignPresets({ businessType, businessCategory });
     const selectedPreset = findMatchingMenuDesignPreset({
@@ -359,6 +360,9 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                                     config={{
                                         backgroundImage: projectData?.config?.design?.menu?.backgroundImage,
                                     }}
+                                    previewAccentColor={projectData?.config?.design?.brand?.accentColor}
+                                    previewSubtitle={t('background')}
+                                    previewTitle={previewTitle}
                                     onUpdate={(config) => {
                                         if (config.backgroundImage !== undefined) {
                                             handleBackgroundImageChange(config.backgroundImage);

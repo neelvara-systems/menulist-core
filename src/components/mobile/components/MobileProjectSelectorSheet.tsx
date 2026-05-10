@@ -9,7 +9,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
-import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
+import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage, hasMissingProjectPublicDraftContent } from '@lib/localization/projectContent';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -241,6 +241,17 @@ export default function MobileProjectSelectorSheet({
         () => orderedProjects.find((project) => project.projectId === managingProjectId) || null,
         [managingProjectId, orderedProjects]
     );
+    const hasMultipleFormLanguages = useMemo(
+        () => new Set(formLanguages.filter(Boolean)).size > 1,
+        [formLanguages]
+    );
+    const hasMissingFormPublicDrafts = useMemo(() => (
+        hasMissingProjectPublicDraftContent({
+            descriptionDrafts: formDescriptionDrafts,
+            languages: formLanguages,
+            nameDrafts: formNameDrafts,
+        })
+    ), [formDescriptionDrafts, formLanguages, formNameDrafts]);
     const managingProjectSpecialMenuStatus = useMemo(
         () => getResolvedSpecialMenuStatus(managingProject),
         [managingProject]
@@ -801,6 +812,8 @@ export default function MobileProjectSelectorSheet({
 
     const handleTranslatePublicContent = async () => {
         if (!formProjectId || formMode !== 'edit') return;
+        if (!hasMultipleFormLanguages) return;
+        if (!hasMissingFormPublicDrafts) return;
 
         const hasUnsavedContentChanges =
             JSON.stringify(formNameDrafts) !== JSON.stringify(initialFormNameDrafts)
@@ -1310,22 +1323,26 @@ export default function MobileProjectSelectorSheet({
 
                     <Card style={sheetCardStyle}>
                         <Flex gap={14} vertical>
-                            <MobileLocalizedLanguageSelector
-                                helperText={`Edit this ${labels.offeringLower} label one language at a time.`}
-                                languages={formLanguages}
-                                onChange={setFormSelectedLanguage}
-                                selectedLanguage={formSelectedLanguage}
-                                title="Project content language"
-                            />
-                            {formMode === 'edit' ? (
-                                <Button
-                                    fill="outline"
-                                    loading={isTranslatingPublicContent}
-                                    onClick={() => { void handleTranslatePublicContent(); }}
-                                    size="small"
-                                >
-                                    Translate missing public content
-                                </Button>
+                            {hasMultipleFormLanguages ? (
+                                <>
+                                    <MobileLocalizedLanguageSelector
+                                        helperText={`Edit this ${labels.offeringLower} label one language at a time.`}
+                                        languages={formLanguages}
+                                        onChange={setFormSelectedLanguage}
+                                        selectedLanguage={formSelectedLanguage}
+                                        title="Project content language"
+                                    />
+                                    {formMode === 'edit' && hasMissingFormPublicDrafts ? (
+                                        <Button
+                                            fill="outline"
+                                            loading={isTranslatingPublicContent}
+                                            onClick={() => { void handleTranslatePublicContent(); }}
+                                            size="small"
+                                        >
+                                            Translate missing public content
+                                        </Button>
+                                    ) : null}
+                                </>
                             ) : null}
 
                             <Flex gap={6} vertical>

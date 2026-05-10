@@ -357,6 +357,7 @@
         "publicActionOrder": "Order",
         "publicActionReviews": "Reviews",
         "publicActionFeedback": "Feedback",
+        "publicShareFeedback": "Share Feedback",
         "publicDays": {
             "sun": "Sunday",
             "mon": "Monday",

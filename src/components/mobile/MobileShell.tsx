@@ -1,10 +1,13 @@
 'use client'
 
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
+import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
+import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
+import { usePathname } from 'next/navigation';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
@@ -21,6 +24,43 @@ const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { s
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
+const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
+    '/platform': 'platformSettings',
+    '/platform/users': 'platformUsers',
+    '/platform/support-tickets': 'supportTickets',
+    '/platform/feedback-admin': 'feedbackAdmin',
+    '/platform/knowledge-base': 'knowledgeBase',
+    '/platform/kb-generation': 'kbGeneration',
+    '/platform/changelog': 'changelog',
+    '/platform/chat-management': 'chatManagement',
+    '/platform/chat-insights': 'chatInsights',
+    '/platform/chat-backfill': 'chatBackfill',
+    '/platform/chat-weekly-digest': 'chatWeeklyDigest',
+    '/platform/chat-roi-calculator': 'chatRoiCalculator',
+};
+const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
+    'platformHub',
+    'platformSettings',
+    'platformUsers',
+    'supportTickets',
+    'feedbackAdmin',
+    'knowledgeBase',
+    'kbGeneration',
+    'changelog',
+    'chatManagement',
+    'chatInsights',
+    'chatBackfill',
+    'chatWeeklyDigest',
+    'chatRoiCalculator',
+    'opsControlRoom',
+    'extractionMonitor',
+    'schedulerMonitor',
+];
+
+function normalizePathname(pathname: string) {
+    if (pathname === '/') return pathname;
+    return pathname.replace(/\/+$/, '');
+}
 
 function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } {
     const fallback = { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen };
@@ -58,6 +98,37 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
     };
 }
 
+function parseMobileRoutePathname(pathname: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } | null {
+    const normalizedPathname = normalizePathname(pathname);
+    const platformScreen = PLATFORM_PATH_TO_MORE_SCREEN[normalizedPathname];
+
+    if (platformScreen) {
+        return {
+            tab: 'more',
+            todayScreen: 'main',
+            moreScreen: platformScreen,
+        };
+    }
+
+    if (normalizedPathname.startsWith('/platform/')) {
+        return {
+            tab: 'more',
+            todayScreen: 'main',
+            moreScreen: 'platformHub',
+        };
+    }
+
+    return null;
+}
+
+function parseInitialMobileRoute(pathname: string, hash: string) {
+    if (hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
+        return parseMobileRouteHash(hash);
+    }
+
+    return parseMobileRoutePathname(pathname) || parseMobileRouteHash(hash);
+}
+
 function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen) {
     if (tab === 'today' && todayScreen !== 'main') {
         return `${MOBILE_ROUTE_HASH_PREFIX}today/${todayScreen}`;
@@ -71,13 +142,19 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 export default function MobileShell() {
     const { activeSubscription } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
-    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseMobileRouteHash(window.location.hash);
+    const { data: session } = useSession();
+    const pathname = usePathname();
+    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseInitialMobileRoute(pathname, window.location.hash);
     const [activeTab, setActiveTab] = useState<MobileTab>(initialRoute.tab);
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
     const [isOffline, setIsOffline] = useState(false);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
+    const shouldBypassSubscriptionGate = isPlatformAdmin && isPlatformMobileScreen;
 
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
@@ -105,6 +182,17 @@ export default function MobileShell() {
             window.removeEventListener('hashchange', handleHashChange);
         };
     }, []);
+
+    useEffect(() => {
+        if (window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) return;
+        const nextRoute = parseMobileRoutePathname(pathname);
+        if (!nextRoute) return;
+
+        setActiveTab(nextRoute.tab);
+        setTodayScreen(nextRoute.todayScreen);
+        setMoreScreen(nextRoute.moreScreen);
+        setIsMoreRootScreen(nextRoute.moreScreen === 'main');
+    }, [pathname]);
 
     useEffect(() => {
         const nextHash = buildMobileRouteHash(activeTab, todayScreen, moreScreen);
@@ -165,7 +253,7 @@ export default function MobileShell() {
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} />;
 
-    if (!hasSubscription) {
+    if (!hasSubscription && !shouldBypassSubscriptionGate) {
         return (
             <Flex
                 style={{

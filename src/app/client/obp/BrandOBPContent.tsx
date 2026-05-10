@@ -24,6 +24,8 @@ import {
     shouldExposePublicLanguageSwitcher,
 } from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { getBusinessCoverAltText, getBusinessLogoAltText } from "@lib/media/altText";
+import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { StoreDataType } from "@type/platform/store";
@@ -174,7 +176,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const outlets = allOutlets.filter((o: any) => !!o?.outletSlug);
 
     const pp = store?.publicPresence || {};
-    const accentColor = pp.accentColor || '#111';
+    const accentColor = resolveOBPAccentColor(pp);
     const languageOptions = getPublicLanguageOptions(store);
     const showLanguageSwitcher = shouldExposePublicLanguageSwitcher(store);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
@@ -210,7 +212,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 {businessCover ? (
                     <div className={styles.businessCover}>
                         <img
-                            alt={`${brandName} cover`}
+                            alt={getBusinessCoverAltText(brandName)}
                             src={businessCover}
                             loading="eager"
                         />
@@ -222,7 +224,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                 {logo ? (
                     <img
                         src={logo}
-                        alt={brandName}
+                        alt={getBusinessLogoAltText(brandName)}
                         className={styles.logo}
                         width={80}
                         height={80}

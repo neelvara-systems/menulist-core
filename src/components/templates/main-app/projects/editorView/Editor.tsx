@@ -3,7 +3,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { LANGUAGE_CONSTANTS } from "@constant/languages";
 import GlobalLanguagesList from "@data/languages";
-import { updateProject } from "@database/projects";
+import { updateProject, updateProjectMetadata } from "@database/projects";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useOfferingLabels } from "@hook/useOfferingLabels";
 import { getStoreContextName } from "@lib/businessIdentity/names";
@@ -21,6 +21,7 @@ import {
 } from "@providers/projectsDataProvider";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { AICapacityError } from "@services/ai/capacityError";
+import translateProjectPublicContent from "@services/ai/projectPublicContent/translateProjectPublicContent";
 import { UserUploadedFileType } from "@type/common";
 import type { InheritanceState } from "@type/multiOutlet.types";
 import { isSameObjects, removeObjRef } from "@util/utils";
@@ -62,6 +63,7 @@ import {
     Project,
     ProjectFileType,
     ProjectMetadata,
+    ProjectSummaryData,
 } from "../types";
 import { associateItemImagesWithProject } from "./utils/associateItemImages";
 import { translateFile } from "../utils/translationsUtils";
@@ -318,6 +320,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             try {
                 const { computeQualitySignals, getActionableSignals } = await import("@lib/mce/qualitySignals");
                 const signals = computeQualitySignals(projectData.files, projectData.languages, {
+                    projectPublicContent: projectData,
                     showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
                     showItemPrices,
                 });
@@ -467,6 +470,80 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
         ],
     );
 
+    const handleRepairProjectPublicContent = useCallback(() => {
+        if (!projectData?.projectId) return;
+
+        AntdModal.confirm({
+            title: 'Repair project details?',
+            content: 'This will fill missing project name, description, and note translations. Existing text stays unchanged.',
+            okText: 'Repair',
+            cancelText: 'Cancel',
+            onOk: async () => {
+                setIsSaving(true);
+                dispatch(startLoader('repairing project details'));
+                try {
+                    const updated = removeObjRef(projectData);
+                    const translatedProjectContent = await translateProjectPublicContent({
+                        projectDetails: updated,
+                        projectId: updated.projectId,
+                        storeDetails,
+                    });
+
+                    if (!translatedProjectContent) {
+                        message.info('No missing project detail translations found.');
+                        return;
+                    }
+
+                    const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
+
+                    if (translatedProjectContent.name) {
+                        updated.name = translatedProjectContent.name as any;
+                        projectMetadataTranslationUpdate.name = translatedProjectContent.name;
+                    }
+                    if (translatedProjectContent.description) {
+                        updated.description = translatedProjectContent.description as any;
+                        projectMetadataTranslationUpdate.description = translatedProjectContent.description;
+                    }
+                    if (translatedProjectContent.specialNote) {
+                        updated.menuSettings = {
+                            ...(updated.menuSettings || {}),
+                            specialNote: translatedProjectContent.specialNote,
+                        };
+                    }
+                    if (translatedProjectContent.specialMenuDisplayName) {
+                        updated._specialMenu = {
+                            ...(updated._specialMenu || {}),
+                            displayName: translatedProjectContent.specialMenuDisplayName,
+                        };
+                        (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                        projectMetadataTranslationUpdate.specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                    }
+
+                    const savedProject = await updateProject({ ...updated, projectId: updated.projectId });
+                    if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
+                        await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                    }
+
+                    const nextProject = removeObjRef(savedProject || updated);
+                    setProjectData(nextProject);
+                    setActiveProject(nextProject);
+                    setHasChanges(false);
+                    hasChangesRef.current = false;
+                    message.success('Project detail translations added.');
+                } catch (error) {
+                    if (error instanceof AICapacityError) {
+                        message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+                    } else {
+                        message.error('Could not repair project details.');
+                    }
+                } finally {
+                    dispatch(stopLoader('repairing project details'));
+                    setIsSaving(false);
+                }
+            },
+        });
+    }, [dispatch, projectData, setActiveProject, storeDetails]);
+
     // ============================
     // FILTERED ITEMS FOR KEYBOARD NAVIGATION
     // Uses shared filter utility - single source of truth
@@ -575,6 +652,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             }
 
             let prevData = removeObjRef(projectData);
+            const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
             const newLanguages = updatedLanguages.filter(
                 (lang) => !prevData.languages?.includes(lang),
             );
@@ -655,10 +733,47 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                         "Translation cancelled. Partial translations saved.",
                     );
                 }
+
+                if (!wasCancelled) {
+                    const translatedProjectContent = await translateProjectPublicContent({
+                        projectDetails: prevData,
+                        projectId: prevData.projectId,
+                        storeDetails,
+                        targetLanguageCodes: newLanguages,
+                    });
+
+                    if (translatedProjectContent) {
+                        if (translatedProjectContent.name) {
+                            prevData.name = translatedProjectContent.name as any;
+                            projectMetadataTranslationUpdate.name = translatedProjectContent.name;
+                        }
+                        if (translatedProjectContent.description) {
+                            prevData.description = translatedProjectContent.description as any;
+                            projectMetadataTranslationUpdate.description = translatedProjectContent.description;
+                        }
+                        if (translatedProjectContent.specialNote) {
+                            prevData.menuSettings = {
+                                ...(prevData.menuSettings || {}),
+                                specialNote: translatedProjectContent.specialNote,
+                            };
+                        }
+                        if (translatedProjectContent.specialMenuDisplayName) {
+                            prevData._specialMenu = {
+                                ...(prevData._specialMenu || {}),
+                                displayName: translatedProjectContent.specialMenuDisplayName,
+                            };
+                            (prevData as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                            projectMetadataTranslationUpdate.specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                        }
+                    }
+                }
             }
 
             // Save to database
             await updateProject({ ...prevData, projectId: prevData.projectId });
+            if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
+                await updateProjectMetadata(prevData.projectId, projectMetadataTranslationUpdate);
+            }
             setActiveProject(removeObjRef(prevData));
             setHasChanges(false);
             setIsLanguageModalOpen(false);
@@ -928,6 +1043,8 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                             setIsDescModalOpen({ active: true, sourceFile: projectData?.files?.[0] });
                         } else if (actionRoute === 'images') {
                             // Scroll to first item missing image — for now just focus editor
+                        } else if (actionRoute === 'projectContent') {
+                            handleRepairProjectPublicContent();
                         }
                     }}
                 />

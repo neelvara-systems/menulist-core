@@ -1,13 +1,15 @@
 'use client'
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { updateProjectMetadata } from '@database/projects';
 import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
-import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
+import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { removeObjRef } from '@util/utils';
 import { Modal, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -28,7 +30,7 @@ import {
     getDescriptionGenerationStats,
     runDescriptionGeneration,
 } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
-import type { Project } from '../../templates/main-app/projects/types';
+import type { Project, ProjectSummaryData } from '../../templates/main-app/projects/types';
 import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popover, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
 import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
@@ -346,6 +348,14 @@ export default function BulkActionsSheet({
         () => languageIssues.filter((issue) => issue.total > 0),
         [languageIssues]
     );
+    const projectPublicContentGaps = useMemo(
+        () => workingProject ? getMissingProjectPublicContentGaps(workingProject, workingProject.languages) : [],
+        [workingProject]
+    );
+    const projectPublicContentLanguagesNeedingRepair = useMemo(
+        () => Array.from(new Set(projectPublicContentGaps.map((gap) => gap.languageCode))),
+        [projectPublicContentGaps]
+    );
 
     const descriptionStats = useMemo(() => {
         if (!workingProject) {
@@ -368,8 +378,9 @@ export default function BulkActionsSheet({
             languagesToRepair: languagesNeedingRepair.length,
             missingImages: reviewableItems.filter((item) => !item.image).length,
             missingPrices: reviewableItems.filter(hasMissingPrice).length,
+            projectContentIssueCount: projectPublicContentGaps.length,
         };
-    }, [descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair]);
+    }, [descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair, projectPublicContentGaps.length, projectPublicContentLanguagesNeedingRepair.length]);
     const hasLatinScriptRepairLanguages = useMemo(() => (
         languagesNeedingRepair.some((issue) => !DISTINCT_SCRIPT_LANGUAGE_CODES.has(issue.code))
     ), [languagesNeedingRepair]);
@@ -388,7 +399,9 @@ export default function BulkActionsSheet({
     const handleAiRepair = async () => {
         if (!workingProject) return;
 
-        const totalFixes = aiRepairSummary.languageIssueCount + aiRepairSummary.descriptionsToGenerate;
+        const totalFixes = aiRepairSummary.languageIssueCount
+            + aiRepairSummary.descriptionsToGenerate
+            + aiRepairSummary.projectContentIssueCount;
         if (totalFixes === 0) {
             Toast.show({ content: t('menuRepairNotNeeded'), duration: 1600 });
             return;
@@ -400,6 +413,7 @@ export default function BulkActionsSheet({
             try {
                 const previousProject = removeObjRef(workingProject);
                 let updated = removeObjRef(workingProject);
+                const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
                 const sourceLanguageCode = getProjectDefaultLanguage(updated);
 
                 for (const issue of languagesNeedingRepair) {
@@ -417,12 +431,54 @@ export default function BulkActionsSheet({
                     });
                 }
 
+                if (projectPublicContentLanguagesNeedingRepair.length > 0) {
+                    setApplyDetail('Repairing project details');
+                    const translatedProjectContent = await translateProjectPublicContent({
+                        projectDetails: updated,
+                        projectId: updated.projectId,
+                        storeDetails,
+                        targetLanguageCodes: projectPublicContentLanguagesNeedingRepair,
+                    });
+
+                    if (translatedProjectContent) {
+                        if (translatedProjectContent.name) {
+                            updated.name = translatedProjectContent.name as any;
+                            projectMetadataTranslationUpdate.name = translatedProjectContent.name;
+                        }
+                        if (translatedProjectContent.description) {
+                            updated.description = translatedProjectContent.description as any;
+                            projectMetadataTranslationUpdate.description = translatedProjectContent.description;
+                        }
+                        if (translatedProjectContent.specialNote) {
+                            updated.menuSettings = {
+                                ...(updated.menuSettings || {}),
+                                specialNote: translatedProjectContent.specialNote,
+                            };
+                        }
+                        if (translatedProjectContent.specialMenuDisplayName) {
+                            updated._specialMenu = {
+                                ...(updated._specialMenu || {}),
+                                displayName: translatedProjectContent.specialMenuDisplayName,
+                            };
+                            (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                            projectMetadataTranslationUpdate.specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                        }
+                    }
+                }
+
+                if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
+                    await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                }
+
                 const repairSummaryParts = [
                     aiRepairSummary.languageIssueCount > 0
                         ? t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })
                         : null,
                     aiRepairSummary.descriptionsToGenerate > 0
                         ? t('repairMenuAiDescriptionsCount', { count: aiRepairSummary.descriptionsToGenerate })
+                        : null,
+                    aiRepairSummary.projectContentIssueCount > 0
+                        ? `${aiRepairSummary.projectContentIssueCount} project detail${aiRepairSummary.projectContentIssueCount !== 1 ? 's' : ''}`
                         : null,
                     aiRepairSummary.missingPrices > 0
                         ? t('repairMenuAiPricesReviewCount', { count: aiRepairSummary.missingPrices })
@@ -453,10 +509,12 @@ export default function BulkActionsSheet({
                 style: { display: 'none' },
             },
             closable: true,
-            content: t('repairMenuAiConfirm', {
-                descriptions: aiRepairSummary.descriptionsToGenerate,
-                languages: aiRepairSummary.languagesToRepair,
-            }),
+            content: aiRepairSummary.projectContentIssueCount > 0
+                ? `This will rebuild ${aiRepairSummary.languagesToRepair} language areas, add ${aiRepairSummary.descriptionsToGenerate} missing descriptions, and fill ${aiRepairSummary.projectContentIssueCount} project detail translations. Prices and photos will stay unchanged.`
+                : t('repairMenuAiConfirm', {
+                    descriptions: aiRepairSummary.descriptionsToGenerate,
+                    languages: aiRepairSummary.languagesToRepair,
+                }),
             icon: null,
             okText: t('repairMenuAiAction'),
             onOk: () => {
@@ -663,7 +721,9 @@ export default function BulkActionsSheet({
     const missingImageItems = searchScopedItems.filter(hasMissingImage);
 
     if (action === 'aiRepair') {
-        const fixableNowCount = aiRepairSummary.languageIssueCount + aiRepairSummary.descriptionsToGenerate;
+        const fixableNowCount = aiRepairSummary.languageIssueCount
+            + aiRepairSummary.descriptionsToGenerate
+            + aiRepairSummary.projectContentIssueCount;
 
         return (
             <Popup
@@ -712,10 +772,26 @@ export default function BulkActionsSheet({
                                                 {t('repairMenuAiLanguageIssuesCount', { count: aiRepairSummary.languageIssueCount })}
                                             </Tag>
                                         ) : null}
+                                        {aiRepairSummary.projectContentIssueCount > 0 ? (
+                                            <Tag color="processing">
+                                                {aiRepairSummary.projectContentIssueCount} project detail{aiRepairSummary.projectContentIssueCount !== 1 ? 's' : ''}
+                                            </Tag>
+                                        ) : null}
                                     </Flex>
                                 ) : (
                                     <Text type="secondary">{t('menuCompletionReadyDesc')}</Text>
                                 )}
+                                {projectPublicContentLanguagesNeedingRepair.length > 0 ? (
+                                    <Flex align="center" gap={8} justify="space-between">
+                                        <Flex align="center" gap={8}>
+                                            <LuFileText size={14} style={{ color: token.colorPrimary }} />
+                                            <Text>Project details</Text>
+                                        </Flex>
+                                        <Text type="secondary">
+                                            {projectPublicContentLanguagesNeedingRepair.length} language{projectPublicContentLanguagesNeedingRepair.length !== 1 ? 's' : ''}
+                                        </Text>
+                                    </Flex>
+                                ) : null}
                                 {languagesNeedingRepair.length > 0 ? (
                                     <Flex gap={8} vertical>
                                         {languagesNeedingRepair.map((issue) => (

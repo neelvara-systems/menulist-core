@@ -25,11 +25,12 @@ const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, 
     const actionableSignals = useMemo(() => {
         if (!FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS || !projectData?.files) return [];
         const all = computeQualitySignals(projectData.files, projectData.languages, {
+            projectPublicContent: projectData,
             showCategoryIcons: projectData?.config?.design?.menu?.showCategoryIcons ?? true,
             showItemPrices: projectData?.config?.design?.menu?.showItemPrices ?? true,
         });
         return getActionableSignals(all);
-    }, [projectData?.config?.design?.menu?.showCategoryIcons, projectData?.config?.design?.menu?.showItemPrices, projectData?.files, projectData?.languages]);
+    }, [projectData, projectData?.config?.design?.menu?.showCategoryIcons, projectData?.config?.design?.menu?.showItemPrices, projectData?.files, projectData?.languages]);
 
     if (actionableSignals.length === 0) return null;
 
@@ -62,7 +63,9 @@ const EditorQualityBanner: React.FC<EditorQualityBannerProps> = ({ projectData, 
                                                 ? 'Images'
                                                 : signal.id === 'categoryIcons'
                                                     ? 'Categories'
-                                                    : ''
+                                                    : signal.id === 'projectContent'
+                                                        ? 'Project Details'
+                                                        : ''
                                     }
                                 </Button>
                             ) : null

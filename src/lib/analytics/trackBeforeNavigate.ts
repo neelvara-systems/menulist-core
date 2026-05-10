@@ -35,11 +35,12 @@ export function trackBeforeNavigate({
     return;
   }
 
-  event.preventDefault();
+  if (target === '_blank') {
+    void track().catch(() => { });
+    return;
+  }
 
-  const reservedWindow = target === '_blank'
-    ? window.open('', '_blank', 'noopener,noreferrer')
-    : null;
+  event.preventDefault();
 
   void (async () => {
     try {
@@ -47,16 +48,6 @@ export function trackBeforeNavigate({
     } catch {
       // Analytics must never block customer navigation.
     } finally {
-      if (target === '_blank') {
-        if (reservedWindow) {
-          reservedWindow.location.href = href;
-          return;
-        }
-        const opened = window.open(href, '_blank', 'noopener,noreferrer');
-        if (!opened) window.location.assign(href);
-        return;
-      }
-
       window.location.assign(href);
     }
   })();

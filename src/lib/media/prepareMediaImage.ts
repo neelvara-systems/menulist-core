@@ -77,6 +77,8 @@ export interface PrepareMediaImageOptions {
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
+const MIN_MANUAL_CROP_ZOOM = 0.1;
+const MAX_MANUAL_CROP_ZOOM = 3;
 const MIN_PREPARED_OUTPUT_DIMENSION = 96;
 const PREPARED_MEDIA_VERSION = 1;
 
@@ -174,7 +176,7 @@ function normalizeCropIntent(crop?: MediaImageCropIntent): Required<MediaImageCr
         centerX: clamp(Number.isFinite(crop?.centerX) ? Number(crop?.centerX) : 0.5, 0, 1),
         centerY: clamp(Number.isFinite(crop?.centerY) ? Number(crop?.centerY) : 0.5, 0, 1),
         rotation: Number.isFinite(crop?.rotation) ? ((Number(crop?.rotation) % 360) + 360) % 360 : 0,
-        zoom: clamp(Number.isFinite(crop?.zoom) ? Number(crop?.zoom) : 1, 1, 3),
+        zoom: clamp(Number.isFinite(crop?.zoom) ? Number(crop?.zoom) : 1, MIN_MANUAL_CROP_ZOOM, MAX_MANUAL_CROP_ZOOM),
     };
 }
 
@@ -301,6 +303,35 @@ function getManualCropScale(
         : Math.max(targetWidth / rotatedNaturalWidth, targetHeight / rotatedNaturalHeight);
 
     return baseScale * crop.zoom;
+}
+
+export function getMediaImageFitToFrameZoom(
+    img: HTMLImageElement,
+    profile: MediaImageProfile,
+    targetWidth: number,
+    targetHeight: number,
+    crop: Pick<Required<MediaImageCropIntent>, 'rotation'>,
+): number {
+    const rotation = ((crop.rotation % 360) + 360) % 360;
+    const radians = (rotation * Math.PI) / 180;
+    const rotatedNaturalWidth = Math.abs(img.naturalWidth * Math.cos(radians)) + Math.abs(img.naturalHeight * Math.sin(radians));
+    const rotatedNaturalHeight = Math.abs(img.naturalWidth * Math.sin(radians)) + Math.abs(img.naturalHeight * Math.cos(radians));
+
+    if (rotatedNaturalWidth <= 0 || rotatedNaturalHeight <= 0) return 1;
+
+    const safeWidth = profile.fit === 'contain'
+        ? Math.round(targetWidth * (profile.paddingRatio ?? 0.9))
+        : targetWidth;
+    const safeHeight = profile.fit === 'contain'
+        ? Math.round(targetHeight * (profile.paddingRatio ?? 0.9))
+        : targetHeight;
+    const containScale = Math.min(safeWidth / rotatedNaturalWidth, safeHeight / rotatedNaturalHeight);
+    const baseScale = profile.fit === 'contain'
+        ? containScale
+        : Math.max(targetWidth / rotatedNaturalWidth, targetHeight / rotatedNaturalHeight);
+
+    if (!Number.isFinite(containScale) || !Number.isFinite(baseScale) || baseScale <= 0) return 1;
+    return clamp(containScale / baseScale, MIN_MANUAL_CROP_ZOOM, 1);
 }
 
 export function getMediaImagePreviewDragDelta(

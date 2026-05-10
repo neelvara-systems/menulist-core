@@ -16,12 +16,14 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
     images: <LuImage size={16} />,
     priceOutliers: <LuTrendingDown size={16} />,
     prices: <LuDollarSign size={16} />,
+    projectContent: <LuFileText size={16} />,
     translations: <LuLanguages size={16} />,
 };
 
 interface MobileMenuQualitySignalsProps {
     activeKey?: string[];
     files: ProjectFileType[] | undefined;
+    projectContent?: any;
     projectLanguages?: string[];
     showCategoryIcons?: boolean;
     showItemPrices?: boolean;
@@ -30,13 +32,13 @@ interface MobileMenuQualitySignalsProps {
     onReviewSignal?: (signal: QualitySignal) => void;
 }
 
-export default function MobileMenuQualitySignals({ activeKey, files, projectLanguages, showCategoryIcons = true, showItemPrices = true, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
+export default function MobileMenuQualitySignals({ activeKey, files, projectContent, projectLanguages, showCategoryIcons = true, showItemPrices = true, onExpandedChange, onOpenRepairMenu, onReviewSignal }: MobileMenuQualitySignalsProps) {
     const t = useTranslations('MobileMenuQualitySignals');
     const tMenu = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const allSignals = useMemo(
-        () => computeQualitySignals(files, projectLanguages, { showCategoryIcons, showItemPrices }),
-        [files, projectLanguages, showCategoryIcons, showItemPrices]
+        () => computeQualitySignals(files, projectLanguages, { projectPublicContent: projectContent, showCategoryIcons, showItemPrices }),
+        [files, projectContent, projectLanguages, showCategoryIcons, showItemPrices]
     );
     const signals = useMemo(() => getVisibleSignals(allSignals), [allSignals]);
     const allClear = useMemo(() => isAllClear(allSignals), [allSignals]);

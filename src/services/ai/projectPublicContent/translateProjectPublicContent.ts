@@ -61,14 +61,19 @@ export default async function translateProjectPublicContent({
     projectDetails,
     projectId,
     storeDetails,
+    targetLanguageCodes,
     translateBatch = getBatchTranslations,
 }: {
     projectDetails?: any;
     projectId: string;
     storeDetails?: any;
+    targetLanguageCodes?: string[];
     translateBatch?: typeof getBatchTranslations;
 }): Promise<ProjectPublicTranslationResult | null> {
     const managedLanguages = getProjectManagedLanguages(projectDetails, storeDetails);
+    const allowedTargetCodes = targetLanguageCodes?.length
+        ? new Set(targetLanguageCodes.filter(Boolean))
+        : null;
     const sourceLanguage = CANONICAL_SOURCE_LANGUAGE;
     const sourceLanguageDef = resolveLanguage(sourceLanguage);
 
@@ -99,6 +104,7 @@ export default async function translateProjectPublicContent({
 
     managedLanguages
         .filter((languageCode) => languageCode !== sourceLanguage)
+        .filter((languageCode) => !allowedTargetCodes || allowedTargetCodes.has(languageCode))
         .forEach((languageCode) => {
             const missingFields = (Object.keys(payload) as ProjectPublicFieldKey[]).filter((fieldKey) => {
                 const currentValue = FIELD_CONFIGS.find((field) => field.key === fieldKey)?.readValue(projectDetails);

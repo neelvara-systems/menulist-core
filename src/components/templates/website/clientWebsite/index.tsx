@@ -16,7 +16,7 @@ import {
 } from "@template/main-app/projects/b2cView/types";
 import { StoreDataType } from "@type/platform/store";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import MainContentRenderer from "../mainContentRenderer";
 import GoogleSearchConsole from "./GoogleSearchConsole";
 import UnifiedAnalyticsTracking from "./UnifiedAnalyticsTracking";
@@ -114,6 +114,24 @@ function ClientMenuRenderer({
             ? resolveProjectPublicLanguage(projectData, storeDetails, storedLanguage)
             : defaultLanguage;
     });
+    const handleActiveLanguageChange = useCallback((language: string) => {
+        const resolvedLanguage = resolveProjectPublicLanguage(projectData, storeDetails, language);
+        setActiveLanguage(resolvedLanguage);
+
+        if (typeof window === "undefined") return;
+
+        try {
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set("lang", resolvedLanguage);
+            window.history.replaceState(
+                window.history.state,
+                "",
+                `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
+            );
+        } catch {
+            // URL state is secondary; visible language state remains updated.
+        }
+    }, [projectData, storeDetails]);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === activeLanguage)?.name || activeLanguage.toUpperCase();
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>(
         DEVICE_TYPES_LIST.MOBILE,
@@ -240,7 +258,7 @@ function ClientMenuRenderer({
                     activePage={activePage}
                     setActivePage={setActivePage}
                     activeLanguage={activeLanguage}
-                    setActiveLanguage={setActiveLanguage}
+                    setActiveLanguage={handleActiveLanguageChange}
                     businessType={publicBusinessType || storeDetails?.businessType}
                     precomputedBlocks={precomputedBlocks}
                     restoreStoredLanguage={!requestedInitialLanguage}

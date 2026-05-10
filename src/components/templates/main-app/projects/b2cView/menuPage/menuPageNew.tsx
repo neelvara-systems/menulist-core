@@ -37,6 +37,7 @@ import {
 } from '@lib/menu/publicMenuSearch';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
 import { getPublicMenuSpecialNote } from '@lib/menu/publicMenuSpecialNote';
+import { getMenuItemImageAltText } from '@lib/media/altText';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
@@ -280,8 +281,13 @@ function MenuPageNew({
     const shouldShowItemImages = showImages && layoutAllowsImages;
     const imageOnTop = shouldShowItemImages && layoutConfig.imagePosition === 'top';
 
-    // Responsive grid: desktop owns the multi-column rail model; mobile/tablet use a deterministic single-column scan.
-    const gridColumns = isDesktop ? Math.max(1, layoutConfig.itemsPerRow) : 1;
+    // Grid layout is a merchant-selected output mode, so mobile must honor it.
+    // List/Card remain single-column for fast scanning on handheld screens.
+    const isGridLayout = resolvedLayout === MenuLayout.GRID;
+    const gridColumns = isGridLayout
+        ? (isMobile ? 2 : isTablet ? 2 : Math.max(1, layoutConfig.itemsPerRow))
+        : (isDesktop ? Math.max(1, layoutConfig.itemsPerRow) : 1);
+    const isCompactGrid = gridColumns > 1 && !isDesktop;
 
     // State
     const [searchTerm, setSearchTerm] = useState('');
@@ -561,9 +567,7 @@ function MenuPageNew({
     const showSectionsControl = !isDesktop && allCategories.length >= 2;
     const stickyControlsTopBuffer = isDesktop ? 0 : 8;
     const stickyControlsTopOffset = 0;
-    const stickyControlsTopPadding = stickyControlsTopBuffer
-        ? `calc(${stickyControlsTopBuffer}px + env(safe-area-inset-top))`
-        : 0;
+    const stickyControlsTopPadding = stickyControlsTopBuffer || 0;
     const stickyControlsOffset = isDesktop ? 96 : (showTabsBar ? 124 : 76) + stickyControlsTopBuffer;
 
     // Scroll spy - update active category based on scroll position
@@ -1334,7 +1338,7 @@ function MenuPageNew({
     const categoryNavBackground = moodConfig.categoryStyle.background !== 'transparent'
         ? moodConfig.categoryStyle.background
         : moodConfig.itemStyle.background;
-    const categoryNavBorderWidth = moodConfig.categoryStyle.borderWidth ?? 1;
+    const categoryNavBorderWidth = Math.max(1, moodConfig.categoryStyle.borderWidth ?? 1);
     const bottomMetaTheme = {
         background: moodConfig.background,
         mutedColor: moodConfig.descriptionColor || moodConfig.bodyColor,
@@ -1350,7 +1354,7 @@ function MenuPageNew({
 
     const categoryHeaderStyle: React.CSSProperties = {
         fontFamily: moodConfig.headingFont,
-        fontSize: isMobile ? 14 : 15,
+        fontSize: isCompactGrid ? 13 : isMobile ? 14 : 15,
         fontWeight: 700,
         color: moodConfig.headingColor,
         margin: 0,
@@ -1471,20 +1475,20 @@ function MenuPageNew({
 
     const itemDescStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isMobile ? 12 : 13,
+        fontSize: isCompactGrid ? 11 : isMobile ? 12 : 13,
         color: moodConfig.descriptionColor || moodConfig.bodyColor,
         margin: 0,
         marginTop: 3,
         lineHeight: 1.35,
         display: '-webkit-box',
-        WebkitLineClamp: 2,
+        WebkitLineClamp: isCompactGrid ? 1 : 2,
         WebkitBoxOrient: 'vertical',
         overflow: 'hidden',
     };
 
     const priceStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isMobile ? 13 : 14,
+        fontSize: isCompactGrid ? 12 : isMobile ? 13 : 14,
         fontWeight: 600,
         color: moodConfig.priceColor,
         opacity: 0.88,
@@ -1592,7 +1596,7 @@ function MenuPageNew({
                                     activeLanguage={activeLanguage}
                                     setActiveLanguage={setActiveLanguage}
                                     moodConfig={moodConfig}
-                                    restoreStoredLanguage={restoreStoredLanguage}
+                                    restoreStoredLanguage={!isPublicSurface && restoreStoredLanguage}
                                     compact
                                 />
                             </div>
@@ -1846,6 +1850,7 @@ function MenuPageNew({
                             {allCategories.map((category: any, categoryIndex: number) => {
                                 const items = getItemsForCategory(category.id);
                                 if (items.length === 0 && isSearchFilteringActive) return null;
+                                const categoryName = getMenuText(category.name, 'Category');
                                 const categoryHeaderFrameStyle = getCategoryHeaderFrameStyle();
                                 const renderedDividerStyle = getDividerStyle();
 
@@ -1889,7 +1894,7 @@ function MenuPageNew({
                                                     </div>
                                                 ) : null}
                                                 <h2 style={{ ...categoryHeaderStyle, display: 'flex', alignItems: 'center', minHeight: 28 }}>
-                                                    {getMenuText(category.name, 'Category')}
+                                                    {categoryName}
                                                 </h2>
                                             </div>
                                             {renderedDividerStyle && <div style={renderedDividerStyle} />}
@@ -1950,7 +1955,7 @@ function MenuPageNew({
                                                                     style={{
                                                                         position: 'relative',
                                                                         width: imageOnTop ? '100%' : (isMobile ? 64 : 80),
-                                                                        height: imageOnTop ? (isMobile ? 124 : 132) : (isMobile ? 64 : 80),
+                                                                        height: imageOnTop ? (isCompactGrid ? 108 : isMobile ? 124 : 132) : (isMobile ? 64 : 80),
                                                                         borderRadius: moodConfig.itemStyle.imageRadius || 6,
                                                                         overflow: 'hidden',
                                                                         flexShrink: 0,
@@ -1978,7 +1983,7 @@ function MenuPageNew({
                                                                     {itemImageUrl && (
                                                                         <Image
                                                                             src={itemImageUrl}
-                                                                            alt={itemName}
+                                                                            alt={getMenuItemImageAltText(itemName, categoryName)}
                                                                             fill
                                                                             style={{ objectFit: 'cover' }}
                                                                             sizes={isDesktop ? '300px' : '(max-width: 768px) 50vw, 200px'}
@@ -1992,12 +1997,23 @@ function MenuPageNew({
                                                             )}
 
                                                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    flexDirection: isCompactGrid ? 'column' : 'row',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: isCompactGrid ? 'stretch' : 'flex-start',
+                                                                    gap: isCompactGrid ? 4 : 8,
+                                                                }}>
                                                                     <h3 style={itemNameStyle}>
                                                                         {renderHighlightedText(itemName, searchHighlightTerm, moodConfig.accentColor)}
                                                                     </h3>
                                                                     {showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (
-                                                                        <span style={{ ...priceStyle, marginTop: 0, whiteSpace: 'nowrap' }}>
+                                                                        <span style={{
+                                                                            ...priceStyle,
+                                                                            alignSelf: isCompactGrid ? 'flex-start' : undefined,
+                                                                            marginTop: 0,
+                                                                            whiteSpace: 'nowrap',
+                                                                        }}>
                                                                             {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
                                                                         </span>
                                                                     )}

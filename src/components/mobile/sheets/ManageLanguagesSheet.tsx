@@ -2,17 +2,19 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
+import { updateProjectMetadata } from '@database/projects';
 import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
+import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
 import { LuCheck, LuLanguages, LuSparkles, LuTrash2 } from 'react-icons/lu';
-import type { Project } from '../../templates/main-app/projects/types';
+import type { Project, ProjectSummaryData } from '../../templates/main-app/projects/types';
 import { translateFile } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Dialog, Flex, NavBar, Popup, Select, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
@@ -160,7 +162,43 @@ export default function ManageLanguagesSheet({
                 throw new Error('Language translation failed.');
             }
 
+            const translatedProjectContent = await translateProjectPublicContent({
+                projectDetails: updated,
+                projectId: updated.projectId,
+                storeDetails,
+                targetLanguageCodes: [targetLang.code],
+            });
+            const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
+
+            if (translatedProjectContent) {
+                if (translatedProjectContent.name) {
+                    updated.name = translatedProjectContent.name as any;
+                    projectMetadataTranslationUpdate.name = translatedProjectContent.name;
+                }
+                if (translatedProjectContent.description) {
+                    updated.description = translatedProjectContent.description as any;
+                    projectMetadataTranslationUpdate.description = translatedProjectContent.description;
+                }
+                if (translatedProjectContent.specialNote) {
+                    updated.menuSettings = {
+                        ...(updated.menuSettings || {}),
+                        specialNote: translatedProjectContent.specialNote,
+                    };
+                }
+                if (translatedProjectContent.specialMenuDisplayName) {
+                    updated._specialMenu = {
+                        ...(updated._specialMenu || {}),
+                        displayName: translatedProjectContent.specialMenuDisplayName,
+                    };
+                    (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                    projectMetadataTranslationUpdate.specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                }
+            }
+
             onSaved(updated);
+            if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
+                await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+            }
             setPendingLanguageCode('');
             Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
         } catch (error) {

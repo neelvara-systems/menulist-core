@@ -357,6 +357,7 @@
         "publicActionOrder": "Pedir",
         "publicActionReviews": "Reseñas",
         "publicActionFeedback": "Comentarios",
+        "publicShareFeedback": "Compartir comentarios",
         "publicDays": {
             "sun": "Domingo",
             "mon": "Lunes",

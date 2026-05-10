@@ -17,9 +17,9 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 |--------|--------|-------|
 | Customer mobile browsing | ✅ | Mobile-first responsive design, 70%+ users on mobile |
 | Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator; public icons preserve owner-selected icon choices |
-| Item display (name/price/image) | ✅ | Responsive grid/list layouts with line limits; image frames render only for items that have images |
+| Item display (name/price/image) | ✅ | Responsive grid/list layouts, including compact two-column mobile grid when Grid is selected; image frames render only for items that have images |
 | Search/filter | ✅ | Debounced fuzzy/transliteration search with exact visible-name results first, 16px mobile input sizing, clear exits search mode, and compact sticky command-row behavior |
-| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, and category identity when enabled |
+| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, fullscreen pinch-to-zoom image inspection, and category identity when enabled |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
 | Schema.org JSON-LD | ✅ | Server-side active menu data with real freshness fields |
 | Analytics tracking | ✅ | Device-independent |
@@ -58,6 +58,8 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet, matches the OBP `Powered by MenuList. All rights reserved` treatment, and does not add a marketing CTA by default.
 - Mobile public menus lock pinch zoom on the client route and suppress text selection on menu/category controls while keeping footer/business content selectable.
+- Fullscreen PDP image preview supports its own two-finger pinch zoom; this is scoped to the image viewer and does not re-enable browser-level zoom for the whole menu.
+- Public menu language changes must keep names, descriptions, category labels, and URL `?lang=` state aligned after OBP-to-menu navigation or installed PWA launches.
 
 ## Owner Mobile Interaction
 

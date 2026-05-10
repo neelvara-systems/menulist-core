@@ -76,6 +76,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const isDefault = Form.useWatch('isDefault', form) as boolean | undefined;
     const currentProjectName = nameValue?.trim() || `This ${labels.offeringLower}`;
     const currentDefaultLabel = currentDefaultProjectName || `No default ${labels.offeringLower} is set yet`;
+    const hasMultipleProjectLanguages = new Set(languages.filter(Boolean)).size > 1;
     const [isGeneratingProjectImage, setIsGeneratingProjectImage] = useState(false);
     const [projectImageDraft, setProjectImageDraft] = useState<{
         crop?: MediaImageCropIntent;
@@ -181,7 +182,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     label={`${offeringName} Name`}
                 >
                     <Flex gap={12} vertical>
-                        {languages.length > 1 ? (
+                        {hasMultipleProjectLanguages ? (
                             <Flex gap={8} vertical>
                                 <Typography.Text strong>{tBusiness('contentLanguageTitle')}</Typography.Text>
                                 <Select
@@ -195,7 +196,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 <Typography.Text type="secondary">
                                     Edit this {labels.offeringPhrase} label one language at a time.
                                 </Typography.Text>
-                                {editingProject ? (
+                                {editingProject && onTranslatePublicContent ? (
                                     <Button
                                         loading={translateActionLoading}
                                         onClick={onTranslatePublicContent}

@@ -65,7 +65,7 @@ service firebase.storage {
     }
 
     function isValidMediaProfile(profile) {
-      return profile.matches('^(menuItem|categoryImage|projectImage|menuBackground|businessLogo|businessCover|digitalScreenSlide|galleryImage)$');
+      return profile.matches('^(menuItem|projectImage|menuBackground|businessLogo|businessCover|digitalScreenSlide|galleryImage)$');
     }
     
     // ═══════════════════════════════════════════════════════════

@@ -4,7 +4,6 @@ export type MediaAspectRatioValue = '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
 
 export type MediaImageType =
     | 'menuItem'
-    | 'categoryImage'
     | 'projectImage'
     | 'menuBackground'
     | 'businessLogo'
@@ -80,7 +79,7 @@ export const MEDIA_ASPECT_RATIO_OPTIONS: MediaAspectRatioOption[] = [
 ];
 
 const MB = 1024 * 1024;
-const OWNER_IMAGE_SOURCE_LIMIT = 50 * MB;
+const OWNER_IMAGE_SOURCE_LIMIT = 15 * MB;
 
 export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
     menuItem: {
@@ -104,34 +103,6 @@ export const MEDIA_IMAGE_PROFILES: Record<MediaImageType, MediaImageProfile> = {
         minDimension: 720,
         maxOutputSizeKB: 500,
         storageFolder: 'itemImages',
-        variants: [
-            { id: 'thumb', maxDimension: 120 },
-            { id: 'small', maxDimension: 300 },
-            { id: 'medium', maxDimension: 600 },
-            { id: 'large', maxDimension: 1200 },
-        ],
-    },
-    categoryImage: {
-        id: 'categoryImage',
-        label: 'Category image',
-        description: 'Public category presentation image.',
-        allowedMimeTypes: MEDIA_ACCEPTED_IMAGE_MIME_TYPES,
-        animationPolicy: 'static-only',
-        allowedAspectRatios: ['4:3', '1:1'],
-        defaultAspectRatio: '4:3',
-        backgroundColor: '#ffffff',
-        cropRequired: true,
-        fit: 'cover',
-        maxSourceBytes: OWNER_IMAGE_SOURCE_LIMIT,
-        maxDimension: 1200,
-        outputFormat: 'image/webp',
-        preserveTransparency: false,
-        primaryVariant: 'large',
-        quality: 0.8,
-        minQuality: 0.58,
-        minDimension: 720,
-        maxOutputSizeKB: 500,
-        storageFolder: 'categoryImages',
         variants: [
             { id: 'thumb', maxDimension: 120 },
             { id: 'small', maxDimension: 300 },

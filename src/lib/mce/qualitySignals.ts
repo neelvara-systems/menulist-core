@@ -18,6 +18,7 @@
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
+import { getMissingProjectPublicContentGaps } from '@lib/localization/projectContent';
 
 export interface QualitySignal {
     id: string;
@@ -50,11 +51,13 @@ const SIGNAL_PRIORITY: Record<string, number> = {
     categoryIcons: 3,
     descriptions: 4,
     translations: 5,
-    hidden: 6,
-    priceOutliers: 7,
+    projectContent: 6,
+    hidden: 7,
+    priceOutliers: 8,
 };
 
 interface ComputeQualitySignalsOptions {
+    projectPublicContent?: any;
     showCategoryIcons?: boolean;
     showItemPrices?: boolean;
 }
@@ -369,6 +372,28 @@ export function computeQualitySignals(
             actionLabel: missingTranslations > 0 ? 'Review' : undefined,
             actionRoute: missingTranslations > 0 ? 'translations' : undefined,
         });
+
+        const projectPublicContentGaps = getMissingProjectPublicContentGaps(
+            options?.projectPublicContent,
+            allLanguages,
+        );
+        const projectPublicContentLanguages = new Set(
+            projectPublicContentGaps.map((gap) => gap.languageCode),
+        );
+
+        signals.push({
+            id: 'projectContent',
+            label: projectPublicContentGaps.length > 0
+                ? `${projectPublicContentGaps.length} project detail${projectPublicContentGaps.length !== 1 ? 's' : ''} missing translations`
+                : 'Project details are translated',
+            helpText: projectPublicContentGaps.length > 0
+                ? `Project name, description, or notes are incomplete in ${projectPublicContentLanguages.size} menu language${projectPublicContentLanguages.size !== 1 ? 's' : ''}`
+                : undefined,
+            count: projectPublicContentGaps.length,
+            status: projectPublicContentGaps.length > 0 ? 'warning' : 'ok',
+            actionLabel: projectPublicContentGaps.length > 0 ? 'Repair' : undefined,
+            actionRoute: projectPublicContentGaps.length > 0 ? 'projectContent' : undefined,
+        });
     }
 
     return signals;
@@ -415,6 +440,7 @@ export function getActionableSignals(signals: QualitySignal[]): QualitySignal[] 
         if (s.id === 'prices' && s.count >= 1) return true;
         if (s.id === 'priceOutliers' && s.count >= 1) return true;
         if (s.id === 'translations' && s.count >= 1) return true;
+        if (s.id === 'projectContent' && s.count >= 1) return true;
         return false;
     });
 }

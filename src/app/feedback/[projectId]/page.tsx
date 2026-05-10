@@ -17,6 +17,7 @@ import MenuBreadcrumb from '@/app/client/[[...slug]]/MenuBreadcrumb';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { resolveOBPAccentColor } from '@lib/obp/accentColor';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
@@ -177,7 +178,7 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
         const feedbackEnabled = storeData.feedbackEnabled !== false;
 
         return {
-            accentColor: storeData.publicPresence?.accentColor as string | undefined,
+            accentColor: resolveOBPAccentColor(storeData.publicPresence),
             storeDetails,
             storeName: displayStoreName,
             feedbackEnabled,
@@ -229,7 +230,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
         textColor: headerMoodConfig.bodyColor,
         headingColor: headerMoodConfig.headingColor,
         mutedColor: headerMoodConfig.descriptionColor || headerMoodConfig.bodyColor,
-        accentColor: headerMoodConfig.accentColor,
+        accentColor: storeInfo.accentColor,
         borderColor:
             headerMoodConfig.categoryStyle.dividerColor ||
             headerMoodConfig.categoryStyle.borderColor ||
@@ -238,7 +239,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     };
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[#f7f8fa]">
+        <div className="min-h-screen overflow-x-hidden bg-[#f7f8fa]" data-obp-page="true">
             {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeInfo.tempStatus ? (
                 <TempStatusBanner tempStatus={storeInfo.tempStatus} />
             ) : null}
@@ -249,7 +250,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
                 variant="identity"
                 theme={publicHeaderTheme}
             />
-            <div className="mx-auto w-full max-w-3xl px-3 sm:px-6">
+            <div className="mx-auto w-full max-w-3xl px-4 pb-6 sm:px-6">
                 <GuestFeedbackForm
                     accentColor={storeInfo.accentColor}
                     tId={project.tId}

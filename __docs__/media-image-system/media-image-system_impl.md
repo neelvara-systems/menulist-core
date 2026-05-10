@@ -10,6 +10,7 @@ Create:
 - `src/components/shared/media/MediaAspectRatioSelector.tsx`
 - `src/components/shared/media/MediaImageCard.tsx`
 - `src/components/shared/media/MediaImageAdjustModal.tsx`
+- `src/components/shared/media/PublicImageViewer.tsx`
 
 Modify:
 
@@ -52,7 +53,7 @@ Modify:
 2. Add media image profiles with purpose-specific ratios, transparency rules, named variants, source limits, output settings, and storage hints.
 3. Add a shared preparation function that validates source type/size safety, crops to the selected allowed ratio, resizes, compresses, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/local-preview data URL output, named variants, focal point, dominant color, and source metadata.
 4. Add a shared media image card for placeholder, local file upload, drag/drop, paste, preview, replace, adjust, remove, and reset actions.
-5. Add optional manual adjust UI for approved non-item profiles. The owner can drag, zoom, rotate, and reset framing, but the final resize, format, and compression still come from `prepareMediaImage`.
+5. Add optional manual adjust UI for approved non-item profiles. The owner can drag, use Fit to frame, use slider zoom, pinch with two fingers on touch screens, rotate, and reset framing, but the final resize, format, and compression still come from `prepareMediaImage`.
 6. Keep old optimizer exports (`MENU_IMAGE_CONFIG`, `MENU_BACKGROUND_IMAGE_CONFIG`) but derive them from media profiles.
 7. Replace per-surface ad hoc upload rules with the shared preparation function.
 8. Restrict AI image shape selectors to the menu item media profile and keep system-native ratio order first.
@@ -77,7 +78,7 @@ Prepared images are no longer only URL-centric. `prepareMediaImage` returns `med
 
 Profiles expose named variants:
 
-- Menu item and category image: `thumb`, `small`, `medium`, `large`
+- Menu item: `thumb`, `small`, `medium`, `large`
 - Project image and business cover: `card`, `hero`
 - Menu background: `mobile`, `desktop`
 - Business logo: `thumb`, `full`
@@ -91,6 +92,20 @@ Profiles expose named variants:
 The media layer keeps `dataUrl` only for local preview and legacy form state. Profile-aware saves pass the prepared Blob/variant object into `uploadPreparedMediaImage`, which uploads Blob variants to Firebase Storage. If a legacy media caller still passes a prepared data URL into an existing DAL function, the DAL converts it back to a Blob before upload instead of using `uploadString(data_url)`.
 
 The local preview must always be the prepared primary output. Screens that upload immediately, such as Official Business Page cover/gallery, can temporarily render `prepared.dataUrl` in the card while the Blob upload completes, then persist only the returned Firebase URL. This keeps owner preview and public rendering visually aligned without storing base64 public truth.
+
+If an immediate Firebase upload fails after preparation, the screen must keep showing the prepared preview and offer retry from the same prepared Blob. The failed prepared preview is still draft-only; it must not be written into the store field until Firebase Storage returns the public URL.
+
+### Public context preview
+
+`MediaPublicContextPreview` renders customer-frame previews for `menuBackground` and `businessCover`. The component is intentionally limited to these profiles because they affect page-level readability and first impression. It does not add editing controls or a new save path.
+
+### Public image display
+
+`PublicImageViewer` owns the customer-facing enlarged image viewer for public image lists. Official Business Page gallery thumbnails and menu item PDP images both pass normalized `{ url, alt }` image lists into this component. Surface-specific thumbnail or hero layouts remain local, but zoom, reset, pan, previous/next navigation, mobile swipe navigation, keyboard handling, and scroll locking are shared.
+
+### Alt text
+
+`src/lib/media/altText.ts` owns derived public image alt text. Public menu and OBP renderers use it for item images, project/menu images, business covers, logos, and gallery photos. Owners are not asked for alt text initially; the contract derives concise text from item, project, and business names already present in the system.
 
 ### Manual adjust is intent-only
 
@@ -111,6 +126,8 @@ All owner-facing image profile surfaces should use `MediaImageCard` for the visu
 ### Storage cleanup
 
 Official Business Page cover and gallery images upload immediately because the existing flow needs a preview URL before the store form is saved. Replaced or removed cover/gallery URLs are queued and deleted from Firebase Storage only after the related store save succeeds, so a cancelled desktop edit does not delete a still-saved public asset.
+
+When a replacement upload fails, removing the visible failed draft only discards the draft and reveals the last saved public image. It must not queue deletion for the still-saved public asset.
 
 ### Immutable cache behavior
 

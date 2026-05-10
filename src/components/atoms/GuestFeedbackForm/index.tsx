@@ -2,6 +2,7 @@
 
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults, GuestFeedbackSubmitState } from '@type/guestFeedback';
 import type { StoreDataType } from '@type/platform/store';
+import OBPThemeToggle from '@/app/client/obp/OBPThemeToggle';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import MenuFooter from '@template/main-app/projects/b2cView/output/MenuFooter';
 import { message } from 'antd';
@@ -213,7 +214,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const formErrors = useMemo(() => getFormErrors(formValues, settings), [formValues, settings]);
     const hasVisibleErrors = Object.values(formErrors).some(Boolean);
     const moodConfig = useMemo(() => getMoodWithBrandColor(MenuMood.CLEAN, accentColor), [accentColor]);
-    const primaryCtaColor = moodConfig.accentColor;
+    const primaryCtaColor = accentColor || moodConfig.accentColor;
     const primaryCtaTextColor = getReadableTextColor(primaryCtaColor);
 
     const updateField = (field: keyof FormState, value: string) => {
@@ -290,11 +291,17 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 storeDetails={storeDetails as StoreDataType}
                 moodConfig={moodConfig}
                 projectId={projectId}
-                feedbackEnabled={false}
+                feedbackEnabled
                 showLanguageSelector={false}
                 showUpdateMeta={false}
                 trackingEnabled={false}
             />
+            <div className={styles.themeToggleWrap}>
+                <OBPThemeToggle
+                    switchToDarkLabel="Switch to dark theme"
+                    switchToLightLabel="Switch to light theme"
+                />
+            </div>
         </div>
     ) : null;
 
@@ -385,7 +392,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         <div className={styles.surface} style={{ '--feedback-accent': primaryCtaColor } as React.CSSProperties}>
             <main className={styles.shell}>
                 <div className={styles.content}>
-                    <div>
+                    <div className={styles.hero}>
                         <h1 className={styles.heroTitle}>
                             Share feedback
                         </h1>
@@ -432,8 +439,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
 
                                 {rating > 0 ? (
                                     <div className={styles.hintBox}>
-                                        <p className={styles.hintTitle}>{ratingCopy.eyebrow}</p>
-                                        <p className={styles.hintText}>{ratingCopy.prompt}</p>
+                                        <p className={styles.hintTitle}>{insightCard.title}</p>
+                                        <p className={styles.hintText}>{insightCard.description}</p>
                                     </div>
                                 ) : null}
                             </section>

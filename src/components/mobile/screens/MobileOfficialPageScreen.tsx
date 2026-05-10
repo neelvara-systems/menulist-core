@@ -14,6 +14,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
@@ -60,6 +61,14 @@ interface MobileOfficialPageScreenProps {
 
 type PresenceFormData = ReturnType<typeof getInitialPresenceForm>;
 type LocalizedPresenceDrafts = ReturnType<typeof buildLocalizedPresenceDrafts>;
+type ObpMediaDraft = {
+    crop?: MediaImageCropIntent;
+    fileName?: string;
+    prepared?: PreparedMediaImage;
+    previewDataUrl?: string;
+    sourceDataUrl?: string;
+    uploadFailed?: boolean;
+};
 
 function getFirstImageFile(fileList?: FileList | null): File | null {
     if (!fileList) return null;
@@ -161,9 +170,12 @@ interface SortablePhotoRowProps {
     label: string;
     previewLabel: string;
     removeLabel: string;
+    retryLabel?: string;
+    uploadFailedLabel?: string;
     onAdjust: () => void;
     onPreview: () => void;
     onRemove: () => void;
+    onRetry?: () => void;
 }
 
 function SortablePhotoRow({
@@ -177,9 +189,12 @@ function SortablePhotoRow({
     label,
     previewLabel,
     removeLabel,
+    retryLabel,
+    uploadFailedLabel,
     onAdjust,
     onPreview,
     onRemove,
+    onRetry,
 }: SortablePhotoRowProps) {
     const { token } = theme.useToken();
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ disabled, id });
@@ -325,6 +340,31 @@ function SortablePhotoRow({
                     <LuGripVertical size={22} />
                 </div>
             </Flex>
+            {uploadFailedLabel && onRetry ? (
+                <Flex align="center" justify="space-between" style={{ marginTop: 8 }}>
+                    <Text style={{ color: token.colorError, fontSize: 12 }}>{uploadFailedLabel}</Text>
+                    <button
+                        disabled={disabled || isBusy}
+                        onClick={onRetry}
+                        style={{
+                            background: token.colorErrorBg,
+                            border: `1px solid ${token.colorErrorBorder}`,
+                            borderRadius: 999,
+                            color: token.colorError,
+                            cursor: disabled || isBusy ? 'not-allowed' : 'pointer',
+                            font: 'inherit',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            minHeight: 32,
+                            opacity: disabled || isBusy ? 0.5 : 1,
+                            padding: '0 14px',
+                        }}
+                        type="button"
+                    >
+                        {retryLabel || 'Retry'}
+                    </button>
+                </Flex>
+            ) : null}
         </div>
     );
 }
@@ -416,18 +456,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [isCoverUploading, setIsCoverUploading] = useState(false);
     const [isCoverGenerating, setIsCoverGenerating] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
-    const [coverDraft, setCoverDraft] = useState<{
-        crop?: MediaImageCropIntent;
-        fileName?: string;
-        previewDataUrl?: string;
-        sourceDataUrl?: string;
-    } | null>(null);
-    const [photoDrafts, setPhotoDrafts] = useState<Record<number, {
-        crop?: MediaImageCropIntent;
-        fileName?: string;
-        previewDataUrl?: string;
-        sourceDataUrl?: string;
-    }>>({});
+    const [coverDraft, setCoverDraft] = useState<ObpMediaDraft | null>(null);
+    const [photoDrafts, setPhotoDrafts] = useState<Record<number, ObpMediaDraft>>({});
     const [isCoverAdjustOpen, setIsCoverAdjustOpen] = useState(false);
     const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
     const [photoDeleteQueue, setPhotoDeleteQueue] = useState<string[]>([]);
@@ -593,8 +623,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setCoverDraft({
             crop: prepared.crop,
             fileName: prepared.sourceName || fallbackDraft?.fileName,
+            prepared,
             previewDataUrl: prepared.dataUrl,
             sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+            uploadFailed: false,
         });
         setIsCoverUploading(true);
         try {
@@ -605,15 +637,19 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             setCoverDraft({
                 crop: prepared.crop,
                 fileName: prepared.sourceName || fallbackDraft?.fileName,
+                prepared,
                 previewDataUrl: prepared.dataUrl,
                 sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                uploadFailed: false,
             });
             setFormData((previous) => ({ ...previous, businessCover: url }));
             Toast.show({ content: successMessage, icon: 'success', duration: 1200 });
         } catch {
             setCoverDraft((previous) => previous ? {
                 ...previous,
-                previewDataUrl: undefined,
+                prepared,
+                previewDataUrl: prepared.dataUrl,
+                uploadFailed: true,
             } : previous);
             Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
         } finally {
@@ -675,6 +711,19 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setFormData((previous) => ({ ...previous, businessCover: '' }));
     };
 
+    const handleCoverCardRemove = () => {
+        if (coverDraft?.uploadFailed) {
+            setCoverDraft(null);
+            return;
+        }
+        handleCoverRemove();
+    };
+
+    const handleRetryCoverUpload = () => {
+        if (!coverDraft?.prepared) return;
+        void savePreparedCover(coverDraft.prepared, coverDraft);
+    };
+
     const savePreparedPhoto = async (
         prepared: PreparedMediaImage,
         index: number,
@@ -693,8 +742,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             [index]: {
                 crop: prepared.crop,
                 fileName: prepared.sourceName || fallbackDraft?.fileName,
+                prepared,
                 previewDataUrl: prepared.dataUrl,
                 sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                uploadFailed: false,
             },
         }));
         setUploadingIndex(index);
@@ -710,8 +761,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 [index]: {
                     crop: prepared.crop,
                     fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    prepared,
                     previewDataUrl: prepared.dataUrl,
                     sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                    uploadFailed: false,
                 },
             }));
             setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
@@ -720,7 +773,9 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 ...previous,
                 [index]: {
                     ...previous[index],
-                    previewDataUrl: undefined,
+                    prepared,
+                    previewDataUrl: prepared.dataUrl,
+                    uploadFailed: true,
                 },
             }));
             Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
@@ -757,6 +812,24 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
 
+    const handlePhotoCardRemove = (index: number) => {
+        if (photoDrafts[index]?.uploadFailed) {
+            setPhotoDrafts((previous) => {
+                const next = { ...previous };
+                delete next[index];
+                return next;
+            });
+            return;
+        }
+        handlePhotoRemove(index);
+    };
+
+    const handleRetryPhotoUpload = (index: number) => {
+        const draft = photoDrafts[index];
+        if (!draft?.prepared) return;
+        void savePreparedPhoto(draft.prepared, index, draft);
+    };
+
     const handlePhotoReorder = (fromIndex: number, toIndex: number) => {
         if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= photoList.length || toIndex >= photoList.length) {
             return;
@@ -782,8 +855,11 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         handlePhotoReorder(fromIndex, toIndex);
     };
 
-    const activePhoto = activePhotoIndex != null ? photoSlots[activePhotoIndex] : '';
+    const activePhoto = activePhotoIndex != null
+        ? photoDrafts[activePhotoIndex]?.previewDataUrl || photoSlots[activePhotoIndex]
+        : '';
     const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
+    const businessPreviewName = getBrandName(storeDetails as any, 'business');
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
@@ -904,11 +980,31 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             imageUrl={coverDraft?.previewDataUrl || formData.businessCover}
                             isBusy={isCoverUploading}
                             onAdjust={() => setIsCoverAdjustOpen(true)}
-                            onRemove={formData.businessCover ? handleCoverRemove : undefined}
+                            onRemove={formData.businessCover || coverDraft?.previewDataUrl ? handleCoverCardRemove : undefined}
                             onSelectFile={(file) => { void handleCoverUpload(file); }}
                             placeholderDescription={t('businessCoverPlaceholder')}
                             placeholderTitle={t('businessCover')}
                             showDropHint={false}
+                        />
+                        {coverDraft?.uploadFailed && coverDraft.prepared ? (
+                            <Flex align="center" justify="space-between">
+                                <Text style={{ color: token.colorError, fontSize: 12 }}>{t('businessCoverUploadFailed')}</Text>
+                                <Button
+                                    disabled={isCoverUploading}
+                                    loading={isCoverUploading}
+                                    onClick={handleRetryCoverUpload}
+                                    size="small"
+                                >
+                                    Retry
+                                </Button>
+                            </Flex>
+                        ) : null}
+                        <MediaPublicContextPreview
+                            accentColor={formData.accentColor}
+                            imageType="businessCover"
+                            imageUrl={coverDraft?.previewDataUrl || formData.businessCover}
+                            subtitle={t('officialPage')}
+                            title={businessPreviewName}
                         />
                         <Button
                             block
@@ -1160,22 +1256,26 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                         <Flex gap={10} vertical>
                                             {sortablePhotoItems.map((item) => {
                                                 const label = t('photoLabel', { index: item.index + 1 });
+                                                const draft = photoDrafts[item.index];
                                                 return (
                                                     <SortablePhotoRow
                                                         adjustLabel="Adjust"
-                                                        canAdjust={Boolean(photoDrafts[item.index]?.sourceDataUrl)}
+                                                        canAdjust={Boolean(draft?.sourceDataUrl)}
                                                         disabled={uploadingIndex != null}
                                                         id={item.id}
-                                                        imageUrl={photoDrafts[item.index]?.previewDataUrl || item.photo}
+                                                        imageUrl={draft?.previewDataUrl || item.photo}
                                                         index={item.index}
                                                         isBusy={uploadingIndex === item.index}
                                                         key={item.id}
                                                         label={label}
                                                         onAdjust={() => setAdjustingPhotoIndex(item.index)}
                                                         onPreview={() => setActivePhotoIndex(item.index)}
-                                                        onRemove={() => handlePhotoRemove(item.index)}
+                                                        onRemove={() => handlePhotoCardRemove(item.index)}
+                                                        onRetry={draft?.uploadFailed && draft.prepared ? () => handleRetryPhotoUpload(item.index) : undefined}
                                                         previewLabel={tDesign('preview')}
                                                         removeLabel={tDesign('remove')}
+                                                        retryLabel="Retry"
+                                                        uploadFailedLabel={draft?.uploadFailed ? t('photoUploadFailed') : undefined}
                                                     />
                                                 );
                                             })}
@@ -1183,13 +1283,45 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                     </SortableContext>
                                 </DndContext>
                             ) : null}
-                            <AddPhotoRow
-                                accept={getMediaProfileAcceptAttribute('galleryImage')}
-                                description="Tap to add your next business photo"
-                                disabled={uploadingIndex != null}
-                                label={t('photoLabel', { index: photoList.length + 1 })}
-                                onSelectFile={(file) => { void handlePhotoUpload(file, photoList.length); }}
-                            />
+                            {photoDrafts[photoList.length]?.previewDataUrl ? (
+                                <Flex gap={8} vertical>
+                                    <MediaImageCard
+                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                        alt={t('photoLabel', { index: photoList.length + 1 })}
+                                        aspectRatio="4 / 3"
+                                        canAdjust={Boolean(photoDrafts[photoList.length]?.sourceDataUrl)}
+                                        imageType="galleryImage"
+                                        imageUrl={photoDrafts[photoList.length]?.previewDataUrl}
+                                        isBusy={uploadingIndex === photoList.length}
+                                        onAdjust={() => setAdjustingPhotoIndex(photoList.length)}
+                                        onRemove={() => handlePhotoCardRemove(photoList.length)}
+                                        onSelectFile={(file) => { void handlePhotoUpload(file, photoList.length); }}
+                                        placeholderTitle={t('photoLabel', { index: photoList.length + 1 })}
+                                        showDropHint={false}
+                                    />
+                                    {photoDrafts[photoList.length]?.uploadFailed && photoDrafts[photoList.length]?.prepared ? (
+                                        <Flex align="center" justify="space-between">
+                                            <Text style={{ color: token.colorError, fontSize: 12 }}>{t('photoUploadFailed')}</Text>
+                                            <Button
+                                                disabled={uploadingIndex != null}
+                                                loading={uploadingIndex === photoList.length}
+                                                onClick={() => handleRetryPhotoUpload(photoList.length)}
+                                                size="small"
+                                            >
+                                                Retry
+                                            </Button>
+                                        </Flex>
+                                    ) : null}
+                                </Flex>
+                            ) : (
+                                <AddPhotoRow
+                                    accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                    description="Tap to add your next business photo"
+                                    disabled={uploadingIndex != null}
+                                    label={t('photoLabel', { index: photoList.length + 1 })}
+                                    onSelectFile={(file) => { void handlePhotoUpload(file, photoList.length); }}
+                                />
+                            )}
                         </Flex>
                     </Flex>
                 </Card>
@@ -1351,29 +1483,44 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 type="file"
             />
             <Popup
-                bodyStyle={{ maxHeight: '82vh', padding: 0 }}
+                bodyStyle={{ maxHeight: '90vh', padding: 0 }}
                 destroyOnClose
                 onMaskClick={() => setActivePhotoIndex(null)}
                 visible={activePhotoIndex != null && Boolean(activePhoto)}
             >
-                <Flex style={{ maxHeight: '82vh' }} vertical>
+                <Flex style={{ maxHeight: '90vh' }} vertical>
                     <NavBar onBack={() => setActivePhotoIndex(null)}>
                         {activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}
                     </NavBar>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 16 }} vertical>
                         {activePhoto ? (
-                            <img
-                                alt={activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}
-                                src={activePhoto}
+                            <div
                                 style={{
-                                    aspectRatio: '4 / 3',
+                                    alignItems: 'center',
+                                    background: token.colorBgLayout,
                                     border: `1px solid ${token.colorBorderSecondary}`,
                                     borderRadius: 12,
-                                    display: 'block',
-                                    objectFit: 'cover',
-                                    width: '100%',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    maxHeight: '68vh',
+                                    minHeight: 240,
+                                    overflow: 'hidden',
+                                    padding: 8,
                                 }}
-                            />
+                            >
+                                <img
+                                    alt={activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}
+                                    src={activePhoto}
+                                    style={{
+                                        display: 'block',
+                                        height: 'auto',
+                                        maxHeight: 'calc(68vh - 16px)',
+                                        maxWidth: '100%',
+                                        objectFit: 'contain',
+                                        width: 'auto',
+                                    }}
+                                />
+                            </div>
                         ) : null}
                         <Flex gap={8}>
                             <Button

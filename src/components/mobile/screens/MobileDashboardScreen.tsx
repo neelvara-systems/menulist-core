@@ -556,7 +556,7 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
         }
 
         const dateLabel = viewMode === 'daily' && periodData.date
-            ? new Date(periodData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'long' })
+            ? new Date(periodData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
             : viewMode === 'weekly' && periodData.weekStart && periodData.weekEnd
                 ? `${new Date(periodData.weekStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${new Date(periodData.weekEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
                 : viewMode === 'monthly' && periodData.monthStart
@@ -565,14 +565,14 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
 
         return (
             <>
-                <Tag
-                    color={viewMode === 'daily' && periodData.isLowActivity ? 'warning' : 'processing'}
-                    style={FULL_WIDTH_TAG_STYLE}
-                >
-                    {viewMode === 'daily' && periodData.isLowActivity
-                        ? `${dateLabel} · ${t('lowActivity')}`
-                        : dateLabel}
-                </Tag>
+                {viewMode !== 'daily' ? (
+                    <Tag
+                        color="processing"
+                        style={FULL_WIDTH_TAG_STYLE}
+                    >
+                        {dateLabel}
+                    </Tag>
+                ) : null}
 
                 <Card size="small" title={<Text strong>{viewModeLabel}</Text>}>
                     {renderMetricsCards(periodData.metrics)}
@@ -613,6 +613,14 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             )}
         </>
     );
+
+    const dailyHeaderData = viewMode === 'daily' ? currentViewData as any : null;
+    const dailyHeaderDateLabel = dailyHeaderData?.date
+        ? new Date(dailyHeaderData.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
+        : null;
+    const dailyHeaderLabel = dailyHeaderDateLabel && dailyHeaderData?.isLowActivity
+        ? `${dailyHeaderDateLabel} · ${t('lowActivity')}`
+        : dailyHeaderDateLabel;
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
@@ -666,6 +674,13 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
                         <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
                             <LuRefreshCw size={18} color={token.colorTextTertiary} />
                         </Button>
+                    ) : dailyHeaderLabel ? (
+                        <Tag
+                            color={dailyHeaderData?.isLowActivity ? 'warning' : 'processing'}
+                            style={{ marginInlineEnd: 0 }}
+                        >
+                            {dailyHeaderLabel}
+                        </Tag>
                     ) : null}
                 </Flex>
 

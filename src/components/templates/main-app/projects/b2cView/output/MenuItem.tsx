@@ -6,6 +6,7 @@
  */
 
 import Image from 'next/image';
+import { getMenuItemImageAltText } from '@lib/media/altText';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { MenuMoodConfig } from '../designSystem';
 
@@ -96,7 +97,7 @@ export default function MenuItemOutput({
                 >
                     <Image
                         src={item.image}
-                        alt={item.name}
+                        alt={getMenuItemImageAltText(item.name)}
                         fill
                         className="object-cover"
                         sizes="100vw"

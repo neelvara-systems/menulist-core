@@ -28,6 +28,7 @@ import { getDataUrlMimeType, getMediaProfileAcceptAttribute } from '@lib/media/i
 import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -660,6 +661,13 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                                     onSelectFile={(file) => { void handleBackgroundImageSelect(file); }}
                                     placeholderDescription={t('backgroundUploadFormats')}
                                     placeholderTitle={t('noBackgroundImage')}
+                                />
+                                <MediaPublicContextPreview
+                                    accentColor={brandAccentColor || defaultMoodColor}
+                                    imageType="menuBackground"
+                                    imageUrl={backgroundImage}
+                                    subtitle={t('background')}
+                                    title={resolvedProjectName || t('title')}
                                 />
                             </Flex>
                         </Card>

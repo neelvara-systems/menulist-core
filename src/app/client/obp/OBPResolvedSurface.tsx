@@ -13,7 +13,9 @@ import {
     shouldExposePublicLanguageSwitcher,
 } from "@lib/localization/publicRenderLanguage";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { getBusinessCoverAltText, getBusinessLogoAltText } from "@lib/media/altText";
 import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
+import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
@@ -462,7 +464,7 @@ export default function OBPResolvedSurface({
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === contentLanguage)?.name || contentLanguage.toUpperCase();
     const { hasMenu, defaultSlug, projects: activeProjects } = menuInfo;
 
-    const accentColor = pp.accentColor || '#111';
+    const accentColor = resolveOBPAccentColor(pp);
     const descriptor = getLocalizedText(pp.descriptor, contentLanguage, getPrimaryLocalizedLanguage(pp.descriptor, contentLanguage), '');
     const brandName = getBrandName(store, t('publicFallbackBusiness'));
     const storeLocationName = getStoreName(store, brandName);
@@ -696,7 +698,7 @@ export default function OBPResolvedSurface({
                     {businessCover ? (
                         <div className={styles.businessCover}>
                             <img
-                                alt={`${storeName} cover`}
+                                alt={getBusinessCoverAltText(storeName)}
                                 src={businessCover}
                                 loading="eager"
                             />
@@ -709,7 +711,7 @@ export default function OBPResolvedSurface({
                                 {logo ? (
                                     <img
                                         src={logo}
-                                        alt={storeName}
+                                        alt={getBusinessLogoAltText(storeName)}
                                         className={styles.logo}
                                         width={72}
                                         height={72}
@@ -1023,6 +1025,11 @@ export default function OBPResolvedSurface({
                                         <a key={link.href} href={link.href}>{link.label}</a>
                                     ))}
                                 </div>
+                            )}
+                            {showFeedback && feedbackUrl && (
+                                <a className={styles.footerFeedbackLink} href={feedbackUrl}>
+                                    {t('publicShareFeedback')}
+                                </a>
                             )}
                             <OBPThemeToggle
                                 switchToDarkLabel={t('publicSwitchToDarkTheme')}

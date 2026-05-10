@@ -23,7 +23,8 @@ const SidebarComponent = dynamic(() => import('@organisms/sidebar'), { ssr: fals
 const MobileShell = dynamic(() => import('../../mobile/MobileShell'), { ssr: false });
 
 const { Content } = Layout;
-const DESKTOP_ONLY_ROUTE_PREFIXES = ['/platform', '/reseller', '/ops'];
+const DESKTOP_ONLY_ROUTE_PREFIXES = ['/reseller', '/ops'];
+const DESKTOP_ONLY_ROUTES = ['/platform/test-sentry'];
 
 export default function AntdLayoutWrapper(props: any) {
 
@@ -33,12 +34,18 @@ export default function AntdLayoutWrapper(props: any) {
     const { token } = theme.useToken();
     const pathname = usePathname();
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
-    const { isHandheld, hasMounted } = useDeviceType();
+    const { isHandheld, isMobile, hasMounted } = useDeviceType();
     // Check for force-desktop override from localStorage (set via More > Switch to Desktop)
     const forceDesktop = typeof window !== 'undefined' && localStorage.getItem('forceDesktopMode') === 'true';
-    const isDesktopOnlyRoute = DESKTOP_ONLY_ROUTE_PREFIXES.some((routePrefix) => (
+    const isDesktopOnlyRoute = DESKTOP_ONLY_ROUTES.includes(pathname) || DESKTOP_ONLY_ROUTE_PREFIXES.some((routePrefix) => (
         pathname === routePrefix || pathname.startsWith(`${routePrefix}/`)
     ));
+    const isPlatformRoute = pathname === '/platform' || pathname.startsWith('/platform/');
+    const shouldRenderMobileShell = hasMounted
+        && FEATURE_FLAGS.ENABLE_MOBILE_UI
+        && !forceDesktop
+        && !isDesktopOnlyRoute
+        && (isHandheld || (isMobile && isPlatformRoute));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
 
     const renderContent = () => {
@@ -50,7 +57,7 @@ export default function AntdLayoutWrapper(props: any) {
         // Long-term shell routing: keep handheld devices in the mobile shell
         // even when rotated to landscape. Internal screen layouts can respond
         // to width changes without the entire app remounting into desktop UI.
-        if (hasMounted && isHandheld && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop && !isDesktopOnlyRoute) {
+        if (shouldRenderMobileShell) {
             return <MobileShell />;
         }
 

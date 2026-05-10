@@ -1180,41 +1180,12 @@ function buildDietSchemaValues(item: any, dietaryTags: string[]) {
     return diets;
 }
 
-// #30: Lazy language loading — reduce SSR payload for multi-language menus
-// Strips non-primary language descriptions (heavy text) while keeping all language names (short strings).
-// Menus with <3 languages are untouched (optimization not worth the clone cost).
-// UI gracefully handles missing descriptions — they simply don't render.
-function optimizeLanguagePayload(projectData: any, requestedLanguage?: string | null): any {
-    if (!projectData?.files?.length) return projectData;
-
-    const languages = projectData.files[0]?.extractedData?.data?.languages || [];
-    if (languages.length < 3) return projectData; // Not worth optimizing for 1-2 languages
-
-    const primaryLang = languages.find((l: any) => l.isPrimary)?.code || languages[0]?.code || 'en';
-    const descriptionLanguages = new Set(
-        [primaryLang, requestedLanguage].filter((language): language is string =>
-            typeof language === 'string' && language.trim().length > 0,
-        ),
-    );
-
-    // Deep clone to avoid mutating cached data
-    const optimized = JSON.parse(JSON.stringify(projectData));
-
-    for (const file of optimized.files || []) {
-        const items = file.extractedData?.data?.items || [];
-        for (const item of items) {
-            if (item.description && typeof item.description === 'object') {
-                const nextDescription: Record<string, string> = {};
-                descriptionLanguages.forEach((language) => {
-                    const description = item.description[language];
-                    if (description) nextDescription[language] = description;
-                });
-                item.description = nextDescription;
-            }
-        }
-    }
-
-    return optimized;
+// #30: Public language payload guard
+// The public menu can switch language client-side after arriving from OBP.
+// Keep all item descriptions in the SSR payload so the visible menu remains
+// consistent when the customer changes language without a server navigation.
+function optimizeLanguagePayload(projectData: any, _requestedLanguage?: string | null): any {
+    return projectData;
 }
 
 interface PageProps {
@@ -1717,10 +1688,9 @@ async function MenuContent({
         })
         : sanitized;
 
-    // #30: Lazy language loading — reduce SSR payload for multi-language menus (3+ languages)
-    // Names kept in ALL languages (short strings, needed for instant language switching).
-    // Descriptions keep primary + resolved initial render language. Using only the raw
-    // query language strips default-language descriptions when no ?lang= is present.
+    // Public menu language switching happens client-side after OBP/menu entry.
+    // Keep the resolved initial language for metadata/schema, but do not strip
+    // descriptions from other owner-enabled menu languages.
     const initialProjectLanguage = resolveProjectPublicLanguage(searchReadyProjectData, storeDetails, requestedLanguage);
     const projectData = optimizeLanguagePayload(searchReadyProjectData, initialProjectLanguage);
     const clientStoreDetails = serializeClientValue({
@@ -1870,6 +1840,12 @@ async function MenuContent({
                         : undefined
                 }
                 projectName={menuName}
+                homeHref={appendPublicLanguageParam('/', requestedLanguage)}
+                outletHref={
+                    !storeData.isMaster && storeData.outletSlug
+                        ? appendPublicLanguageParam(`/${storeData.outletSlug}`, requestedLanguage)
+                        : undefined
+                }
                 logoUrl={storeDetails?.logo || null}
                 variant="identity"
                 theme={menuHeaderTheme}

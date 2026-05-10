@@ -16,7 +16,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
-import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
+import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage, hasMissingProjectPublicDraftContent } from '@lib/localization/projectContent';
 import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
@@ -240,6 +240,13 @@ function ProjectsPage() {
             ])
         )
     ), []);
+    const hasMissingProjectPublicDrafts = useMemo(() => (
+        hasMissingProjectPublicDraftContent({
+            descriptionDrafts: projectDescriptionDrafts,
+            languages: projectFormLanguages,
+            nameDrafts: projectNameDrafts,
+        })
+    ), [projectDescriptionDrafts, projectFormLanguages, projectNameDrafts]);
 
     // Mount effect: Preload lazy components + first-time visit check
     useEffect(() => {
@@ -2356,7 +2363,7 @@ function ProjectsPage() {
                     }))}
                     onGenerateProjectImage={handleGenerateProjectImageForForm}
                     onProjectImagePrepared={setProjectImagePreparedForSave}
-                    onTranslatePublicContent={() => void handleTranslateProjectPublicContent()}
+                    onTranslatePublicContent={hasMissingProjectPublicDrafts ? () => void handleTranslateProjectPublicContent() : undefined}
                     onSubmit={() => form.validateFields().then(handleProjectEdit)}
                     onReset={() => {
                         setConfirmActionType('reset');

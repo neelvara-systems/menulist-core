@@ -2,6 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
+import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
@@ -37,6 +38,7 @@ import {
 } from 'react-icons/lu';
 import { Avatar, Card, Dialog, Flex, List, NavBar, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import type { MobilePlatformInternalScreenKey } from './MobilePlatformInternalScreen';
 
 type ItemStatusTag = {
     color: 'success' | 'warning' | 'default';
@@ -84,6 +86,26 @@ const MobilePresenceMonitorScreen = dynamic(() => import('./MobilePresenceMonito
 const MobileExtractionMonitorScreen = dynamic(() => import('./MobileExtractionMonitorScreen'), { ssr: false });
 const MobileOpsControlRoomScreen = dynamic(() => import('./MobileOpsControlRoomScreen'), { ssr: false });
 const MobileSchedulerMonitorScreen = dynamic(() => import('./MobileSchedulerMonitorScreen'), { ssr: false });
+const MobilePlatformInternalScreen = dynamic(() => import('./MobilePlatformInternalScreen'), { ssr: false });
+
+const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
+    'platformSettings',
+    'platformUsers',
+    'supportTickets',
+    'feedbackAdmin',
+    'knowledgeBase',
+    'kbGeneration',
+    'changelog',
+    'chatManagement',
+    'chatInsights',
+    'chatBackfill',
+    'chatWeeklyDigest',
+    'chatRoiCalculator',
+];
+
+const isPlatformInternalScreen = (screen: MoreSubScreen): screen is MobilePlatformInternalScreenKey => (
+    platformInternalScreens.includes(screen as MobilePlatformInternalScreenKey)
+);
 
 export type MoreSubScreen =
     | 'main'
@@ -121,6 +143,18 @@ export type MoreSubScreen =
     | 'customerApp'
     | 'presenceMonitor'
     | 'platformHub'
+    | 'platformSettings'
+    | 'platformUsers'
+    | 'supportTickets'
+    | 'feedbackAdmin'
+    | 'knowledgeBase'
+    | 'kbGeneration'
+    | 'changelog'
+    | 'chatManagement'
+    | 'chatInsights'
+    | 'chatBackfill'
+    | 'chatWeeklyDigest'
+    | 'chatRoiCalculator'
     | 'opsControlRoom'
     | 'extractionMonitor'
     | 'schedulerMonitor';
@@ -157,7 +191,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const userName = session?.user?.name || 'User';
     const userEmail = session?.user?.email || '';
     const userImage = session?.user?.image || '';
-    const isPlatformAdmin = (session as any)?.platformRole === 'PLATFORM';
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');
@@ -194,7 +229,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         setSubScreen(nextScreen);
     };
 
-    const openPlatformRoute = (path: string) => {
+    const openDesktopRoute = (path: string) => {
+        localStorage.setItem('forceDesktopMode', 'true');
         window.location.assign(path);
     };
 
@@ -205,7 +241,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['domainSettings', 'businessCopySetup', 'seoSettings', 'integrations', 'presenceMonitor'].includes(currentScreen)) {
             return 'searchDiscoveryHub';
         }
-        if (['opsControlRoom', 'schedulerMonitor', 'extractionMonitor'].includes(currentScreen)) {
+        if (['opsControlRoom', 'schedulerMonitor', 'extractionMonitor'].includes(currentScreen) || isPlatformInternalScreen(currentScreen)) {
             return 'platformHub';
         }
         return 'main';
@@ -273,24 +309,24 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'opsControlRoom', icon: <LuActivity color="#dc2626" size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
         { key: 'schedulerMonitor', icon: <LuClock3 color="#ea580c" size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color="#7c3aed" size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
-        { key: 'platformSettings', icon: <LuSettings color="#475569" size={20} />, keywords: ['platform settings', 'logs', 'tenants', 'stores', 'pricing'], label: 'Platform Settings', description: 'Logs, tenants, stores, pricing plans, and platform users.', onClick: () => openPlatformRoute('/platform') },
-        { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles'], label: 'Platform Users', description: 'Manage platform-level users and access.', onClick: () => openPlatformRoute('/platform/users') },
-        { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openPlatformRoute('/platform/support-tickets') },
-        { key: 'feedbackAdmin', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback admin', 'reviews', 'guest feedback'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openPlatformRoute('/platform/feedback-admin') },
-        { key: 'knowledgeBase', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['knowledge base', 'help articles', 'kb'], label: 'Knowledge Base', description: 'Platform knowledge base editing and publishing.', onClick: () => openPlatformRoute('/platform/knowledge-base') },
-        { key: 'kbGeneration', icon: <LuSparkles color="#9333ea" size={20} />, keywords: ['kb generation', 'articles', 'content generation'], label: 'KB Generation', description: 'Generate, review, and reconcile knowledge base content.', onClick: () => openPlatformRoute('/platform/kb-generation') },
-        { key: 'changelog', icon: <LuReceipt color="#f59e0b" size={20} />, keywords: ['changelog', 'release notes', 'updates'], label: 'Changelog', description: 'Create and publish platform release notes.', onClick: () => openPlatformRoute('/platform/changelog') },
-        { key: 'chatManagement', icon: <LuMessageCircle color="#6366f1" size={20} />, keywords: ['chat', 'conversations', 'management'], label: 'Chat Management', description: 'Review and manage customer chat conversations.', onClick: () => openPlatformRoute('/platform/chat-management') },
-        { key: 'chatInsights', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['chat insights', 'analytics', 'conversation analytics'], label: 'Chat Insights', description: 'Conversation analytics and chat quality signals.', onClick: () => openPlatformRoute('/platform/chat-insights') },
-        { key: 'chatBackfill', icon: <LuRefreshCw color="#0ea5e9" size={20} />, keywords: ['chat backfill', 'analytics backfill'], label: 'Chat Backfill', description: 'Backfill chat analytics and operational data.', onClick: () => openPlatformRoute('/platform/chat-backfill') },
-        { key: 'chatWeeklyDigest', icon: <LuClock color="#14b8a6" size={20} />, keywords: ['weekly digest', 'chat digest'], label: 'Chat Weekly Digest', description: 'Review weekly chat digest output.', onClick: () => openPlatformRoute('/platform/chat-weekly-digest') },
-        { key: 'chatRoiCalculator', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['roi', 'calculator', 'chat roi'], label: 'Chat ROI Calculator', description: 'Internal ROI calculator for chat operations.', onClick: () => openPlatformRoute('/platform/chat-roi-calculator') },
+        { key: 'platformSettings', icon: <LuSettings color="#475569" size={20} />, keywords: ['platform settings', 'logs', 'tenants', 'stores', 'pricing'], label: 'Platform Settings', description: 'Logs, tenants, stores, pricing plans, and platform users.', onClick: () => openSubScreen('platformSettings') },
+        { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles'], label: 'Platform Users', description: 'Manage platform-level users and access.', onClick: () => openSubScreen('platformUsers') },
+        { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
+        { key: 'feedbackAdmin', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback admin', 'reviews', 'guest feedback'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openSubScreen('feedbackAdmin') },
+        { key: 'knowledgeBase', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['knowledge base', 'help articles', 'kb'], label: 'Knowledge Base', description: 'Platform knowledge base editing and publishing.', onClick: () => openSubScreen('knowledgeBase') },
+        { key: 'kbGeneration', icon: <LuSparkles color="#9333ea" size={20} />, keywords: ['kb generation', 'articles', 'content generation'], label: 'KB Generation', description: 'Generate, review, and reconcile knowledge base content.', onClick: () => openSubScreen('kbGeneration') },
+        { key: 'changelog', icon: <LuReceipt color="#f59e0b" size={20} />, keywords: ['changelog', 'release notes', 'updates'], label: 'Changelog', description: 'Create and publish platform release notes.', onClick: () => openSubScreen('changelog') },
+        { key: 'chatManagement', icon: <LuMessageCircle color="#6366f1" size={20} />, keywords: ['chat', 'conversations', 'management'], label: 'Chat Management', description: 'Review and manage customer chat conversations.', onClick: () => openSubScreen('chatManagement') },
+        { key: 'chatInsights', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['chat insights', 'analytics', 'conversation analytics'], label: 'Chat Insights', description: 'Conversation analytics and chat quality signals.', onClick: () => openSubScreen('chatInsights') },
+        { key: 'chatBackfill', icon: <LuRefreshCw color="#0ea5e9" size={20} />, keywords: ['chat backfill', 'analytics backfill'], label: 'Chat Backfill', description: 'Backfill chat analytics and operational data.', onClick: () => openSubScreen('chatBackfill') },
+        { key: 'chatWeeklyDigest', icon: <LuClock color="#14b8a6" size={20} />, keywords: ['weekly digest', 'chat digest'], label: 'Chat Weekly Digest', description: 'Review weekly chat digest output.', onClick: () => openSubScreen('chatWeeklyDigest') },
+        { key: 'chatRoiCalculator', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['roi', 'calculator', 'chat roi'], label: 'Chat ROI Calculator', description: 'Internal ROI calculator for chat operations.', onClick: () => openSubScreen('chatRoiCalculator') },
         ...(FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD ? [
-            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openPlatformRoute('/reseller') },
-            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openPlatformRoute('/reseller/manage') },
-            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openPlatformRoute('/reseller/onboard') },
+            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openDesktopRoute('/reseller') },
+            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openDesktopRoute('/reseller/manage') },
+            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openDesktopRoute('/reseller/onboard') },
         ] : []),
-        { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openPlatformRoute('/platform/test-sentry') },
+        { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
     ] : [];
 
     const itemSections = useMemo(() => ([
@@ -364,6 +400,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
+    else if (isPlatformInternalScreen(subScreen)) subScreenContent = <MobilePlatformInternalScreen onBack={() => setSubScreen(getBackTarget(subScreen))} screen={subScreen} />;
 
     if (subScreenContent) {
         return (

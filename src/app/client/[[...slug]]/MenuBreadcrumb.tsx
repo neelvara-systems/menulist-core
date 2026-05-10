@@ -14,6 +14,7 @@
  */
 
 import Link from 'next/link';
+import { getBusinessLogoAltText } from '@lib/media/altText';
 
 interface MenuBreadcrumbProps {
     /** Master-tenant brand display name (always shown as the root node). */
@@ -31,6 +32,8 @@ interface MenuBreadcrumbProps {
      * `/{outletSlug}` to show the brand-level "up" path.
      */
     projectName?: string;
+    homeHref?: string;
+    outletHref?: string;
     logoUrl?: string | null;
     variant?: 'breadcrumb' | 'identity';
     theme?: {
@@ -64,11 +67,14 @@ export default function MenuBreadcrumb({
     outletName,
     outletSlug,
     projectName,
+    homeHref = '/',
+    outletHref,
     logoUrl,
     variant = 'breadcrumb',
     theme,
 }: MenuBreadcrumbProps) {
     const showOutletNode = Boolean(outletName && outletSlug);
+    const resolvedOutletHref = outletHref || (outletSlug ? `/${outletSlug}` : undefined);
     const hasProject = Boolean(projectName);
     const linkStyle: React.CSSProperties = {
         ...baseLinkStyle,
@@ -126,11 +132,11 @@ export default function MenuBreadcrumb({
                         minWidth: 0,
                     }}
                 >
-                    <Link href="/" style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={`${businessName} home`}>
+                    <Link href={homeHref} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={`${businessName} home`}>
                         {logoUrl ? (
                             <img
                                 src={logoUrl}
-                                alt={`${businessName} logo`}
+                                alt={getBusinessLogoAltText(businessName)}
                                 width={44}
                                 height={44}
                                 style={{
@@ -156,7 +162,7 @@ export default function MenuBreadcrumb({
                         }}
                     >
                         <Link
-                            href="/"
+                            href={homeHref}
                             style={{
                                 ...baseLinkStyle,
                                 color: theme?.headingColor || 'inherit',
@@ -194,7 +200,7 @@ export default function MenuBreadcrumb({
                                     </span>
                                 ) : (
                                     <Link
-                                        href={`/${outletSlug}`}
+                                        href={resolvedOutletHref || `/${outletSlug}`}
                                         style={{
                                             ...baseLinkStyle,
                                             color: 'inherit',
@@ -255,7 +261,7 @@ export default function MenuBreadcrumb({
             }}
         >
             {/* Business node — always links to OBP root */}
-            <Link href="/" style={linkStyle} prefetch={false}>
+            <Link href={homeHref} style={linkStyle} prefetch={false}>
                 {businessName}
             </Link>
 
@@ -267,7 +273,7 @@ export default function MenuBreadcrumb({
                             {outletName}
                         </span>
                     ) : (
-                        <Link href={`/${outletSlug}`} style={linkStyle} prefetch={false}>
+                        <Link href={resolvedOutletHref || `/${outletSlug}`} style={linkStyle} prefetch={false}>
                             {outletName}
                         </Link>
                     )}

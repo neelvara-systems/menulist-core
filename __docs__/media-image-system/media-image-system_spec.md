@@ -20,7 +20,6 @@ Every saved image has one media purpose. That purpose decides:
 | Type | Default ratio | Allowed ratios | Max source | Output target | Public target |
 | --- | --- | --- | --- | --- | --- |
 | Menu item | 1:1 | 1:1, 4:3 | 15MB | 1200px max | 500KB |
-| Category image | 4:3 | 4:3, 1:1 | 15MB | 1200px max | 500KB |
 | Project image | 16:9 | 16:9, 1:1 | 15MB | 1600px max | 650KB |
 | Menu background | 9:16 | 9:16 | 15MB | 1400px max | 800KB |
 | Business logo | 1:1 | 1:1 | 15MB | 512px max | 350KB |
@@ -56,6 +55,8 @@ Existing save flows persist the primary public URL field for compatibility, but 
 
 Owner-facing previews must render the prepared primary output, not the raw source image. If a flow uploads immediately, the card may use the prepared local `dataUrl` as a temporary preview while Firebase Storage returns the public URL, but that `dataUrl` must not be persisted as public truth. The public screen should display the same framed/cropped visual the owner approved.
 
+Menu background and Official Business Page business cover uploads also show a public context preview. The preview is not another editor; it renders the prepared image inside the relevant customer frame with the same readability intent as the public surface so the owner can judge the customer-facing result before saving.
+
 ## Variant Policy
 
 Every profile has named variants even when the current UI initially saves one URL:
@@ -63,7 +64,6 @@ Every profile has named variants even when the current UI initially saves one UR
 | Profile | Variants |
 | --- | --- |
 | Menu item | thumb, small, medium, large |
-| Category image | thumb, small, medium, large |
 | Project image | card, hero |
 | Menu background | mobile, desktop |
 | Business logo | thumb, full |
@@ -88,7 +88,7 @@ Rejected source files:
 - HEIC/HEIF
 - PDF or non-image files
 
-Logo output keeps PNG and preserves transparency. Transparency is removed for menu items, category images, project images, backgrounds, business covers, digital slides, and gallery images. Other managed images prefer compact public-safe output through the shared canvas optimizer.
+Logo output keeps PNG and preserves transparency. Transparency is removed for menu items, project images, backgrounds, business covers, digital slides, and gallery images. Other managed images prefer compact public-safe output through the shared canvas optimizer.
 
 Animated public media is unsupported. GIF uploads are rejected, and accepted still-image formats are prepared into static outputs. Uploads are treated as static business presentation assets, not animation containers.
 
@@ -147,9 +147,22 @@ Manual Adjust is available only where owner framing control adds value without s
 - Digital screen slide
 - Official Business Page business cover
 
-The flow is upload, automatic preparation, preview, optional Adjust, then save. Adjust is profile-locked and supports drag, zoom, rotate, and reset. Owners do not control final output size, output format, or compression.
+The flow is upload, automatic preparation, preview, optional Adjust, then save. Adjust is profile-locked and supports drag, Fit to frame, slider zoom, two-finger pinch zoom on touch screens, rotate, and reset. Owners do not control final output size, output format, or compression.
 
 Menu item images stay automatic. MenuList should not force owners through manual crop for every item photo.
+
+## Alt Text Contract
+
+Public images must have intentional alt text without asking owners to fill another field. MenuList derives it from existing source-of-truth names:
+
+- Menu item image: item name, with category context when available.
+- Project image: project/menu name.
+- Business cover: business name plus cover purpose.
+- Business logo: business name plus logo purpose.
+- Official Business Page gallery: business name plus photo position.
+- Decorative/fallback imagery: empty alt text when the image adds no information.
+
+This follows W3C WAI guidance: informative images get concise purpose-based text alternatives, while decorative images use empty alt text.
 
 ## Public Output Rules
 
@@ -157,6 +170,8 @@ Menu item images stay automatic. MenuList should not force owners through manual
 - Menu background images must never reduce readability.
 - Logos must stay clear and should not be aggressively compressed.
 - Raw originals are not served intentionally as the public presentation contract.
+- Public `<img>`/`Image` usage must use derived alt text helpers rather than owner-entered fields.
+- Public image enlargement uses the shared `PublicImageViewer` contract for all implemented public image-list surfaces. Official Business Page gallery thumbnails and menu item PDP images may keep different entry layouts, but the enlarged viewer behavior is shared: zoom, reset, pan, previous/next navigation, mobile swipe navigation, Escape close, and scroll lock.
 
 ## Non-Goals
 

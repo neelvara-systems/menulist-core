@@ -21,6 +21,7 @@ import { getSessionId } from '@lib/analytics/session';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
+import { getProjectImageAltText } from '@lib/media/altText';
 import styles from './obp.module.scss';
 
 export interface OBPMenuCTAProjectEntry {
@@ -147,7 +148,7 @@ export default function OBPMenuCTA({
                 <span className={styles.menuButtonContent}>
                     {primary.projectImage ? (
                         <span className={styles.menuButtonThumb}>
-                            <img alt={primary.name} src={primary.projectImage} />
+                            <img alt={getProjectImageAltText(primary.name)} src={primary.projectImage} />
                         </span>
                     ) : null}
                     <span className={styles.menuButtonLabel}>{primary.label}</span>
@@ -173,7 +174,7 @@ export default function OBPMenuCTA({
                     >
                         {project.projectImage ? (
                             <span className={styles.projectCardThumb}>
-                                <img alt={project.name} src={project.projectImage} />
+                                <img alt={getProjectImageAltText(project.name)} src={project.projectImage} />
                             </span>
                         ) : (
                             <span className={styles.projectCardThumbFallback} aria-hidden="true">

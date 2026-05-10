@@ -2,6 +2,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { removeObjRef } from '@util/utils';
 import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, message, theme } from 'antd';
 import type { Color } from 'antd/es/color-picker';
@@ -17,6 +18,9 @@ import ImageGalleryDrawer from './imageGalleryDrawer';
 interface BackgroundSettingsProps {
     config: any;
     onUpdate: (config: any) => void;
+    previewAccentColor?: string;
+    previewSubtitle?: string;
+    previewTitle?: string;
     from: string
 }
 
@@ -28,6 +32,9 @@ const ImageUploadSection = ({
     onRemove,
     onOpenGallery,
     onSelectFile,
+    previewAccentColor,
+    previewSubtitle,
+    previewTitle,
     t,
 }: {
     canAdjust?: boolean;
@@ -36,6 +43,9 @@ const ImageUploadSection = ({
     onRemove: () => void;
     onOpenGallery: (e: React.MouseEvent) => void;
     onSelectFile: (file: File) => void | Promise<void>;
+    previewAccentColor?: string;
+    previewSubtitle?: string;
+    previewTitle?: string;
     t: (key: string) => string;
 }) => {
     return (
@@ -62,12 +72,19 @@ const ImageUploadSection = ({
                 >
                     {config?.backgroundImage ? t('gallery') : t('exploreGallery')}
                 </Button>
+                <MediaPublicContextPreview
+                    accentColor={previewAccentColor}
+                    imageType="menuBackground"
+                    imageUrl={config?.backgroundImage}
+                    subtitle={previewSubtitle}
+                    title={previewTitle}
+                />
             </Card>
         </Flex>
     );
 };
 
-export default function BackgroundSettings({ config, onUpdate, from }: BackgroundSettingsProps) {
+export default function BackgroundSettings({ config, onUpdate, previewAccentColor, previewSubtitle, previewTitle, from }: BackgroundSettingsProps) {
     const t = useTranslations('MobileDesignEditor');
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const { token } = theme.useToken();
@@ -290,6 +307,9 @@ export default function BackgroundSettings({ config, onUpdate, from }: Backgroun
                                             await handleImageUploadProps.beforeUpload(file);
                                         }}
                                         onOpenGallery={handleOpenGallery}
+                                        previewAccentColor={previewAccentColor}
+                                        previewSubtitle={previewSubtitle}
+                                        previewTitle={previewTitle}
                                         t={t}
                                     />
                                 </Flex>

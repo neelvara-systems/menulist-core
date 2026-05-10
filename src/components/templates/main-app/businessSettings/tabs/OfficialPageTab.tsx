@@ -9,6 +9,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
+import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -68,6 +69,15 @@ interface OfficialPageTabProps {
     onGoogleLinkDismiss?: () => void;
 }
 
+type ObpMediaDraft = {
+    crop?: MediaImageCropIntent;
+    fileName?: string;
+    prepared?: PreparedMediaImage;
+    previewDataUrl?: string;
+    sourceDataUrl?: string;
+    uploadFailed?: boolean;
+};
+
 const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
     ({
         scrollRef,
@@ -90,18 +100,8 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const [coverGenerating, setCoverGenerating] = useState(false);
         const [photos, setPhotos] = useState<string[]>(publicPresence?.photos || []);
         const lastAppliedPhotosKeyRef = useRef(JSON.stringify(normalizePhotoList(publicPresence?.photos)));
-        const [coverDraft, setCoverDraft] = useState<{
-            crop?: MediaImageCropIntent;
-            fileName?: string;
-            previewDataUrl?: string;
-            sourceDataUrl?: string;
-        } | null>(null);
-        const [photoDrafts, setPhotoDrafts] = useState<Record<number, {
-            crop?: MediaImageCropIntent;
-            fileName?: string;
-            previewDataUrl?: string;
-            sourceDataUrl?: string;
-        }>>({});
+        const [coverDraft, setCoverDraft] = useState<ObpMediaDraft | null>(null);
+        const [photoDrafts, setPhotoDrafts] = useState<Record<number, ObpMediaDraft>>({});
         const [isCoverAdjustOpen, setIsCoverAdjustOpen] = useState(false);
         const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
         const photoSlots = [...photos.filter(Boolean), ''];
@@ -115,6 +115,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const watchedSpecialNote = Form.useWatch(['publicPresence', 'specialNote']);
         const watchedPhotos = Form.useWatch(['publicPresence', 'photos']);
         const watchedBusinessCoverValue = Form.useWatch(['publicPresence', 'businessCover']);
+        const watchedAccentColor = Form.useWatch(['publicPresence', 'accentColor']) || publicPresence?.accentColor;
+        const watchedTenantName = Form.useWatch('tenantName');
+        const watchedStoreName = Form.useWatch('name');
         const watchedBusinessCover = watchedBusinessCoverValue !== undefined
             ? watchedBusinessCoverValue
             : publicPresence?.businessCover || '';
@@ -127,6 +130,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const reviewUrlCol = compact ? { xs: 24 } : { xs: 24, md: 10 };
         const reviewStatCol = compact ? { xs: 24 } : { xs: 24, md: 7 };
         const actionCol = compact ? { xs: 24 } : { xs: 24, md: 8 };
+        const businessPreviewName = watchedTenantName || watchedStoreName || t('officialPage');
 
         const queuePhotoDelete = (photoUrl?: string) => {
             if (!photoUrl || photoUrl.startsWith('data:')) return;
@@ -166,8 +170,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setCoverDraft({
                 crop: prepared.crop,
                 fileName: prepared.sourceName || fallbackDraft?.fileName,
+                prepared,
                 previewDataUrl: prepared.dataUrl,
                 sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                uploadFailed: false,
             });
             setCoverUploading(true);
             try {
@@ -179,14 +185,18 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 setCoverDraft({
                     crop: prepared.crop,
                     fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    prepared,
                     previewDataUrl: prepared.dataUrl,
                     sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                    uploadFailed: false,
                 });
                 message.success(successMessage);
             } catch {
                 setCoverDraft((previous) => previous ? {
                     ...previous,
-                    previewDataUrl: undefined,
+                    prepared,
+                    previewDataUrl: prepared.dataUrl,
+                    uploadFailed: true,
                 } : previous);
                 message.error(t('businessCoverUploadFailed'));
             } finally {
@@ -249,6 +259,19 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setCoverDraft(null);
         };
 
+        const handleCoverCardRemove = () => {
+            if (coverDraft?.uploadFailed) {
+                setCoverDraft(null);
+                return;
+            }
+            handleCoverRemove();
+        };
+
+        const handleRetryCoverUpload = () => {
+            if (!coverDraft?.prepared) return;
+            void savePreparedCover(coverDraft.prepared, coverDraft);
+        };
+
         const savePreparedPhoto = async (
             prepared: PreparedMediaImage,
             index: number,
@@ -266,8 +289,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 [index]: {
                     crop: prepared.crop,
                     fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    prepared,
                     previewDataUrl: prepared.dataUrl,
                     sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                    uploadFailed: false,
                 },
             }));
             setPhotoUploading(index);
@@ -284,8 +309,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     [index]: {
                         crop: prepared.crop,
                         fileName: prepared.sourceName || fallbackDraft?.fileName,
+                        prepared,
                         previewDataUrl: prepared.dataUrl,
                         sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                        uploadFailed: false,
                     },
                 }));
                 message.success(t('photoUploaded'));
@@ -294,7 +321,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     ...previous,
                     [index]: {
                         ...previous[index],
-                        previewDataUrl: undefined,
+                        prepared,
+                        previewDataUrl: prepared.dataUrl,
+                        uploadFailed: true,
                     },
                 }));
                 message.error(t('photoUploadFailed'));
@@ -325,6 +354,24 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 delete next[index];
                 return next;
             });
+        };
+
+        const handlePhotoCardRemove = (index: number) => {
+            if (photoDrafts[index]?.uploadFailed) {
+                setPhotoDrafts((previous) => {
+                    const next = { ...previous };
+                    delete next[index];
+                    return next;
+                });
+                return;
+            }
+            handlePhotoRemove(index);
+        };
+
+        const handleRetryPhotoUpload = (index: number) => {
+            const draft = photoDrafts[index];
+            if (!draft?.prepared) return;
+            void savePreparedPhoto(draft.prepared, index, draft);
         };
 
         const handlePhotoMove = (index: number, direction: -1 | 1) => {
@@ -484,12 +531,34 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 imageUrl={coverDraft?.previewDataUrl || watchedBusinessCover}
                                 isBusy={coverUploading}
                                 onAdjust={() => setIsCoverAdjustOpen(true)}
-                                onRemove={watchedBusinessCover ? handleCoverRemove : undefined}
+                                onRemove={watchedBusinessCover || coverDraft?.previewDataUrl ? handleCoverCardRemove : undefined}
                                 onSelectFile={(file) => { void handleCoverUpload(file); }}
                                 placeholderDescription={t('businessCoverPlaceholder')}
                                 placeholderTitle={t('businessCover')}
                                 showDropHint={false}
                             />
+                            {coverDraft?.uploadFailed && coverDraft.prepared ? (
+                                <Flex align="center" gap={8} justify="space-between" style={{ marginTop: 8 }}>
+                                    <Text type="danger" style={{ fontSize: 12 }}>{t('businessCoverUploadFailed')}</Text>
+                                    <Button
+                                        disabled={coverUploading}
+                                        loading={coverUploading}
+                                        onClick={handleRetryCoverUpload}
+                                        size="small"
+                                    >
+                                        Retry
+                                    </Button>
+                                </Flex>
+                            ) : null}
+                            <div style={{ marginTop: 12 }}>
+                                <MediaPublicContextPreview
+                                    accentColor={watchedAccentColor}
+                                    imageType="businessCover"
+                                    imageUrl={coverDraft?.previewDataUrl || watchedBusinessCover}
+                                    subtitle={t('officialPage')}
+                                    title={businessPreviewName}
+                                />
+                            </div>
                         </Col>
                         <Col xs={24} md={12}>
                             <Button
@@ -810,6 +879,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         {photoSlots.map((photo, idx) => {
                             const isUploading = photoUploading === idx;
                             const photoCount = photos.filter(Boolean).length;
+                            const draft = photoDrafts[idx];
                             return (
                                 <Col key={idx} xs={8}>
                                     <Flex gap={8} vertical>
@@ -819,16 +889,29 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                             aspectRatio="4 / 3"
                                             canAdjust={Boolean(photoDrafts[idx]?.sourceDataUrl)}
                                             imageType="galleryImage"
-                                            imageUrl={photoDrafts[idx]?.previewDataUrl || photo}
+                                            imageUrl={draft?.previewDataUrl || photo}
                                             isBusy={isUploading}
                                             onAdjust={() => setAdjustingPhotoIndex(idx)}
-                                            onRemove={photo ? () => handlePhotoRemove(idx) : undefined}
+                                            onRemove={photo || draft?.previewDataUrl ? () => handlePhotoCardRemove(idx) : undefined}
                                             onSelectFile={(file) => { void handlePhotoUpload(file, idx); }}
                                             placeholderDescription={isUploading ? t('photoUploading') : undefined}
                                             placeholderTitle={t('photoLabel', { index: idx + 1 })}
                                             showDropHint={false}
                                             size="compact"
                                         />
+                                        {draft?.uploadFailed && draft.prepared ? (
+                                            <Flex align="center" gap={6} justify="space-between">
+                                                <Text type="danger" style={{ fontSize: 11 }}>{t('photoUploadFailed')}</Text>
+                                                <Button
+                                                    disabled={photoUploading != null}
+                                                    loading={isUploading}
+                                                    onClick={() => handleRetryPhotoUpload(idx)}
+                                                    size="small"
+                                                >
+                                                    Retry
+                                                </Button>
+                                            </Flex>
+                                        ) : null}
                                         {photo && photoCount > 1 ? (
                                             <Flex gap={6}>
                                                 <Button block disabled={idx === 0 || photoUploading != null} icon={<LuArrowLeft size={14} />} onClick={() => handlePhotoMove(idx, -1)} size="small" />

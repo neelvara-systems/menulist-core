@@ -118,7 +118,7 @@ The Guest Feedback System is a **reputation firewall** — a private channel for
 | `src/hooks/useFeedback.ts`                                                        | Generic feedback hook (KB articles/changelog)                                     | ✅     |
 | `functions/src/analytics/guestFeedbackRetention.ts`                               | Nightly 90-day retention cleanup CF                                               | ✅     |
 
-Public feedback pages reuse the same temporary-status banner, business identity header, and shared public footer pattern as the customer menu. The feedback footer disables its own feedback CTA to avoid a recursive link while preserving the same Call / WhatsApp / Directions, policy, social, and MenuList attribution treatment.
+Public feedback pages reuse the same temporary-status banner, business identity header, and shared public footer pattern as the customer menu. The feedback footer keeps the same Call / WhatsApp / Directions, policy, social, Share Feedback, and MenuList attribution treatment, plus the same OBP theme toggle behavior, so the footer stays consistent across the menu, OBP, and feedback surfaces.
 
 ### Modified Files
 
