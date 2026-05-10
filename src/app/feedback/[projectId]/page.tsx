@@ -10,14 +10,16 @@
  */
 
 import GuestFeedbackForm from '@atoms/GuestFeedbackForm';
+import TempStatusBanner from '@atoms/TempStatusBanner';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+import MenuBreadcrumb from '@/app/client/[[...slug]]/MenuBreadcrumb';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
 import { notFound } from 'next/navigation';
 
@@ -103,14 +105,14 @@ async function getProjectData(projectId: string) {
 
 interface StoreInfo {
     accentColor?: string;
+    storeDetails: Record<string, any>;
     storeName?: string;
     feedbackDefaults: FeedbackDefaults;
     feedbackEnabled: boolean;
     logoUrl?: string;
     officialPageUrl?: string;
-    phoneNumber?: string;
     tagline?: string;
-    whatsappNumber?: string;
+    tempStatus?: any;
 }
 
 /**
@@ -129,17 +131,54 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
             return null;
         }
 
-        const storeData = storeDoc.data();
+        const storeData = storeDoc.data() || {};
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
         const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
         const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';
         const displayStoreName = getBrandStoreLabel(storeData, businessName || tenantName || undefined);
+        const storeDetails = {
+            storeId: Number(storeData.storeId || sId),
+            storeKey: String(storeData.storeKey || sId),
+            tenantId: Number(storeData.tenantId || tId),
+            tenantName,
+            active: storeData.active !== false,
+            deleted: storeData.deleted === true,
+            name: businessName || displayStoreName,
+            email: storeData.email || '',
+            countryCode: storeData.countryCode || '',
+            dialCode: storeData.dialCode || '',
+            phoneNumber: storeData.phoneNumber || '',
+            logo: storeData.logo || '',
+            addressLine: storeData.addressLine || '',
+            area: storeData.area || '',
+            city: storeData.city || '',
+            state: storeData.state || '',
+            postalCode: storeData.postalCode || '',
+            country: storeData.country || '',
+            currencyCode: storeData.currencyCode || 'INR',
+            currencySymbol: storeData.currencySymbol || '₹',
+            businessType: storeData.businessType || '',
+            businessCategory: storeData.businessCategory || '',
+            contactPersonName: storeData.contactPersonName || '',
+            contactPersonEmail: storeData.contactPersonEmail || '',
+            contactPersonNumber: storeData.contactPersonNumber || '',
+            roles: [],
+            socialMedia: storeData.socialMedia || {},
+            publicPresence: storeData.publicPresence || {},
+            feedbackEnabled: storeData.feedbackEnabled !== false,
+            subdomain: storeData.subdomain || '',
+            customDomain: storeData.customDomain || '',
+            domainVerified: Boolean(storeData.domainVerified),
+            timeZone: storeData.timeZone || '',
+            businessDayEndTime: storeData.businessDayEndTime || '',
+        };
 
         // Check if feedback is enabled at store level (default: true)
         const feedbackEnabled = storeData.feedbackEnabled !== false;
 
         return {
             accentColor: storeData.publicPresence?.accentColor as string | undefined,
+            storeDetails,
             storeName: displayStoreName,
             feedbackEnabled,
             feedbackDefaults: {
@@ -148,7 +187,6 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
             },
             logoUrl: (storeData.logo || '') as string | undefined,
             officialPageUrl: generateOBPUrl(storeData.subdomain, storeData.customDomain),
-            phoneNumber: (storeData.phoneNumber || '') as string | undefined,
             tagline: (
                 getLocalizedText(
                     storeData.tagline,
@@ -157,7 +195,7 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
                     '',
                 ) || getPublicBusinessDescription(storeData) || ''
             ) as string | undefined,
-            whatsappNumber: (storeData.publicPresence?.whatsappNumber || '') as string | undefined,
+            tempStatus: storeData.tempStatus,
         };
     } catch (error) {
         console.error('[FeedbackPage] Error fetching store info:', error);
@@ -185,9 +223,33 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
         notFound();
     }
 
+    const headerMoodConfig = getMoodWithBrandColor(MenuMood.CLEAN, storeInfo.accentColor);
+    const publicHeaderTheme = {
+        background: headerMoodConfig.background,
+        textColor: headerMoodConfig.bodyColor,
+        headingColor: headerMoodConfig.headingColor,
+        mutedColor: headerMoodConfig.descriptionColor || headerMoodConfig.bodyColor,
+        accentColor: headerMoodConfig.accentColor,
+        borderColor:
+            headerMoodConfig.categoryStyle.dividerColor ||
+            headerMoodConfig.categoryStyle.borderColor ||
+            headerMoodConfig.itemStyle.borderColor,
+        fontFamily: headerMoodConfig.bodyFont,
+    };
+
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(186,230,253,0.35),_transparent_35%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_55%,_#eef2ff_100%)] px-4 py-6 sm:px-6">
-            <div className="mx-auto w-full max-w-xl">
+        <div className="min-h-screen overflow-x-hidden bg-[#f7f8fa]">
+            {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeInfo.tempStatus ? (
+                <TempStatusBanner tempStatus={storeInfo.tempStatus} />
+            ) : null}
+            <MenuBreadcrumb
+                businessName={storeInfo.storeName || 'Business'}
+                projectName="Feedback"
+                logoUrl={storeInfo.logoUrl || null}
+                variant="identity"
+                theme={publicHeaderTheme}
+            />
+            <div className="mx-auto w-full max-w-3xl px-3 sm:px-6">
                 <GuestFeedbackForm
                     accentColor={storeInfo.accentColor}
                     tId={project.tId}
@@ -195,14 +257,11 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
                     projectId={project.projectId}
                     source={parseSource(searchParams?.source)}
                     storeName={storeInfo.storeName}
+                    storeDetails={storeInfo.storeDetails}
                     feedbackDefaults={storeInfo.feedbackDefaults}
-                    logoUrl={storeInfo.logoUrl}
                     officialPageUrl={storeInfo.officialPageUrl}
-                    phoneNumber={storeInfo.phoneNumber}
                     tagline={storeInfo.tagline}
-                    whatsappNumber={storeInfo.whatsappNumber}
                 />
-                <PublicMenuListAttribution />
             </div>
         </div>
     );
@@ -224,7 +283,7 @@ export async function generateMetadata({ params }: PageProps) {
 
     return {
         title: `Share Feedback | ${storeInfo?.storeName || 'Restaurant'}`,
-        description: `Share your feedback. Your feedback is private and helps us improve.`,
+        description: 'Share private feedback with the business.',
         robots: 'noindex, nofollow', // Don't index feedback pages
     };
 }

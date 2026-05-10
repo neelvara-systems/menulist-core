@@ -108,6 +108,11 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
     return (
         <>
             {!categoriesData && <><Empty /></>}
+            {!isModalView ? (
+                <Flex style={{ marginBottom: 16 }} vertical>
+                    <Title level={3} style={{ margin: 0 }}>Knowledge Base</Title>
+                </Flex>
+            ) : null}
             <Flex style={{ width: '100%' }} justify="space-between">
                 {selectedCategory && screens.lg && (
                     <div style={{ width: '25%', paddingRight: '24px', position: 'sticky', top: isModalView ? 15 : 74, height: 'fit-content' }}>

@@ -103,7 +103,7 @@
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
 | 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Same project currently         | **NEEDS: Separate project** |
-| 2   | **Firebase (Canonica)** | Same packages                                | Canonica product database               | `NEXT_PUBLIC_CANONICA_FIREBASE_*` (6 vars)                                                         | Auto from project                        | Same as prod currently         | Separate project exists     |
+| 2   | **Firebase (Canonica)** | Same packages                                | Canonica product database               | `NEXT_PUBLIC_CANONICA_FIREBASE_*` (6 vars), `NEXT_PUBLIC_CANONICA_FIREBASE_MODE`, optional `NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID` | `CANONICA_FIREBASE_*`, optional `CANONICA_FIRESTORE_DATABASE_ID` | `shared` mode may reuse MenuList DB | `separate` mode with dedicated project/DB |
 | 3   | **Razorpay**            | `razorpay` v2.9.6                            | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
 | 4   | **Google Gemini AI**    | `@google/genai` v0.12.0                      | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | Same key (OK for dev)          | Same key + rotation keys    |
 | 5   | **Upstash Redis**       | `@upstash/redis` v1.35.6                     | Rate limiting, Canonica cache           | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                                               | Same                                     | **Can skip** (flag OFF in dev) | Required                    |
@@ -249,12 +249,19 @@ SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 
 # Canonica Product (if using)
+NEXT_PUBLIC_CANONICA_FIREBASE_MODE=separate
 NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=
 NEXT_PUBLIC_CANONICA_FIREBASE_AUTH_DOMAIN=
 NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=
 NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET=
 NEXT_PUBLIC_CANONICA_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_CANONICA_FIREBASE_APP_ID=
+NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID=
+CANONICA_FIREBASE_MODE=separate
+CANONICA_FIREBASE_PROJECT_ID=
+CANONICA_FIREBASE_PRIVATE_KEY=
+CANONICA_FIREBASE_CLIENT_EMAIL=
+CANONICA_FIRESTORE_DATABASE_ID=
 ```
 
 ### DEAD Variables (Zero References — Do NOT Add)

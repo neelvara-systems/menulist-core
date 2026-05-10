@@ -23,6 +23,8 @@ const SidebarComponent = dynamic(() => import('@organisms/sidebar'), { ssr: fals
 const MobileShell = dynamic(() => import('../../mobile/MobileShell'), { ssr: false });
 
 const { Content } = Layout;
+const DESKTOP_ONLY_ROUTE_PREFIXES = ['/platform', '/reseller', '/ops'];
+
 export default function AntdLayoutWrapper(props: any) {
 
     const isCollapsed = useAppSelector(getSidebarState);
@@ -32,9 +34,12 @@ export default function AntdLayoutWrapper(props: any) {
     const pathname = usePathname();
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
     const { isHandheld, hasMounted } = useDeviceType();
-
     // Check for force-desktop override from localStorage (set via More > Switch to Desktop)
     const forceDesktop = typeof window !== 'undefined' && localStorage.getItem('forceDesktopMode') === 'true';
+    const isDesktopOnlyRoute = DESKTOP_ONLY_ROUTE_PREFIXES.some((routePrefix) => (
+        pathname === routePrefix || pathname.startsWith(`${routePrefix}/`)
+    ));
+    const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
 
     const renderContent = () => {
 
@@ -45,7 +50,7 @@ export default function AntdLayoutWrapper(props: any) {
         // Long-term shell routing: keep handheld devices in the mobile shell
         // even when rotated to landscape. Internal screen layouts can respond
         // to width changes without the entire app remounting into desktop UI.
-        if (hasMounted && isHandheld && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop) {
+        if (hasMounted && isHandheld && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop && !isDesktopOnlyRoute) {
             return <MobileShell />;
         }
 
@@ -61,19 +66,24 @@ export default function AntdLayoutWrapper(props: any) {
                         You&apos;re viewing the desktop version. <strong>Tap here to return to mobile.</strong>
                     </div>
                 )}
-                <Layout style={isVerticalSidebar ? { paddingLeft: isCollapsed ? "62px" : "200px" } : {}}>
-                    <HeaderComponent />
-                    {isVerticalSidebar ? <SidebarComponent /> : <HorizontalSidebar />}
-                    <AppSettingsPanel />
+                <Layout style={isVerticalSidebar && !isHandheldDesktopRoute ? { paddingLeft: isCollapsed ? "62px" : "200px" } : {}}>
+                    {!isHandheldDesktopRoute ? <HeaderComponent /> : null}
+                    {!isHandheldDesktopRoute ? (isVerticalSidebar ? <SidebarComponent /> : <HorizontalSidebar />) : null}
+                    {!isHandheldDesktopRoute ? <AppSettingsPanel /> : null}
                     <Content className={styles.mainContentWraper}
                         style={{
                             backgroundImage: isDarkMode ? `radial-gradient(#dee1ec57 0.8px, transparent 0)` : `radial-gradient(#cbcbcb 1px, transparent 0)`,
                             // background: isDarkMode ? token.colorFillContent : token.colorBgBase,
-                            minHeight: isVerticalSidebar ? 'calc(100vh - 52px)' : 'calc(100vh - 98px)',
+                            minHeight: isHandheldDesktopRoute ? '100dvh' : isVerticalSidebar ? 'calc(100vh - 52px)' : 'calc(100vh - 98px)',
+                            overflowX: isHandheldDesktopRoute ? 'hidden' : undefined,
                             width: "100%"
                         }}>
                         <OutletContextBanner />
-                        {props.children}
+                        {isHandheldDesktopRoute ? (
+                            <div style={{ maxWidth: '100vw', overflowX: 'auto', width: '100%' }}>
+                                {props.children}
+                            </div>
+                        ) : props.children}
                     </Content>
                 </Layout>
             </Fragment>

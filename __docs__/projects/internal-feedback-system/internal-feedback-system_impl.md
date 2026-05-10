@@ -779,7 +779,7 @@ export default async function FeedbackPage({ params }) {
 }
 ```
 
-The form itself must not render its own `Powered by MenuList` line. The public feedback route owns platform attribution through the shared `PublicMenuListAttribution` component so feedback, OBP, menu, and fallback pages use the same `Powered by MenuList. All rights reserved` treatment.
+The form itself must not render a separate `Powered by MenuList` line or its own duplicate business header. The public feedback route owns the shared temporary-status banner, public business identity header, and public menu footer with feedback links disabled on that page, so feedback, OBP, menu, and fallback pages keep the same quiet MenuList attribution and business-identity treatment without recursive feedback CTAs.
 
 ---
 

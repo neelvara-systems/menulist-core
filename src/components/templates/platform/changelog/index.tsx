@@ -134,15 +134,17 @@ function ChangelogTemplate() {
                     </Flex>
                 </div>
 
-                <AddEditChangelog
-                    open={isModalVisible}
-                    onClose={() => {
-                        setIsModalVisible(false);
-                        setEditingEntry(null);
-                    }}
-                    onSave={handleSave}
-                    initialData={editingEntry}
-                />
+                {isModalVisible ? (
+                    <AddEditChangelog
+                        open={isModalVisible}
+                        onClose={() => {
+                            setIsModalVisible(false);
+                            setEditingEntry(null);
+                        }}
+                        onSave={handleSave}
+                        initialData={editingEntry}
+                    />
+                ) : null}
 
                 <div id="scrollableDiv" style={{ height: 'calc(100vh - 200px)', overflow: 'auto' }}>
                     <InfiniteScroll

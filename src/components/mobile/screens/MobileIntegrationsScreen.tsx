@@ -30,7 +30,24 @@ export default function MobileIntegrationsScreen({ onBack }: MobileIntegrationsS
     );
 
     if (!FEATURE_FLAGS.ENABLE_GBP_SYNC) {
-        return null;
+        return (
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    infoContent={infoContent}
+                    onBack={onBack}
+                    title={tBusiness('integrations')}
+                />
+                <Flex gap={12} style={{ padding: 16 }} vertical>
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text strong>{t('googleBusinessProfile')}</Text>
+                            <Text type="secondary">{t('notAvailable')}</Text>
+                        </Flex>
+                    </Card>
+                </Flex>
+            </Flex>
+        );
     }
 
     const gbp = storeDetails?.gbp;

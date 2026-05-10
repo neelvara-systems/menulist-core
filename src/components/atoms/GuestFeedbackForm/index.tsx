@@ -1,8 +1,10 @@
 'use client';
 
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults, GuestFeedbackSubmitState } from '@type/guestFeedback';
+import type { StoreDataType } from '@type/platform/store';
+import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
+import MenuFooter from '@template/main-app/projects/b2cView/output/MenuFooter';
 import { message } from 'antd';
-import Link from 'next/link';
 import React, { useMemo, useState } from 'react';
 import {
     LuBadgeCheck,
@@ -12,7 +14,6 @@ import {
     LuMail,
     LuMessageSquare,
     LuPhone,
-    LuStar,
 } from 'react-icons/lu';
 import { StarRating } from './StarRating';
 import styles from './index.module.scss';
@@ -20,17 +21,15 @@ import styles from './index.module.scss';
 interface GuestFeedbackFormProps {
     accentColor?: string;
     feedbackDefaults?: FeedbackDefaults;
-    logoUrl?: string;
     onSuccess?: (reviewUrl?: string | null) => void;
     officialPageUrl?: string;
-    phoneNumber?: string;
     projectId: string;
     sId: number;
     source: 'menu_footer' | 'feedback_qr' | 'direct_link';
+    storeDetails?: Record<string, any>;
     storeName?: string;
     tagline?: string;
     tId: number;
-    whatsappNumber?: string;
 }
 
 type FormState = {
@@ -53,24 +52,24 @@ const DEFAULT_FORM_STATE: FormState = {
 
 const RATING_COPY: Record<number, { eyebrow: string; prompt: string }> = {
     1: {
-        eyebrow: 'We want to improve this.',
-        prompt: 'Tell us what felt off so the team can fix it quickly.',
+        eyebrow: 'Needs attention',
+        prompt: 'Share what felt off during the visit.',
     },
     2: {
-        eyebrow: 'Thanks for being honest.',
-        prompt: 'A quick note helps the team understand what to improve.',
+        eyebrow: 'Could be better',
+        prompt: 'Share the detail the team should know.',
     },
     3: {
-        eyebrow: 'Good start.',
+        eyebrow: 'Good',
         prompt: 'What would have made the experience better for you?',
     },
     4: {
-        eyebrow: 'Glad to hear it.',
+        eyebrow: 'Very good',
         prompt: 'What stood out for you the most?',
     },
     5: {
-        eyebrow: 'That is lovely to hear.',
-        prompt: 'What should the team keep doing exactly like this?',
+        eyebrow: 'Excellent',
+        prompt: 'What should the team keep doing?',
     },
 };
 
@@ -94,21 +93,21 @@ function getRatingLabel(rating: number): string {
 function getInsightCardCopy(rating: number): { description: string; title: string } {
     if (rating >= 4) {
         return {
-            title: 'Help us repeat what worked',
-            description: 'Mention one moment worth repeating so the team knows what guests truly notice.',
+            title: 'What worked',
+            description: 'Mention one part of the visit worth repeating.',
         };
     }
 
     if (rating > 0) {
         return {
-            title: 'Small details help most',
-            description: 'A short note about timing, service, taste, or atmosphere gives the team clear direction.',
+            title: 'What needs attention',
+            description: 'A short note about timing, service, taste, or atmosphere is enough.',
         };
     }
 
     return {
-        title: 'A short note goes a long way',
-        description: 'Guests often mention service, taste, cleanliness, comfort, or wait time. Even one sentence helps.',
+        title: 'Common details',
+        description: 'Guests often mention service, taste, cleanliness, comfort, or wait time.',
     };
 }
 
@@ -188,17 +187,15 @@ function getFormErrors(values: FormState, settings: FeedbackDefaults): FormError
 export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     accentColor,
     feedbackDefaults,
-    logoUrl,
     onSuccess,
     officialPageUrl,
-    phoneNumber,
     projectId,
     sId,
     source,
+    storeDetails,
     storeName,
     tagline,
     tId,
-    whatsappNumber,
 }) => {
     const [formValues, setFormValues] = useState<FormState>(DEFAULT_FORM_STATE);
     const [rating, setRating] = useState<number>(0);
@@ -215,11 +212,9 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const insightCard = useMemo(() => getInsightCardCopy(rating), [rating]);
     const formErrors = useMemo(() => getFormErrors(formValues, settings), [formValues, settings]);
     const hasVisibleErrors = Object.values(formErrors).some(Boolean);
-    const primaryCtaColor = isValidHexColor(accentColor) ? accentColor : '#0f172a';
+    const moodConfig = useMemo(() => getMoodWithBrandColor(MenuMood.CLEAN, accentColor), [accentColor]);
+    const primaryCtaColor = moodConfig.accentColor;
     const primaryCtaTextColor = getReadableTextColor(primaryCtaColor);
-    const callHref = phoneNumber?.trim() ? `tel:${phoneNumber.trim().replace(/\s+/g, '')}` : '';
-    const whatsappValue = whatsappNumber?.trim() || phoneNumber?.trim() || '';
-    const whatsappHref = whatsappValue ? `https://wa.me/${whatsappValue.replace(/[^\d]/g, '')}` : '';
 
     const updateField = (field: keyof FormState, value: string) => {
         setFormValues((current) => ({ ...current, [field]: value }));
@@ -289,69 +284,85 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         }
     };
 
+    const publicFooter = storeDetails ? (
+        <div className={styles.menuFooter}>
+            <MenuFooter
+                storeDetails={storeDetails as StoreDataType}
+                moodConfig={moodConfig}
+                projectId={projectId}
+                feedbackEnabled={false}
+                showLanguageSelector={false}
+                showUpdateMeta={false}
+                trackingEnabled={false}
+            />
+        </div>
+    ) : null;
+
     if (submitState === 'success') {
         return (
-            <div className={styles.successWrap}>
-                <div className={styles.successInner}>
-                    {(logoUrl || storeName) ? (
-                        <div className={styles.brandRow} style={{ justifyContent: 'center', marginBottom: 20 }}>
-                            {logoUrl ? (
-                                <div className={styles.brandLogo}>
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img alt={storeName || 'Business logo'} src={logoUrl} />
-                                </div>
-                            ) : null}
-                            {storeName ? (
-                                <div className={styles.brandMeta}>
-                                    <p className={styles.brandName}>{storeName}</p>
-                                </div>
-                            ) : null}
+            <div className={styles.surface} style={{ '--feedback-accent': primaryCtaColor } as React.CSSProperties}>
+                <section className={styles.successWrap}>
+                    <div className={styles.successInner}>
+                        <div className={styles.successIcon}>
+                            <LuBadgeCheck size={30} strokeWidth={2.4} />
                         </div>
-                    ) : null}
+                        <span className={styles.successBadge}>
+                            Feedback received
+                        </span>
+                        <h2 className={styles.successTitle}>
+                            Thank you for sharing.
+                        </h2>
+                        <p className={styles.successText}>
+                            Your note goes directly to {storeName || 'the team'}.
+                        </p>
 
-                    <div className={styles.successIcon}>
-                        <LuBadgeCheck size={30} strokeWidth={2.4} />
-                    </div>
-                    <span className={styles.successBadge}>
-                        Feedback received
-                    </span>
-                    <h2 className={styles.successTitle}>
-                        Thank you for sharing.
-                    </h2>
-                    <p className={styles.successText}>
-                        Your note goes directly to {storeName || 'the team'} and helps improve the guest experience.
-                    </p>
-
-                    <div className={styles.successPanel}>
-                        <div className={styles.successPanelRow}>
-                            <div className={styles.successPanelIcon}>
-                                <LuLock size={18} />
+                        <div className={styles.successPanel}>
+                            <div className={styles.successPanelRow}>
+                                <div className={styles.successPanelIcon}>
+                                    <LuLock size={18} />
+                                </div>
+                                <div>
+                                    <p className={styles.successPanelTitle}>Private feedback</p>
+                                    <p className={styles.successPanelText}>
+                                        No action needed. Your message stays with the business.
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <p className={styles.successPanelTitle}>Private feedback</p>
+                        </div>
+
+                        {reviewUrl ? (
+                            <div className={`${styles.successPanel} ${styles.successPanelWarm}`}>
+                                <p className={styles.successPanelTitle}>{getGoogleReviewTitle(rating)}</p>
                                 <p className={styles.successPanelText}>
-                                    No action needed. Your message stays with the business and is reviewed privately.
+                                    You can also leave a public review on Google.
                                 </p>
+                                <a
+                                    className={styles.reviewLink}
+                                    href={reviewUrl}
+                                    rel="noopener noreferrer"
+                                    target="_blank"
+                                >
+                                    Leave a Google review
+                                    <LuExternalLink size={16} />
+                                </a>
+                                {officialPageUrl ? (
+                                    <a
+                                        className={styles.secondaryLink}
+                                        href={officialPageUrl}
+                                        rel="noopener noreferrer"
+                                        target="_blank"
+                                    >
+                                        View business page
+                                        <LuExternalLink size={16} />
+                                    </a>
+                                ) : null}
                             </div>
-                        </div>
-                    </div>
-
-                    {reviewUrl ? (
-                        <div className={`${styles.successPanel} ${styles.successPanelWarm}`}>
-                            <p className={styles.successPanelTitle}>{getGoogleReviewTitle(rating)}</p>
-                            <p className={styles.successPanelText}>
-                                If you want, you can also leave a public review on Google.
-                            </p>
-                            <a
-                                className={styles.reviewLink}
-                                href={reviewUrl}
-                                rel="noopener noreferrer"
-                                target="_blank"
-                            >
-                                Leave a Google review
-                                <LuExternalLink size={16} />
-                            </a>
-                            {officialPageUrl ? (
+                        ) : officialPageUrl ? (
+                            <div className={styles.successPanel}>
+                                <p className={styles.successPanelTitle}>Business page</p>
+                                <p className={styles.successPanelText}>
+                                    View the latest menu and business details.
+                                </p>
                                 <a
                                     className={styles.secondaryLink}
                                     href={officialPageUrl}
@@ -361,259 +372,194 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                     View business page
                                     <LuExternalLink size={16} />
                                 </a>
-                            ) : null}
-                        </div>
-                    ) : officialPageUrl ? (
-                        <div className={styles.successPanel}>
-                            <p className={styles.successPanelTitle}>Continue browsing</p>
-                            <p className={styles.successPanelText}>
-                                You can go back to the main business page anytime to view the latest menu and details.
-                            </p>
-                            <a
-                                className={styles.secondaryLink}
-                                href={officialPageUrl}
-                                rel="noopener noreferrer"
-                                target="_blank"
-                            >
-                                View business page
-                                <LuExternalLink size={16} />
-                            </a>
-                        </div>
-                    ) : null}
-                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                </section>
+                {publicFooter}
             </div>
         );
     }
 
     return (
-        <div className={styles.shell}>
-            <div className={styles.content}>
-                <div>
-                    {(logoUrl || storeName || officialPageUrl) ? (
-                        <div className={styles.brandRow}>
-                            {logoUrl ? (
-                                <div className={styles.brandLogo}>
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img alt={storeName || 'Business logo'} src={logoUrl} />
-                                </div>
-                            ) : null}
-                            <div className={styles.brandMeta}>
-                                {storeName ? <p className={styles.brandName}>{storeName}</p> : null}
-                                {officialPageUrl ? (
-                                    <a className={styles.brandLink} href={officialPageUrl} rel="noopener noreferrer" target="_blank">
-                                        View official page
-                                        <LuExternalLink size={14} />
-                                    </a>
-                                ) : null}
-                            </div>
-                        </div>
-                    ) : null}
+        <div className={styles.surface} style={{ '--feedback-accent': primaryCtaColor } as React.CSSProperties}>
+            <main className={styles.shell}>
+                <div className={styles.content}>
+                    <div>
+                        <h1 className={styles.heroTitle}>
+                            Share feedback
+                        </h1>
 
-                    <h1 className={styles.heroTitle}>
-                        Share your experience
-                    </h1>
+                        <p className={styles.heroText}>
+                            {tagline?.trim()
+                                ? `${tagline.trim()} Your note goes directly to ${storeName || 'the team'}.`
+                                : `Your note goes directly to ${storeName || 'the team'}.`}
+                        </p>
+                    </div>
 
-                    <p className={styles.heroText}>
-                        {tagline?.trim()
-                            ? `${tagline.trim()} A quick note helps ${storeName || 'the team'} understand what felt great and what can be improved.`
-                            : `A quick note helps ${storeName || 'the team'} understand what felt great and what can be improved.`}
-                    </p>
-                </div>
-
-                <form className={styles.form} onSubmit={handleSubmit}>
-                    <div className={styles.stack}>
-                        <section className={`${styles.panel} ${styles.panelSoft}`}>
-                            <div className={styles.ratingIntro}>
-                                <p className={styles.eyebrow}>
-                                    How was your visit?
-                                </p>
-                                <p className={styles.ratingTitle}>
-                                    {getRatingLabel(rating)}
-                                </p>
-                                <p className={styles.ratingText}>
-                                    {ratingCopy.prompt}
-                                </p>
-                            </div>
-
-                            <div className={styles.ratingBox}>
-                                <StarRating
-                                    disabled={submitState === 'submitting'}
-                                    onChange={(nextRating) => {
-                                        setRating(nextRating);
-                                        setRatingTouched(true);
-                                    }}
-                                    size={28}
-                                    value={rating}
-                                />
-                            </div>
-
-                            {ratingTouched && rating === 0 ? (
-                                <p className={styles.errorText}>
-                                    Please select a rating to continue.
-                                </p>
-                            ) : null}
-
-                            {rating > 0 ? (
-                                <div className={styles.hintBox}>
-                                    <p className={styles.hintTitle}>{ratingCopy.eyebrow}</p>
-                                    <p className={styles.hintText}>{ratingCopy.prompt}</p>
-                                </div>
-                            ) : null}
-                        </section>
-
-                        {settings.collectComment ? (
-                        <section className={styles.panel}>
-                            <div className={styles.panelHeader}>
-                                <div className={styles.panelIcon}>
-                                    <LuMessageSquare size={18} />
-                                </div>
-                                <div>
-                                <h2 className={styles.panelTitle}>Tell us more</h2>
-                                <p className={styles.panelText}>
-                                    {settings.collectCommentRequired
-                                        ? 'Required. Share what stood out or what could be better.'
-                                        : 'Optional. Share what stood out or what could be better.'}
-                                </p>
-                            </div>
-                        </div>
-
-                            <div style={{ marginTop: 16 }}>
-                                <textarea
-                                    className={`${styles.textarea} ${touchedFields.message && formErrors.message ? styles.inputInvalid : ''}`}
-                                    disabled={submitState === 'submitting'}
-                                    maxLength={300}
-                                    onBlur={() => markFieldTouched('message')}
-                                    onChange={(event) => updateField('message', event.target.value)}
-                                    placeholder="What stood out for you? What could have been better?"
-                                    value={formValues.message}
-                                />
-                            {touchedFields.message && formErrors.message ? (
-                                <p className={styles.fieldError}>{formErrors.message}</p>
-                            ) : null}
-                            <div className={styles.inlineTip}>
-                                <span className={styles.inlineTipTitle}>{insightCard.title}</span>
-                                <span className={styles.inlineTipText}>{insightCard.description}</span>
-                            </div>
-                            <div className={styles.metaRow}>
-                                <span>{formValues.message.length > 0 ? `${formValues.message.length}/300` : 'Up to 300 characters'}</span>
-                                <span>Your feedback stays private.</span>
-                                </div>
-                            </div>
-                        </section>
-                        ) : null}
-
-                        {(settings.collectName || settings.collectPhone || settings.collectEmail) ? (
-                            <section className={`${styles.panel} ${styles.panelMuted}`}>
-                                <div className={styles.panelHeader}>
-                                    <div className={`${styles.panelIcon} ${styles.panelIconWhite}`}>
-                                        <LuLock size={18} />
-                                    </div>
-                                <div>
-                                    <h2 className={styles.panelTitle}>Want a follow-up?</h2>
-                                    <p className={styles.panelText}>
-                                        Add your contact details below.
+                    <form className={styles.form} onSubmit={handleSubmit}>
+                        <div className={styles.stack}>
+                            <section className={`${styles.panel} ${styles.panelSoft}`}>
+                                <div className={styles.ratingIntro}>
+                                    <p className={styles.eyebrow}>
+                                        How was your visit?
+                                    </p>
+                                    <p className={styles.ratingTitle}>
+                                        {getRatingLabel(rating)}
+                                    </p>
+                                    <p className={styles.ratingText}>
+                                        {ratingCopy.prompt}
                                     </p>
                                 </div>
-                            </div>
 
-                                <div className={styles.fields}>
-                                    {settings.collectName ? (
-                                    <Field
-                                        error={touchedFields.customerName ? formErrors.customerName : ''}
-                                        onChange={(value) => updateField('customerName', value)}
-                                        onBlur={() => markFieldTouched('customerName')}
-                                            placeholder="Your name"
-                                            type="text"
-                                            value={formValues.customerName}
-                                        />
-                                    ) : null}
-
-                                    {settings.collectPhone ? (
-                                    <Field
-                                        icon={<LuPhone size={16} />}
-                                        error={touchedFields.customerPhone ? formErrors.customerPhone : ''}
-                                        onChange={(value) => updateField('customerPhone', value)}
-                                        onBlur={() => markFieldTouched('customerPhone')}
-                                            placeholder="+1 (555) 000-0000"
-                                            type="tel"
-                                            value={formValues.customerPhone}
-                                        />
-                                    ) : null}
-
-                                    {settings.collectEmail ? (
-                                    <Field
-                                        icon={<LuMail size={16} />}
-                                        error={touchedFields.customerEmail ? formErrors.customerEmail : ''}
-                                        onChange={(value) => updateField('customerEmail', value)}
-                                        onBlur={() => markFieldTouched('customerEmail')}
-                                            placeholder="name@example.com"
-                                            type="email"
-                                            value={formValues.customerEmail}
-                                        />
-                                    ) : null}
+                                <div className={styles.ratingBox}>
+                                    <StarRating
+                                        disabled={submitState === 'submitting'}
+                                        onChange={(nextRating) => {
+                                            setRating(nextRating);
+                                            setRatingTouched(true);
+                                        }}
+                                        size={28}
+                                        value={rating}
+                                    />
                                 </div>
+
+                                {ratingTouched && rating === 0 ? (
+                                    <p className={styles.errorText}>
+                                        Please select a rating to continue.
+                                    </p>
+                                ) : null}
+
+                                {rating > 0 ? (
+                                    <div className={styles.hintBox}>
+                                        <p className={styles.hintTitle}>{ratingCopy.eyebrow}</p>
+                                        <p className={styles.hintText}>{ratingCopy.prompt}</p>
+                                    </div>
+                                ) : null}
                             </section>
-                        ) : null}
 
-                        <input
-                            aria-hidden="true"
-                            autoComplete="off"
-                            className={styles.hiddenField}
-                            onChange={(event) => updateField('website', event.target.value)}
-                            tabIndex={-1}
-                            value={formValues.website}
-                        />
+                            {settings.collectComment ? (
+                                <section className={styles.panel}>
+                                    <div className={styles.panelHeader}>
+                                        <div className={styles.panelIcon}>
+                                            <LuMessageSquare size={18} />
+                                        </div>
+                                        <div>
+                                            <h2 className={styles.panelTitle}>Tell us more</h2>
+                                            <p className={styles.panelText}>
+                                                {settings.collectCommentRequired
+                                                    ? 'Required. Share what stood out or what needs attention.'
+                                                    : 'Optional. Share what stood out or what needs attention.'}
+                                            </p>
+                                        </div>
+                                    </div>
 
-                    <button
-                        className={[
-                            styles.cta,
-                            rating === 0 || submitState === 'submitting' ? styles.ctaDisabled : '',
-                        ].filter(Boolean).join(' ')}
-                        disabled={rating === 0 || submitState === 'submitting'}
-                        style={rating === 0 || submitState === 'submitting'
-                            ? undefined
-                            : { background: primaryCtaColor, color: primaryCtaTextColor }}
-                        type="submit"
-                    >
-                            {submitState === 'submitting' ? 'Submitting feedback...' : 'Submit feedback'}
-                            {submitState === 'submitting' ? null : <LuChevronRight size={18} />}
-                        </button>
-                    </div>
-                </form>
-
-                <div className={styles.footer}>
-                    <div className={styles.privacyLine}>
-                        <LuLock size={16} />
-                        <span>Your feedback is private and goes directly to the business.</span>
-                    </div>
-
-                    {(callHref || whatsappHref) ? (
-                        <div className={styles.quickActions}>
-                            {callHref ? (
-                                <a className={styles.quickAction} href={callHref}>
-                                    <LuPhone size={14} />
-                                    Call
-                                </a>
+                                    <div className={styles.fieldBlock}>
+                                        <textarea
+                                            className={`${styles.textarea} ${touchedFields.message && formErrors.message ? styles.inputInvalid : ''}`}
+                                            disabled={submitState === 'submitting'}
+                                            maxLength={300}
+                                            onBlur={() => markFieldTouched('message')}
+                                            onChange={(event) => updateField('message', event.target.value)}
+                                            placeholder="What stood out? What needs attention?"
+                                            value={formValues.message}
+                                        />
+                                        {touchedFields.message && formErrors.message ? (
+                                            <p className={styles.fieldError}>{formErrors.message}</p>
+                                        ) : null}
+                                        <div className={styles.inlineTip}>
+                                            <span className={styles.inlineTipTitle}>{insightCard.title}</span>
+                                            <span className={styles.inlineTipText}>{insightCard.description}</span>
+                                        </div>
+                                        <div className={styles.metaRow}>
+                                            <span>{formValues.message.length > 0 ? `${formValues.message.length}/300` : 'Up to 300 characters'}</span>
+                                            <span>Your feedback stays private.</span>
+                                        </div>
+                                    </div>
+                                </section>
                             ) : null}
-                            {whatsappHref ? (
-                                <a className={styles.quickAction} href={whatsappHref} rel="noopener noreferrer" target="_blank">
-                                    <LuMessageSquare size={14} />
-                                    WhatsApp
-                                </a>
+
+                            {(settings.collectName || settings.collectPhone || settings.collectEmail) ? (
+                                <section className={`${styles.panel} ${styles.panelMuted}`}>
+                                    <div className={styles.panelHeader}>
+                                        <div className={`${styles.panelIcon} ${styles.panelIconWhite}`}>
+                                            <LuLock size={18} />
+                                        </div>
+                                        <div>
+                                            <h2 className={styles.panelTitle}>Contact details</h2>
+                                            <p className={styles.panelText}>
+                                                Add your contact details below.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.fields}>
+                                        {settings.collectName ? (
+                                            <Field
+                                                error={touchedFields.customerName ? formErrors.customerName : ''}
+                                                onBlur={() => markFieldTouched('customerName')}
+                                                onChange={(value) => updateField('customerName', value)}
+                                                placeholder="Your name"
+                                                type="text"
+                                                value={formValues.customerName}
+                                            />
+                                        ) : null}
+
+                                        {settings.collectPhone ? (
+                                            <Field
+                                                icon={<LuPhone size={16} />}
+                                                error={touchedFields.customerPhone ? formErrors.customerPhone : ''}
+                                                onBlur={() => markFieldTouched('customerPhone')}
+                                                onChange={(value) => updateField('customerPhone', value)}
+                                                placeholder="+1 (555) 000-0000"
+                                                type="tel"
+                                                value={formValues.customerPhone}
+                                            />
+                                        ) : null}
+
+                                        {settings.collectEmail ? (
+                                            <Field
+                                                icon={<LuMail size={16} />}
+                                                error={touchedFields.customerEmail ? formErrors.customerEmail : ''}
+                                                onBlur={() => markFieldTouched('customerEmail')}
+                                                onChange={(value) => updateField('customerEmail', value)}
+                                                placeholder="name@example.com"
+                                                type="email"
+                                                value={formValues.customerEmail}
+                                            />
+                                        ) : null}
+                                    </div>
+                                </section>
                             ) : null}
+
+                            <input
+                                aria-hidden="true"
+                                autoComplete="off"
+                                className={styles.hiddenField}
+                                onChange={(event) => updateField('website', event.target.value)}
+                                tabIndex={-1}
+                                value={formValues.website}
+                            />
+
+                            <button
+                                className={[
+                                    styles.cta,
+                                    rating === 0 || submitState === 'submitting' ? styles.ctaDisabled : '',
+                                ].filter(Boolean).join(' ')}
+                                disabled={rating === 0 || submitState === 'submitting'}
+                                style={rating === 0 || submitState === 'submitting'
+                                    ? undefined
+                                    : { background: primaryCtaColor, color: primaryCtaTextColor }}
+                                type="submit"
+                            >
+                                {submitState === 'submitting' ? 'Submitting feedback...' : 'Submit feedback'}
+                                {submitState === 'submitting' ? null : <LuChevronRight size={18} />}
+                            </button>
                         </div>
-                    ) : null}
-
-                    <div className={styles.footerLinks}>
-                        <Link className={styles.footerLink} href="/privacy-policy" target="_blank">
-                            Privacy
-                        </Link>
-                        <Link className={styles.footerLink} href="/terms-of-service" target="_blank">
-                            Terms
-                        </Link>
-                    </div>
+                    </form>
                 </div>
-            </div>
+            </main>
+            {publicFooter}
         </div>
     );
 };

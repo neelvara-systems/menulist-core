@@ -31,8 +31,6 @@ import {
     limit,
     orderBy,
     query,
-    Timestamp,
-    where,
 } from 'firebase/firestore';
 
 const JOBS_COLLECTION = DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS;
@@ -73,24 +71,33 @@ export async function getRecentExtractionJobs(
 ): Promise<ExtractionJobSummary[]> {
     try {
         const jobsRef = collection(firebaseClient, JOBS_COLLECTION);
-        const constraints: any[] = [orderBy('createdAt', 'desc')];
+        const pageSize = filter?.pageSize || 20;
+        const readLimit = filter?.status || filter?.days ? Math.min(Math.max(pageSize * 4, pageSize), 100) : pageSize;
+        const cutoffMs = filter?.days
+            ? Date.now() - filter.days * 24 * 60 * 60 * 1000
+            : null;
 
-        if (filter?.status) {
-            constraints.push(where('status', '==', filter.status));
-        }
-
-        if (filter?.days) {
-            const cutoff = new Date();
-            cutoff.setDate(cutoff.getDate() - filter.days);
-            constraints.push(where('createdAt', '>=', Timestamp.fromDate(cutoff)));
-        }
-
-        constraints.push(limit(filter?.pageSize || 20));
-
-        const jobsQuery = query(jobsRef, ...constraints);
+        const jobsQuery = query(
+            jobsRef,
+            orderBy('createdAt', 'desc'),
+            limit(readLimit)
+        );
         const snap = await getDocs(jobsQuery);
 
-        return snap.docs.map(d => jobDocToSummary(d.id, d.data()));
+        return snap.docs
+            .map(d => jobDocToSummary(d.id, d.data()))
+            .filter((job) => !filter?.status || job.status === filter.status)
+            .filter((job) => {
+                if (!cutoffMs) return true;
+                const createdAt: any = job.createdAt;
+                const createdAtMs = createdAt?.toDate
+                    ? createdAt.toDate().getTime()
+                    : createdAt?.seconds
+                        ? createdAt.seconds * 1000
+                        : new Date(createdAt).getTime();
+                return Number.isFinite(createdAtMs) && createdAtMs >= cutoffMs;
+            })
+            .slice(0, pageSize);
     } catch (error) {
         secureError('[ExtractionDAL] Failed to get recent jobs', error);
         return [];
@@ -151,13 +158,23 @@ export async function getExtractionHealthMetrics(): Promise<ExtractionHealthMetr
 
         const jobsQuery = query(
             jobsRef,
-            where('createdAt', '>=', Timestamp.fromDate(cutoff)),
             orderBy('createdAt', 'desc'),
             limit(100)
         );
         const snap = await getDocs(jobsQuery);
 
-        const jobs = snap.docs.map(d => d.data());
+        const cutoffMs = cutoff.getTime();
+        const jobs = snap.docs
+            .map(d => d.data())
+            .filter((job) => {
+                const createdAt = job.createdAt;
+                const createdAtMs = createdAt?.toDate
+                    ? createdAt.toDate().getTime()
+                    : createdAt?.seconds
+                        ? createdAt.seconds * 1000
+                        : new Date(createdAt).getTime();
+                return Number.isFinite(createdAtMs) && createdAtMs >= cutoffMs;
+            });
 
         // Count active jobs
         const activeJobs = jobs.filter(j =>
@@ -242,14 +259,17 @@ export async function getExtractionQualityMetrics(
 ): Promise<ExtractionQualityMetrics> {
     try {
         const jobsRef = collection(firebaseClient, JOBS_COLLECTION);
+        const readLimit = Math.min(Math.max(count * 3, count), 150);
         const jobsQuery = query(
             jobsRef,
-            where('status', 'in', ['completed', 'preview_ready']),
             orderBy('createdAt', 'desc'),
-            limit(count)
+            limit(readLimit)
         );
         const snap = await getDocs(jobsQuery);
-        const jobs = snap.docs.map(d => d.data());
+        const jobs = snap.docs
+            .map(d => d.data())
+            .filter((job) => job.status === 'completed' || job.status === 'preview_ready')
+            .slice(0, count);
 
         if (jobs.length === 0) {
             return { avgScore: 0, confidenceDistribution: { high: 0, medium: 0, low: 0 }, lowQualityRate: 0, totalJobsAnalyzed: 0 };
@@ -309,13 +329,25 @@ export async function getExtractionCostMetrics(): Promise<ExtractionCostMetrics>
 
         const opsQuery = query(
             opsRef,
-            where('action', '==', 'IMAGE_PROCESSING'),
-            where('createdAt', '>=', Timestamp.fromDate(todayStart)),
             orderBy('createdAt', 'desc'),
-            limit(50)
+            limit(100)
         );
         const snap = await getDocs(opsQuery);
-        const ops = snap.docs.map(d => d.data());
+        const todayStartMs = todayStart.getTime();
+        const ops = snap.docs
+            .map(d => d.data())
+            .filter((op) => {
+                const createdAt = op.createdAt;
+                const createdAtMs = createdAt?.toDate
+                    ? createdAt.toDate().getTime()
+                    : createdAt?.seconds
+                        ? createdAt.seconds * 1000
+                        : new Date(createdAt).getTime();
+                return op.action === 'IMAGE_PROCESSING'
+                    && Number.isFinite(createdAtMs)
+                    && createdAtMs >= todayStartMs;
+            })
+            .slice(0, 50);
 
         const callsToday = ops.length;
         const totalCharge = ops.reduce((sum, op) => sum + (op.totalCharge || 0), 0);

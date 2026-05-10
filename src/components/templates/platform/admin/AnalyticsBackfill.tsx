@@ -45,7 +45,6 @@ export default function AnalyticsBackfill() {
     const dispatch = useAppDispatch();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { token } = theme.useToken();
-    console.log("loggedInSession", loggedInSession);
     const [days, setDays] = useState<number | null>(30);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const [results, setResults] = useState<BackfillResult[]>([]);
@@ -264,10 +263,10 @@ export default function AnalyticsBackfill() {
                 <div>
                     <Title level={2}>
                         <LuDatabase style={{ marginRight: '8px' }} />
-                        Generate Reports
+                        Chat Backfill
                     </Title>
                     <Paragraph type="secondary">
-                        Create reports from your past chat history
+                        Generate reports from your past chat history
                     </Paragraph>
                 </div>
 

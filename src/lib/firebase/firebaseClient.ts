@@ -9,11 +9,12 @@ import firebaseConfig from "./config";
 
 // Initialize Firebase — guard against missing env vars during build
 const hasConfig = !!firebaseConfig.apiKey;
-const firebaseApp = hasConfig ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
+const defaultFirebaseApp = getApps().find((app) => app.name === '[DEFAULT]');
+const firebaseApp = hasConfig ? (defaultFirebaseApp || initializeApp(firebaseConfig)) : null;
 
-const firebaseClient = firebaseApp ? getFirestore() : null as any;
-const firebaseAuth = firebaseApp ? getAuth() : null as any;
-const firebaseStorage = firebaseApp ? getStorage() : null as any;
+const firebaseClient = firebaseApp ? getFirestore(firebaseApp) : null as any;
+const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null as any;
+const firebaseStorage = firebaseApp ? getStorage(firebaseApp) : null as any;
 const firebaseDatabase = firebaseApp ? getDatabase(firebaseApp) : null as any;
 const firebaseStorageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket || 'ecomsai.appspot.com'}/o`;
 const signOutFirebaseAuth = () => firebaseAuth ? signOut(firebaseAuth) : Promise.resolve();

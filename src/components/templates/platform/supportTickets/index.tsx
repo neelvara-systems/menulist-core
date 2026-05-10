@@ -66,9 +66,6 @@ const SupportTickets = () => {
                             mergedTickets = updateList(mergedTickets, ticket, 'first');
                         });
 
-                        // Update cache as well
-                        setAllItems(mergedTickets);
-
                         return mergedTickets;
                     });
                 },
@@ -87,6 +84,12 @@ const SupportTickets = () => {
             }
         };
     }, [dispatch]);
+
+    useEffect(() => {
+        if (!loading) {
+            setAllItems(tickets);
+        }
+    }, [loading, setAllItems, tickets]);
 
     // Fetch deleted tickets when trash view is accessed
     const fetchDeletedTickets = async () => {

@@ -18,18 +18,21 @@ import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/m
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { closestCenter, DndContext, type DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { ColorPicker, InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import type { ReactNode } from 'react';
+import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    LuArrowLeft,
     LuArrowRight,
     LuCalendar,
     LuCrop,
     LuExternalLink,
     LuEye,
+    LuGripVertical,
     LuImagePlus,
     LuMapPin,
     LuMessageSquare,
@@ -57,6 +60,11 @@ interface MobileOfficialPageScreenProps {
 
 type PresenceFormData = ReturnType<typeof getInitialPresenceForm>;
 type LocalizedPresenceDrafts = ReturnType<typeof buildLocalizedPresenceDrafts>;
+
+function getFirstImageFile(fileList?: FileList | null): File | null {
+    if (!fileList) return null;
+    return Array.from(fileList).find((file) => file.type.startsWith('image/')) || null;
+}
 
 function getInitialPresenceForm(storeDetails: any) {
     const initialPresence = storeDetails?.publicPresence || {};
@@ -142,6 +150,256 @@ function buildPublicPresenceDraft(storeDetails: any, nextPresence: PresenceFormD
     };
 }
 
+interface SortablePhotoRowProps {
+    adjustLabel: string;
+    canAdjust: boolean;
+    disabled: boolean;
+    id: string;
+    imageUrl: string;
+    index: number;
+    isBusy: boolean;
+    label: string;
+    previewLabel: string;
+    removeLabel: string;
+    onAdjust: () => void;
+    onPreview: () => void;
+    onRemove: () => void;
+}
+
+function SortablePhotoRow({
+    adjustLabel,
+    canAdjust,
+    disabled,
+    id,
+    imageUrl,
+    index,
+    isBusy,
+    label,
+    previewLabel,
+    removeLabel,
+    onAdjust,
+    onPreview,
+    onRemove,
+}: SortablePhotoRowProps) {
+    const { token } = theme.useToken();
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ disabled, id });
+    const iconButtonStyle: CSSProperties = {
+        alignItems: 'center',
+        background: token.colorFillQuaternary,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 12,
+        color: token.colorTextSecondary,
+        cursor: disabled || isBusy ? 'not-allowed' : 'pointer',
+        display: 'flex',
+        flex: '0 0 44px',
+        height: 44,
+        justifyContent: 'center',
+        opacity: disabled || isBusy ? 0.5 : 1,
+        padding: 0,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{
+                opacity: isDragging ? 0.72 : 1,
+                transform: CSS.Transform.toString(transform),
+                transition,
+            }}
+        >
+            <Flex
+                align="center"
+                gap={12}
+                style={{
+                    background: token.colorBgContainer,
+                    border: `1px solid ${isDragging ? token.colorPrimary : token.colorBorderSecondary}`,
+                    borderRadius: 16,
+                    boxShadow: isDragging ? token.boxShadowSecondary : 'none',
+                    minHeight: 104,
+                    padding: 12,
+                }}
+            >
+                <button
+                    aria-label={`${previewLabel} ${label}`}
+                    disabled={disabled || isBusy}
+                    onClick={onPreview}
+                    style={{
+                        background: 'transparent',
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: 12,
+                        color: 'inherit',
+                        cursor: disabled || isBusy ? 'not-allowed' : 'pointer',
+                        display: 'block',
+                        flex: '0 0 84px',
+                        font: 'inherit',
+                        height: 84,
+                        overflow: 'hidden',
+                        padding: 0,
+                        position: 'relative',
+                    }}
+                    type="button"
+                >
+                    <img
+                        alt={label}
+                        src={imageUrl}
+                        style={{
+                            display: 'block',
+                            height: '100%',
+                            objectFit: 'cover',
+                            width: '100%',
+                        }}
+                    />
+                    <div
+                        style={{
+                            alignItems: 'center',
+                            background: token.colorPrimaryBg,
+                            border: `1px solid ${token.colorPrimaryBorder}`,
+                            borderRadius: 999,
+                            color: token.colorPrimaryText,
+                            display: 'flex',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            height: 28,
+                            justifyContent: 'center',
+                            left: 6,
+                            position: 'absolute',
+                            top: 6,
+                            width: 28,
+                        }}
+                    >
+                        {index + 1}
+                    </div>
+                </button>
+                <Flex
+                    align="center"
+                    gap={8}
+                    justify="flex-end"
+                    style={{ flex: 1, minWidth: 0 }}
+                >
+                    {canAdjust ? (
+                        <button
+                            aria-label={`${adjustLabel} ${label}`}
+                            disabled={disabled || isBusy}
+                            onClick={onAdjust}
+                            style={iconButtonStyle}
+                            type="button"
+                        >
+                            <LuCrop size={20} />
+                        </button>
+                    ) : null}
+                    <button
+                        aria-label={`${removeLabel} ${label}`}
+                        disabled={disabled || isBusy}
+                        onClick={onRemove}
+                        style={{
+                            ...iconButtonStyle,
+                            color: token.colorError,
+                        }}
+                        type="button"
+                    >
+                        <LuTrash2 size={20} />
+                    </button>
+                </Flex>
+                <div
+                    {...attributes}
+                    {...listeners}
+                    aria-label="Drag to reorder"
+                    role="button"
+                    style={{
+                        alignItems: 'center',
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: 12,
+                        color: token.colorTextTertiary,
+                        cursor: disabled ? 'not-allowed' : 'grab',
+                        display: 'flex',
+                        flex: '0 0 42px',
+                        height: 64,
+                        justifyContent: 'center',
+                        touchAction: 'none',
+                        userSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                        WebkitUserSelect: 'none',
+                    }}
+                    tabIndex={0}
+                >
+                    <LuGripVertical size={22} />
+                </div>
+            </Flex>
+        </div>
+    );
+}
+
+interface AddPhotoRowProps {
+    accept: string;
+    description: string;
+    disabled: boolean;
+    label: string;
+    onSelectFile: (file: File) => void;
+}
+
+function AddPhotoRow({ accept, description, disabled, label, onSelectFile }: AddPhotoRowProps) {
+    const { token } = theme.useToken();
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = getFirstImageFile(event.currentTarget.files);
+        event.currentTarget.value = '';
+        if (!file) return;
+        onSelectFile(file);
+    };
+
+    return (
+        <button
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+            style={{
+                alignItems: 'center',
+                background: token.colorFillQuaternary,
+                border: `1px dashed ${token.colorBorder}`,
+                borderRadius: 16,
+                color: token.colorText,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                font: 'inherit',
+                gap: 14,
+                minHeight: 92,
+                opacity: disabled ? 0.6 : 1,
+                padding: 12,
+                textAlign: 'left',
+                width: '100%',
+            }}
+            type="button"
+        >
+            <input
+                accept={accept}
+                onChange={handleFileChange}
+                ref={inputRef}
+                style={{ display: 'none' }}
+                type="file"
+            />
+            <div
+                style={{
+                    alignItems: 'center',
+                    background: token.colorBgContainer,
+                    borderRadius: 12,
+                    color: token.colorTextSecondary,
+                    display: 'flex',
+                    flex: '0 0 72px',
+                    height: 72,
+                    justifyContent: 'center',
+                }}
+            >
+                <LuImagePlus size={24} />
+            </div>
+            <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
+                <Text strong>{label}</Text>
+                <Text type="secondary">{description}</Text>
+            </Flex>
+            <LuArrowRight color={token.colorTextTertiary} size={20} />
+        </button>
+    );
+}
+
 export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
@@ -194,9 +452,19 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         || JSON.stringify(localizedDrafts) !== JSON.stringify(originalLocalizedDrafts)
         || photoDeleteQueue.length > 0;
 
-    const photoSlots = useMemo(() => {
-        return [...formData.photos.filter(Boolean), ''];
-    }, [formData.photos]);
+    const photoList = useMemo(() => formData.photos.filter(Boolean), [formData.photos]);
+    const sortablePhotoItems = useMemo(() => (
+        photoList.map((photo, index) => ({
+            id: `photo-${index}`,
+            index,
+            photo,
+        }))
+    ), [photoList]);
+    const photoSlots = useMemo(() => [...photoList, ''], [photoList]);
+    const photoSortSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    );
     const previewStoreDetails = useMemo(() => {
         if (!storeDetails) return null;
 
@@ -489,19 +757,31 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
 
-    const handlePhotoMove = (index: number, direction: -1 | 1) => {
-        const nextPhotos = formData.photos.filter(Boolean);
-        const targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= nextPhotos.length) return;
+    const handlePhotoReorder = (fromIndex: number, toIndex: number) => {
+        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= photoList.length || toIndex >= photoList.length) {
+            return;
+        }
 
-        [nextPhotos[index], nextPhotos[targetIndex]] = [nextPhotos[targetIndex], nextPhotos[index]];
+        const nextPhotos = arrayMove(photoList, fromIndex, toIndex);
         setPhotoDrafts((previous) => {
-            const next = { ...previous };
-            [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+            const draftOrder = photoList.map((_, index) => previous[index]);
+            const nextDraftOrder = arrayMove(draftOrder, fromIndex, toIndex);
+            const next: typeof previous = {};
+            nextDraftOrder.forEach((draft, index) => {
+                if (draft) next[index] = draft;
+            });
             return next;
         });
         setFormData((previous) => ({ ...previous, photos: nextPhotos }));
     };
+
+    const handlePhotoDragEnd = ({ active, over }: DragEndEvent) => {
+        if (!over || active.id === over.id) return;
+        const fromIndex = sortablePhotoItems.findIndex((item) => item.id === String(active.id));
+        const toIndex = sortablePhotoItems.findIndex((item) => item.id === String(over.id));
+        handlePhotoReorder(fromIndex, toIndex);
+    };
+
     const activePhoto = activePhotoIndex != null ? photoSlots[activePhotoIndex] : '';
     const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
 
@@ -509,8 +789,10 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         setFormData(originalFormData);
         setLocalizedDrafts(originalLocalizedDrafts);
         setCoverDraft(null);
+        setPhotoDrafts({});
         setPhotoDeleteQueue([]);
         setIsCoverAdjustOpen(false);
+        setAdjustingPhotoIndex(null);
         setActivePhotoIndex(null);
     }, [originalFormData, originalLocalizedDrafts]);
 
@@ -864,65 +1146,51 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     <Flex gap={10} vertical>
                         <Text strong>{t('businessPhotos')}</Text>
                         <Text type="secondary">{t('businessPhotosHelp')}</Text>
-                        <div
-                            style={{
-                                display: 'grid',
-                                gap: 10,
-                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                            }}
-                        >
-                            {photoSlots.map((photo, index) => {
-                                const label = t('photoLabel', { index: index + 1 });
-                                const isUploading = uploadingIndex === index;
-
-                                const photoCount = formData.photos.filter(Boolean).length;
-                                return (
-                                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-                                    <MediaImageCard
-                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
-                                        alt={label}
-                                        aspectRatio="4 / 3"
-                                        canAdjust={Boolean(photoDrafts[index]?.sourceDataUrl)}
-                                        imageType="galleryImage"
-                                        imageUrl={photoDrafts[index]?.previewDataUrl || photo}
-                                        isBusy={isUploading}
-                                        onAdjust={photo ? () => setAdjustingPhotoIndex(index) : undefined}
-                                        onPreview={photo ? () => setActivePhotoIndex(index) : undefined}
-                                        onRemove={photo ? () => handlePhotoRemove(index) : undefined}
-                                        onSelectFile={(file) => { void handlePhotoUpload(file, index); }}
-                                        placeholderDescription="Tap to add"
-                                        placeholderTitle={label}
-                                        showDropHint={false}
-                                        size="compact"
-                                    />
-                                        {photo && photoCount > 1 ? (
-                                            <Flex gap={6}>
-                                                <Button
-                                                    block
-                                                    disabled={index === 0 || uploadingIndex != null}
-                                                    fill="outline"
-                                                    onClick={() => handlePhotoMove(index, -1)}
-                                                    size="mini"
-                                                    style={{ paddingInline: 6 }}
-                                                >
-                                                    <LuArrowLeft size={14} />
-                                                </Button>
-                                                <Button
-                                                    block
-                                                    disabled={index >= photoCount - 1 || uploadingIndex != null}
-                                                    fill="outline"
-                                                    onClick={() => handlePhotoMove(index, 1)}
-                                                    size="mini"
-                                                    style={{ paddingInline: 6 }}
-                                                >
-                                                    <LuArrowRight size={14} />
-                                                </Button>
-                                            </Flex>
-                                        ) : null}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <Flex gap={10} vertical>
+                            {sortablePhotoItems.length > 0 ? (
+                                <DndContext
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handlePhotoDragEnd}
+                                    sensors={photoSortSensors}
+                                >
+                                    <SortableContext
+                                        items={sortablePhotoItems.map((item) => item.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        <Flex gap={10} vertical>
+                                            {sortablePhotoItems.map((item) => {
+                                                const label = t('photoLabel', { index: item.index + 1 });
+                                                return (
+                                                    <SortablePhotoRow
+                                                        adjustLabel="Adjust"
+                                                        canAdjust={Boolean(photoDrafts[item.index]?.sourceDataUrl)}
+                                                        disabled={uploadingIndex != null}
+                                                        id={item.id}
+                                                        imageUrl={photoDrafts[item.index]?.previewDataUrl || item.photo}
+                                                        index={item.index}
+                                                        isBusy={uploadingIndex === item.index}
+                                                        key={item.id}
+                                                        label={label}
+                                                        onAdjust={() => setAdjustingPhotoIndex(item.index)}
+                                                        onPreview={() => setActivePhotoIndex(item.index)}
+                                                        onRemove={() => handlePhotoRemove(item.index)}
+                                                        previewLabel={tDesign('preview')}
+                                                        removeLabel={tDesign('remove')}
+                                                    />
+                                                );
+                                            })}
+                                        </Flex>
+                                    </SortableContext>
+                                </DndContext>
+                            ) : null}
+                            <AddPhotoRow
+                                accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                description="Tap to add your next business photo"
+                                disabled={uploadingIndex != null}
+                                label={t('photoLabel', { index: photoList.length + 1 })}
+                                onSelectFile={(file) => { void handlePhotoUpload(file, photoList.length); }}
+                            />
+                        </Flex>
                     </Flex>
                 </Card>
 

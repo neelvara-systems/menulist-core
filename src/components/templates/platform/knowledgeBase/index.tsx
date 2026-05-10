@@ -6,7 +6,7 @@ import { useAppDispatch } from "@hook/useAppDispatch";
 import AISearchModal from "@organisms/AISearchModal";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
-import { FloatButton, Form, Layout, message, Modal, Splitter } from "antd";
+import { FloatButton, Form, Layout, message, Modal, Splitter, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { LuBookOpen, LuMessageCircle, LuView } from "react-icons/lu";
 import ArticleModal from "./ArticleModal";
@@ -16,6 +16,8 @@ import CategoryPane from "./CategoryPane";
 import KnowledgeBaseModal from './KnowledgeBaseModal';
 import SectionModal from "./SectionModal";
 import SectionPane from "./SectionPane";
+
+const { Title } = Typography;
 
 function PlatformKnowledgeBase() {
     const dispatch = useAppDispatch()
@@ -246,8 +248,9 @@ function PlatformKnowledgeBase() {
     const categoriesList = categoriesData ? Object.values(categoriesData.categories).sort((a, b) => a.index - b.index) : [];
 
     return (
-        <Layout style={{ height: 'calc(-72px + 100vh)', display: 'flex', flexDirection: 'row' }}>
-            <Splitter style={{ height: '100%', width: '100%' }}>
+        <Layout style={{ minHeight: '100dvh', padding: 16 }}>
+            <Title level={3} style={{ margin: '0 0 16px' }}>Knowledge Base</Title>
+            <Splitter style={{ flex: 1, minHeight: 'calc(100dvh - 88px)', width: '100%' }}>
                 <Splitter.Panel defaultSize="33%" min={300}>
                     <CategoryPane
                         isLoading={isCategoriesLoading}

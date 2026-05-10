@@ -1173,7 +1173,7 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
     const activeOrScheduled = [...(activeMenu ? [activeMenu] : []), ...scheduledMenus];
     const hasAny = specialMenus.length > 0;
     const selectedBaseProjectName = selectedProjectSummary?.isSpecialMenu !== true
-        ? selectedProjectSummary?.name
+        ? resolveProjectName(selectedProjectSummary?.name, t('untitledProject'))
         : projectNameById[defaultBaseProjectId];
 
     return (

@@ -11,6 +11,7 @@
 ### Changed
 
 - **Main website trust copy aligned** — Homepage and feature copy now reflects the current public menu and Official Page customer proof: open status, recent updates, search/sections, photos, and clear Call / WhatsApp / Directions actions.
+- **Public feedback surface aligned** — The standalone feedback submission page now uses the same temporary-status banner, public business identity header, quiet card structure, accent treatment, and shared menu footer as the customer menu.
 
 ### Fixed
 
@@ -22,7 +23,7 @@
 - **Public menu numeric search restored** — Two-character numeric queries now prefix-match alphanumeric tokens, so searching `11` finds item names like `Irish coffee (available after 11am)` without matching unrelated prices such as `115`.
 - **Deep-scroll search positioning fixed** — Starting a search while scrolled lower in the menu now brings the search result area back under the sticky command row instead of leaving filtered output outside the current viewport.
 - **Public menu touch behavior tightened** — Client menu pages now lock mobile pinch zoom, suppress text selection on menu/category controls, and keep footer/business content selectable.
-- **Logo and attribution treatment aligned** — Menu and OBP logos render without an extra wrapper border, feedback pages use only the shared public attribution, and digital screens now show the same quiet `Powered by MenuList. All rights reserved` line.
+- **Logo and attribution treatment aligned** — Menu and OBP logos render without an extra wrapper border, feedback pages reuse the shared public footer/attribution treatment, and digital screens now show the same quiet `Powered by MenuList. All rights reserved` line.
 - **Installed PWA language bleed fixed** — Public menu page, language, and scroll state now use store/project-scoped keys, and the menu language switcher ignores the old global language preference key.
 - **Default-language descriptions preserved** — Compact multi-language menu payloads now keep the resolved initial render language description, so an English menu does not fall back to another language when no `?lang=` query is present.
 - **Exact search matches rank first** — Customer search now keeps exact visible item-name matches above partial, fuzzy, metadata, and description matches while preserving menu order for ties.

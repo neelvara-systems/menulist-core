@@ -15,7 +15,7 @@ import { removeObjRef } from '@util/utils';
 import { Button, Card, Flex, Select, Switch, Table, Tag, Typography } from 'antd'; // Import Ant Design components
 import { Fragment, useEffect, useState } from 'react';
 import { LuTrash, LuUser } from 'react-icons/lu';
-const { Text } = Typography
+const { Text, Title } = Typography
 
 function PlatformUsers() {
 
@@ -205,10 +205,14 @@ function PlatformUsers() {
 
     return (
         <Flex vertical gap={20} style={{ padding: '20px' }}>
+            <Flex vertical gap={4}>
+                <Title level={3} style={{ margin: 0 }}>Platform Users</Title>
+                <Text type="secondary">Manage tenant users, store access, verification, and platform roles.</Text>
+            </Flex>
             <Card>
-                <Flex gap={20} align="center">
+                <Flex gap={20} align="center" wrap="wrap">
                     <Select
-                        style={{ width: 200 }}
+                        style={{ flex: '1 1 220px', minWidth: 0 }}
                         placeholder="Select Tenant"
                         value={filterTenant}
                         onChange={(value) => {
@@ -222,7 +226,7 @@ function PlatformUsers() {
                         allowClear
                     />
                     <Select
-                        style={{ width: 200 }}
+                        style={{ flex: '1 1 220px', minWidth: 0 }}
                         placeholder="Select Store"
                         value={filterStore}
                         onChange={(value) => {
