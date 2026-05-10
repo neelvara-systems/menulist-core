@@ -3,7 +3,7 @@ import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
-import { ECOMSAI_USER_ROLE } from './constants/user';
+import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 
 /**
@@ -443,12 +443,15 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
         uid: context?.uid,
         hasToken: !!context?.token,
         role: context?.token?.role,
+        platformRole: context?.token?.platformRole,
         tenantId: context?.token?.tenantId,
         storeId: context?.token?.storeId
     });
 
-    // Security: Only allow PLATFORM role (owner access)
-    if (!context || context.token.role !== ECOMSAI_USER_ROLE) {
+    const requesterRole = String(context?.token?.platformRole || context?.token?.role || '');
+
+    // Security: Only allow PLATFORM role.
+    if (!context || requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
         throw new HttpsError('permission-denied', 'Only platform owners can run backfill operations');
     }
 

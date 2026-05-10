@@ -38,6 +38,11 @@ const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/platform/chat-weekly-digest': 'chatWeeklyDigest',
     '/platform/chat-roi-calculator': 'chatRoiCalculator',
 };
+const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
+    '/ops': 'opsControlRoom',
+    '/ops/extraction': 'extractionMonitor',
+    '/ops/scheduler': 'schedulerMonitor',
+};
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
     'platformSettings',
@@ -101,12 +106,21 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
 function parseMobileRoutePathname(pathname: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } | null {
     const normalizedPathname = normalizePathname(pathname);
     const platformScreen = PLATFORM_PATH_TO_MORE_SCREEN[normalizedPathname];
+    const opsScreen = OPS_PATH_TO_MORE_SCREEN[normalizedPathname];
 
     if (platformScreen) {
         return {
             tab: 'more',
             todayScreen: 'main',
             moreScreen: platformScreen,
+        };
+    }
+
+    if (opsScreen) {
+        return {
+            tab: 'more',
+            todayScreen: 'main',
+            moreScreen: opsScreen,
         };
     }
 

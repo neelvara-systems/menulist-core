@@ -241,7 +241,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['domainSettings', 'businessCopySetup', 'seoSettings', 'integrations', 'presenceMonitor'].includes(currentScreen)) {
             return 'searchDiscoveryHub';
         }
-        if (['opsControlRoom', 'schedulerMonitor', 'extractionMonitor'].includes(currentScreen) || isPlatformInternalScreen(currentScreen)) {
+        if (isPlatformInternalScreen(currentScreen)) {
             return 'platformHub';
         }
         return 'main';
@@ -301,14 +301,17 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(FEATURE_FLAGS.ENABLE_GBP_SYNC ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
     ];
 
-    const platformItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'ops', 'scheduler', 'extraction', 'users', 'tickets', 'knowledge base', 'chat', 'changelog'], label: 'Platform', description: 'Internal operations, monitors, admin tools, and platform content.', onClick: () => openSubScreen('platformHub') },
-    ] : [];
-
-    const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
+    const platformMonitoringItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'opsControlRoom', icon: <LuActivity color="#dc2626" size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
         { key: 'schedulerMonitor', icon: <LuClock3 color="#ea580c" size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color="#7c3aed" size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
+    ] : [];
+
+    const platformManagementItems: MoreListItem[] = isPlatformAdmin ? [
+        { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'users', 'tickets', 'knowledge base', 'chat', 'changelog'], label: 'Platform Management', description: 'Internal platform settings, admin users, support, content, and diagnostics.', onClick: () => openSubScreen('platformHub') },
+    ] : [];
+
+    const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'platformSettings', icon: <LuSettings color="#475569" size={20} />, keywords: ['platform settings', 'logs', 'tenants', 'stores', 'pricing'], label: 'Platform Settings', description: 'Logs, tenants, stores, pricing plans, and platform users.', onClick: () => openSubScreen('platformSettings') },
         { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles'], label: 'Platform Users', description: 'Manage platform-level users and access.', onClick: () => openSubScreen('platformUsers') },
         { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
@@ -333,8 +336,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { items: moduleItems, title: 'Modules' },
         { items: businessIdentityItems, title: 'Business Settings' },
         { items: businessPresenceItems, title: 'Business Presence' },
-        ...(platformItems.length ? [{ items: platformItems, title: 'Platform' }] : []),
-    ]), [businessIdentityItems, businessPresenceItems, moduleItems, platformItems]);
+        ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
+        ...(platformManagementItems.length ? [{ items: platformManagementItems, title: 'Platform Management' }] : []),
+    ]), [businessIdentityItems, businessPresenceItems, moduleItems, platformManagementItems, platformMonitoringItems]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 

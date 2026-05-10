@@ -1713,7 +1713,7 @@ export const triggerDecisionBlocksScoring = onCall({
         throw new HttpsError('unauthenticated', 'You must be logged in to trigger Decision Blocks scoring');
     }
 
-    const requesterRole = String(request.auth.token.role || request.auth.token.platformRole || '');
+    const requesterRole = String(request.auth.token.platformRole || request.auth.token.role || '');
     if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
         throw new HttpsError('permission-denied', 'Only platform owners can trigger Decision Blocks scoring');
     }

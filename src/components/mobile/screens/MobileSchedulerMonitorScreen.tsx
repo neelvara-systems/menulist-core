@@ -5,7 +5,7 @@ import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummar
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuActivity, LuClock, LuPlay, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, Input, List, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileSchedulerMonitorScreenProps {
@@ -80,12 +80,17 @@ function renderTask(task: SchedulerTaskResult) {
 
 export default function MobileSchedulerMonitorScreen({ onBack }: MobileSchedulerMonitorScreenProps) {
     const { data: session, status } = useSession();
-    const isPlatform = (session as any)?.platformRole === 'PLATFORM';
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
     const [health, setHealth] = useState<SchedulerHealthSummary | null>(null);
     const [runs, setRuns] = useState<SchedulerRunLog[]>([]);
     const [settlement, setSettlement] = useState<SchedulerSettlementSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [triggering, setTriggering] = useState(false);
+    const [analyticsBackfillLoading, setAnalyticsBackfillLoading] = useState(false);
+    const [manualTenantId, setManualTenantId] = useState('');
+    const [manualStoreId, setManualStoreId] = useState('');
+    const [manualProjectId, setManualProjectId] = useState('');
 
     const lastRun = health?.lastRun || runs[0] || null;
     const latestTasks = useMemo(() => (lastRun?.tasks || []).slice(0, 8), [lastRun?.tasks]);
@@ -118,16 +123,36 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
         void loadData();
     }, [isPlatform, loadData, status]);
 
+    const getManualScope = (requiresProject = false) => {
+        const tId = manualTenantId.trim();
+        const sId = manualStoreId.trim();
+        const projectId = manualProjectId.trim();
+
+        if (!tId || !sId) {
+            Toast.show({ content: 'Enter Tenant ID and Store ID', duration: 1600 });
+            return null;
+        }
+        if (requiresProject && !projectId) {
+            Toast.show({ content: 'Enter Project ID for analytics', duration: 1600 });
+            return null;
+        }
+
+        return projectId ? { tId, sId, projectId } : { tId, sId };
+    };
+
     const handleRecompute = () => {
+        const scope = getManualScope(false);
+        if (!scope) return;
+
         void Dialog.confirm({
             confirmText: 'Recompute',
-            content: 'This recomputes Decision Blocks for all stores. It does not run the full nightly scheduler.',
+            content: 'This recomputes Decision Blocks for the entered store or project. It does not run the full nightly scheduler.',
             onConfirm: async () => {
                 setTriggering(true);
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const triggerFn = httpsCallable(getFunctions(), 'triggerDecisionBlocksScoring', { timeout: 600000 });
-                    const result: any = await triggerFn({});
+                    const result: any = await triggerFn(scope);
                     const summary = result?.data || {};
                     Toast.show({
                         content: `Done: ${summary.successCount || 0} success, ${summary.failedCount || 0} failed`,
@@ -141,6 +166,31 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                 }
             },
             title: 'Recompute Decision Blocks?',
+        });
+    };
+
+    const handleAnalyticsBackfill = () => {
+        const scope = getManualScope(true);
+        if (!scope || !('projectId' in scope)) return;
+
+        void Dialog.confirm({
+            confirmText: 'Backfill',
+            content: 'This reprocesses the latest settled analytics summary for the entered project. It does not run the full all-store scheduler.',
+            onConfirm: async () => {
+                setAnalyticsBackfillLoading(true);
+                try {
+                    const { getFunctions, httpsCallable } = await import('firebase/functions');
+                    const triggerFn = httpsCallable(getFunctions(), 'triggerCustomerAnalyticsManually', { timeout: 600000 });
+                    const result: any = await triggerFn(scope);
+                    Toast.show({ content: result?.data?.message || 'Analytics backfill completed', duration: 2200 });
+                    await loadData();
+                } catch (error: any) {
+                    Toast.show({ content: error?.message || 'Analytics backfill failed', duration: 2200 });
+                } finally {
+                    setAnalyticsBackfillLoading(false);
+                }
+            },
+            title: 'Backfill analytics?',
         });
     };
 
@@ -180,12 +230,6 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                             <Text>Refresh</Text>
                         </Flex>
                     </Button>
-                    <Button block color="primary" loading={triggering} onClick={handleRecompute}>
-                        <Flex align="center" gap={6} justify="center">
-                            <LuPlay size={16} />
-                            <Text>Recompute DI</Text>
-                        </Flex>
-                    </Button>
                 </Flex>
 
                 {loading ? (
@@ -197,6 +241,24 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                     </Card>
                 ) : (
                     <>
+                        <Card size="small" title={<Text strong>Manual Recovery</Text>}>
+                            <Flex gap={10} vertical>
+                                <Text type="secondary">Scoped recovery only. Enter one store before running manual jobs.</Text>
+                                <Input onChange={setManualTenantId} placeholder="Tenant ID" value={manualTenantId} />
+                                <Input onChange={setManualStoreId} placeholder="Store ID" value={manualStoreId} />
+                                <Input onChange={setManualProjectId} placeholder="Project ID for analytics" value={manualProjectId} />
+                                <Button block color="primary" loading={triggering} onClick={handleRecompute}>
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuPlay size={16} />
+                                        <Text>Recompute Decision Blocks</Text>
+                                    </Flex>
+                                </Button>
+                                <Button block fill="outline" loading={analyticsBackfillLoading} onClick={handleAnalyticsBackfill}>
+                                    Backfill Analytics Summary
+                                </Button>
+                            </Flex>
+                        </Card>
+
                         <Card size="small" title={<Text strong>Health</Text>}>
                             <Flex gap={12} vertical>
                                 <Flex align="center" justify="space-between">
@@ -223,22 +285,10 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
 
                         <Card size="small" title={<Text strong>Settlement</Text>}>
                             <Flex gap={12} wrap>
-                                <Card size="small" style={{ flex: '1 1 45%' }}>
-                                    <Text type="secondary">Tracked Stores</Text>
-                                    <Title level={4} style={{ margin: 0 }}>{settlement?.totalTrackedStores || 0}</Title>
-                                </Card>
-                                <Card size="small" style={{ flex: '1 1 45%' }}>
-                                    <Text type="secondary">Latest Date</Text>
-                                    <Title level={4} style={{ margin: 0 }}>{settlement?.latestSettledDate || '-'}</Title>
-                                </Card>
-                                <Card size="small" style={{ flex: '1 1 45%' }}>
-                                    <Text type="secondary">Failed</Text>
-                                    <Title level={4} style={{ margin: 0 }}>{settlement?.failedCount || 0}</Title>
-                                </Card>
-                                <Card size="small" style={{ flex: '1 1 45%' }}>
-                                    <Text type="secondary">Stale</Text>
-                                    <Title level={4} style={{ margin: 0 }}>{settlement?.staleCount || 0}</Title>
-                                </Card>
+                                <Metric label="Tracked Stores" value={settlement?.totalTrackedStores || 0} />
+                                <Metric label="Latest Date" value={settlement?.latestSettledDate || '-'} />
+                                <Metric label="Failed" value={settlement?.failedCount || 0} />
+                                <Metric label="Stale" value={settlement?.staleCount || 0} />
                             </Flex>
                         </Card>
 
@@ -274,6 +324,27 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                     </>
                 )}
             </Flex>
+        </Flex>
+    );
+}
+
+function Metric({ label, value }: { label: string; value: number | string }) {
+    return (
+        <Flex
+            gap={2}
+            style={{
+                background: 'var(--ant-color-fill-tertiary)',
+                border: '1px solid var(--ant-color-border-secondary)',
+                borderRadius: 8,
+                flex: '1 1 45%',
+                minHeight: 72,
+                minWidth: 120,
+                padding: 10,
+            }}
+            vertical
+        >
+            <Text type="secondary">{label}</Text>
+            <Title level={4} style={{ margin: 0 }}>{value}</Title>
         </Flex>
     );
 }

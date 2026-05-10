@@ -116,6 +116,7 @@ export const authOptions: NextAuthOptions = {
 
             if (user && !('isVerified' in user)) {
                 let dbUser: any = await getUserByEmail(email);
+                logFetchedUserForDebug('signIn', dbUser);
 
                 // ✅ SECURITY FIX: Allow new OAuth users to login
                 // They'll complete onboarding via payment flow
@@ -178,6 +179,7 @@ export const authOptions: NextAuthOptions = {
 
             if (email && !Boolean(token?.dbUser) || (token.dbUser && !('isVerified' in token.dbUser))) {
                 let dbUser: any = await getUserByEmail(email);
+                logFetchedUserForDebug('jwt', dbUser);
 
                 // ✅ SECURITY FIX: Filter both user (from OAuth) and dbUser (from database)
                 // OAuth user can contain dangerous keys like __proto__
@@ -193,6 +195,7 @@ export const authOptions: NextAuthOptions = {
             // https://next-auth.js.org/getting-started/client#updating-the-session
             if (trigger === "update") {
                 const updatedUser: any = await getUserByEmail(email);
+                logFetchedUserForDebug('jwt-update', updatedUser);
                 token.dbUser = getDatabaseUserForSession(updatedUser)
             }
 
@@ -203,6 +206,10 @@ export const authOptions: NextAuthOptions = {
             const timestamp = new Date().toISOString();
             if (Boolean(token?.email) && Boolean(token?.dbUser)) {
                 const dbUser: UserDataType = token?.dbUser;
+                const storeRole = Array.isArray(dbUser.stores)
+                    ? dbUser.stores.find((store: any) => store.storeId === dbUser.storeId)?.role
+                    : undefined;
+                const sessionStoreRole = storeRole || (dbUser as any).role;
 
                 // ✅ SECURITY FIX: Validate and sanitize dbUser to prevent prototype pollution
                 // Only assign known safe properties, reject dangerous keys
@@ -236,6 +243,7 @@ export const authOptions: NextAuthOptions = {
                     tenantId: dbUser.tenantId,
                     storeId: dbUser.storeId,
                     platformRole: dbUser.platformRole,
+                    role: sessionStoreRole || '',
                     stores: dbUser.stores
                 };
                 session.platformRole = dbUser.platformRole || "USER";
@@ -243,7 +251,7 @@ export const authOptions: NextAuthOptions = {
                 session.tId = dbUser.tenantId;
                 session.sId = dbUser.storeId;
                 session.uId = dbUser.id;
-                session.role = dbUser.stores ? dbUser.stores?.find((store: any) => store.storeId === session.sId)?.role : '';
+                session.role = sessionStoreRole || '';
             }
             // console.log("session inside session", session)
             return session;
@@ -288,6 +296,7 @@ export const authOptions: NextAuthOptions = {
 
                 // Step 2: Get user from database
                 const dbUser: any = await getUserByEmail(email);
+                logFetchedUserForDebug('credentials', dbUser);
 
                 if (Boolean(dbUser?.isVerified) && Boolean(dbUser?.active)) {
                     // Step 3: Verify password by attempting Firebase Auth signin
@@ -371,6 +380,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         tenantId: sanitized.tenantId,
         storeId: sanitized.storeId,
         platformRole: sanitized.platformRole,
+        role: sanitized.role,
         // Keep only what we actually use for role derivation
         stores: Array.isArray(sanitized.stores)
             ? sanitized.stores.map((s: any) => ({
@@ -380,3 +390,38 @@ const getDatabaseUserForSession = (dbUser: any): any => {
             : [],
     };
 }
+
+const getDebugUserSnapshot = (dbUser: any) => {
+    if (!dbUser) return null;
+
+    return {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        image: dbUser.image,
+        isVerified: dbUser.isVerified,
+        active: dbUser.active,
+        deleted: dbUser.deleted,
+        tenantId: dbUser.tenantId,
+        storeId: dbUser.storeId,
+        platformRole: dbUser.platformRole,
+        role: dbUser.role,
+        storeIds: dbUser.storeIds,
+        stores: Array.isArray(dbUser.stores)
+            ? dbUser.stores.map((store: any) => ({
+                storeId: store?.storeId,
+                name: store?.name,
+                role: store?.role,
+            }))
+            : dbUser.stores,
+    };
+};
+
+const logFetchedUserForDebug = (source: string, dbUser: any) => {
+    if (process.env.NODE_ENV === 'production') return;
+
+    console.info('[MenuList auth fetched user]', {
+        source,
+        user: getDebugUserSnapshot(dbUser),
+    });
+};

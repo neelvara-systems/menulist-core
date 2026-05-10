@@ -46,7 +46,7 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
     }
 
     // Extract user role and IDs from token
-    const userRole = context.token.role as string;
+    const userRole = String(context.token.platformRole || context.token.role || '');
     const tId = context.token.tenantId as string;
     const storeId = context.token.storeId as string;
 
@@ -57,7 +57,7 @@ export const triggerAggregationManual = onCall(functionOptions, async (request) 
         );
     }
 
-    // Only PLATFORM role can trigger (owner access)
+    // Only PLATFORM role can trigger.
     if (userRole !== ECOMSAI_PLATFORM_USER_ROLE) {
         throw new HttpsError(
             'permission-denied',

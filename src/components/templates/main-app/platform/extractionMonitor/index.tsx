@@ -83,7 +83,8 @@ export default function ExtractionMonitor() {
     const [refreshCounter, setRefreshCounter] = useState(0);
 
     const isEnabled = FEATURE_FLAGS.ENABLE_EXTRACTION_MONITORING_DASHBOARD;
-    const isPlatform = (session as any)?.platformRole === 'PLATFORM';
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
 
     const fetchData = useCallback(async () => {
         if (!isEnabled) return;

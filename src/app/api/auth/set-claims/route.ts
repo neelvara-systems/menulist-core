@@ -61,13 +61,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         let { uid } = validation.data;
 
-        // Get user's role from their stores (single role per store)
-        const userRole = dbUser.stores
+        // Get user's current-store role. Older/platform records may still carry
+        // a top-level role, so keep that as the compatibility fallback.
+        const storeRole = Array.isArray(dbUser.stores)
             ? dbUser.stores.find((store: any) => store.storeId === dbUser.storeId)?.role
-            : null;
+            : undefined;
+        const userRole = storeRole || dbUser.role;
 
         const customClaims = {
             role: userRole || 'OWNER',
+            platformRole: dbUser.platformRole || 'USER',
             tenantId: String(dbUser.tenantId),
             storeId: String(dbUser.storeId),
             uId: dbUser.id,

@@ -64,7 +64,8 @@ function filterToStatus(filter: JobFilter): string | undefined {
 
 export default function MobileExtractionMonitorScreen({ onBack }: MobileExtractionMonitorScreenProps) {
     const { data: session, status } = useSession();
-    const isPlatform = (session as any)?.platformRole === 'PLATFORM';
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
     const isEnabled = FEATURE_FLAGS.ENABLE_EXTRACTION_MONITORING_DASHBOARD;
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<ExtractionHealthMetrics | null>(null);
@@ -256,9 +257,21 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
 
 function Metric({ label, value }: { label: string; value: number | string }) {
     return (
-        <Card size="small" style={{ flex: '1 1 45%' }}>
+        <Flex
+            gap={2}
+            style={{
+                background: 'var(--ant-color-fill-tertiary)',
+                border: '1px solid var(--ant-color-border-secondary)',
+                borderRadius: 8,
+                flex: '1 1 45%',
+                minHeight: 72,
+                minWidth: 120,
+                padding: 10,
+            }}
+            vertical
+        >
             <Text type="secondary">{label}</Text>
             <Title level={4} style={{ margin: 0 }}>{value}</Title>
-        </Card>
+        </Flex>
     );
 }

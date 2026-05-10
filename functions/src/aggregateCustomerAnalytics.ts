@@ -18,6 +18,7 @@ import {
     MonthlyDashboardMetrics,
     OwnerDashboardMetrics
 } from './services/gemini/ownerDashboardSummary';
+import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 
 /**
  * CUSTOMER-FACING ANALYTICS AGGREGATION
@@ -1472,6 +1473,14 @@ export const triggerCustomerAnalyticsManually = onCall({
         throw new HttpsError(
             'unauthenticated',
             'Must be authenticated to trigger aggregation.'
+        );
+    }
+
+    const requesterRole = String(request.auth.token.platformRole || request.auth.token.role || '');
+    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+        throw new HttpsError(
+            'permission-denied',
+            'Only platform owners can manually trigger analytics aggregation.'
         );
     }
 

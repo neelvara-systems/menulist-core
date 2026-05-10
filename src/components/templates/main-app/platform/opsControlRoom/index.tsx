@@ -33,9 +33,10 @@ function OpsControlRoom() {
     const [republishLoading, setRepublishLoading] = useState(false);
     const [republishStoreId, setRepublishStoreId] = useState('');
     const [republishTenantId, setRepublishTenantId] = useState('');
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
 
     // Gate: superadmin only
-    if (session && (session as any).platformRole !== 'PLATFORM') {
+    if (session && platformRole !== 'PLATFORM') {
         redirect('/dashboard');
     }
 

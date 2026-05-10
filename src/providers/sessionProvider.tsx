@@ -94,7 +94,20 @@ export default function SessionProvider({ children, session }: Props) {
 
     // Use the useEffect hook to fetch store details when the session changes
     useEffect(() => {
-        // console.log("session inside SessionProvider", session);
+        if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+            const debugSession = {
+                userId: session?.user?.id,
+                email: session?.user?.email,
+                platformRole: (session as any)?.platformRole || session?.user?.platformRole,
+                role: (session as any)?.role || session?.user?.role,
+                tenantId: session?.user?.tenantId,
+                storeId: session?.user?.storeId,
+                active: session?.user?.active,
+                isVerified: session?.user?.isVerified,
+            };
+            (window as any).__MENULIST_SESSION_DEBUG__ = debugSession;
+            console.info('[MenuList session debug]', debugSession);
+        }
 
         // Create a key from relevant session data for comparison
         const currentSessionKey = JSON.stringify({

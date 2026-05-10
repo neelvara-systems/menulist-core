@@ -23,7 +23,7 @@ const SidebarComponent = dynamic(() => import('@organisms/sidebar'), { ssr: fals
 const MobileShell = dynamic(() => import('../../mobile/MobileShell'), { ssr: false });
 
 const { Content } = Layout;
-const DESKTOP_ONLY_ROUTE_PREFIXES = ['/reseller', '/ops'];
+const DESKTOP_ONLY_ROUTE_PREFIXES = ['/reseller'];
 const DESKTOP_ONLY_ROUTES = ['/platform/test-sentry'];
 
 export default function AntdLayoutWrapper(props: any) {
@@ -41,11 +41,12 @@ export default function AntdLayoutWrapper(props: any) {
         pathname === routePrefix || pathname.startsWith(`${routePrefix}/`)
     ));
     const isPlatformRoute = pathname === '/platform' || pathname.startsWith('/platform/');
+    const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
     const shouldRenderMobileShell = hasMounted
         && FEATURE_FLAGS.ENABLE_MOBILE_UI
         && !forceDesktop
         && !isDesktopOnlyRoute
-        && (isHandheld || (isMobile && isPlatformRoute));
+        && (isHandheld || (isMobile && (isPlatformRoute || isOpsRoute)));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
 
     const renderContent = () => {
