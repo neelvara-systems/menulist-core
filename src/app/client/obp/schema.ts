@@ -27,7 +27,6 @@ import {
     buildGeoCoordinates,
     buildOpeningHours,
     buildSameAs,
-    buildTempStatusSchema,
     getSchemaType,
     isFoodBusinessCategory,
 } from '@lib/schema';
@@ -66,9 +65,6 @@ export function generateOBPSchema(
         : undefined;
     const catalogName = publicDescriptor || (isFoodBusinessCategory(storeData?.businessType, storeData?.businessCategory) ? 'Menu' : 'Offerings');
 
-    // Reflect active tempStatus in schema (e.g., closed_today → show as closed today)
-    const tempStatusSchema = buildTempStatusSchema(storeData?.tempStatus);
-
     // Build amenity features from businessAttributes (BTG Layer 12)
     const amenityFeatures = FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES
         ? buildAmenityFeatures(storeData?.businessAttributes)
@@ -96,7 +92,11 @@ export function generateOBPSchema(
         ...(publicDescription && {
             description: publicDescription,
         }),
-        ...buildImageSchema(storeData?.logo, storeData?.publicPresence?.photos),
+        ...buildImageSchema(
+            storeData?.logo,
+            storeData?.publicPresence?.photos,
+            storeData?.publicPresence?.businessCover,
+        ),
         url: canonicalUrl,
         ...(storeData?.phoneNumber && { telephone: storeData.phoneNumber }),
         ...(storeData?.email && { email: storeData.email }),
@@ -106,7 +106,6 @@ export function generateOBPSchema(
         ...(geo && { geo }),
         ...(openingHours && { openingHoursSpecification: openingHours }),
         ...(sameAs && { sameAs }),
-        ...(tempStatusSchema && { specialOpeningHoursSpecification: [tempStatusSchema] }),
         ...(amenityFeatures && { amenityFeature: amenityFeatures }),
         ...(paymentAccepted && { paymentAccepted }),
         ...(storeData?.publicPresence?.reservationUrl && {
@@ -203,8 +202,9 @@ function buildPotentialActions(reservationUrl?: string, orderUrl?: string): Reco
  * Build image schema. Combines logo + preview business photos into an image array.
  * Schema.org image can be a single URL or array of URLs.
  */
-function buildImageSchema(logo?: string, photos?: string[]): Record<string, any> {
+function buildImageSchema(logo?: string, photos?: string[], businessCover?: string): Record<string, any> {
     const images: string[] = [];
+    if (businessCover) images.push(businessCover);
     if (logo) images.push(logo);
     if (photos?.length) {
         for (const p of photos.filter(Boolean).slice(0, 3)) {

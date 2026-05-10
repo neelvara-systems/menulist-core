@@ -32,12 +32,14 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
 - Image-enabled layouts must not show blank image cards for items without images; broken image URLs may keep their reserved frame to avoid a late scroll jump.
 - Item image reads must use the public image normalizer so legacy object-shaped image data cannot crash mobile PDP galleries or featured/item cards.
-- PDP close must not leave stale sticky-row hit-test regions; iPhone PWA top-of-page detail views use lightweight scroll lock, history-driven close, and a targeted command-row repaint after close.
+- PDP close must not leave stale sticky-row hit-test regions; iPhone PWA top-of-page detail views use lightweight scroll lock and history-driven close without synthetic scroll/resize events after close.
+- PDP close must not remount the sticky command row or synthesize scroll/resize events because that can move the horizontal category rail after closing a featured item.
 - PDP content must remain inside a viewport-capped scroll container with touch scrolling enabled and the close control reachable during long detail scrolls.
 - Back-to-top must not perform scroll work on pointerdown; it scrolls on completed tap/click and stops press propagation so the item card below it cannot receive the same gesture.
 - Featured choices must open PDP directly on mobile when the public menu provides a PDP handler; they must not also scroll the underlying menu before the modal opens.
 - Public menu shell padding is capped by device: mobile uses 12px, tablet uses 18px, and desktop keeps the configured design spacing so small screens do not lose usable width.
 - Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
+- The sticky command row must stay visually stable during vertical scroll; it avoids transform-based compositor hints, and scroll-spy category changes are frame-throttled.
 - The compact top-row language action shows only the language initials; the picker itself keeps full native language labels.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - The `Sections` popup header must stay compact while preserving a reachable close tap target; the close button visual should not set the whole header height.
@@ -51,6 +53,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet, matches the OBP `Powered by MenuList. All rights reserved` treatment, and does not add a marketing CTA by default.
+- Mobile public menus lock pinch zoom on the client route and suppress text selection on menu/category controls while keeping footer/business content selectable.
 
 ## Owner Mobile Interaction
 

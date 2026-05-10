@@ -44,6 +44,11 @@ $obp-closed-color: #c62828;
   }
 
   .logo {
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .businessCover {
     background: #20231f;
     border-color: rgba(255, 255, 255, 0.08);
   }
@@ -216,6 +221,11 @@ $obp-closed-color: #c62828;
     box-shadow: none;
   }
 
+  .hoursRow.hoursRowToday .hoursDay,
+  .hoursRow.hoursRowToday .hoursTime {
+    color: #83e89c;
+  }
+
   .hoursList {
     background: transparent;
     border-color: transparent;
@@ -306,6 +316,23 @@ $obp-closed-color: #c62828;
   width: 100%;
 }
 
+.businessCover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0 0 18px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  background: #ececea;
+
+  img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+}
+
 // ── Language Switcher ──
 
 .languageSwitcher {
@@ -364,11 +391,11 @@ $obp-closed-color: #c62828;
 .logo {
   width: 72px;
   height: 72px;
-  border-radius: 16px;
-  object-fit: cover;
-  background: $obp-border;
+  border-radius: 0;
+  object-fit: contain;
+  background: transparent;
   margin-bottom: 0;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 0;
 }
 
 .logoFallback {
@@ -728,6 +755,10 @@ $obp-closed-color: #c62828;
   transition: all 0.2s ease;
   cursor: pointer;
 
+  > span:last-child {
+    min-width: 0;
+  }
+
   &:hover {
     background: #f8f8f8;
     border-color: #ccc;
@@ -753,6 +784,7 @@ $obp-closed-color: #c62828;
 .actionIcon {
   width: 26px;
   height: 26px;
+  flex: 0 0 26px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--obp-accent, #111) 10%, #fff);
   color: var(--obp-accent, #111);
@@ -836,10 +868,10 @@ $obp-closed-color: #c62828;
 .photoPreviewBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 10030;
   border: 0;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.82);
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.92);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -848,19 +880,37 @@ $obp-closed-color: #c62828;
 
 .photoPreviewFrame {
   position: relative;
-  width: min(92vw, 960px);
-  max-height: 88vh;
+  width: min(100%, 980px);
+  height: 100%;
+  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: default;
+}
+
+.photoPreviewImageStage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: default;
 
   img {
-    max-width: 100%;
-    max-height: 86vh;
+    width: 100%;
+    height: 100%;
+    display: block;
     object-fit: contain;
     border-radius: 8px;
+    user-select: none;
+    transform-origin: center;
   }
+}
+
+.photoPreviewImageStageZoomed {
+  cursor: grab;
 }
 
 .photoPreviewControl {
@@ -893,17 +943,66 @@ $obp-closed-color: #c62828;
   }
 }
 
-.photoPreviewClose {
-  top: 10px;
-  right: 10px;
-}
-
 .photoPreviewPrev {
-  left: 10px;
+  left: calc(12px + env(safe-area-inset-left));
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .photoPreviewNext {
-  right: 10px;
+  right: calc(12px + env(safe-area-inset-right));
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.photoPreviewToolbar {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.72);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
+}
+
+.photoPreviewToolbarButton {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.38;
+    cursor: default;
+  }
+
+  svg {
+    width: 1em;
+    height: 1em;
+    display: block;
+    flex: 0 0 auto;
+    color: currentColor;
+    stroke: currentColor;
+    fill: none;
+    overflow: visible;
+  }
+
+  svg * {
+    vector-effect: non-scaling-stroke;
+  }
 }
 
 .photoPreviewCounter {
@@ -1057,6 +1156,10 @@ $obp-closed-color: #c62828;
   summary::-webkit-details-marker {
     display: none;
   }
+
+  &[open] .hoursList {
+    margin-top: 14px;
+  }
 }
 
 .utilityStack {
@@ -1096,9 +1199,14 @@ $obp-closed-color: #c62828;
   background: #eef8f1;
   border-color: transparent;
   border-radius: 10px;
-  margin: 4px 0;
-  padding: 10px 12px;
+  margin: 0;
+  padding: 10px 0;
   box-shadow: none;
+}
+
+.hoursRow.hoursRowToday .hoursDay,
+.hoursRow.hoursRowToday .hoursTime {
+  color: $obp-open-color;
 }
 
 .hoursDay {
@@ -1698,6 +1806,7 @@ $obp-closed-color: #c62828;
   .actionIcon {
     width: 30px;
     height: 30px;
+    flex-basis: 30px;
   }
 
   .photoStrip {

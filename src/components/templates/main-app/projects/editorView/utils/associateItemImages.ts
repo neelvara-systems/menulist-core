@@ -19,6 +19,13 @@ export async function associateItemImagesWithProject(
         if (imageData.url.includes('base64')) {
             const uploadedUrl = await uploadFile(
                 {
+                    blob: imageData.blob,
+                    mediaChecksum: imageData.mediaChecksum,
+                    mediaId: imageData.mediaId,
+                    mediaProfile: imageData.mediaProfile || 'menuItem',
+                    mediaVariant: imageData.mediaVariant,
+                    mediaVersion: imageData.mediaVersion,
+                    preparedMedia: imageData.preparedMedia,
                     url: imageData.url,
                     type: imageData.type,
                     uid: `${selectedItem.id}-${imageData.uid}`,

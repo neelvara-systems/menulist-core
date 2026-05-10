@@ -35,6 +35,7 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - **Default = Menu Board** — `/screen/token` renders full menu; `?mode=highlights` for slideshow
 - **Mode via URL only** — no settings UI for mode selection; zero cognitive load
 - **Menu source is automatic** — screens follow the store's active menu truth; no project picker
+- **Shared public attribution** — both screen modes render the same quiet `Powered by MenuList. All rights reserved` attribution used by public OBP/menu surfaces.
 
 ---
 
@@ -57,6 +58,7 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - `page.tsx` (~90 lines) — Server component: DAL fetch, mode routing via `?mode=` query param
 - `ScreenDisplay.tsx` (~740 lines) — **Highlights mode** client: rotation, cache-first, onSnapshot, seen signal, Ken Burns image zoom, glassmorphism overlays, capsule progress
 - **`MenuBoardDisplay.tsx`** (~800 lines) — **Menu Board mode** client: glassmorphism cards, food thumbnails, ambient orbs, staggered animations, progress bar, auto-pagination (v2.0+v2.1)
+- `ScreenAttribution.tsx` — Shared quiet MenuList attribution used by both screen modes.
 
 ### API Route (1 file)
 

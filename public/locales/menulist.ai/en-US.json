@@ -534,7 +534,16 @@
         "timeSlotCreated": "Time slot created",
         "failedToSaveTimeSlot": "Failed to save time slot",
         "timeSlotDeleted": "Time slot deleted from all categories",
-        "failedToDeleteTimeSlot": "Failed to delete time slot"
+        "failedToDeleteTimeSlot": "Failed to delete time slot",
+        "businessCover": "Cover Image",
+        "businessCoverHelp": "Shown at the top of your Official Business Page.",
+        "businessCoverPlaceholder": "Upload or generate a cover image.",
+        "businessCoverUploaded": "Cover image uploaded",
+        "businessCoverUploadFailed": "Cover upload failed",
+        "generateBusinessCover": "Generate cover",
+        "regenerateBusinessCover": "Regenerate cover",
+        "businessCoverGenerated": "Cover image generated",
+        "businessCoverGenerateFailed": "Could not generate cover"
     },
     "SEO": {
         "title": "SEO and AEO",

@@ -1,8 +1,8 @@
 /**
  * OBP Photo Upload — Uploads business photos to Firebase Storage
  * 
- * Storage path: stores/obp-photos/{tenantId}/{storeId}/{timestamp}-{index}.jpg
- * Returns download URL to store in publicPresence.photos[]
+ * Profile-aware media uploads use immutable media/{profile}/{tenantId}/{storeId}/... paths.
+ * Gallery URLs are stored in publicPresence.photos[]; cover URLs are stored in publicPresence.businessCover.
  * 
  * OBP previews the first 3 photos; all uploaded photos remain available in the public image viewer.
  * @see __docs__/official-business-page/obp-infrastructure-freeze-plan.md §Priority 2
@@ -49,6 +49,54 @@ export async function uploadOBPPhoto(
     const storagePath = generateStoragePath({
         collection: 'stores',
         fileType: 'obp-photos',
+        session,
+        fileId,
+    });
+
+    const storageRef = ref(firebaseStorage, storagePath);
+    const metadata = { contentType: file.type || 'image/jpeg' };
+
+    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
+
+    return new Promise((resolve, reject) => {
+        uploadTask.on(
+            'state_changed',
+            () => { },
+            (error) => reject(error),
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+            },
+        );
+    });
+}
+
+/**
+ * Upload the Official Business Page cover image to Firebase Storage.
+ * The returned URL is persisted on publicPresence.businessCover by the store DAL.
+ */
+export async function uploadOBPCover(
+    file: File | Blob,
+    session: { tId: number | string; sId: number | string },
+    prepared?: PreparedMediaImage,
+): Promise<string> {
+    if (prepared) {
+        return uploadPreparedMediaImage({
+            blob: prepared.blob || file,
+            contentType: prepared.mimeType || file.type,
+            entityId: 'official-page-cover',
+            prepared,
+            profile: 'businessCover',
+            storeId: session.sId,
+            tenantId: session.tId,
+            variant: 'hero',
+        });
+    }
+
+    const fileId = `${Date.now()}-business-cover.${getPhotoExtension(file.type)}`;
+    const storagePath = generateStoragePath({
+        collection: 'stores',
+        fileType: 'obp-covers',
         session,
         fileId,
     });

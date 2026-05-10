@@ -37,6 +37,9 @@ Modify:
 - `src/components/templates/main-app/businessSettings/index.tsx`
 - `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx`
 - `src/components/mobile/screens/MobileOfficialPageScreen.tsx`
+- `src/app/client/obp/OBPResolvedSurface.tsx`
+- `src/app/client/obp/BrandOBPContent.tsx`
+- `src/app/client/obp/schema.ts`
 - `src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx`
 - `src/components/mobile/screens/MobileDigitalScreensScreen.tsx`
 - `src/database/storage/uploadBlobToStorage.ts`
@@ -47,7 +50,7 @@ Modify:
 
 1. Add a feature flag: `ENABLE_MEDIA_IMAGE_SYSTEM`.
 2. Add media image profiles with purpose-specific ratios, transparency rules, named variants, source limits, output settings, and storage hints.
-3. Add a shared preparation function that validates source type/size/dimensions, crops to the selected allowed ratio, resizes, compresses, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/local-preview data URL output, named variants, focal point, dominant color, and source metadata.
+3. Add a shared preparation function that validates source type/size safety, crops to the selected allowed ratio, resizes, compresses, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/local-preview data URL output, named variants, focal point, dominant color, and source metadata.
 4. Add a shared media image card for placeholder, local file upload, drag/drop, paste, preview, replace, adjust, remove, and reset actions.
 5. Add optional manual adjust UI for approved non-item profiles. The owner can drag, zoom, rotate, and reset framing, but the final resize, format, and compression still come from `prepareMediaImage`.
 6. Keep old optimizer exports (`MENU_IMAGE_CONFIG`, `MENU_BACKGROUND_IMAGE_CONFIG`) but derive them from media profiles.
@@ -81,15 +84,17 @@ Profiles expose named variants:
 - Digital screen slide: `desktop`, `full`
 - Gallery image: `thumb`, `full`
 
-The primary variant is still returned as `dataUrl` for compatibility with current DAL upload functions. The variant map is prepared now so future renderers can stop serving oversized single URLs without changing the media profile contract.
+`uploadPreparedMediaImage` uploads every prepared named variant to deterministic Storage paths and returns the selected primary variant URL for existing single-field save contracts. The variant map is prepared and stored under predictable sibling paths now, so future renderers can stop serving oversized single URLs without changing the media profile contract.
 
 ### Data URL boundary
 
-The media layer keeps `dataUrl` only for local preview and existing form state. Profile-aware saves use `uploadPreparedMediaImage`, which uploads a Blob to Firebase Storage. If a media caller still passes a prepared data URL into an existing DAL function, the DAL converts it back to a Blob before upload instead of using `uploadString(data_url)`.
+The media layer keeps `dataUrl` only for local preview and legacy form state. Profile-aware saves pass the prepared Blob/variant object into `uploadPreparedMediaImage`, which uploads Blob variants to Firebase Storage. If a legacy media caller still passes a prepared data URL into an existing DAL function, the DAL converts it back to a Blob before upload instead of using `uploadString(data_url)`.
+
+The local preview must always be the prepared primary output. Screens that upload immediately, such as Official Business Page cover/gallery, can temporarily render `prepared.dataUrl` in the card while the Blob upload completes, then persist only the returned Firebase URL. This keeps owner preview and public rendering visually aligned without storing base64 public truth.
 
 ### Manual adjust is intent-only
 
-Manual crop is available for project image, menu background, business logo, Official Business Page gallery, and Digital Screens custom slides. It is not added to item-image upload/generation flows, because per-item forced editing would slow owners down.
+Manual crop is available for project image, menu background, business logo, Official Business Page business cover, Official Business Page gallery, and Digital Screens custom slides. It is not added to item-image upload/generation flows, because per-item forced editing would slow owners down.
 
 The adjustment UI stores only owner intent for the current draft image. Saving still re-runs `prepareMediaImage`, so owners cannot create arbitrary final sizes or bypass compression.
 
@@ -105,11 +110,11 @@ All owner-facing image profile surfaces should use `MediaImageCard` for the visu
 
 ### Storage cleanup
 
-Official Business Page gallery images upload immediately because the existing flow needs a preview URL before the store form is saved. Replaced or removed gallery URLs are queued and deleted from Firebase Storage only after the related store save succeeds, so a cancelled desktop edit does not delete a still-saved public photo.
+Official Business Page cover and gallery images upload immediately because the existing flow needs a preview URL before the store form is saved. Replaced or removed cover/gallery URLs are queued and deleted from Firebase Storage only after the related store save succeeds, so a cancelled desktop edit does not delete a still-saved public asset.
 
 ### Immutable cache behavior
 
-Prepared media outputs should be immutable. Current project, item, menu background, logo, OBP gallery, and digital screen uploads route through the profile-aware media uploader, so a changed image gets a new public Storage object instead of overwriting an old one.
+Prepared media outputs should be immutable. Current project, item, menu background, logo, OBP business cover, OBP gallery, and digital screen uploads route through the profile-aware media uploader, so a changed image gets a new public Storage object instead of overwriting an old one.
 
 ### Static output and transparency
 
@@ -137,6 +142,7 @@ Manual checks:
 - Adjust menu background in mobile design editor.
 - Upload business logo in mobile brand settings.
 - Adjust business logo in desktop and mobile brand settings.
+- Upload, generate, adjust, and save Official Business Page business cover in desktop and mobile settings.
 - Upload digital screen slide in desktop settings.
 - Review, adjust, then save digital screen slide in desktop settings.
 - Upload digital screen slide in mobile settings.

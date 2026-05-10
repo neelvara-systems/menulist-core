@@ -1,8 +1,9 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
+import { uploadOBPCover, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { generateBusinessCoverCandidate } from '@lib/image/projectImageGeneration';
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
@@ -13,7 +14,7 @@ import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
-import { LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuSmile, LuStar } from 'react-icons/lu';
+import { LuArrowLeft, LuArrowRight, LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuSmile, LuSparkles, LuStar } from 'react-icons/lu';
 import CompliancePagesSection from './CompliancePagesSection';
 import GoogleListingGuide from './GoogleListingGuide';
 
@@ -53,6 +54,7 @@ interface OfficialPageTabProps {
         googleReviewUrl?: string;
         googleRating?: number;
         googleReviewCount?: number;
+        businessCover?: string;
         photos?: string[];
         googleLinkUpdated?: boolean;
         googleLinkUpdatedAt?: string;
@@ -84,13 +86,23 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const form = Form.useFormInstance();
         const session = useClientAuthSession();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
+        const [coverUploading, setCoverUploading] = useState(false);
+        const [coverGenerating, setCoverGenerating] = useState(false);
         const [photos, setPhotos] = useState<string[]>(publicPresence?.photos || []);
         const lastAppliedPhotosKeyRef = useRef(JSON.stringify(normalizePhotoList(publicPresence?.photos)));
+        const [coverDraft, setCoverDraft] = useState<{
+            crop?: MediaImageCropIntent;
+            fileName?: string;
+            previewDataUrl?: string;
+            sourceDataUrl?: string;
+        } | null>(null);
         const [photoDrafts, setPhotoDrafts] = useState<Record<number, {
             crop?: MediaImageCropIntent;
             fileName?: string;
+            previewDataUrl?: string;
             sourceDataUrl?: string;
         }>>({});
+        const [isCoverAdjustOpen, setIsCoverAdjustOpen] = useState(false);
         const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
         const photoSlots = [...photos.filter(Boolean), ''];
         const officialPageUrl = generateOBPUrl(subdomain, customDomain);
@@ -102,6 +114,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const watchedKnownFor = Form.useWatch(['publicPresence', 'knownFor']);
         const watchedSpecialNote = Form.useWatch(['publicPresence', 'specialNote']);
         const watchedPhotos = Form.useWatch(['publicPresence', 'photos']);
+        const watchedBusinessCoverValue = Form.useWatch(['publicPresence', 'businessCover']);
+        const watchedBusinessCover = watchedBusinessCoverValue !== undefined
+            ? watchedBusinessCoverValue
+            : publicPresence?.businessCover || '';
         const watchedIconVariant = Form.useWatch(['publicPresence', 'iconVariant']) || publicPresence?.iconVariant || 'icons';
         const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
         const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
@@ -129,6 +145,110 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             onPublicPresenceChange?.(field, checked);
         };
 
+        const applyBusinessCover = (url: string) => {
+            form.setFieldValue(['publicPresence', 'businessCover'], url);
+            onPublicPresenceChange?.('businessCover', url);
+        };
+
+        const savePreparedCover = async (
+            prepared: PreparedMediaImage,
+            fallbackDraft?: {
+                fileName?: string;
+                sourceDataUrl?: string;
+            },
+            successMessage = t('businessCoverUploaded'),
+        ) => {
+            if (!session?.tId || !session?.sId) {
+                message.error(t('sessionUnavailable'));
+                return;
+            }
+
+            setCoverDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || fallbackDraft?.fileName,
+                previewDataUrl: prepared.dataUrl,
+                sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+            });
+            setCoverUploading(true);
+            try {
+                const url = await uploadOBPCover(prepared.blob, { tId: session.tId, sId: session.sId }, prepared);
+                if (watchedBusinessCover && watchedBusinessCover !== url) {
+                    queuePhotoDelete(watchedBusinessCover);
+                }
+                applyBusinessCover(url);
+                setCoverDraft({
+                    crop: prepared.crop,
+                    fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    previewDataUrl: prepared.dataUrl,
+                    sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                });
+                message.success(successMessage);
+            } catch {
+                setCoverDraft((previous) => previous ? {
+                    ...previous,
+                    previewDataUrl: undefined,
+                } : previous);
+                message.error(t('businessCoverUploadFailed'));
+            } finally {
+                setCoverUploading(false);
+            }
+        };
+
+        const handleCoverUpload = async (file: File) => {
+            try {
+                const prepared = await prepareMediaImage(file, 'businessCover');
+                await savePreparedCover(prepared, {
+                    fileName: file.name,
+                    sourceDataUrl: prepared.sourceDataUrl,
+                });
+            } catch {
+                message.error(t('businessCoverUploadFailed'));
+            }
+        };
+
+        const handleGenerateBusinessCover = async () => {
+            setCoverGenerating(true);
+            try {
+                const formValues = form.getFieldsValue(true) || {};
+                const candidate = await generateBusinessCoverCandidate({
+                    businessCategory: formValues.businessCategory,
+                    businessType: formValues.businessType,
+                    projects: [],
+                    store: {
+                        ...formValues,
+                        publicPresence: {
+                            ...(publicPresence || {}),
+                            ...(formValues.publicPresence || {}),
+                        },
+                    },
+                    storeName: formValues.tenantName || formValues.name,
+                });
+
+                if (!candidate?.dataUrl) {
+                    message.error(t('businessCoverGenerateFailed'));
+                    return;
+                }
+
+                const prepared = await prepareMediaImage(candidate.dataUrl, 'businessCover', {
+                    fileName: candidate.name,
+                });
+                await savePreparedCover(prepared, {
+                    fileName: candidate.name,
+                    sourceDataUrl: prepared.sourceDataUrl,
+                }, t('businessCoverGenerated'));
+            } catch {
+                message.error(t('businessCoverGenerateFailed'));
+            } finally {
+                setCoverGenerating(false);
+            }
+        };
+
+        const handleCoverRemove = () => {
+            queuePhotoDelete(watchedBusinessCover);
+            applyBusinessCover('');
+            setCoverDraft(null);
+        };
+
         const savePreparedPhoto = async (
             prepared: PreparedMediaImage,
             index: number,
@@ -141,6 +261,15 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 message.error(t('sessionUnavailable'));
                 return;
             }
+            setPhotoDrafts((previous) => ({
+                ...previous,
+                [index]: {
+                    crop: prepared.crop,
+                    fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    previewDataUrl: prepared.dataUrl,
+                    sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+                },
+            }));
             setPhotoUploading(index);
             try {
                 const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
@@ -155,11 +284,19 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     [index]: {
                         crop: prepared.crop,
                         fileName: prepared.sourceName || fallbackDraft?.fileName,
+                        previewDataUrl: prepared.dataUrl,
                         sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
                     },
                 }));
                 message.success(t('photoUploaded'));
             } catch {
+                setPhotoDrafts((previous) => ({
+                    ...previous,
+                    [index]: {
+                        ...previous[index],
+                        previewDataUrl: undefined,
+                    },
+                }));
                 message.error(t('photoUploadFailed'));
             } finally {
                 setPhotoUploading(null);
@@ -186,6 +323,20 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setPhotoDrafts((previous) => {
                 const next = { ...previous };
                 delete next[index];
+                return next;
+            });
+        };
+
+        const handlePhotoMove = (index: number, direction: -1 | 1) => {
+            const updated = photos.filter(Boolean);
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= updated.length) return;
+
+            [updated[index], updated[targetIndex]] = [updated[targetIndex], updated[index]];
+            applyPhotos(updated);
+            setPhotoDrafts((previous) => {
+                const next = { ...previous };
+                [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
                 return next;
             });
         };
@@ -311,6 +462,51 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             </Input.Group>
                         </Form.Item>
                     ) : null}
+
+                    <Form.Item hidden name={['publicPresence', 'businessCover']}>
+                        <Input />
+                    </Form.Item>
+                    <Divider orientation="left" orientationMargin={0}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {t('businessCover')}
+                        </Text>
+                    </Divider>
+                    <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                        {t('businessCoverHelp')}
+                    </Text>
+                    <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                        <Col xs={24} md={12}>
+                            <MediaImageCard
+                                accept={getMediaProfileAcceptAttribute('businessCover')}
+                                alt={t('businessCover')}
+                                canAdjust={Boolean(coverDraft?.sourceDataUrl)}
+                                imageType="businessCover"
+                                imageUrl={coverDraft?.previewDataUrl || watchedBusinessCover}
+                                isBusy={coverUploading}
+                                onAdjust={() => setIsCoverAdjustOpen(true)}
+                                onRemove={watchedBusinessCover ? handleCoverRemove : undefined}
+                                onSelectFile={(file) => { void handleCoverUpload(file); }}
+                                placeholderDescription={t('businessCoverPlaceholder')}
+                                placeholderTitle={t('businessCover')}
+                                showDropHint={false}
+                            />
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Button
+                                block
+                                disabled={coverUploading}
+                                loading={coverGenerating}
+                                onClick={() => { void handleGenerateBusinessCover(); }}
+                                size="large"
+                                style={{ minHeight: 48 }}
+                            >
+                                <Flex align="center" gap={8} justify="center">
+                                    <LuSparkles size={18} />
+                                    <span>{watchedBusinessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</span>
+                                </Flex>
+                            </Button>
+                        </Col>
+                    </Row>
 
                     <Row gutter={[16, 0]}>
                         <Col {...halfCol}>
@@ -613,24 +809,33 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                         {photoSlots.map((photo, idx) => {
                             const isUploading = photoUploading === idx;
+                            const photoCount = photos.filter(Boolean).length;
                             return (
                                 <Col key={idx} xs={8}>
-                                    <MediaImageCard
-                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
-                                        alt={t('photoLabel', { index: idx + 1 })}
-                                        aspectRatio="4 / 3"
-                                        canAdjust={Boolean(photoDrafts[idx]?.sourceDataUrl)}
-                                        imageType="galleryImage"
-                                        imageUrl={photo}
-                                        isBusy={isUploading}
-                                        onAdjust={() => setAdjustingPhotoIndex(idx)}
-                                        onRemove={photo ? () => handlePhotoRemove(idx) : undefined}
-                                        onSelectFile={(file) => { void handlePhotoUpload(file, idx); }}
-                                        placeholderDescription={isUploading ? t('photoUploading') : undefined}
-                                        placeholderTitle={t('photoLabel', { index: idx + 1 })}
-                                        showDropHint={false}
-                                        size="compact"
-                                    />
+                                    <Flex gap={8} vertical>
+                                        <MediaImageCard
+                                            accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                            alt={t('photoLabel', { index: idx + 1 })}
+                                            aspectRatio="4 / 3"
+                                            canAdjust={Boolean(photoDrafts[idx]?.sourceDataUrl)}
+                                            imageType="galleryImage"
+                                            imageUrl={photoDrafts[idx]?.previewDataUrl || photo}
+                                            isBusy={isUploading}
+                                            onAdjust={() => setAdjustingPhotoIndex(idx)}
+                                            onRemove={photo ? () => handlePhotoRemove(idx) : undefined}
+                                            onSelectFile={(file) => { void handlePhotoUpload(file, idx); }}
+                                            placeholderDescription={isUploading ? t('photoUploading') : undefined}
+                                            placeholderTitle={t('photoLabel', { index: idx + 1 })}
+                                            showDropHint={false}
+                                            size="compact"
+                                        />
+                                        {photo && photoCount > 1 ? (
+                                            <Flex gap={6}>
+                                                <Button block disabled={idx === 0 || photoUploading != null} icon={<LuArrowLeft size={14} />} onClick={() => handlePhotoMove(idx, -1)} size="small" />
+                                                <Button block disabled={idx >= photoCount - 1 || photoUploading != null} icon={<LuArrowRight size={14} />} onClick={() => handlePhotoMove(idx, 1)} size="small" />
+                                            </Flex>
+                                        ) : null}
+                                    </Flex>
                                 </Col>
                             );
                         })}
@@ -805,6 +1010,17 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         </>
                     ) : null}
                 </Card>
+                <MediaImageAdjustModal
+                    fileName={coverDraft?.fileName}
+                    imageType="businessCover"
+                    initialCrop={coverDraft?.crop}
+                    onApply={async (prepared) => {
+                        await savePreparedCover(prepared, coverDraft || undefined);
+                    }}
+                    onClose={() => setIsCoverAdjustOpen(false)}
+                    open={isCoverAdjustOpen}
+                    sourceDataUrl={coverDraft?.sourceDataUrl}
+                />
                 <MediaImageAdjustModal
                     fileName={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.fileName : undefined}
                     imageType="galleryImage"

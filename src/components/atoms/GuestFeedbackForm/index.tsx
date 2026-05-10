@@ -587,10 +587,6 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                         <span>Your feedback is private and goes directly to the business.</span>
                     </div>
 
-                    <Link className={styles.powered} href="https://menulist.ai" rel="noopener noreferrer" target="_blank">
-                        Powered by MenuList
-                    </Link>
-
                     {(callHref || whatsappHref) ? (
                         <div className={styles.quickActions}>
                             {callHref ? (

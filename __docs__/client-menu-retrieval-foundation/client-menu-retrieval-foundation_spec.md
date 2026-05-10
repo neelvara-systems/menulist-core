@@ -90,6 +90,8 @@ For 3+ language menus, the public payload may stay compact, but the resolved ini
 
 Customer language persistence must be scoped by the current store/project. Old global language preference keys must not override the current menu language, especially inside installed PWAs.
 
+Search recall must remain explainable. Short query tokens may use exact or prefix matches, but substring and typo expansion must stay bounded so unrelated words do not appear to match. Food synonyms such as `chai` → `tea` are food-category behavior and must not leak into service, health, retail, or other SMB menus. Document indexing must not character-transliterate every Indic sentence because common Marathi/Hindi suffixes can fold into unrelated Roman words; only controlled word aliases should expand indexed document terms. Generated `_publicSearch.terms` are output-only and must not be re-read as source text while regenerating the index or while building the live client-side search document.
+
 ## Non-Goals
 
 - No AI chat.

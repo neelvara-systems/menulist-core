@@ -6,7 +6,7 @@ import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { generateProjectImageCandidate } from '@lib/image/projectImageGeneration';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
-import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage } from '@lib/localization/projectContent';
@@ -188,6 +188,7 @@ export default function MobileProjectSelectorSheet({
     const [formProjectImageDraft, setFormProjectImageDraft] = useState<{
         crop?: MediaImageCropIntent;
         fileName?: string;
+        prepared?: PreparedMediaImage;
         sourceDataUrl?: string;
     } | null>(null);
     const [isProjectImageAdjustOpen, setIsProjectImageAdjustOpen] = useState(false);
@@ -466,9 +467,16 @@ export default function MobileProjectSelectorSheet({
                 const mimeMatch = savedProjectImage.match(/^data:(.*?);base64,/);
                 const { uploadFile } = await import('@database/projects');
                 savedProjectImage = await uploadFile({
+                    blob: formProjectImageDraft?.prepared?.blob,
+                    mediaChecksum: formProjectImageDraft?.prepared?.checksum,
+                    mediaId: formProjectImageDraft?.prepared?.mediaId,
+                    mediaProfile: 'projectImage',
+                    mediaVariant: formProjectImageDraft?.prepared?.primaryVariant,
+                    mediaVersion: formProjectImageDraft?.prepared?.version,
+                    preparedMedia: formProjectImageDraft?.prepared,
                     uid: formProjectId || nextName || `project-image-${Date.now()}`,
                     url: savedProjectImage,
-                    type: mimeMatch?.[1] || 'image/jpeg',
+                    type: formProjectImageDraft?.prepared?.mimeType || mimeMatch?.[1] || 'image/jpeg',
                 } as any, 'project-images');
             }
 
@@ -720,6 +728,7 @@ export default function MobileProjectSelectorSheet({
             setFormProjectImageDraft({
                 crop: prepared.crop,
                 fileName: prepared.sourceName || file.name,
+                prepared,
                 sourceDataUrl: prepared.sourceDataUrl,
             });
         } catch (error) {
@@ -768,8 +777,16 @@ export default function MobileProjectSelectorSheet({
                 return;
             }
 
-            setFormProjectImage(candidate.dataUrl);
-            setFormProjectImageDraft(null);
+            const prepared = await prepareMediaImage(candidate.dataUrl, 'projectImage', {
+                fileName: candidate.name,
+            });
+            setFormProjectImage(prepared.dataUrl);
+            setFormProjectImageDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || candidate.name,
+                prepared,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
             Toast.show({ content: 'Menu image generated', icon: 'success', duration: 1400 });
         } catch (error: any) {
             Toast.show({ content: error?.message || 'Failed to generate menu image', duration: 2200 });
@@ -1494,6 +1511,7 @@ export default function MobileProjectSelectorSheet({
                     setFormProjectImageDraft({
                         crop: prepared.crop,
                         fileName: prepared.sourceName || formProjectImageDraft?.fileName,
+                        prepared,
                         sourceDataUrl: prepared.sourceDataUrl || formProjectImageDraft?.sourceDataUrl,
                     });
                 }}

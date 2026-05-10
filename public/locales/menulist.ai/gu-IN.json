@@ -121,6 +121,15 @@
         "publicFaqMenuAnswer": "પૂર્ણ મેનૂ {url} પર જોઈ શકો છો. તે હંમેશા અપડેટ રહે છે.",
         "publicPrivacy": "ગોપનીયતા",
         "publicTerms": "શરતો",
-        "publicRefund": "રિફંડ"
+        "publicRefund": "રિફંડ",
+        "businessCover": "કવર ઇમેજ",
+        "businessCoverHelp": "તમારા Official Business Page ના ઉપર દેખાશે.",
+        "businessCoverPlaceholder": "કવર ઇમેજ અપલોડ કરો અથવા જનરેટ કરો.",
+        "businessCoverUploaded": "કવર ઇમેજ અપલોડ થઈ",
+        "businessCoverUploadFailed": "કવર અપલોડ નિષ્ફળ ગયું",
+        "generateBusinessCover": "કવર જનરેટ કરો",
+        "regenerateBusinessCover": "કવર ફરી જનરેટ કરો",
+        "businessCoverGenerated": "કવર ઇમેજ જનરેટ થઈ",
+        "businessCoverGenerateFailed": "કવર જનરેટ કરી શક્યાં નહીં"
     }
 }

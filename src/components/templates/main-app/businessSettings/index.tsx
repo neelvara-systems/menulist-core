@@ -299,8 +299,15 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         try {
             const prepared = await prepareMediaImage(file, 'businessLogo');
             setSelectedFile({
+                blob: prepared.blob,
                 crop: prepared.crop,
+                mediaChecksum: prepared.checksum,
+                mediaId: prepared.mediaId,
+                mediaProfile: 'businessLogo',
+                mediaVariant: prepared.primaryVariant,
+                mediaVersion: prepared.version,
                 name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                preparedMedia: prepared,
                 size: prepared.sizeBytes,
                 sourceDataUrl: prepared.sourceDataUrl,
                 sourceName: prepared.sourceName,
@@ -804,6 +811,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         if (selectedFile.url?.includes('base64')) {
             changesToUpload.imageToUpdate = selectedFile.url;
             changesToUpload.imageType = selectedFile.type;
+            changesToUpload.preparedMedia = selectedFile.preparedMedia;
         }
 
         if (
@@ -1238,7 +1246,14 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     setSelectedFile((current) => ({
                         ...current,
                         crop: prepared.crop,
+                        blob: prepared.blob,
+                        mediaChecksum: prepared.checksum,
+                        mediaId: prepared.mediaId,
+                        mediaProfile: 'businessLogo',
+                        mediaVariant: prepared.primaryVariant,
+                        mediaVersion: prepared.version,
                         name: prepared.sourceName || current.name,
+                        preparedMedia: prepared,
                         size: prepared.sizeBytes,
                         sourceDataUrl: prepared.sourceDataUrl || current.sourceDataUrl,
                         sourceName: prepared.sourceName || current.sourceName,

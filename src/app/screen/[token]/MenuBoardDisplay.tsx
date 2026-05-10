@@ -25,6 +25,7 @@ import { QRCode } from "antd";
 import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ScreenAttribution from "./ScreenAttribution";
 
 // Auto-pagination timing (per spec: 15-20 seconds per page)
 const PAGE_DURATION_MS = 18000; // 18 seconds
@@ -512,6 +513,8 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     <span className="offline-pill">Offline Mode</span>
                 )}
             </footer>
+
+            <ScreenAttribution />
 
             <style jsx>{`
                 /* ═══ BASE ═══ */

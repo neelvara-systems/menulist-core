@@ -772,11 +772,14 @@ export default async function FeedbackPage({ params }) {
                     storeName={storeInfo.storeName}
                     feedbackDefaults={storeInfo.feedbackDefaults}
                 />
+                <PublicMenuListAttribution />
             </div>
         </div>
     );
 }
 ```
+
+The form itself must not render its own `Powered by MenuList` line. The public feedback route owns platform attribution through the shared `PublicMenuListAttribution` component so feedback, OBP, menu, and fallback pages use the same `Powered by MenuList. All rights reserved` treatment.
 
 ---
 

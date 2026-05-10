@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Author:** Cascade (Lead Architect)  
-**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update)  
+**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update)
 **Audience:** Developers
 
 ---
@@ -92,6 +92,9 @@ publicPresence?: {
     /** Google review count (owner-entered, e.g. 320). Shown alongside rating. */
     googleReviewCount?: number;
 
+    /** Owner-managed cover image shown at the top of the Official Business Page. */
+    businessCover?: string;
+
     /** Owner-managed business photos. First 3 are shown on OBP; tapping opens the full viewer. */
     photos?: string[];
 
@@ -105,7 +108,12 @@ permanentlyClosed?: boolean;
 
 **No new collections.** OBP reads from `stores/{storeId}` — the same document that already powers the digital menu page.
 
-**Photo storage path:** `stores/obp-photos/{tenantId}/{storeId}/{timestamp}-photo-{index}.jpg` via `src/database/stores/uploadOBPPhoto.ts`.
+**Media storage paths:** OBP cover and gallery uploads use the shared media system:
+
+- Cover: `media/businessCover/{tenantId}/{storeId}/official-page-cover/{mediaId}_hero.webp`
+- Gallery: `media/galleryImage/{tenantId}/{storeId}/gallery-{index}/{mediaId}_full.webp`
+
+Both are wired through `src/database/stores/uploadOBPPhoto.ts` and `src/database/storage/uploadPreparedMediaImage.ts`.
 
 ### Reserved Slug
 

@@ -21,6 +21,7 @@ import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
+import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -37,6 +38,7 @@ import useMasterJobStatus from '@hook/useMasterJobStatus';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
+import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFilePlus, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
@@ -166,6 +168,7 @@ function ProjectsPage() {
     const [projectNameDrafts, setProjectNameDrafts] = useState<Record<string, string>>({});
     const [projectDescriptionDrafts, setProjectDescriptionDrafts] = useState<Record<string, string>>({});
     const [projectFormSourceData, setProjectFormSourceData] = useState<any | null>(null);
+    const [projectImagePreparedForSave, setProjectImagePreparedForSave] = useState<PreparedMediaImage | null>(null);
     const [isTranslatingProjectPublicContent, setIsTranslatingProjectPublicContent] = useState(false);
     const [confirmActionVisible, setConfirmActionVisible] = useState(false);
     const [confirmActionType, setConfirmActionType] = useState<'reset' | 'delete' | null>(null);
@@ -207,15 +210,23 @@ function ProjectsPage() {
     const resolveProjectImageForSave = useCallback(async (
         projectImage?: string | null,
         fallbackUid?: string,
+        prepared?: PreparedMediaImage | null,
     ) => {
         if (!projectImage) return null;
         if (!projectImage.includes('base64')) return projectImage;
 
         const mimeMatch = projectImage.match(/^data:(.*?);base64,/);
         const uploadedUrl = await uploadFile({
+            blob: prepared?.blob,
+            mediaChecksum: prepared?.checksum,
+            mediaId: prepared?.mediaId,
+            mediaProfile: 'projectImage',
+            mediaVariant: prepared?.primaryVariant,
+            mediaVersion: prepared?.version,
+            preparedMedia: prepared,
             uid: fallbackUid || `project-image-${Date.now()}`,
             url: projectImage,
-            type: mimeMatch?.[1] || 'image/jpeg',
+            type: prepared?.mimeType || mimeMatch?.[1] || 'image/jpeg',
         } as any, 'project-images');
 
         return uploadedUrl || null;
@@ -486,6 +497,26 @@ function ProjectsPage() {
         }
     }, [storeDetails?.businessCategory, storeDetails?.businessType, storeContextName, updateProjectImageInLocalState]);
 
+    const applyMenuDerivedBusinessAttributeDefaults = useCallback(async (menuData: { categories?: any[]; items?: any[] } | null | undefined) => {
+        if (!storeDetails?.storeId || !menuData?.items?.length) return;
+        const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(menuData, storeDetails as any);
+        if (!nextBusinessAttributes) return;
+
+        try {
+            await updateStore({
+                id: storeDetails.storeId,
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                businessAttributes: nextBusinessAttributes,
+            });
+            setStoreDetails((previous: any) => previous
+                ? { ...previous, businessAttributes: nextBusinessAttributes }
+                : previous);
+        } catch (error) {
+            console.warn('[Projects] Could not apply menu-derived business attributes', error);
+        }
+    }, [setStoreDetails, storeDetails]);
+
     // Handle job completion - refetch project data since server saved results
     useEffect(() => {
         if (!activeProcessingJobId) {
@@ -509,6 +540,7 @@ function ProjectsPage() {
                     projectId: selectedProject?.projectId || activeProject?.projectId,
                     projectSummary: selectedProject,
                 });
+                void applyMenuDerivedBusinessAttributeDefaults(result.combinedData);
             }
             // Server has already saved the data to the project (first extraction)
             mutateProject(); // Refetch to get updated data
@@ -587,7 +619,7 @@ function ProjectsPage() {
             setComparisonResult(null);
             message.info('Processing was cancelled');
         }
-    }, [activeProcessingJobId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject]);
+    }, [activeProcessingJobId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // EXTRACTION REVIEW SCREEN HANDLERS
@@ -603,13 +635,14 @@ function ProjectsPage() {
             projectId: selectedProject?.projectId || activeProject?.projectId,
             projectSummary: selectedProject,
         });
+        void applyMenuDerivedBusinessAttributeDefaults(previewData);
         setShowReviewScreen(false);
         setComparisonResult(null);
         setActiveProcessingJobId(null);
         setFileProcessingId(null);
         mutateProject(); // Refetch to get updated data
         setShowSuccessModal(true);
-    }, [activeProject, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject]);
+    }, [activeProject, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     const handleReviewDiscard = useCallback(() => {
         console.log('[ExtractionReview] Changes discarded');
@@ -740,6 +773,7 @@ function ProjectsPage() {
             const savedProjectImage = await resolveProjectImageForSave(
                 values.projectImage ?? null,
                 editingProject?.projectId || sanitizedName,
+                projectImagePreparedForSave,
             );
 
             if (editingProject) {
@@ -849,6 +883,7 @@ function ProjectsPage() {
             setIsModalOpen(false);
             form.resetFields();
             setEditingProject(null);
+            setProjectImagePreparedForSave(null);
         } catch (error) {
             console.error('Error handling project:', error);
             message.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
@@ -1003,6 +1038,7 @@ function ProjectsPage() {
         setProjectNameDrafts({});
         setProjectDescriptionDrafts({});
         setProjectFormSourceData(null);
+        setProjectImagePreparedForSave(null);
     }
 
     const openModal = async (project?: ProjectMetadata) => {
@@ -1020,6 +1056,7 @@ function ProjectsPage() {
             setProjectFormSelectedLanguage(selectedLanguage);
             setProjectNameDrafts(nextNameDrafts);
             setProjectDescriptionDrafts(nextDescriptionDrafts);
+            setProjectImagePreparedForSave(null);
             form.setFieldsValue({
                 active: (project as any).active !== false,
                 isDefault: project.isDefault === true,
@@ -1033,6 +1070,7 @@ function ProjectsPage() {
             setProjectFormSelectedLanguage(defaultLanguage);
             setProjectNameDrafts({ [defaultLanguage]: '' });
             setProjectDescriptionDrafts({ [defaultLanguage]: '' });
+            setProjectImagePreparedForSave(null);
             form.resetFields();
             form.setFieldsValue({
                 active: true,
@@ -2312,6 +2350,7 @@ function ProjectsPage() {
                         [projectFormSelectedLanguage]: value,
                     }))}
                     onGenerateProjectImage={handleGenerateProjectImageForForm}
+                    onProjectImagePrepared={setProjectImagePreparedForSave}
                     onTranslatePublicContent={() => void handleTranslateProjectPublicContent()}
                     onSubmit={() => form.validateFields().then(handleProjectEdit)}
                     onReset={() => {

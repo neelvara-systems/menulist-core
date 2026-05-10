@@ -1,7 +1,7 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectLanguageLabel } from '@lib/localization/projectContent';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
-import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { Button, Flex, Form, FormInstance, Input, Modal, Select, Switch, message, theme, Typography } from "antd";
@@ -32,6 +32,7 @@ interface ProjectEditModalProps {
     onLanguageChange: (languageCode: string) => void;
     onNameChange: (value: string) => void;
     onGenerateProjectImage?: () => Promise<string | null>;
+    onProjectImagePrepared?: (prepared: PreparedMediaImage | null) => void;
     onTranslatePublicContent?: () => void;
     referenceDescription: string;
     referenceLanguage: string;
@@ -56,6 +57,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     onLanguageChange,
     onNameChange,
     onGenerateProjectImage,
+    onProjectImagePrepared,
     onTranslatePublicContent,
     referenceDescription,
     referenceLanguage,
@@ -92,6 +94,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         try {
             const prepared = await prepareMediaImage(file, 'projectImage');
             form.setFieldValue('projectImage', prepared.dataUrl);
+            onProjectImagePrepared?.(prepared);
             setProjectImageDraft({
                 crop: prepared.crop,
                 fileName: prepared.sourceName || file.name,
@@ -119,8 +122,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 message.warning('Add menu items before generating a menu image.');
                 return;
             }
-            form.setFieldValue('projectImage', generatedImage);
-            setProjectImageDraft(null);
+            const prepared = await prepareMediaImage(generatedImage, 'projectImage', {
+                fileName: 'generated-menu-image.webp',
+            });
+            form.setFieldValue('projectImage', prepared.dataUrl);
+            onProjectImagePrepared?.(prepared);
+            setProjectImageDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || 'generated-menu-image.webp',
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
             message.success('Menu image generated');
         } catch (error: any) {
             message.error(error?.message || 'Failed to generate menu image');
@@ -282,6 +293,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             onAdjust={() => setIsProjectImageAdjustOpen(true)}
                             onRemove={projectImage ? () => {
                                 form.setFieldValue('projectImage', null);
+                                onProjectImagePrepared?.(null);
                                 setProjectImageDraft(null);
                             } : undefined}
                             onSelectFile={(file) => { void handleProjectImageSelect(file); }}
@@ -309,6 +321,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             initialCrop={projectImageDraft?.crop}
             onApply={(prepared) => {
                 form.setFieldValue('projectImage', prepared.dataUrl);
+                onProjectImagePrepared?.(prepared);
                 setProjectImageDraft({
                     crop: prepared.crop,
                     fileName: prepared.sourceName || projectImageDraft?.fileName,

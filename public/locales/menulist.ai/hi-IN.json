@@ -519,7 +519,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "अपने MenuList सबडोमेन को मैनेज करें और तैयार होने पर कस्टम डोमेन जोड़ें।",
         "officialPageSubtitle": "अपनी आधिकारिक मौजूदगी पर ग्राहकों को दिखने वाले पब्लिक पेज विवरण नियंत्रित करें।",
-        "checkAvailabilityFailed": "उपलब्धता जांची नहीं जा सकी"
+        "checkAvailabilityFailed": "उपलब्धता जांची नहीं जा सकी",
+        "businessCover": "कवर इमेज",
+        "businessCoverHelp": "आपके Official Business Page के ऊपर दिखाई देती है।",
+        "businessCoverPlaceholder": "कवर इमेज अपलोड करें या जनरेट करें।",
+        "businessCoverUploaded": "कवर इमेज अपलोड हो गई",
+        "businessCoverUploadFailed": "कवर अपलोड विफल रहा",
+        "generateBusinessCover": "कवर जनरेट करें",
+        "regenerateBusinessCover": "कवर फिर से जनरेट करें",
+        "businessCoverGenerated": "कवर इमेज जनरेट हो गई",
+        "businessCoverGenerateFailed": "कवर जनरेट नहीं हो सका"
     },
     "SEO": {
         "title": "SEO और AEO",

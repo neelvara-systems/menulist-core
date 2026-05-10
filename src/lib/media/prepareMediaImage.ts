@@ -77,7 +77,7 @@ export interface PrepareMediaImageOptions {
 
 const BYTES_PER_KB = 1024;
 const BYTES_PER_MB = 1024 * 1024;
-const MIN_USABLE_SOURCE_EDGE = 32;
+const MIN_PREPARED_OUTPUT_DIMENSION = 96;
 const PREPARED_MEDIA_VERSION = 1;
 
 function estimateDataUrlSize(dataUrl: string): number {
@@ -692,16 +692,12 @@ export async function prepareMediaImage(
         ? estimateDataUrlSize(source)
         : source.size;
 
-    if (img.naturalWidth < MIN_USABLE_SOURCE_EDGE || img.naturalHeight < MIN_USABLE_SOURCE_EDGE) {
-        throw new Error('Use a clear image. This file is too small to prepare.');
-    }
-
     const maxBytes = profile.maxOutputSizeKB * BYTES_PER_KB;
     let dimension = profile.maxDimension;
     let quality = profile.quality;
     let bestResult: ReturnType<typeof renderProfileImage> | null = null;
 
-    while (dimension >= profile.minDimension) {
+    while (dimension >= MIN_PREPARED_OUTPUT_DIMENSION) {
         quality = profile.quality;
         while (quality >= profile.minQuality) {
             const result = renderProfileImage(
@@ -742,11 +738,31 @@ export async function prepareMediaImage(
         dimension = Math.floor(dimension * 0.86);
     }
 
-    throw new Error(
-        bestResult
-            ? `${profile.label} could not be prepared under ${profile.maxOutputSizeKB}KB. Use a simpler or smaller image.`
-            : 'Could not prepare image.',
+    if (!bestResult) {
+        throw new Error('Could not prepare image.');
+    }
+
+    const renderedVariants = renderProfileVariants(
+        img,
+        profile,
+        aspectRatio,
+        bestResult.dimension,
+        bestResult.quality,
+        options.crop ? crop : undefined,
     );
+
+    return buildPreparedMediaImage({
+        aspectRatio,
+        crop,
+        imageType,
+        originalHeight: img.naturalHeight,
+        originalSize,
+        originalWidth: img.naturalWidth,
+        profile,
+        renderedVariants,
+        sourceDataUrl,
+        sourceName,
+    });
 }
 
 export function toPreparedUploadName(

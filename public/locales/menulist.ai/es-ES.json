@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "Gestiona tu subdominio de MenuList y conecta un dominio personalizado cuando estés listo.",
         "officialPageSubtitle": "Controla los detalles de la página pública que ven los clientes en tu presencia oficial.",
-        "checkAvailabilityFailed": "No se pudo comprobar la disponibilidad"
+        "checkAvailabilityFailed": "No se pudo comprobar la disponibilidad",
+        "businessCover": "Imagen de portada",
+        "businessCoverHelp": "Se muestra en la parte superior de tu Official Business Page.",
+        "businessCoverPlaceholder": "Sube o genera una imagen de portada.",
+        "businessCoverUploaded": "Imagen de portada subida",
+        "businessCoverUploadFailed": "No se pudo subir la portada",
+        "generateBusinessCover": "Generar portada",
+        "regenerateBusinessCover": "Regenerar portada",
+        "businessCoverGenerated": "Imagen de portada generada",
+        "businessCoverGenerateFailed": "No se pudo generar la portada"
     },
     "SEO": {
         "title": "SEO and AEO",

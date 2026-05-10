@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { LuClipboard, LuCrop, LuImagePlus, LuRefreshCcw, LuTrash2, LuUpload } from 'react-icons/lu';
+import { LuClipboard, LuCrop, LuEye, LuImagePlus, LuRefreshCcw, LuTrash2, LuUpload } from 'react-icons/lu';
 import { theme } from 'antd';
 import {
     getMediaImageCardFrameMaxWidth,
@@ -23,11 +23,13 @@ interface MediaImageCardProps {
     imageUrl?: string | null;
     isBusy?: boolean;
     onAdjust?: () => void;
+    onPreview?: () => void;
     onRemove?: () => void;
     onReset?: () => void;
     onSelectFile?: (file: File) => void | Promise<void>;
     placeholderDescription?: React.ReactNode;
     placeholderTitle?: React.ReactNode;
+    previewLabel?: string;
     removeLabel?: string;
     replaceLabel?: string;
     resetLabel?: string;
@@ -57,11 +59,13 @@ const MediaImageCard: React.FC<MediaImageCardProps> = ({
     imageUrl,
     isBusy,
     onAdjust,
+    onPreview,
     onRemove,
     onReset,
     onSelectFile,
     placeholderDescription = 'Drop an image here, paste one, or choose a file.',
     placeholderTitle = 'Upload image',
+    previewLabel = 'Preview',
     removeLabel = 'Remove',
     replaceLabel = 'Replace',
     resetLabel = 'Reset',
@@ -219,6 +223,20 @@ const MediaImageCard: React.FC<MediaImageCardProps> = ({
                                 >
                                     <LuImagePlus size={14} />
                                     {replaceLabel}
+                                </button>
+                            ) : null}
+                            {onPreview ? (
+                                <button
+                                    disabled={disabled || isBusy}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onPreview();
+                                    }}
+                                    style={{ ...actionButtonStyle, pointerEvents: 'auto' }}
+                                    type="button"
+                                >
+                                    <LuEye size={14} />
+                                    {previewLabel}
                                 </button>
                             ) : null}
                             {canShowAdjust ? (

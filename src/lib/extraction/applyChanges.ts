@@ -13,8 +13,9 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { revalidatePublicClientCacheForProject } from '@lib/cache/publicClientCache';
+import { revalidatePublicClientCache, revalidatePublicClientCacheForProject } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { logMOLEvent } from '@lib/pricing/molLogger';
 import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import type { ApplyPlan } from './comparisonEngine.types';
@@ -70,6 +71,15 @@ function findFileIndexByUid(
     targetUid: string
 ): number {
     return files.findIndex(f => f.uid === targetUid);
+}
+
+function getMenuDataFromFiles(files: any[]) {
+    return files.reduce<{ categories: any[]; items: any[] }>((menuData, file) => {
+        const data = file?.extractedData?.data || {};
+        if (Array.isArray(data.categories)) menuData.categories.push(...data.categories);
+        if (Array.isArray(data.items)) menuData.items.push(...data.items);
+        return menuData;
+    }, { categories: [], items: [] });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -289,6 +299,23 @@ export async function applyExtractionChanges(
         if (Object.keys(updatePayload).length > 0) {
             await updateDoc(projectRef, updatePayload);
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
+
+            try {
+                const storeRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(session.sId));
+                const storeSnap = await getDoc(storeRef);
+                const storeData = storeSnap.exists() ? storeSnap.data() : null;
+                const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(
+                    getMenuDataFromFiles(files),
+                    storeData,
+                );
+
+                if (nextBusinessAttributes) {
+                    await updateDoc(storeRef, { businessAttributes: nextBusinessAttributes });
+                    await revalidatePublicClientCache(session.sId, 'applyExtractionBusinessAttributes');
+                }
+            } catch (error) {
+                console.warn('[applyExtractionChanges] Could not apply menu-derived business attributes', error);
+            }
         }
 
         // Mark job as completed (separate doc, not project)

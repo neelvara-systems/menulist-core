@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "قم بإدارة النطاق الفرعي الخاص بـ MenuList وربط نطاق مخصص عندما تكون جاهزًا.",
         "officialPageSubtitle": "تحكم في تفاصيل الصفحة العامة التي يراها العملاء ضمن حضورك الرسمي.",
-        "checkAvailabilityFailed": "تعذر التحقق من التوفر"
+        "checkAvailabilityFailed": "تعذر التحقق من التوفر",
+        "businessCover": "صورة الغلاف",
+        "businessCoverHelp": "تظهر في أعلى صفحة النشاط الرسمية.",
+        "businessCoverPlaceholder": "ارفع صورة غلاف أو أنشئ واحدة.",
+        "businessCoverUploaded": "تم رفع صورة الغلاف",
+        "businessCoverUploadFailed": "فشل رفع الغلاف",
+        "generateBusinessCover": "إنشاء غلاف",
+        "regenerateBusinessCover": "إعادة إنشاء الغلاف",
+        "businessCoverGenerated": "تم إنشاء صورة الغلاف",
+        "businessCoverGenerateFailed": "تعذر إنشاء الغلاف"
     },
     "SEO": {
         "title": "SEO and AEO",

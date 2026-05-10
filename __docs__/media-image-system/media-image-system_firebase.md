@@ -8,12 +8,13 @@ Existing Firestore write paths remain. Storage writes for media-system images no
 
 | Flow | Storage write | Firestore write |
 | --- | --- | --- |
-| Menu item image | 1 Blob upload to `media/menuItem/{tId}/{sId}/...` | Existing project save |
-| Project image | 1 Blob upload to `media/projectImage/{tId}/{sId}/...` | Existing project summary/project metadata write |
-| Menu background | 1 Blob upload to `media/menuBackground/{tId}/{sId}/...` on publish | Existing project publish write |
-| Business logo | 1 Blob upload to `media/businessLogo/{tId}/{sId}/...` when logo changes | Existing store update write |
-| Official Business Page gallery image | 1 Blob upload to `media/galleryImage/{tId}/{sId}/...` when photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
-| Digital screen slide | 1 Blob upload to `media/digitalScreenSlide/{tId}/{sId}/...` when owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
+| Menu item image | 4 Blob uploads to `media/menuItem/{tId}/{sId}/...` for thumb/small/medium/large | Existing project save |
+| Project image | 2 Blob uploads to `media/projectImage/{tId}/{sId}/...` for card/hero | Existing project summary/project metadata write |
+| Menu background | 2 Blob uploads to `media/menuBackground/{tId}/{sId}/...` for mobile/desktop on publish | Existing project publish write |
+| Business logo | 2 Blob uploads to `media/businessLogo/{tId}/{sId}/...` for thumb/full when logo changes | Existing store update write |
+| Official Business Page business cover | 2 Blob uploads to `media/businessCover/{tId}/{sId}/...` for card/hero when the cover is uploaded, generated, or adjusted | Existing store `publicPresence.businessCover` update |
+| Official Business Page gallery image | 2 Blob uploads to `media/galleryImage/{tId}/{sId}/...` for thumb/full when photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
+| Digital screen slide | 2 Blob uploads to `media/digitalScreenSlide/{tId}/{sId}/...` for desktop/full when owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
 
 ## Reads
 
@@ -21,7 +22,7 @@ No new Firestore reads are added by the media preparation layer.
 
 ## Deletes
 
-Official Business Page gallery replacements and removals queue the previously saved photo URL and delete the old Storage object after the related store save succeeds. Failed deletes are logged and do not roll back the saved store update.
+Official Business Page cover/gallery replacements and removals queue the previously saved Storage URL and delete the old Storage object after the related store save succeeds. Failed deletes are logged and do not roll back the saved store update.
 
 ## Cost Control
 
@@ -31,7 +32,7 @@ The shared preparation layer reduces Storage and public bandwidth by resizing an
 - backgrounds target 800KB or lower
 - logos target 350KB or lower with gentler quality
 
-The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Existing single-URL Firestore fields are preserved to avoid a schema migration in this implementation, so the primary variant URL is persisted by current DAL paths.
+The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Profile-aware saves upload all named variants, while existing single-URL Firestore fields are preserved to avoid a schema migration in this implementation. The primary variant URL is persisted by current DAL paths.
 
 Local `dataUrl` values are preview/form-state only. Profile-aware saves convert to Blob before Firebase upload and do not call `uploadString(data_url)`.
 
@@ -41,7 +42,7 @@ Prepared public media should not overwrite the same object path. New image conte
 
 Current status:
 
-- Project, item, menu background, OBP gallery, business logo, and digital screen uploads use immutable `media/{profile}/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{extension}` paths.
+- Project, item, menu background, OBP business cover, OBP gallery, business logo, and digital screen uploads use immutable `media/{profile}/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{extension}` paths.
 - Firebase Storage rules allow writes to `media/{profile}/{tId}/{sId}/...` only for the authenticated owner store and only for known media profiles.
 - Future media asset documents should use the same canonical path helper.
 

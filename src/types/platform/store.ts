@@ -395,6 +395,9 @@ export type StoreDataType = {
         // ── BUSINESS PHOTOS (ADR-13: first 3 are OBP preview; full set opens in viewer) ──
         // @see __docs__/official-business-page/obp-infrastructure-freeze-plan.md §Priority 2
 
+        /** Owner-managed Official Business Page cover image. Shown as the first visual on the public page. */
+        businessCover?: string;
+
         /** Owner-managed business photos. OBP previews the first 3; tapping a photo opens the full viewer. */
         photos?: string[];
 

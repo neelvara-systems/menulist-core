@@ -1,3 +1,5 @@
+import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
+
 export interface GlobalAddressType {
     label: string; //home | office | other
     addressLine: string;
@@ -17,6 +19,7 @@ export type UserUploadedFileType = {
     mediaProfile?: string;
     mediaVariant?: string;
     mediaVersion?: number;
+    preparedMedia?: PreparedMediaImage;
     source?: string;
     name?: string;
     size?: number;

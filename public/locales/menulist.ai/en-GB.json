@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "Manage your MenuList subdomain and connect a custom domain when you are ready.",
         "officialPageSubtitle": "Control the public business page details customers see across your official presence.",
-        "checkAvailabilityFailed": "Could not check availability"
+        "checkAvailabilityFailed": "Could not check availability",
+        "businessCover": "Cover Image",
+        "businessCoverHelp": "Shown at the top of your Official Business Page.",
+        "businessCoverPlaceholder": "Upload or generate a cover image.",
+        "businessCoverUploaded": "Cover image uploaded",
+        "businessCoverUploadFailed": "Cover upload failed",
+        "generateBusinessCover": "Generate cover",
+        "regenerateBusinessCover": "Regenerate cover",
+        "businessCoverGenerated": "Cover image generated",
+        "businessCoverGenerateFailed": "Could not generate cover"
     },
     "SEO": {
         "title": "SEO and AEO",

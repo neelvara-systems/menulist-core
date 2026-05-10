@@ -190,6 +190,7 @@ function MenuPageNew({
     const categoryTabsContainerRef = useRef<HTMLDivElement | null>(null);
     const categoryTabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
     const activeCategoryIdRef = useRef<string | null>(null);
+    const scrollSpyFrameRef = useRef<number | null>(null);
     const categoryNavigationLockRef = useRef<{
         id: string;
         timeoutId: number | null;
@@ -285,7 +286,6 @@ function MenuPageNew({
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
     const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
-    const [stickyControlsRepaintTick, setStickyControlsRepaintTick] = useState(0);
     const selectedItemRef = useRef<any>(null);
 
     useEffect(() => {
@@ -566,7 +566,8 @@ function MenuPageNew({
     useEffect(() => {
         if (!enableScrollSpy) return;
 
-        const handleScroll = () => {
+        const updateActiveCategoryFromScroll = () => {
+            scrollSpyFrameRef.current = null;
             const container = getActiveScrollContainer();
             const scrollOriginTop = container?.getBoundingClientRect().top || 0;
             const targetTop = scrollOriginTop + stickyControlsOffset + 8;
@@ -606,12 +607,21 @@ function MenuPageNew({
             }
         };
 
+        const handleScroll = () => {
+            if (scrollSpyFrameRef.current !== null) return;
+            scrollSpyFrameRef.current = window.requestAnimationFrame(updateActiveCategoryFromScroll);
+        };
+
         const container = getActiveScrollContainer();
         window.addEventListener('scroll', handleScroll, { passive: true });
         container?.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
+        updateActiveCategoryFromScroll();
 
         return () => {
+            if (scrollSpyFrameRef.current !== null) {
+                window.cancelAnimationFrame(scrollSpyFrameRef.current);
+                scrollSpyFrameRef.current = null;
+            }
             window.removeEventListener('scroll', handleScroll);
             container?.removeEventListener('scroll', handleScroll);
         };
@@ -702,6 +712,7 @@ function MenuPageNew({
             documents.set(item, buildPublicMenuSearchDocument(item, {
                 category,
                 includePrices: showItemPrices,
+                includePrecomputedTerms: false,
                 businessType: effectiveBusinessType,
                 businessCategory: storeDetails?.businessCategory,
             }));
@@ -988,17 +999,6 @@ function MenuPageNew({
         }
     }, [getMenuBasePath, previewMode]);
 
-    const handlePdpClosed = useCallback(() => {
-        if (selectedItemRef.current) return;
-
-        setIsSearchFocused(false);
-        setStickyControlsRepaintTick((current) => current + 1);
-        window.requestAnimationFrame(() => {
-            window.dispatchEvent(new Event('scroll'));
-            window.dispatchEvent(new Event('resize'));
-        });
-    }, []);
-
     // G14 - Track selected item for popstate handler (avoids stale closure)
     // G14 - Handle browser back button (popstate event)
     useEffect(() => {
@@ -1225,11 +1225,8 @@ function MenuPageNew({
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
-        isolation: 'isolate',
-        transform: stickyControlsRepaintTick % 2 === 0 ? 'translateZ(0)' : 'translate3d(0, 0, 0)',
-        WebkitTransform: stickyControlsRepaintTick % 2 === 0 ? 'translateZ(0)' : 'translate3d(0, 0, 0)',
-        backfaceVisibility: 'hidden',
-        WebkitBackfaceVisibility: 'hidden',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
     };
     const stickyControlsTopCoverStyle: React.CSSProperties = {
         position: 'absolute',
@@ -1275,6 +1272,8 @@ function MenuPageNew({
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
         WebkitOverflowScrolling: 'touch',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
     };
     const categoryNavRadius = Math.max(4, moodConfig.categoryStyle.borderRadius ?? 0);
     const categoryNavBackground = moodConfig.categoryStyle.background !== 'transparent'
@@ -1370,6 +1369,8 @@ function MenuPageNew({
         border: `${moodConfig.itemStyle.borderWidth || 1}px solid ${moodConfig.itemStyle.borderColor}`,
         borderRadius: moodConfig.itemStyle.borderRadius,
         cursor: 'pointer',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
         transition: 'transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease',
     });
 
@@ -1495,7 +1496,7 @@ function MenuPageNew({
                         }}
                     />
                     {/* Sticky command layer: retrieval first, section navigation second */}
-                    <div key={`menu-sticky-controls-${stickyControlsRepaintTick}`} style={stickyControlsStyle}>
+                    <div data-menu-sticky-controls style={stickyControlsStyle}>
                         {stickyControlsTopBuffer > 0 && (
                             <div aria-hidden="true" style={stickyControlsTopCoverStyle} />
                         )}
@@ -2017,6 +2018,10 @@ function MenuPageNew({
                                                     background: moodConfig.itemStyle.background,
                                                     color: moodConfig.accentColor,
                                                     fontFamily: moodConfig.bodyFont,
+                                                    fontSize: 13,
+                                                    lineHeight: '18px',
+                                                    userSelect: 'none',
+                                                    WebkitUserSelect: 'none',
                                                     cursor: 'pointer',
                                                 }}
                                             >
@@ -2034,6 +2039,10 @@ function MenuPageNew({
                                                         background: moodConfig.itemStyle.background,
                                                         color: moodConfig.bodyColor,
                                                         fontFamily: moodConfig.bodyFont,
+                                                        fontSize: 13,
+                                                        lineHeight: '18px',
+                                                        userSelect: 'none',
+                                                        WebkitUserSelect: 'none',
                                                         cursor: 'pointer',
                                                     }}
                                                 >
@@ -2135,7 +2144,6 @@ function MenuPageNew({
             <PDPModal
                 item={selectedItem}
                 onClose={handleModalClose}
-                onClosed={handlePdpClosed}
                 language={activeLanguage}
                 moodConfig={moodConfig}
                 projectData={projectData}

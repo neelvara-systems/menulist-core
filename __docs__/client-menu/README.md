@@ -135,6 +135,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
+- The sticky command row must not use compositor transform hacks; scroll-spy category updates are frame-throttled so normal vertical scrolling does not make the row vibrate.
 - The compact top-row language control shows only the language initials; full language names remain inside the language picker.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - The `Sections` navigator header stays compact; close controls keep their tap target without creating a tall heading band.
@@ -145,13 +146,17 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and render image frames only when an item has an image.
 - Public image rendering normalizes legacy and current stored image shapes before cards, featured choices, PDP galleries, and metadata read item images.
-- PDP close waits for the item-history back event when the item URL was pushed, then forces a targeted sticky command-row repaint after scroll lock is released so iPhone PWAs do not leave stale hidden or unclickable controls at the top of the menu.
+- PDP close waits for the item-history back event when the item URL was pushed, then restores scroll without synthetic scroll/resize events so iPhone PWAs do not move the category rail while returning to the menu.
+- PDP close must not remount the sticky command row or dispatch synthetic scroll events; featured item PDPs close like regular item PDPs without moving the horizontal category rail.
 - Large PDP content stays inside a capped scrollable modal/sheet, and the close control remains reachable while the item detail content scrolls.
 - Item detail uses a centered modal on desktop and a bottom sheet on mobile, with contain-fit images, gallery controls, and owner-enabled category identity.
 - Back-to-top is isolated from item cards underneath it; it scrolls only on completed tap/click and does not trigger PDP for the covered item.
 - Footer business actions use compact icon/text chips while keeping platform attribution quiet.
 - The common Call / WhatsApp / Directions set stays in one compact row; extra actions can wrap instead of crowding.
 - Platform attribution remains quiet infrastructure attribution through `PublicMenuListAttribution` and uses the same compact `Powered by MenuList. All rights reserved` treatment as other public pages.
+- Customer-facing menu and category controls are non-selectable to avoid accidental text selection while tapping; footer identity and policy content remain selectable.
+- Public menu viewport locks mobile pinch zoom on the client surface to match the owner app shell and avoid accidental two-finger zoom states inside installed PWAs.
+- Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
 - Compact multi-language payloads preserve the resolved initial render language description, not just the raw query language, so menus that default to English keep English descriptions on first load.
 
@@ -161,9 +166,12 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-10 | Sticky search row stability: removed sticky-row transform hints and frame-throttled scroll-spy updates to reduce scroll vibration |
+| 2026-05-10 | Interaction/search hardening: featured PDP close no longer moves the category rail, public menu pinch zoom is locked, menu/category text selection is suppressed, and short-token search matching is stricter |
+| 2026-05-10 | Logo and attribution alignment: menu/OBP logos render without extra wrapper borders, and public branding stays on the shared `Powered by MenuList. All rights reserved` treatment |
 | 2026-05-10 | Public menu hardening: exact visible-name search ranking, project-scoped language persistence, compact top language button, single-row primary footer actions, centered special note, and aligned MenuList attribution |
 | 2026-05-10 | Multi-language payload hardening: compact public menus now preserve the resolved initial render language description when no `?lang=` query is present |
-| 2026-05-10 | PDP close path hardened for top-of-menu iPhone/PWA cases by letting history back close the modal and then repainting the sticky command row after scroll lock releases |
+| 2026-05-10 | PDP close path hardened for top-of-menu iPhone/PWA cases by letting history back close the modal without remounting or synthetically scrolling the sticky command row |
 | 2026-05-09 | Sections popup header height reduced while preserving the close tap target |
 | 2026-05-09 | Expanded sticky search now removes the parent flex gap while side controls are hidden, so no right-side spacing artifact remains |
 | 2026-05-09 | Public menu analytics now bypasses the authenticated DAL wrapper and writes through the local coalescing queue first |

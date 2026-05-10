@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Author:** Cascade (Lead Architect)  
-**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update)  
+**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update)
 **Audience:** CEO, PM, Clients (non-technical)
 
 ---
@@ -57,11 +57,12 @@
 ### In-Scope
 
 - Auto-generated identity page at subdomain root
-- Business identity: logo, name, descriptor, open/closed status, "Known for" cue
+- Business identity: business cover image, logo, name, descriptor, open/closed status, "Known for" cue
 - Above-fold trust strip: price range, area/city, service modes (dine-in/takeaway/delivery)
 - Primary CTA: "View Menu" → opens existing digital menu (with OBP→menu conversion tracking)
 - Quick actions: Call, WhatsApp, Directions, Reserve, Order
 - Google review reference: rating badge + link to Google reviews (NOT hosted reviews)
+- Business cover image: owner-uploaded or AI-generated widescreen image shown at the top of OBP
 - Business photos: owner-managed photos; first 3 preview on OBP, tapping opens the full viewer
 - Utility cards split service modes, payment options, dietary options, and amenities for mobile scanning
 - Info block: address, today's hours
@@ -127,6 +128,7 @@
 
 ```
 ┌─────────────────────────────┐
+│   [Business cover image]     │  ← Optional 16:9 cover
 │         [Logo]              │  ← Circle/square, 80px
 │     Business Name           │  ← Bold h1
 │   "Modern Indian Kitchen"   │  ← Descriptor, muted, max 40 chars
@@ -173,6 +175,7 @@
 | ----- | -------------------------------------------------------- | -------- |
 | FR-01 | OBP auto-generated for every store with name + phone     | P0       |
 | FR-02 | Shows logo, name, descriptor, open/closed status         | P0       |
+| FR-02a | Shows optional business cover image above identity      | P1       |
 | FR-03 | "View Menu" CTA opens digital menu at `/menu` route      | P0       |
 | FR-04 | Call, WhatsApp, Directions, Google reviews, feedback, reserve, and order quick action buttons with owner visibility controls | P0       |
 | FR-05 | Address and today's hours displayed                      | P0       |

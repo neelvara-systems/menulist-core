@@ -6,7 +6,8 @@ import { getMediaImageProfile, type MediaImageType } from '@lib/media/imageProfi
  * Enforces image size limits per Digital Menu Output Constitution.
  * Goal: Menus must be usable within 3 seconds on 4G.
  * 
- * These are hard limits - not suggestions.
+ * These are budget targets for callers that explicitly need a rejection result.
+ * Prepared media uploads use best-effort compression instead of blocking owners.
  */
 
 export const PERFORMANCE_BUDGET = {
@@ -57,8 +58,9 @@ function resolveMaxImageSizeKB(type: ImageBudgetType, stage: 'source' | 'final')
 /**
  * Validate image upload against performance budget
  * 
- * Constitutional enforcement - images exceeding budget are rejected,
- * not warned about.
+ * Legacy explicit validation - images exceeding budget are rejected only when a caller
+ * chooses to call this helper. The media preparation pipeline does not use this as an
+ * owner-facing blocker.
  * 
  * @param file - File to validate
  * @param existingImagesKB - Total size of existing images in KB

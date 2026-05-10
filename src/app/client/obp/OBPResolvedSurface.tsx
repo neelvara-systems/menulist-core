@@ -1,5 +1,4 @@
 import MenuBreadcrumb from "@/app/client/[[...slug]]/MenuBreadcrumb";
-import TempStatusBanner from "@atoms/TempStatusBanner";
 import { FEATURE_FLAGS } from "@config/features";
 import GlobalLanguagesList from "@data/languages";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
@@ -9,6 +8,7 @@ import {
     appendPublicLanguageParam,
     getNextIntlLocaleForPublicLanguage,
     getPublicLanguageOptions,
+    normalizePublicLanguageCode,
     resolveStorePublicLanguage,
     shouldExposePublicLanguageSwitcher,
 } from "@lib/localization/publicRenderLanguage";
@@ -470,6 +470,7 @@ export default function OBPResolvedSurface({
         ? getStoreContextName(store, brandName)
         : brandName;
     const logo = store?.logo;
+    const businessCover = typeof pp.businessCover === 'string' ? pp.businessCover.trim() : '';
     const firstLetter = storeName.charAt(0);
     const hoursOutput = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
         ? resolveHoursOutput({
@@ -500,8 +501,10 @@ export default function OBPResolvedSurface({
     const obpUrl = isOutletSurface
         ? `${masterBase}${outletPrefix}`
         : masterBase;
+    const requestedLanguageCode = normalizePublicLanguageCode(requestedLanguage);
+    const shouldCarryLanguageToMenu = Boolean(requestedLanguageCode) || showLanguageSwitcher;
     const withCurrentLanguage = (url: string): string => (
-        showLanguageSwitcher ? appendPublicLanguageParam(url, contentLanguage) : url
+        shouldCarryLanguageToMenu ? appendPublicLanguageParam(url, contentLanguage) : url
     );
     const buildProjectUrl = (slug?: string): string => {
         if (isOutletSurface) {
@@ -686,9 +689,15 @@ export default function OBPResolvedSurface({
                         />
                     ) : null}
 
-                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && store?.tempStatus && (
-                        <TempStatusBanner tempStatus={store.tempStatus} variant="pill" />
-                    )}
+                    {businessCover ? (
+                        <div className={styles.businessCover}>
+                            <img
+                                alt={`${storeName} cover`}
+                                src={businessCover}
+                                loading="eager"
+                            />
+                        </div>
+                    ) : null}
 
                     <div className={styles.desktopLayout}>
                         <section className={styles.identity} aria-label={storeName}>
@@ -897,13 +906,15 @@ export default function OBPResolvedSurface({
                         <div className={styles.utilityStack}>
                             {allHours && !isPermanentlyClosed && (
                                 <section className={`${styles.info} ${styles.utilityInfo} ${styles.businessHoursInfo}`} aria-label={t('publicBusinessHours')}>
-                                    <h2 className={styles.groupTitle}>
-                                        <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCalendarDays, '📅')}</span>
-                                        {t('publicBusinessHours')}
-                                    </h2>
-                                    <div className={styles.hoursList}>
-                                        {allHours}
-                                    </div>
+                                    <details className={styles.details}>
+                                        <summary className={styles.groupTitle}>
+                                            <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCalendarDays, '📅')}</span>
+                                            <span>{t('publicBusinessHours')}</span>
+                                        </summary>
+                                        <div className={styles.hoursList}>
+                                            {allHours}
+                                        </div>
+                                    </details>
                                 </section>
                             )}
 

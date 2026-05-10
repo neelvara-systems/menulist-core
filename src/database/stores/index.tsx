@@ -131,9 +131,11 @@ const updateLogoImage = async (data) => {
     let logoUrl: any = '';
     let imageType: any = data.imageType;
     let imageToUpdate: any = data.imageToUpdate;
+    let preparedMedia: any = data.preparedMedia;
 
     delete data.imageToUpdate;
     delete data.imageType;
+    delete data.preparedMedia;
     const docId = data.storeId//which is storeId
     const docRef = await getDocRef(`${docId}`);
 
@@ -144,6 +146,7 @@ const updateLogoImage = async (data) => {
                 contentType: imageType,
                 dataUrl: imageToUpdate,
                 entityId: docId,
+                prepared: preparedMedia,
                 profile: 'businessLogo',
                 storeId: docId || session.sId,
                 tenantId: data.tenantId || session.tId,

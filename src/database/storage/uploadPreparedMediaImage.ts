@@ -1,7 +1,7 @@
 import uploadBlobToStorage from "@database/storage/uploadBlobToStorage";
 import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } from "@lib/media/imageProfiles";
 import { buildMediaStoragePath, getDataUrlBlob, getMediaDataFingerprint, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
-import type { PreparedMediaImage } from "@lib/media/prepareMediaImage";
+import type { PreparedMediaImage, PreparedMediaVariant } from "@lib/media/prepareMediaImage";
 
 interface UploadPreparedMediaImageData {
     blob?: Blob;
@@ -75,27 +75,53 @@ export async function uploadPreparedMediaImage({
         || mediaId
         || `${profile}_${blobFingerprint}`;
     const checksum = prepared?.checksum || mediaChecksum || blobFingerprint;
-    const extension = getMediaFileExtension(uploadContentType);
-    const path = buildMediaStoragePath({
-        entityId: normalizeId(entityId, 'asset'),
-        extension,
-        mediaId: uploadMediaId,
-        profile,
-        storeId: normalizeId(storeId, 'store'),
-        tenantId: normalizeId(tenantId, 'tenant'),
-        variant: selectedVariantId,
-    });
-
-    return uploadBlobToStorage({
-        blob: uploadBlob,
-        contentType: uploadContentType,
-        customMetadata: {
-            checksum,
+    const normalizedEntityId = normalizeId(entityId, 'asset');
+    const normalizedStoreId = normalizeId(storeId, 'store');
+    const normalizedTenantId = normalizeId(tenantId, 'tenant');
+    const version = String(prepared?.version ?? 1);
+    const uploadVariant = (variantId: MediaImageVariantId, variantBlob: Blob, variantContentType: string) => {
+        const extension = getMediaFileExtension(variantContentType);
+        const path = buildMediaStoragePath({
+            entityId: normalizedEntityId,
+            extension,
             mediaId: uploadMediaId,
             profile,
-            variant: selectedVariantId,
-            version: String(prepared?.version ?? 1),
-        },
-        path,
-    });
+            storeId: normalizedStoreId,
+            tenantId: normalizedTenantId,
+            variant: variantId,
+        });
+
+        return uploadBlobToStorage({
+            blob: variantBlob,
+            contentType: variantContentType,
+            customMetadata: {
+                checksum,
+                mediaId: uploadMediaId,
+                profile,
+                variant: variantId,
+                version,
+            },
+            path,
+        });
+    };
+
+    const preparedVariants = prepared?.variants
+        ? Object.values(prepared.variants).filter((entry): entry is PreparedMediaVariant => Boolean(entry?.blob))
+        : [];
+
+    if (preparedVariants.length > 0) {
+        const uploadedVariants = await Promise.all(preparedVariants.map(async (preparedVariant) => ({
+            id: preparedVariant.id,
+            url: await uploadVariant(
+                preparedVariant.id,
+                preparedVariant.blob,
+                preparedVariant.mimeType || preparedVariant.blob.type || uploadContentType,
+            ),
+        })));
+        return uploadedVariants.find((uploadedVariant) => uploadedVariant.id === selectedVariantId)?.url
+            || uploadedVariants[0]?.url
+            || '';
+    }
+
+    return uploadVariant(selectedVariantId, uploadBlob, uploadContentType);
 }

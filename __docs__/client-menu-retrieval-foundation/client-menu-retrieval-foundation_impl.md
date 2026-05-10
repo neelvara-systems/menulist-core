@@ -44,6 +44,7 @@ Update `src/app/client/[[...slug]]/page.tsx` to:
 - keep primary-language description for fallback.
 - scope customer menu page/language/scroll state by store/project and keep language switcher local preferences project-specific so installed PWAs do not inherit stale global language state.
 - resolve the initial render language before compacting the SSR payload so default English menus do not fall back to another language's description when no `?lang=` query is present.
+- keep short-token search conservative: aliases remain business-category scoped, token-prefix matches replace broad substring matches, bounded typo distance starts at longer query tokens, document indexing uses controlled Indic word aliases instead of character-folding every stored sentence, and generated `_publicSearch.terms` are not re-read as source text during server index generation or live client matching.
 
 ### 4. Structured Data
 

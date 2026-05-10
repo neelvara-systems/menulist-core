@@ -1192,6 +1192,7 @@ export const uploadScreenSlide = async (
                     entityId: data.mediaEntityId || slideId,
                     mediaChecksum: data.mediaChecksum,
                     mediaId: data.mediaId,
+                    prepared: data.preparedMedia,
                     profile: 'digitalScreenSlide',
                     storeId: session.sId,
                     tenantId: session.tId,

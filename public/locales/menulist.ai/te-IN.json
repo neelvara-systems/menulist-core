@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "మీ MenuList సబ్‌డొమైన్‌ను నిర్వహించి, సిద్ధమైనప్పుడు కస్టమ్ డొమైన్‌ను కనెక్ట్ చేయండి.",
         "officialPageSubtitle": "మీ అధికారిక ప్రదర్శనలో కస్టమర్లు చూసే పబ్లిక్ పేజీ వివరాలను నియంత్రించండి.",
-        "checkAvailabilityFailed": "లభ్యతను తనిఖీ చేయలేకపోయాం"
+        "checkAvailabilityFailed": "లభ్యతను తనిఖీ చేయలేకపోయాం",
+        "businessCover": "కవర్ ఇమేజ్",
+        "businessCoverHelp": "మీ Official Business Page పైభాగంలో కనిపిస్తుంది.",
+        "businessCoverPlaceholder": "కవర్ ఇమేజ్ అప్లోడ్ చేయండి లేదా జనరేట్ చేయండి.",
+        "businessCoverUploaded": "కవర్ ఇమేజ్ అప్లోడ్ అయింది",
+        "businessCoverUploadFailed": "కవర్ అప్లోడ్ విఫలమైంది",
+        "generateBusinessCover": "కవర్ జనరేట్ చేయండి",
+        "regenerateBusinessCover": "కవర్ మళ్లీ జనరేట్ చేయండి",
+        "businessCoverGenerated": "కవర్ ఇమేజ్ జనరేట్ అయింది",
+        "businessCoverGenerateFailed": "కవర్ జనరేట్ కాలేదు"
     },
     "SEO": {
         "title": "SEO and AEO",

@@ -115,6 +115,18 @@ You can add business photos (storefront, interior, or signature dish). The first
 4. Choose an image from your phone or computer
 5. To remove a photo, click the delete button on it
 
+### How to Add a Cover Image
+
+Your cover image appears at the top of your official business page.
+
+1. Go to **More** → **Official Business Page**
+2. Find **Cover Image**
+3. Upload a photo, or tap **Generate cover**
+4. Tap **Adjust** if the framing needs correction
+5. Tap **Save Changes**
+
+You can replace, remove, or regenerate the cover later from the same place.
+
 ### How to Add "Known For" Text
 
 1. Go to **Settings** → **Business Profile** → **Official Page Settings**
@@ -147,6 +159,7 @@ If you don't want to show the Call, WhatsApp, or Directions button:
 When someone opens your link, they see:
 
 - Your **logo** and **business name**
+- Your **cover image** at the top, if added
 - **Short description** and **"Known for"** text (if set)
 - **Price range**, **area**, and **service modes** (dine-in, takeaway, etc.)
 - Whether you're **open or closed** right now (with closing time)

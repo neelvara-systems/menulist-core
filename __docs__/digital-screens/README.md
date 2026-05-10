@@ -15,6 +15,8 @@ Digital Screens extends MenuList's authority into the physical store environment
 
 Both modes use the same data pipeline, same URL base. Owner opens a link on their TV. That's it. Content management IS menu management — there's no separate "screen content" to manage.
 
+Both screen modes keep the same quiet public attribution as OBP and menu pages: `Powered by MenuList. All rights reserved`.
+
 **Problem solved:** Shop TVs showing outdated slideshows or blank screens because nobody remembers to update them. And the 70%+ of restaurants that need a full menu board on screen, not just promotional slides.
 
 ---
@@ -52,6 +54,7 @@ src/lib/screen/                             # Utilities, slide generators, rende
 src/app/screen/[token]/page.tsx             # Server component (SSR, DAL fetch, mode routing)
 src/app/screen/[token]/ScreenDisplay.tsx    # Highlights mode client (rotation, cache, listener)
 src/app/screen/[token]/MenuBoardDisplay.tsx # Menu Board mode client (v2.0 — full menu, pagination)
+src/app/screen/[token]/ScreenAttribution.tsx # Shared quiet public attribution
 src/app/api/screen/seen/route.ts            # Daily seen signal endpoint
 src/database/campaigns/index.ts             # DAL: getScreenDataByToken + 8 screen functions
 src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)

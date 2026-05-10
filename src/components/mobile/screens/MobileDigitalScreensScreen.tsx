@@ -2,7 +2,7 @@
 
 import { getScreenState, initializeScreenState, removePinnedSlide, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
-import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
+import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
@@ -24,6 +24,7 @@ interface MobileDigitalScreensScreenProps {
 
 type AdjustableUploadedFile = UserUploadedFileType & {
     crop?: MediaImageCropIntent;
+    prepared?: PreparedMediaImage;
     sourceDataUrl?: string;
     sourceName?: string;
 };
@@ -146,8 +147,15 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         try {
             const prepared = await prepareMediaImage(file, 'digitalScreenSlide');
             await handleUploadSlide({
+                blob: prepared.blob,
                 crop: prepared.crop,
+                mediaChecksum: prepared.checksum,
+                mediaId: prepared.mediaId,
+                mediaProfile: 'digitalScreenSlide',
+                mediaVariant: prepared.primaryVariant,
+                mediaVersion: prepared.version,
                 name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                prepared,
                 size: prepared.sizeBytes,
                 sourceDataUrl: prepared.sourceDataUrl,
                 sourceName: prepared.sourceName,
@@ -372,8 +380,15 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 onApply={(prepared) => {
                     setPendingSlide((current) => current ? ({
                         ...current,
+                        blob: prepared.blob,
                         crop: prepared.crop,
+                        mediaChecksum: prepared.checksum,
+                        mediaId: prepared.mediaId,
+                        mediaProfile: 'digitalScreenSlide',
+                        mediaVariant: prepared.primaryVariant,
+                        mediaVersion: prepared.version,
                         name: prepared.sourceName || current.name,
+                        prepared,
                         size: prepared.sizeBytes,
                         sourceDataUrl: prepared.sourceDataUrl || current.sourceDataUrl,
                         sourceName: prepared.sourceName || current.sourceName,

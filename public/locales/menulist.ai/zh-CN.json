@@ -121,6 +121,15 @@
         "publicFaqMenuAnswer": "你可以在 {url} 查看完整菜单。菜单始终保持最新。",
         "publicPrivacy": "隐私",
         "publicTerms": "条款",
-        "publicRefund": "退款"
+        "publicRefund": "退款",
+        "businessCover": "封面图片",
+        "businessCoverHelp": "显示在你的 Official Business Page 顶部。",
+        "businessCoverPlaceholder": "上传或生成封面图片。",
+        "businessCoverUploaded": "封面图片已上传",
+        "businessCoverUploadFailed": "封面上传失败",
+        "generateBusinessCover": "生成封面",
+        "regenerateBusinessCover": "重新生成封面",
+        "businessCoverGenerated": "封面图片已生成",
+        "businessCoverGenerateFailed": "无法生成封面"
     }
 }

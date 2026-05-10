@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "உங்கள் MenuList துணை டொமைனை நிர்வகித்து, தயாரானபோது தனிப்பயன் டொமைனை இணைக்கவும்.",
         "officialPageSubtitle": "உங்கள் அதிகாரப்பூர்வ முன்னிலையில் வாடிக்கையாளர்கள் பார்க்கும் பொது பக்க விவரங்களை கட்டுப்படுத்தவும்.",
-        "checkAvailabilityFailed": "கிடைப்பதை சரிபார்க்க முடியவில்லை"
+        "checkAvailabilityFailed": "கிடைப்பதை சரிபார்க்க முடியவில்லை",
+        "businessCover": "கவர் படம்",
+        "businessCoverHelp": "உங்கள் Official Business Page மேல் பகுதியில் காட்டப்படும்.",
+        "businessCoverPlaceholder": "கவர் படத்தை பதிவேற்றவும் அல்லது உருவாக்கவும்.",
+        "businessCoverUploaded": "கவர் படம் பதிவேற்றப்பட்டது",
+        "businessCoverUploadFailed": "கவர் பதிவேற்றம் தோல்வியடைந்தது",
+        "generateBusinessCover": "கவர் உருவாக்கு",
+        "regenerateBusinessCover": "கவரை மீண்டும் உருவாக்கு",
+        "businessCoverGenerated": "கவர் படம் உருவாக்கப்பட்டது",
+        "businessCoverGenerateFailed": "கவர் உருவாக்க முடியவில்லை"
     },
     "SEO": {
         "title": "SEO and AEO",

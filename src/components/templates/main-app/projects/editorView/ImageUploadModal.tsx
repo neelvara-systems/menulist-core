@@ -436,9 +436,16 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 const prepared = await prepareMediaImage(file as File, 'menuItem');
 
                 const newImage: UserUploadedFileType = {
+                    blob: prepared.blob,
+                    mediaChecksum: prepared.checksum,
+                    mediaId: prepared.mediaId,
+                    mediaProfile: 'menuItem',
+                    mediaVariant: prepared.primaryVariant,
+                    mediaVersion: prepared.version,
                     uid: file.uid,
                     url: prepared.dataUrl,
                     name: toPreparedUploadName(file.name, prepared.mimeType, 'item-image'),
+                    preparedMedia: prepared,
                     type: prepared.mimeType,
                     size: prepared.sizeBytes,
                 };

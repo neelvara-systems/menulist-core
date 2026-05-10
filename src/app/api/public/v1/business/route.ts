@@ -91,6 +91,7 @@ export async function GET(request: NextRequest) {
             timeZone: storeData.timeZone || null,
             businessDayEndTime: storeData.businessDayEndTime || null,
             logo: storeData.logo || null,
+            businessCover: storeData.publicPresence?.businessCover || null,
             socialMedia: storeData.socialMedia || null,
             tempStatus: storeData.tempStatus ? {
                 type: storeData.tempStatus.type,

@@ -877,6 +877,11 @@ export async function generateViewport(): Promise<Viewport> {
 
     return {
         themeColor: storeData?.publicPresence?.accentColor || APP_THEME_COLOR,
+        width: 'device-width',
+        initialScale: 1,
+        maximumScale: 1,
+        userScalable: false,
+        viewportFit: 'cover',
     };
 }
 

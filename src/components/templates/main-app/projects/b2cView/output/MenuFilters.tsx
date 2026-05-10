@@ -315,11 +315,13 @@ function MenuFilters({
                                     ? `${Math.max(1, categoryNavBorderWidth)}px solid ${moodConfig.accentColor}50`
                                     : `${categoryNavBorderWidth}px solid ${moodConfig.categoryStyle.borderColor}`,
                                 fontFamily: moodConfig.bodyFont,
-                                fontSize: 15,
-                                lineHeight: '20px',
+                                fontSize: 14,
+                                lineHeight: '18px',
                                 fontWeight: isActive ? 700 : 500,
                                 textAlign: 'left',
                                 textDecoration: 'none',
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
                                 cursor: 'pointer',
                             }}
                         >

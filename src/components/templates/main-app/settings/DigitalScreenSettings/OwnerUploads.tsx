@@ -80,7 +80,14 @@ export default function OwnerUploads({
             // Upload via DAL (follows existing pattern from projects/tickets)
             await uploadScreenSlide(
                 {
+                    blob: prepared.blob,
+                    mediaChecksum: prepared.checksum,
+                    mediaId: prepared.mediaId,
+                    mediaProfile: 'digitalScreenSlide',
+                    mediaVariant: prepared.primaryVariant,
+                    mediaVersion: prepared.version,
                     name: preparedName,
+                    preparedMedia: prepared,
                     size: prepared.sizeBytes,
                     type: prepared.mimeType,
                     uid: `slide-${Date.now()}`,

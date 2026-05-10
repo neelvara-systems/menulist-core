@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Firebase Cost Tracking
 
-**Date:** May 1, 2026
+**Date:** May 10, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -8,7 +8,7 @@
 ## Summary
 
 - **Collections Used:** `stores` (existing), `analytics` (existing — OBP uses virtual `projectId='obp'`)
-- **Storage Buckets:** None (logo already in storage, referenced by URL)
+- **Storage Buckets:** Firebase Storage for optional OBP cover and gallery photos through the shared media system
 - **Cloud Functions:** Shared nightly scheduler `computeDecisionBlocksScores` runs the OBP rollup helper
 - **Estimated Monthly Cost:** Negligible (~₹2-5/month per 1000 active stores including analytics)
 
@@ -47,7 +47,7 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Deleted | Soft/Hard | Notes                                                                  |
 | --------- | ---------- | ------- | --------- | ------------ | --------- | ---------------------------------------------------------------------- |
-| None      | —          | —       | —         | —            | —         | OBP has no deletable data. Store deactivation hides OBP automatically. |
+| Delete replaced OBP cover/gallery object | Firebase Storage | Owner saves after removing or replacing cover/gallery image | Rare | 1 object per replaced URL | Hard | Store update succeeds first; failed object cleanup is logged and does not roll back the saved publicPresence field. |
 
 ---
 
@@ -55,7 +55,8 @@
 
 | Operation | Path Pattern | Trigger | Size | Notes                                                                          |
 | --------- | ------------ | ------- | ---- | ------------------------------------------------------------------------------ |
-| None new  | —            | —       | —    | Logo already stored. OBP references existing `store.logo` URL. No new uploads. |
+| Upload business cover | `media/businessCover/{tId}/{sId}/official-page-cover/{mediaId}_hero.webp` | Owner uploads, adjusts, or generates OBP cover | 1 prepared image | Saved URL stored in `stores/{storeId}.publicPresence.businessCover`. |
+| Upload business photo | `media/galleryImage/{tId}/{sId}/gallery-{index}/{mediaId}_full.webp` | Owner uploads or adjusts OBP gallery photo | 1 prepared image | Saved URL stored in `stores/{storeId}.publicPresence.photos[]`. |
 
 ---
 
@@ -95,6 +96,7 @@
 - **`unstable_cache` with 60s TTL:** Reduces actual Firestore reads by ~98% under load
 - **Per-store cache tags:** `store-{storeId}` enables instant invalidation only for changed stores
 - **No new collections:** Zero additional Firestore index costs
+- **Prepared media uploads:** OBP cover/gallery images are resized and compressed before Storage upload, avoiding raw phone-photo payloads on public pages
 - **One write per tracked event:** OBP analytics use the same daily analytics doc as menu analytics with atomic increments. No separate summary write happens on the customer request path.
 - **Language usage piggybacks on existing writes:** OBP language page-open counters ride on the existing OBP view write. Only dwell-accepted language switches create an additional write.
 - **One owner read-model read:** Settled OBP dashboard data is precomputed nightly into `_obp_dashboard_summary`, avoiding 7-30 daily reads per owner dashboard visit.
@@ -127,7 +129,7 @@ Assumptions:
 | Firestore Reads (OBP page)   | 1,500,000 (1000 stores × 1500) | ₹5/100K reads   | ₹75              |
 | Firestore Reads (menu check) | 1,500,000                      | ₹5/100K reads   | ₹75              |
 | Firestore Writes (settings)  | 2,000 (1000 × 2)               | ₹15/100K writes | ₹0.30            |
-| Storage                      | 0 (uses existing)              | —               | ₹0               |
+| Storage                      | Optional cover/gallery media   | Depends on owner uploads | Low; prepared images target media budgets |
 | Cloud Functions              | 0                              | —               | ₹0               |
 | **Total**                    |                                |                 | **~₹150/month**  |
 
@@ -146,7 +148,7 @@ Assumptions:
 | `getStoreById()`           | `src/database/stores/index.ts` (existing)         | Read (cached)  |
 | `updateStore()`            | `src/database/stores/index.ts` (existing)         | Write (merge)  |
 
-**No new DAL functions needed.** OBP reuses 100% existing data access functions.
+**No new Firestore DAL functions needed.** OBP reuses existing store updates. `uploadOBPCover()` and `uploadOBPPhoto()` are Storage helpers only; both feed URLs into the existing `updateStore()` path.
 
 ---
 
@@ -160,4 +162,4 @@ Assumptions:
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** May 1, 2026
+**Last Updated:** May 10, 2026

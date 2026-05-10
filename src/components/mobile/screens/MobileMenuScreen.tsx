@@ -5,6 +5,7 @@ import { getOwnerLabels } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
+import { updateStore } from '@database/stores';
 import { updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
@@ -21,6 +22,7 @@ import { getDataUrlMimeType } from '@lib/media/imageProfiles';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
+import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { normalizeCategoryIconValue } from '@lib/categoryIcons';
@@ -413,7 +415,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
     const tShare = useTranslations('MobileShare');
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'menu'), [storeDetails]);
     const {
         isLoading: loadingProjects,
@@ -581,6 +583,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         storeDetails?.businessType,
         updateProjectImageInMobileCache,
     ]);
+
+    const applyMenuDerivedBusinessAttributeDefaults = useCallback(async (menuDataLike: { categories?: any[]; items?: any[] } | null | undefined) => {
+        if (!storeDetails?.storeId || !menuDataLike?.items?.length) return;
+        const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(menuDataLike, storeDetails as any);
+        if (!nextBusinessAttributes) return;
+
+        try {
+            await updateStore({
+                id: storeDetails.storeId,
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                businessAttributes: nextBusinessAttributes,
+            });
+            setStoreDetails((previous: any) => previous
+                ? { ...previous, businessAttributes: nextBusinessAttributes }
+                : previous);
+        } catch (error) {
+            console.warn('[MobileMenu] Could not apply menu-derived business attributes', error);
+        }
+    }, [setStoreDetails, storeDetails]);
 
     const clearPersistTimers = useCallback(() => {
         if (persistTimerRef.current) {
@@ -1040,6 +1062,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     projectId: activeProcessingState?.projectId || menuData?.projectId,
                     projectSummary: selectedProjectSummary,
                 });
+                void applyMenuDerivedBusinessAttributeDefaults(result.combinedData);
             }
             setActiveProcessingState(null);
             setShowReviewSheet(false);
@@ -1117,6 +1140,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         jobIsCompleted,
         jobIsFailed,
         jobIsPreviewReady,
+        applyMenuDerivedBusinessAttributeDefaults,
         maybeAutoGenerateProjectImage,
         menuData,
         refreshCachedProject,
@@ -3750,6 +3774,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                             projectId: menuData.projectId,
                             projectSummary: selectedProjectSummary,
                         });
+                        void applyMenuDerivedBusinessAttributeDefaults(previewData);
                         setShowReviewSheet(false);
                         setComparisonResult(null);
                         setActiveProcessingState(null);

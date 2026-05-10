@@ -17,7 +17,7 @@ Every saved image has one media purpose. That purpose decides:
 
 ## Image Profiles
 
-| Type | Default ratio | Allowed ratios | Max source | Output target | Public budget |
+| Type | Default ratio | Allowed ratios | Max source | Output target | Public target |
 | --- | --- | --- | --- | --- | --- |
 | Menu item | 1:1 | 1:1, 4:3 | 15MB | 1200px max | 500KB |
 | Category image | 4:3 | 4:3, 1:1 | 15MB | 1200px max | 500KB |
@@ -30,7 +30,7 @@ Every saved image has one media purpose. That purpose decides:
 
 Menu cover is intentionally not a separate profile. If a menu needs a cover-like preview, use `projectImage` so menu previews, share cards, and discovery cards do not drift into separate image contracts.
 
-Owner source images are not rejected for being below the final output size or having the wrong orientation. A normal phone photo is accepted for a menu background, then framed inside the mobile menu profile rectangle and prepared into MenuList's final dimensions and KB budget. The source-dimension guard exists only to reject corrupted or icon-sized files that are too small to prepare at all.
+Owner source images are not rejected for being below the final output size, being blurry, or having the wrong orientation. A normal downloaded reference image or phone photo is accepted, then framed inside the profile rectangle and prepared into MenuList's final dimensions and compression target. Owner-facing rejections are limited to unsupported file type, empty/corrupt image data, or the raw source safety cap.
 
 ## Canonical Prepared Image Contract
 
@@ -54,6 +54,8 @@ interface PreparedMediaImage {
 
 Existing save flows persist the primary public URL field for compatibility, but the upload boundary is Blob-based and profile-aware. The canonical identity, version, checksum, focal point, and variant names are part of the frozen contract for future media documents, CDN migration, AI regeneration, and cleanup tooling.
 
+Owner-facing previews must render the prepared primary output, not the raw source image. If a flow uploads immediately, the card may use the prepared local `dataUrl` as a temporary preview while Firebase Storage returns the public URL, but that `dataUrl` must not be persisted as public truth. The public screen should display the same framed/cropped visual the owner approved.
+
 ## Variant Policy
 
 Every profile has named variants even when the current UI initially saves one URL:
@@ -69,7 +71,7 @@ Every profile has named variants even when the current UI initially saves one UR
 | Digital screen slide | desktop, full |
 | Gallery image | thumb, full |
 
-The current single persisted URL remains the profile primary variant. Future renderers can move to the named variant URL map without changing the profile identifiers.
+Profile-aware saves upload all named variants to deterministic sibling paths. The current single persisted URL remains the profile primary variant for compatibility. Future renderers can move to the named variant URL map without changing the profile identifiers.
 
 ## Format Rules
 
@@ -143,7 +145,7 @@ Manual Adjust is available only where owner framing control adds value without s
 - Business logo
 - Official Business Page gallery image
 - Digital screen slide
-- Future business cover
+- Official Business Page business cover
 
 The flow is upload, automatic preparation, preview, optional Adjust, then save. Adjust is profile-locked and supports drag, zoom, rotate, and reset. Owners do not control final output size, output format, or compression.
 

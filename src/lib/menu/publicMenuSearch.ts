@@ -32,6 +32,7 @@ interface PublicMenuBusinessContext {
 interface PublicMenuSearchOptions extends PublicMenuBusinessContext {
     category?: any;
     includePrices?: boolean;
+    includePrecomputedTerms?: boolean;
 }
 
 interface AttachSearchIndexOptions extends PublicMenuBusinessContext {
@@ -71,7 +72,7 @@ const TOKEN_ALIASES: Record<string, string[]> = {
     panner: ['paneer', 'panir', 'paneir', 'paner'],
     biryani: ['biriyani', 'biryanee'],
     biriyani: ['biryani', 'biryanee'],
-    chai: ['chay', 'chaai', 'tea'],
+    chai: ['chay', 'chaai'],
     masala: ['masaala', 'masla'],
     dosa: ['dosai', 'dose'],
     idli: ['idly', 'idlee'],
@@ -97,6 +98,8 @@ const CATEGORY_TOKEN_ALIASES: Record<string, Record<string, string[]>> = {
     food: {
         coffee: ['cofee', 'kofi'],
         pizza: ['piza', 'pitsa'],
+        chai: ['tea'],
+        tea: ['chai', 'chay', 'chaai'],
         burger: ['burgur'],
         sandwich: ['sandwitch'],
         noodles: ['noodle'],
@@ -408,7 +411,10 @@ const addTokenVariants = (tokens: Set<string>, token: string, businessCategory?:
     }
 };
 
-const buildVariantsFromText = (value: string): string[] => {
+const buildVariantsFromText = (
+    value: string,
+    options: { includeIndicCharacterFold?: boolean } = {},
+): string[] => {
     const variants = new Set<string>();
     const normalized = normalizePublicMenuSearchText(value);
     if (normalized) variants.add(normalized);
@@ -416,7 +422,9 @@ const buildVariantsFromText = (value: string): string[] => {
     const indicAliasText = normalizePublicMenuSearchText(applyIndicWordAliases(value));
     if (indicAliasText) variants.add(indicAliasText);
 
-    const transliterated = normalizePublicMenuSearchText(transliterateIndicToLatin(value));
+    const transliterated = options.includeIndicCharacterFold
+        ? normalizePublicMenuSearchText(transliterateIndicToLatin(value))
+        : '';
     if (transliterated) variants.add(transliterated);
 
     const folded = phoneticFold(transliterated || normalized);
@@ -434,7 +442,7 @@ const extractPublicSearchFields = (
         ...collectLocalizedValues(item?.description),
         ...collectLocalizedValues(options.category?.name),
         ...collectUnknownText(item?.tags),
-        ...collectUnknownText(item?._publicSearch?.terms),
+        ...(options.includePrecomputedTerms === false ? [] : collectUnknownText(item?._publicSearch?.terms)),
     ];
 
     for (const attribute of item?.attributes || []) {
@@ -502,7 +510,7 @@ export function buildPublicMenuSearchQuery(
     raw: string,
     options: PublicMenuBusinessContext = {},
 ): PublicMenuSearchQuery {
-    const textVariants = buildVariantsFromText(raw);
+    const textVariants = buildVariantsFromText(raw, { includeIndicCharacterFold: true });
     const text = textVariants.join(' ');
     const tokens = tokenize(text).slice(0, MAX_QUERY_TOKENS);
     const businessCategory = getResolvedBusinessCategory(options);
@@ -522,8 +530,8 @@ export function buildPublicMenuSearchQuery(
 }
 
 const getLevenshteinThreshold = (token: string): number => {
-    if (token.length >= 7) return 2;
-    if (token.length >= 4) return 1;
+    if (token.length >= 8) return 2;
+    if (token.length >= 5) return 1;
     return 0;
 };
 
@@ -557,7 +565,7 @@ const tokenMatches = (queryVariants: string[], documentTokens: string[], documen
     for (const queryToken of queryVariants) {
         if (documentTokenSet.has(queryToken)) return true;
 
-        if (queryToken.length >= 3 && documentTokens.some((docToken) => docToken.includes(queryToken))) {
+        if (queryToken.length >= 3 && documentTokens.some((docToken) => docToken.startsWith(queryToken))) {
             return true;
         }
 
@@ -575,6 +583,11 @@ const tokenMatches = (queryVariants: string[], documentTokens: string[], documen
     return false;
 };
 
+const containsSearchPhrase = (documentText: string, queryPhrase: string): boolean => {
+    if (!documentText || !queryPhrase) return false;
+    return ` ${documentText} `.includes(` ${queryPhrase} `);
+};
+
 export function matchesPublicMenuSearchDocument(
     document: PublicMenuSearchDocument,
     query: PublicMenuSearchQuery,
@@ -582,7 +595,7 @@ export function matchesPublicMenuSearchDocument(
     if (!query.tokens.length) return true;
     if (!document.tokens.length && !document.text) return false;
 
-    if (query.text.length >= 3 && document.text.includes(query.text)) return true;
+    if (query.text.length >= 3 && containsSearchPhrase(document.text, query.text)) return true;
 
     const documentTokenSet = new Set(document.tokens);
     return query.tokenVariants.every((queryVariants) =>
@@ -607,7 +620,7 @@ export function rankPublicMenuSearchDocument(
         return 1;
     }
 
-    if (queryPhrases.some((queryPhrase) => document.text.includes(queryPhrase))) {
+    if (queryPhrases.some((queryPhrase) => containsSearchPhrase(document.text, queryPhrase))) {
         return 2;
     }
 
@@ -638,6 +651,7 @@ export function attachPublicMenuSearchIndex(
             const document = buildPublicMenuSearchDocument(item, {
                 category,
                 includePrices: options.includePrices,
+                includePrecomputedTerms: false,
                 businessType: options.businessType,
                 businessCategory: options.businessCategory,
             });

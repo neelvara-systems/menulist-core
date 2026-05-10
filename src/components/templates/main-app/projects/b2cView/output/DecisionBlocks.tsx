@@ -786,6 +786,8 @@ export default function DecisionBlocks({
                                     position: 'relative',
                                     scrollSnapAlign: isSingleBlock ? 'none' : 'start',
                                     textAlign: 'left',
+                                    userSelect: 'none',
+                                    WebkitUserSelect: 'none',
                                     width: isSingleBlock
                                         ? '100%'
                                         : itemImage

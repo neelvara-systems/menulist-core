@@ -19,6 +19,7 @@ import { QRCode } from "antd";
 import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ScreenAttribution from "./ScreenAttribution";
 
 // Build version for debugging (hardening)
 const SCREEN_BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_ID || 'dev';
@@ -275,6 +276,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                         </div>
                     )}
                 </div>
+                <ScreenAttribution />
                 <style jsx>{`
                     .screen-container {
                         width: 100vw;
@@ -367,6 +369,8 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     ))}
                 </div>
             )}
+
+            <ScreenAttribution />
 
             {/* Styles */}
             <style jsx global>{`

@@ -4,10 +4,11 @@ import { FEATURE_FLAGS } from '@config/features';
 import type { ObpMenuInfo } from '@/app/client/obp/OBPResolvedSurface';
 import useViewportInfo from '@hook/useViewportInfo';
 import { updateStore } from '@database/stores';
-import { deleteOBPPhotos, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
+import { deleteOBPPhotos, uploadOBPCover, uploadOBPPhoto } from '@database/stores/uploadOBPPhoto';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getBrandName } from '@lib/businessIdentity/names';
+import { generateBusinessCoverCandidate } from '@lib/image/projectImageGeneration';
 import { updateLocalizedText } from '@lib/localization/text';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
@@ -23,6 +24,8 @@ import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    LuArrowLeft,
+    LuArrowRight,
     LuCalendar,
     LuCrop,
     LuExternalLink,
@@ -34,6 +37,7 @@ import {
     LuShoppingBag,
     LuSmile,
     LuPhone,
+    LuSparkles,
     LuStar,
     LuTrash2,
 } from 'react-icons/lu';
@@ -65,6 +69,7 @@ function getInitialPresenceForm(storeDetails: any) {
         googleReviewUrl: initialPresence.googleReviewUrl || '',
         iconVariant: initialPresence.iconVariant || 'icons',
         orderUrl: initialPresence.orderUrl || '',
+        businessCover: initialPresence.businessCover || '',
         photos: initialPresence.photos || [],
         reservationUrl: initialPresence.reservationUrl || '',
         showCall: initialPresence.showCall !== false,
@@ -150,12 +155,22 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const [selectedLanguage, setSelectedLanguage] = useState(getStorePreferredLanguage(storeDetails));
     const [isSaving, setIsSaving] = useState(false);
+    const [isCoverUploading, setIsCoverUploading] = useState(false);
+    const [isCoverGenerating, setIsCoverGenerating] = useState(false);
     const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+    const [coverDraft, setCoverDraft] = useState<{
+        crop?: MediaImageCropIntent;
+        fileName?: string;
+        previewDataUrl?: string;
+        sourceDataUrl?: string;
+    } | null>(null);
     const [photoDrafts, setPhotoDrafts] = useState<Record<number, {
         crop?: MediaImageCropIntent;
         fileName?: string;
+        previewDataUrl?: string;
         sourceDataUrl?: string;
     }>>({});
+    const [isCoverAdjustOpen, setIsCoverAdjustOpen] = useState(false);
     const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
     const [photoDeleteQueue, setPhotoDeleteQueue] = useState<string[]>([]);
     const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
@@ -294,6 +309,104 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         void updatePresence(formData);
     }, [formData, updatePresence]);
 
+    const savePreparedCover = async (
+        prepared: PreparedMediaImage,
+        fallbackDraft?: {
+            fileName?: string;
+            sourceDataUrl?: string;
+        },
+        successMessage = t('businessCoverUploaded'),
+    ) => {
+        if (!session?.tId || !session?.sId) {
+            Toast.show({ content: t('sessionUnavailable'), duration: 1500 });
+            return false;
+        }
+
+        setCoverDraft({
+            crop: prepared.crop,
+            fileName: prepared.sourceName || fallbackDraft?.fileName,
+            previewDataUrl: prepared.dataUrl,
+            sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+        });
+        setIsCoverUploading(true);
+        try {
+            const url = await uploadOBPCover(prepared.blob, { tId: session.tId, sId: session.sId }, prepared);
+            if (formData.businessCover && formData.businessCover !== url) {
+                queuePhotoDelete(formData.businessCover);
+            }
+            setCoverDraft({
+                crop: prepared.crop,
+                fileName: prepared.sourceName || fallbackDraft?.fileName,
+                previewDataUrl: prepared.dataUrl,
+                sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+            });
+            setFormData((previous) => ({ ...previous, businessCover: url }));
+            Toast.show({ content: successMessage, icon: 'success', duration: 1200 });
+        } catch {
+            setCoverDraft((previous) => previous ? {
+                ...previous,
+                previewDataUrl: undefined,
+            } : previous);
+            Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
+        } finally {
+            setIsCoverUploading(false);
+        }
+
+        return false;
+    };
+
+    const handleCoverUpload = async (file: File) => {
+        try {
+            const prepared = await prepareMediaImage(file, 'businessCover');
+            await savePreparedCover(prepared, {
+                fileName: file.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            });
+        } catch {
+            Toast.show({ content: t('businessCoverUploadFailed'), duration: 1500 });
+        }
+
+        return false;
+    };
+
+    const handleGenerateBusinessCover = async () => {
+        if (!storeDetails) return;
+
+        setIsCoverGenerating(true);
+        try {
+            const candidate = await generateBusinessCoverCandidate({
+                businessCategory: storeDetails?.businessCategory,
+                businessType: storeDetails?.businessType,
+                projects: projectsList as any,
+                store: storeDetails as any,
+                storeName: getBrandName(storeDetails as any, 'business'),
+            });
+
+            if (!candidate?.dataUrl) {
+                Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
+                return;
+            }
+
+            const prepared = await prepareMediaImage(candidate.dataUrl, 'businessCover', {
+                fileName: candidate.name,
+            });
+            await savePreparedCover(prepared, {
+                fileName: candidate.name,
+                sourceDataUrl: prepared.sourceDataUrl,
+            }, t('businessCoverGenerated'));
+        } catch {
+            Toast.show({ content: t('businessCoverGenerateFailed'), duration: 1800 });
+        } finally {
+            setIsCoverGenerating(false);
+        }
+    };
+
+    const handleCoverRemove = () => {
+        queuePhotoDelete(formData.businessCover);
+        setCoverDraft(null);
+        setFormData((previous) => ({ ...previous, businessCover: '' }));
+    };
+
     const savePreparedPhoto = async (
         prepared: PreparedMediaImage,
         index: number,
@@ -307,6 +420,15 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
             return false;
         }
 
+        setPhotoDrafts((previous) => ({
+            ...previous,
+            [index]: {
+                crop: prepared.crop,
+                fileName: prepared.sourceName || fallbackDraft?.fileName,
+                previewDataUrl: prepared.dataUrl,
+                sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
+            },
+        }));
         setUploadingIndex(index);
         try {
             const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
@@ -320,11 +442,19 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 [index]: {
                     crop: prepared.crop,
                     fileName: prepared.sourceName || fallbackDraft?.fileName,
+                    previewDataUrl: prepared.dataUrl,
                     sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
                 },
             }));
             setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
         } catch {
+            setPhotoDrafts((previous) => ({
+                ...previous,
+                [index]: {
+                    ...previous[index],
+                    previewDataUrl: undefined,
+                },
+            }));
             Toast.show({ content: t('photoUploadFailed'), duration: 1500 });
         } finally {
             setUploadingIndex(null);
@@ -358,13 +488,29 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         });
         setFormData((previous) => ({ ...previous, photos: nextPhotos.filter(Boolean) }));
     };
+
+    const handlePhotoMove = (index: number, direction: -1 | 1) => {
+        const nextPhotos = formData.photos.filter(Boolean);
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= nextPhotos.length) return;
+
+        [nextPhotos[index], nextPhotos[targetIndex]] = [nextPhotos[targetIndex], nextPhotos[index]];
+        setPhotoDrafts((previous) => {
+            const next = { ...previous };
+            [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+            return next;
+        });
+        setFormData((previous) => ({ ...previous, photos: nextPhotos }));
+    };
     const activePhoto = activePhotoIndex != null ? photoSlots[activePhotoIndex] : '';
     const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
 
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
         setLocalizedDrafts(originalLocalizedDrafts);
+        setCoverDraft(null);
         setPhotoDeleteQueue([]);
+        setIsCoverAdjustOpen(false);
         setActivePhotoIndex(null);
     }, [originalFormData, originalLocalizedDrafts]);
 
@@ -463,6 +609,39 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         value={officialPageUrl}
                     />
                 ) : null}
+
+                <Card>
+                    <Flex gap={10} vertical>
+                        <Text strong>{t('businessCover')}</Text>
+                        <Text type="secondary">{t('businessCoverHelp')}</Text>
+                        <MediaImageCard
+                            accept={getMediaProfileAcceptAttribute('businessCover')}
+                            alt={t('businessCover')}
+                            canAdjust={Boolean(coverDraft?.sourceDataUrl)}
+                            imageType="businessCover"
+                            imageUrl={coverDraft?.previewDataUrl || formData.businessCover}
+                            isBusy={isCoverUploading}
+                            onAdjust={() => setIsCoverAdjustOpen(true)}
+                            onRemove={formData.businessCover ? handleCoverRemove : undefined}
+                            onSelectFile={(file) => { void handleCoverUpload(file); }}
+                            placeholderDescription={t('businessCoverPlaceholder')}
+                            placeholderTitle={t('businessCover')}
+                            showDropHint={false}
+                        />
+                        <Button
+                            block
+                            disabled={isCoverUploading}
+                            loading={isCoverGenerating}
+                            onClick={() => { void handleGenerateBusinessCover(); }}
+                            size="large"
+                        >
+                            <Flex align="center" gap={6} justify="center">
+                                <LuSparkles size={18} />
+                                <Text>{formData.businessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</Text>
+                            </Flex>
+                        </Button>
+                    </Flex>
+                </Card>
 
                 <Card>
                     <Flex gap={10} vertical>
@@ -696,82 +875,51 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 const label = t('photoLabel', { index: index + 1 });
                                 const isUploading = uploadingIndex === index;
 
-                                if (!photo) {
-                                    return (
-                                        <MediaImageCard
-                                            key={index}
-                                            accept={getMediaProfileAcceptAttribute('galleryImage')}
-                                            alt={label}
-                                            aspectRatio="4 / 3"
-                                            imageType="galleryImage"
-                                            isBusy={isUploading}
-                                            onSelectFile={(file) => { void handlePhotoUpload(file, index); }}
-                                            placeholderDescription="Tap to add"
-                                            placeholderTitle={label}
-                                            showDropHint={false}
-                                            size="compact"
-                                        />
-                                    );
-                                }
-
+                                const photoCount = formData.photos.filter(Boolean).length;
                                 return (
-                                    <button
-                                        aria-label={`${label} actions`}
-                                        key={index}
-                                        onClick={() => setActivePhotoIndex(index)}
-                                        style={{
-                                            appearance: 'none',
-                                            background: token.colorFillAlter,
-                                            border: `1px solid ${token.colorBorderSecondary}`,
-                                            borderRadius: 12,
-                                            color: 'inherit',
-                                            cursor: 'pointer',
-                                            display: 'block',
-                                            overflow: 'hidden',
-                                            padding: 0,
-                                            position: 'relative',
-                                            textAlign: 'left',
-                                            width: '100%',
-                                        }}
-                                        type="button"
-                                    >
-                                        <div style={{ aspectRatio: '4 / 3', overflow: 'hidden', position: 'relative', width: '100%' }}>
-                                            <img
-                                                alt={label}
-                                                src={photo}
-                                                style={{
-                                                    display: 'block',
-                                                    height: '100%',
-                                                    objectFit: 'cover',
-                                                    width: '100%',
-                                                }}
-                                            />
-                                            {isUploading ? (
-                                                <Flex
-                                                    align="center"
-                                                    justify="center"
-                                                    style={{
-                                                        background: 'rgba(0,0,0,0.42)',
-                                                        color: '#fff',
-                                                        inset: 0,
-                                                        position: 'absolute',
-                                                    }}
+                                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                                    <MediaImageCard
+                                        accept={getMediaProfileAcceptAttribute('galleryImage')}
+                                        alt={label}
+                                        aspectRatio="4 / 3"
+                                        canAdjust={Boolean(photoDrafts[index]?.sourceDataUrl)}
+                                        imageType="galleryImage"
+                                        imageUrl={photoDrafts[index]?.previewDataUrl || photo}
+                                        isBusy={isUploading}
+                                        onAdjust={photo ? () => setAdjustingPhotoIndex(index) : undefined}
+                                        onPreview={photo ? () => setActivePhotoIndex(index) : undefined}
+                                        onRemove={photo ? () => handlePhotoRemove(index) : undefined}
+                                        onSelectFile={(file) => { void handlePhotoUpload(file, index); }}
+                                        placeholderDescription="Tap to add"
+                                        placeholderTitle={label}
+                                        showDropHint={false}
+                                        size="compact"
+                                    />
+                                        {photo && photoCount > 1 ? (
+                                            <Flex gap={6}>
+                                                <Button
+                                                    block
+                                                    disabled={index === 0 || uploadingIndex != null}
+                                                    fill="outline"
+                                                    onClick={() => handlePhotoMove(index, -1)}
+                                                    size="mini"
+                                                    style={{ paddingInline: 6 }}
                                                 >
-                                                    <DotLoading />
-                                                </Flex>
-                                            ) : null}
-                                            <div
-                                                style={{
-                                                    background: 'linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.58))',
-                                                    inset: 'auto 0 0 0',
-                                                    padding: '22px 10px 8px',
-                                                    position: 'absolute',
-                                                }}
-                                            >
-                                                <Text strong style={{ color: '#fff', fontSize: 13 }}>{label}</Text>
-                                            </div>
-                                        </div>
-                                    </button>
+                                                    <LuArrowLeft size={14} />
+                                                </Button>
+                                                <Button
+                                                    block
+                                                    disabled={index >= photoCount - 1 || uploadingIndex != null}
+                                                    fill="outline"
+                                                    onClick={() => handlePhotoMove(index, 1)}
+                                                    size="mini"
+                                                    style={{ paddingInline: 6 }}
+                                                >
+                                                    <LuArrowRight size={14} />
+                                                </Button>
+                                            </Flex>
+                                        ) : null}
+                                    </div>
                                 );
                             })}
                         </div>
@@ -1027,6 +1175,17 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 title={tShare('officialBusinessLink')}
                 url={withSource(officialPageUrl, 'qr')}
                 visible={isQrSheetOpen}
+            />
+            <MediaImageAdjustModal
+                fileName={coverDraft?.fileName}
+                imageType="businessCover"
+                initialCrop={coverDraft?.crop}
+                onApply={async (prepared) => {
+                    await savePreparedCover(prepared, coverDraft || undefined);
+                }}
+                onClose={() => setIsCoverAdjustOpen(false)}
+                open={isCoverAdjustOpen}
+                sourceDataUrl={coverDraft?.sourceDataUrl}
             />
             <MediaImageAdjustModal
                 fileName={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.fileName : undefined}

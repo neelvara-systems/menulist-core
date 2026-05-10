@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "तुमचा MenuList सबडोमेन व्यवस्थापित करा आणि तयार झाल्यावर कस्टम डोमेन जोडा.",
         "officialPageSubtitle": "तुमच्या अधिकृत उपस्थितीवर ग्राहकांना दिसणाऱ्या सार्वजनिक पानाच्या तपशीलांवर नियंत्रण ठेवा.",
-        "checkAvailabilityFailed": "उपलब्धता तपासता आली नाही"
+        "checkAvailabilityFailed": "उपलब्धता तपासता आली नाही",
+        "businessCover": "कव्हर इमेज",
+        "businessCoverHelp": "तुमच्या Official Business Page च्या वर दिसते.",
+        "businessCoverPlaceholder": "कव्हर इमेज अपलोड करा किंवा जनरेट करा.",
+        "businessCoverUploaded": "कव्हर इमेज अपलोड झाली",
+        "businessCoverUploadFailed": "कव्हर अपलोड अयशस्वी झाले",
+        "generateBusinessCover": "कव्हर जनरेट करा",
+        "regenerateBusinessCover": "कव्हर पुन्हा जनरेट करा",
+        "businessCoverGenerated": "कव्हर इमेज जनरेट झाली",
+        "businessCoverGenerateFailed": "कव्हर जनरेट होऊ शकले नाही"
     },
     "SEO": {
         "title": "SEO and AEO",

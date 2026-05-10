@@ -156,8 +156,6 @@ function PDPModal({
                 if (shouldFixBody) {
                     window.scrollTo(0, scrollY);
                 }
-                document.dispatchEvent(new Event('scroll'));
-                window.dispatchEvent(new Event('scroll'));
             };
 
             html.style.overflow = previousStyles.htmlOverflow;
@@ -170,18 +168,7 @@ function PDPModal({
             body.style.right = previousStyles.bodyRight;
             body.style.width = previousStyles.bodyWidth;
             restoreScrollPosition();
-
-            // Mobile browsers can defer repainting sticky/fixed descendants
-            // after a fixed-body modal closes at scrollY 0. Force a cheap
-            // two-frame repaint so the command row is immediately visible and
-            // clickable instead of waiting for the customer's next scroll.
-            window.requestAnimationFrame(() => {
-                restoreScrollPosition();
-                window.requestAnimationFrame(() => {
-                    window.dispatchEvent(new Event('resize'));
-                    onClosed?.();
-                });
-            });
+            window.requestAnimationFrame(() => onClosed?.());
         };
     }, [item?.id, onClosed]);
 

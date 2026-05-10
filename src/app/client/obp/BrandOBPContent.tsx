@@ -181,6 +181,7 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
     const analyticsPreferences = getResolvedAnalyticsPreferences(store?.analytics);
     const brandName = getBrandName(store, t('publicFallbackBusiness'));
     const logo = store?.logo;
+    const businessCover = typeof pp.businessCover === 'string' ? pp.businessCover.trim() : '';
     const firstLetter = brandName.charAt(0);
 
     return (
@@ -204,6 +205,16 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                         baseUrl={baseUrl}
                         languages={languageOptions}
                     />
+                ) : null}
+
+                {businessCover ? (
+                    <div className={styles.businessCover}>
+                        <img
+                            alt={`${brandName} cover`}
+                            src={businessCover}
+                            loading="eager"
+                        />
+                    </div>
                 ) : null}
 
                 {/* Brand Identity */}

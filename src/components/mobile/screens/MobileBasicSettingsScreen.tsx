@@ -118,12 +118,14 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
             updates.imageToUpdate = selectedLogo.url;
             updates.imageType = selectedLogo.type || 'image/png';
+            updates.preparedMedia = selectedLogo.preparedMedia;
         }
 
         setIsSaving(true);
         const optimisticUpdates = { ...updates };
         delete optimisticUpdates.imageToUpdate;
         delete optimisticUpdates.imageType;
+        delete optimisticUpdates.preparedMedia;
         setStoreDetails((previous: any) => ({ ...previous, ...optimisticUpdates }));
 
         try {
@@ -186,8 +188,15 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
         try {
             const prepared = await prepareMediaImage(file, 'businessLogo');
             setSelectedLogo({
+                blob: prepared.blob,
                 crop: prepared.crop,
+                mediaChecksum: prepared.checksum,
+                mediaId: prepared.mediaId,
+                mediaProfile: 'businessLogo',
+                mediaVariant: prepared.primaryVariant,
+                mediaVersion: prepared.version,
                 name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
+                preparedMedia: prepared,
                 size: prepared.sizeBytes,
                 sourceDataUrl: prepared.sourceDataUrl,
                 sourceName: prepared.sourceName,
@@ -455,8 +464,15 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 initialCrop={selectedLogo?.crop}
                 onApply={(prepared) => {
                     setSelectedLogo((current) => ({
+                        blob: prepared.blob,
                         crop: prepared.crop,
+                        mediaChecksum: prepared.checksum,
+                        mediaId: prepared.mediaId,
+                        mediaProfile: 'businessLogo',
+                        mediaVariant: prepared.primaryVariant,
+                        mediaVersion: prepared.version,
                         name: prepared.sourceName || current?.name || logoAltName,
+                        preparedMedia: prepared,
                         size: prepared.sizeBytes,
                         sourceDataUrl: prepared.sourceDataUrl || current?.sourceDataUrl,
                         sourceName: prepared.sourceName || current?.sourceName,

@@ -484,7 +484,16 @@
         "failedToDeleteTimeSlot": "Failed to delete time slot",
         "domainSettingsSubtitle": "আপনার MenuList সাবডোমেইন পরিচালনা করুন এবং প্রস্তুত হলে কাস্টম ডোমেইন যুক্ত করুন।",
         "officialPageSubtitle": "আপনার অফিসিয়াল উপস্থিতিতে গ্রাহকেরা যে পাবলিক পেজের তথ্য দেখেন তা নিয়ন্ত্রণ করুন।",
-        "checkAvailabilityFailed": "উপলভ্যতা যাচাই করা যায়নি"
+        "checkAvailabilityFailed": "উপলভ্যতা যাচাই করা যায়নি",
+        "businessCover": "কভার ছবি",
+        "businessCoverHelp": "আপনার Official Business Page-এর উপরে দেখানো হয়।",
+        "businessCoverPlaceholder": "কভার ছবি আপলোড করুন বা তৈরি করুন।",
+        "businessCoverUploaded": "কভার ছবি আপলোড হয়েছে",
+        "businessCoverUploadFailed": "কভার আপলোড ব্যর্থ হয়েছে",
+        "generateBusinessCover": "কভার তৈরি করুন",
+        "regenerateBusinessCover": "কভার আবার তৈরি করুন",
+        "businessCoverGenerated": "কভার ছবি তৈরি হয়েছে",
+        "businessCoverGenerateFailed": "কভার তৈরি করা যায়নি"
     },
     "SEO": {
         "title": "SEO and AEO",

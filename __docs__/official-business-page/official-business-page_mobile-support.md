@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Mobile Support Assessment
 
-**Date:** February 15, 2026
+**Date:** May 10, 2026
 
 ---
 
@@ -23,16 +23,18 @@ OBP has TWO surfaces — each assessed separately:
 
 | Gate          | Question                                  | Answer                                                        | Pass/Fail  |
 | ------------- | ----------------------------------------- | ------------------------------------------------------------- | ---------- |
-| **Frequency** | Is this done daily or multiple times/day? | No. OBP settings configured once, rarely changed.             | ❌ FAIL    |
-| **Speed**     | Completes in <5 seconds on mobile?        | Yes (copy link = instant). But settings editing = slower.     | ⚠️ PARTIAL |
-| **Touch**     | Works with thumb-only?                    | Copy link: yes. Color picker + URL fields: awkward on mobile. | ⚠️ PARTIAL |
-| **Value**     | Needed while away from desk?              | Copy/share link: YES. Edit settings: NO.                      | ⚠️ PARTIAL |
+| **Frequency** | Is this done daily or multiple times/day? | Link sharing is frequent. Content setup is occasional. Cover/gallery changes happen when the owner has phone photos. | ⚠️ PARTIAL |
+| **Speed**     | Completes in <5 seconds on mobile?        | Copy/share is instant. Cover upload/generation is one focused action. Long text/link editing is slower but still supported. | ⚠️ PARTIAL |
+| **Touch**     | Works with thumb-only?                    | Yes for link, preview, cover upload/generate, gallery upload, toggles, and simple fields. Color picker remains less ideal. | ⚠️ PARTIAL |
+| **Value**     | Needed while away from desk?              | Yes for sharing, photo/cover updates, and quick public-page corrections. | ✅ PASS |
 
 ### Gate Results
 
-**Full OBP settings editor on mobile:** ❌ FAIL (Frequency gate fails — one-time setup)
+**Full OBP settings editor on mobile:** ✅ IMPLEMENTED with compact controls and shared DAL, because More tab now carries owner-facing public presence management.
 
 **Copy/Share link on mobile:** ✅ PASS (all 4 gates pass for this sub-action)
+
+**Cover/gallery media on mobile:** ✅ PASS. Owners usually have business photos on their phone, and the shared media card keeps upload, generate, adjust, replace, and remove consistent.
 
 ---
 
@@ -44,8 +46,9 @@ OBP has TWO surfaces — each assessed separately:
 | Copy link action       | ✅ DONE — MobileShareScreen | High value, daily use, one-tap action                |
 | Copy message action    | ✅ DONE — OBPLinkCard       | Conversation-ready message for WhatsApp/Instagram    |
 | Dual QR (Share + Menu) | ✅ DONE — OBPLinkCard       | Two QR types with Segmented toggle + download        |
-| OBP settings editor    | ❌ Desktop only             | One-time setup, requires color picker + URL fields   |
-| Photo upload           | ❌ Desktop only             | File upload + crop UI not suitable for mobile        |
+| OBP settings editor    | ✅ Mobile More tab + desktop | Uses same store DAL and compact mobile cards         |
+| Business cover         | ✅ Mobile More tab + desktop | Upload/generate/adjust through shared media system   |
+| Photo upload           | ✅ Mobile More tab + desktop | Shared media card, two-column mobile grid, modal actions |
 | Google review fields   | ❌ Desktop only             | One-time setup, number inputs                        |
 | Descriptor/knownFor    | ❌ Desktop only             | Rare, small text field, not urgent                   |
 
@@ -55,14 +58,19 @@ OBP has TWO surfaces — each assessed separately:
 
 ### What to build:
 
-**MobileShareScreen** (existing screen) — Add:
+**MobileShareScreen** (existing screen) — includes:
 
 - Official link display (prominent, top of screen)
 - Copy link button
 - QR download button
 - "Share via WhatsApp" quick action
 
-**No new mobile screens needed.** The share functionality integrates into the existing MobileShareScreen.
+**Mobile More > Official Business Page** — includes:
+
+- Official page link card
+- Business cover image card with upload, replace, adjust, remove, and Generate/Regenerate
+- Descriptor, known for, special note, links, rating fields, action visibility, policy links
+- Business photo gallery with shared media upload and per-photo action sheet
 
 ### Public OBP Page (customer-facing):
 

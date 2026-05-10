@@ -38,6 +38,26 @@ type GenerateAndSaveProjectImageParams = ProjectImageCandidateParams & {
     summaryData?: Partial<ProjectSummaryData> | null;
 };
 
+type BusinessCoverCandidateParams = {
+    businessCategory?: string | null;
+    businessType?: string | null;
+    projects?: ProjectImageSource[];
+    store: {
+        businessCategory?: string | null;
+        businessType?: string | null;
+        name?: string | Record<string, string> | null;
+        publicPresence?: {
+            descriptor?: string | Record<string, string>;
+            knownFor?: string | Record<string, string>;
+            specialNote?: string | Record<string, string>;
+        };
+        storeId?: string | number | null;
+        tenantName?: string | Record<string, string> | null;
+        [key: string]: any;
+    };
+    storeName?: string | null;
+};
+
 export type GeneratedProjectImageCandidate = {
     dataUrl: string;
     mimeType: string;
@@ -81,6 +101,13 @@ const PROJECT_IMAGE_GENERATION_CONFIG: ImageGenerationConfigType = {
     compositions: ['hero product composition'],
     negativePrompt: 'text, words, letters, logo, watermark, menu text, price list, blurry, distorted',
     agreeToTerms: true,
+};
+
+const BUSINESS_COVER_GENERATION_CONFIG: ImageGenerationConfigType = {
+    ...PROJECT_IMAGE_GENERATION_CONFIG,
+    prompt: 'Generate a professional official business page cover image.',
+    aspectRatio: getMediaImageProfile('businessCover').defaultAspectRatio,
+    negativePrompt: 'text, words, letters, logo, watermark, menu text, price list, blurry, distorted, excessive filters',
 };
 
 const PROJECT_COVER_IMAGE_GUIDANCE_BY_CATEGORY: Record<string, BusinessImageViewConfig> = {
@@ -396,6 +423,52 @@ function buildProjectImageDescription(params: ProjectImageCandidateParams) {
     };
 }
 
+function buildBusinessCoverDescription(params: BusinessCoverCandidateParams) {
+    const storeName = resolveText(params.storeName || params.store.tenantName || params.store.name, 'Business');
+    const publicPresence = params.store.publicPresence || {};
+    const descriptor = resolveText(publicPresence.descriptor, '');
+    const knownFor = resolveText(publicPresence.knownFor, '');
+    const specialNote = resolveText(publicPresence.specialNote, '');
+    const businessType = params.businessType || params.store.businessType || 'business';
+    const businessCategory = params.businessCategory || params.store.businessCategory;
+    const businessGuidance = buildBusinessImageGuidance(businessType, businessCategory);
+    const activeProjects = (params.projects || [])
+        .filter((project) => project?.active !== false && project?.deleted !== true)
+        .slice(0, 5);
+    const projectNames = uniqueNonEmpty(activeProjects.map((project) => resolveText(project.name, '')), 5);
+    const projectDescriptions = uniqueNonEmpty(activeProjects.map((project) => resolveText(project.description, '')), 3);
+    const collected = activeProjects.map((project) => collectProjectMenuData(project));
+    const categoryNames = uniqueNonEmpty(collected.flatMap((entry) => entry.categoryNames), 6);
+    const itemNames = uniqueNonEmpty(collected.flatMap((entry) => entry.itemNames), 8);
+
+    const contextParts = [
+        `${storeName} is a ${businessType}`,
+        descriptor ? `Public descriptor: ${cleanPromptPhrase(descriptor)}` : null,
+        knownFor ? `Known for: ${cleanPromptPhrase(knownFor)}` : null,
+        specialNote ? `Owner note: ${cleanPromptPhrase(specialNote)}` : null,
+        projectNames.length ? `Menu or service groups include ${projectNames.join(', ')}` : null,
+        projectDescriptions.length ? `Owner menu descriptions include ${projectDescriptions.join(', ')}` : null,
+        categoryNames.length ? `Business categories to represent include ${categoryNames.join(', ')}` : null,
+        itemNames.length ? `Representative items or services include ${itemNames.slice(0, 6).join(', ')}` : null,
+        businessGuidance.persona ? `Business photo style is ${businessGuidance.persona}` : null,
+        businessGuidance.subjects.length ? `Relevant visual subjects include ${businessGuidance.subjects.join(', ')}` : null,
+        businessGuidance.imageType ? `Use photo direction ${businessGuidance.imageType.type}: ${cleanPromptPhrase(businessGuidance.imageType.description)}` : null,
+        'Create one polished widescreen cover photo for the official business page, focused on the business atmosphere and offering, with no readable text, no logo, and no watermark',
+    ].filter(Boolean);
+
+    return {
+        businessGuidance,
+        coverSubject: itemNames.length
+            ? `${storeName} official business cover featuring ${itemNames.slice(0, 4).join(', ')}`
+            : categoryNames.length
+                ? `${storeName} official business cover featuring ${categoryNames.slice(0, 4).join(', ')}`
+                : `${storeName} official business cover`,
+        descriptionLine: contextParts.join('; '),
+        projectId: activeProjects[0]?.projectId || `store-${params.store.storeId || 'business-cover'}`,
+        storeName,
+    };
+}
+
 export function getProjectImageDataFromComparisonPreview(comparisonResult: ComparisonEngineOutput | null | undefined) {
     const preview = comparisonResult?.preview;
     if (!preview) return { categories: [], items: [] };
@@ -459,6 +532,49 @@ export async function generateProjectImageCandidate(
     };
 }
 
+export async function generateBusinessCoverCandidate(
+    params: BusinessCoverCandidateParams,
+): Promise<GeneratedProjectImageCandidate | null> {
+    const description = buildBusinessCoverDescription(params);
+    const generatedImages = await generateImageViaApi({
+        businessType: params.businessType || params.store.businessType || 'restaurant',
+        fileId: 'business-cover',
+        generationConfig: {
+            ...BUSINESS_COVER_GENERATION_CONFIG,
+            colors: description.businessGuidance.colors,
+            compositions: description.businessGuidance.compositions,
+            environments: description.businessGuidance.environments,
+            isMultiMode: false,
+            lighting: description.businessGuidance.lighting,
+            moods: description.businessGuidance.moods,
+            prompt: `Generate a professional official business page cover image for ${description.storeName}.`,
+            selectedImageTypes: [],
+        },
+        itemDetails: {
+            id: `${description.projectId}-business-cover`,
+            itemName: description.coverSubject,
+            name: description.coverSubject,
+            categoryName: 'Business cover',
+            category: 'Business cover',
+            descriptionLine: description.descriptionLine,
+            description: description.descriptionLine,
+            attributesList: ['official business page cover', 'widescreen image', 'business atmosphere'],
+            attributes: ['official business page cover', 'widescreen image', 'business atmosphere'],
+            fileId: 'business-cover',
+        } as any,
+        projectId: String(description.projectId),
+    });
+
+    const firstImage = generatedImages?.[0];
+    if (!firstImage?.base64) return null;
+
+    return {
+        dataUrl: firstImage.base64,
+        mimeType: firstImage.mimeType || 'image/jpeg',
+        name: `${description.storeName} business cover`,
+    };
+}
+
 export async function generateAndSaveProjectImageIfMissing(
     params: GenerateAndSaveProjectImageParams,
 ): Promise<GenerateAndSaveProjectImageResult> {
@@ -482,7 +598,14 @@ export async function generateAndSaveProjectImageIfMissing(
     });
 
     const imageUrl = await uploadFile({
+        blob: preparedCandidate.blob,
+        mediaChecksum: preparedCandidate.checksum,
+        mediaId: preparedCandidate.mediaId,
+        mediaProfile: 'projectImage',
+        mediaVariant: preparedCandidate.primaryVariant,
+        mediaVersion: preparedCandidate.version,
         name: toPreparedUploadName(candidate.name, preparedCandidate.mimeType, candidate.name),
+        preparedMedia: preparedCandidate,
         type: preparedCandidate.mimeType,
         uid: `${projectId}-generated-menu-cover`,
         url: preparedCandidate.dataUrl,

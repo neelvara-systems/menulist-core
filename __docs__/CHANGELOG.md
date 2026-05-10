@@ -10,7 +10,12 @@
 
 ### Fixed
 
-- **Top-of-menu PDP close stability improved** — Item details opened from featured choices now close through the item history state before the sticky command row repaints, reducing the iPhone/PWA case where search and category controls stayed hidden or unclickable until the next scroll.
+- **Top-of-menu PDP close stability improved** — Item details opened from featured choices now close through the item history state without sticky-row repaint side effects, reducing the iPhone/PWA case where search and category controls stayed hidden or unclickable until the next scroll.
+- **Featured PDP close no longer moves category tabs** — Closing a featured item detail no longer remounts the sticky command row or dispatches synthetic scroll events, so the horizontal category rail stays where the customer left it.
+- **Sticky search row scroll jitter reduced** — The public menu sticky command row no longer uses compositor transform hints, and scroll-spy category updates are frame-throttled so the row does not repaint on every raw scroll event.
+- **Public menu search made stricter** — Short-token matching now avoids broad substring, broad Indic sentence transliteration, and category-leaking synonym matches, so service menus no longer return unrelated food searches such as `chai`.
+- **Public menu touch behavior tightened** — Client menu pages now lock mobile pinch zoom, suppress text selection on menu/category controls, and keep footer/business content selectable.
+- **Logo and attribution treatment aligned** — Menu and OBP logos render without an extra wrapper border, feedback pages use only the shared public attribution, and digital screens now show the same quiet `Powered by MenuList. All rights reserved` line.
 - **Installed PWA language bleed fixed** — Public menu page, language, and scroll state now use store/project-scoped keys, and the menu language switcher ignores the old global language preference key.
 - **Default-language descriptions preserved** — Compact multi-language menu payloads now keep the resolved initial render language description, so an English menu does not fall back to another language when no `?lang=` query is present.
 - **Exact search matches rank first** — Customer search now keeps exact visible item-name matches above partial, fuzzy, metadata, and description matches while preserving menu order for ties.
@@ -66,7 +71,7 @@
 - **Sections and language popovers stay clickable** — Both controls now render above sticky/overflow containers instead of being clipped or covered.
 - **Category tab jumps stay stable** — Tapping a category now keeps the selected tab locked during the intentional smooth scroll, avoids intermediate scroll-spy tab changes, and centers the horizontal tab only when needed.
 - **Sticky menu controls hardened** — Search expansion is restored with a stable command-row animation, passive scroll category tracking now uses a deterministic section boundary, and the `Sections` popup closes when the page scrolls.
-- **PDP close restores top navigation immediately** — Closing item details now forces the sticky search and category row to repaint after scroll lock is released, avoiding the top-of-menu frozen/hidden state.
+- **PDP close restores top navigation without rail movement** — Closing item details now releases scroll lock without synthetic scroll/resize events, avoiding category-rail movement after a featured item PDP closes.
 - **Menu transient motion aligned** — `Sections`, language selection, search-result summary, no-result recovery, and PDP overlays now use the same restrained spring reveal pattern.
 - **Public menu icon controls refined** — Search clear, PDP close, PDP image arrows, and back-to-top controls now use calmer theme-aware sizing, background, and color treatment.
 - **Item detail is stronger on mobile** — PDP uses a mobile bottom sheet, contain-fit images, eager gallery preloading, bottom image controls, fullscreen image inspection with zoom controls, category identity when enabled, background scroll lock while open, and immediate close-state cleanup.

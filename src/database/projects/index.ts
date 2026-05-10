@@ -51,6 +51,7 @@ import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCa
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import type { MediaImageType, MediaImageVariantId } from "@lib/media/imageProfiles";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { prepareMediaImage } from "@lib/media/prepareMediaImage";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import {
@@ -1385,13 +1386,18 @@ export const uploadFile = async (
 
     if (data.blob || (mediaProfile && isDataUrl(data.url))) {
         const session = await getActiveSession();
+        const preparedMedia = data.preparedMedia || (mediaProfile && isDataUrl(data.url)
+            ? await prepareMediaImage(data.url, mediaProfile, { fileName: data.name || data.uid })
+            : undefined);
+
         return uploadPreparedMediaImage({
-            blob: data.blob,
-            contentType: data.type,
+            blob: data.blob || preparedMedia?.blob,
+            contentType: preparedMedia?.mimeType || data.type,
             dataUrl: data.url,
             entityId: data.mediaEntityId || data.uid || docId,
-            mediaChecksum: data.mediaChecksum,
-            mediaId: data.mediaId,
+            mediaChecksum: preparedMedia?.checksum || data.mediaChecksum,
+            mediaId: preparedMedia?.mediaId || data.mediaId,
+            prepared: preparedMedia,
             profile: mediaProfile || 'menuItem',
             storeId: session.sId,
             tenantId: session.tId,
