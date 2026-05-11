@@ -30,9 +30,11 @@ export type SchedulerTaskName =
   | 'kb_quality'
   | 'weekly_narrative'
   | 'health_signals'
+  // Historical MenuList run logs may contain this task. New Canonica runs
+  // are owned by functions-canonica and should not be written here.
   | 'canonica_nightly';
 
-export type SchedulerRunStatus = 'success' | 'partial' | 'failed' | 'skipped';
+export type SchedulerRunStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
 export type SchedulerTrigger = 'scheduled' | 'manual';
 
 // ================================================================
@@ -65,6 +67,9 @@ export interface SchedulerRunLog {
   totalStoresInPlatform?: number;   // Total stores in storesSummary
   storeMismatch?: boolean;          // True if expected ≠ processed count
   reason?: string;                  // For skipped runs: 'no_stores_for_hour'
+  phase?: string;                   // Current/final scheduler phase
+  runLogId?: string;                // Deterministic id for manual runs
+  manualScope?: { tId?: string; sId?: string };
 
   // Core results
   totalStores: number;
@@ -84,6 +89,12 @@ export interface SchedulerRunLog {
     sId: string;
     projectId?: string;
     error: string;
+    code?: string;
+    name?: string;
+    phase?: string;
+    operation?: string;
+    settlementDate?: string;
+    details?: Record<string, any>;
   }>;
 
   // Metadata
@@ -129,4 +140,10 @@ export interface SchedulerSettlementSummary {
   failedCount: number;
   staleCount: number;
   latestSettledDate: string | null;
+}
+
+export interface SchedulerDashboardSnapshot {
+  health: SchedulerHealthSummary;
+  runHistory: SchedulerRunLog[];
+  settlement: SchedulerSettlementSummary;
 }

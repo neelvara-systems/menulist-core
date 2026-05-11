@@ -355,6 +355,28 @@ export const getSupportTickets = async (includeDeleted = false) => {
     );
 }
 
+export const getDeletedSupportTickets = async (maxResults = 100) => {
+    return await apiCallComposer(
+        async () => {
+            const q = query(
+                getCollectionRef(),
+                where("deleted", "==", true),
+                orderBy("createdOn", "desc"),
+                limit(maxResults)
+            );
+
+            const querySnapshot = await getDocs(q);
+            const list = [];
+            querySnapshot.forEach((doc) => {
+                list.push({ id: doc.id, ...doc.data(), displayId: getDisplayId(doc.id) });
+            });
+            return list;
+        },
+        { maxResults },
+        "getDeletedSupportTickets"
+    );
+}
+
 // Real-time listener for support tickets (admin view)
 export const subscribeSupportTickets = async (
     onUpdate: (tickets: SupportTicketType[]) => void,

@@ -20,14 +20,20 @@ import { useEffect, useState } from 'react';
 const { Text } = Typography;
 
 interface CostMonitorProps {
+    cost?: ExtractionCostMetrics | null;
     refreshTrigger?: number;
 }
 
-export default function CostMonitor({ refreshTrigger }: CostMonitorProps) {
+export default function CostMonitor({ cost: externalCost, refreshTrigger }: CostMonitorProps) {
     const [loading, setLoading] = useState(true);
     const [cost, setCost] = useState<ExtractionCostMetrics | null>(null);
 
     useEffect(() => {
+        if (externalCost !== undefined) {
+            setCost(externalCost);
+            setLoading(false);
+            return;
+        }
         let mounted = true;
         setLoading(true);
         getExtractionCostMetrics()
@@ -35,7 +41,7 @@ export default function CostMonitor({ refreshTrigger }: CostMonitorProps) {
             .catch(() => { if (mounted) setCost(null); })
             .finally(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; };
-    }, [refreshTrigger]);
+    }, [externalCost, refreshTrigger]);
 
     if (loading) {
         return (

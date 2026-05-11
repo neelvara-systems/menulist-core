@@ -103,6 +103,17 @@ export interface ExtractionQualityMetrics {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// DASHBOARD SNAPSHOT
+// ═══════════════════════════════════════════════════════════════
+
+export interface ExtractionDashboardSnapshot {
+    health: ExtractionHealthMetrics;
+    quality: ExtractionQualityMetrics;
+    cost: ExtractionCostMetrics;
+    jobs: ExtractionJobSummary[];
+}
+
+// ═══════════════════════════════════════════════════════════════
 // FILTERS
 // ═══════════════════════════════════════════════════════════════
 

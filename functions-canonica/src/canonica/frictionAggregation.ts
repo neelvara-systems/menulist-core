@@ -17,6 +17,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -199,23 +200,18 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
         const entityNameMap = new Map<string, { name: string; type: string }>();
         const entityIdsArray = Array.from(allEntityIds);
 
-        // Firestore 'in' queries limited to 30 items
+        // Firestore batched get avoids scanning every entity doc for each chunk.
         for (let i = 0; i < entityIdsArray.length; i += 30) {
             const batch = entityIdsArray.slice(i, i + 30);
-            const entitiesSnap = await db
-                .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
-                .where('tId', '==', tId)
-                .where('sId', '==', sId)
-                .get();
+            const refs = batch.map(entityId => db.collection(DB_COLLECTIONS.CANONICA_ENTITIES).doc(entityId));
+            const entityDocs = await db.getAll(...refs);
 
-            for (const doc of entitiesSnap.docs) {
+            for (const doc of entityDocs) {
+                if (!doc.exists) continue;
                 const data = doc.data();
-                if (batch.includes(doc.id)) {
-                    entityNameMap.set(doc.id, { name: data.name || doc.id, type: data.type || 'feature' });
-                }
+                if (data?.tId !== tId || data?.sId !== sId) continue;
+                entityNameMap.set(doc.id, { name: data.name || doc.id, type: data.type || 'feature' });
             }
-            // Only need one query since we filter in-memory
-            break;
         }
 
         const dailyStats: EntityDailyStat[] = [];
@@ -374,7 +370,7 @@ export async function aggregateFrictionStats(tId: number, sId: number): Promise<
         result.overallHealth = overallHealth;
 
     } catch (error) {
-        console.error(`[Canonica Friction] Aggregation failed for ${tId}/${sId}:`, error);
+        logger.error('[Canonica Friction] Aggregation failed', { tId, sId, error });
     }
 
     return result;
@@ -411,7 +407,7 @@ export async function cleanupExpiredFrictionStats(tId: number, sId: number, rete
         }
         await batch.commit();
     } catch (error) {
-        console.error(`[Canonica Friction] Stats cleanup failed for ${tId}/${sId}:`, error);
+        logger.error('[Canonica Friction] Stats cleanup failed', { tId, sId, retentionDays, batchLimit, error });
     }
 
     return result;

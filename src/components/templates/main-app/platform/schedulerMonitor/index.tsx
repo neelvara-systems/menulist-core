@@ -1,6 +1,6 @@
 'use client'
 
-import { getSchedulerHealthSummary, getSchedulerRunHistory, getSchedulerSettlementSummary } from '@database/ops/scheduler';
+import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
 import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message } from 'antd';
@@ -52,13 +52,14 @@ const TASK_LABELS: Record<string, string> = {
     kb_quality: 'KB Quality Analysis',
     weekly_narrative: 'Weekly Narrative (AI)',
     health_signals: 'Health Signals (Trust/Loyalty/Risk)',
-    canonica_nightly: 'Canonica Nightly (Drift + Mutation)',
+    canonica_nightly: 'Legacy Canonica Nightly (moved)',
 };
 
 const STATUS_COLORS: Record<string, string> = {
     success: 'green',
     partial: 'orange',
     failed: 'red',
+    running: 'blue',
     skipped: 'default',
     unknown: 'default',
 };
@@ -111,7 +112,7 @@ function flattenDetails(details: Record<string, any> | undefined): string {
 // ================================================================
 
 function SchedulerMonitor() {
-    const { data: session } = useSession();
+    const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<SchedulerHealthSummary | null>(null);
     const [runHistory, setRunHistory] = useState<SchedulerRunLog[]>([]);
@@ -135,31 +136,32 @@ function SchedulerMonitor() {
     }
 
     const loadData = useCallback(async () => {
+        if (!isPlatform) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const filter: SchedulerRunFilter = { limit: 20 };
             if (filterStatus) filter.status = filterStatus;
             if (filterTrigger) filter.trigger = filterTrigger;
 
-            const [healthData, historyData, settlementData] = await Promise.all([
-                getSchedulerHealthSummary(),
-                getSchedulerRunHistory(filter),
-                getSchedulerSettlementSummary(50),
-            ]);
-            setHealth(healthData);
-            setRunHistory(historyData);
-            setSettlement(settlementData);
+            const snapshot = await getSchedulerDashboardSnapshot(filter, 50);
+            setHealth(snapshot.health);
+            setRunHistory(snapshot.runHistory);
+            setSettlement(snapshot.settlement);
         } catch (error) {
             console.error('[SchedulerMonitor] Failed to load data:', error);
             message.error('Failed to load scheduler data');
         } finally {
             setLoading(false);
         }
-    }, [filterStatus, filterTrigger]);
+    }, [filterStatus, filterTrigger, isPlatform]);
 
     useEffect(() => {
+        if (sessionStatus === 'loading') return;
         loadData();
-    }, [loadData]);
+    }, [loadData, sessionStatus]);
 
     const handleManualNightlyRecovery = async () => {
         if (!selectedStore) {
@@ -187,11 +189,12 @@ function SchedulerMonitor() {
                     const result: any = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
                     const data = result?.data || {};
                     message.success(
-                        `Nightly recovery ${data.status || 'finished'}: ${data.successCount || 0} DI success, ${data.failedCount || 0} failed`
+                        `Nightly recovery ${data.status || 'finished'}: ${data.successCount || 0} DI success, ${data.failedCount || 0} failed${data.runLogId ? ` · ${data.runLogId}` : ''}`
                     );
                     await loadData();
                 } catch (error: any) {
-                    message.error(`Nightly recovery failed: ${error.message}`);
+                    const runLogId = error?.details?.runLogId;
+                    message.error(`Nightly recovery failed: ${error.message}${runLogId ? ` · Run log: ${runLogId}` : ''}`);
                 } finally {
                     setTriggerLoading(false);
                 }
@@ -435,10 +438,15 @@ function SchedulerMonitor() {
                             ),
                             children: (
                                 <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                                    {err.phase && <div>Phase: {err.phase}</div>}
+                                    {err.operation && <div>Operation: {err.operation}</div>}
+                                    {err.code && <div>Code: {err.code}</div>}
                                     <div>Tenant ID: {err.tId}</div>
                                     <div>Store ID: {err.sId}</div>
                                     {err.projectId && <div>Project ID: {err.projectId}</div>}
+                                    {err.settlementDate && <div>Settlement Date: {err.settlementDate}</div>}
                                     <div style={{ marginTop: 8, color: '#ff4d4f' }}>Error: {err.error}</div>
+                                    {err.details && <div style={{ marginTop: 8 }}>Details: {JSON.stringify(err.details)}</div>}
                                 </div>
                             ),
                         }))}
@@ -462,6 +470,7 @@ function SchedulerMonitor() {
                             { value: 'success', label: 'Success' },
                             { value: 'partial', label: 'Partial' },
                             { value: 'failed', label: 'Failed' },
+                            { value: 'running', label: 'Running' },
                             { value: 'skipped', label: 'Skipped' },
                         ]}
                         size="small"

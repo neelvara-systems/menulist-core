@@ -8,6 +8,7 @@
  */
 
 import * as nodemailer from 'nodemailer';
+import * as logger from 'firebase-functions/logger';
 import {
     IIntegrationAdapter,
     IntegrationEvent,
@@ -38,7 +39,7 @@ function getTransporter(): nodemailer.Transporter | null {
     const pass = process.env.SMTP_PASS;
 
     if (!host || !user || !pass) {
-        console.warn('[Canonica Integration] SMTP not configured — email adapter disabled');
+        logger.warn('[Canonica Integration] SMTP not configured - email adapter disabled');
         return null;
     }
 

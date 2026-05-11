@@ -12,6 +12,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -24,6 +25,8 @@ const MAX_AUTO_SUGGESTIONS_PER_NIGHT = 5;
 const MIN_FRICTION_SCORE_FOR_SUGGESTION = 5;
 const AUTO_DISABLE_SCORE_THRESHOLD = -0.3;
 const AUTO_DISABLE_MIN_IMPRESSIONS = 100;
+const MAX_TRIGGERS_PER_TENANT = 500;
+const MAX_TRIGGER_SIGNALS_PER_RUN = 2000;
 
 // ═══════════════════════════════════════════════════════════════
 // RESULT TYPE
@@ -63,6 +66,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
             .collection(DB_COLLECTIONS.CANONICA_PREDICTIVE_TRIGGERS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
+            .limit(MAX_TRIGGERS_PER_TENANT)
             .get();
 
         const coveredEntityIds = new Set<string>();
@@ -110,7 +114,7 @@ async function autoGenerateSuggestions(tId: number, sId: number): Promise<number
             generated++;
         }
     } catch (error) {
-        console.error(`[Predictive Trigger Sync] Auto-gen failed for ${tId}/${sId}:`, error);
+        logger.error('[Predictive Trigger Sync] Auto-generation failed', { tId, sId, error });
     }
 
     return generated;
@@ -126,6 +130,7 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
             .collection(DB_COLLECTIONS.CANONICA_PREDICTIVE_TRIGGERS)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
+            .limit(MAX_TRIGGERS_PER_TENANT)
             .get();
 
         const triggers: Record<string, any> = {};
@@ -149,7 +154,7 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
 
         return triggerCount;
     } catch (error) {
-        console.error(`[Predictive Trigger Sync] Cache rebuild failed for ${tId}/${sId}:`, error);
+        logger.error('[Predictive Trigger Sync] Cache rebuild failed', { tId, sId, error });
         return 0;
     }
 }
@@ -169,6 +174,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('status', '==', 'active')
+            .limit(MAX_TRIGGERS_PER_TENANT)
             .get();
 
         if (triggerSnap.empty) return { updated: 0, disabled: 0 };
@@ -184,7 +190,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
             .where('sId', '==', sId)
             .where('type', 'in', ['suggestion_shown', 'suggestion_clicked', 'suggestion_dismissed'])
             .where('timestamp', '>=', cutoff)
-            .limit(5000)
+            .limit(MAX_TRIGGER_SIGNALS_PER_RUN)
             .get();
 
         // Aggregate signals by triggerId
@@ -249,7 +255,7 @@ async function updateEffectiveness(tId: number, sId: number): Promise<{ updated:
             await batch.commit();
         }
     } catch (error) {
-        console.error(`[Predictive Trigger Sync] Effectiveness update failed for ${tId}/${sId}:`, error);
+        logger.error('[Predictive Trigger Sync] Effectiveness update failed', { tId, sId, error });
     }
 
     return { updated, disabled };

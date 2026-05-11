@@ -32,6 +32,7 @@ export const DB_COLLECTIONS = {
     CANONICA_ENTITY_SEARCH_INDEX: 'canonica_entitySearchIndex',
     CANONICA_ENTITY_CANDIDATES: 'canonica_entityCandidates',
     CANONICA_FRICTION_DAILY_STATS: 'canonica_frictionDailyStats',
+    CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
 
     // External Workflow Integrations (Expansion Item #7)
     // Append-only event log + delivery attempt logs

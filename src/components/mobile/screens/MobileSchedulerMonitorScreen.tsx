@@ -1,6 +1,6 @@
 'use client'
 
-import { getSchedulerHealthSummary, getSchedulerRunHistory, getSchedulerSettlementSummary } from '@database/ops/scheduler';
+import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummary, SchedulerTaskResult } from '@lib/ops/schedulerTypes';
 import { useSession } from 'next-auth/react';
@@ -103,14 +103,10 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
         if (!isPlatform) return;
         setLoading(true);
         try {
-            const [healthData, runData, settlementData] = await Promise.all([
-                getSchedulerHealthSummary(),
-                getSchedulerRunHistory({ limit: 10 }),
-                getSchedulerSettlementSummary(50),
-            ]);
-            setHealth(healthData);
-            setRuns(runData);
-            setSettlement(settlementData);
+            const snapshot = await getSchedulerDashboardSnapshot({ limit: 10 }, 50);
+            setHealth(snapshot.health);
+            setRuns(snapshot.runHistory);
+            setSettlement(snapshot.settlement);
         } catch {
             Toast.show({ content: 'Could not load scheduler data', duration: 1800 });
         } finally {
@@ -149,7 +145,8 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                     });
                     await loadData();
                 } catch (error: any) {
-                    Toast.show({ content: error?.message || 'Nightly recovery failed', duration: 2200 });
+                    const runLogId = error?.details?.runLogId;
+                    Toast.show({ content: `${error?.message || 'Nightly recovery failed'}${runLogId ? ` · ${runLogId}` : ''}`, duration: 2600 });
                 } finally {
                     setTriggering(false);
                 }

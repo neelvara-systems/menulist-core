@@ -26,6 +26,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -38,6 +39,90 @@ import { generateFrictionInsight } from './frictionInsight';
 import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
+
+const SCHEDULER_LIMITS = {
+    tenantDiscoveryDocs: 1000,
+    activeAnswersPerTenant: 500,
+    entitiesPerTenant: 1000,
+    signalEventsPerWindow: 1000,
+    searchIndexEntriesPerTenant: 1000,
+    graphRelationsPerTenant: 2000,
+    graphAnswersPerTenant: 1000,
+};
+
+type CanonicaNightlyTrigger = 'scheduled' | 'manual';
+type CanonicaNightlyStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
+
+export interface CanonicaSchedulerDiagnostic {
+    tId?: number;
+    sId?: number;
+    phase: string;
+    operation: string;
+    error: string;
+    code?: string;
+    name?: string;
+    details?: Record<string, any>;
+}
+
+interface CanonicaTaskRun {
+    name: string;
+    status: 'success' | 'failed' | 'skipped';
+    durationMs: number;
+    details?: Record<string, any>;
+    error?: string;
+}
+
+interface CanonicaTenantRun {
+    tId: number;
+    sId: number;
+    status: 'success' | 'partial' | 'failed';
+    durationMs: number;
+    tasks: CanonicaTaskRun[];
+    errors: CanonicaSchedulerDiagnostic[];
+    driftDetected: number;
+    driftCleared: number;
+    proposalsCreated: number;
+    fallbackProposals: number;
+    signalsResolved: number;
+    coverageRate: number;
+    signalsArchived: number;
+}
+
+interface TenantDiscoveryResult {
+    tenants: TenantStore[];
+    scannedDocs: number;
+    truncated: boolean;
+}
+
+function buildDiagnostic(
+    error: unknown,
+    context: {
+        tId?: number;
+        sId?: number;
+        phase: string;
+        operation: string;
+        details?: Record<string, any>;
+    }
+): CanonicaSchedulerDiagnostic {
+    const err = error as any;
+    return {
+        tId: context.tId,
+        sId: context.sId,
+        phase: context.phase,
+        operation: context.operation,
+        error: err?.message || String(error || 'Unknown error'),
+        code: err?.code,
+        name: err?.name,
+        details: context.details,
+    };
+}
+
+function diagnosticToMessage(diagnostic: CanonicaSchedulerDiagnostic): string {
+    const scope = diagnostic.tId != null && diagnostic.sId != null
+        ? `${diagnostic.tId}/${diagnostic.sId}`
+        : 'global';
+    return `[${diagnostic.phase}:${diagnostic.operation}] ${scope}: ${diagnostic.error}`;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // FEATURE FLAG CHECK
@@ -60,11 +145,11 @@ interface TenantStore {
  * Discover tenants that have Canonica entities (i.e., have been onboarded).
  * Uses canonica_entities collection to find distinct tId/sId pairs.
  */
-async function discoverActiveTenants(): Promise<TenantStore[]> {
+async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
     const snapshot = await db
         .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
         .select('tId', 'sId')
-        .limit(100)
+        .limit(SCHEDULER_LIMITS.tenantDiscoveryDocs)
         .get();
 
     const seen = new Set<string>();
@@ -73,13 +158,21 @@ async function discoverActiveTenants(): Promise<TenantStore[]> {
     for (const doc of snapshot.docs) {
         const data = doc.data();
         const key = `${data.tId}_${data.sId}`;
+        if (typeof data.tId !== 'number' || typeof data.sId !== 'number') {
+            continue;
+        }
+
         if (!seen.has(key)) {
             seen.add(key);
             tenants.push({ tId: data.tId, sId: data.sId });
         }
     }
 
-    return tenants;
+    return {
+        tenants,
+        scannedDocs: snapshot.size,
+        truncated: snapshot.size >= SCHEDULER_LIMITS.tenantDiscoveryDocs,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -102,36 +195,42 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
     const result: DriftResult = { answersEvaluated: 0, driftDetected: 0, driftCleared: 0 };
 
     // Load active canonical answers
-    const answersSnap = await db
+    const answersQuery = db
         .collection(DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
-        .get();
-
-    if (answersSnap.empty) return result;
+        .limit(SCHEDULER_LIMITS.activeAnswersPerTenant);
 
     // Load entities for orphan drift check
-    const entitiesSnap = await db
+    const entitiesQuery = db
         .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
-        .get();
+        .limit(SCHEDULER_LIMITS.entitiesPerTenant);
+
+    // Signal counts (14-day rolling window)
+    const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const signalsQuery = db
+        .collection(DB_COLLECTIONS.CANONICA_SIGNAL_EVENTS)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('timestamp', '>=', windowStart)
+        .limit(SCHEDULER_LIMITS.signalEventsPerWindow);
+
+    const [answersSnap, entitiesSnap, signalsSnap] = await Promise.all([
+        answersQuery.get(),
+        entitiesQuery.get(),
+        signalsQuery.get(),
+    ]);
+
+    if (answersSnap.empty) return result;
 
     const entityMap = new Map<string, { status: string; name: string }>();
     for (const doc of entitiesSnap.docs) {
         const data = doc.data();
         entityMap.set(doc.id, { status: data.status, name: data.name });
     }
-
-    // Signal counts (14-day rolling window)
-    const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    const signalsSnap = await db
-        .collection(DB_COLLECTIONS.CANONICA_SIGNAL_EVENTS)
-        .where('tId', '==', tId)
-        .where('sId', '==', sId)
-        .where('timestamp', '>=', windowStart)
-        .get();
 
     // Group signal counts by entityId
     const signalsByEntity = new Map<string, { ticket: number; chat_negative: number; escalation: number; total: number }>();
@@ -242,10 +341,12 @@ const MUTATION_CONFIG = {
 interface MutationResult {
     clustersAnalyzed: number;
     proposalsCreated: number;
+    proposalsSkippedExisting: number;
+    errors: CanonicaSchedulerDiagnostic[];
 }
 
 async function runSignalMutation(tId: number, sId: number): Promise<MutationResult> {
-    const result: MutationResult = { clustersAnalyzed: 0, proposalsCreated: 0 };
+    const result: MutationResult = { clustersAnalyzed: 0, proposalsCreated: 0, proposalsSkippedExisting: 0, errors: [] };
 
     const windowStart = Timestamp.fromMillis(Date.now() - MUTATION_CONFIG.windowDays * 24 * 60 * 60 * 1000);
 
@@ -312,6 +413,20 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
                 }
             }
 
+            const existingProposalSnap = await db
+                .collection(DB_COLLECTIONS.CANONICA_MUTATION_PROPOSALS)
+                .where('tId', '==', tId)
+                .where('sId', '==', sId)
+                .where('relatedEntityIds', 'array-contains', entityId)
+                .where('status', '==', 'pending_review')
+                .limit(1)
+                .get();
+
+            if (!existingProposalSnap.empty) {
+                result.proposalsSkippedExisting++;
+                continue;
+            }
+
             const proposal = {
                 tId, sId,
                 targetAnswerId,
@@ -344,7 +459,15 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
 
             result.proposalsCreated++;
         } catch (error) {
-            console.error(`[Canonica Mutation] Failed for entity ${entityId}:`, error);
+            const diagnostic = buildDiagnostic(error, {
+                tId,
+                sId,
+                phase: 'signal_mutation',
+                operation: 'create_mutation_proposal',
+                details: { entityId },
+            });
+            result.errors.push(diagnostic);
+            logger.error('[Canonica Mutation] Failed for entity', diagnostic);
         }
     }
 
@@ -366,8 +489,8 @@ async function runSignalMutation(tId: number, sId: number): Promise<MutationResu
  * Without this, unresolved signals are noise — they can't cluster,
  * can't trigger proposals, can't drive governance.
  */
-async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ resolved: number; total: number }> {
-    const result = { resolved: 0, total: 0 };
+async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ resolved: number; total: number; errors: CanonicaSchedulerDiagnostic[] }> {
+    const result: { resolved: number; total: number; errors: CanonicaSchedulerDiagnostic[] } = { resolved: 0, total: 0, errors: [] };
 
     // Fetch unresolved signals (last 14 days)
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -388,6 +511,7 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
         .collection(DB_COLLECTIONS.CANONICA_ENTITY_SEARCH_INDEX)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
+        .limit(SCHEDULER_LIMITS.searchIndexEntriesPerTenant)
         .get();
 
     if (indexSnap.empty) return result;
@@ -440,7 +564,15 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
             try {
                 await signalDoc.ref.update({ entityId: bestEntityId });
                 result.resolved++;
-            } catch { /* non-blocking */ }
+            } catch (error) {
+                result.errors.push(buildDiagnostic(error, {
+                    tId,
+                    sId,
+                    phase: 'signal_resolution',
+                    operation: 'update_signal_entity',
+                    details: { signalId: signalDoc.id, bestEntityId, bestScore },
+                }));
+            }
         }
     }
 
@@ -458,8 +590,8 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
  * This is THE metric that proves Canonica works.
  * Without tracking it, the system's value is invisible.
  */
-async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: number; misses: number; rate: number }> {
-    const result = { hits: 0, misses: 0, rate: 0 };
+async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: number; misses: number; rate: number; errors: CanonicaSchedulerDiagnostic[] }> {
+    const result: { hits: number; misses: number; rate: number; errors: CanonicaSchedulerDiagnostic[] } = { hits: 0, misses: 0, rate: 0, errors: [] };
 
     // Read last 24h of search history to count canonical vs non-canonical
     const dayAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
@@ -498,7 +630,14 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: n
             },
         }, { merge: true });
     } catch (error) {
-        console.error(`[Canonica Coverage] KPI aggregation failed for ${tId}/${sId}:`, error);
+        const diagnostic = buildDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'coverage_kpi',
+            operation: 'aggregate_search_history',
+        });
+        result.errors.push(diagnostic);
+        logger.error('[Canonica Coverage] KPI aggregation failed', diagnostic);
     }
 
     return result;
@@ -515,8 +654,8 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: n
  * 
  * Doctrine: "If recurring fallback → auto-generate MutationProposal"
  */
-async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ proposalsCreated: number }> {
-    const result = { proposalsCreated: 0 };
+async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ proposalsCreated: number; errors: CanonicaSchedulerDiagnostic[] }> {
+    const result: { proposalsCreated: number; errors: CanonicaSchedulerDiagnostic[] } = { proposalsCreated: 0, errors: [] };
 
     const windowStart = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
@@ -596,7 +735,14 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
             if (result.proposalsCreated >= 5) break; // Cap at 5 per run
         }
     } catch (error) {
-        console.error(`[Canonica Fallback] Detection failed for ${tId}/${sId}:`, error);
+        const diagnostic = buildDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'recurring_fallback_detection',
+            operation: 'detect_and_create_proposals',
+        });
+        result.errors.push(diagnostic);
+        logger.error('[Canonica Fallback] Detection failed', diagnostic);
     }
 
     return result;
@@ -610,8 +756,8 @@ async function detectRecurringFallbacks(tId: number, sId: number): Promise<{ pro
  * Check proposals implemented 14+ days ago and compare signal counts
  * before/after to measure impact. Stores delta on the proposal doc.
  */
-async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked: number }> {
-    const result = { tracked: 0 };
+async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked: number; errors: CanonicaSchedulerDiagnostic[] }> {
+    const result: { tracked: number; errors: CanonicaSchedulerDiagnostic[] } = { tracked: 0, errors: [] };
 
     const fourteenDaysAgo = Timestamp.fromMillis(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
@@ -663,7 +809,14 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
             result.tracked++;
         }
     } catch (error) {
-        console.error(`[Canonica Impact] Tracking failed for ${tId}/${sId}:`, error);
+        const diagnostic = buildDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'mutation_impact',
+            operation: 'track_implemented_proposals',
+        });
+        result.errors.push(diagnostic);
+        logger.error('[Canonica Impact] Tracking failed', diagnostic);
     }
 
     return result;
@@ -678,8 +831,8 @@ async function trackMutationImpact(tId: number, sId: number): Promise<{ tracked:
  * 30+ times with 0 negative signals in 30 days. Simple, deterministic,
  * zero-risk. Saves SMB admin from manually reviewing scores.
  */
-async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjusted: number }> {
-    const result = { adjusted: 0 };
+async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjusted: number; errors: CanonicaSchedulerDiagnostic[] }> {
+    const result: { adjusted: number; errors: CanonicaSchedulerDiagnostic[] } = { adjusted: 0, errors: [] };
 
     try {
         const answersSnap = await db
@@ -713,7 +866,14 @@ async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjuste
             }
         }
     } catch (error) {
-        console.error(`[Canonica Confidence] Auto-adjustment failed for ${tId}/${sId}:`, error);
+        const diagnostic = buildDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'confidence_adjustment',
+            operation: 'auto_adjust_confidence',
+        });
+        result.errors.push(diagnostic);
+        logger.error('[Canonica Confidence] Auto-adjustment failed', diagnostic);
     }
 
     return result;
@@ -730,8 +890,8 @@ async function autoAdjustConfidence(tId: number, sId: number): Promise<{ adjuste
  * 
  * @returns Number of signals archived (deleted)
  */
-async function archiveExpiredSignals(tId: number, sId: number, ttlMonths: number = 12, batchLimit: number = 100): Promise<{ archived: number }> {
-    const result = { archived: 0 };
+async function archiveExpiredSignals(tId: number, sId: number, ttlMonths: number = 12, batchLimit: number = 100): Promise<{ archived: number; errors: CanonicaSchedulerDiagnostic[] }> {
+    const result: { archived: number; errors: CanonicaSchedulerDiagnostic[] } = { archived: 0, errors: [] };
 
     try {
         const cutoff = new Date();
@@ -755,7 +915,14 @@ async function archiveExpiredSignals(tId: number, sId: number, ttlMonths: number
         }
         await batch.commit();
     } catch (error) {
-        console.error(`[Canonica TTL] Signal archive failed for ${tId}/${sId}:`, error);
+        const diagnostic = buildDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'signal_ttl_archive',
+            operation: 'delete_expired_signals',
+        });
+        result.errors.push(diagnostic);
+        logger.error('[Canonica TTL] Signal archive failed', diagnostic);
     }
 
     return result;
@@ -791,6 +958,7 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
+        .limit(SCHEDULER_LIMITS.entitiesPerTenant)
         .get();
 
     if (entitiesSnap.empty) return result;
@@ -807,6 +975,7 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .collection(DB_COLLECTIONS.CANONICA_ENTITY_RELATIONS)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
+        .limit(SCHEDULER_LIMITS.graphRelationsPerTenant)
         .get();
 
     result.relationCount = relationsSnap.size;
@@ -817,6 +986,7 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('status', '==', 'active')
+        .limit(SCHEDULER_LIMITS.graphAnswersPerTenant)
         .get();
 
     const answerCountByEntity = new Map<string, number>();
@@ -909,7 +1079,7 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
     result.rebuilt = true;
 
     if (result.orphanRelations > 0) {
-        console.warn(`[Canonica GraphIndex] ${tId}/${sId}: ${result.orphanRelations} orphan relation(s) skipped`);
+        logger.warn('[Canonica GraphIndex] Orphan relation(s) skipped', { tId, sId, orphanRelations: result.orphanRelations });
     }
 
     return result;
@@ -920,7 +1090,17 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
 // ═══════════════════════════════════════════════════════════════
 
 export interface CanonicaNightlyResult {
+    runLogId: string;
+    status: CanonicaNightlyStatus;
+    trigger: CanonicaNightlyTrigger;
     enabled: boolean;
+    startedAtIso: string;
+    durationMs: number;
+    tenantDiscovery: {
+        scannedDocs: number;
+        truncated: boolean;
+        tenantCount: number;
+    };
     tenantsProcessed: number;
     totalDriftDetected: number;
     totalDriftCleared: number;
@@ -961,15 +1141,36 @@ export interface CanonicaNightlyResult {
     predictiveEffectivenessUpdated: number;
     predictiveAutoDisabled: number;
     errors: string[];
+    errorDetails: CanonicaSchedulerDiagnostic[];
+    tenantRuns: CanonicaTenantRun[];
 }
 
 /**
  * Main entry point for the nightly Canonica job.
- * Called by Cloud Scheduler via schedulers.ts.
+ * Called by Cloud Scheduler via the scheduled export in functions-canonica/src/index.ts.
  */
-export async function runCanonicaNightly(): Promise<CanonicaNightlyResult> {
+export async function runCanonicaNightly(options: {
+    trigger?: CanonicaNightlyTrigger;
+    triggeredBy?: string;
+} = {}): Promise<CanonicaNightlyResult> {
+    const trigger = options.trigger || 'scheduled';
+    const triggeredBy = options.triggeredBy || (trigger === 'scheduled' ? 'system' : 'manual');
+    const startedAtMs = Date.now();
+    const startedAt = Timestamp.fromMillis(startedAtMs);
+    const runLogId = `canonica_${trigger}_${startedAtMs}`;
+
     const result: CanonicaNightlyResult = {
+        runLogId,
+        status: 'running',
+        trigger,
         enabled: false,
+        startedAtIso: new Date(startedAtMs).toISOString(),
+        durationMs: 0,
+        tenantDiscovery: {
+            scannedDocs: 0,
+            truncated: false,
+            tenantCount: 0,
+        },
         tenantsProcessed: 0,
         totalDriftDetected: 0,
         totalDriftCleared: 0,
@@ -1006,296 +1207,646 @@ export async function runCanonicaNightly(): Promise<CanonicaNightlyResult> {
         predictiveEffectivenessUpdated: 0,
         predictiveAutoDisabled: 0,
         errors: [],
+        errorDetails: [],
+        tenantRuns: [],
     };
 
-    // Feature flag gate
-    const enabled = isCanonicaEnabled();
-    result.enabled = enabled;
-    if (!enabled) {
-        console.log('[Canonica Nightly] Canonica is disabled in ops_config. Skipping.');
-        return result;
-    }
-
-    // Discover tenants with Canonica data
-    const tenants = await discoverActiveTenants();
-    if (tenants.length === 0) {
-        console.log('[Canonica Nightly] No tenants with Canonica entities found.');
-        return result;
-    }
-
-    console.log(`[Canonica Nightly] Processing ${tenants.length} tenant(s)...`);
-
-    for (const { tId, sId } of tenants) {
+    const writeRunLog = async (payload: Record<string, any>) => {
         try {
-            // 1. Drift Detection
-            const driftResult = await runDriftDetection(tId, sId);
-            result.totalDriftDetected += driftResult.driftDetected;
-            result.totalDriftCleared += driftResult.driftCleared;
-
-            // 2. Signal Entity Resolution (resolve 'unresolved' before mutation)
-            const resolveResult = await resolveUnresolvedSignals(tId, sId);
-            result.totalSignalsResolved += resolveResult.resolved;
-
-            // 3. Signal Mutation
-            const mutationResult = await runSignalMutation(tId, sId);
-            result.totalProposalsCreated += mutationResult.proposalsCreated;
-
-            // 4. Canonical Coverage KPI
-            const coverageResult = await aggregateCoverageKPI(tId, sId);
-            if (coverageResult.rate > 0) result.coverageRate = coverageResult.rate;
-
-            // 5. Recurring Fallback Detection → Auto Proposals
-            const fallbackResult = await detectRecurringFallbacks(tId, sId);
-            result.totalFallbackProposals += fallbackResult.proposalsCreated;
-
-            // 6. Post-Mutation Impact Tracking (14-day window)
-            const impactResult = await trackMutationImpact(tId, sId);
-            result.totalImpactTracked += impactResult.tracked;
-
-            // 7. Confidence Auto-Adjustment
-            const confidenceResult = await autoAdjustConfidence(tId, sId);
-            result.totalConfidenceAdjusted += confidenceResult.adjusted;
-
-            // 8. Signal TTL Auto-Archive (Phase 4 — 3.5)
-            const archiveResult = await archiveExpiredSignals(tId, sId);
-            result.totalSignalsArchived += archiveResult.archived;
-
-            // 9. AI Draft Generation for new_answer_required proposals (Expansion Item #4)
-            const draftResult = await generateDraftsForNewProposals(tId, sId);
-            result.totalDraftsGenerated += draftResult.draftsGenerated;
-            result.totalDraftsFailed += draftResult.draftsFailed;
-
-            // 10. Product Friction Intelligence — Daily Aggregation (Expansion Item #5)
-            const frictionResult = await aggregateFrictionStats(tId, sId);
-            result.totalFrictionEntities += frictionResult.entitiesProcessed;
-
-            // 10b. Friction daily stats cleanup (90-day retention)
-            const frictionCleanup = await cleanupExpiredFrictionStats(tId, sId);
-            result.totalFrictionStatsCleanedUp += frictionCleanup.cleaned;
-
-            // 11. Product Friction Intelligence — Weekly Insight (Sundays only)
-            const dayOfWeek = new Date().getUTCDay(); // 0 = Sunday
-            if (dayOfWeek === 0) {
-                const insightResult = await generateFrictionInsight(tId, sId);
-                if (insightResult.generated) result.frictionInsightsGenerated++;
-            }
-
-            // 15. Knowledge Graph Index Rebuild (Expansion Item #11)
-            // Rebuilds the precomputed entity graph index from canonica_entityRelations.
-            // Reuses entities + answers data already loaded by Steps 1-3.
-            // Feature-flagged: ENABLE_CANONICA_KNOWLEDGE_GRAPH
-            // @see __docs__/canonica/knowledge-graph-exploitation/
-            if (FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH) {
-                try {
-                    const graphResult = await rebuildEntityGraphIndex(tId, sId);
-                    result.graphIndexRebuilt = (result.graphIndexRebuilt || 0) + (graphResult.rebuilt ? 1 : 0);
-                    result.graphIndexEntities = (result.graphIndexEntities || 0) + graphResult.entityCount;
-                    result.graphIndexRelations = (result.graphIndexRelations || 0) + graphResult.relationCount;
-                } catch (error) {
-                    console.error(`[Canonica Nightly] Graph index rebuild failed for ${tId}/${sId}:`, error);
-                    result.errors.push(`[GraphIndex] ${tId}/${sId}: ${error instanceof Error ? error.message : 'Unknown'}`);
-                }
-            }
-
-            // 14. Ticket → Knowledge Loop (Expansion Item #9)
-            // Extracts knowledge candidates from resolved ticket clusters (3+ per entity).
-            // Feature-flagged: ENABLE_CANONICA_TICKET_KNOWLEDGE
-            // @see __docs__/canonica/ticket-knowledge-loop/
-            if (FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE) {
-                try {
-                    const tkResult = await extractTicketKnowledge(tId, sId);
-                    result.ticketKnowledgeCandidates += tkResult.candidatesFound;
-                    result.ticketKnowledgeProposals += tkResult.proposalsCreated;
-                    result.ticketKnowledgeMerged += tkResult.proposalsMerged;
-                    result.ticketKnowledgeSkipped += tkResult.skippedDuplicate + tkResult.skippedLowConfidence;
-                    if (tkResult.errors.length > 0) {
-                        result.errors.push(...tkResult.errors.map((e: string) => `[TicketKnowledge] ${e}`));
-                    }
-                } catch (error) {
-                    console.error(`[Canonica Nightly] Ticket knowledge extraction failed for ${tId}/${sId}:`, error);
-                    result.errors.push(`[TicketKnowledge] ${tId}/${sId}: ${error instanceof Error ? error.message : 'Unknown'}`);
-                }
-            }
-
-            // 16. Predictive Trigger Sync (Expansion Item #12)
-            // Auto-generate suggested triggers from friction, rebuild cache, update effectiveness.
-            // Feature-flagged: ENABLE_CANONICA_PREDICTIVE_SUPPORT
-            // @see __docs__/canonica/predictive-support/
-            if (FUNCTION_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) {
-                try {
-                    const ptResult = await runPredictiveTriggerSync(tId, sId);
-                    result.predictiveSuggestionsGenerated += ptResult.suggestionsGenerated;
-                    result.predictiveTriggersTotal += ptResult.triggerCount;
-                    result.predictiveEffectivenessUpdated += ptResult.effectivenessUpdated;
-                    result.predictiveAutoDisabled += ptResult.autoDisabled;
-                } catch (error) {
-                    console.error(`[Canonica Nightly] Predictive trigger sync failed for ${tId}/${sId}:`, error);
-                    result.errors.push(`[PredictiveSync] ${tId}/${sId}: ${error instanceof Error ? error.message : 'Unknown'}`);
-                }
-            }
-
-            result.tenantsProcessed++;
-
-            console.log(`[Canonica Nightly] Tenant ${tId}/${sId}: ` +
-                `drift=${driftResult.driftDetected}/${driftResult.answersEvaluated}, ` +
-                `resolved=${resolveResult.resolved}/${resolveResult.total}, ` +
-                `proposals=${mutationResult.proposalsCreated}/${mutationResult.clustersAnalyzed}, ` +
-                `fallbacks=${fallbackResult.proposalsCreated}, impact=${impactResult.tracked}, ` +
-                `coverage=${Math.round(coverageResult.rate * 100)}%, archived=${archiveResult.archived}, ` +
-                `drafts=${draftResult.draftsGenerated}/${draftResult.draftsGenerated + draftResult.draftsFailed}, ` +
-                `friction=${frictionResult.entitiesProcessed}/${frictionResult.overallHealth}, cleanup=${frictionCleanup.cleaned}`);
-        } catch (error) {
-            const msg = `Tenant ${tId}/${sId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-            result.errors.push(msg);
-            console.error(`[Canonica Nightly] Error for ${msg}`);
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 12 — Onboarding Bootstrap (Expansion Item #6)
-    // Separate discovery loop — queries kb_generation_jobs, NOT canonica_entities.
-    // New tenants with zero entities need this to bootstrap their canonical layer.
-    // Feature-flagged: ENABLE_CANONICA_FOUNDER_ONBOARDING
-    // @see __docs__/canonica/founder-onboarding/
-    // ═══════════════════════════════════════════════════════════════
-    try {
-        const bootstrapResult = await runOnboardingBootstrap();
-        result.bootstrapTenantsProcessed = bootstrapResult.tenantsBootstrapped;
-        result.bootstrapEntitiesExtracted = bootstrapResult.totalEntitiesExtracted;
-        result.bootstrapEntitiesPromoted = bootstrapResult.totalEntitiesPromoted;
-        result.bootstrapDraftsGenerated = bootstrapResult.totalDraftsGenerated;
-        if (bootstrapResult.errors.length > 0) {
-            result.errors.push(...bootstrapResult.errors.map((e: string) => `[Bootstrap] ${e}`));
-        }
-        if (bootstrapResult.tenantsBootstrapped > 0) {
-            console.log(`[Canonica Nightly] Bootstrap: ${bootstrapResult.tenantsBootstrapped} tenant(s), ` +
-                `entities=${bootstrapResult.totalEntitiesExtracted}→${bootstrapResult.totalEntitiesPromoted}, ` +
-                `drafts=${bootstrapResult.totalDraftsGenerated}/${bootstrapResult.totalDraftsGenerated + bootstrapResult.totalDraftsFailed}`);
-        }
-    } catch (error) {
-        const msg = `[Bootstrap] Fatal: ${error instanceof Error ? error.message : 'Unknown'}`;
-        result.errors.push(msg);
-        console.error(`[Canonica Nightly] ${msg}`);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 13 — External Workflow Integrations (Expansion Item #7)
-    // Emits governance events from Steps 1-5 results to configured
-    // external tools (Slack, Email, Linear, GitHub).
-    // Feature-flagged: ENABLE_CANONICA_WORKFLOW_INTEGRATIONS
-    // Zero additional Firestore reads — uses data already loaded above.
-    // @see __docs__/canonica/workflow-integrations/
-    // ═══════════════════════════════════════════════════════════════
-    try {
-        resetNightlyEventCounts();
-
-        // Emit per-tenant governance events
-        for (const { tId, sId } of tenants) {
-            // 13a. Drift events (from Step 1 results — re-query drift flags)
-            // We emit a summary rather than per-answer events to keep costs low
-            if (result.totalDriftDetected > 0) {
-                await emitIntegrationEvent({
-                    tId, sId,
-                    eventType: INTEGRATION_EVENT_TYPES.DRIFT_DETECTED,
-                    severity: EVENT_SEVERITY.HIGH,
-                    payload: {
-                        driftCount: result.totalDriftDetected,
-                        driftCleared: result.totalDriftCleared,
-                        driftClass: 'nightly_batch_summary',
-                        driftReason: `${result.totalDriftDetected} answer(s) flagged with drift in nightly evaluation`,
-                        entityName: 'Multiple',
-                        entityType: 'batch',
-                    },
-                });
-                result.integrationEventsEmitted++;
-            }
-
-            // 13b. Mutation proposal events (from Step 3/5)
-            if (result.totalProposalsCreated > 0 || result.totalFallbackProposals > 0) {
-                const totalProposals = result.totalProposalsCreated + result.totalFallbackProposals;
-                await emitIntegrationEvent({
-                    tId, sId,
-                    eventType: INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED,
-                    severity: EVENT_SEVERITY.HIGH,
-                    payload: {
-                        proposalCount: totalProposals,
-                        mutationType: 'nightly_batch_summary',
-                        entityNames: [],
-                        signalCount: result.totalSignalsResolved,
-                        confidenceScore: 0,
-                    },
-                });
-                result.integrationEventsEmitted++;
-            }
-
-            // 13c. Coverage drop (from Step 4)
-            if (result.coverageRate > 0 && result.coverageRate < COVERAGE_DROP_THRESHOLD) {
-                await emitIntegrationEvent({
-                    tId, sId,
-                    eventType: INTEGRATION_EVENT_TYPES.COVERAGE_DROP,
-                    severity: EVENT_SEVERITY.CRITICAL,
-                    payload: {
-                        currentRate: result.coverageRate,
-                        previousRate: 0, // Previous rate not tracked in nightly — future enhancement
-                        threshold: COVERAGE_DROP_THRESHOLD,
-                        totalQueries: 0,
-                        canonicalHits: 0,
-                    },
-                });
-                result.integrationEventsEmitted++;
-            }
-
-            // 13d. Knowledge gap events (from Step 5 — fallback proposals indicate gaps)
-            if (result.totalFallbackProposals > 0) {
-                await emitIntegrationEvent({
-                    tId, sId,
-                    eventType: INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED,
-                    severity: EVENT_SEVERITY.HIGH,
-                    payload: {
-                        entityName: 'Multiple',
-                        entityType: 'batch',
-                        fallbackCount: result.totalFallbackProposals,
-                        windowDays: 7,
-                        sampleQueries: [],
-                    },
-                });
-                result.integrationEventsEmitted++;
-            }
-
-            // 13e. TTL cleanup for integration data
-            const cleanupResult = await cleanupExpiredIntegrationData(tId, sId);
-            result.integrationCleanupEvents += cleanupResult.eventsDeleted;
-            result.integrationCleanupLogs += cleanupResult.logsDeleted;
-        }
-
-        // 13f. Nightly summary event (one per run, sent to first tenant for delivery)
-        if (tenants.length > 0) {
-            const { tId, sId } = tenants[0];
-            await emitIntegrationEvent({
-                tId, sId,
-                eventType: INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY,
-                severity: EVENT_SEVERITY.LOW,
-                payload: {
-                    tenantsProcessed: result.tenantsProcessed,
+            await db.collection(DB_COLLECTIONS.CANONICA_SCHEDULER_RUN_LOGS).doc(runLogId).set({
+                runLogId,
+                product: 'canonica',
+                trigger,
+                triggeredBy,
+                startedAt,
+                updatedAt: Timestamp.now(),
+                status: result.status,
+                enabled: result.enabled,
+                durationMs: result.durationMs,
+                tenantDiscovery: result.tenantDiscovery,
+                tenantsProcessed: result.tenantsProcessed,
+                totals: {
                     driftDetected: result.totalDriftDetected,
                     driftCleared: result.totalDriftCleared,
-                    proposalsCreated: result.totalProposalsCreated + result.totalFallbackProposals,
-                    coverageRate: result.coverageRate,
+                    proposalsCreated: result.totalProposalsCreated,
+                    fallbackProposals: result.totalFallbackProposals,
+                    signalsResolved: result.totalSignalsResolved,
                     signalsArchived: result.totalSignalsArchived,
-                    errors: result.errors.slice(0, 5),
+                    draftsGenerated: result.totalDraftsGenerated,
+                    draftsFailed: result.totalDraftsFailed,
+                    frictionEntities: result.totalFrictionEntities,
+                    graphIndexRebuilt: result.graphIndexRebuilt,
+                    predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
                 },
+                errors: result.errorDetails.slice(0, 100),
+                errorMessages: result.errors.slice(0, 100),
+                tenantRuns: result.tenantRuns.slice(0, 100),
+                metadata: {
+                    limits: SCHEDULER_LIMITS,
+                    workflowIntegrationsEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_WORKFLOW_INTEGRATIONS,
+                    autoKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_AUTO_KNOWLEDGE,
+                    frictionIntelligenceEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE,
+                    founderOnboardingEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_FOUNDER_ONBOARDING,
+                    ticketKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE,
+                    graphEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH,
+                    predictiveSupportEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT,
+                },
+                ...payload,
+            }, { merge: true });
+        } catch (error) {
+            logger.error('[Canonica Nightly] Failed to persist scheduler run log', {
+                runLogId,
+                error: error instanceof Error ? error.message : String(error),
             });
-            result.integrationEventsEmitted++;
+        }
+    };
+
+    const recordDiagnostic = (diagnostic: CanonicaSchedulerDiagnostic, tenantRun?: CanonicaTenantRun) => {
+        const message = diagnosticToMessage(diagnostic);
+        result.errorDetails.push(diagnostic);
+        result.errors.push(message);
+        tenantRun?.errors.push(diagnostic);
+        return message;
+    };
+
+    const runTenantTask = async <T extends Record<string, any>>(
+        tenantRun: CanonicaTenantRun,
+        taskName: string,
+        operation: string,
+        task: () => Promise<T>,
+        applyResult: (taskResult: T) => void,
+        buildDetails: (taskResult: T) => Record<string, any>
+    ): Promise<T | null> => {
+        const taskStart = Date.now();
+        const errorCountBefore = tenantRun.errors.length;
+
+        try {
+            const taskResult = await task();
+            const taskErrors = Array.isArray(taskResult.errors)
+                ? (taskResult.errors.filter((entry: any) => entry && typeof entry === 'object' && entry.phase && entry.operation) as CanonicaSchedulerDiagnostic[])
+                : [];
+            for (const diagnostic of taskErrors) {
+                recordDiagnostic(diagnostic, tenantRun);
+            }
+
+            applyResult(taskResult);
+            const newErrorCount = tenantRun.errors.length - errorCountBefore;
+            tenantRun.tasks.push({
+                name: taskName,
+                status: newErrorCount > 0 ? 'failed' : 'success',
+                durationMs: Date.now() - taskStart,
+                details: buildDetails(taskResult),
+                error: newErrorCount > 0
+                    ? tenantRun.errors.slice(errorCountBefore).map(diagnosticToMessage).join('; ').substring(0, 1000)
+                    : undefined,
+            });
+
+            return taskResult;
+        } catch (error) {
+            const diagnostic = buildDiagnostic(error, {
+                tId: tenantRun.tId,
+                sId: tenantRun.sId,
+                phase: taskName,
+                operation,
+            });
+            const message = recordDiagnostic(diagnostic, tenantRun);
+            tenantRun.tasks.push({
+                name: taskName,
+                status: 'failed',
+                durationMs: Date.now() - taskStart,
+                error: message,
+            });
+            logger.error('[Canonica Nightly] Tenant task failed', diagnostic);
+            return null;
+        }
+    };
+
+    await writeRunLog({
+        status: 'running',
+        phase: 'started',
+        completedAt: null,
+    });
+
+    let tenants: TenantStore[] = [];
+
+    try {
+        // Feature flag gate
+        const enabled = isCanonicaEnabled();
+        result.enabled = enabled;
+        if (!enabled) {
+            result.status = 'skipped';
+            logger.info('[Canonica Nightly] Canonica nightly is disabled. Skipping.', { runLogId });
+            return result;
         }
 
-        if (result.integrationEventsEmitted > 0) {
-            console.log(`[Canonica Nightly] Step 13: ${result.integrationEventsEmitted} integration events emitted, ` +
-                `cleanup: ${result.integrationCleanupEvents} events + ${result.integrationCleanupLogs} logs`);
+        await writeRunLog({ phase: 'tenant_discovery' });
+
+        // Discover tenants with Canonica data
+        const discovery = await discoverActiveTenants();
+        tenants = discovery.tenants;
+        result.tenantDiscovery = {
+            scannedDocs: discovery.scannedDocs,
+            truncated: discovery.truncated,
+            tenantCount: tenants.length,
+        };
+
+        if (discovery.truncated) {
+            logger.warn('[Canonica Nightly] Tenant discovery hit scan cap', {
+                runLogId,
+                scannedDocs: discovery.scannedDocs,
+                tenantCount: tenants.length,
+                limit: SCHEDULER_LIMITS.tenantDiscoveryDocs,
+            });
         }
+
+        if (tenants.length === 0) {
+            result.status = 'skipped';
+            logger.info('[Canonica Nightly] No tenants with Canonica entities found.', { runLogId, scannedDocs: discovery.scannedDocs });
+            return result;
+        }
+
+        logger.info('[Canonica Nightly] Processing tenants', { runLogId, tenantCount: tenants.length });
+
+        for (const { tId, sId } of tenants) {
+            const tenantStart = Date.now();
+            const tenantRun: CanonicaTenantRun = {
+                tId,
+                sId,
+                status: 'success',
+                durationMs: 0,
+                tasks: [],
+                errors: [],
+                driftDetected: 0,
+                driftCleared: 0,
+                proposalsCreated: 0,
+                fallbackProposals: 0,
+                signalsResolved: 0,
+                coverageRate: 0,
+                signalsArchived: 0,
+            };
+
+            const driftResult = await runTenantTask(
+                tenantRun,
+                'drift_detection',
+                'runDriftDetection',
+                () => runDriftDetection(tId, sId),
+                (taskResult) => {
+                    result.totalDriftDetected += taskResult.driftDetected;
+                    result.totalDriftCleared += taskResult.driftCleared;
+                    tenantRun.driftDetected = taskResult.driftDetected;
+                    tenantRun.driftCleared = taskResult.driftCleared;
+                },
+                (taskResult) => ({
+                    answersEvaluated: taskResult.answersEvaluated,
+                    driftDetected: taskResult.driftDetected,
+                    driftCleared: taskResult.driftCleared,
+                })
+            );
+
+            const resolveResult = await runTenantTask(
+                tenantRun,
+                'signal_resolution',
+                'resolveUnresolvedSignals',
+                () => resolveUnresolvedSignals(tId, sId),
+                (taskResult) => {
+                    result.totalSignalsResolved += taskResult.resolved;
+                    tenantRun.signalsResolved = taskResult.resolved;
+                },
+                (taskResult) => ({ resolved: taskResult.resolved, total: taskResult.total })
+            );
+
+            const mutationResult = await runTenantTask(
+                tenantRun,
+                'signal_mutation',
+                'runSignalMutation',
+                () => runSignalMutation(tId, sId),
+                (taskResult) => {
+                    result.totalProposalsCreated += taskResult.proposalsCreated;
+                    tenantRun.proposalsCreated = taskResult.proposalsCreated;
+                },
+                (taskResult) => ({
+                    clustersAnalyzed: taskResult.clustersAnalyzed,
+                    proposalsCreated: taskResult.proposalsCreated,
+                    proposalsSkippedExisting: taskResult.proposalsSkippedExisting,
+                })
+            );
+
+            const coverageResult = await runTenantTask(
+                tenantRun,
+                'coverage_kpi',
+                'aggregateCoverageKPI',
+                () => aggregateCoverageKPI(tId, sId),
+                (_taskResult) => { },
+                (taskResult) => ({
+                    hits: taskResult.hits,
+                    misses: taskResult.misses,
+                    rate: Math.round(taskResult.rate * 100),
+                })
+            );
+            if (coverageResult) tenantRun.coverageRate = coverageResult.rate;
+
+            const fallbackResult = await runTenantTask(
+                tenantRun,
+                'recurring_fallback_detection',
+                'detectRecurringFallbacks',
+                () => detectRecurringFallbacks(tId, sId),
+                (taskResult) => {
+                    result.totalFallbackProposals += taskResult.proposalsCreated;
+                    tenantRun.fallbackProposals = taskResult.proposalsCreated;
+                },
+                (taskResult) => ({ proposalsCreated: taskResult.proposalsCreated })
+            );
+
+            const impactResult = await runTenantTask(
+                tenantRun,
+                'mutation_impact',
+                'trackMutationImpact',
+                () => trackMutationImpact(tId, sId),
+                (taskResult) => { result.totalImpactTracked += taskResult.tracked; },
+                (taskResult) => ({ tracked: taskResult.tracked })
+            );
+
+            const confidenceResult = await runTenantTask(
+                tenantRun,
+                'confidence_adjustment',
+                'autoAdjustConfidence',
+                () => autoAdjustConfidence(tId, sId),
+                (taskResult) => { result.totalConfidenceAdjusted += taskResult.adjusted; },
+                (taskResult) => ({ adjusted: taskResult.adjusted })
+            );
+
+            const archiveResult = await runTenantTask(
+                tenantRun,
+                'signal_ttl_archive',
+                'archiveExpiredSignals',
+                () => archiveExpiredSignals(tId, sId),
+                (taskResult) => {
+                    result.totalSignalsArchived += taskResult.archived;
+                    tenantRun.signalsArchived = taskResult.archived;
+                },
+                (taskResult) => ({ archived: taskResult.archived })
+            );
+
+            const draftResult = await runTenantTask(
+                tenantRun,
+                'draft_generation',
+                'generateDraftsForNewProposals',
+                () => generateDraftsForNewProposals(tId, sId) as Promise<any>,
+                (taskResult) => {
+                    result.totalDraftsGenerated += taskResult.draftsGenerated;
+                    result.totalDraftsFailed += taskResult.draftsFailed;
+                },
+                (taskResult) => ({
+                    draftsGenerated: taskResult.draftsGenerated,
+                    draftsFailed: taskResult.draftsFailed,
+                    proposalIds: taskResult.proposalIds,
+                    enabled: FUNCTION_FLAGS.ENABLE_CANONICA_AUTO_KNOWLEDGE,
+                })
+            );
+
+            const frictionResult = await runTenantTask(
+                tenantRun,
+                'friction_aggregation',
+                'aggregateFrictionStats',
+                () => aggregateFrictionStats(tId, sId) as Promise<any>,
+                (taskResult) => { result.totalFrictionEntities += taskResult.entitiesProcessed; },
+                (taskResult) => ({
+                    entitiesProcessed: taskResult.entitiesProcessed,
+                    overallHealth: taskResult.overallHealth,
+                    enabled: FUNCTION_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE,
+                })
+            );
+
+            const frictionCleanup = await runTenantTask(
+                tenantRun,
+                'friction_cleanup',
+                'cleanupExpiredFrictionStats',
+                () => cleanupExpiredFrictionStats(tId, sId) as Promise<any>,
+                (taskResult) => { result.totalFrictionStatsCleanedUp += taskResult.cleaned; },
+                (taskResult) => ({
+                    cleaned: taskResult.cleaned,
+                    enabled: FUNCTION_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE,
+                })
+            );
+
+            const dayOfWeek = new Date().getUTCDay(); // 0 = Sunday
+            if (dayOfWeek === 0) {
+                await runTenantTask(
+                    tenantRun,
+                    'friction_weekly_insight',
+                    'generateFrictionInsight',
+                    () => generateFrictionInsight(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        if (taskResult.generated) result.frictionInsightsGenerated++;
+                    },
+                    (taskResult) => ({
+                        generated: taskResult.generated,
+                        skipped: taskResult.skipped,
+                        enabled: FUNCTION_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE,
+                    })
+                );
+            } else {
+                tenantRun.tasks.push({
+                    name: 'friction_weekly_insight',
+                    status: 'skipped',
+                    durationMs: 0,
+                    details: { reason: 'not_sunday_utc', dayOfWeek },
+                });
+            }
+
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH) {
+                await runTenantTask(
+                    tenantRun,
+                    'graph_index_rebuild',
+                    'rebuildEntityGraphIndex',
+                    () => rebuildEntityGraphIndex(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        result.graphIndexRebuilt += taskResult.rebuilt ? 1 : 0;
+                        result.graphIndexEntities += taskResult.entityCount;
+                        result.graphIndexRelations += taskResult.relationCount;
+                    },
+                    (taskResult) => ({
+                        rebuilt: taskResult.rebuilt,
+                        entityCount: taskResult.entityCount,
+                        relationCount: taskResult.relationCount,
+                        orphanRelations: taskResult.orphanRelations,
+                    })
+                );
+            }
+
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE) {
+                await runTenantTask(
+                    tenantRun,
+                    'ticket_knowledge',
+                    'extractTicketKnowledge',
+                    () => extractTicketKnowledge(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        result.ticketKnowledgeCandidates += taskResult.candidatesFound;
+                        result.ticketKnowledgeProposals += taskResult.proposalsCreated;
+                        result.ticketKnowledgeMerged += taskResult.proposalsMerged;
+                        result.ticketKnowledgeSkipped += taskResult.skippedDuplicate + taskResult.skippedLowConfidence;
+                        for (const errorMessage of taskResult.errors || []) {
+                            recordDiagnostic(buildDiagnostic(new Error(errorMessage), {
+                                tId,
+                                sId,
+                                phase: 'ticket_knowledge',
+                                operation: 'extractTicketKnowledge',
+                            }), tenantRun);
+                        }
+                    },
+                    (taskResult) => ({
+                        candidatesFound: taskResult.candidatesFound,
+                        proposalsCreated: taskResult.proposalsCreated,
+                        proposalsMerged: taskResult.proposalsMerged,
+                        skippedDuplicate: taskResult.skippedDuplicate,
+                        skippedLowConfidence: taskResult.skippedLowConfidence,
+                        errorCount: taskResult.errors?.length || 0,
+                    })
+                );
+            }
+
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) {
+                await runTenantTask(
+                    tenantRun,
+                    'predictive_trigger_sync',
+                    'runPredictiveTriggerSync',
+                    () => runPredictiveTriggerSync(tId, sId) as Promise<any>,
+                    (taskResult) => {
+                        result.predictiveSuggestionsGenerated += taskResult.suggestionsGenerated;
+                        result.predictiveTriggersTotal += taskResult.triggerCount;
+                        result.predictiveEffectivenessUpdated += taskResult.effectivenessUpdated;
+                        result.predictiveAutoDisabled += taskResult.autoDisabled;
+                    },
+                    (taskResult) => ({
+                        suggestionsGenerated: taskResult.suggestionsGenerated,
+                        cacheRebuilt: taskResult.cacheRebuilt,
+                        triggerCount: taskResult.triggerCount,
+                        effectivenessUpdated: taskResult.effectivenessUpdated,
+                        autoDisabled: taskResult.autoDisabled,
+                    })
+                );
+            }
+
+            tenantRun.durationMs = Date.now() - tenantStart;
+            const failedTasks = tenantRun.tasks.filter(task => task.status === 'failed').length;
+            tenantRun.status = failedTasks === 0 ? 'success' : (failedTasks === tenantRun.tasks.length ? 'failed' : 'partial');
+            result.tenantRuns.push(tenantRun);
+            result.tenantsProcessed++;
+
+            logger.info('[Canonica Nightly] Tenant complete', {
+                runLogId,
+                tId,
+                sId,
+                status: tenantRun.status,
+                durationMs: tenantRun.durationMs,
+                drift: driftResult ? `${driftResult.driftDetected}/${driftResult.answersEvaluated}` : 'failed',
+                resolved: resolveResult ? `${resolveResult.resolved}/${resolveResult.total}` : 'failed',
+                proposals: mutationResult ? `${mutationResult.proposalsCreated}/${mutationResult.clustersAnalyzed}` : 'failed',
+                fallbacks: fallbackResult?.proposalsCreated || 0,
+                impact: impactResult?.tracked || 0,
+                coverage: coverageResult ? Math.round(coverageResult.rate * 100) : null,
+                archived: archiveResult?.archived || 0,
+                drafts: draftResult ? `${draftResult.draftsGenerated}/${draftResult.draftsGenerated + draftResult.draftsFailed}` : 'failed',
+                friction: frictionResult ? `${frictionResult.entitiesProcessed}/${frictionResult.overallHealth}` : 'failed',
+                cleanup: frictionCleanup?.cleaned || 0,
+                errorCount: tenantRun.errors.length,
+            });
+        }
+
+        const coverageRuns = result.tenantRuns.filter(run => run.coverageRate > 0);
+        result.coverageRate = coverageRuns.length > 0
+            ? coverageRuns.reduce((sum, run) => sum + run.coverageRate, 0) / coverageRuns.length
+            : 0;
+
+        // ═══════════════════════════════════════════════════════════════
+        // STEP 12 — Onboarding Bootstrap (Expansion Item #6)
+        // Separate discovery loop — queries kb_generation_jobs, NOT canonica_entities.
+        // New tenants with zero entities need this to bootstrap their canonical layer.
+        // Feature-flagged: ENABLE_CANONICA_FOUNDER_ONBOARDING
+        // @see __docs__/canonica/founder-onboarding/
+        // ═══════════════════════════════════════════════════════════════
+        try {
+            const bootstrapResult = await runOnboardingBootstrap();
+            result.bootstrapTenantsProcessed = bootstrapResult.tenantsBootstrapped;
+            result.bootstrapEntitiesExtracted = bootstrapResult.totalEntitiesExtracted;
+            result.bootstrapEntitiesPromoted = bootstrapResult.totalEntitiesPromoted;
+            result.bootstrapDraftsGenerated = bootstrapResult.totalDraftsGenerated;
+            for (const errorMessage of bootstrapResult.errors || []) {
+                recordDiagnostic(buildDiagnostic(new Error(errorMessage), {
+                    phase: 'bootstrap',
+                    operation: 'runOnboardingBootstrap',
+                }));
+            }
+            if (bootstrapResult.tenantsBootstrapped > 0) {
+                logger.info('[Canonica Nightly] Bootstrap complete', {
+                    runLogId,
+                    tenantsBootstrapped: bootstrapResult.tenantsBootstrapped,
+                    entitiesExtracted: bootstrapResult.totalEntitiesExtracted,
+                    entitiesPromoted: bootstrapResult.totalEntitiesPromoted,
+                    draftsGenerated: bootstrapResult.totalDraftsGenerated,
+                    draftsFailed: bootstrapResult.totalDraftsFailed,
+                });
+            }
+        } catch (error) {
+            const diagnostic = buildDiagnostic(error, {
+                phase: 'bootstrap',
+                operation: 'runOnboardingBootstrap',
+            });
+            recordDiagnostic(diagnostic);
+            logger.error('[Canonica Nightly] Bootstrap fatal error', diagnostic);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // STEP 13 — External Workflow Integrations (Expansion Item #7)
+        // Emits tenant-scoped governance events to configured external tools.
+        // Feature-flagged: ENABLE_CANONICA_WORKFLOW_INTEGRATIONS
+        // @see __docs__/canonica/workflow-integrations/
+        // ═══════════════════════════════════════════════════════════════
+        if (FUNCTION_FLAGS.ENABLE_CANONICA_WORKFLOW_INTEGRATIONS) {
+            try {
+                resetNightlyEventCounts();
+
+                for (const tenantRun of result.tenantRuns) {
+                    const { tId, sId } = tenantRun;
+
+                    if (tenantRun.driftDetected > 0) {
+                        await emitIntegrationEvent({
+                            tId, sId,
+                            eventType: INTEGRATION_EVENT_TYPES.DRIFT_DETECTED,
+                            severity: EVENT_SEVERITY.HIGH,
+                            payload: {
+                                driftCount: tenantRun.driftDetected,
+                                driftCleared: tenantRun.driftCleared,
+                                driftClass: 'nightly_batch_summary',
+                                driftReason: `${tenantRun.driftDetected} answer(s) flagged with drift in nightly evaluation`,
+                                entityName: 'Multiple',
+                                entityType: 'batch',
+                            },
+                        });
+                        result.integrationEventsEmitted++;
+                    }
+
+                    const tenantProposals = tenantRun.proposalsCreated + tenantRun.fallbackProposals;
+                    if (tenantProposals > 0) {
+                        await emitIntegrationEvent({
+                            tId, sId,
+                            eventType: INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED,
+                            severity: EVENT_SEVERITY.HIGH,
+                            payload: {
+                                proposalCount: tenantProposals,
+                                mutationType: 'nightly_batch_summary',
+                                entityNames: [],
+                                signalCount: tenantRun.signalsResolved,
+                                confidenceScore: 0,
+                            },
+                        });
+                        result.integrationEventsEmitted++;
+                    }
+
+                    if (tenantRun.coverageRate > 0 && tenantRun.coverageRate < COVERAGE_DROP_THRESHOLD) {
+                        await emitIntegrationEvent({
+                            tId, sId,
+                            eventType: INTEGRATION_EVENT_TYPES.COVERAGE_DROP,
+                            severity: EVENT_SEVERITY.CRITICAL,
+                            payload: {
+                                currentRate: tenantRun.coverageRate,
+                                previousRate: 0,
+                                threshold: COVERAGE_DROP_THRESHOLD,
+                                totalQueries: 0,
+                                canonicalHits: 0,
+                            },
+                        });
+                        result.integrationEventsEmitted++;
+                    }
+
+                    if (tenantRun.fallbackProposals > 0) {
+                        await emitIntegrationEvent({
+                            tId, sId,
+                            eventType: INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED,
+                            severity: EVENT_SEVERITY.HIGH,
+                            payload: {
+                                entityName: 'Multiple',
+                                entityType: 'batch',
+                                fallbackCount: tenantRun.fallbackProposals,
+                                windowDays: 14,
+                                sampleQueries: [],
+                            },
+                        });
+                        result.integrationEventsEmitted++;
+                    }
+
+                    const cleanupResult = await cleanupExpiredIntegrationData(tId, sId);
+                    result.integrationCleanupEvents += cleanupResult.eventsDeleted;
+                    result.integrationCleanupLogs += cleanupResult.logsDeleted;
+                }
+
+                if (result.tenantRuns.length > 0) {
+                    const { tId, sId } = result.tenantRuns[0];
+                    await emitIntegrationEvent({
+                        tId, sId,
+                        eventType: INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY,
+                        severity: EVENT_SEVERITY.LOW,
+                        payload: {
+                            runLogId,
+                            tenantsProcessed: result.tenantsProcessed,
+                            driftDetected: result.totalDriftDetected,
+                            driftCleared: result.totalDriftCleared,
+                            proposalsCreated: result.totalProposalsCreated + result.totalFallbackProposals,
+                            coverageRate: result.coverageRate,
+                            signalsArchived: result.totalSignalsArchived,
+                            errors: result.errors.slice(0, 5),
+                        },
+                    });
+                    result.integrationEventsEmitted++;
+                }
+
+                if (result.integrationEventsEmitted > 0) {
+                    logger.info('[Canonica Nightly] Integration events emitted', {
+                        runLogId,
+                        eventsEmitted: result.integrationEventsEmitted,
+                        cleanupEvents: result.integrationCleanupEvents,
+                        cleanupLogs: result.integrationCleanupLogs,
+                    });
+                }
+            } catch (error) {
+                const diagnostic = buildDiagnostic(error, {
+                    phase: 'workflow_integrations',
+                    operation: 'emit_and_cleanup',
+                });
+                recordDiagnostic(diagnostic);
+                logger.error('[Canonica Nightly] Integration fatal error', diagnostic);
+            }
+        }
+
+        result.status = result.errorDetails.length > 0 ? 'partial' : 'success';
     } catch (error) {
-        const msg = `[Integration] Fatal: ${error instanceof Error ? error.message : 'Unknown'}`;
-        result.errors.push(msg);
-        console.error(`[Canonica Nightly] ${msg}`);
+        const diagnostic = buildDiagnostic(error, {
+            phase: 'fatal',
+            operation: 'runCanonicaNightly',
+        });
+        recordDiagnostic(diagnostic);
+        result.status = result.tenantsProcessed > 0 ? 'partial' : 'failed';
+        logger.error('[Canonica Nightly] Fatal scheduler failure', diagnostic);
+    } finally {
+        result.durationMs = Date.now() - startedAtMs;
+        if (result.status === 'running') {
+            result.status = result.errorDetails.length > 0 ? 'partial' : 'success';
+        }
+
+        await writeRunLog({
+            phase: 'completed',
+            status: result.status,
+            completedAt: Timestamp.now(),
+            durationMs: result.durationMs,
+        });
+
+        logger.info('[Canonica Nightly] Run complete', {
+            runLogId,
+            status: result.status,
+            durationMs: result.durationMs,
+            tenantsProcessed: result.tenantsProcessed,
+            errorCount: result.errorDetails.length,
+        });
     }
 
     return result;

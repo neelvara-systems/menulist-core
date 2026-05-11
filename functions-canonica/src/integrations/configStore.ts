@@ -10,6 +10,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import {
@@ -121,7 +122,12 @@ export async function recordDeliveryFailure(
 
     if (newCount >= INTEGRATION_LIMITS.CIRCUIT_BREAKER_THRESHOLD) {
         update[`circuitBreaker.${adapterType}.disabledAt`] = Timestamp.now();
-        console.warn(`[Canonica Integration] Circuit breaker OPENED for ${adapterType} ${tId}/${sId} (${newCount} consecutive failures)`);
+        logger.warn('[Canonica Integration] Circuit breaker opened', {
+            tId,
+            sId,
+            adapter: adapterType,
+            consecutiveFailures: newCount,
+        });
     }
 
     await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docId).update(update);

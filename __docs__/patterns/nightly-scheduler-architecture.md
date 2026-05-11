@@ -39,8 +39,7 @@ Cloud Scheduler (every hour at :30)
       │   ├── Special Menu Switching
       │   ├── Infrastructure Compounding (3 sub-tasks)
       │   ├── Reseller License Expiry
-      │   ├── AI Insights (feedback intelligence, KB quality, weekly narrative, health signals)
-      │   └── Canonica Nightly (7-step batch)
+      │   └── AI Insights (feedback intelligence, KB quality, weekly narrative, health signals)
       │
       ├── Persist run log (schedulerRunLogs collection)
       └── Telegram Dead Man's Switch alert
@@ -55,6 +54,15 @@ Cloud Scheduler (every hour at :30)
 | **1 telegram alert**          | Solo founder knows if ANYTHING failed              |
 | **Shared store iteration**    | Stores read once, all tasks reuse                  |
 | **Consistent error handling** | All tasks use same try/catch + taskResults pattern |
+
+### Product Boundary
+
+This single entry point is for **MenuList store-EOD work only**. Canonica is a separate product with its own Firebase project and Cloud Functions package:
+
+- MenuList scheduled work: `functions/src/decisionBlocksScoring.ts` and operational schedulers under `functions/src/triggers/schedulers.ts`
+- Canonica scheduled work: `functions-canonica/src/index.ts` → `canonicaNightly`
+
+Do not register Canonica nightly tasks in MenuList schedulers. The shared codebase can reuse patterns, but the deployed scheduler runtime stays product-specific.
 
 ### Analytics Settlement Contract
 
@@ -194,7 +202,6 @@ When creating an outlet store:
 | KB Quality                  | Always                               | Variable          | Article quality scoring                                          |
 | Weekly Narrative            | Always (Sundays only)                | Variable          | AI weekly digest                                                 |
 | Health Signals              | Always (Sundays only)                | Variable          | Trust/Loyalty/Risk computation                                   |
-| Canonica Nightly            | `ENABLE_CANONICA_NIGHTLY`            | ~300 reads/tenant | 7-step: drift→resolve→mutate→coverage→fallback→impact→confidence |
 
 ---
 
@@ -244,7 +251,7 @@ When creating an outlet store:
 
 | File                                     | Purpose                                        |
 | ---------------------------------------- | ---------------------------------------------- |
-| `functions/src/decisionBlocksScoring.ts` | Single entry point — unified nightly scheduler |
+| `functions/src/decisionBlocksScoring.ts` | MenuList store-EOD entry point — unified MenuList scheduler |
 | `functions/src/aggregateCustomerAnalytics.ts` | Menu + Customer App analytics settlement helpers |
 | `functions/src/analytics/dashboardSummaryAggregation.ts` | Menu and Customer App owner-dashboard read-model writer |
 | `functions/src/analytics/obpAnalyticsAggregation.ts` | OBP analytics settlement helper |
@@ -271,7 +278,6 @@ When creating an outlet store:
 | `functions/src/analytics/obpAnalyticsAggregation.ts`  | OBP Analytics               |
 | `functions/src/billing/reconcileSubscriptions.ts`     | Subscription Reconciliation |
 | `functions/src/messaging/messagingEngine.ts`          | Lifecycle Messaging         |
-| `functions/src/canonica/canonicaNightly.ts`           | Canonica Nightly (7-step)   |
 
 ### Deprecated
 
@@ -323,7 +329,9 @@ if (FUNCTION_FLAGS.ENABLE_YOUR_TASK) {
 - Always wrap in try/catch — one task failure must NOT block others
 - Always push to `taskResults` (success, failed, or skipped)
 - Always gate with feature flag (default OFF)
-- Never add a separate scheduled CF — add it here
+- For MenuList store-EOD tasks, add the task here instead of creating a new scheduled CF
+- For different-cadence operational work, keep a separate operational scheduler in `functions/src/triggers/schedulers.ts`
+- For Canonica work, add the task in `functions-canonica/`, not in this MenuList scheduler
 
 ---
 
@@ -408,11 +416,9 @@ At 5k+ stores, the `storesSummary` document may become:
 
 **Not needed now.** Current design is appropriate up to ~3-5k stores.
 
-### Canonica Cost Density
+### Canonica Scheduler Scale
 
-Canonica nightly costs ~300 reads/tenant. If many tenants are in the same timezone, that hour’s invocation becomes heavy. Current filtering distributes by timezone, not by tenant grouping.
-
-**Mitigation if needed:** Add per-hour tenant caps or stagger Canonica across sub-hours.
+Canonica scale is managed separately in `functions-canonica/`. If Canonica nightly becomes dense, add per-tenant caps or staggered Canonica sub-runs there. Do not use MenuList store timezone distribution to schedule Canonica work.
 
 ---
 
@@ -424,6 +430,6 @@ Canonica nightly costs ~300 reads/tenant. If many tenants are in the same timezo
 | 2026-03-03 | Added store mismatch telemetry (expected vs processed count)                                       |
 | 2026-03-03 | Timezone-aware scheduling (hourly + store timezone filter)                                         |
 | 2026-03-03 | Merged masterScheduler tasks (feedback intelligence, KB quality, weekly narrative, health signals) |
-| 2026-03-03 | Removed duplicate canonicaNightly CF from schedulers.ts                                            |
-| 2026-03-03 | Added Canonica nightly as task block                                                               |
+| 2026-05-11 | Reconfirmed product boundary: Canonica nightly lives in `functions-canonica/`, not MenuList scheduler |
+| 2026-03-03 | Removed duplicate canonicaNightly CF from MenuList schedulers                                      |
 | 2026-03-03 | Initial architecture documentation                                                                 |

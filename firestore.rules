@@ -74,12 +74,124 @@ service cloud.firestore {
       allow write: if false;
     }
     
-    // Platform Summary - PLATFORM ADMIN ONLY (read-only for admins)
+    // Platform Summary - PLATFORM ADMIN ONLY, plus tenant-scoped Canonica summary docs
     match /platformSummary/{document} {
-      // Only platform admins can read
-      allow read: if isAuthenticated() && isPlatformAdmin();
-      // NO client writes - only server-side via Admin SDK
+      // Platform admins can read every platform summary document.
+      // Canonica tenant users can read/write only the known Canonica summary docs
+      // that carry matching tId/sId fields. All other writes remain server-only.
+      allow read: if isAuthenticated()
+                  && (isPlatformAdmin()
+                      || (isCanonicaPlatformSummaryDoc(document) && isCanonicaTenantMember(resource.data)));
+      allow create: if isAuthenticated()
+                    && isCanonicaPlatformSummaryDoc(document)
+                    && (isPlatformAdmin() || isCanonicaTenantMember(request.resource.data));
+      allow update: if isAuthenticated()
+                    && isCanonicaPlatformSummaryDoc(document)
+                    && (
+                      isPlatformAdmin()
+                      || (
+                        isCanonicaTenantMember(resource.data)
+                        && isCanonicaTenantMember(request.resource.data)
+                        && request.resource.data.tId == resource.data.tId
+                        && request.resource.data.sId == resource.data.sId
+                      )
+                    );
+      allow delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // CANONICA — tenant-scoped client DAL collections
+    // These rules are mirrored in firestore-canonica.rules for dedicated
+    // Canonica Firebase deployments. Admin SDK writes bypass rules.
+    // ═══════════════════════════════════════════════════════════
+
+    match /canonica_entities/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_entityRelations/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
+    }
+
+    match /canonica_canonicalAnswers/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_releases/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_mutationProposals/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_signalEvents/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
+    }
+
+    match /canonica_auditLogs/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update, delete: if false;
+    }
+
+    match /canonica_entitySearchIndex/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_entityCandidates/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_frictionDailyStats/{docId} {
+      allow read: if isCanonicaScopedRead();
       allow write: if false;
+    }
+
+    match /canonica_schedulerRunLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /canonica_integrationEvents/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow write: if false;
+    }
+
+    match /canonica_integrationDeliveryLogs/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow write: if false;
+    }
+
+    match /canonica_predictiveTriggers/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
     }
     
     // Subscriptions - SERVER-SIDE ONLY (no client writes)
@@ -541,6 +653,47 @@ service cloud.firestore {
     function isPlatformAdmin() {
       return request.auth != null
         && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function isCanonicaPlatformSummaryDoc(document) {
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers)_.*$');
+    }
+
+    function isCanonicaTenantMember(data) {
+      return request.auth != null
+        && data.keys().hasAll(['tId', 'sId'])
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && string(data.tId) == string(request.auth.token.tenantId)
+        && string(data.sId) == string(request.auth.token.storeId);
+    }
+
+    function isCanonicaScopedRead() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
+    }
+
+    function isCanonicaScopedCreate() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantMember(request.resource.data));
+    }
+
+    function isCanonicaScopedUpdate() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isCanonicaTenantMember(resource.data)
+            && isCanonicaTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+          )
+        );
+    }
+
+    function isCanonicaScopedDelete() {
+      return isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
     }
     
     // Check if user owns subscription (for read access)

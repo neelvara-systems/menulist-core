@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, doc, getDoc, getDocs, query, runTransaction, setDoc, where } from "@firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
@@ -8,6 +8,9 @@ import { INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
 import { deleteFileByUrl } from "../storage/deleteFromStorage";
 
 const COLLECTION = DB_COLLECTIONS.KB_GENERATION_JOBS;
+const ACTIVE_JOB_LIMIT = 5;
+const ALL_JOB_LIMIT = 100;
+const PREVIOUS_JOB_LIMIT = 20;
 
 const getCollectionRef = () => {
     return collection(canonicaFirebaseClient, COLLECTION);
@@ -19,14 +22,17 @@ export const getIngestionJobCollectionRef = (session: any) => {
         collectionRef,
         where("tId", "==", session.tId),
         where("sId", "==", session.sId),
-        where("status", "in", [INGESTION_JOB_STATUS.PENDING, INGESTION_JOB_STATUS.PROCESSING, INGESTION_JOB_STATUS.NEEDS_REVIEW, INGESTION_JOB_STATUS.PUBLISHING])
+        where("status", "in", [INGESTION_JOB_STATUS.PENDING, INGESTION_JOB_STATUS.PROCESSING, INGESTION_JOB_STATUS.NEEDS_REVIEW, INGESTION_JOB_STATUS.PUBLISHING]),
+        orderBy("createdOn", "desc"),
+        limit(ACTIVE_JOB_LIMIT)
     );
 };
 
 export const getIngestionJobs = async () => {
     return await apiCallComposer(
         async () => {
-            const querySnapshot = await getDocs(getCollectionRef());
+            const q = query(getCollectionRef(), orderBy("createdOn", "desc"), limit(ALL_JOB_LIMIT));
+            const querySnapshot = await getDocs(q);
             const list: IngestionJob[] = [];
             querySnapshot.forEach((doc) => {
                 list.push({ ...doc.data(), id: doc.id } as IngestionJob);
@@ -37,7 +43,7 @@ export const getIngestionJobs = async () => {
     );
 };
 
-export const getPreviousIngestionJobs = async (session: any) => {
+export const getPreviousIngestionJobs = async (session: any, maxResults: number = PREVIOUS_JOB_LIMIT) => {
     return await apiCallComposer(
         async () => {
             const collectionRef = getCollectionRef();
@@ -49,7 +55,9 @@ export const getPreviousIngestionJobs = async (session: any) => {
                     INGESTION_JOB_STATUS.PUBLISHED,
                     INGESTION_JOB_STATUS.FAILED,
                     INGESTION_JOB_STATUS.CANCELLED,
-                ])
+                ]),
+                orderBy("createdOn", "desc"),
+                limit(Math.min(Math.max(maxResults, 1), 50))
             );
 
             const querySnapshot = await getDocs(q);

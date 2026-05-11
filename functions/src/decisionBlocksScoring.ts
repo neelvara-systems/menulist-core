@@ -134,9 +134,22 @@ interface StoreNightlySchedulerResult {
     skippedCount: number;
     intelligenceSuccess: number;
     intelligenceFailed: number;
-    errors: Array<{ tId: string; sId: string; projectId?: string; error: string }>;
+    errors: SchedulerFailureDiagnostic[];
     analytics: NightlyAnalyticsCounters;
     enrichment?: { lastPublishedAt: any; projectCount: number };
+}
+
+interface SchedulerFailureDiagnostic {
+    tId?: string;
+    sId?: string;
+    projectId?: string;
+    phase: string;
+    operation?: string;
+    error: string;
+    code?: string;
+    name?: string;
+    settlementDate?: string;
+    details?: Record<string, any>;
 }
 
 function getProjectDocRef(
@@ -760,6 +773,26 @@ function createNightlyAnalyticsCounters(): NightlyAnalyticsCounters {
     };
 }
 
+function getSchedulerErrorCode(error: any): string {
+    return String(error?.code || error?.details?.code || error?.name || 'unknown_error');
+}
+
+function getSchedulerErrorMessage(error: any): string {
+    return String(error?.message || error?.details?.message || error || 'Unknown scheduler error');
+}
+
+function buildSchedulerFailureDiagnostic(
+    error: any,
+    context: Omit<SchedulerFailureDiagnostic, 'error' | 'code' | 'name'>,
+): SchedulerFailureDiagnostic {
+    return {
+        ...context,
+        error: getSchedulerErrorMessage(error),
+        code: getSchedulerErrorCode(error),
+        name: error?.name ? String(error.name) : undefined,
+    };
+}
+
 async function runNightlySchedulerForStore(
     db: FirebaseFirestore.Firestore,
     sId: string,
@@ -885,6 +918,13 @@ async function runNightlySchedulerForStore(
                     await completeNightlyDateLock(lockRef, 'completed');
                 } catch (settlementError: any) {
                     const message = settlementError?.message || String(settlementError);
+                    storeRun.errors.push(buildSchedulerFailureDiagnostic(settlementError, {
+                        tId,
+                        sId,
+                        phase: 'analytics_settlement',
+                        operation: 'settle_store_date',
+                        settlementDate,
+                    }));
                     appLogger.error('[NightlyAnalytics] Store settlement failed', settlementError, {
                         tId,
                         sId,
@@ -970,7 +1010,13 @@ async function runNightlySchedulerForStore(
             } catch (error: any) {
                 logger.error(`    ✗ Project ${projectId}: ${error.message}`);
                 storeRun.failedCount++;
-                storeRun.errors.push({ tId, sId, projectId, error: error.message });
+                storeRun.errors.push(buildSchedulerFailureDiagnostic(error, {
+                    tId,
+                    sId,
+                    projectId,
+                    phase: 'project_scoring',
+                    operation: 'decision_blocks_menu_intelligence',
+                }));
             }
         }
 
@@ -996,7 +1042,12 @@ async function runNightlySchedulerForStore(
     } catch (error: any) {
         logger.error(`  ✗ Store ${sId}: ${error.message}`);
         storeRun.failedCount++;
-        storeRun.errors.push({ tId, sId, error: error.message });
+        storeRun.errors.push(buildSchedulerFailureDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'store_scheduler',
+            operation: 'store_nightly_recovery',
+        }));
     }
 
     return storeRun;
@@ -1010,7 +1061,7 @@ async function runNightlySchedulerForStore(
  * - Filters stores by schedulerHour === currentUTCHour
  * - Only processes stores in their local "night window"
  * - Per-store tasks: DI scoring, menu intelligence
- * - Platform tasks: analytics, messaging, Canonica, infra compounding
+ * - Platform tasks: analytics, messaging, billing, and infra compounding
  * - Persists run log + sends telegram alert
  * 
  * @see __docs__/patterns/nightly-scheduler-architecture.md
@@ -2003,24 +2054,110 @@ export const triggerStoreNightlyScheduler = onCall({
 
     const db = firestoreAdmin;
     const runStartTime = Date.now();
+    const runLogId = `manual_store_${tId}_${sId}_${runStartTime}`;
+    const runLogRef = db.collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS).doc(runLogId);
+    const triggeredBy = request.auth.uid;
+    const manualScope = { tId, sId };
+
+    const writeRunLog = async (payload: Record<string, any>) => {
+        await runLogRef.set({
+            runLogId,
+            trigger: 'manual',
+            triggerKind: 'store_nightly_recovery',
+            triggeredBy,
+            manualScope,
+            updatedAt: FieldValue.serverTimestamp(),
+            ...payload,
+        }, { merge: true });
+    };
 
     try {
+        await writeRunLog({
+            startedAt: Timestamp.fromMillis(runStartTime),
+            completedAt: null,
+            durationMs: 0,
+            status: 'running',
+            phase: 'stores_summary_lookup',
+            totalStores: 1,
+            totalProjects: 0,
+            successCount: 0,
+            failedCount: 0,
+            skippedCount: 0,
+            intelligenceSuccess: 0,
+            intelligenceFailed: 0,
+            tasks: [],
+            errors: [],
+            metadata: {
+                source: 'platform_ui',
+                callable: 'triggerStoreNightlyScheduler',
+                requesterRole,
+            },
+        });
+
         const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
         const storeInfo = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[sId] : null;
 
         if (!storeInfo) {
-            throw new HttpsError('not-found', `Store ${sId} was not found in storesSummary`);
+            const diagnostic = buildSchedulerFailureDiagnostic(new Error(`Store ${sId} was not found in storesSummary`), {
+                tId,
+                sId,
+                phase: 'stores_summary_lookup',
+                operation: 'load_store_from_stores_summary',
+            });
+            await writeRunLog({
+                completedAt: Timestamp.now(),
+                durationMs: Date.now() - runStartTime,
+                status: 'failed',
+                phase: 'stores_summary_lookup',
+                failedCount: 1,
+                errors: [diagnostic],
+            });
+            throw new HttpsError('not-found', `Store ${sId} was not found in storesSummary`, { runLogId, diagnostic });
         }
 
         if (String(storeInfo.tId || '') !== tId) {
-            throw new HttpsError('failed-precondition', `Store ${sId} does not belong to tenant ${tId}`);
+            const diagnostic = buildSchedulerFailureDiagnostic(new Error(`Store ${sId} does not belong to tenant ${tId}`), {
+                tId,
+                sId,
+                phase: 'stores_summary_validation',
+                operation: 'validate_store_tenant_match',
+                details: { storesSummaryTenantId: String(storeInfo.tId || '') },
+            });
+            await writeRunLog({
+                completedAt: Timestamp.now(),
+                durationMs: Date.now() - runStartTime,
+                status: 'failed',
+                phase: 'stores_summary_validation',
+                failedCount: 1,
+                errors: [diagnostic],
+            });
+            throw new HttpsError('failed-precondition', `Store ${sId} does not belong to tenant ${tId}`, { runLogId, diagnostic });
         }
 
-        logger.info(`Manual store nightly scheduler recovery for store ${sId} (tenant ${tId})`);
+        logger.info('Manual store nightly scheduler recovery started', {
+            runLogId,
+            tId,
+            sId,
+            storeName: storeInfo.name || null,
+            active: storeInfo.active !== false,
+        });
+        await writeRunLog({
+            phase: 'store_nightly_recovery',
+            metadata: {
+                source: 'platform_ui',
+                callable: 'triggerStoreNightlyScheduler',
+                requesterRole,
+                storeName: storeInfo.name || '',
+                storeActive: storeInfo.active !== false,
+                timeZone: storeInfo.timeZone || '',
+                businessDayEndTime: storeInfo.businessDayEndTime || '',
+            },
+        });
 
         const storeRun = await runNightlySchedulerForStore(db, sId, storeInfo, new Date(runStartTime));
 
         if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE && storeRun.enrichment) {
+            await writeRunLog({ phase: 'stores_summary_enrichment' });
             await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
                 [`stores.${sId}.lastPublishedAt`]: storeRun.enrichment.lastPublishedAt,
                 [`stores.${sId}.projectCount`]: storeRun.enrichment.projectCount,
@@ -2057,13 +2194,11 @@ export const triggerStoreNightlyScheduler = onCall({
             },
         ];
 
-        await db.collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS).add({
-            trigger: 'manual',
-            triggeredBy: request.auth.uid,
-            startedAt: Timestamp.fromMillis(runStartTime),
+        await writeRunLog({
             completedAt: Timestamp.now(),
             durationMs: Date.now() - runStartTime,
             status,
+            phase: 'completed',
             manualScope: { tId, sId },
             totalStores: 1,
             totalProjects: storeRun.totalProjects,
@@ -2076,8 +2211,23 @@ export const triggerStoreNightlyScheduler = onCall({
             errors: storeRun.errors,
         });
 
+        logger.info('Manual store nightly scheduler recovery completed', {
+            runLogId,
+            tId,
+            sId,
+            status,
+            totalProjects: storeRun.totalProjects,
+            successCount: storeRun.successCount,
+            failedCount: storeRun.failedCount,
+            intelligenceSuccess: storeRun.intelligenceSuccess,
+            intelligenceFailed: storeRun.intelligenceFailed,
+            analytics: storeRun.analytics,
+            errorCount: storeRun.errors.length,
+        });
+
         return {
             success: status !== 'failed',
+            runLogId,
             status,
             totalStores: 1,
             totalProjects: storeRun.totalProjects,
@@ -2089,6 +2239,46 @@ export const triggerStoreNightlyScheduler = onCall({
             analytics: storeRun.analytics,
             errors: storeRun.errors,
         };
+    } catch (error: any) {
+        const diagnostic = buildSchedulerFailureDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'manual_recovery_callable',
+            operation: 'triggerStoreNightlyScheduler',
+        });
+
+        appLogger.error('[ManualSchedulerRecovery] Failed', error, {
+            runLogId,
+            tId,
+            sId,
+            diagnostic,
+        });
+
+        if (!(error instanceof HttpsError)) {
+            try {
+                await writeRunLog({
+                    completedAt: Timestamp.now(),
+                    durationMs: Date.now() - runStartTime,
+                    status: 'failed',
+                    phase: diagnostic.phase,
+                    failedCount: 1,
+                    errors: [diagnostic],
+                });
+            } catch (logError) {
+                appLogger.error('[ManualSchedulerRecovery] Failed to persist failure run log', logError, {
+                    runLogId,
+                    tId,
+                    sId,
+                    originalDiagnostic: diagnostic,
+                });
+            }
+        }
+
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+
+        throw new HttpsError('internal', diagnostic.error, { runLogId, diagnostic });
     } finally {
         await flushSentry();
     }

@@ -13,6 +13,7 @@
  */
 
 import { firebaseAuth } from '@lib/firebase/firebaseClient';
+import { syncCanonicaAuthWithCustomToken } from '@lib/firebase/syncCanonicaAuth';
 import { signInWithCustomToken } from 'firebase/auth';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
@@ -77,6 +78,7 @@ export function useFirebaseAuthSync() {
 
             // Sign in to Firebase Auth with custom token
             await signInWithCustomToken(firebaseAuth, data.customToken);
+            await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
 
             console.log('[Firebase Auth Sync] ✅ Sync complete');
             console.log('[Firebase Auth Sync] User:', firebaseAuth.currentUser?.email);

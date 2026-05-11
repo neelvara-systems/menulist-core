@@ -6,7 +6,7 @@
  * 
  * Feature-flagged: ENABLE_CANONICA_CANONICAL_ANSWERS
  * 
- * @see functions/src/canonica/canonicaNightly.ts
+ * @see functions-canonica/src/canonica/canonicaNightly.ts
  * @see __docs__/canonica/doctrine/01-core-doctrine.md (canonical coverage is THE KPI)
  */
 

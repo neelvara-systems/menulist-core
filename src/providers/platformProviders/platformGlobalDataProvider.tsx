@@ -8,6 +8,7 @@ import { TenantDataType } from '@type/platform/tenant';
 import { UserDataType } from '@type/platform/user';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { SupportTicketType } from '@type/supportTicket';
+import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { Timestamp } from 'firebase/firestore';
 import { createContext, useEffect, useState } from 'react';
 
@@ -50,6 +51,13 @@ export type PlatformGlobalDataProviderType = {
 
     cachedArticles: { cachedOn: Timestamp | null, articles: KnowledgeBaseArticleType[] };
     setCachedArticles: any;
+
+    platformStoreSummaryOptions: PlatformStoreSummaryOption[];
+    setPlatformStoreSummaryOptions: any;
+    platformStoreSummaryLoadedAt: number | null;
+    setPlatformStoreSummaryLoadedAt: any;
+    platformStoreSummaryLoading: boolean;
+    setPlatformStoreSummaryLoading: any;
 }
 
 const InititalState: PlatformGlobalDataProviderType = {
@@ -90,6 +98,13 @@ const InititalState: PlatformGlobalDataProviderType = {
 
     cachedArticles: { cachedOn: null, articles: [] },
     setCachedArticles: () => { },
+
+    platformStoreSummaryOptions: [],
+    setPlatformStoreSummaryOptions: () => { },
+    platformStoreSummaryLoadedAt: null,
+    setPlatformStoreSummaryLoadedAt: () => { },
+    platformStoreSummaryLoading: false,
+    setPlatformStoreSummaryLoading: () => { },
 }
 
 export const PlatformGlobalDataContext = createContext<PlatformGlobalDataProviderType>(InititalState)

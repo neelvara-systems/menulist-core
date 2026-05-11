@@ -12,6 +12,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -45,7 +46,7 @@ async function callGeminiForFrictionInsight(promptData: string): Promise<{
         const { GoogleGenerativeAI } = await import('@google/generative-ai');
         const apiKey = process.env.GEMINI_AI_KEY;
         if (!apiKey) {
-            console.warn('[Canonica Friction Insight] GEMINI_AI_KEY not set. Skipping insight generation.');
+            logger.warn('[Canonica Friction Insight] GEMINI_AI_KEY not set. Skipping insight generation.');
             return null;
         }
 
@@ -102,7 +103,7 @@ Rules:
             overallHealth: parsed.overallHealth || 'LOW',
         };
     } catch (error) {
-        console.error('[Canonica Friction Insight] Gemini call failed:', error);
+        logger.error('[Canonica Friction Insight] Gemini call failed', { error });
         return null;
     }
 }
@@ -131,7 +132,12 @@ export async function generateFrictionInsight(tId: number, sId: number): Promise
 
         // 2. Check minimum signal threshold
         if ((snapshot.totalSignals7d || 0) < MIN_SIGNALS_FOR_INSIGHT) {
-            console.log(`[Canonica Friction Insight] Skipped for ${tId}/${sId}: insufficient data (${snapshot.totalSignals7d} < ${MIN_SIGNALS_FOR_INSIGHT})`);
+            logger.info('[Canonica Friction Insight] Skipped for insufficient data', {
+                tId,
+                sId,
+                totalSignals7d: snapshot.totalSignals7d || 0,
+                minimumSignals: MIN_SIGNALS_FOR_INSIGHT,
+            });
             return { generated: false, skippedReason: `insufficient_data: ${snapshot.totalSignals7d} < ${MIN_SIGNALS_FOR_INSIGHT}` };
         }
 
@@ -188,11 +194,11 @@ export async function generateFrictionInsight(tId: number, sId: number): Promise
             generatedAt: Timestamp.now(),
         }, { merge: true });
 
-        console.log(`[Canonica Friction Insight] Generated for ${tId}/${sId}: health=${aiResult.overallHealth}`);
+        logger.info('[Canonica Friction Insight] Generated', { tId, sId, overallHealth: aiResult.overallHealth });
         return { generated: true };
 
     } catch (error) {
-        console.error(`[Canonica Friction Insight] Failed for ${tId}/${sId}:`, error);
+        logger.error('[Canonica Friction Insight] Failed', { tId, sId, error });
         return { generated: false, skippedReason: `error: ${error instanceof Error ? error.message : 'unknown'}` };
     }
 }

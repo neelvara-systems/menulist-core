@@ -1,15 +1,14 @@
 
 'use client';
 
-import { getSupportTickets, subscribeSupportTickets } from '@database/tickets';
+import { getDeletedSupportTickets, getSupportTickets, subscribeSupportTickets } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useTicketCache } from '@hook/useTicketCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SupportTicketType } from '@type/supportTicket';
 import { exportToCSV } from '@util/exportUtils';
-import { updateList } from '@util/utils';
 import { Badge, Button, Card, Flex, message, Segmented, Space, Spin, Typography } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuBarChart2, LuDownload, LuLayoutGrid, LuTrash2 } from 'react-icons/lu';
 import AnalyticsView from './AnalyticsView';
 import { ticketAnalyticsColumns, ticketCSVColumns } from './exportConfig';
@@ -25,79 +24,64 @@ const SupportTickets = () => {
     const dispatch = useAppDispatch();
     const ticketsViewRef = useRef<PlatformTicketsViewRef>(null);
     const deletedTicketsViewRef = useRef<PlatformTicketsViewRef>(null);
-    const { getAllItems, setAllItems } = useTicketCache();
+    const { cachedItems, setAllItems } = useTicketCache();
+    const cachedTicketsOnMountRef = useRef<SupportTicketType[]>(cachedItems || []);
 
     // Helper function to update both state and cache
-    const updateTicketsAndCache = (updatedTickets: SupportTicketType[]) => {
+    const updateTicketsAndCache = useCallback((updatedTickets: SupportTicketType[]) => {
         setTickets(updatedTickets);
         setAllItems(updatedTickets);
-    };
+    }, [setAllItems]);
 
-    // Fetch tickets once at parent level
+    // Support tickets use one live snapshot as the initial load.
+    // This avoids paying for both getDocs() and onSnapshot() on mount.
     useEffect(() => {
-        const fetchTickets = async () => {
-            setLoading(true);
-            dispatch(startLoader('Loading tickets...'));
-            try {
-                const response = await getAllItems({ includeDeleted: false });
-                setTickets(response);
-            } catch (error) {
-                message.error('Failed to load tickets.');
-            } finally {
-                setLoading(false);
-                dispatch(stopLoader('Loading tickets...'));
-            }
-        };
-
-        // Set up real-time listener
+        let mounted = true;
         let unsubscribe: (() => void) | null = null;
+        const cachedTickets = cachedTicketsOnMountRef.current;
+        const shouldShowLoader = cachedTickets.length === 0;
+
+        if (cachedTickets.length > 0) {
+            setTickets(cachedTickets);
+            setLoading(false);
+        } else {
+            dispatch(startLoader('Loading tickets...'));
+        }
 
         const setupListener = async () => {
             unsubscribe = await subscribeSupportTickets(
                 (updatedTickets) => {
-                    // Intelligently merge tickets: add new ones and update existing ones
-                    setTickets(prevTickets => {
-                        // Ensure prevTickets is always an array
-                        const currentTickets = Array.isArray(prevTickets) ? prevTickets : [];
-                        let mergedTickets = [...currentTickets];
-
-                        // Process each ticket from the subscription
-                        updatedTickets.forEach(ticket => {
-                            mergedTickets = updateList(mergedTickets, ticket, 'first');
-                        });
-
-                        return mergedTickets;
-                    });
+                    if (!mounted) return;
+                    updateTicketsAndCache(updatedTickets);
+                    setLoading(false);
+                    if (shouldShowLoader) dispatch(stopLoader('Loading tickets...'));
                 },
-                (error) => {
+                () => {
+                    if (!mounted) return;
                     message.error('Failed to sync tickets in real-time');
+                    setLoading(false);
+                    if (shouldShowLoader) dispatch(stopLoader('Loading tickets...'));
                 }
             );
         };
 
-        fetchTickets();
         setupListener();
 
         return () => {
+            mounted = false;
             if (unsubscribe) {
                 unsubscribe();
             }
+            if (shouldShowLoader) dispatch(stopLoader('Loading tickets...'));
         };
-    }, [dispatch]);
-
-    useEffect(() => {
-        if (!loading) {
-            setAllItems(tickets);
-        }
-    }, [loading, setAllItems, tickets]);
+    }, [dispatch, updateTicketsAndCache]);
 
     // Fetch deleted tickets when trash view is accessed
     const fetchDeletedTickets = async () => {
         dispatch(startLoader('Loading deleted tickets...'));
         try {
-            const response = await getSupportTickets(true); // includeDeleted = true
-            const deleted = response.filter(t => t.deleted === true);
-            setDeletedTickets(deleted);
+            const response = await getDeletedSupportTickets(100);
+            setDeletedTickets(response);
         } catch (error) {
             message.error('Failed to load deleted tickets.');
         } finally {

@@ -63,7 +63,7 @@ import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 functions-canonica/
   src/
     index.ts                    — Entry point (exports all Canonica CFs)
-    canonica/canonicaNightly.ts  — Drift + mutation + entity resolution
+    canonica/canonicaNightly.ts  — Drift + mutation + entity resolution (migrated)
     logic/embedArticleWorker.ts  — KB embedding worker
     logic/regenerateEmbedding.ts — KB embedding regen
     logic/publishApprovedJob.ts  — KB ingestion publish
@@ -152,9 +152,9 @@ useEntityCandidates.ts, useMutationProposals.ts
 
 ### Move to `functions-canonica/src/`
 
-| From `functions/src/`          | Purpose                                          |
-| ------------------------------ | ------------------------------------------------ |
-| `canonica/canonicaNightly.ts`  | Drift, mutation, entity resolution, coverage KPI |
+| Migrated / moving from legacy `functions/src/` | Purpose                                          |
+| --------------------------------------------- | ------------------------------------------------ |
+| `canonica/canonicaNightly.ts`                 | Drift, mutation, entity resolution, coverage KPI — migrated to `functions-canonica/src/canonica/canonicaNightly.ts` |
 | `logic/embedArticleWorker.ts`  | KB embedding worker (task queue)                 |
 | `logic/regenerateEmbedding.ts` | KB embedding regen (callable)                    |
 | `logic/publishApprovedJob.ts`  | KB ingestion publish (callable)                  |
@@ -175,7 +175,7 @@ useEntityCandidates.ts, useMutationProposals.ts
 
 ### Remove from MenuList Functions
 
-Remove Canonica block from `functions/src/decisionBlocksScoring.ts` (lines 1274-1312). Remove `canonica/` import.
+Canonica nightly has been removed from `functions/src/decisionBlocksScoring.ts`; do not re-add Canonica scheduled work to MenuList functions.
 
 Remove from `functions/src/triggers/shared.ts`: `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn` exports.
 
@@ -295,6 +295,7 @@ App Check is per-Firebase project. When Canonica project is created, it needs it
 - [x] `queryEmbeddings` — switched to `canonicaFirestoreAdmin`
 - [x] `DB_COLLECTIONS` — Canonica section comment updated
 - [x] `decisionBlocksScoring.ts` — Canonica nightly block removed
+- [x] Legacy MenuList-side `canonicaNightly.ts` duplicate removed
 - [x] `tsc --noEmit` — ZERO ERRORS
 - [x] 3 helpCenter API routes switched to `canonicaFirestoreAdmin` (search-kb, search-kb-stream, article-embedding)
 - [x] `.env` — Canonica env var placeholders added
@@ -310,10 +311,10 @@ App Check is per-Firebase project. When Canonica project is created, it needs it
 - [ ] Create Canonica Firebase project in GCP console
 - [ ] Fill `CANONICA_FIREBASE_*` env vars
 - [ ] Add env vars to Vercel
-- [ ] Move 7 Cloud Function files to `functions-canonica/src/`
+- [ ] Move remaining Cloud Function files to `functions-canonica/src/` (Canonica nightly is already moved)
 - [ ] Copy shared utilities to `functions-canonica/src/`
 - [ ] `npm install` in `functions-canonica/`
-- [ ] Remove moved files from `functions/src/`
+- [ ] Remove remaining moved files from `functions/src/`
 - [ ] Deploy both Firebase projects
 - [ ] Create `canonica_clients` collection with MenuList as client #1
 

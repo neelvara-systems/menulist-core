@@ -27,6 +27,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -197,7 +198,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
     try {
         const apiKey = process.env.GEMINI_AI_KEY;
         if (!apiKey) {
-            console.error('[Canonica Bootstrap] GEMINI_AI_KEY not configured');
+            logger.error('[Canonica Bootstrap] GEMINI_AI_KEY not configured');
             return null;
         }
 
@@ -212,7 +213,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
         const text = result.response?.text();
         return text || null;
     } catch (error) {
-        console.error('[Canonica Bootstrap] Gemini call failed:', error);
+        logger.error('[Canonica Bootstrap] Gemini call failed', { error });
         return null;
     }
 }
@@ -251,7 +252,7 @@ async function discoverBootstrapCandidates(): Promise<BootstrapCandidate[]> {
             candidates.push({ tId, sId, jobId: jobDoc.id });
         }
     } catch (error) {
-        console.error('[Canonica Bootstrap] Discovery failed:', error);
+        logger.error('[Canonica Bootstrap] Discovery failed', { error });
     }
 
     return candidates;
@@ -276,7 +277,12 @@ async function extractEntitiesForTenant(
         .get();
 
     if (articlesSnap.size < CONFIG.MIN_ARTICLES_FOR_BOOTSTRAP) {
-        console.log(`[Canonica Bootstrap] ${tId}/${sId}: Only ${articlesSnap.size} articles, below minimum ${CONFIG.MIN_ARTICLES_FOR_BOOTSTRAP}. Skipping.`);
+        logger.info('[Canonica Bootstrap] Skipping extraction because article count is below minimum', {
+            tId,
+            sId,
+            articleCount: articlesSnap.size,
+            minimumArticles: CONFIG.MIN_ARTICLES_FOR_BOOTSTRAP,
+        });
         return result;
     }
 
@@ -317,7 +323,7 @@ async function extractEntitiesForTenant(
     }
 
     if (articles.length === 0) {
-        console.log(`[Canonica Bootstrap] ${tId}/${sId}: No unprocessed articles found. Skipping extraction.`);
+        logger.info('[Canonica Bootstrap] No unprocessed articles found. Skipping extraction.', { tId, sId });
         return result;
     }
 
@@ -345,7 +351,12 @@ async function extractEntitiesForTenant(
                 }
             }
         } catch (error) {
-            console.error(`[Canonica Bootstrap] Extraction failed for batch at index ${i}:`, error);
+            logger.error('[Canonica Bootstrap] Extraction failed for article batch', {
+                tId,
+                sId,
+                batchIndex: i,
+                error,
+            });
         }
     }
 
@@ -383,7 +394,12 @@ async function extractEntitiesForTenant(
             result.candidateIds.push(docRef.id);
             result.extracted++;
         } catch (error) {
-            console.error(`[Canonica Bootstrap] Failed to store candidate "${entity.name}":`, error);
+            logger.error('[Canonica Bootstrap] Failed to store entity candidate', {
+                tId,
+                sId,
+                entityName: entity.name,
+                error,
+            });
         }
     }
 
@@ -506,7 +522,13 @@ async function autoPromoteEntities(
                 existingNames.add(normalizedName);
                 result.promoted++;
             } catch (error) {
-                console.error(`[Canonica Bootstrap] Failed to promote "${candidate.name}":`, error);
+                logger.error('[Canonica Bootstrap] Failed to promote entity candidate', {
+                    tId,
+                    sId,
+                    candidateId: candidateDoc.id,
+                    candidateName: candidate.name,
+                    error,
+                });
             }
         } else {
             result.forReview++;
@@ -628,7 +650,12 @@ async function generateDraftsForPromotedEntities(
             const parsed = parseDraftResponse(rawResponse);
             if (!parsed) {
                 result.failed++;
-                console.warn(`[Canonica Bootstrap] Failed to parse draft for entity "${entity.name}"`);
+                logger.warn('[Canonica Bootstrap] Failed to parse draft response', {
+                    tId,
+                    sId,
+                    entityId: entityDoc.id,
+                    entityName: entity.name,
+                });
                 continue;
             }
 
@@ -685,7 +712,13 @@ async function generateDraftsForPromotedEntities(
 
             result.generated++;
         } catch (error) {
-            console.error(`[Canonica Bootstrap] Draft gen failed for "${entity.name}":`, error);
+            logger.error('[Canonica Bootstrap] Draft generation failed', {
+                tId,
+                sId,
+                entityId: entityDoc.id,
+                entityName: entity.name,
+                error,
+            });
             result.failed++;
         }
     }
@@ -766,11 +799,11 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
         // Discover tenants with published KB jobs that need bootstrapping
         const candidates = await discoverBootstrapCandidates();
         if (candidates.length === 0) {
-            console.log('[Canonica Bootstrap] No bootstrap candidates found.');
+            logger.info('[Canonica Bootstrap] No bootstrap candidates found.');
             return result;
         }
 
-        console.log(`[Canonica Bootstrap] Found ${candidates.length} candidate(s) for bootstrap.`);
+        logger.info('[Canonica Bootstrap] Found bootstrap candidates', { candidateCount: candidates.length });
 
         for (const { tId, sId, jobId } of candidates) {
             const jobRef = db.collection(DB_COLLECTIONS.KB_GENERATION_JOBS).doc(jobId);
@@ -784,7 +817,11 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
                         .limit(1)
                         .get();
                     if (!existingEntities.empty) {
-                        console.log(`[Canonica Bootstrap] ${tId}/${sId}: Entities already exist, skipping (SKIP_IF_ENTITIES_EXIST=true).`);
+                        logger.info('[Canonica Bootstrap] Entities already exist, skipping tenant', {
+                            tId,
+                            sId,
+                            reason: 'SKIP_IF_ENTITIES_EXIST',
+                        });
                         await jobRef.update({ 'onboardingBootstrap.status': 'completed', 'onboardingBootstrap.completedAt': Timestamp.now() });
                         continue;
                     }
@@ -833,16 +870,20 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
 
                 result.tenantsBootstrapped++;
 
-                console.log(`[Canonica Bootstrap] ${tId}/${sId}: ` +
-                    `extracted=${extractionResult.extracted}, ` +
-                    `promoted=${promoteResult.promoted}, ` +
-                    `review=${promoteResult.forReview}, ` +
-                    `drafts=${draftResult.generated}/${draftResult.generated + draftResult.failed}`);
+                logger.info('[Canonica Bootstrap] Tenant bootstrap completed', {
+                    tId,
+                    sId,
+                    extracted: extractionResult.extracted,
+                    promoted: promoteResult.promoted,
+                    review: promoteResult.forReview,
+                    draftsGenerated: draftResult.generated,
+                    draftsFailed: draftResult.failed,
+                });
 
             } catch (error) {
                 const msg = `${tId}/${sId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
                 result.errors.push(msg);
-                console.error(`[Canonica Bootstrap] Error for ${msg}`);
+                logger.error('[Canonica Bootstrap] Tenant bootstrap failed', { tId, sId, error });
 
                 try {
                     await jobRef.update({
@@ -853,7 +894,7 @@ export async function runOnboardingBootstrap(): Promise<BootstrapResult> {
             }
         }
     } catch (error) {
-        console.error('[Canonica Bootstrap] Fatal error:', error);
+        logger.error('[Canonica Bootstrap] Fatal error', { error });
         result.errors.push(`Fatal: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
 

@@ -3,7 +3,7 @@
 > **Status:** DOCUMENTED (Forensic Audit)
 > **Last Updated:** 2026-03-01
 > **Audit Type:** Codebase-first forensic documentation
-> **Feature Scope:** 16 subsystems, 190+ files, 26 Firestore collections
+> **Feature Scope:** 16 subsystems, 190+ files, 27 Firestore collections
 
 ---
 
@@ -105,14 +105,13 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 
 ### Cloud Functions
 
-- `functions/src/aggregateDailyChatStats.ts` — Nightly chat analytics aggregation
-- `functions/src/logic/embedArticleWorker.ts` — Article embedding worker
-- `functions/src/logic/regenerateEmbedding.ts` — Single article re-embedding
-- `functions/src/analytics/feedbackIntelligence.ts` — AI feedback analysis
-- `functions/src/analytics/kbQuality.ts` — KB quality scoring
-- `functions/src/analytics/weeklyNarrative.ts` — Weekly digest generation
-- `functions/src/negativeFeedbackAlert.ts` — Negative feedback alerting
-- `functions/src/canonica/canonicaNightly.ts` — Canonica nightly: drift detection, signal mutation, signal resolution, coverage KPI, fallback detection, impact tracking, confidence adjustment
+- `functions-canonica/src/index.ts` — Canonica Cloud Functions entry point
+- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica nightly: drift detection, signal mutation, signal resolution, coverage KPI, fallback detection, impact tracking, confidence adjustment, signal TTL, graph rebuild, predictive sync
+- `functions-canonica/src/canonica/canonicaNightly.ts` — Persists structured run logs to `canonica_schedulerRunLogs` with per-tenant task results and diagnostics
+- `functions-canonica/src/canonica/draftGenerator.ts` — Canonical answer draft generation
+- `functions-canonica/src/canonica/resolutionExtractor.ts` — Ticket-resolution knowledge extraction
+- `functions-canonica/src/canonica/predictiveTriggerSync.ts` — Predictive support trigger sync
+- `functions-canonica/src/integrations/eventProcessor.ts` — Canonica integration event delivery
 
 ### Types
 
@@ -160,7 +159,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 
 ---
 
-## Firestore Collections (26 Total)
+## Firestore Collections (27 Total)
 
 | Collection                       | Purpose                                 | Scoping                             |
 | -------------------------------- | --------------------------------------- | ----------------------------------- |
@@ -182,14 +181,21 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 | `changelog_feedback/{tId}/{sId}` | Changelog entry feedback                | Tenant+Store scoped (subcollection) |
 | `article_feedback/{tId}/{sId}`   | Article feedback                        | Tenant+Store scoped (subcollection) |
 | `canonica_entities`              | Product ontology entities               | Tenant+Store scoped                 |
-| `canonica_entity_relations`      | Entity relationships                    | Tenant+Store scoped                 |
-| `canonica_canonical_answers`     | Governed canonical answers              | Tenant+Store scoped                 |
-| `canonica_entity_candidates`     | AI-extracted entity candidates          | Tenant+Store scoped                 |
-| `canonica_signal_events`         | Friction signal events (append-only)    | Tenant+Store scoped                 |
-| `canonica_mutation_proposals`    | Governed mutation queue                 | Tenant+Store scoped                 |
+| `canonica_entityRelations`       | Entity relationships                    | Tenant+Store scoped                 |
+| `canonica_canonicalAnswers`      | Governed canonical answers              | Tenant+Store scoped                 |
+| `canonica_entityCandidates`      | AI-extracted entity candidates          | Tenant+Store scoped                 |
+| `canonica_signalEvents`          | Friction signal events (append-only)    | Tenant+Store scoped                 |
+| `canonica_mutationProposals`     | Governed mutation queue                 | Tenant+Store scoped                 |
 | `canonica_releases`              | Immutable release timeline              | Tenant+Store scoped                 |
-| `canonica_entity_search_index`   | Deterministic entity search index       | Tenant+Store scoped                 |
-| `canonica_audit_logs`            | Governance audit trail (append-only)    | Tenant+Store scoped                 |
+| `canonica_entitySearchIndex`     | Deterministic entity search index       | Tenant+Store scoped                 |
+| `canonica_auditLogs`             | Governance audit trail (append-only)    | Tenant+Store scoped                 |
+| `canonica_frictionDailyStats`    | Daily friction aggregates               | Tenant+Store scoped                 |
+| `canonica_schedulerRunLogs`      | Canonica nightly run logs and diagnostics | Platform-only read, server-written |
+| `canonica_integrationEvents`     | Workflow integration events             | Tenant+Store scoped, server-written |
+| `canonica_integrationDeliveryLogs` | Integration delivery attempt logs      | Tenant+Store scoped, server-written |
+| `canonica_predictiveTriggers`    | Predictive support trigger rules        | Tenant+Store scoped                 |
+
+**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for shared-DB local/test mode and `firestore-canonica.rules` for dedicated Canonica Firebase deployments. `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`, and the client signs into the Canonica Firebase app with the same `platformRole`, `tenantId`, and `storeId` claims. Canonica composite indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json` so both deployment modes support the same query set.
 
 ---
 

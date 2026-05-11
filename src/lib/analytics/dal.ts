@@ -9,11 +9,10 @@
  * - Makes it easy to switch data sources (Firestore → BigQuery, etc.)
  */
 
-import { getChatStatisticsOptimized, getKnowledgeGapsOptimized, getTopQuestionsOptimized } from '@database/chatAnalytics';
-import type { NormalizedMetrics, NormalizedKnowledgeGap, NormalizedTopQuestion } from './normalizer';
-import { normalizeFirestoreDoc } from './normalizer';
+import { getChatDashboardAggregatesOptimized } from '@database/chatAnalytics';
+import type { NormalizedKnowledgeGap, NormalizedTopQuestion } from './normalizer';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { collection, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 export interface DateRange {
   start: Date;
@@ -105,13 +104,7 @@ export async function getDashboardData(
     // Calculate days from date range
     const days = Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Fetch data in parallel for performance
-    // FIXED: Correct parameter order (session, days) not (dateRange, session)
-    const [statistics, topQuestions, knowledgeGaps] = await Promise.all([
-      getChatStatisticsOptimized(session, days),
-      getTopQuestionsOptimized(session, days),
-      getKnowledgeGapsOptimized(session, days),
-    ]);
+    const { statistics, topQuestions, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, days);
 
     // Transform to unified format
     return {
@@ -212,9 +205,7 @@ export async function getSummaryMetrics(
     // Calculate days from date range
     const days = Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / (1000 * 60 * 60 * 24));
     
-    // FIXED: Correct parameter order (session, days)
-    const statistics = await getChatStatisticsOptimized(session, days);
-    const knowledgeGaps = await getKnowledgeGapsOptimized(session, days);
+    const { statistics, knowledgeGaps } = await getChatDashboardAggregatesOptimized(session, days);
 
     return {
       totalChats: statistics?.totalChats || 0,

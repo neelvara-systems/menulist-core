@@ -9,6 +9,7 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
 import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
+import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { ChangelogPage } from '@type/changelog';
 import { KbCategoriesMap, KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { StoreDataType } from '@type/platform/store';
@@ -73,6 +74,10 @@ export default function SessionProvider({ children, session }: Props) {
     const [cachedTickets, setCachedTickets] = useState<{ cachedOn: Timestamp, tickets: SupportTicketType[] }>({ cachedOn: null, tickets: [] })
 
     const [cachedArticles, setCachedArticles] = useState<{ cachedOn: Timestamp | null, articles: KnowledgeBaseArticleType[] }>({ cachedOn: null, articles: [] })
+
+    const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
+    const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
+    const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
 
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string>();
@@ -255,7 +260,13 @@ export default function SessionProvider({ children, session }: Props) {
                 cachedTickets,
                 setCachedTickets,
                 cachedArticles,
-                setCachedArticles
+                setCachedArticles,
+                platformStoreSummaryOptions,
+                setPlatformStoreSummaryOptions,
+                platformStoreSummaryLoadedAt,
+                setPlatformStoreSummaryLoadedAt,
+                platformStoreSummaryLoading,
+                setPlatformStoreSummaryLoading
             }}>
                 {(session && !storeDetails) ? (
                     <ServerSidePageLoader page="Loading Store Data" />

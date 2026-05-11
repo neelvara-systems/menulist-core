@@ -7,6 +7,7 @@
  * @see __docs__/canonica/workflow-integrations/workflow-integrations_impl.md §5.7
  */
 
+import * as logger from 'firebase-functions/logger';
 import {
     IIntegrationAdapter,
     IntegrationEvent,
@@ -172,7 +173,10 @@ export class GithubAdapter implements IIntegrationAdapter {
 
             if (response.ok) {
                 const data = await response.json() as any;
-                console.log(`[Canonica Integration] GitHub issue created: #${data.number}`);
+                logger.info('[Canonica Integration] GitHub issue created', {
+                    issueNumber: data.number,
+                    issueUrl: data.html_url,
+                });
                 return { success: true, statusCode: response.status, durationMs };
             }
 

@@ -6,7 +6,7 @@
  * 
  * Exported Functions:
  * - canonicaNightly: Scheduled 8-step batch (drift, mutation, resolution, KPI, etc.)
- * - triggerCanonicaNightly: HTTP-callable manual trigger for testing
+ * - triggerCanonicaNightly: HTTPS manual trigger guarded by CRON_SECRET
  * 
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
  * @see __docs__/canonica/doctrine/08-product-separation-playbook.md
@@ -15,12 +15,13 @@
 // ⚠️ MUST BE FIRST: Load .env.local before any other imports (emulator)
 if (process.env.FUNCTIONS_EMULATOR === 'true') {
     require('dotenv').config({ path: '.env.local' });
-    console.log('[Canonica Dev] Loaded .env.local for emulator');
+    require('firebase-functions/logger').info('[Canonica Dev] Loaded .env.local for emulator');
 }
 
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import * as logger from 'firebase-functions/logger';
 import { runCanonicaNightly } from './canonica/canonicaNightly';
 import { FUNCTION_FLAGS } from './constants/features';
 import { processEvent } from './integrations/eventProcessor';
@@ -41,16 +42,30 @@ export const canonicaNightly = onSchedule(
         maxInstances: 1,
     },
     async () => {
-        console.log('[Canonica Scheduler] Starting nightly batch...');
-        const result = await runCanonicaNightly();
-        console.log('[Canonica Scheduler] Complete:', JSON.stringify(result));
+        logger.info('[Canonica Scheduler] Starting nightly batch...');
+        const result = await runCanonicaNightly({ trigger: 'scheduled', triggeredBy: 'system' });
+        logger.info('[Canonica Scheduler] Complete', {
+            runLogId: result.runLogId,
+            status: result.status,
+            tenantsProcessed: result.tenantsProcessed,
+            errorCount: result.errorDetails.length,
+        });
     }
 );
 
 // ═══════════════════════════════════════════════════════════════
 // MANUAL TRIGGER (for testing/debugging)
-// Call via: firebase functions:call triggerCanonicaNightly --project canonica
+// Call via HTTPS with Authorization: Bearer ${CRON_SECRET}
 // ═══════════════════════════════════════════════════════════════
+
+function isManualTriggerAuthorized(req: any): boolean {
+    if (process.env.FUNCTIONS_EMULATOR === 'true') return true;
+
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.get?.('authorization') || req.headers?.authorization || '';
+
+    return Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
+}
 
 export const triggerCanonicaNightly = onRequest(
     {
@@ -59,10 +74,24 @@ export const triggerCanonicaNightly = onRequest(
         maxInstances: 1,
     },
     async (req, res) => {
-        console.log('[Canonica Manual] Triggered manually...');
-        const result = await runCanonicaNightly();
-        console.log('[Canonica Manual] Complete:', JSON.stringify(result));
-        res.json(result);
+        if (!isManualTriggerAuthorized(req)) {
+            logger.warn('[Canonica Manual] Unauthorized manual scheduler trigger blocked', {
+                ip: req.ip,
+                hasAuthorizationHeader: Boolean(req.get?.('authorization') || req.headers?.authorization),
+            });
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        logger.info('[Canonica Manual] Triggered manually...');
+        const result = await runCanonicaNightly({ trigger: 'manual', triggeredBy: 'cron_secret' });
+        logger.info('[Canonica Manual] Complete', {
+            runLogId: result.runLogId,
+            status: result.status,
+            tenantsProcessed: result.tenantsProcessed,
+            errorCount: result.errorDetails.length,
+        });
+        res.status(result.status === 'failed' ? 500 : 200).json(result);
     }
 );
 
@@ -86,18 +115,18 @@ export const processIntegrationEvent = onDocumentCreated(
 
         const snapshot = firestoreEvent.data;
         if (!snapshot) {
-            console.warn('[Canonica Integration] No data in event snapshot');
+            logger.warn('[Canonica Integration] No data in event snapshot');
             return;
         }
 
         const eventId = firestoreEvent.params.eventId;
         const event = snapshot.data() as IntegrationEvent;
 
-        console.log(`[Canonica Integration] Processing event: ${event.eventType} (${eventId})`);
+        logger.info('[Canonica Integration] Processing event', { eventType: event.eventType, eventId });
 
         const result = await processEvent(eventId, event);
 
-        console.log(`[Canonica Integration] Event ${eventId}: delivered=${result.delivered}, failed=${result.failed}`);
+        logger.info('[Canonica Integration] Event processed', { eventId, delivered: result.delivered, failed: result.failed });
     }
 );
 

@@ -12,6 +12,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -37,7 +38,7 @@ export function resetNightlyEventCounts(): void {
  * Emit a Canonica integration event (fire-and-forget).
  * 
  * Safe to call from any flow — does nothing when feature flag is off.
- * Never blocks the caller; errors are swallowed with console.warn.
+ * Never blocks the caller; errors are logged and swallowed.
  * Enforces per-tenant event cap (50 per nightly run).
  */
 export async function emitIntegrationEvent(params: {
@@ -54,7 +55,10 @@ export async function emitIntegrationEvent(params: {
         const tenantKey = `${params.tId}_${params.sId}`;
         const currentCount = nightlyEventCounts.get(tenantKey) || 0;
         if (currentCount >= INTEGRATION_LIMITS.MAX_EVENTS_PER_NIGHTLY_RUN) {
-            console.warn(`[Canonica Integration] Event cap reached for ${tenantKey}. Skipping ${params.eventType}.`);
+            logger.warn('[Canonica Integration] Event cap reached', {
+                tenantKey,
+                eventType: params.eventType,
+            });
             return;
         }
         nightlyEventCounts.set(tenantKey, currentCount + 1);
@@ -71,9 +75,18 @@ export async function emitIntegrationEvent(params: {
 
         await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_EVENTS).add(event);
 
-        console.log(`[Canonica Integration] Emitted: ${params.eventType} for ${params.tId}/${params.sId}`);
+        logger.info('[Canonica Integration] Event emitted', {
+            eventType: params.eventType,
+            tId: params.tId,
+            sId: params.sId,
+        });
     } catch (error) {
         // Fire-and-forget: log but never throw
-        console.warn(`[Canonica Integration] Failed to emit ${params.eventType}:`, error);
+        logger.warn('[Canonica Integration] Failed to emit event', {
+            eventType: params.eventType,
+            tId: params.tId,
+            sId: params.sId,
+            error: error instanceof Error ? error.message : String(error),
+        });
     }
 }

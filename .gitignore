@@ -17,6 +17,7 @@
 
 # Firebase Functions
 functions/lib
+functions-canonica/lib
 
 # misc
 .DS_Store

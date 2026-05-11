@@ -69,7 +69,7 @@ Each quarter has ONE structural objective. No feature sprawl.
 |-------------|---------|
 | All 4 drift classes | version_mismatch, signal_anomaly, scope_conflict, deprecated_entity |
 | Release-triggered drift | Synchronous after release activation |
-| Nightly drift audit CF | Follows existing scheduler pattern (add to `decisionBlocksScoring.ts` or separate) |
+| Nightly drift audit CF | Follows the existing scheduler reliability pattern, implemented in `functions-canonica/` |
 | Drift flag enforcement | Cannot serve drifted answers as primary without warning |
 | DriftEvent audit collection | Append-only audit trail |
 | Feature flag | `ENABLE_CANONICA_DRIFT_DETECTION` |

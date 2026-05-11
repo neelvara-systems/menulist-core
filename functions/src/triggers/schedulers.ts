@@ -178,13 +178,13 @@ export const alertEscalation = onSchedule(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// CANONICA NIGHTLY — REMOVED (Duplicate Prevention)
+// CANONICA NIGHTLY — SEPARATE PRODUCT SCHEDULER
 // ═══════════════════════════════════════════════════════════════
-// Canonica nightly batch is now exclusively run inside
-// decisionBlocksScoring.ts (the unified nightly scheduler).
-// Running it here as a separate CF caused it to execute TWICE
-// at 2:30 AM UTC — doubling writes and proposals.
+// Canonica nightly batch is owned by functions-canonica/ and deploys
+// to the Canonica Firebase project. Do not register it in MenuList
+// schedulers or decisionBlocksScoring.ts.
 //
-// @see functions/src/decisionBlocksScoring.ts (ENABLE_CANONICA_NIGHTLY block)
-// @see __docs__/canonica/doctrine/05-architecture-evolution.md
+// @see functions-canonica/src/index.ts
+// @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
+// @see __docs__/canonica/doctrine/08-product-separation-playbook.md
 // ═══════════════════════════════════════════════════════════════

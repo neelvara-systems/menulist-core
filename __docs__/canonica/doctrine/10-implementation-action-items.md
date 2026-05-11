@@ -72,7 +72,7 @@ Go to Vercel project settings → Environment Variables → add all `CANONICA_FI
 Move these files from `functions/src/` to `functions-canonica/src/`:
 
 ```
-functions/src/canonica/canonicaNightly.ts → functions-canonica/src/canonica/canonicaNightly.ts
+Legacy MenuList-side `canonicaNightly.ts` → `functions-canonica/src/canonica/canonicaNightly.ts` (moved; legacy duplicate removed)
 functions/src/logic/embedArticleWorker.ts → functions-canonica/src/logic/embedArticleWorker.ts
 functions/src/logic/regenerateEmbedding.ts → functions-canonica/src/logic/regenerateEmbedding.ts
 functions/src/logic/publishApprovedJob.ts → functions-canonica/src/logic/publishApprovedJob.ts
@@ -103,7 +103,7 @@ cd functions-canonica && npm install
 
 After verifying functions-canonica works, remove:
 
-- `functions/src/canonica/` directory
+- legacy MenuList-side Canonica scheduler directory (done for `canonicaNightly`; do not recreate Canonica schedulers in MenuList functions)
 - KB function exports from `functions/src/triggers/shared.ts`
 - KB function exports from `functions/src/index.ts`
 

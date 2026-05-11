@@ -20,6 +20,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -184,7 +185,7 @@ async function callGeminiForExtraction(userPrompt: string): Promise<string | nul
     try {
         const apiKey = process.env.GEMINI_AI_KEY;
         if (!apiKey) {
-            console.error('[Canonica TicketKnowledge] GEMINI_AI_KEY not configured');
+            logger.error('[Canonica TicketKnowledge] GEMINI_AI_KEY not configured');
             return null;
         }
 
@@ -198,7 +199,7 @@ async function callGeminiForExtraction(userPrompt: string): Promise<string | nul
         const result = await model.generateContent(userPrompt);
         return result.response?.text() || null;
     } catch (error) {
-        console.error('[Canonica TicketKnowledge] Gemini call failed:', error);
+        logger.error('[Canonica TicketKnowledge] Gemini call failed', { error });
         return null;
     }
 }
@@ -414,20 +415,30 @@ export async function extractTicketKnowledge(
             } catch (error) {
                 const msg = `Entity ${cluster.entityId}: ${error instanceof Error ? error.message : 'Unknown'}`;
                 result.errors.push(msg);
-                console.error(`[Canonica TicketKnowledge] ${msg}`);
+                logger.error('[Canonica TicketKnowledge] Entity extraction failed', {
+                    tId,
+                    sId,
+                    entityId: cluster.entityId,
+                    error,
+                });
             }
         }
 
         if (result.proposalsCreated > 0 || result.proposalsMerged > 0) {
-            console.log(`[Canonica TicketKnowledge] ${tId}/${sId}: ` +
-                `candidates=${result.candidatesFound}, created=${result.proposalsCreated}, ` +
-                `merged=${result.proposalsMerged}, skipped=${result.skippedDuplicate}, ` +
-                `lowConf=${result.skippedLowConfidence}`);
+            logger.info('[Canonica TicketKnowledge] Extraction completed', {
+                tId,
+                sId,
+                candidatesFound: result.candidatesFound,
+                proposalsCreated: result.proposalsCreated,
+                proposalsMerged: result.proposalsMerged,
+                skippedDuplicate: result.skippedDuplicate,
+                skippedLowConfidence: result.skippedLowConfidence,
+            });
         }
     } catch (error) {
         const msg = `Fatal: ${error instanceof Error ? error.message : 'Unknown'}`;
         result.errors.push(msg);
-        console.error(`[Canonica TicketKnowledge] ${tId}/${sId}: ${msg}`);
+        logger.error('[Canonica TicketKnowledge] Fatal extraction failure', { tId, sId, error });
     }
 
     return result;

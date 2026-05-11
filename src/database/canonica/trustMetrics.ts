@@ -6,7 +6,7 @@
  * 
  * Feature-flagged: ENABLE_CANONICA_TRUST_METRICS
  * 
- * @see functions/src/canonica/canonicaNightly.ts
+ * @see functions-canonica/src/canonica/canonicaNightly.ts
  * @see __docs__/canonica/founder-trust-layer/
  */
 

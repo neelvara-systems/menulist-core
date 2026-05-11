@@ -367,6 +367,146 @@ export const getKnowledgeGapsOptimized = async (session: any, days: number = 30)
 };
 
 /**
+ * Get the full chat dashboard aggregate from one daily analytics query.
+ * Cost: ~30 daily aggregate reads + today's live reads, instead of three
+ * separate daily aggregate queries over the same date range.
+ */
+export const getChatDashboardAggregatesOptimized = async (session: any, days: number = 30) => {
+    return await apiCallComposer(
+        async () => {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayKey = yesterday.toISOString().split('T')[0];
+
+            const q = query(
+                await getCollectionRef(),
+                where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
+                where('date', '>=', startDate.toISOString().split('T')[0]),
+                where('date', '<=', endDate.toISOString().split('T')[0]),
+                orderBy('date', 'desc')
+            );
+
+            const querySnapshot = await getDocs(q);
+            const dailyStats: ChatAnalyticsDay[] = [];
+            querySnapshot.forEach((doc) => {
+                dailyStats.push({ ...doc.data(), id: doc.id } as ChatAnalyticsDay);
+            });
+
+            const historicalDays = dailyStats.filter((day) => day.date <= yesterdayKey);
+            const historicalStats = historicalDays.reduce(
+                (acc, day) => ({
+                    totalChats: acc.totalChats + day.totalChats,
+                    qnaChats: acc.qnaChats + day.qnaChats,
+                    assistantChats: acc.assistantChats + day.assistantChats,
+                    totalMessages: acc.totalMessages + day.totalMessages,
+                    positiveFeedback: acc.positiveFeedback + day.positiveFeedback,
+                    negativeFeedback: acc.negativeFeedback + day.negativeFeedback,
+                    totalFeedback: acc.totalFeedback + day.totalFeedback,
+                    totalRegenerations: acc.totalRegenerations + day.totalRegenerations
+                }),
+                {
+                    totalChats: 0,
+                    qnaChats: 0,
+                    assistantChats: 0,
+                    totalMessages: 0,
+                    positiveFeedback: 0,
+                    negativeFeedback: 0,
+                    totalFeedback: 0,
+                    totalRegenerations: 0
+                }
+            );
+
+            let todayStats = {
+                totalChats: 0,
+                qnaChats: 0,
+                assistantChats: 0,
+                totalMessages: 0,
+                positiveFeedback: 0,
+                negativeFeedback: 0,
+                totalFeedback: 0,
+                totalRegenerations: 0
+            };
+
+            try {
+                todayStats = await getTodayLiveStats(session);
+            } catch (error) {
+                console.warn('Failed to fetch today\'s stats, using historical only:', error);
+            }
+
+            const combinedStats = {
+                totalChats: historicalStats.totalChats + todayStats.totalChats,
+                qnaChats: historicalStats.qnaChats + todayStats.qnaChats,
+                assistantChats: historicalStats.assistantChats + todayStats.assistantChats,
+                totalMessages: historicalStats.totalMessages + todayStats.totalMessages,
+                positiveFeedback: historicalStats.positiveFeedback + todayStats.positiveFeedback,
+                negativeFeedback: historicalStats.negativeFeedback + todayStats.negativeFeedback,
+                totalFeedback: historicalStats.totalFeedback + todayStats.totalFeedback,
+                totalRegenerations: historicalStats.totalRegenerations + todayStats.totalRegenerations
+            };
+
+            const satisfactionRate = combinedStats.totalFeedback > 0
+                ? Math.round((combinedStats.positiveFeedback / combinedStats.totalFeedback) * 100)
+                : 0;
+            const avgMessagesPerChat = combinedStats.totalChats > 0
+                ? Math.round((combinedStats.totalMessages / combinedStats.totalChats) * 10) / 10
+                : 0;
+            const regenerationRate = combinedStats.totalMessages > 0
+                ? Math.round((combinedStats.totalRegenerations / combinedStats.totalMessages) * 100)
+                : 0;
+
+            const questionCounts: Record<string, number> = {};
+            const gapCounts: Record<string, { question: string; count: number; examples: string[] }> = {};
+
+            dailyStats.forEach((day) => {
+                day.topQuestions?.forEach((question) => {
+                    questionCounts[question.question] = (questionCounts[question.question] || 0) + question.count;
+                });
+
+                day.knowledgeGaps?.forEach((gap) => {
+                    if (!gapCounts[gap.question]) {
+                        gapCounts[gap.question] = {
+                            question: gap.question,
+                            count: 0,
+                            examples: []
+                        };
+                    }
+                    gapCounts[gap.question].count += gap.count;
+                    gap.examples?.forEach((example) => {
+                        if (gapCounts[gap.question].examples.length < 3 && !gapCounts[gap.question].examples.includes(example)) {
+                            gapCounts[gap.question].examples.push(example);
+                        }
+                    });
+                });
+            });
+
+            return {
+                statistics: {
+                    ...combinedStats,
+                    todayChats: todayStats.totalChats,
+                    satisfactionRate,
+                    avgMessagesPerChat,
+                    regenerationRate
+                },
+                topQuestions: Object.entries(questionCounts)
+                    .map(([question, count]) => ({ question, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 10),
+                knowledgeGaps: Object.values(gapCounts)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 20),
+            };
+        },
+        { session, days },
+        'getChatDashboardAggregatesOptimized'
+    );
+};
+
+/**
  * Get chat volume over time (from aggregated data)
  * Cost: ~30 reads for 30 days (one per day)
  */

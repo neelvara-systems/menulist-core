@@ -7,6 +7,7 @@
  * @see __docs__/canonica/workflow-integrations/workflow-integrations_impl.md §5.6
  */
 
+import * as logger from 'firebase-functions/logger';
 import {
     IIntegrationAdapter,
     IntegrationEvent,
@@ -171,7 +172,10 @@ export class LinearAdapter implements IIntegrationAdapter {
 
             if (data.data?.issueCreate?.success) {
                 const issue = data.data.issueCreate.issue;
-                console.log(`[Canonica Integration] Linear issue created: ${issue?.identifier || issue?.id}`);
+                logger.info('[Canonica Integration] Linear issue created', {
+                    issueIdentifier: issue?.identifier,
+                    issueId: issue?.id,
+                });
                 return { success: true, statusCode: 200, durationMs };
             }
 

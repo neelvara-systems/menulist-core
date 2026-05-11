@@ -957,7 +957,7 @@ For EACH feature touched in a session, execute ALL steps A through K in order:
 - **Rate limiting:** `src/lib/rateLimit/configs.ts`
 - **SAFE_MODE:** `src/lib/ops/safeMode.ts` (blocks AI routes during cost spikes)
 - **Alerting:** `src/lib/ops/alerts.ts` (frontend) + `functions/src/monitoring/alerts.ts` (CF)
-- **Nightly scheduler:** `functions/src/decisionBlocksScoring.ts` (8 tasks, 2:30 AM UTC)
+- **MenuList store-EOD scheduler:** `functions/src/decisionBlocksScoring.ts` (hourly at :30 UTC, filters by store `timeZone` + `businessDayEndTime`). Canonica scheduled work lives in `functions-canonica/`.
 - **Secure logging:** `secureLog` / `secureError` — NEVER `console.log` / `console.error`
 - **Responsive breakpoints:** <768px = mobile, 768–1024px = tablet, ≥1024px = desktop (detected via `window.innerWidth` in `ClientMenuRenderer`).
 - **Slugify utility:** `src/lib/utils/slugify.ts` — converts text to URL-safe slugs. Handles diacritics. Non-Latin falls back to empty string.

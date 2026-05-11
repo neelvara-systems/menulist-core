@@ -5,6 +5,7 @@ import { EMPTY_ERROR, LOGO_SMALL } from "@constant/common";
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { useAppSelector } from "@hook/useAppSelector";
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
+import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
 import { getDarkModeState, toggleDarkMode } from "@reduxSlices/clientThemeConfig";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -108,6 +109,7 @@ function LoginPage() {
                 // Sign in with custom token
                 const { signInWithCustomToken } = await import('firebase/auth');
                 await signInWithCustomToken(firebaseAuth, data.customToken);
+                await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
                 console.log('✅ Firebase Auth established with custom token');
                 console.log('✅ Custom claims:', data.claims);
               }
@@ -129,8 +131,10 @@ function LoginPage() {
             });
 
             if (setClaimsResponse.ok) {
+              const data = await setClaimsResponse.json();
               console.log('✅ Custom claims verified/set');
               await currentUser.getIdToken(true); // Refresh token
+              await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
             }
           } catch (error) {
             console.warn('Custom claims check failed:', error);
@@ -249,9 +253,11 @@ function LoginPage() {
           });
 
           if (setClaimsResponse.ok) {
+            const data = await setClaimsResponse.json();
             console.log('✅ Custom claims set on Firebase Auth token');
             // Force token refresh to get new claims
             await userCredential.user.getIdToken(true);
+            await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
           } else {
             console.warn('⚠️ Failed to set custom claims');
           }

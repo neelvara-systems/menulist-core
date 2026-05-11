@@ -389,7 +389,7 @@ MenuList and Canonica are separate Firebase projects but same Next.js codebase:
 
 ### Current State
 
-All Cloud Functions live in `functions/src/` and deploy to `ecomsai`. The unified nightly scheduler (`decisionBlocksScoring.ts`) runs both MenuList tasks AND Canonica tasks in one function.
+MenuList Cloud Functions live in `functions/src/` and deploy to `ecomsai`. Canonica has a separate `functions-canonica/` package that deploys to the Canonica Firebase project. The MenuList store-EOD scheduler (`decisionBlocksScoring.ts`) no longer runs Canonica nightly work.
 
 ### Decision: Separate `functions-canonica/` Directory From Day One
 
@@ -419,12 +419,12 @@ Everything else: menu processing, analytics, messaging, billing, monitoring, dec
 
 ### Unified Scheduler Split
 
-**Before:** `decisionBlocksScoring.ts` imports and runs `canonicaNightly` as a subtask (lines 1274-1312).
+**Before:** `decisionBlocksScoring.ts` imported and ran `canonicaNightly` as a subtask.
 
 **After:**
 
-- `functions/` (MenuList): Remove Canonica block from `decisionBlocksScoring.ts`
-- `functions-canonica/`: New `canonicaNightlyScheduler` as independent `onSchedule` function
+- `functions/` (MenuList): Keep Canonica out of `decisionBlocksScoring.ts`
+- `functions-canonica/`: `canonicaNightly` is the independent scheduled function
 
 ### Deployment
 
@@ -464,8 +464,8 @@ Canonica cross-product documents (tickets, chat, feedback) are NOT built via `re
 2. **Canonica Firebase client/admin files** — `canonicaFirebaseClient.ts`, `canonicaFirebaseAdmin.ts`, `canonicaConfig.ts`
 3. **Canonica env vars** — add to `.env`, `.env.local`, Vercel
 4. **Update Canonica DAL files** — 8 core files + 10 feature directories (see 08-product-separation-playbook.md)
-5. **Create `functions-canonica/`** — move 7 Canonica CFs, copy shared utils, create entry point
-6. **Remove Canonica from MenuList functions** — remove from `decisionBlocksScoring.ts`, `triggers/shared.ts`, `index.ts`
+5. **Create `functions-canonica/`** — move Canonica CFs, copy shared utils, create entry point
+6. **Keep Canonica out of MenuList functions** — nightly scheduler migration is complete; remaining KB exports stay tracked separately
 7. **Create `firebase-canonica.json`** — Firebase CLI config for Canonica project
 8. **Canonica Client Registry** — collection in Canonica Firestore, MenuList as client #1
 9. **CCT generation function** — create signed token from session

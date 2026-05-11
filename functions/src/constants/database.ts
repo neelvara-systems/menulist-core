@@ -133,6 +133,7 @@ export const DB_COLLECTIONS = {
     CANONICA_AUDIT_LOGS: 'canonica_auditLogs',
     CANONICA_ENTITY_SEARCH_INDEX: 'canonica_entitySearchIndex',
     CANONICA_ENTITY_CANDIDATES: 'canonica_entityCandidates',
+    CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

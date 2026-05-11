@@ -19,6 +19,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -291,7 +292,7 @@ async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Pro
     try {
         const apiKey = process.env.GEMINI_AI_KEY;
         if (!apiKey) {
-            console.error('[Canonica Draft] GEMINI_AI_KEY not configured');
+            logger.error('[Canonica Draft] GEMINI_AI_KEY not configured');
             return null;
         }
 
@@ -306,7 +307,7 @@ async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Pro
         const text = result.response?.text();
         return text || null;
     } catch (error) {
-        console.error('[Canonica Draft] Gemini call failed:', error);
+        logger.error('[Canonica Draft] Gemini call failed', { error });
         return null;
     }
 }
@@ -394,7 +395,11 @@ export async function generateDraftsForNewProposals(
                 if (!parsed) {
                     await proposalDoc.ref.update({ 'suggestedChange.draftStatus': 'failed' });
                     result.draftsFailed++;
-                    console.warn(`[Canonica Draft] Failed to parse Gemini response for proposal ${proposal.id}`);
+                    logger.warn('[Canonica Draft] Failed to parse Gemini response', {
+                        tId,
+                        sId,
+                        proposalId: proposal.id,
+                    });
                     continue;
                 }
 
@@ -437,7 +442,12 @@ export async function generateDraftsForNewProposals(
 
             } catch (error) {
                 // Per-proposal failure — continue with next
-                console.error(`[Canonica Draft] Failed for proposal ${proposal.id}:`, error);
+                logger.error('[Canonica Draft] Proposal draft generation failed', {
+                    tId,
+                    sId,
+                    proposalId: proposal.id,
+                    error,
+                });
                 try {
                     await proposalDoc.ref.update({ 'suggestedChange.draftStatus': 'failed' });
                 } catch { /* non-blocking */ }
@@ -445,7 +455,7 @@ export async function generateDraftsForNewProposals(
             }
         }
     } catch (error) {
-        console.error(`[Canonica Draft] Batch failed for ${tId}/${sId}:`, error);
+        logger.error('[Canonica Draft] Batch failed', { tId, sId, error });
     }
 
     return result;

@@ -226,6 +226,16 @@ getSchedulerSettlementSummary(); // ~1 read (nightlyState_* docs, limit 50)
 
 `triggerStoreNightlyScheduler` is the manual recovery tool for a failed store-level nightly run. It requires only the selected store from `storesSummary`, does not expose project IDs in the UI, and runs analytics settlement, Decision Blocks, and Menu Intelligence for all active projects under that store. Global maintenance tasks remain owned by the scheduled platform-wide flow.
 
+Manual recovery run logs are written before the heavy work begins:
+
+- Document id: `manual_store_{tId}_{sId}_{timestamp}`
+- Initial status: `running`
+- Final status: `success`, `partial`, or `failed`
+- Required diagnostic fields: `runLogId`, `manualScope`, `phase`, `tasks`, and `errors[]`
+- Error entries include safe internal debugging fields: `phase`, `operation`, `code`, `error`, optional `projectId`, optional `settlementDate`, and optional `details`
+
+This is required so platform ops can inspect the failed phase first, fix the cause, and then rerun recovery from the store selector.
+
 ---
 
 ## Security Checklist

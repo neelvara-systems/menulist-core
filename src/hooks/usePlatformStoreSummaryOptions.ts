@@ -2,97 +2,79 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
+import { buildPlatformStoreSummaryOptions } from '@lib/platform/storeSummaryOptions';
+import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
+import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { doc, getDoc } from 'firebase/firestore';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-export interface PlatformStoreSummaryOption {
-    key: string;
-    label: string;
-    sId: string;
-    tId: string;
-    name: string;
-    tenantName?: string;
-    active?: boolean;
-    city?: string;
-    businessType?: string;
-}
-
-function buildStoreLabel(store: PlatformStoreSummaryOption): string {
-    const name = store.name || `Store ${store.sId}`;
-    const tenant = store.tenantName ? ` · ${store.tenantName}` : '';
-    const city = store.city ? ` · ${store.city}` : '';
-    const status = store.active === false ? ' · inactive' : '';
-    return `${name}${tenant}${city} · T${store.tId} / S${store.sId}${status}`;
-}
+export type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 
 export function usePlatformStoreSummaryOptions(enabled = true) {
-    const [stores, setStores] = useState<PlatformStoreSummaryOption[]>([]);
+    const {
+        platformStoreSummaryLoadedAt,
+        platformStoreSummaryLoading,
+        platformStoreSummaryOptions,
+        setPlatformStoreSummaryLoadedAt,
+        setPlatformStoreSummaryLoading,
+        setPlatformStoreSummaryOptions,
+    } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const [selectedStoreId, setSelectedStoreId] = useState<string>();
-    const [loading, setLoading] = useState(false);
 
-    const loadStores = useCallback(async () => {
+    const loadStores = useCallback(async (force = false) => {
         if (!enabled) return;
-        setLoading(true);
+        if (!force && platformStoreSummaryLoadedAt) return;
+        if (!force && platformStoreSummaryLoading) return;
+
+        setPlatformStoreSummaryLoading(true);
         try {
             const summarySnap = await getDoc(doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary'));
             const summary = summarySnap.exists() ? summarySnap.data() : null;
-            const parsedStores = parseSummaryStores(summary);
-            const nextStores = Object.entries(parsedStores)
-                .map(([sId, data]: [string, any]) => {
-                    const tId = data?.tId != null ? String(data.tId) : '';
-                    const option: PlatformStoreSummaryOption = {
-                        key: sId,
-                        label: '',
-                        sId,
-                        tId,
-                        name: data?.name || '',
-                        tenantName: data?.tenantName || '',
-                        active: data?.active,
-                        city: data?.city || '',
-                        businessType: data?.businessType || '',
-                    };
-                    option.label = buildStoreLabel(option);
-                    return option;
-                })
-                .filter((store) => store.tId)
-                .sort((a, b) => {
-                    const tenantCompare = (a.tenantName || '').localeCompare(b.tenantName || '');
-                    if (tenantCompare !== 0) return tenantCompare;
-                    return (a.name || a.sId).localeCompare(b.name || b.sId);
-                });
-
-            setStores(nextStores);
+            const nextStores = buildPlatformStoreSummaryOptions(summary);
+            setPlatformStoreSummaryOptions(nextStores);
+            setPlatformStoreSummaryLoadedAt(Date.now());
             setSelectedStoreId((current) => {
                 if (current && nextStores.some((store) => store.sId === current)) return current;
                 return nextStores[0]?.sId;
             });
         } finally {
-            setLoading(false);
+            setPlatformStoreSummaryLoading(false);
         }
-    }, [enabled]);
+    }, [
+        enabled,
+        platformStoreSummaryLoadedAt,
+        platformStoreSummaryLoading,
+        setPlatformStoreSummaryLoadedAt,
+        setPlatformStoreSummaryLoading,
+        setPlatformStoreSummaryOptions,
+    ]);
 
     useEffect(() => {
         void loadStores();
     }, [loadStores]);
 
+    useEffect(() => {
+        if (selectedStoreId && platformStoreSummaryOptions.some((store) => store.sId === selectedStoreId)) return;
+        setSelectedStoreId(platformStoreSummaryOptions[0]?.sId);
+    }, [platformStoreSummaryOptions, selectedStoreId]);
+
     const selectedStore = useMemo(
-        () => stores.find((store) => store.sId === selectedStoreId),
-        [selectedStoreId, stores],
+        () => platformStoreSummaryOptions.find((store: PlatformStoreSummaryOption) => store.sId === selectedStoreId),
+        [platformStoreSummaryOptions, selectedStoreId],
     );
 
     const selectOptions = useMemo(
-        () => stores.map((store) => ({ label: store.label, value: store.sId })),
-        [stores],
+        () => platformStoreSummaryOptions.map((store: PlatformStoreSummaryOption) => ({ label: store.label, value: store.sId })),
+        [platformStoreSummaryOptions],
     );
 
     return {
-        loading,
+        loading: platformStoreSummaryLoading,
         loadStores,
         selectedStore,
         selectedStoreId,
         selectOptions,
         setSelectedStoreId,
-        stores,
+        stores: platformStoreSummaryOptions,
     };
 }

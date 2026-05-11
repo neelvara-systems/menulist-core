@@ -10,6 +10,7 @@
  * @see __docs__/canonica/workflow-integrations/workflow-integrations_impl.md §5.2
  */
 
+import * as logger from 'firebase-functions/logger';
 import { EmailAdapter } from './adapters/emailAdapter';
 import { GithubAdapter } from './adapters/githubAdapter';
 import { LinearAdapter } from './adapters/linearAdapter';
@@ -121,8 +122,17 @@ export async function processEvent(
                 result: deliveryResult,
             });
 
-            console.log(`[Canonica Integration] Delivery: ${adapterType} ${deliveryResult.success ? 'SUCCESS' : 'FAILED'} ` +
-                `attempt=${attempt} event=${eventId} (${deliveryResult.durationMs}ms)`);
+            logger.info('[Canonica Integration] Delivery attempt completed', {
+                tId: event.tId,
+                sId: event.sId,
+                eventId,
+                eventType: event.eventType,
+                adapter: adapterType,
+                attempt,
+                success: deliveryResult.success,
+                statusCode: deliveryResult.statusCode,
+                durationMs: deliveryResult.durationMs,
+            });
 
             if (deliveryResult.success) {
                 delivered = true;

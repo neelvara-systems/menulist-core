@@ -466,9 +466,9 @@ if (!FEATURE_FLAGS.ENABLE_CANONICA_TRUST_METRICS) return null;
 
 | File                                                     | Change                                                         | Lines (est.) |
 | -------------------------------------------------------- | -------------------------------------------------------------- | ------------ |
-| `functions/src/canonica/canonicaNightly.ts`              | Add trust metrics aggregation step + pass data between steps   | +80          |
+| `functions-canonica/src/canonica/canonicaNightly.ts`     | Add trust metrics aggregation step + pass data between steps   | +80          |
 | `src/config/features.ts`                                 | Add `ENABLE_CANONICA_TRUST_METRICS` flag                       | +15          |
-| `functions/src/constants/features.ts`                    | Add `ENABLE_CANONICA_TRUST_METRICS` flag (in `FUNCTION_FLAGS`) | +1           |
+| `functions-canonica/src/constants/features.ts`           | Add `ENABLE_CANONICA_TRUST_METRICS` flag (in `FUNCTION_FLAGS`) | +1           |
 | `src/components/templates/canonica/governance/index.tsx` | Add Trust tab (same pattern as Friction/Branding tabs)         | +15          |
 
 ### GovernanceHub Integration Pattern

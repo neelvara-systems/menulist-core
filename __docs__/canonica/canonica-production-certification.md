@@ -1,6 +1,6 @@
 # Canonica — Production Readiness Certification
 
-> **Audit Date:** 2026-03-03 (re-audited after operational loop completion)
+> **Audit Date:** 2026-05-11 (re-audited after scheduler observability and cost hardening)
 > **Auditor:** Cascade (Senior Staff Engineer + Systems Auditor)
 > **Method:** Full forensic code-only reconstruction + doc parity verification
 > **TypeScript Check:** PASS (0 errors)
@@ -15,14 +15,14 @@
 | Layer                  | Files                                      | Purpose                                                    |
 | ---------------------- | ------------------------------------------ | ---------------------------------------------------------- |
 | **Types**              | `src/types/canonica.ts` (410 lines)        | All type definitions, version helpers                      |
-| **DAL**                | 7 files in `src/database/canonica/`        | Firestore CRUD for all 9 collections                       |
+| **DAL**                | 12 files in `src/database/canonica/`       | Firestore CRUD/read helpers for Canonica tenant collections |
 | **Lib**                | 6 files in `src/lib/canonica/`             | Retrieval, drift, mutation, extraction, signals, tokenizer |
 | **Feature Flags**      | 5 flags in `src/config/features.ts`        | Pillar-gated activation                                    |
-| **DB Constants**       | 9 constants in `src/constants/database.ts` | Collection name constants                                  |
-| **Firestore Indexes**  | 14 Canonica-specific composite indexes     | All compound queries covered                               |
+| **DB Constants**       | 14 Canonica constants in database mirrors  | Collection name constants                                  |
+| **Firestore Indexes**  | 29 Canonica-specific composite indexes     | Mirrored for shared and dedicated Firebase deployments      |
 | **Integration Points** | 3 touchpoints (tickets, chat, search-kb)   | Signal emission + retrieval                                |
 
-### 1.2 Collections (9 Total — All Verified)
+### 1.2 Collections (14 Total — All Verified)
 
 | #   | Collection                   | Constant                       | DAL File               | Indexes                                                     |
 | --- | ---------------------------- | ------------------------------ | ---------------------- | ----------------------------------------------------------- |
@@ -31,8 +31,15 @@
 | 3   | `canonica_entitySearchIndex` | `CANONICA_ENTITY_SEARCH_INDEX` | `entities.ts`          | tId+sId                                                     |
 | 4   | `canonica_canonicalAnswers`  | `CANONICA_CANONICAL_ANSWERS`   | `canonicalAnswers.ts`  | tId+sId+status, tId+sId+entityIds+status, tId+sId+driftFlag |
 | 5   | `canonica_releases`          | `CANONICA_RELEASES`            | `releases.ts`          | tId+sId+status+versionNormalized, tId+sId+versionNormalized |
-| 6   | `canonica_mutationProposals` | `CANONICA_MUTATION_PROPOSALS`  | `mutationProposals.ts` | tId+sId+status+createdOn, tId+sId+createdOn                 |
-| 7   | `canonica_signalEvents`      | `CANONICA_SIGNAL_EVENTS`       | `signalEvents.ts`      | tId+sId+entityId+timestamp, tId+sId+timestamp               |
+| 6   | `canonica_mutationProposals` | `CANONICA_MUTATION_PROPOSALS`  | `mutationProposals.ts` | tId+sId+status+createdOn, tId+sId+createdOn, tId+sId+relatedEntityIds+status |
+| 7   | `canonica_signalEvents`      | `CANONICA_SIGNAL_EVENTS`       | `signalEvents.ts`      | tId+sId+entityId+timestamp, tId+sId+timestamp, tId+sId+type+timestamp |
+| 8   | `canonica_auditLogs`         | `CANONICA_AUDIT_LOGS`          | `auditLogs.ts`         | tId+sId+timestamp, tId+sId+entityId+timestamp, tId+sId+entityType+entityId+timestamp |
+| 9   | `canonica_entityCandidates`  | `CANONICA_ENTITY_CANDIDATES`   | `entityCandidates.ts`  | tId+sId+confidence, tId+sId+status+confidence               |
+| 10  | `canonica_frictionDailyStats` | `CANONICA_FRICTION_DAILY_STATS` | `frictionStats.ts`    | tId+sId+date, tId+sId+entityId+date                         |
+| 11  | `canonica_schedulerRunLogs`  | `CANONICA_SCHEDULER_RUN_LOGS`  | Scheduler only         | Platform read, server write                                 |
+| 12  | `canonica_integrationEvents` | `CANONICA_INTEGRATION_EVENTS`  | Integration functions  | tId+createdAt, status+createdAt                             |
+| 13  | `canonica_integrationDeliveryLogs` | `CANONICA_INTEGRATION_DELIVERY_LOGS` | Integration functions | eventId+createdAt, tId+adapter+status+createdAt             |
+| 14  | `canonica_predictiveTriggers` | `CANONICA_PREDICTIVE_TRIGGERS` | `predictiveTriggers.ts` | tId+sId+createdOn, tId+sId+status+createdOn                 |
 | 8   | `canonica_auditLogs`         | `CANONICA_AUDIT_LOGS`          | `auditLogs.ts`         | tId+sId+timestamp, tId+sId+entityId+timestamp               |
 | 9   | `canonica_entityCandidates`  | `CANONICA_ENTITY_CANDIDATES`   | `entityCandidates.ts`  | tId+sId+confidence, tId+sId+status+confidence               |
 
@@ -151,14 +158,16 @@ activateRelease(releaseId)
 
 ### Flow E — Nightly Job
 
-**Status:** No Cloud Function implemented yet. `runSignalMutationEngine` and `evaluateDriftForTenant` exist as callable functions but no cron trigger exists in the codebase.
+**Status:** Cloud Function implemented in `functions-canonica/src/index.ts` with scheduled and CRON_SECRET-guarded manual entry points.
 
-**Verdict:** NOT YET WIRED. Functions are ready but no scheduler CF. This is expected for pre-activation state. When implemented:
+**Verdict:** WIRED AND GUARDED. The nightly entry point runs inside Canonica Functions, records a structured run log, and caps tenant discovery plus per-tenant query volume.
 
-- Tenant discovery: Not implemented (will need store listing query)
+- Tenant discovery: `canonica_entities` scan capped at 1000 docs with truncation logged
 - Cross-tenant safety: Each function takes explicit `tId, sId` — no cross-contamination possible
-- Unbounded loop protection: `maxProposalsPerRun: 10`, signal limit `500`, clustering auto-caps
+- Unbounded loop protection: tenant discovery, answers, entities, signals, graph, search index, and predictive trigger reads all use explicit limits
 - Empty dataset safety: All functions handle `null`/empty returns gracefully
+- Manual trigger safety: `triggerCanonicaNightly` requires `Authorization: Bearer ${CRON_SECRET}` outside the Firebase emulator
+- Dedicated Firebase auth safety: `/api/auth/set-claims` mints a separate Canonica custom token in separate mode so client DAL calls satisfy `firestore-canonica.rules`
 
 ---
 
@@ -213,7 +222,7 @@ activateRelease(releaseId)
 
 | #   | Was                             | Now                                                                               |
 | --- | ------------------------------- | --------------------------------------------------------------------------------- |
-| 1   | No Cloud Function scheduler     | Wired into `decisionBlocksScoring.ts` with `ENABLE_CANONICA_NIGHTLY` flag         |
+| 1   | No Cloud Function scheduler     | Exported from `functions-canonica/src/index.ts` with the `ENABLE_CANONICA_NIGHTLY` flag |
 | 2   | No tenant discovery             | `discoverActiveTenants()` queries entity collection for distinct tId/sId          |
 | 3   | Sequential retrieval reads      | `Promise.all` for parallel entity answer fetches                                  |
 | 4   | Unresolved signal entityIds     | `resolveUnresolvedSignals()` runs nightly, matches against search index           |
@@ -248,14 +257,14 @@ Each flag depends on all previous flags being enabled first.
 | 2   | `getRelationsForEntity` — no `limit()` (unbounded reads)     | `entities.ts`                | Added `limit(500)`                                       |
 | 3   | `getActiveAnswersForEntity` — no `limit()` (unbounded reads) | `canonicalAnswers.ts`        | Added `limit(200)`                                       |
 | 4   | `getDriftedAnswers` — no `limit()` (unbounded reads)         | `canonicalAnswers.ts`        | Added `limit(500)`                                       |
-| 5   | No nightly scheduler wiring                                  | `decisionBlocksScoring.ts`   | Added Canonica task block with `ENABLE_CANONICA_NIGHTLY` |
+| 5   | No nightly scheduler wiring                                  | `functions-canonica/src/index.ts` | Added Canonica scheduled export with `ENABLE_CANONICA_NIGHTLY` |
 | 6   | Signal entity resolution missing                             | `canonicaNightly.ts`         | Added `resolveUnresolvedSignals()`                       |
 | 7   | No entity promotion from candidates                          | `entityCandidates.ts`        | Added `promoteCandidate()`                               |
 | 8   | No mutation review UI                                        | New files                    | `MutationProposalReview.tsx` + `useMutationProposals.ts` |
 | 9   | No coverage KPI tracking                                     | `canonicaNightly.ts`         | Added `aggregateCoverageKPI()`                           |
 | 10  | Signal dedup missing                                         | `signalEmitter.ts`           | Added in-memory dedup Set                                |
 | 11  | Sequential retrieval reads                                   | `canonicalRetrieval.ts`      | Changed to `Promise.all` parallel reads                  |
-| 12  | No CF feature flag for nightly                               | `functions/features.ts`      | Added `ENABLE_CANONICA_NIGHTLY`                          |
+| 12  | No CF feature flag for nightly                               | `functions-canonica/src/constants/features.ts` | Added `ENABLE_CANONICA_NIGHTLY`                          |
 | 13  | Recurring fallback not detected                              | `canonicaNightly.ts`         | Added `detectRecurringFallbacks()`                       |
 | 14  | No post-mutation impact tracking                             | `canonicaNightly.ts`         | Added `trackMutationImpact()`                            |
 | 15  | No confidence auto-adjustment                                | `canonicaNightly.ts`         | Added `autoAdjustConfidence()`                           |
@@ -269,7 +278,7 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 
 | Risk                                                    | Likelihood | Impact                   | Mitigation                                                                                                  |
 | ------------------------------------------------------- | ---------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Firestore composite index missing for new query pattern | Low        | Query fails at runtime   | All 14 Canonica indexes pre-defined in `firestore.indexes.json`                                             |
+| Firestore composite index missing for new query pattern | Low        | Query fails at runtime   | All 29 Canonica indexes mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`          |
 | Stale tokenizer breaks retrieval                        | Low        | Silent query miss        | Tokenizer frozen with `FROZEN` comment; shared between index and query time                                 |
 | Drift engine marks too many answers as drifted          | Medium     | Admin fatigue            | Configurable thresholds in `SIGNAL_DRIFT_THRESHOLDS`                                                        |
 | Signal emission slows ticket creation                   | Very Low   | UX degradation           | Fire-and-forget with try/catch; dynamic import                                                              |
@@ -286,16 +295,17 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 
 | #   | Component                       | Status                                                                  |
 | --- | ------------------------------- | ----------------------------------------------------------------------- |
-| 1   | Nightly Scheduler CF            | ✅ Wired into `decisionBlocksScoring.ts` with `ENABLE_CANONICA_NIGHTLY` |
+| 1   | Nightly Scheduler CF            | ✅ Exported from `functions-canonica/src/index.ts` with `ENABLE_CANONICA_NIGHTLY` |
 | 2   | Signal Entity Resolution        | ✅ `resolveUnresolvedSignals()` in nightly batch                        |
 | 3   | Entity Creation from Candidates | ✅ `promoteCandidate()` — one-click: candidate → entity + search index  |
 | 4   | Mutation Proposal Review UI     | ✅ `MutationProposalReview.tsx` + `useMutationProposals.ts`             |
 | 5   | Canonical Coverage KPI          | ✅ `aggregateCoverageKPI()` → `platformSummary/canonica_{sId}`          |
+| 6   | Scheduler Observability         | ✅ Structured run logs in `canonica_schedulerRunLogs` with per-tenant task diagnostics |
 
 **Additional Verification:**
 
 - All 4 active pillars fully implemented with correct invariants
-- All Firestore indexes pre-deployed (14 Canonica composite indexes)
+- All Firestore indexes pre-defined for both shared and dedicated deployment modes (29 Canonica composite indexes)
 - All integration points wired (tickets, chat, search-kb)
 - Feature flags provide safe activation/rollback
 - Zero unbounded queries (all capped with `limit()`)
@@ -311,7 +321,7 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 1. Seed at least 10 entities + 5 canonical answers for test tenant
 2. Enable `ENABLE_CANONICA_NIGHTLY` (CF flag) + `ENABLE_CANONICA_SIGNAL_MUTATION` (client)
 3. Monitor canonical hit rate for 2 weeks via coverage KPI in `platformSummary/canonica_{sId}`
-4. Verify Firestore indexes are deployed (`firebase deploy --only firestore:indexes`)
+4. Verify Firestore rules and indexes are deployed for the selected mode (`firebase deploy --only firestore:rules,firestore:indexes` or the Canonica Firebase alias/config)
 5. Enable remaining flags one-by-one following activation order
 
 ---

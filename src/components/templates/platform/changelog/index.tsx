@@ -1,11 +1,12 @@
 'use client';
 
-import { deleteChangelogEntry, fetchLatestChangelogPage, loadOlderChangelogPage } from '@database/changelog';
+import { deleteChangelogEntry, loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useChangelogCache } from '@hook/useChangelogCache';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Divider, Flex, Layout, Modal, Steps, Typography, message } from 'antd';
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuBookOpen, LuDot, LuEye, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import AddEditChangelog from './addEditChangelog';
@@ -27,7 +28,8 @@ function ChangelogTemplate() {
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
     const [entries, setEntries] = useState<any[]>([]);
     const [hasMore, setHasMore] = useState(true);
-    const { storeDetails, cachedChangelog } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { clearCache: clearChangelogCache, getItem: getCachedChangelog } = useChangelogCache();
     const dispatch = useAppDispatch();
 
     const sortEntries = (entriesToSort: any[]) => {
@@ -38,14 +40,11 @@ function ChangelogTemplate() {
         });
     };
 
-    const fetchLatestPage = async () => {
+    const fetchLatestPage = useCallback(async (forceRefresh = false) => {
         if (!storeDetails) return;
         dispatch(startLoader('Fetching Changelog'));
         try {
-            let data = cachedChangelog?.changelog
-            if (!data) {
-                data = await fetchLatestChangelogPage()
-            }
+            const data = await getCachedChangelog({ forceRefresh });
             if (data) {
                 setChangelogPage(data);
                 setEntries(sortEntries(data.entries || []));
@@ -57,13 +56,13 @@ function ChangelogTemplate() {
         } catch (error) {
             message.error('Failed to fetch changelog.');
         } finally {
-            dispatch(stopLoader('Fetching Changelog...'));
+            dispatch(stopLoader('Fetching Changelog'));
         }
-    };
+    }, [dispatch, getCachedChangelog, storeDetails]);
 
     useEffect(() => {
         fetchLatestPage();
-    }, [storeDetails]);
+    }, [fetchLatestPage]);
 
     const loadMore = async () => {
         if (!changelogPage || !storeDetails) return;
@@ -86,6 +85,7 @@ function ChangelogTemplate() {
     };
 
     const handleSave = (savedEntry: ChangelogEntry | null) => {
+        clearChangelogCache();
         if (editingEntry && savedEntry) {
             // Update both the flat entries list and the nested entries in changelogPage
             setEntries(prev => sortEntries(prev.map(entry => entry.id === savedEntry.id ? savedEntry : entry)));
@@ -96,7 +96,7 @@ function ChangelogTemplate() {
             });
         } else {
             // Re-fetch the latest page to show the new entry at the top
-            fetchLatestPage();
+            void fetchLatestPage(true);
         }
         setEditingEntry(null);
     };
@@ -113,6 +113,7 @@ function ChangelogTemplate() {
                 try {
                     await deleteChangelogEntry(entryId);
                     setEntries(prev => prev.filter(entry => entry.id !== entryId));
+                    clearChangelogCache();
                     message.success('Entry deleted successfully!');
                 } catch (error) {
                     message.error('Failed to delete entry.');

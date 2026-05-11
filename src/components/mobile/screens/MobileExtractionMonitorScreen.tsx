@@ -2,10 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import {
-    getExtractionCostMetrics,
-    getExtractionHealthMetrics,
-    getExtractionQualityMetrics,
-    getRecentExtractionJobs,
+    getExtractionDashboardSnapshot,
 } from '@database/ops/extraction';
 import type {
     ExtractionCostMetrics,
@@ -78,16 +75,11 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
         if (!isPlatform || !isEnabled) return;
         setLoading(true);
         try {
-            const [healthData, qualityData, costData, jobsData] = await Promise.all([
-                getExtractionHealthMetrics(),
-                getExtractionQualityMetrics(50),
-                getExtractionCostMetrics(),
-                getRecentExtractionJobs({ status: filterToStatus(jobFilter), pageSize: 20 }),
-            ]);
-            setHealth(healthData);
-            setQuality(qualityData);
-            setCost(costData);
-            setJobs(jobsData);
+            const snapshot = await getExtractionDashboardSnapshot({ status: filterToStatus(jobFilter), pageSize: 20 });
+            setHealth(snapshot.health);
+            setQuality(snapshot.quality);
+            setCost(snapshot.cost);
+            setJobs(snapshot.jobs);
         } catch {
             Toast.show({ content: 'Could not load extraction data', duration: 1800 });
         } finally {

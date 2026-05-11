@@ -67,10 +67,10 @@
 **What's needed:**
 - `releases` collection — immutable, append-only, with entityChanges
 - 4 drift classes: version_mismatch, signal_anomaly, scope_conflict, deprecated_entity
-- Nightly drift audit job (Cloud Function, pattern from existing `decisionBlocksScoring.ts`)
+- Nightly drift audit job (Canonica Cloud Function, exported from `functions-canonica/src/index.ts`)
 - Release-triggered drift evaluation
 
-**Cascade recommendation:** Follow existing nightly scheduler pattern (`decisionBlocksScoring.ts` runs at 2:30 AM UTC). Add drift evaluation to scheduler. Feature flag: `ENABLE_CANONICA_DRIFT_DETECTION`.
+**Cascade recommendation:** Reuse the scheduler reliability pattern, but keep the runtime in `functions-canonica/`. Add drift evaluation to the Canonica scheduler. Feature flag: `ENABLE_CANONICA_DRIFT_DETECTION`.
 
 ### Pillar 4 — Signal Mutation Engine
 **Status:** ⚠️ Partial (signals generate reports, not entity updates)

@@ -17,11 +17,10 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import {
-    getExtractionHealthMetrics,
-    getExtractionQualityMetrics,
-    getRecentExtractionJobs,
+    getExtractionDashboardSnapshot,
 } from '@database/ops/extraction';
 import type {
+    ExtractionCostMetrics,
     ExtractionHealthMetrics,
     ExtractionJobSummary,
     ExtractionQualityMetrics,
@@ -73,10 +72,11 @@ function StatusTag({ status }: { status: string }) {
 // ================================================================
 
 export default function ExtractionMonitor() {
-    const { data: session } = useSession();
+    const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<ExtractionHealthMetrics | null>(null);
     const [quality, setQuality] = useState<ExtractionQualityMetrics | null>(null);
+    const [cost, setCost] = useState<ExtractionCostMetrics | null>(null);
     const [jobs, setJobs] = useState<ExtractionJobSummary[]>([]);
     const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
     const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -87,17 +87,17 @@ export default function ExtractionMonitor() {
     const isPlatform = platformRole === 'PLATFORM';
 
     const fetchData = useCallback(async () => {
-        if (!isEnabled) return;
+        if (!isEnabled || !isPlatform) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const [healthData, qualityData, jobsData] = await Promise.all([
-                getExtractionHealthMetrics(),
-                getExtractionQualityMetrics(50),
-                getRecentExtractionJobs({ status: statusFilter, pageSize: 30 }),
-            ]);
-            setHealth(healthData);
-            setQuality(qualityData);
-            setJobs(jobsData);
+            const snapshot = await getExtractionDashboardSnapshot({ status: statusFilter, pageSize: 30 });
+            setHealth(snapshot.health);
+            setQuality(snapshot.quality);
+            setCost(snapshot.cost);
+            setJobs(snapshot.jobs);
         } catch (error: any) {
             notification.error({
                 message: 'Failed to load extraction data',
@@ -106,11 +106,12 @@ export default function ExtractionMonitor() {
         } finally {
             setLoading(false);
         }
-    }, [statusFilter, isEnabled]);
+    }, [statusFilter, isEnabled, isPlatform]);
 
     useEffect(() => {
+        if (sessionStatus === 'loading') return;
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, sessionStatus]);
 
     // Feature flag check (after hooks)
     if (!isEnabled) {
@@ -335,7 +336,7 @@ export default function ExtractionMonitor() {
                     )}
 
                     {/* Cost Monitor */}
-                    <CostMonitor refreshTrigger={refreshCounter} />
+                    <CostMonitor cost={cost} refreshTrigger={refreshCounter} />
 
                     {/* Job Feed */}
                     <Card

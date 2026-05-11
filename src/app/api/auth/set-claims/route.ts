@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { getUserByEmail } from '@database/users';
+import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
+import { canonicaAdminApp, canonicaAuthAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { secureLog } from '@lib/security/secureLogger';
@@ -23,6 +25,36 @@ const setClaimsSchema = z.object({
         'Invalid UID format'
     )
 });
+
+async function createCanonicaCustomTokenIfNeeded(
+    email: string,
+    displayName: string | null | undefined,
+    customClaims: Record<string, string>,
+): Promise<string | null> {
+    if (shouldUseSharedCanonicaFirebase) return null;
+
+    if (!canonicaAdminApp) {
+        secureLog('[Auth] Canonica Firebase Admin not configured for separate auth sync');
+        return null;
+    }
+
+    let canonicaUid: string;
+
+    try {
+        const canonicaUser = await canonicaAuthAdmin.getUserByEmail(email);
+        canonicaUid = canonicaUser.uid;
+    } catch {
+        const newCanonicaUser = await canonicaAuthAdmin.createUser({
+            email,
+            emailVerified: true,
+            displayName: displayName || undefined,
+        });
+        canonicaUid = newCanonicaUser.uid;
+    }
+
+    await canonicaAuthAdmin.setCustomUserClaims(canonicaUid, customClaims);
+    return canonicaAuthAdmin.createCustomToken(canonicaUid, customClaims);
+}
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -75,6 +107,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storeId: String(dbUser.storeId),
             uId: dbUser.id,
         };
+        const canonicaCustomToken = await createCanonicaCustomTokenIfNeeded(
+            session.user.email,
+            session.user.name,
+            customClaims,
+        );
 
         // If UID provided, set claims on existing user
         if (uid) {
@@ -88,7 +125,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             return NextResponse.json({
                 success: true,
-                claims: customClaims
+                claims: customClaims,
+                canonicaCustomToken,
             });
         }
 
@@ -123,6 +161,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({
             success: true,
             customToken,  // Client can use this to sign in
+            canonicaCustomToken,
             claims: customClaims
         });
 

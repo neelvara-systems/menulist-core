@@ -137,6 +137,6 @@ It is **founder confidence in AI answer quality** — expressed as 4 numbers.
 
 ### Modified Files (3)
 
-1. `functions/src/canonica/canonicaNightly.ts` — Add trust metrics aggregation step
+1. `functions-canonica/src/canonica/canonicaNightly.ts` — Add trust metrics aggregation step
 2. `src/config/features.ts` — Add `ENABLE_CANONICA_TRUST_METRICS` flag
-3. `functions/src/constants/features.ts` — Add `ENABLE_CANONICA_TRUST_METRICS` CF flag
+3. `functions-canonica/src/constants/features.ts` — Add `ENABLE_CANONICA_TRUST_METRICS` CF flag

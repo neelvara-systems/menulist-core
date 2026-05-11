@@ -8,6 +8,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { AdapterType, DeliveryLogEntry, DeliveryResult } from './types';
@@ -40,7 +41,11 @@ export async function logDeliveryAttempt(params: {
 
         await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_DELIVERY_LOGS).add(entry);
     } catch (error) {
-        console.warn(`[Canonica Integration] Failed to log delivery attempt:`, error);
+        logger.warn('[Canonica Integration] Failed to log delivery attempt', {
+            error: error instanceof Error ? error.message : String(error),
+            eventId: params.eventId,
+            adapter: params.adapter,
+        });
     }
 }
 
@@ -54,7 +59,11 @@ export async function updateEventStatus(
     try {
         await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_EVENTS).doc(eventId).update({ status });
     } catch (error) {
-        console.warn(`[Canonica Integration] Failed to update event status:`, error);
+        logger.warn('[Canonica Integration] Failed to update event status', {
+            error: error instanceof Error ? error.message : String(error),
+            eventId,
+            status,
+        });
     }
 }
 
@@ -75,9 +84,13 @@ export async function cleanupExpiredIntegrationData(tId: number, sId: number): P
             .limit(100)
             .get();
 
-        for (const doc of eventsSnap.docs) {
-            await doc.ref.delete();
-            result.eventsDeleted++;
+        if (!eventsSnap.empty) {
+            const eventsBatch = db.batch();
+            for (const doc of eventsSnap.docs) {
+                eventsBatch.delete(doc.ref);
+                result.eventsDeleted++;
+            }
+            await eventsBatch.commit();
         }
 
         // Delete expired delivery logs
@@ -88,12 +101,20 @@ export async function cleanupExpiredIntegrationData(tId: number, sId: number): P
             .limit(200)
             .get();
 
-        for (const doc of logsSnap.docs) {
-            await doc.ref.delete();
-            result.logsDeleted++;
+        if (!logsSnap.empty) {
+            const logsBatch = db.batch();
+            for (const doc of logsSnap.docs) {
+                logsBatch.delete(doc.ref);
+                result.logsDeleted++;
+            }
+            await logsBatch.commit();
         }
     } catch (error) {
-        console.warn(`[Canonica Integration] TTL cleanup error for ${tId}/${sId}:`, error);
+        logger.warn('[Canonica Integration] TTL cleanup error', {
+            tId,
+            sId,
+            error: error instanceof Error ? error.message : String(error),
+        });
     }
 
     return result;

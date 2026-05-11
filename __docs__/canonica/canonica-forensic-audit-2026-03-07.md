@@ -103,7 +103,7 @@ All 5 accessible via `GovernanceHub` (`governance/index.tsx`) — 8-tab Ant Desi
 **Location:** `functions/src/decisionBlocksScoring.ts` line 1274
 **Problem:** The Canonica nightly block was REMOVED from the MenuList scheduler (comment says "MOVED TO SEPARATE FIREBASE PROJECT"). But `functions-canonica/src/index.ts` is a **placeholder** with TODO comments — no actual Cloud Functions are exported.
 
-**Impact:** The entire nightly operational loop (drift detection, signal resolution, mutation clustering, coverage KPI, fallback detection, impact tracking, confidence adjustment, signal TTL) is **dead code**. It exists in `functions/src/canonica/canonicaNightly.ts` (857 lines) but is not called by anything.
+**Impact at time of audit:** The entire nightly operational loop (drift detection, signal resolution, mutation clustering, coverage KPI, fallback detection, impact tracking, confidence adjustment, signal TTL) was **dead code**. It existed only in the legacy MenuList-side Canonica nightly file and was not called by anything.
 
 **Root cause:** The multi-product separation playbook created the `functions-canonica/` directory but the actual function migration was listed as a manual founder action item (doc `10-implementation-action-items.md` §4-6) that has NOT been completed.
 
@@ -171,7 +171,7 @@ if (!FEATURE_FLAGS.ENABLE_CANONICA_NOTIFICATIONS) {
 
 #### BUG-8: Coverage KPI Reads from Wrong Firestore
 
-**Location:** `functions/src/canonica/canonicaNightly.ts` line 453
+**Location at time of audit:** legacy MenuList-side Canonica nightly file, line 453
 **Problem:** `aggregateCoverageKPI` reads from `DB_COLLECTIONS.AI_SEARCH_HISTORY` using `db` (which is `firestoreAdmin` — the MenuList Firestore). But per the multi-product separation doctrine, Canonica should use its own Firestore. Search history is written by the search-kb route which uses `canonicaFirestoreAdmin`.
 
 **Impact:** If Canonica gets its own Firebase project, the nightly KPI aggregation will read from the wrong database and find zero results.
@@ -408,7 +408,7 @@ All 9 DAL files in `src/database/canonica/`:
 
 ### P0 — Must Fix Before Activation
 
-1. **Re-wire nightly scheduler** — Either restore the Canonica block in `decisionBlocksScoring.ts` OR complete the `functions-canonica/` migration.
+1. **Re-wire nightly scheduler** — Completed via `functions-canonica/` migration; do not restore Canonica work inside `decisionBlocksScoring.ts`.
 2. **Pass tId/sId to GovernanceHub** — The governance page needs session context.
 3. **Wire notification service to ticket DAL** — `sendNotification()` needs call sites.
 
@@ -443,7 +443,7 @@ All 9 DAL files in `src/database/canonica/`:
 | **Dashboard Routes**       | 10 files in `src/app/(canonica)/canonica/`                 | ~200        |
 | **Website**                | 18 files in `src/app/sites/canonica/`                      | ~2,000      |
 | **API Routes**             | 2 files in `src/app/api/canonica/` + 1 widget route        | ~650        |
-| **Cloud Functions**        | 1 file `functions/src/canonica/canonicaNightly.ts`         | 857         |
+| **Cloud Functions**        | 1 file `functions-canonica/src/canonica/canonicaNightly.ts` | 857         |
 | **Notifications**          | 4 files in `src/lib/notifications/`                        | ~500        |
 | **Feature Flags**          | 10 Canonica flags in `src/config/features.ts`              | —           |
 | **DB Constants**           | 9 collections in both client + server constants            | —           |
@@ -500,7 +500,7 @@ The architecture is exceptional. The doctrine is comprehensive. The implementati
 | --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 6   | **BUG-6: Branding DAL missing tId in doc key**       | Changed doc key from `canonica_branding_${sId}` to `canonica_branding_${tId}_${sId}`. Updated `getBrandingDocRef` signature to accept `(tId, sId)`.                                                                                                                                                                                                                                                                                                                | `src/database/canonica/branding.ts`                                                                                                                                                                    |
 | 7   | **BUG-7: Notification sendNotification() not wired** | **FALSE POSITIVE** — Already fully wired: `addTicket` / `addTicketMessage` / `updateTicketStatus` → `triggerNotification()` (client helper) → `/api/notifications/send` → `sendNotification()` → SMTP. All 3 event types (`TICKET_CREATED`, `TICKET_REPLY`, `TICKET_STATUS_CHANGED`) have active call sites.                                                                                                                                                       | No changes needed                                                                                                                                                                                      |
-| 8   | **BUG-8: CoverageKPI Firestore project mismatch**    | **FALSE POSITIVE** — Both write side (`search-kb` → `addAiSearchHistory` via `canonicaFirebaseClient`) and read side (`canonicaNightly` → `firestoreAdmin` via `CANONICA_FIREBASE_*` env) connect to Canonica Firestore. **However**, found and fixed a real tId isolation issue: changed doc key from `canonica_${sId}` to `canonica_${tId}_${sId}` across all 4 files that read/write this doc. Also updated `getCanonicaCoverage()` signature to require `tId`. | `functions-canonica/src/canonica/canonicaNightly.ts`, `functions/src/canonica/canonicaNightly.ts`, `src/database/canonica/coverageKPI.ts`, `src/components/templates/canonica/CanonicaCoverageKPI.tsx` |
+| 8   | **BUG-8: CoverageKPI Firestore project mismatch**    | **FALSE POSITIVE** — Both write side (`search-kb` → `addAiSearchHistory` via `canonicaFirebaseClient`) and read side (`canonicaNightly` → `firestoreAdmin` via `CANONICA_FIREBASE_*` env) connect to Canonica Firestore. **However**, found and fixed a real tId isolation issue: changed doc key from `canonica_${sId}` to `canonica_${tId}_${sId}` across all files that read/write this doc. Also updated `getCanonicaCoverage()` signature to require `tId`. | `functions-canonica/src/canonica/canonicaNightly.ts`, `src/database/canonica/coverageKPI.ts`, `src/components/templates/canonica/CanonicaCoverageKPI.tsx` |
 
 ### Verification
 

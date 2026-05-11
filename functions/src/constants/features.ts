@@ -229,41 +229,6 @@ export const FUNCTION_FLAGS = {
     ENABLE_RESELLER_DASHBOARD: false,
 
     // ═══════════════════════════════════════════════════════════════
-    // CANONICA — Support Knowledge Control Plane
-    // Per doctrine: 3-YEAR ARCHITECTURE FREEZE
-    // @see __docs__/canonica/doctrine/05-architecture-evolution.md
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Canonica Drift Detection + Signal Mutation nightly batch
-     *
-     * Runs as part of nightly scheduler to:
-     * 1. Evaluate drift for all tenants (4 drift classes)
-     * 2. Run signal mutation engine (cluster signals → proposals)
-     * 3. Resolve unresolved signal entityIds
-     * 4. Aggregate canonical coverage KPI
-     *
-     * Requires: Canonica collections seeded with entities + canonical answers
-     *
-     * true: Run Canonica nightly batch
-     * false: Skip Canonica processing
-     *
-     * @see __docs__/canonica/doctrine/05-architecture-evolution.md
-     */
-    ENABLE_CANONICA_NIGHTLY: false,
-
-    /**
-     * Canonica Founder Trust Layer — nightly trust metrics aggregation
-     *
-     * Computes 4 trust metrics (coverage, resolution, drift, entity health)
-     * and writes to platformSummary/trustMetrics_{tId}_{sId}.
-     *
-     * Requires: ENABLE_CANONICA_NIGHTLY = true
-     * @see __docs__/canonica/founder-trust-layer/
-     */
-    ENABLE_CANONICA_TRUST_METRICS: false,
-
-    // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)
     // Mirror of src/config/features.ts infrastructure flags.
     // @see __docs__/discovery-infrastructure/README.md
