@@ -59,9 +59,9 @@ Layout: Single page, numeric blocks only
 - Per-task breakdown including OBP + menu analytics settlement
 - Store-local settlement state from `platformSummary/nightlyState_*`
 - Failed/stale settlement counts for catch-up monitoring
-- Manual Decision Blocks recovery via `triggerDecisionBlocksScoring`
+- Manual store-level nightly recovery via `triggerStoreNightlyScheduler`
 
-The manual recovery button does **not** run the full scheduler. It recomputes Decision Blocks only; analytics settlement remains controlled by the timezone-aware scheduled flow.
+The manual recovery button uses the selected store from `platformSummary/storesSummary`. It does not expose project IDs in the UI; the callable reruns the store-level nightly path for every active project under that store, including analytics settlement, Decision Blocks, and Menu Intelligence.
 
 ## Key Decision: What ChatGPT Got Wrong
 

@@ -115,6 +115,30 @@ interface ActiveProjectEntry {
     data: FirebaseFirestore.DocumentData;
 }
 
+interface NightlyAnalyticsCounters {
+    storesAttempted: number;
+    storesSucceeded: number;
+    storesFailed: number;
+    menuProjects: number;
+    menuErrors: number;
+    obpStoresWithData: number;
+    intelligenceSnapshotMissing: number;
+}
+
+interface StoreNightlySchedulerResult {
+    tId: string;
+    sId: string;
+    totalProjects: number;
+    successCount: number;
+    failedCount: number;
+    skippedCount: number;
+    intelligenceSuccess: number;
+    intelligenceFailed: number;
+    errors: Array<{ tId: string; sId: string; projectId?: string; error: string }>;
+    analytics: NightlyAnalyticsCounters;
+    enrichment?: { lastPublishedAt: any; projectCount: number };
+}
+
 function getProjectDocRef(
     db: FirebaseFirestore.Firestore,
     tId: string,
@@ -722,6 +746,260 @@ async function computeForProject(
             daysWithData: prefetchedAnalytics?.daysWithData ?? standaloneDaysWithData,
         }
     };
+}
+
+function createNightlyAnalyticsCounters(): NightlyAnalyticsCounters {
+    return {
+        storesAttempted: 0,
+        storesSucceeded: 0,
+        storesFailed: 0,
+        menuProjects: 0,
+        menuErrors: 0,
+        obpStoresWithData: 0,
+        intelligenceSnapshotMissing: 0,
+    };
+}
+
+async function runNightlySchedulerForStore(
+    db: FirebaseFirestore.Firestore,
+    sId: string,
+    storeInfo: FirebaseFirestore.DocumentData,
+    analyticsRunAt: Date,
+): Promise<StoreNightlySchedulerResult> {
+    const logger = functions.logger;
+    const tId = storeInfo?.tId != null ? String(storeInfo.tId) : '';
+    const businessDayEndTime = resolveBusinessDayEndTime(storeInfo?.businessType, storeInfo?.businessDayEndTime, storeInfo?.businessCategory);
+    const businessCategory = storeInfo?.businessCategory || 'specialty';
+    const storeRun: StoreNightlySchedulerResult = {
+        tId,
+        sId,
+        totalProjects: 0,
+        successCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+        intelligenceSuccess: 0,
+        intelligenceFailed: 0,
+        errors: [],
+        analytics: createNightlyAnalyticsCounters(),
+    };
+
+    if (storeInfo?.active === false) {
+        logger.info(`Store ${sId}: Inactive, skipping`);
+        storeRun.skippedCount++;
+        return storeRun;
+    }
+
+    if (!tId) {
+        logger.warn(`Store ${sId} has no tenantId, skipping`);
+        storeRun.skippedCount++;
+        return storeRun;
+    }
+
+    try {
+        logger.info(`Processing store ${sId} (tenant ${tId})...`);
+
+        const { projectEntries, activeProjectIds, source } = await loadActiveProjectsForScheduler(db, tId, sId);
+
+        if (projectEntries.length === 0) {
+            logger.info(`  - Store ${sId}: No active projects found (${source}); analytics settlement still runs`);
+            storeRun.skippedCount++;
+        } else {
+            logger.info(`  Found ${projectEntries.length} active projects for store ${sId} (${source})`);
+        }
+
+        storeRun.totalProjects += projectEntries.length;
+
+        storeRun.analytics.storesAttempted++;
+        try {
+            const [
+                { aggregateCustomerAnalyticsForStoreDate },
+                { aggregateOBPAnalyticsForStoreDate },
+                { resolveAnalyticsAiEntitlement },
+            ] = await Promise.all([
+                import('./aggregateCustomerAnalytics'),
+                import('./analytics/obpAnalyticsAggregation'),
+                import('./analytics/analyticsAiEntitlements'),
+            ]);
+            const settlementDates = await getPendingSettlementDates(db, tId, sId, analyticsRunAt, storeInfo.timeZone, businessDayEndTime);
+            const knownAnalyticsProjectIds = Array.from(new Set([...activeProjectIds, 'customerApp']));
+            const projectCatalogById = Object.fromEntries(
+                projectEntries.map((entry) => [entry.projectId, entry.data]),
+            );
+
+            if (settlementDates.length === 0) {
+                logger.info(`  - Store ${sId}: Analytics already settled`);
+            }
+
+            for (const settlementDate of settlementDates) {
+                const lockRef = await acquireNightlyDateLock(db, tId, sId, settlementDate);
+                if (!lockRef) {
+                    logger.info(`  - Store ${sId}: Settlement ${settlementDate} already locked or completed`);
+                    continue;
+                }
+
+                try {
+                    await updateNightlyState(db, tId, sId, settlementDate, 'running', 'obp_analytics');
+                    const obpHadData = FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS
+                        ? await aggregateOBPAnalyticsForStoreDate(db, tId, sId, settlementDate)
+                        : false;
+
+                    await updateNightlyState(db, tId, sId, settlementDate, 'running', 'customer_analytics');
+                    const customerAggregation = await aggregateCustomerAnalyticsForStoreDate(
+                        db,
+                        tId,
+                        sId,
+                        settlementDate,
+                        knownAnalyticsProjectIds,
+                        resolveAnalyticsAiEntitlement(storeInfo),
+                        projectCatalogById,
+                    );
+
+                    storeRun.analytics.menuProjects += customerAggregation.totalProjects;
+                    storeRun.analytics.menuErrors += customerAggregation.errors.length;
+                    if (obpHadData) storeRun.analytics.obpStoresWithData++;
+
+                    if (customerAggregation.errors.length > 0) {
+                        logger.error(`  ✗ Store ${sId} analytics (${settlementDate}): ${customerAggregation.errors.length} project aggregation errors`);
+                        throw new Error(`Customer analytics aggregation had ${customerAggregation.errors.length} project errors`);
+                    }
+
+                    await updateNightlyState(db, tId, sId, settlementDate, 'completed', 'completed', undefined, {
+                        analyticsIndex: {
+                            activeProjectIds,
+                            customerAnalyticsProjectIds: knownAnalyticsProjectIds,
+                            menuProjectCount: activeProjectIds.length,
+                            surfaces: {
+                                menu: activeProjectIds.length > 0,
+                                obp: FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS,
+                                customerApp: true,
+                            },
+                            summaryDocIds: [
+                                ...activeProjectIds.map((projectId) => `${tId}_${sId}_${projectId}_dashboard_summary`),
+                                `${tId}_${sId}_customerApp_dashboard_summary`,
+                                ...(FUNCTION_FLAGS.ENABLE_OBP_ANALYTICS ? [`${tId}_${sId}_obp_dashboard_summary`] : []),
+                            ],
+                            lastSettledLocalDate: settlementDate,
+                            businessDayEndTime,
+                        },
+                    });
+                    await completeNightlyDateLock(lockRef, 'completed');
+                } catch (settlementError: any) {
+                    const message = settlementError?.message || String(settlementError);
+                    appLogger.error('[NightlyAnalytics] Store settlement failed', settlementError, {
+                        tId,
+                        sId,
+                        settlementDate,
+                        phase: 'analytics_settlement',
+                    });
+                    await updateNightlyState(db, tId, sId, settlementDate, 'failed', 'failed', message);
+                    await completeNightlyDateLock(lockRef, 'failed', message);
+                    throw settlementError;
+                }
+            }
+
+            storeRun.analytics.storesSucceeded++;
+        } catch (analyticsError: any) {
+            storeRun.analytics.storesFailed++;
+            throw new Error(`Nightly analytics failed: ${analyticsError.message}`);
+        }
+
+        for (const { projectId, data: projectData } of projectEntries) {
+            try {
+                const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
+                if (analytics.source === 'missing_or_stale') {
+                    storeRun.analytics.intelligenceSnapshotMissing++;
+                    appLogger.warn('[NightlyAnalytics] Missing or stale intelligence snapshot; scoring without analytics', {
+                        tId,
+                        sId,
+                        projectId,
+                        expectedLocalDate: addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(analyticsRunAt, storeInfo.timeZone, businessDayEndTime), -1),
+                        lastSettledLocalDate: analytics.lastSettledLocalDate || null,
+                    });
+                }
+
+                const blocks = await computeForProject(
+                    db,
+                    tId,
+                    sId,
+                    projectId,
+                    projectData,
+                    businessCategory,
+                    analytics,
+                    storeInfo.timeZone,
+                    businessDayEndTime,
+                );
+
+                if (blocks) {
+                    const docId = getDecisionBlocksDocId(tId, sId, projectId);
+                    await db.collection(DB_COLLECTIONS.DECISION_BLOCKS).doc(docId).set(blocks, { merge: true });
+
+                    logger.info(`    ✓ Project ${projectId}: Computed decision blocks`);
+                    storeRun.successCount++;
+
+                    try {
+                        const items = extractActiveItems(projectData, analytics);
+
+                        if (items.length > 0) {
+                            const currentIntelligence = await fetchCurrentIntelligence(
+                                db, tId, sId, projectId, DB_COLLECTIONS.MENU_INTELLIGENCE
+                            );
+                            const runNumber = (currentIntelligence?.runCount || 0) + 1;
+                            setAuditLogRunContext(runNumber, 'nightly_job');
+
+                            const intelligence = computeIntelligenceState(
+                                items,
+                                analytics,
+                                currentIntelligence,
+                                { tId, sId, projectId }
+                            );
+
+                            const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
+                            await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence, { merge: true });
+
+                            logger.info(`    ✓ Project ${projectId}: Computed menu intelligence`);
+                            storeRun.intelligenceSuccess++;
+                        }
+                    } catch (intError: any) {
+                        logger.error(`    ✗ Project ${projectId} intelligence: ${intError.message}`);
+                        storeRun.intelligenceFailed++;
+                    }
+                } else {
+                    logger.info(`    - Project ${projectId}: No items to score`);
+                    storeRun.skippedCount++;
+                }
+            } catch (error: any) {
+                logger.error(`    ✗ Project ${projectId}: ${error.message}`);
+                storeRun.failedCount++;
+                storeRun.errors.push({ tId, sId, projectId, error: error.message });
+            }
+        }
+
+        if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE) {
+            try {
+                let latestModifiedOn: any = null;
+
+                for (const { data: pData } of projectEntries) {
+                    const modOn = pData.modifiedOn || pData.updatedAt;
+                    if (modOn && (!latestModifiedOn || modOn > latestModifiedOn)) {
+                        latestModifiedOn = modOn;
+                    }
+                }
+
+                storeRun.enrichment = {
+                    lastPublishedAt: latestModifiedOn || null,
+                    projectCount: projectEntries.length,
+                };
+            } catch {
+                // Non-blocking — enrichment failure should never block scoring
+            }
+        }
+    } catch (error: any) {
+        logger.error(`  ✗ Store ${sId}: ${error.message}`);
+        storeRun.failedCount++;
+        storeRun.errors.push({ tId, sId, error: error.message });
+    }
+
+    return storeRun;
 }
 
 /**
@@ -1680,6 +1958,137 @@ export const computeDecisionBlocksScores = onSchedule({
     } catch (error: any) {
         logger.error('Fatal error in decision blocks scoring:', error);
         throw error;
+    } finally {
+        await flushSentry();
+    }
+});
+
+/**
+ * Manual store-level nightly recovery.
+ *
+ * Runs the same store scheduler path used by the hourly job for one selected
+ * store: analytics settlement, Decision Blocks, and Menu Intelligence for all
+ * active projects under that store. It does not require or accept a project ID.
+ */
+export const triggerStoreNightlyScheduler = onCall({
+    region: 'us-central1',
+    timeoutSeconds: 540,
+    secrets: [
+        SECRETS.GEMINI_AI_KEY,
+        SECRETS.GEMINI_AI_KEY_2,
+        SECRETS.GEMINI_AI_KEY_3,
+        SECRETS.GEMINI_AI_KEY_4,
+        SECRETS.RAZORPAY_KEY_ID,
+        SECRETS.RAZORPAY_KEY_SECRET,
+        SECRETS.SENTRY_DSN,
+    ],
+}, async (request) => {
+    initSentry();
+    const logger = functions.logger;
+
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to trigger nightly scheduler recovery');
+    }
+
+    const requesterRole = String(request.auth.token.platformRole || request.auth.token.role || '');
+    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+        throw new HttpsError('permission-denied', 'Only platform owners can trigger nightly scheduler recovery');
+    }
+
+    const tId = String(request.data?.tId || '').trim();
+    const sId = String(request.data?.sId || '').trim();
+    if (!tId || !sId) {
+        throw new HttpsError('invalid-argument', 'tId and sId are required');
+    }
+
+    const db = firestoreAdmin;
+    const runStartTime = Date.now();
+
+    try {
+        const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
+        const storeInfo = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores?.[sId] : null;
+
+        if (!storeInfo) {
+            throw new HttpsError('not-found', `Store ${sId} was not found in storesSummary`);
+        }
+
+        if (String(storeInfo.tId || '') !== tId) {
+            throw new HttpsError('failed-precondition', `Store ${sId} does not belong to tenant ${tId}`);
+        }
+
+        logger.info(`Manual store nightly scheduler recovery for store ${sId} (tenant ${tId})`);
+
+        const storeRun = await runNightlySchedulerForStore(db, sId, storeInfo, new Date(runStartTime));
+
+        if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE && storeRun.enrichment) {
+            await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
+                [`stores.${sId}.lastPublishedAt`]: storeRun.enrichment.lastPublishedAt,
+                [`stores.${sId}.projectCount`]: storeRun.enrichment.projectCount,
+            }, { merge: true });
+        }
+
+        const status = storeRun.failedCount > 0
+            ? (storeRun.successCount > 0 || storeRun.analytics.storesSucceeded > 0 ? 'partial' : 'failed')
+            : 'success';
+        const taskResults = [
+            {
+                name: 'decision_blocks',
+                status: storeRun.failedCount > 0 ? (storeRun.successCount > 0 ? 'success' : 'failed') : 'success',
+                details: {
+                    totalStores: 1,
+                    totalProjects: storeRun.totalProjects,
+                    success: storeRun.successCount,
+                    failed: storeRun.failedCount,
+                    skipped: storeRun.skippedCount,
+                },
+            },
+            {
+                name: 'menu_intelligence',
+                status: storeRun.intelligenceFailed > 0 ? (storeRun.intelligenceSuccess > 0 ? 'success' : 'failed') : 'success',
+                details: {
+                    success: storeRun.intelligenceSuccess,
+                    failed: storeRun.intelligenceFailed,
+                },
+            },
+            {
+                name: 'customer_obp_analytics',
+                status: storeRun.analytics.storesFailed > 0 ? (storeRun.analytics.storesSucceeded > 0 ? 'success' : 'failed') : 'success',
+                details: storeRun.analytics,
+            },
+        ];
+
+        await db.collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS).add({
+            trigger: 'manual',
+            triggeredBy: request.auth.uid,
+            startedAt: Timestamp.fromMillis(runStartTime),
+            completedAt: Timestamp.now(),
+            durationMs: Date.now() - runStartTime,
+            status,
+            manualScope: { tId, sId },
+            totalStores: 1,
+            totalProjects: storeRun.totalProjects,
+            successCount: storeRun.successCount,
+            failedCount: storeRun.failedCount,
+            skippedCount: storeRun.skippedCount,
+            intelligenceSuccess: storeRun.intelligenceSuccess,
+            intelligenceFailed: storeRun.intelligenceFailed,
+            tasks: taskResults,
+            errors: storeRun.errors,
+        });
+
+        return {
+            success: status !== 'failed',
+            status,
+            totalStores: 1,
+            totalProjects: storeRun.totalProjects,
+            successCount: storeRun.successCount,
+            failedCount: storeRun.failedCount,
+            skippedCount: storeRun.skippedCount,
+            intelligenceSuccess: storeRun.intelligenceSuccess,
+            intelligenceFailed: storeRun.intelligenceFailed,
+            analytics: storeRun.analytics,
+            errors: storeRun.errors,
+        };
     } finally {
         await flushSentry();
     }

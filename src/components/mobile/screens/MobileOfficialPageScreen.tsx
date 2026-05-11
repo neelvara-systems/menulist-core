@@ -14,7 +14,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
-import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
+import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
@@ -22,7 +22,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ColorPicker, InputNumber, theme } from 'antd';
+import { InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
@@ -38,6 +38,7 @@ import {
     LuMapPin,
     LuMessageSquare,
     LuMessageSquarePlus,
+    LuPalette,
     LuShoppingBag,
     LuSmile,
     LuPhone,
@@ -45,7 +46,7 @@ import {
     LuStar,
     LuTrash2,
 } from 'react-icons/lu';
-import { Button, Card, DotLoading, Flex, Input, NavBar, Popup, Switch, Text, TextArea, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, Input, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
@@ -54,6 +55,7 @@ import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 
 const MobileOfficialPagePreviewSheet = dynamic(() => import('../sheets/MobileOfficialPagePreviewSheet'), { ssr: false });
+const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
 
 interface MobileOfficialPageScreenProps {
     onBack: () => void;
@@ -465,6 +467,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [isPreviewSheetOpen, setIsPreviewSheetOpen] = useState(false);
+    const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const replacePhotoInputRef = useRef<HTMLInputElement | null>(null);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
@@ -477,6 +480,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [originalLocalizedDrafts, setOriginalLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
     const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' };
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
+    const specialNoteSuggestions = useMemo(() => getMenuSpecialNoteSuggestions(tDesign), [tDesign]);
     const isDirty =
         JSON.stringify(formData) !== JSON.stringify(originalFormData)
         || JSON.stringify(localizedDrafts) !== JSON.stringify(originalLocalizedDrafts)
@@ -859,8 +863,6 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         ? photoDrafts[activePhotoIndex]?.previewDataUrl || photoSlots[activePhotoIndex]
         : '';
     const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
-    const businessPreviewName = getBrandName(storeDetails as any, 'business');
-
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
         setLocalizedDrafts(originalLocalizedDrafts);
@@ -999,13 +1001,6 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 </Button>
                             </Flex>
                         ) : null}
-                        <MediaPublicContextPreview
-                            accentColor={formData.accentColor}
-                            imageType="businessCover"
-                            imageUrl={coverDraft?.previewDataUrl || formData.businessCover}
-                            subtitle={t('officialPage')}
-                            title={businessPreviewName}
-                        />
                         <Button
                             block
                             disabled={isCoverUploading}
@@ -1087,40 +1082,6 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Text strong>{t('officialPageSpecialNote')}</Text>
-                        <TextArea
-                            autoSize={{ minRows: 2, maxRows: 4 }}
-                            maxLength={140}
-                            onChange={(value) => setLocalizedDrafts((previous) => ({
-                                ...previous,
-                                [selectedLanguage]: {
-                                    ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
-                                    specialNote: value,
-                                },
-                            }))}
-                            placeholder={t('officialPageSpecialNotePlaceholder')}
-                            showCount
-                            value={currentLocalizedDraft.specialNote}
-                        />
-                        <Text type="secondary">{t('officialPageSpecialNoteHelp')}</Text>
-                        {selectedLanguage !== referenceLanguage ? (
-                            <LocalizedReferenceHint
-                                onUseReference={() => setLocalizedDrafts((previous) => ({
-                                    ...previous,
-                                    [selectedLanguage]: {
-                                        ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
-                                        specialNote: previous[referenceLanguage]?.specialNote || '',
-                                    },
-                                }))}
-                                referenceLabel={getStoreLanguageLabel(referenceLanguage)}
-                                referenceValue={localizedDrafts[referenceLanguage]?.specialNote || ''}
-                            />
-                        ) : null}
-                    </Flex>
-                </Card>
-
-                <Card>
-                    <Flex gap={10} vertical>
                         <Text strong>{t('whatsappNumber')}</Text>
                         <Input onChange={(value) => setFormData((previous) => ({ ...previous, whatsappNumber: value }))} placeholder="+91 98765 43210" value={formData.whatsappNumber} />
                         <Text type="secondary">{t('whatsappNumberHelp')}</Text>
@@ -1140,16 +1101,27 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     </Flex>
                 </Card>
 
-                <Card>
-                    <Flex gap={10} vertical>
-                        <Text strong>{t('accentColor')}</Text>
-                        <ColorPicker
-                            format="hex"
-                            onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color.toHexString() }))}
-                            showText
-                            value={formData.accentColor}
-                        />
-                        <Text type="secondary">{t('accentColorHelp')}</Text>
+                <Card onClick={() => setIsColorPickerOpen(true)}>
+                    <Flex align="center" justify="space-between" gap={12}>
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Text strong>{t('accentColor')}</Text>
+                            <Text type="secondary">{t('accentColorHelp')}</Text>
+                        </Flex>
+                        <Flex align="center" gap={10} style={{ flex: '0 0 auto' }}>
+                            <span
+                                aria-hidden
+                                style={{
+                                    backgroundColor: formData.accentColor || '#1677ff',
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 999,
+                                    display: 'inline-block',
+                                    height: 32,
+                                    width: 32,
+                                }}
+                            />
+                            <Text strong>{(formData.accentColor || '#1677ff').toUpperCase()}</Text>
+                            <LuPalette color={token.colorTextTertiary} size={18} />
+                        </Flex>
                     </Flex>
                 </Card>
 
@@ -1419,6 +1391,57 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     </Card>
                 ) : null}
 
+                <SectionCard title={t('officialPageSpecialNote')} subtitle={t('officialPageSpecialNoteHelp')}>
+                    <TextArea
+                        autoSize={{ minRows: 2, maxRows: 4 }}
+                        maxLength={140}
+                        onChange={(value) => setLocalizedDrafts((previous) => ({
+                            ...previous,
+                            [selectedLanguage]: {
+                                ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
+                                specialNote: value,
+                            },
+                        }))}
+                        placeholder={t('officialPageSpecialNotePlaceholder')}
+                        showCount
+                        value={currentLocalizedDraft.specialNote}
+                    />
+                    <Flex gap={8} style={{ marginTop: 12 }} wrap="wrap">
+                        {specialNoteSuggestions.map((suggestion) => (
+                            <Tag
+                                key={suggestion}
+                                color={currentLocalizedDraft.specialNote === suggestion ? 'primary' : undefined}
+                                onClick={() => setLocalizedDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: {
+                                        ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
+                                        specialNote: suggestion,
+                                    },
+                                }))}
+                                style={{ cursor: 'pointer', marginInlineEnd: 0 }}
+                            >
+                                {suggestion}
+                            </Tag>
+                        ))}
+                    </Flex>
+                    <Text type="secondary" style={{ marginTop: 8 }}>
+                        {tDesign('specialNoteHelper')}
+                    </Text>
+                    {selectedLanguage !== referenceLanguage ? (
+                        <LocalizedReferenceHint
+                            onUseReference={() => setLocalizedDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: {
+                                    ...(previous[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' }),
+                                    specialNote: previous[referenceLanguage]?.specialNote || '',
+                                },
+                            }))}
+                            referenceLabel={getStoreLanguageLabel(referenceLanguage)}
+                            referenceValue={localizedDrafts[referenceLanguage]?.specialNote || ''}
+                        />
+                    ) : null}
+                </SectionCard>
+
                 <Flex
                     gap={8}
                     style={{
@@ -1614,7 +1637,28 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 open={adjustingPhotoIndex != null}
                 sourceDataUrl={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.sourceDataUrl : undefined}
             />
+            <ColorPickerSheet
+                defaultMoodColor="#1677FF"
+                onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color || '#1677ff' }))}
+                onClose={() => setIsColorPickerOpen(false)}
+                value={formData.accentColor}
+                visible={isColorPickerOpen}
+            />
         </Flex>
+    );
+}
+
+function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+    return (
+        <Card>
+            <Flex gap={12} vertical>
+                <Flex gap={2} vertical>
+                    <Text strong>{title}</Text>
+                    {subtitle ? <Text type="secondary">{subtitle}</Text> : null}
+                </Flex>
+                {children}
+            </Flex>
+        </Card>
     );
 }
 

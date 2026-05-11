@@ -103,7 +103,7 @@ function PlatformSettings() {
     }
 
     return (
-        <Flex justify='flex-start' align='flex-start' >
+        <Flex className={styles.settingsWrap} justify='flex-start' align='flex-start' >
             <Flex className={styles.navigations} style={{ boxShadow: token.boxShadow }} justify="flex-start" align="flex-start" vertical gap={10}>
                 {SETTING_NAVIGATIONS.map((nav: any, i: number) => {
                     if (!nav.active) return null

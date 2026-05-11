@@ -93,6 +93,7 @@ exports.triggerCustomerAnalyticsManually = customerAnalyticsModule.triggerCustom
 const decisionBlocksModule = require('./decisionBlocksScoring');
 exports.computeDecisionBlocksScores = decisionBlocksModule.computeDecisionBlocksScores;
 exports.triggerDecisionBlocksScoring = decisionBlocksModule.triggerDecisionBlocksScoring;
+exports.triggerStoreNightlyScheduler = decisionBlocksModule.triggerStoreNightlyScheduler;
 
 // ═══════════════════════════════════════════════════════════════
 // 4. MESSAGING ONBOARDING (WhatsApp webhook + extraction watcher)

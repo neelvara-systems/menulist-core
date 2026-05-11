@@ -1,9 +1,10 @@
 'use client'
 
 import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
+import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { secureError } from '@lib/security/secureLogger';
-import { Button, Card, Divider, Input, Modal, Spin, Tag, Typography, message } from 'antd';
+import { Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,12 +32,18 @@ function OpsControlRoom() {
     const [safeModeLoading, setSafeModeLoading] = useState(false);
     const [muteLoading, setMuteLoading] = useState(false);
     const [republishLoading, setRepublishLoading] = useState(false);
-    const [republishStoreId, setRepublishStoreId] = useState('');
-    const [republishTenantId, setRepublishTenantId] = useState('');
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
+    const {
+        loading: storesLoading,
+        selectedStore,
+        selectedStoreId,
+        selectOptions,
+        setSelectedStoreId,
+    } = usePlatformStoreSummaryOptions(isPlatform);
 
     // Gate: superadmin only
-    if (session && platformRole !== 'PLATFORM') {
+    if (session && !isPlatform) {
         redirect('/dashboard');
     }
 
@@ -101,23 +108,21 @@ function OpsControlRoom() {
 
     // Force Republish
     const handleForceRepublish = async () => {
-        if (!republishStoreId || !republishTenantId) {
-            message.warning('Enter both Store ID and Tenant ID');
+        if (!selectedStore) {
+            message.warning('Select a store first');
             return;
         }
         Modal.confirm({
             title: 'Force Republish',
-            content: `This will force republish the active project for store ${republishStoreId}. Continue?`,
+            content: `This will force republish the active project for ${selectedStore.name || `store ${selectedStore.sId}`}. Continue?`,
             onOk: async () => {
                 setRepublishLoading(true);
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const fns = getFunctions();
                     const forceRepublishFn = httpsCallable(fns, 'forceRepublish');
-                    const result: any = await forceRepublishFn({ storeId: republishStoreId, tenantId: republishTenantId });
+                    const result: any = await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
                     message.success(`Republished! Verification: ${result.data?.verification || 'done'}`);
-                    setRepublishStoreId('');
-                    setRepublishTenantId('');
                     await loadData();
                 } catch (error: any) {
                     message.error(`Force republish failed: ${error.message}`);
@@ -285,18 +290,15 @@ function OpsControlRoom() {
                 <Divider style={{ margin: '12px 0' }} />
                 <Text strong style={{ display: 'block', marginBottom: 8 }}>Force Republish</Text>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Input
-                        placeholder="Store ID"
-                        value={republishStoreId}
-                        onChange={(e) => setRepublishStoreId(e.target.value)}
-                        style={{ width: 160 }}
-                        size="small"
-                    />
-                    <Input
-                        placeholder="Tenant ID"
-                        value={republishTenantId}
-                        onChange={(e) => setRepublishTenantId(e.target.value)}
-                        style={{ width: 160 }}
+                    <Select
+                        showSearch
+                        loading={storesLoading}
+                        placeholder="Select store"
+                        value={selectedStoreId}
+                        onChange={setSelectedStoreId}
+                        options={selectOptions}
+                        optionFilterProp="label"
+                        style={{ minWidth: 280, flex: '1 1 320px' }}
                         size="small"
                     />
                     <Button
@@ -304,7 +306,7 @@ function OpsControlRoom() {
                         ghost
                         onClick={handleForceRepublish}
                         loading={republishLoading}
-                        disabled={!republishStoreId || !republishTenantId}
+                        disabled={!selectedStore}
                         size="small"
                     >
                         Force Republish

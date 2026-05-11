@@ -205,7 +205,7 @@ src/
 | **Analytics Settlement State** | Reads `platformSummary/nightlyState_*` to show store-local settlement health |
 | **Error Details**    | Expandable error list with tId/sId/projectId                       |
 | **Run History**      | Filterable table by status and trigger type                        |
-| **Manual Recovery**  | "Recompute DI Now" calls `triggerDecisionBlocksScoring` CF for Decision Blocks only |
+| **Manual Recovery**  | Store selector from `platformSummary/storesSummary` calls `triggerStoreNightlyScheduler` for the selected store |
 | **Quick Reference**  | Schedule, timeout, tasks list, TTL info                            |
 
 ### Navigation
@@ -224,7 +224,7 @@ getSchedulerSettlementSummary(); // ~1 read (nightlyState_* docs, limit 50)
 
 ### Manual Trigger Boundary
 
-`triggerDecisionBlocksScoring` is a recovery tool for Decision Blocks recomputation. It does **not** run the full scheduled flow, analytics settlement, billing reconciliation, or global maintenance tasks. The scheduler monitor copy must preserve this boundary so ops does not mistake a manual DI recovery run for a complete nightly settlement.
+`triggerStoreNightlyScheduler` is the manual recovery tool for a failed store-level nightly run. It requires only the selected store from `storesSummary`, does not expose project IDs in the UI, and runs analytics settlement, Decision Blocks, and Menu Intelligence for all active projects under that store. Global maintenance tasks remain owned by the scheduled platform-wide flow.
 
 ---
 

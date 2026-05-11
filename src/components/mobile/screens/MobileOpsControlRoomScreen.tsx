@@ -1,11 +1,12 @@
 'use client'
 
 import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
+import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuRefreshCw, LuShieldAlert, LuZap } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Flex, Input, List, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, List, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileOpsControlRoomScreenProps {
@@ -47,8 +48,13 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
     const [safeModeLoading, setSafeModeLoading] = useState(false);
     const [muteLoading, setMuteLoading] = useState(false);
     const [republishLoading, setRepublishLoading] = useState(false);
-    const [republishStoreId, setRepublishStoreId] = useState('');
-    const [republishTenantId, setRepublishTenantId] = useState('');
+    const {
+        loading: storesLoading,
+        selectedStore,
+        selectedStoreId,
+        selectOptions,
+        setSelectedStoreId,
+    } = usePlatformStoreSummaryOptions(isPlatform);
 
     const loadData = useCallback(async () => {
         if (!isPlatform) return;
@@ -126,24 +132,20 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
     };
 
     const forceRepublish = () => {
-        const storeId = republishStoreId.trim();
-        const tenantId = republishTenantId.trim();
-        if (!storeId || !tenantId) {
-            Toast.show({ content: 'Enter Store ID and Tenant ID', duration: 1600 });
+        if (!selectedStore) {
+            Toast.show({ content: 'Select a store first', duration: 1600 });
             return;
         }
 
         void Dialog.confirm({
             confirmText: 'Republish',
-            content: `Force republish active project for store ${storeId}.`,
+            content: `Force republish active project for ${selectedStore.name || `store ${selectedStore.sId}`}.`,
             onConfirm: async () => {
                 setRepublishLoading(true);
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const forceRepublishFn = httpsCallable(getFunctions(), 'forceRepublish');
-                    await forceRepublishFn({ storeId, tenantId });
-                    setRepublishStoreId('');
-                    setRepublishTenantId('');
+                    await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
                     Toast.show({ content: 'Republish triggered', duration: 1600 });
                     await loadData();
                 } catch (error: any) {
@@ -277,12 +279,19 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                 </Flex>
                                 <Flex gap={8} vertical>
                                     <Text strong>Force Republish</Text>
-                                    <Input onChange={setRepublishStoreId} placeholder="Store ID" value={republishStoreId} />
-                                    <Input onChange={setRepublishTenantId} placeholder="Tenant ID" value={republishTenantId} />
+                                    <Select
+                                        options={selectOptions}
+                                        placeholder={storesLoading ? 'Loading stores' : 'Select store'}
+                                        value={selectedStoreId}
+                                        onChange={setSelectedStoreId}
+                                    />
+                                    {selectedStore ? (
+                                        <Text type="secondary">Tenant {selectedStore.tId} · Store {selectedStore.sId}</Text>
+                                    ) : null}
                                     <Button
                                         block
                                         color="primary"
-                                        disabled={!republishStoreId.trim() || !republishTenantId.trim()}
+                                        disabled={!selectedStore}
                                         loading={republishLoading}
                                         onClick={forceRepublish}
                                     >

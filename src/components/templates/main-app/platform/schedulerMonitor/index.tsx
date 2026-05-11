@@ -1,8 +1,9 @@
 'use client'
 
 import { getSchedulerHealthSummary, getSchedulerRunHistory, getSchedulerSettlementSummary } from '@database/ops/scheduler';
+import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
-import { Button, Card, Collapse, Divider, Input, Modal, Select, Spin, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -18,7 +19,7 @@ const { Title, Text } = Typography;
  * - Store-local analytics settlement state
  * - Run history table with status/trigger filters
  * - Error details (expandable rows)
- * - Manual Decision Blocks recovery trigger (calls triggerDecisionBlocksScoring CF)
+ * - Manual store-level nightly recovery trigger (calls triggerStoreNightlyScheduler CF)
  * 
  * Access: platformRole === 'PLATFORM' only (superadmin).
  * Route: /ops/scheduler (not in sidebar — direct URL access).
@@ -116,16 +117,20 @@ function SchedulerMonitor() {
     const [runHistory, setRunHistory] = useState<SchedulerRunLog[]>([]);
     const [settlement, setSettlement] = useState<SchedulerSettlementSummary | null>(null);
     const [triggerLoading, setTriggerLoading] = useState(false);
-    const [analyticsBackfillLoading, setAnalyticsBackfillLoading] = useState(false);
     const [filterStatus, setFilterStatus] = useState<SchedulerRunStatus | undefined>(undefined);
     const [filterTrigger, setFilterTrigger] = useState<SchedulerTrigger | undefined>(undefined);
-    const [manualTenantId, setManualTenantId] = useState('');
-    const [manualStoreId, setManualStoreId] = useState('');
-    const [manualProjectId, setManualProjectId] = useState('');
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
+    const {
+        loading: storesLoading,
+        selectedStore,
+        selectedStoreId,
+        selectOptions,
+        setSelectedStoreId,
+    } = usePlatformStoreSummaryOptions(isPlatform);
 
     // Gate: superadmin only
-    if (session && platformRole !== 'PLATFORM') {
+    if (session && !isPlatform) {
         redirect('/dashboard');
     }
 
@@ -156,89 +161,39 @@ function SchedulerMonitor() {
         loadData();
     }, [loadData]);
 
-    const getManualScope = (requiresProject = false) => {
-        const tId = manualTenantId.trim();
-        const sId = manualStoreId.trim();
-        const projectId = manualProjectId.trim();
-
-        if (!tId || !sId) {
-            message.warning('Enter Tenant ID and Store ID first');
-            return null;
+    const handleManualNightlyRecovery = async () => {
+        if (!selectedStore) {
+            message.warning('Select a store first');
+            return;
         }
-
-        if (requiresProject && !projectId) {
-            message.warning('Enter Project ID for analytics backfill');
-            return null;
-        }
-
-        return projectId ? { tId, sId, projectId } : { tId, sId };
-    };
-
-    // Manual Decision Blocks recovery trigger. This is scoped to one store or one project.
-    const handleManualDecisionBlocks = async () => {
-        const scope = getManualScope(false);
-        if (!scope) return;
 
         Modal.confirm({
-            title: 'Recompute Decision Blocks',
+            title: 'Run Store Nightly Recovery',
             content: (
                 <div>
-                    <p>This recomputes Decision Blocks for the entered store{manualProjectId.trim() ? ' and project' : ''}.</p>
-                    <p>It does not run the full timezone-aware nightly scheduler, analytics settlement, billing reconciliation, or global maintenance tasks.</p>
+                    <p>This runs the store-level nightly scheduler path for {selectedStore.name || `store ${selectedStore.sId}`}.</p>
+                    <p>It settles analytics, recomputes Decision Blocks, and recomputes Menu Intelligence for all active projects under this store.</p>
                     <p><strong>This may take up to 9 minutes.</strong> The page will refresh when complete.</p>
                 </div>
             ),
-            okText: 'Recompute Now',
+            okText: 'Run Recovery',
             okButtonProps: { type: 'primary' },
             onOk: async () => {
                 setTriggerLoading(true);
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const fns = getFunctions();
-                    const triggerFn = httpsCallable(fns, 'triggerDecisionBlocksScoring', { timeout: 600000 });
-                    const result: any = await triggerFn(scope);
-                    const data = result.data;
+                    const triggerFn = httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 });
+                    const result: any = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
+                    const data = result?.data || {};
                     message.success(
-                        `Decision Blocks recomputed: ${data.successCount || 0} success, ${data.failedCount || 0} failed`
+                        `Nightly recovery ${data.status || 'finished'}: ${data.successCount || 0} DI success, ${data.failedCount || 0} failed`
                     );
                     await loadData();
                 } catch (error: any) {
-                    message.error(`Scheduler trigger failed: ${error.message}`);
+                    message.error(`Nightly recovery failed: ${error.message}`);
                 } finally {
                     setTriggerLoading(false);
-                }
-            },
-        });
-    };
-
-    const handleManualAnalyticsBackfill = async () => {
-        const scope = getManualScope(true);
-        if (!scope || !('projectId' in scope)) return;
-
-        Modal.confirm({
-            title: 'Backfill Analytics Summary',
-            content: (
-                <div>
-                    <p>This reprocesses the latest settled analytics summary for the entered project.</p>
-                    <p>Use this when dashboard analytics are stale after the nightly settlement ran or after a known scheduler gap.</p>
-                    <p>It does not run the full all-store scheduler.</p>
-                </div>
-            ),
-            okText: 'Backfill Analytics',
-            okButtonProps: { type: 'primary' },
-            onOk: async () => {
-                setAnalyticsBackfillLoading(true);
-                try {
-                    const { getFunctions, httpsCallable } = await import('firebase/functions');
-                    const triggerFn = httpsCallable(getFunctions(), 'triggerCustomerAnalyticsManually', { timeout: 600000 });
-                    const result: any = await triggerFn(scope);
-                    const data = result?.data || {};
-                    message.success(data.message || 'Analytics backfill completed');
-                    await loadData();
-                } catch (error: any) {
-                    message.error(`Analytics backfill failed: ${error.message}`);
-                } finally {
-                    setAnalyticsBackfillLoading(false);
                 }
             },
         });
@@ -269,40 +224,27 @@ function SchedulerMonitor() {
 
             <Card title="Manual Recovery" size="small" style={{ marginBottom: 16 }}>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                    Scoped recovery only. Enter one store, and optionally one project, before running manual jobs.
+                    Select a store from storesSummary. Recovery runs for all active projects under that store; no project ID is needed.
                 </Text>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
-                    <Input
-                        placeholder="Tenant ID"
-                        value={manualTenantId}
-                        onChange={(event) => setManualTenantId(event.target.value)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) auto', gap: 12, marginBottom: 12 }}>
+                    <Select
+                        showSearch
+                        loading={storesLoading}
+                        placeholder="Select store"
+                        value={selectedStoreId}
+                        onChange={setSelectedStoreId}
+                        options={selectOptions}
+                        optionFilterProp="label"
                     />
-                    <Input
-                        placeholder="Store ID"
-                        value={manualStoreId}
-                        onChange={(event) => setManualStoreId(event.target.value)}
-                    />
-                    <Input
-                        placeholder="Project ID for analytics"
-                        value={manualProjectId}
-                        onChange={(event) => setManualProjectId(event.target.value)}
-                    />
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <Button
-                        type="primary"
-                        onClick={handleManualDecisionBlocks}
-                        loading={triggerLoading}
-                    >
-                        Recompute Decision Blocks
-                    </Button>
-                    <Button
-                        onClick={handleManualAnalyticsBackfill}
-                        loading={analyticsBackfillLoading}
-                    >
-                        Backfill Analytics Summary
+                    <Button onClick={handleManualNightlyRecovery} loading={triggerLoading} disabled={!selectedStore}>
+                        Run Nightly Recovery
                     </Button>
                 </div>
+                {selectedStore && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Selected scope: tenant {selectedStore.tId}, store {selectedStore.sId}
+                    </Text>
+                )}
             </Card>
 
             {/* Section 1: Health Badge */}
@@ -673,8 +615,7 @@ function SchedulerMonitor() {
                     <Text><strong>Tasks:</strong> DI, CMI, OBP + menu analytics settlement, Authority, Drift, Feedback Retention, Billing Reconciliation, Messaging, Special Menus, Infra Compounding, Reseller, AI Insights</Text>
                     <Text><strong>Dead Man Switch:</strong> Telegram alert fires on completion — if no alert, scheduler did not finish</Text>
                     <Text><strong>Mismatch Alert:</strong> Warns if expected store count ≠ processed count</Text>
-                    <Text><strong>Manual Decision Blocks Recovery:</strong> Uses <code>triggerDecisionBlocksScoring</code> callable CF for one tenant/store or project.</Text>
-                    <Text><strong>Manual Analytics Backfill:</strong> Uses <code>triggerCustomerAnalyticsManually</code> callable CF for one tenant/store/project summary.</Text>
+                    <Text><strong>Manual Store Recovery:</strong> Uses <code>triggerStoreNightlyScheduler</code> callable CF for one selected store and all active projects under it.</Text>
                     <Text><strong>TTL:</strong> Decision Blocks have 48h TTL — if scheduler fails 2 nights, client falls back to pinned-only mode</Text>
                 </div>
             </Card>
