@@ -48,6 +48,7 @@ import {
     LuTrash2,
 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import MobileCompliancePagesEditor from '../components/MobileCompliancePagesEditor';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
@@ -1469,24 +1470,46 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 </Card>
 
                 {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES ? (
-                    <Card>
-                        <Flex gap={12} vertical>
-                            <Text strong>{t('publicPolicyLinks')}</Text>
-                            <Flex align="center" justify="space-between">
-                                <Text>{t('showPrivacyLink')}</Text>
-                                <Switch checked={formData.showPrivacyLink} onChange={(value) => setFormData((previous) => ({ ...previous, showPrivacyLink: value }))} />
+                    <>
+                        <Card>
+                            <Flex gap={12} vertical>
+                                <Text strong>{t('publicPolicyLinks')}</Text>
+                                <Flex align="center" justify="space-between">
+                                    <Flex align="center" gap={8}>
+                                        <MobileCompliancePagesEditor
+                                            compact={isCompactHandheld}
+                                            domain={storeDetails?.customDomain || (storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : undefined)}
+                                            type="privacy"
+                                        />
+                                        <Text>{t('showPrivacyLink')}</Text>
+                                    </Flex>
+                                    <Switch checked={formData.showPrivacyLink} onChange={(value) => setFormData((previous) => ({ ...previous, showPrivacyLink: value }))} />
+                                </Flex>
+                                <Flex align="center" justify="space-between">
+                                    <Flex align="center" gap={8}>
+                                        <MobileCompliancePagesEditor
+                                            compact={isCompactHandheld}
+                                            domain={storeDetails?.customDomain || (storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : undefined)}
+                                            type="terms"
+                                        />
+                                        <Text>{t('showTermsLink')}</Text>
+                                    </Flex>
+                                    <Switch checked={formData.showTermsLink} onChange={(value) => setFormData((previous) => ({ ...previous, showTermsLink: value }))} />
+                                </Flex>
+                                <Flex align="center" justify="space-between">
+                                    <Flex align="center" gap={8}>
+                                        <MobileCompliancePagesEditor
+                                            compact={isCompactHandheld}
+                                            domain={storeDetails?.customDomain || (storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : undefined)}
+                                            type="refund"
+                                        />
+                                        <Text>{t('showRefundLink')}</Text>
+                                    </Flex>
+                                    <Switch checked={formData.showRefundLink} onChange={(value) => setFormData((previous) => ({ ...previous, showRefundLink: value }))} />
+                                </Flex>
                             </Flex>
-                            <Flex align="center" justify="space-between">
-                                <Text>{t('showTermsLink')}</Text>
-                                <Switch checked={formData.showTermsLink} onChange={(value) => setFormData((previous) => ({ ...previous, showTermsLink: value }))} />
-                            </Flex>
-                            <Flex align="center" justify="space-between">
-                                <Text>{t('showRefundLink')}</Text>
-                                <Switch checked={formData.showRefundLink} onChange={(value) => setFormData((previous) => ({ ...previous, showRefundLink: value }))} />
-                            </Flex>
-                            <Text type="secondary">{t('policyContentDesktopHint')}</Text>
-                        </Flex>
-                    </Card>
+                        </Card>
+                    </>
                 ) : null}
 
                 <SectionCard title={t('officialPageSpecialNote')} subtitle={t('officialPageSpecialNoteHelp')}>

@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { SKIP_CLIENT_APP_LAYOUT_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
 import useDeviceType from '@hook/useDeviceType';
+import { clearForceDesktopMode, shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
 import HeadMetaTags from '@organisms/headMetaTags';
 import HorizontalSidebar from '@organisms/sidebar/horizontalSidebar';
 import AntdThemeProvider from '@providers/antdThemeProvider';
@@ -14,7 +15,7 @@ import { getDarkModeState, getRTLDirectionState, getSidebarLayoutState, getSideb
 import { Layout, theme } from 'antd';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import styles from './layoutWrapper.module.scss';
 
 const AppSettingsPanel = dynamic(() => import('@organisms/sidebar/appSettingsPanel'), { ssr: false });
@@ -35,11 +36,11 @@ export default function AntdLayoutWrapper(props: any) {
     const pathname = usePathname();
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
     const { isHandheld, isMobile, hasMounted } = useDeviceType();
-    // Check for force-desktop override from localStorage (set via More > Switch to Desktop)
-    const forceDesktop = typeof window !== 'undefined' && localStorage.getItem('forceDesktopMode') === 'true';
+    const [, setForceDesktopRefreshKey] = useState(0);
     const isDesktopOnlyRoute = DESKTOP_ONLY_ROUTES.includes(pathname) || DESKTOP_ONLY_ROUTE_PREFIXES.some((routePrefix) => (
         pathname === routePrefix || pathname.startsWith(`${routePrefix}/`)
     ));
+    const forceDesktop = hasMounted && shouldForceDesktopForPath(pathname, isDesktopOnlyRoute);
     const isPlatformRoute = pathname === '/platform' || pathname.startsWith('/platform/');
     const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
     const shouldRenderMobileShell = hasMounted
@@ -69,7 +70,10 @@ export default function AntdLayoutWrapper(props: any) {
                 {hasMounted && isHandheld && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (
                     <div
                         style={{ background: '#1677ff', color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', zIndex: 9999 }}
-                        onClick={() => { localStorage.removeItem('forceDesktopMode'); window.location.reload(); }}
+                        onClick={() => {
+                            clearForceDesktopMode();
+                            setForceDesktopRefreshKey((current) => current + 1);
+                        }}
                     >
                         You&apos;re viewing the desktop version. <strong>Tap here to return to mobile.</strong>
                     </div>

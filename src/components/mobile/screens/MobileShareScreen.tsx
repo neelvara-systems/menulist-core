@@ -227,9 +227,9 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
 
     return (
         <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
-            {activeProject ? (
+            {activeProject && data.allProjects.length > 1 ? (
                 <ProjectSelectorTrigger
-                    clickable={data.allProjects.length > 1}
+                    clickable
                     currentProject={{
                         active: activeProject.active !== false,
                         deleted: activeProject.deleted === true,
@@ -248,7 +248,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                         specialMenuEndsAt: activeProject.specialMenuEndsAt,
                         specialMenuStatus: activeProject.specialMenuStatus,
                     }}
-                    onClick={data.allProjects.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                    onClick={() => setIsProjectSelectorOpen(true)}
                 />
             ) : null}
 

@@ -81,6 +81,7 @@
 - **`withRetry(1)`**: One retry with 1s delay handles transient failures
 - **Per-store cache tags**: `menu-store-${sId}` enables precise invalidation on owner save
 - **Special note rendering is payload-only**: Public menus resolve special notes from the already-fetched project/store payload (`menuSettings.specialNote`, legacy project note fields, then `publicPresence.specialNote`). This adds no Firestore reads or writes.
+- **PDP item sharing is no-write**: Public item sharing uses the Web Share API or clipboard fallback from the already-open PDP URL. Its generic `share` analytics event is GA4-only and does not add Firestore analytics writes.
 
 ### Potential Optimizations
 - **Increase cache TTL**: 60s → 300s for low-change menus (trade-off: stale data for 5 min)

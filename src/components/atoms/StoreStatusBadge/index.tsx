@@ -71,7 +71,9 @@ export function StoreStatusBadge({
             : status.statusText;
 
     return (
-        <Tag color={colorMap[status.statusText] || "default"}>{displayText}</Tag>
+        <Tag color={colorMap[status.statusText] || "default"} style={{ marginInlineEnd: 0 }}>
+            {displayText}
+        </Tag>
     );
 }
 

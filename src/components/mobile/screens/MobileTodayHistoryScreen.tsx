@@ -82,9 +82,9 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                 vertical
             >
 
-                {!loadingProjects && selectedProjectId ? (
+                {!loadingProjects && projectsList.length > 1 && selectedProjectId ? (
                     <ProjectSelectorTrigger
-                        clickable={projectsList.length > 1}
+                        clickable
                         currentProject={{
                             active: selectedProjectSummary?.active !== false,
                             deleted: selectedProjectSummary?.deleted === true,
@@ -100,7 +100,7 @@ export default function MobileTodayHistoryScreen({ onBack }: MobileTodayHistoryS
                             specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
                             specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                         }}
-                        onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                        onClick={() => setIsProjectSelectorOpen(true)}
                     />
                 ) : null}
 

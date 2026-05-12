@@ -5,12 +5,14 @@ import { CANONICA_ROUTES } from '@constant/canonica/navigations';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
+import { clearForceDesktopMode, setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
@@ -177,6 +179,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tPosSync = useTranslations('PosSync');
     const tPresence = useTranslations('MobilePresenceMonitor');
     const { token } = theme.useToken();
+    const router = useRouter();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const businessCopyCoverage = useMemo(
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
@@ -234,12 +237,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     };
 
     const openDesktopRoute = (path: string) => {
-        localStorage.setItem('forceDesktopMode', 'true');
-        window.location.assign(path);
+        setForceDesktopRoute(path);
+        router.push(path);
     };
 
     const openCanonicaRoute = (path: string) => {
-        window.location.assign(path);
+        clearForceDesktopMode();
+        router.push(path);
     };
 
     const openOfficialPage = (backTarget: MoreSubScreen) => {

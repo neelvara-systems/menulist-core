@@ -566,6 +566,8 @@ export interface TrackingData {
   searchTerm?: string;        // What the user searched for
   searchResults?: number;     // Number of search results
   menuAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order';
+  shareMethod?: 'native_share' | 'copy_link';
+  shareContentType?: 'menu_item' | 'menu' | 'obp';
   obpAction?: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order' | 'feedback' | 'copy_link' | 'copy_message';
   obpLink?: 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
 
@@ -1202,6 +1204,16 @@ const trackGA4Event = (
         });
         break;
 
+      case TrackingEvent.SHARE:
+        window.gtag('event', 'share', {
+          method: data.shareMethod || 'native_share',
+          content_type: data.shareContentType || (data.itemId ? 'menu_item' : 'menu'),
+          item_id: data.itemId,
+          item_name: data.itemName,
+          item_category: data.itemCategory,
+        });
+        break;
+
       case TrackingEvent.USER_LOCATION:
         window.gtag('event', 'user_location', {
           city: data.city,
@@ -1316,6 +1328,28 @@ export const trackItemView = (itemId: string, itemName: string, itemCategory?: s
  */
 export const trackItemClick = (itemId: string, itemName: string, itemCategory?: string, price?: number, currency?: string, additionalData: Partial<TrackingData> = {}): Promise<void> => {
   return trackEvent(TrackingEvent.ITEM_CLICK, { itemId, itemName, itemCategory, price, currency, ...additionalData });
+};
+
+/**
+ * Track item-level public sharing without adding Firestore write volume.
+ * The generic SHARE event is GA4-only unless a future owner-facing read model
+ * explicitly needs item-share counters.
+ */
+export const trackItemShare = (
+  itemId: string,
+  itemName: string,
+  itemCategory?: string,
+  shareMethod: 'native_share' | 'copy_link' = 'native_share',
+  additionalData: Partial<TrackingData> = {}
+): Promise<void> => {
+  return trackEvent(TrackingEvent.SHARE, {
+    itemId,
+    itemName,
+    itemCategory,
+    shareMethod,
+    shareContentType: 'menu_item',
+    ...additionalData,
+  });
 };
 
 /**

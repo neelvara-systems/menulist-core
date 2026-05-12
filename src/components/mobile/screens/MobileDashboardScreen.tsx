@@ -631,25 +631,27 @@ export default function MobileDashboardScreen({ onBack, onOpenDesignEditor }: Mo
             />
 
             <Flex gap={16} style={{ padding: 16, paddingBottom: 24 }} vertical>
-                <ProjectSelectorTrigger
-                    clickable={projectsList.length > 1}
-                    currentProject={{
-                        active: selectedProjectSummary?.active !== false,
-                        deleted: selectedProjectSummary?.deleted === true,
-                        id: selectedProjectId,
-                        isDefault: selectedProjectSummary?.isDefault,
-                        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
-                        name: selectedProjectSummary?.name || t('unnamedProject'),
-                        projectImage: selectedProjectSummary?.projectImage || null,
-                        specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
-                        specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
-                            ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
-                            : undefined,
-                        specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
-                        specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
-                    }}
-                    onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
-                />
+                {projectsList.length > 1 && selectedProjectId ? (
+                    <ProjectSelectorTrigger
+                        clickable
+                        currentProject={{
+                            active: selectedProjectSummary?.active !== false,
+                            deleted: selectedProjectSummary?.deleted === true,
+                            id: selectedProjectId,
+                            isDefault: selectedProjectSummary?.isDefault,
+                            isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+                            name: selectedProjectSummary?.name || t('unnamedProject'),
+                            projectImage: selectedProjectSummary?.projectImage || null,
+                            specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                                ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                                : undefined,
+                            specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                            specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
+                        }}
+                        onClick={() => setIsProjectSelectorOpen(true)}
+                    />
+                ) : null}
 
                 <div style={stickyHistoricalHeaderStyle}>
                     <Card className="mobile-dashboard-tabs-card" size="small">

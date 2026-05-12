@@ -6,6 +6,7 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -13,6 +14,7 @@ import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuExternalLink, LuQrCode, LuShare2, LuStar } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
+import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
@@ -36,12 +38,13 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const { token } = theme.useToken();
     const format = useFormatter();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
-    const { selectedProjectId } = useMobileProjects();
+    const { projectsList, selectedProjectId, selectedProjectSummary, selectProject } = useMobileProjects();
     const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>(DEFAULT_FEEDBACK_FILTER);
     const [isQrOpen, setIsQrOpen] = useState(false);
+    const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const publicBaseUrl = generateOBPUrl(
         storeDetails?.subdomain || '',
@@ -185,6 +188,28 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 />
             ) : null}
             <Flex gap={12} style={{ padding: 16, paddingTop: onBack ? 16 : 24 }} vertical>
+                {projectsList.length > 1 && selectedProjectId ? (
+                    <ProjectSelectorTrigger
+                        clickable
+                        currentProject={{
+                            active: selectedProjectSummary?.active !== false,
+                            deleted: selectedProjectSummary?.deleted === true,
+                            id: selectedProjectId,
+                            isDefault: selectedProjectSummary?.isDefault,
+                            isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+                            name: selectedProjectSummary?.name || 'Untitled',
+                            projectImage: selectedProjectSummary?.projectImage || null,
+                            specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                                ? projectsList.find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                                : undefined,
+                            specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                            specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
+                        }}
+                        onClick={() => setIsProjectSelectorOpen(true)}
+                    />
+                ) : null}
+
                 <FeedbackLinkCard
                     description={t('feedbackQrDesc')}
                     disabled={!feedbackReady}
@@ -280,6 +305,16 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 title={t('feedbackQrTitle')}
                 url={feedbackQrUrl}
                 visible={isQrOpen}
+            />
+            <MobileProjectSelectorSheet
+                currentProjectId={selectedProjectId}
+                currentProjectName={selectedProjectSummary?.name || null}
+                onClose={() => setIsProjectSelectorOpen(false)}
+                onProjectsChanged={async (preferredProjectId) => {
+                    await selectProject(preferredProjectId || null);
+                    setIsProjectSelectorOpen(false);
+                }}
+                visible={isProjectSelectorOpen}
             />
         </Flex>
     );

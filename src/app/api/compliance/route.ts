@@ -15,7 +15,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { deleteComplianceOverride, getComplianceOverrides, saveComplianceOverride } from '@database/compliance';
 import { sanitizeComplianceContent } from '@lib/compliance/sanitizer';
-import { extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
+import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
@@ -67,16 +67,22 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     return NextResponse.json({
         privacy: {
-            content: overrides?.privacyOverride || systemPrivacy,
+            content: composeComplianceContent(systemPrivacy, overrides?.privacyOverride),
+            customContent: overrides?.privacyOverride || '',
             source: overrides?.privacyOverride ? 'custom' : 'system',
+            systemContent: systemPrivacy,
         },
         terms: {
-            content: overrides?.termsOverride || systemTerms,
+            content: composeComplianceContent(systemTerms, overrides?.termsOverride),
+            customContent: overrides?.termsOverride || '',
             source: overrides?.termsOverride ? 'custom' : 'system',
+            systemContent: systemTerms,
         },
         refund: {
-            content: overrides?.refundOverride || systemRefund,
+            content: composeComplianceContent(systemRefund, overrides?.refundOverride),
+            customContent: overrides?.refundOverride || '',
             source: overrides?.refundOverride ? 'custom' : 'system',
+            systemContent: systemRefund,
         },
     });
 });

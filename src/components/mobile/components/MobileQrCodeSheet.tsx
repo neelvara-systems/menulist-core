@@ -94,12 +94,12 @@ export default function MobileQrCodeSheet({
 
     return (
         <Popup
-            bodyStyle={{ maxHeight: '82vh', overflow: 'hidden', padding: 0 }}
+            bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
             onMaskClick={onClose}
             position="bottom"
             visible={visible}
         >
-            <Flex style={{ height: '100%' }} vertical>
+            <Flex style={{ height: '100%', maxHeight: '94vh' }} vertical>
                 <NavBar backIcon={<LuX size={20} />} onBack={onClose}>
                     {title}
                 </NavBar>
@@ -112,8 +112,13 @@ export default function MobileQrCodeSheet({
                         </Flex>
                     ) : qrDataUrl ? (
                         <Flex align="center" gap={12} vertical>
-                            <Card size="small">
-                                <Image alt={imageAlt} preview={false} src={qrDataUrl} width={240} />
+                            <Card size="small" style={{ width: '100%' }}>
+                                <Image
+                                    alt={imageAlt}
+                                    preview={false}
+                                    src={qrDataUrl}
+                                    style={{ display: 'block', height: 'auto', width: '100%' }}
+                                />
                             </Card>
                             {helperText ? <Text type="secondary">{helperText}</Text> : null}
                             <Text type="secondary" style={{ wordBreak: 'break-all' }}>{url}</Text>

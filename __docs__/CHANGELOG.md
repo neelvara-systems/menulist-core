@@ -20,6 +20,7 @@
 - **Menu language changes update routed content** — Changing menu language now updates the `?lang=` route through Next navigation so server-rendered menu names, item descriptions, and share metadata stay aligned.
 - **Item share URLs keep language context** — Public item detail URLs preserve the selected language query so copied item links can render the right title and description preview.
 - **Browser share sees open items** — Opening an item PDP from the menu now updates the client document title, canonical URL, Open Graph URL, and Twitter metadata so mobile browser share sheets do not fall back to the base menu link.
+- **PWA item sharing added to PDP** — Public item details now include a quiet share action that uses native device sharing when available and copies the exact language-preserving item URL as fallback, without adding Firestore write volume.
 - **PDP nutrition facts are visible** — Owner-entered nutrition facts now render in the item detail metadata badges, matching the existing schema/search support.
 - **Sections button threshold tightened** — The `Sections` command appears only when a menu has three or more sections.
 - **iPhone command-row stability hardened** — Public mobile menu wrappers no longer clip overflow around the command row, and mobile public output switches to a measured fixed layer once the row reaches the top to avoid iOS sticky positioning instability.

@@ -10,7 +10,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { getBrandName } from "@lib/businessIdentity/names";
-import { extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
+import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
     getStoreByCustomDomain,
@@ -87,7 +87,7 @@ export default async function CompliancePageContent({ type }: CompliancePageCont
             };
             const overrideField = overrideFieldMap[type];
             if (overrideField && data[overrideField]) {
-                content = data[overrideField];
+                content = composeComplianceContent(systemContent, data[overrideField]);
             }
         }
     } catch {

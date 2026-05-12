@@ -812,9 +812,9 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     <Flex gap={10} vertical>
                         <Text strong>No today action yet</Text>
                         <Text type="secondary">Generate one suggested action and share it in one tap.</Text>
-                        {selectedProjectId ? (
+                        {projectsList.length > 1 && selectedProjectId ? (
                             <ProjectSelectorTrigger
-                                clickable={projectsList.length > 1}
+                                clickable
                                 currentProject={{
                                     active: selectedProjectSummary?.active !== false,
                                     deleted: selectedProjectSummary?.deleted === true,
@@ -830,7 +830,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                     specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
                                     specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
                                 }}
-                                onClick={projectsList.length > 1 ? () => setIsProjectSelectorOpen(true) : undefined}
+                                onClick={() => setIsProjectSelectorOpen(true)}
                             />
                         ) : null}
                         <Button

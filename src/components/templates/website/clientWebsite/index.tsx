@@ -220,16 +220,19 @@ function ClientMenuRenderer({
                 When ENABLE_OUTPUT_CONTROL is ON, TrustSignals (rendered above by page.tsx)
                 becomes the single hours truth surface. StoreStatusBadge is hidden to avoid
                 two competing hours displays on the same screen. When output control is off,
-                keep the fixed badge for the 5-minute open/close boundary only.
+                keep the fixed badge for the 5-minute open/close boundary only. It belongs at
+                bottom-center so it never competes with the business identity or sticky search.
                 @see __docs__/constitution/18-silent-correction-doctrine.md */}
             {FEATURE_FLAGS.ENABLE_HOURS_STATUS_DISPLAY && !FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL && (
                 <div
                     style={{
                         position: "fixed",
-                        top: "12px",
+                        bottom: "calc(16px + env(safe-area-inset-bottom))",
                         left: "50%",
                         transform: "translateX(-50%)",
-                        zIndex: 1000,
+                        zIndex: 80,
+                        maxWidth: "calc(100vw - 32px)",
+                        pointerEvents: "none",
                     }}
                 >
                     <StoreStatusBadge

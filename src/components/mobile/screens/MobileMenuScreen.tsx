@@ -2247,25 +2247,27 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         <Flex style={{ height: '100%' }} vertical>
             <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
                 <Flex gap={12} vertical>
-                    <ProjectSelectorTrigger
-                        clickable={projectsList.length > 1 && !isBusy}
-                        currentProject={{
-                            active: activeProjectSummary?.active !== false,
-                            deleted: activeProjectSummary?.deleted === true,
-                            id: menuData?.projectId || 'current',
-                            isDefault: activeProjectSummary?.isDefault,
-                            isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
-                            name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
-                            projectImage: activeProjectSummary?.projectImage || menuData?.projectImage || null,
-                            specialMenuBaseProjectId: activeProjectSummary?.specialMenuBaseProjectId,
-                            specialMenuBaseProjectName: activeProjectSummary?.specialMenuBaseProjectId
-                                ? projectsList.find((project: any) => project.projectId === activeProjectSummary.specialMenuBaseProjectId)?.name
-                                : undefined,
-                            specialMenuEndsAt: activeProjectSummary?.specialMenuEndsAt,
-                            specialMenuStatus: activeProjectSummary?.specialMenuStatus,
-                        }}
-                        onClick={projectsList.length > 1 && !isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
-                    />
+                    {projectsList.length > 1 ? (
+                        <ProjectSelectorTrigger
+                            clickable={!isBusy}
+                            currentProject={{
+                                active: activeProjectSummary?.active !== false,
+                                deleted: activeProjectSummary?.deleted === true,
+                                id: menuData?.projectId || 'current',
+                                isDefault: activeProjectSummary?.isDefault,
+                                isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
+                                name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
+                                projectImage: activeProjectSummary?.projectImage || menuData?.projectImage || null,
+                                specialMenuBaseProjectId: activeProjectSummary?.specialMenuBaseProjectId,
+                                specialMenuBaseProjectName: activeProjectSummary?.specialMenuBaseProjectId
+                                    ? projectsList.find((project: any) => project.projectId === activeProjectSummary.specialMenuBaseProjectId)?.name
+                                    : undefined,
+                                specialMenuEndsAt: activeProjectSummary?.specialMenuEndsAt,
+                                specialMenuStatus: activeProjectSummary?.specialMenuStatus,
+                            }}
+                            onClick={!isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
+                        />
+                    ) : null}
 
                     {activeProjectSummary?.isSpecialMenu && activeSpecialMenuStatus ? (
                         <Card size="small" style={{ backgroundColor: token.colorWarningBg, borderColor: token.colorWarningBorder }}>

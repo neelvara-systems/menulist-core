@@ -24,10 +24,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuChevronLeft, LuChevronRight, LuMaximize2, LuX } from 'react-icons/lu';
+import { LuChevronLeft, LuChevronRight, LuMaximize2, LuShare2, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { menuBottomSheetMotion, menuDialogMotion, menuSpringTransition } from './menuMotion';
+
+type ItemShareMethod = 'native_share' | 'copy_link';
 
 interface PDPModalProps {
     item: any;
@@ -48,6 +50,33 @@ interface PDPModalProps {
         external?: boolean;
         track: () => Promise<void>;
     }>;
+    itemShareUrl?: string;
+    onShare?: (method: ItemShareMethod) => void;
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '0';
+    textArea.style.opacity = '0';
+    textArea.setAttribute('readonly', 'true');
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+}
+
+function getCompactShareText(value: string): string {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= 140) return normalized;
+    return `${normalized.slice(0, 137).trim()}...`;
 }
 
 function PDPModal({
@@ -64,12 +93,16 @@ function PDPModal({
     trackView = true,
     showCategoryIcons = true,
     recoveryActions = [],
+    itemShareUrl,
+    onShare,
 }: PDPModalProps) {
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [displayedImageIndex, setDisplayedImageIndex] = useState(0);
     const [loadedImageUrls, setLoadedImageUrls] = useState<Set<string>>(new Set());
     const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+    const [isSharingItem, setIsSharingItem] = useState(false);
+    const [shareStatus, setShareStatus] = useState<string | null>(null);
     const [category, setCategory] = useState<ExtractedDataCategory>();
     const [mounted, setMounted] = useState(false);
     const [isMobileSheet, setIsMobileSheet] = useState(false);
@@ -181,6 +214,7 @@ function PDPModal({
             setDisplayedImageIndex(0);
             setLoadedImageUrls(new Set());
             setIsImageViewerOpen(false);
+            setShareStatus(null);
 
             if (trackView) {
                 const file = projectData?.files?.find(f => (
@@ -254,6 +288,13 @@ function PDPModal({
     }, [images, item?.id, markImageLoaded]);
 
     useEffect(() => {
+        if (!shareStatus) return;
+
+        const timer = window.setTimeout(() => setShareStatus(null), 2200);
+        return () => window.clearTimeout(timer);
+    }, [shareStatus]);
+
+    useEffect(() => {
         if (!item) return;
 
         const targetUrl = images[currentImageIndex]?.url;
@@ -325,6 +366,46 @@ function PDPModal({
         }
     };
 
+    const handleShareItem = async () => {
+        if (!itemShareUrl || isSharingItem) return;
+
+        const shareTitle = getModalText(item.name, 'Menu item');
+        const description = getCompactShareText(getModalText(item.description, ''));
+        const shareData: ShareData = {
+            title: shareTitle,
+            text: description || shareTitle,
+            url: itemShareUrl,
+        };
+
+        setIsSharingItem(true);
+        setShareStatus(null);
+
+        try {
+            if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+                await navigator.share(shareData);
+                onShare?.('native_share');
+                return;
+            }
+        } catch (error) {
+            if ((error as DOMException)?.name === 'AbortError') {
+                return;
+            }
+        } finally {
+            setIsSharingItem(false);
+        }
+
+        try {
+            setIsSharingItem(true);
+            await copyTextToClipboard(itemShareUrl);
+            onShare?.('copy_link');
+            setShareStatus('Link copied');
+        } catch {
+            setShareStatus('Could not share');
+        } finally {
+            setIsSharingItem(false);
+        }
+    };
+
     const pdpIconButtonStyle = (positionStyle: React.CSSProperties, disabled = false): React.CSSProperties => ({
         ...positionStyle,
         alignItems: 'center',
@@ -375,15 +456,35 @@ function PDPModal({
         padding: '0 4px',
         textAlign: 'center',
     };
-    const stickyCloseButtonStyle = pdpIconButtonStyle({
-        position: 'sticky',
-        top: 12,
-        zIndex: 8,
-        marginTop: 12,
-        marginRight: 12,
+    const stickyActionGroupStyle: React.CSSProperties = {
+        alignItems: 'center',
+        display: 'flex',
+        gap: 8,
         marginBottom: -44,
         marginLeft: 'auto',
+        marginRight: 12,
+        marginTop: 12,
+        position: 'sticky',
+        top: 12,
+        width: 'max-content',
+        zIndex: 8,
+    };
+    const stickyCloseButtonStyle = pdpIconButtonStyle({
+        position: 'relative',
     });
+    const shareStatusStyle: React.CSSProperties = {
+        background: moodConfig.itemStyle.background,
+        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderRadius: 999,
+        color: moodConfig.bodyColor,
+        fontFamily: moodConfig.bodyFont,
+        fontSize: 12,
+        fontWeight: 700,
+        lineHeight: '16px',
+        padding: '6px 9px',
+        pointerEvents: 'none',
+        whiteSpace: 'nowrap',
+    };
 
     const modalContent = (
         <AnimatePresence>
@@ -447,15 +548,36 @@ function PDPModal({
                             }}
                             onClick={(event) => event.stopPropagation()}
                         >
-                            {/* Close Button */}
-                            <button
-                                onClick={onClose}
-                                className="rounded-full transition-opacity hover:opacity-80"
-                                aria-label="Close item details"
-                                style={stickyCloseButtonStyle}
-                            >
-                                <LuX size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
-                            </button>
+                            {/* Item actions */}
+                            <div style={stickyActionGroupStyle}>
+                                {shareStatus && (
+                                    <span aria-live="polite" style={shareStatusStyle}>
+                                        {shareStatus}
+                                    </span>
+                                )}
+                                {itemShareUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={handleShareItem}
+                                        className="rounded-full transition-opacity hover:opacity-80"
+                                        aria-label="Share item"
+                                        title="Share item"
+                                        disabled={isSharingItem}
+                                        style={pdpIconButtonStyle({ position: 'relative' }, isSharingItem)}
+                                    >
+                                        <LuShare2 size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="rounded-full transition-opacity hover:opacity-80"
+                                    aria-label="Close item details"
+                                    style={stickyCloseButtonStyle}
+                                >
+                                    <LuX size={17} color={moodConfig.accentColor} strokeWidth={2.4} />
+                                </button>
+                            </div>
 
                             {/* Image Section */}
                             {images.length > 0 && (
@@ -556,7 +678,7 @@ function PDPModal({
                             <div
                                 className="p-5 md:p-6"
                                 style={{
-                                    padding: images.length > 0 ? '20px 20px 24px' : '24px 72px 24px 20px',
+                                    padding: images.length > 0 ? '20px 20px 24px' : '24px 112px 24px 20px',
                                     fontFamily: moodConfig.bodyFont,
                                 }}
                             >

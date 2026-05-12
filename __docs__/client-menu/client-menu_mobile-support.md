@@ -19,7 +19,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 | Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator only for 3+ sections; public icons preserve owner-selected icon choices |
 | Item display (name/price/image) | ✅ | Responsive grid/list layouts, including compact two-column mobile grid when Grid is selected; odd final grid cards span full row, and image frames render only for items that have images |
 | Search/filter | ✅ | Debounced fuzzy/transliteration search with exact visible-name results first, any-term recovery for multi-term searches, 16px mobile input sizing, clear exits search mode, and compact data-based search suggestions |
-| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, fullscreen pinch-to-zoom image inspection, category identity, and owner-entered nutrition facts when enabled |
+| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, fullscreen pinch-to-zoom image inspection, category identity, item sharing, and owner-entered nutrition facts when enabled |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
 | Schema.org JSON-LD | ✅ | Server-side active menu data with real freshness fields |
 | Analytics tracking | ✅ | Device-independent |
@@ -64,6 +64,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Fullscreen PDP image preview supports its own two-finger pinch zoom; this is scoped to the image viewer and does not re-enable browser-level zoom for the whole menu.
 - Public menu language changes must keep names, descriptions, category labels, and URL `?lang=` state aligned after OBP-to-menu navigation or installed PWA launches.
 - Public item URLs must preserve the selected language query and update client head metadata while the PDP is open so mobile browser share sheets render the matching item URL, title, and description.
+- Public item PDPs must expose a quiet share action for installed PWAs, using native device sharing when available and copy-link fallback when unavailable. The shared URL must be the item URL with the current `?lang=` value.
 - Active public menu temporary status belongs in the bottom trust zone as a centered pill, not above the business identity header where it can compete with sticky controls. Expired status data must render nothing and reserve no space.
 
 ## Owner Mobile Interaction

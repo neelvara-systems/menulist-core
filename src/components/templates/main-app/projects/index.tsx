@@ -39,11 +39,13 @@ import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
+import { shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFilePlus, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
 import { TbFileTypeJpg, TbFileTypePdf } from 'react-icons/tb';
 import useSWR from 'swr';
+import { usePathname } from 'next/navigation';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
 import PreviewModal from './b2cView/previewModal';
 import ShareModal from './b2cView/shareModal';
@@ -145,6 +147,7 @@ function ProjectsPage() {
     const tDivergence = useTranslations('Projects.divergence');
     const loggedInSession = useClientAuthSession();
     const { hasMounted, isMobile } = useDeviceType();
+    const pathname = usePathname();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState(null)
     const [currentView, setCurrentView] = useState(1);
@@ -279,7 +282,7 @@ function ProjectsPage() {
         }
     };
 
-    const forceDesktop = typeof window !== 'undefined' && localStorage.getItem('forceDesktopMode') === 'true';
+    const forceDesktop = shouldForceDesktopForPath(pathname);
     const shouldEnableDesktopProjectsData = hasMounted && (!FEATURE_FLAGS.ENABLE_MOBILE_UI || !isMobile || forceDesktop);
 
     // SWR cache key for projects list

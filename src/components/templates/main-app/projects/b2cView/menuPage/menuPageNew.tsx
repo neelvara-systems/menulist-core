@@ -19,7 +19,7 @@ import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
-import { setMenuAttributeFilterContext, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { setMenuAttributeFilterContext, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
 import { getLocalizedText } from '@lib/localization/text';
 import {
@@ -1209,6 +1209,52 @@ function MenuPageNew({
             applyClientDocumentMeta(item, `${window.location.origin}${nextItemUrl}`);
         }
     }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+
+    const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link') => {
+        if (
+            previewMode ||
+            !analyticsPreferences.trackMenuViews ||
+            !storeDetails?.tenantId ||
+            !storeDetails?.storeId ||
+            !projectData?.projectId ||
+            !item?.id
+        ) {
+            return;
+        }
+
+        const categoryId = typeof item.category === 'string' ? item.category : '';
+        const category = allCategories.find((cat: any) => cat.id === categoryId);
+        const analyticsCategoryName = getMenuAnalyticsText(category?.name)
+            || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
+
+        void trackItemShare(
+            item.id,
+            getMenuAnalyticsText(item.name, 'Menu item'),
+            analyticsCategoryName || item.category,
+            method,
+            {
+                categoryId,
+                categoryName: analyticsCategoryName,
+                tenantId: storeDetails.tenantId,
+                storeId: String(storeDetails.storeId),
+                projectId: projectData.projectId,
+                storeTimeZone: storeDetails.timeZone,
+                businessDayEndTime: storeDetails.businessDayEndTime,
+                includeLocation: analyticsPreferences.trackLocation,
+            }
+        );
+    }, [
+        allCategories,
+        analyticsPreferences.trackLocation,
+        analyticsPreferences.trackMenuViews,
+        getMenuAnalyticsText,
+        previewMode,
+        projectData?.projectId,
+        storeDetails?.businessDayEndTime,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+        storeDetails?.timeZone,
+    ]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -2565,6 +2611,8 @@ function MenuPageNew({
                 trackView={selectedItemTrackView}
                 recoveryActions={recoveryActions}
                 showCategoryIcons={showCategoryIcons}
+                itemShareUrl={selectedItem && !previewMode ? buildItemUrl(selectedItem) : ''}
+                onShare={(method) => handleItemShare(selectedItem, method)}
             />
         </div>
     );

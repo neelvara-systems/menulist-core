@@ -3,11 +3,12 @@
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
@@ -136,11 +137,8 @@ function parseMobileRoutePathname(pathname: string): { tab: MobileTab; todayScre
 }
 
 function parseInitialMobileRoute(pathname: string, hash: string) {
-    if (hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
-        return parseMobileRouteHash(hash);
-    }
-
-    return parseMobileRoutePathname(pathname) || parseMobileRouteHash(hash);
+    return parseMobileRoutePathname(pathname)
+        || (hash.startsWith(MOBILE_ROUTE_HASH_PREFIX) ? parseMobileRouteHash(hash) : parseMobileRouteHash(''));
 }
 
 function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen) {
@@ -158,6 +156,7 @@ export default function MobileShell() {
     const { token } = theme.useToken();
     const { data: session } = useSession();
     const pathname = usePathname();
+    const router = useRouter();
     const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseInitialMobileRoute(pathname, window.location.hash);
     const [activeTab, setActiveTab] = useState<MobileTab>(initialRoute.tab);
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
@@ -185,7 +184,7 @@ export default function MobileShell() {
 
     useEffect(() => {
         const handleHashChange = () => {
-            const nextRoute = parseMobileRouteHash(window.location.hash);
+            const nextRoute = parseMobileRoutePathname(window.location.pathname) || parseMobileRouteHash(window.location.hash);
             setActiveTab(nextRoute.tab);
             setTodayScreen(nextRoute.todayScreen);
             setMoreScreen(nextRoute.moreScreen);
@@ -199,9 +198,11 @@ export default function MobileShell() {
     }, []);
 
     useEffect(() => {
-        if (window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) return;
         const nextRoute = parseMobileRoutePathname(pathname);
-        if (!nextRoute) return;
+        if (!nextRoute) {
+            if (window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) return;
+            return;
+        }
 
         setActiveTab(nextRoute.tab);
         setTodayScreen(nextRoute.todayScreen);
@@ -227,6 +228,12 @@ export default function MobileShell() {
 
     const handleTabChange = useCallback((tab: MobileTab) => {
         if (tab === activeTab) {
+            if (tab === 'more' && moreScreen !== 'main') {
+                setMoreScreen('main');
+                setIsMoreRootScreen(true);
+                requestAnimationFrame(scrollActiveScreenToTop);
+                return;
+            }
             scrollActiveScreenToTop();
             return;
         }
@@ -238,7 +245,7 @@ export default function MobileShell() {
             setIsMoreRootScreen(true);
             setMoreScreen('main');
         }
-    }, [activeTab, scrollActiveScreenToTop]);
+    }, [activeTab, moreScreen, scrollActiveScreenToTop]);
 
     const handleOpenMenuTab = useCallback(() => {
         setActiveTab('menu');
@@ -298,8 +305,8 @@ export default function MobileShell() {
                             <Button
                                 block
                                 onClick={() => {
-                                    localStorage.setItem('forceDesktopMode', 'true');
-                                    window.location.href = '/billing';
+                                    setForceDesktopRoute('/billing');
+                                    router.push('/billing');
                                 }}
                                 size="large"
                                 style={{ minHeight: 44 }}

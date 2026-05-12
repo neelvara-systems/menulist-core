@@ -1,7 +1,9 @@
 'use client'
 
 import { CANONICA_ROUTES } from '@constant/canonica/navigations';
+import { clearForceDesktopMode } from '@lib/mobile/forceDesktopMode';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { LuBookOpen, LuHelpCircle, LuReceipt, LuTicket } from 'react-icons/lu';
 import { Card, Flex, List, Text } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -12,9 +14,11 @@ interface MobileHelpScreenProps {
 
 export default function MobileHelpScreen({ onBack }: MobileHelpScreenProps) {
     const t = useTranslations('MobileHelp');
+    const router = useRouter();
 
     const openCanonicaRoute = (path: string) => {
-        window.location.assign(path);
+        clearForceDesktopMode();
+        router.push(path);
     };
 
     return (

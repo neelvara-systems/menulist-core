@@ -23,6 +23,22 @@ export interface ComplianceInputs {
  */
 export type CompliancePageType = 'privacy' | 'terms' | 'refund';
 
+export function composeComplianceContent(
+    systemContent: string,
+    customContent?: string | null,
+): string {
+    const trimmedCustom = customContent?.trim();
+    if (!trimmedCustom) return systemContent;
+
+    return `${trimmedCustom}
+
+----------------------------------------
+
+MenuList baseline policy content and platform disclosures
+
+${systemContent}`;
+}
+
 export function generateComplianceContent(
     type: CompliancePageType,
     inputs: ComplianceInputs,

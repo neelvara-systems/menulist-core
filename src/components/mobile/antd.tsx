@@ -481,11 +481,15 @@ export function Popover({
     placement?: ComponentProps<typeof AntPopover>['placement'];
     trigger?: ComponentProps<typeof AntPopover>['trigger'];
 }) {
-    const tooltipWidth = 'min(280px, calc(100vw - 48px))';
+    const tooltipWidth = 'min(260px, calc(100svw - 56px))';
 
     return (
         <AntPopover
             autoAdjustOverflow
+            align={{
+                overflow: { adjustX: true, adjustY: true },
+                offset: [0, 8],
+            }}
             content={(
                 <div
                     style={{
@@ -504,8 +508,9 @@ export function Popover({
             open={open}
             overlayStyle={{
                 boxSizing: 'border-box',
-                maxWidth: 'calc(100vw - 24px)',
+                maxWidth: 'calc(100svw - 24px)',
                 overflow: 'hidden',
+                width: 'max-content',
             }}
             placement={placement}
             trigger={trigger}

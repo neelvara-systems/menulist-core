@@ -354,12 +354,13 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
 // ═══════════════════════════════════════════════════════════════
 
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
+type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
 
 function CompliancePagesSection({ domain }: { domain?: string }) {
     const [activeTab, setActiveTab] = useState<ComplianceTab>('privacy');
-    const [privacyData, setPrivacyData] = useState<{ content: string; source: string } | null>(null);
-    const [termsData, setTermsData] = useState<{ content: string; source: string } | null>(null);
-    const [refundData, setRefundData] = useState<{ content: string; source: string } | null>(null);
+    const [privacyData, setPrivacyData] = useState<CompliancePageData>(null);
+    const [termsData, setTermsData] = useState<CompliancePageData>(null);
+    const [refundData, setRefundData] = useState<CompliancePageData>(null);
     const [customText, setCustomText] = useState('');
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -391,7 +392,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
 
     // Enter edit mode
     const handleStartEdit = () => {
-        setCustomText(currentData?.content || '');
+        setCustomText(currentData?.customContent || '');
         setEditMode(true);
     };
 
@@ -408,9 +409,10 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                 action: 'override',
                 content: customText,
             });
-            const updated = { content: customText, source: 'custom' };
-            if (activeTab === 'privacy') setPrivacyData(updated);
-            else setTermsData(updated);
+            const refreshRes = await axios.get('/api/compliance');
+            if (refreshRes.data?.privacy) setPrivacyData(refreshRes.data.privacy);
+            if (refreshRes.data?.terms) setTermsData(refreshRes.data.terms);
+            if (refreshRes.data?.refund) setRefundData(refreshRes.data.refund);
             setEditMode(false);
             notification.success({ message: `${pageLabel} updated.` });
         } catch (err: any) {
@@ -489,8 +491,8 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                         type="warning"
                         showIcon
                         style={{ marginBottom: 12 }}
-                        message="You are responsible for this content"
-                        description="Custom text must be plain text only. No HTML, links, or formatting."
+                        message="Your content appears first"
+                        description="Custom text must be plain text only. MenuList baseline policy content and platform disclosures stay appended automatically."
                     />
                     <Input.TextArea
                         value={customText}
@@ -526,7 +528,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
 
                     <Space size={4} style={{ marginBottom: 8 }}>
                         <Tag color={currentData?.source === 'custom' ? 'orange' : 'green'}>
-                            {currentData?.source === 'custom' ? 'Custom' : 'Auto-generated'}
+                            {currentData?.source === 'custom' ? 'Custom + MenuList baseline' : 'MenuList baseline only'}
                         </Tag>
                     </Space>
 

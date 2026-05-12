@@ -386,26 +386,28 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
             />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 190px' }} vertical>
-                <ProjectSelectorTrigger
-                    clickable={isProjectSelectorClickable}
-                    currentProject={{
-                        active: selectedProjectSummary?.active !== false,
-                        deleted: selectedProjectSummary?.deleted === true,
-                        id: selectedProjectId || 'current',
-                        isDefault: selectedProjectSummary?.isDefault,
-                        isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
-                        name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
-                        projectImage: selectedProjectSummary?.projectImage || draftProjectData?.projectImage || null,
-                        specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
-                        specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
-                            ? (projectsList || []).find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
-                            : undefined,
-                        specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
-                        specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
-                    }}
-                    helperText="Changes save only to this menu."
-                    onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}
-                />
+                {projectsList.length > 1 ? (
+                    <ProjectSelectorTrigger
+                        clickable={isProjectSelectorClickable}
+                        currentProject={{
+                            active: selectedProjectSummary?.active !== false,
+                            deleted: selectedProjectSummary?.deleted === true,
+                            id: selectedProjectId || 'current',
+                            isDefault: selectedProjectSummary?.isDefault,
+                            isSpecialMenu: selectedProjectSummary?.isSpecialMenu === true,
+                            name: selectedProjectSummary?.name || draftProjectData?.name || tProjectSelector('untitled'),
+                            projectImage: selectedProjectSummary?.projectImage || draftProjectData?.projectImage || null,
+                            specialMenuBaseProjectId: selectedProjectSummary?.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: selectedProjectSummary?.specialMenuBaseProjectId
+                                ? (projectsList || []).find((project: any) => project.projectId === selectedProjectSummary.specialMenuBaseProjectId)?.name
+                                : undefined,
+                            specialMenuEndsAt: selectedProjectSummary?.specialMenuEndsAt,
+                            specialMenuStatus: selectedProjectSummary?.specialMenuStatus,
+                        }}
+                        helperText="Changes save only to this menu."
+                        onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}
+                    />
+                ) : null}
                 {menuUrl ? (
                     <MobileLinkCard
                         compact={isCompactHandheld}
