@@ -12,7 +12,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import {
@@ -107,7 +107,7 @@ export const addPredictiveTrigger = async (data: Omit<CanonicaPredictiveTrigger,
                 throw new Error(`Cooldown must be between ${CANONICA_PREDICTIVE_CONSTRAINTS.MIN_COOLDOWN_HOURS} and ${CANONICA_PREDICTIVE_CONSTRAINTS.MAX_COOLDOWN_HOURS} hours`);
             }
 
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaPredictiveTrigger;
         },
@@ -122,7 +122,7 @@ export const addPredictiveTrigger = async (data: Omit<CanonicaPredictiveTrigger,
 export const updatePredictiveTrigger = async (data: Partial<CanonicaPredictiveTrigger> & { id: string }) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer(data);
+            const composedData = await canonicaRequestBodyComposer(data);
             await setDoc(getDocRef(data.id), composedData, { merge: true });
             return composedData;
         },
@@ -146,7 +146,7 @@ export const activateTrigger = async (triggerId: string) => {
                 throw new Error(`Cannot activate trigger in '${current.status}' state — must be 'suggested' or 'disabled'`);
             }
 
-            const composedData = await requestBodyComposer({ status: 'active' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'active' });
             await setDoc(getDocRef(triggerId), composedData, { merge: true });
             return composedData;
         },
@@ -161,7 +161,7 @@ export const activateTrigger = async (triggerId: string) => {
 export const disableTrigger = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'disabled' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'disabled' });
             await setDoc(getDocRef(triggerId), composedData, { merge: true });
             return composedData;
         },

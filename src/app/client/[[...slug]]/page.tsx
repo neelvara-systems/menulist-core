@@ -746,14 +746,19 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                 || `View ${projectTitle} from ${resolvedStoreName}.`;
         }
 
+        const contextCanonicalWithoutLanguage = projectCanonicalUrl && contextSegments.length
+            ? `${projectCanonicalUrl}/${contextSegments.join('/')}`
+            : projectCanonicalUrl;
+        const contextCanonicalUrl = contextCanonicalWithoutLanguage && requestedLanguage
+            ? appendPublicLanguageParam(contextCanonicalWithoutLanguage, metadataLanguage)
+            : contextCanonicalWithoutLanguage;
+
         const contextMetadata = buildContextMetadata({
             storeName: resolvedStoreName,
             storeDescription: description,
             defaultImageUrl: resolvedImageUrl,
             currentUrl,
-            canonicalUrl: projectCanonicalUrl && contextSegments.length
-                ? `${projectCanonicalUrl}/${contextSegments.join('/')}`
-                : projectCanonicalUrl,
+            canonicalUrl: contextCanonicalUrl,
             projectData: metadataProject,
             contextSegments,
             language: metadataLanguage,
@@ -780,7 +785,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     description,
                     type: "website",
                     siteName: resolvedStoreName,
-                    url: currentUrl,
+                    url: contextMetadata.openGraph?.url || currentUrl,
                     images: contextMetadata.openGraph?.images,
                 },
                 twitter: {

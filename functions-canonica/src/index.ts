@@ -19,13 +19,24 @@ if (process.env.FUNCTIONS_EMULATOR === 'true') {
 }
 
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { onRequest } from 'firebase-functions/v2/https';
+import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runCanonicaNightly } from './canonica/canonicaNightly';
 import { FUNCTION_FLAGS } from './constants/features';
 import { processEvent } from './integrations/eventProcessor';
 import { IntegrationEvent } from './integrations/types';
+import { embedArticleWorkerLogic } from './logic/embedArticleWorker';
+import { publishApprovedJobLogic } from './logic/publishApprovedJob';
+import { regenerateEmbeddingLogic } from './logic/regenerateEmbedding';
+import { EmbedArticleType, IngestionJobCategoriesMap } from './types';
+
+const CANONICA_AI_OPTIONS = {
+    timeoutSeconds: 540,
+    memory: '1GiB' as const,
+    maxInstances: 3,
+};
 
 // ═══════════════════════════════════════════════════════════════
 // CANONICA NIGHTLY SCHEDULER
@@ -131,10 +142,36 @@ export const processIntegrationEvent = onDocumentCreated(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// FUTURE: Additional Canonica Cloud Functions
-// These will be migrated from functions/ as needed:
-// - embedArticleWorker (KB article embedding)
-// - regenerateEmbedding (single article re-embedding)
-// - publishApprovedJob (KB job publishing)
-// - kbQuality (KB quality analysis)
+// KB INGESTION CALLABLES
+// These run inside the Canonica Firebase project. The dashboard calls them via
+// canonicaFunctions so separate-mode production does not fall back to MenuList.
 // ═══════════════════════════════════════════════════════════════
+
+export const embedArticleWorker = onTaskDispatched(CANONICA_AI_OPTIONS, async (request) => {
+    const { articleData, jobId } = request.data as { articleData: EmbedArticleType; jobId: string };
+
+    if (!articleData?.id || !jobId) {
+        throw new HttpsError('invalid-argument', 'Missing required payload: articleData.id, jobId.');
+    }
+
+    logger.info('[Canonica KB] Re-embedding queued article', { jobId, articleId: articleData.id });
+    await embedArticleWorkerLogic(articleData, jobId);
+});
+
+export const regenerateEmbedding = onCall(CANONICA_AI_OPTIONS, async (request) => {
+    const { articleId } = request.data || {};
+    if (!articleId) {
+        throw new HttpsError('invalid-argument', 'The function must be called with articleId.');
+    }
+
+    return regenerateEmbeddingLogic(articleId);
+});
+
+export const publishApprovedJobFn = onCall(CANONICA_AI_OPTIONS, async (request) => {
+    const { jobId, finalCategories }: { jobId: string; finalCategories: IngestionJobCategoriesMap } = request.data || {};
+    if (!jobId || !finalCategories) {
+        throw new HttpsError('invalid-argument', 'Missing required payload: jobId, finalCategories.');
+    }
+
+    return publishApprovedJobLogic(jobId, finalCategories);
+});

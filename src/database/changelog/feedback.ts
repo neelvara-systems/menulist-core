@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { requestBodyComposer } from '@lib/apiHelper';
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
 import { arrayUnion, collection, doc, runTransaction, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -34,7 +34,7 @@ export const addChangelogFeedback = async (entryId: string, comment: string, sen
 
         if (!feedbackDoc.exists()) {
             // First feedback for this entry, create the document
-            const newFeedbackDoc = await requestBodyComposer({
+            const newFeedbackDoc = await canonicaRequestBodyComposer({
                 list: [feedbackPayload],
             });
             tx.set(feedbackDocRef, newFeedbackDoc);

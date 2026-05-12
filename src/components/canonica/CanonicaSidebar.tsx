@@ -23,7 +23,12 @@ import { useMemo } from 'react';
 const { Sider } = Layout;
 const { Text } = Typography;
 
-export default function CanonicaSidebar() {
+interface CanonicaSidebarProps {
+    mobile?: boolean;
+    onNavigate?: () => void;
+}
+
+export default function CanonicaSidebar({ mobile = false, onNavigate }: CanonicaSidebarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { token } = theme.useToken();
@@ -57,12 +62,15 @@ export default function CanonicaSidebar() {
                 key: nav.route,
                 icon: <NavIcon />,
                 label: nav.label,
-                onClick: () => router.push(nav.route),
+                onClick: () => {
+                    router.push(nav.route);
+                    onNavigate?.();
+                },
             });
         });
 
         return items;
-    }, [router]);
+    }, [onNavigate, router]);
 
     // Determine selected key from pathname
     const selectedKey = useMemo(() => {
@@ -74,6 +82,51 @@ export default function CanonicaSidebar() {
         if (prefix) return prefix.route;
         return CANONICA_SIDEBAR_NAV[0]?.route || '';
     }, [pathname]);
+
+    const sidebarContent = (
+        <>
+            <div
+                style={{
+                    padding: '20px 24px 12px',
+                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                    marginBottom: 8,
+                }}
+            >
+                <Text strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>
+                    Canonica
+                </Text>
+                <br />
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                    Knowledge Control Plane
+                </Text>
+            </div>
+
+            <Menu
+                mode="inline"
+                selectedKeys={[selectedKey]}
+                items={menuItems}
+                style={{
+                    border: 'none',
+                    background: 'transparent',
+                }}
+            />
+        </>
+    );
+
+    if (mobile) {
+        return (
+            <div
+                style={{
+                    height: '100%',
+                    minHeight: '100dvh',
+                    overflowY: 'auto',
+                    background: token.colorBgContainer,
+                }}
+            >
+                {sidebarContent}
+            </div>
+        );
+    }
 
     return (
         <Sider
@@ -90,31 +143,7 @@ export default function CanonicaSidebar() {
                 zIndex: 100,
             }}
         >
-            {/* Logo / Brand */}
-            <div style={{
-                padding: '20px 24px 12px',
-                borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                marginBottom: 8,
-            }}>
-                <Text strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>
-                    Canonica
-                </Text>
-                <br />
-                <Text type="secondary" style={{ fontSize: 11 }}>
-                    Knowledge Control Plane
-                </Text>
-            </div>
-
-            {/* Navigation Menu */}
-            <Menu
-                mode="inline"
-                selectedKeys={[selectedKey]}
-                items={menuItems}
-                style={{
-                    border: 'none',
-                    background: 'transparent',
-                }}
-            />
+            {sidebarContent}
         </Sider>
     );
 }

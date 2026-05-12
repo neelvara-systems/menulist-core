@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
-import { requestBodyComposer } from '@lib/apiHelper';
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
@@ -83,7 +83,7 @@ export const uploadChatImage = async (
 export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(await getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id };
         },
@@ -105,7 +105,7 @@ export const batchUpdateSessionMetadata = async (
             if (!sessionIds || sessionIds.length === 0) return;
             const { writeBatch } = await import('firebase/firestore');
             const batch = writeBatch(canonicaFirebaseClient);
-            const composedData = await requestBodyComposer(metadata);
+            const composedData = await canonicaRequestBodyComposer(metadata);
             for (const id of sessionIds) {
                 const ref = await getDocRef(id);
                 batch.update(ref, composedData);
@@ -124,7 +124,7 @@ export const batchUpdateSessionMetadata = async (
 export const updateChatSession = async (sessionId: string, updates: Partial<ChatSession>) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
-            const composedData = await requestBodyComposer(updates);
+            const composedData = await canonicaRequestBodyComposer(updates);
             await setDoc(await getDocRef(sessionId), composedData, { merge: true });
             return composedData;
         },
@@ -232,7 +232,7 @@ export const updateMessageFeedback = async (
             });
 
             // Update the session with modified messages
-            const composedData = await requestBodyComposer({ messages: updatedMessages });
+            const composedData = await canonicaRequestBodyComposer({ messages: updatedMessages });
             await setDoc(sessionRef, composedData, { merge: true });
 
             return { sessionId, messageId, feedback };
@@ -278,7 +278,7 @@ export const updateSessionInternalNote = async (
                 internalNotes: [noteObject]
             };
 
-            const composedData = await requestBodyComposer(updateData);
+            const composedData = await canonicaRequestBodyComposer(updateData);
             await setDoc(sessionRef, composedData, { merge: true });
 
             return { sessionId, note: noteObject };

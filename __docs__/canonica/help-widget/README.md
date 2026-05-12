@@ -1,10 +1,10 @@
 # Canonica Embeddable Help Widget
 
 > **Feature:** Embeddable context-aware help widget for SaaS products
-> **Status:** v1 IMPLEMENTED / v2 DOCUMENTED (ready for implementation)
-> **Date:** 2026-03-08
-> **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context layer)
-> **Auth:** API key via `X-API-Key` header (reuses existing `publicApi.apiKey` on store)
+> **Status:** v2 IMPLEMENTED
+> **Date:** 2026-05-12
+> **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context layer), `ENABLE_CANONICA_GUIDED_WORKFLOWS` (procedure rendering), `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (proactive suggestions)
+> **Auth:** API key via `X-API-Key` header. Raw keys are returned once and stored as `publicApi.apiKeyHash` with a display-only `keyPrefix`.
 
 ---
 
@@ -64,9 +64,10 @@ The widget sits entirely in Layer 4. It is a query entry point. The intelligence
 | 2   | **Two-layer model** (loader script + iframe app) | Loader is ~4KB vanilla JS. App loads lazily on click. Prevents React/CSS conflicts with host.                                                |
 | 3   | **API key auth, not session auth**               | Widget serves end-users of SaaS products (anonymous). API key resolves tenant identity only.                                                 |
 | 4   | **Unified coreSearch() pipeline**                | Both Help Center and Widget call the same function. No logic duplication. Widget gains all improvements for free.                            |
-| 5   | **SDK-first context collection**                 | SaaS developer passes structured context (page, feature, entityHints). More reliable than DOM scraping.                                      |
+| 5   | **SDK-first context collection**                 | SaaS developer passes structured context using `CanonicaWidget.setContext()` or `CanonicaWidget.page()`. More reliable than DOM scraping.     |
 | 6   | **Widget UI stays zero-dependency**              | No antd, no framer-motion, no SCSS. 248 lines of inline-styled React. Critical for iframe bundle size.                                       |
 | 7   | **Canonical-first always**                       | Widget never bypasses canonical retrieval. Context assists retrieval, never replaces it. Knowledge must always come from canonical articles. |
+| 8   | **One-time-visible keys**                        | Settings and onboarding never persist raw widget keys. Existing keys can only be identified by prefix; regenerate to copy again.              |
 
 ---
 

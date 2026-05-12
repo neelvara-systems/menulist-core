@@ -1,10 +1,11 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { triggerStartGeneration } from "@lib/firebase/functions";
 import { INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
+import { getKnowledgeBaseCategoriesDocId } from "@database/knowledgeBase/categories";
 import { deleteFileByUrl } from "../storage/deleteFromStorage";
 
 const COLLECTION = DB_COLLECTIONS.KB_GENERATION_JOBS;
@@ -74,7 +75,7 @@ export const getPreviousIngestionJobs = async (session: any, maxResults: number 
 export const updateJob = async (jobId: string, data: Partial<IngestionJob>) => {
     return await apiCallComposer(
         async () => {
-            const dataToUpdate = await requestBodyComposer(data);
+            const dataToUpdate = await canonicaRequestBodyComposer(data);
             const jobRef = doc(getCollectionRef(), jobId);
             await setDoc(jobRef, dataToUpdate, { merge: true });
             return { id: jobId, ...dataToUpdate };
@@ -100,7 +101,11 @@ export const deleteIngestionJob = async (jobId: string) => {
             await runTransaction(db, async (transaction) => {
                 // 1. Delete associated categories from the master document
                 if (jobData.categories) {
-                    const categoriesDocRef = doc(db, DB_COLLECTIONS.KB_CATEGORIES, 'categories');
+                    const categoriesDocRef = doc(
+                        db,
+                        DB_COLLECTIONS.KB_CATEGORIES,
+                        getKnowledgeBaseCategoriesDocId(jobData.tId, jobData.sId)
+                    );
                     const categoriesDoc = await transaction.get(categoriesDocRef);
                     if (categoriesDoc.exists()) {
                         const masterCategories = categoriesDoc.data().categories || {};
@@ -148,7 +153,7 @@ export const retryJob = async (jobId: string) => {
                 throw new Error(`Only failed jobs can be retried. Current status: ${job.status}`);
             }
 
-            const resetData = await requestBodyComposer({
+            const resetData = await canonicaRequestBodyComposer({
                 status: INGESTION_JOB_STATUS.PENDING,
                 errorMessage: null,
                 categories: null,
@@ -175,7 +180,7 @@ export const retryJob = async (jobId: string) => {
 export const cancelJob = async (jobId: string) => {
     return await apiCallComposer(
         async () => {
-            const dataToUpdate = await requestBodyComposer({
+            const dataToUpdate = await canonicaRequestBodyComposer({
                 status: INGESTION_JOB_STATUS.CANCELLED,
             });
             const jobRef = doc(getCollectionRef(), jobId);
@@ -190,7 +195,7 @@ export const cancelJob = async (jobId: string) => {
 export const addIngestionJob = async (data: Partial<IngestionJob>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             // return { ...submitData, id: docRef.id };
             const newJob = { ...submitData, id: docRef.id } as IngestionJob;

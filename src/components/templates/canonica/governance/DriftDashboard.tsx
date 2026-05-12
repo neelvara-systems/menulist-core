@@ -30,6 +30,7 @@ import {
     Descriptions,
     Empty,
     Flex,
+    Grid,
     List,
     Modal,
     Space,
@@ -90,6 +91,8 @@ interface DriftClassBreakdown {
 
 export default function DriftDashboard() {
     const session = useClientAuthSession();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
 
@@ -349,7 +352,7 @@ export default function DriftDashboard() {
                         Resolve & Revalidate
                     </Button>,
                 ]}
-                width={600}
+                width={isMobile ? 'calc(100vw - 24px)' : 600}
             >
                 {selectedDrifted && (
                     <Flex vertical gap={16}>

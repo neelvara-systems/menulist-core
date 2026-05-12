@@ -17,11 +17,23 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { evaluateTriggers } from '@lib/canonica/predictiveEngine';
-import { validatePublicApiKey } from '@lib/publicApi/auth';
+import { hashApiKey, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { secureError } from '@lib/security/secureLogger';
 import type { CanonicaContextPayload } from '@type/canonica';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const PredictiveHelpRequestSchema = z.object({
+    page: z.string().trim().min(1).max(200),
+    feature: z.string().trim().max(200).optional(),
+    workflow: z.string().trim().max(200).optional(),
+    plan: z.string().trim().max(80).optional(),
+    userRole: z.string().trim().max(80).optional(),
+    entityHints: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
+    userId: z.string().trim().max(160).optional(),
+});
 
 export async function POST(request: NextRequest) {
     try {
@@ -45,27 +57,24 @@ export async function POST(request: NextRequest) {
         const { storeData, storeId } = authResult;
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
+        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
 
-        const body = await request.json();
-        const {
-            page,
-            feature,
-            workflow,
-            plan,
-            userRole,
-            entityHints,
-            userId,
-        } = body;
-
-        // Validate required fields
-        if (!page || typeof page !== 'string') {
+        const requestOrigin = request.headers.get('origin');
+        const allowedOrigins: string[] | undefined = storeData.widgetAllowedOrigins;
+        if (allowedOrigins && allowedOrigins.length > 0 && requestOrigin && !allowedOrigins.includes(requestOrigin)) {
             return new NextResponse(null, { status: 204 });
         }
+
+        const validation = PredictiveHelpRequestSchema.safeParse(await request.json());
+        if (!validation.success) {
+            return new NextResponse(null, { status: 204 });
+        }
+        const { page, feature, workflow, plan, userRole, entityHints, userId } = validation.data;
 
         // Rate limiting per API key
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
         const rateLimitResult = await checkRateLimit({
-            key: `canon-predict:${apiKey}`,
+            key: `canon-predict:${apiKeyRateLimitId}`,
             ...rateLimitConfig,
         });
         if (!rateLimitResult.allowed) {
@@ -79,7 +88,7 @@ export async function POST(request: NextRequest) {
             workflow: workflow || undefined,
             plan: plan || undefined,
             userRole: userRole || undefined,
-            entityHints: Array.isArray(entityHints) ? entityHints.slice(0, 5) : undefined,
+            entityHints,
         };
 
         // Evaluate triggers
@@ -97,7 +106,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ suggestion });
 
     } catch (error) {
-        console.error('[Canonica Predictive Help] Error:', error);
+        secureError('[Canonica Predictive Help] Error', error as Error);
         // Graceful degradation — never return errors to widget
         return new NextResponse(null, { status: 204 });
     }

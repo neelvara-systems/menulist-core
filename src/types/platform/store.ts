@@ -1,6 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 import type { LocalizedStringList, LocalizedText } from "@lib/localization/text";
 import type { OutletPolicy } from "../multiOutlet.types";
+import type { PlatformBlockDetails } from "./blocking";
 import { StoreRoleDataType } from "./roles";
 
 /**
@@ -23,6 +24,7 @@ export type StoreDataType = {
     tenantName: string;
     active: boolean;
     blocked?: boolean;
+    blockDetails?: PlatformBlockDetails;
     deleted: boolean;
     verified?: boolean;
 

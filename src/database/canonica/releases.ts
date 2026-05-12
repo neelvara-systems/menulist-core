@@ -16,7 +16,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaRelease } from "@type/canonica";
@@ -102,7 +102,7 @@ export const addRelease = async (data: Omit<CanonicaRelease, 'id'>) => {
             if (!data.versionNormalized || data.versionNormalized <= 0) {
                 throw new Error('Release must have valid versionNormalized');
             }
-            const submitData = await requestBodyComposer({
+            const submitData = await canonicaRequestBodyComposer({
                 ...data,
                 status: 'pending', // Always start as pending
             });
@@ -132,7 +132,7 @@ export const activateRelease = async (releaseId: string) => {
             const release = { ...releaseSnap.data(), id: releaseSnap.id } as CanonicaRelease;
 
             // 2. Mark as processing
-            await setDoc(getDocRef(releaseId), await requestBodyComposer({ status: 'processing' }), { merge: true });
+            await setDoc(getDocRef(releaseId), await canonicaRequestBodyComposer({ status: 'processing' }), { merge: true });
 
             // 3. Run drift evaluation with release context (Class A: version drift)
             //    Advisory — flags drifted answers but does not block activation
@@ -144,7 +144,6 @@ export const activateRelease = async (releaseId: string) => {
                 });
             } catch (error) {
                 // Drift evaluation failure must not block release activation
-                console.warn('[Canonica Release] Drift evaluation failed during activation:', error);
                 // Log failure to audit trail for observability
                 try {
                     const { addAuditLog } = await import('@database/canonica/auditLogs');
@@ -164,7 +163,7 @@ export const activateRelease = async (releaseId: string) => {
             }
 
             // 4. Activate
-            const composedData = await requestBodyComposer({ status: 'active' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'active' });
             await setDoc(getDocRef(releaseId), composedData, { merge: true });
             return composedData;
         },
@@ -179,7 +178,7 @@ export const activateRelease = async (releaseId: string) => {
 export const markReleaseProcessing = async (releaseId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'processing' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'processing' });
             await setDoc(getDocRef(releaseId), composedData, { merge: true });
             return composedData;
         },

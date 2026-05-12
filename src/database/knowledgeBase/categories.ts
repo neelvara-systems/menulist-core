@@ -1,28 +1,59 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, doc, getDoc, setDoc, updateDoc } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { collection, doc, getDoc, setDoc } from "@firebase/firestore";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from "@lib/auth/getActiveSession";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { updateList } from "@util/utils";
 
 const COLLECTION = DB_COLLECTIONS.KB_CATEGORIES;
+const LEGACY_CATEGORIES_DOC_ID = 'categories';
+
+export const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
+    const tenantId = Number(tId);
+    const storeId = Number(sId);
+    if (Number.isFinite(tenantId) && Number.isFinite(storeId)) {
+        return `categories_${tenantId}_${storeId}`;
+    }
+    return LEGACY_CATEGORIES_DOC_ID;
+};
 
 const getCollectionRef = async () => {
     return collection(canonicaFirebaseClient, `${COLLECTION}`)
 }
 
 const getDocRef = async () => {
-    return doc(canonicaFirebaseClient, `${COLLECTION}`, "categories")
+    const session = await getActiveSession().catch(() => null);
+    return doc(canonicaFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId))
 }
 
 export const getCategories = async () => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDocRef();
+            const session = await getActiveSession().catch(() => null);
+            const scopedDocId = getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId);
+            const docRef = doc(canonicaFirebaseClient, `${COLLECTION}`, scopedDocId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id };
+            }
+            if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID) {
+                const legacyDocSnap = await getDoc(doc(canonicaFirebaseClient, `${COLLECTION}`, LEGACY_CATEGORIES_DOC_ID));
+                if (legacyDocSnap.exists()) {
+                    const legacyData = legacyDocSnap.data() as KnowledgeBaseCategoriesType;
+                    const filteredCategories = Object.fromEntries(
+                        Object.entries(legacyData.categories || {}).filter(([, category]: any) => {
+                            const categoryTenantId = Number(category?.tId);
+                            const categoryStoreId = Number(category?.sId);
+                            if (Number.isFinite(categoryTenantId) && Number.isFinite(categoryStoreId)) {
+                                return categoryTenantId === Number(session?.tId) && categoryStoreId === Number(session?.sId);
+                            }
+                            return session?.platformRole === 'PLATFORM';
+                        })
+                    );
+                    return { categories: filteredCategories, id: legacyDocSnap.id };
+                }
             }
             return null;
         },
@@ -45,9 +76,8 @@ export const addCategory = async (category: any) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef();
-            const composedCategory = await requestBodyComposer(category);
-            const fieldPath = `categories.${composedCategory.id}`;
-            await updateDoc(docRef, { [fieldPath]: composedCategory });
+            const composedCategory = await canonicaRequestBodyComposer(category);
+            await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             return composedCategory;
         },
         category,
@@ -59,9 +89,8 @@ export const updateCategory = async (category: any) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef();
-            const composedCategory = await requestBodyComposer(category);
-            const fieldPath = `categories.${composedCategory.id}`;
-            await updateDoc(docRef, { [fieldPath]: composedCategory });
+            const composedCategory = await canonicaRequestBodyComposer(category);
+            await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             return composedCategory;
         },
         category,
@@ -78,16 +107,20 @@ const _updateSectionArticles = async (
 ) => {
     const category = categoriesData.categories[categoryId];
     const updatedSections = [...category.sections];
-    updatedSections[sectionIndex] = {
+    const updatedSection = {
         ...updatedSections[sectionIndex],
         articles: articles,
     };
+    updatedSections[sectionIndex] = updatedSection;
 
-    const fieldPath = `categories.${categoryId}.sections`;
-    await updateDoc(docRef, { [fieldPath]: updatedSections as any });
+    const updatedCategory = {
+        ...category,
+        sections: updatedSections,
+    };
+    await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
 
     const updatedData = { ...categoriesData };
-    updatedData.categories[categoryId].sections = updatedSections;
+    updatedData.categories[categoryId] = updatedCategory;
     return updatedData;
 };
 
@@ -126,11 +159,14 @@ export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategor
                     };
 
                     articles = updateList(articles, articleMeta, "last", "id");
-                    const fieldPath = `categories.${categoryId}.articles`;
-                    await updateDoc(docRef, { [fieldPath]: articles } as any);
+                    const updatedCategory = {
+                        ...category,
+                        articles,
+                    };
+                    await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
 
                     const updatedData = { ...categoriesData };
-                    updatedData.categories[categoryId].articles = articles;
+                    updatedData.categories[categoryId] = updatedCategory;
                     return updatedData;
                 }
             }
@@ -162,11 +198,14 @@ export const deleteArticleFromParent = async (
                     }
                 } else {
                     const articles = category.articles ? category.articles.filter((a: KnowledgeBaseArticleMeta) => a.id !== articleId) : [];
-                    const fieldPath = `categories.${categoryId}.articles`;
-                    await updateDoc(docRef, { [fieldPath]: articles } as any);
+                    const updatedCategory = {
+                        ...category,
+                        articles,
+                    };
+                    await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
 
                     const updatedData = { ...categoriesData };
-                    updatedData.categories[categoryId].articles = articles;
+                    updatedData.categories[categoryId] = updatedCategory;
                     return updatedData;
                 }
             }

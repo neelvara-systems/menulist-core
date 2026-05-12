@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import type { PlatformBlockDetails } from "./blocking";
 import { MinimalStoreDataType } from "./store";
 
 /**
@@ -28,6 +29,7 @@ export type TenantDataType = {
 
     active: boolean;
     blocked?: boolean;
+    blockDetails?: PlatformBlockDetails;
     deleted: boolean;
     verified?: boolean;
 

@@ -17,7 +17,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaEntity, CanonicaEntityRelation, CanonicaEntitySearchIndex } from "@type/canonica";
@@ -123,7 +123,7 @@ export const addEntity = async (data: Omit<CanonicaEntity, 'id'>) => {
                 );
             }
 
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getEntityCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaEntity;
         },
@@ -140,7 +140,7 @@ export const updateEntity = async (data: Partial<CanonicaEntity> & { id: string 
         async () => {
             // Protect immutable type field
             const { type, ...updateData } = data;
-            const composedData = await requestBodyComposer(updateData);
+            const composedData = await canonicaRequestBodyComposer(updateData);
             await setDoc(getEntityDocRef(data.id), composedData, { merge: true });
             return composedData;
         },
@@ -179,7 +179,7 @@ export const deprecateEntity = async (entityId: string) => {
             }
 
             // 3. Safe to deprecate
-            const composedData = await requestBodyComposer({ status: 'deprecated' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'deprecated' });
             await setDoc(getEntityDocRef(entityId), composedData, { merge: true });
             return composedData;
         },
@@ -245,7 +245,7 @@ export const getRelationsForEntity = async (tId: number, sId: number, entityId: 
 export const addEntityRelation = async (data: Omit<CanonicaEntityRelation, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getRelationCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaEntityRelation;
         },
@@ -301,7 +301,7 @@ export const getEntitySearchIndex = async (tId: number, sId: number) => {
 export const upsertEntitySearchIndex = async (data: Omit<CanonicaEntitySearchIndex, 'id'> & { id?: string }) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             if (data.id) {
                 await setDoc(getSearchIndexDocRef(data.id), submitData, { merge: true });
                 return { ...submitData, id: data.id } as CanonicaEntitySearchIndex;
@@ -339,7 +339,7 @@ export const syncAliasesToSearchIndex = async (entityId: string, aliases: string
             if (snapshot.empty) return null;
 
             const indexDoc = snapshot.docs[0];
-            const composedData = await requestBodyComposer({ synonyms: aliases });
+            const composedData = await canonicaRequestBodyComposer({ synonyms: aliases });
             await setDoc(getSearchIndexDocRef(indexDoc.id), composedData, { merge: true });
             return { id: indexDoc.id, synonyms: aliases };
         },
@@ -429,14 +429,14 @@ export const mergeEntities = async (
             const allAliases = [...survivorAliases, ...mergedAliases, merged.name.toLowerCase().trim()];
             const combinedAliases = Array.from(new Set(allAliases)).slice(0, 20);
 
-            const survivorUpdate = await requestBodyComposer({ aliases: combinedAliases });
+            const survivorUpdate = await canonicaRequestBodyComposer({ aliases: combinedAliases });
             await setDoc(getEntityDocRef(survivorId), survivorUpdate, { merge: true });
 
             // 5. Sync combined aliases to search index
             await syncAliasesToSearchIndex(survivorId, combinedAliases, tId, sId);
 
             // 6. Deprecate merged entity
-            const deprecateData = await requestBodyComposer({ status: 'deprecated' });
+            const deprecateData = await canonicaRequestBodyComposer({ status: 'deprecated' });
             await setDoc(getEntityDocRef(mergedId), deprecateData, { merge: true });
 
             // 7. Audit log

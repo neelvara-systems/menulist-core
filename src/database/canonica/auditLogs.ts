@@ -15,7 +15,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaAuditLog } from "@type/canonica";
@@ -30,7 +30,7 @@ const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
 export const addAuditLog = async (data: Omit<CanonicaAuditLog, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaAuditLog;
         },

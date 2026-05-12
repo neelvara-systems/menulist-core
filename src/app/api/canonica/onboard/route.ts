@@ -25,12 +25,22 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { createTenantStoreInTransaction, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { secureError } from '@lib/security/secureLogger';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { hashApiKey } from '@lib/publicApi/auth';
 import { writeLogEntry } from 'logs/utils';
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const LOG_FILE = 'canonica-onboarding.log';
+const OnboardRequestSchema = z.object({
+    companyName: z.string().trim().min(2).max(120),
+    productName: z.string().trim().max(120).optional(),
+    planId: z.string().trim().max(80).optional().default('canonica_beta'),
+    interval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
+});
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const userId = session.user.id;
@@ -66,17 +76,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         // 3. Parse input
-        const body = await request.json();
-        const {
-            companyName,
-            productName,
-            planId = 'canonica_beta',
-            interval = 'MONTH' as 'MONTH' | 'YEAR',
-        } = body;
-
-        if (!companyName || typeof companyName !== 'string' || companyName.trim().length < 2) {
+        const validation = OnboardRequestSchema.safeParse(await request.json());
+        if (!validation.success) {
             return NextResponse.json({ error: 'Company name is required (min 2 chars).' }, { status: 400 });
         }
+        const { companyName, productName, planId, interval } = validation.data;
 
         // 4. Resolve plan
         const plan = planId === 'canonica_beta'
@@ -177,10 +181,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // TODO: For paid plans, create Razorpay subscription (same pattern as MenuList)
 
         // 7. Generate API key for the widget
-        const apiKey = `cn_${crypto.randomUUID().replace(/-/g, '')}`;
+        const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
         await db.collection(DB_COLLECTIONS.STORES).doc(String(result.storeId)).update({
-            'publicApi.apiKey': apiKey,
-            'publicApi.createdAt': admin.firestore.Timestamp.now(),
+            publicApi: {
+                apiKeyHash: hashApiKey(apiKey),
+                keyPrefix: apiKey.slice(0, 7),
+                createdAt: new Date().toISOString(),
+                productId: 'CN',
+                purpose: 'canonica_widget',
+            },
         });
 
         await writeLogEntry({
@@ -208,7 +217,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
     } catch (error) {
-        console.error('[Canonica Onboard] Failed:', error);
+        secureError('[Canonica Onboard] Failed', error as Error, { userId });
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'CANONICA_ONBOARD_ERROR',

@@ -75,6 +75,28 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - `/platform/knowledge-base` → KB management (platform tab)
 - `/platform/kb-generation` → KB generation pipeline (platform tab)
 
+### Canonica Owner Routes
+
+- `/canonica/dashboard` → `src/app/(canonica)/canonica/dashboard/page.tsx`
+- `/canonica/governance` → `src/app/(canonica)/canonica/governance/page.tsx`
+- `/canonica/settings` → `src/app/(canonica)/canonica/settings/page.tsx`
+- `/canonica/tickets` → `src/app/(canonica)/canonica/tickets/page.tsx`
+- `/canonica/conversations` → `src/app/(canonica)/canonica/conversations/page.tsx`
+- `/canonica/knowledge-base` → `src/app/(canonica)/canonica/knowledge-base/page.tsx`
+- `/canonica/kb-generation` → `src/app/(canonica)/canonica/kb-generation/page.tsx`
+- `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
+
+The Canonica owner shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
+
+### Canonica Public Routes
+
+- `/sites/canonica` and `__canonica` host rewrites → Canonica marketing site
+- `/sites/canonica/get-started` → self-service beta onboarding
+- `/sites/canonica/product`, `/pricing`, `/about`, `/contact` → public site pages
+- `/widget/[apiKey]` → embeddable end-user help widget
+
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/dashboard`.
+
 ### API Routes
 
 - `POST /api/helpCenter/search-kb` — Non-streaming RAG search
@@ -163,8 +185,8 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 
 | Collection                       | Purpose                                 | Scoping                             |
 | -------------------------------- | --------------------------------------- | ----------------------------------- |
-| `kb_articles`                    | Knowledge base articles with embeddings | Global (platform-wide)              |
-| `kb_categories`                  | Category/section hierarchy (single doc) | Global                              |
+| `kb_articles`                    | Knowledge base articles with embeddings | Tenant+Store scoped                 |
+| `kb_categories`                  | Category/section hierarchy (`categories_{tId}_{sId}` doc; legacy `categories` fallback is platform-only/filtered) | Tenant+Store scoped                 |
 | `kb_generation_jobs`             | AI article generation jobs              | Tenant+Store scoped                 |
 | `kb_staging_sections`            | Staging for article generation          | Global                              |
 | `kb_staging_chunks`              | Staging chunks for processing           | Global                              |
@@ -173,8 +195,8 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 | `kb_sections`                    | KB sections                             | Global                              |
 | `chatSessions`                   | User chat conversations                 | Tenant+User scoped                  |
 | `chatAnalytics`                  | Daily aggregated chat stats             | Tenant+Store scoped                 |
-| `queryEmbeddings`                | Cached embedding vectors                | Global (by cache key)               |
-| `aiSearchHistory`                | Cached search responses                 | Tenant scoped                       |
+| `queryEmbeddings`                | Cached embedding vectors                | Tenant+Store scoped by cache key    |
+| `aiSearchHistory`                | Cached search responses and feedback linkage | Tenant+Store scoped                 |
 | `supportTickets`                 | Support tickets                         | Tenant+Store scoped                 |
 | `feedback`                       | Owner feedback (general/feature)        | Tenant+Store+User scoped            |
 | `changelog/{tId}/{sId}`          | Paginated changelog pages               | Tenant+Store scoped (subcollection) |
@@ -240,7 +262,7 @@ When adding to the Help Center:
 1. Check this README for existing subsystems
 2. Read `_impl.md` for technical patterns
 3. Read `_firebase.md` for cost implications
-4. Follow DAL pattern (`DB_COLLECTIONS`, `apiCallComposer`, `requestBodyComposer`)
+4. Follow DAL pattern (`DB_COLLECTIONS`, `apiCallComposer`, `canonicaRequestBodyComposer` for Canonica-owned writes)
 5. All AI routes need SAFE_MODE + rate limiting
 6. All new collections need entries in `src/constants/database.ts`
 

@@ -54,7 +54,7 @@ export default function CanonicaPricingPage() {
                                     Beta
                                 </span>
                             </div>
-                            <div className="mb-1 text-4xl font-bold">$0</div>
+                            <div className="mb-1 text-3xl font-bold">Free during beta</div>
                             <p className="mb-6 text-sm text-[#6b6b8a]">Free during private beta. All features included.</p>
                             <CanonicaLink
                                 basePath={basePath}

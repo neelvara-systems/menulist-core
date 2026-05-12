@@ -16,7 +16,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { normalizeStepOrder, validateProcedure } from "@lib/canonica/procedureValidation";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
@@ -134,7 +134,7 @@ export const addCanonicalAnswer = async (data: Omit<CanonicaCanonicalAnswer, 'id
                     throw new Error(`Procedure validation failed: ${validation.errors.join('; ')}`);
                 }
             }
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaCanonicalAnswer;
         },
@@ -158,7 +158,7 @@ export const updateCanonicalAnswer = async (data: Partial<CanonicaCanonicalAnswe
                     throw new Error(`Procedure validation failed: ${validation.errors.join('; ')}`);
                 }
             }
-            const composedData = await requestBodyComposer(data);
+            const composedData = await canonicaRequestBodyComposer(data);
             await setDoc(getDocRef(data.id), composedData, { merge: true });
             return composedData;
         },
@@ -176,7 +176,7 @@ export const updateAnswerGovernance = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ governance });
+            const composedData = await canonicaRequestBodyComposer({ governance });
             await setDoc(getDocRef(answerId), composedData, { merge: true });
             return composedData;
         },
@@ -194,7 +194,7 @@ export const updateAnswerSignalMetrics = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ signalMetrics });
+            const composedData = await canonicaRequestBodyComposer({ signalMetrics });
             await setDoc(getDocRef(answerId), composedData, { merge: true });
             return composedData;
         },

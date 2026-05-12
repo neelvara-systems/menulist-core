@@ -8,7 +8,7 @@ import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
@@ -164,6 +164,7 @@ export default function MobileShell() {
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
     const [isOffline, setIsOffline] = useState(false);
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
@@ -215,10 +216,18 @@ export default function MobileShell() {
         }
     }, [activeTab, moreScreen, todayScreen]);
 
+    const scrollActiveScreenToTop = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (container) {
+            container.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
+
     const handleTabChange = useCallback((tab: MobileTab) => {
-        if (tab === 'more' && activeTab === 'more' && moreScreen !== 'main') {
-            setMoreScreen('main');
-            setIsMoreRootScreen(true);
+        if (tab === activeTab) {
+            scrollActiveScreenToTop();
             return;
         }
         setActiveTab(tab);
@@ -229,7 +238,7 @@ export default function MobileShell() {
             setIsMoreRootScreen(true);
             setMoreScreen('main');
         }
-    }, [activeTab, moreScreen]);
+    }, [activeTab, scrollActiveScreenToTop]);
 
     const handleOpenMenuTab = useCallback(() => {
         setActiveTab('menu');
@@ -323,6 +332,7 @@ export default function MobileShell() {
                 <Flex
                     data-mobile-shell-scroll="true"
                     flex={1}
+                    ref={scrollContainerRef}
                     style={{
                         overflowY: 'auto',
                         paddingBottom: MOBILE_BOTTOM_NAV_CLEARANCE,

@@ -39,6 +39,7 @@ import {
     Empty,
     Flex,
     Form,
+    Grid,
     Input,
     InputNumber,
     Modal,
@@ -101,6 +102,8 @@ const DEFAULT_STEP: CanonicaProcedureStep = { stepOrder: 1, action: 'click', ins
 
 export default function CanonicalAnswerEditor() {
     const session = useClientAuthSession();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
 
@@ -434,6 +437,7 @@ export default function CanonicalAnswerEditor() {
                     loading={loading}
                     pagination={{ pageSize: 20, showSizeChanger: false }}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: <Empty description="No canonical answers yet" /> }}
                 />
             </Card>
@@ -443,7 +447,7 @@ export default function CanonicalAnswerEditor() {
                 title={editMode ? 'Edit Canonical Answer' : 'Canonical Answer Detail'}
                 open={drawerOpen}
                 onClose={() => { setDrawerOpen(false); setEditMode(false); }}
-                width={640}
+                width={isMobile ? '100%' : 640}
                 extra={
                     editMode ? (
                         <Space>
@@ -592,7 +596,7 @@ export default function CanonicalAnswerEditor() {
                 onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
                 onOk={handleCreate}
                 okText="Create"
-                width={600}
+                width={isMobile ? 'calc(100vw - 24px)' : 600}
             >
                 <Form form={createForm} layout="vertical">
                     <Form.Item name="title" label="Title" rules={[{ required: true }]}>

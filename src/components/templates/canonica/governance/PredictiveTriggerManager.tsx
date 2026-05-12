@@ -24,6 +24,7 @@ import {
     Empty,
     Flex,
     Form,
+    Grid,
     Input,
     InputNumber,
     Modal,
@@ -76,6 +77,8 @@ interface PredictiveTriggerManagerProps {
 
 export default function PredictiveTriggerManager({ tId, sId }: PredictiveTriggerManagerProps) {
     const { triggers, loading, error, create, update, activate, disable, remove, refresh } = usePredictiveTriggers(tId, sId);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [editingTrigger, setEditingTrigger] = useState<CanonicaPredictiveTrigger | null>(null);
     const [createForm] = Form.useForm();
@@ -384,6 +387,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                     rowKey="id"
                     size="small"
                     pagination={{ pageSize: 20 }}
+                    scroll={{ x: 'max-content' }}
                 />
             )}
 
@@ -393,7 +397,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 open={createModalOpen}
                 onOk={handleCreate}
                 onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
-                width={600}
+                width={isMobile ? 'calc(100vw - 24px)' : 600}
                 okText="Create"
             >
                 <Form form={createForm} layout="vertical" size="small">
@@ -407,7 +411,7 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 open={!!editingTrigger}
                 onOk={handleEdit}
                 onCancel={() => setEditingTrigger(null)}
-                width={600}
+                width={isMobile ? 'calc(100vw - 24px)' : 600}
                 okText="Save"
             >
                 <Form form={editForm} layout="vertical" size="small">

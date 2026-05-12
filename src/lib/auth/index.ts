@@ -1,11 +1,14 @@
+import { DB_COLLECTIONS } from "@constant/database";
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { addPlatformUser, getUserByEmail } from "@database/users";
-import { firebaseAuth, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
+import { firebaseAuth, firebaseClient, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
 import { containsSensitiveData, secureError, secureLog } from '@lib/security/secureLogger';
 import { getEmailValidationError, validateEmail } from '@lib/validation/emailDomainValidator';
 import { UserDataType } from "@type/platform/user";
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from "firebase/firestore";
 import { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -151,10 +154,11 @@ export const authOptions: NextAuthOptions = {
                     }
                 }
 
+                dbUser = await applyInheritedBlockState(dbUser);
                 user = { ...user, ...dbUser }
             }
 
-            if (Boolean(user?.isVerified) && Boolean(user?.active)) {
+            if (Boolean(user?.isVerified) && Boolean(user?.active) && !isPlatformEntityBlocked(user)) {
                 // ✅ SECURITY FIX: Log successful OAuth login
                 if (account?.provider === 'google') {
                     await logSuccessfulLogin(email, 'google').catch(err =>
@@ -177,8 +181,9 @@ export const authOptions: NextAuthOptions = {
             const email = token?.email || user?.email;
             if (!email) return null;
 
-            if (email && !Boolean(token?.dbUser) || (token.dbUser && !('isVerified' in token.dbUser))) {
+            if (email) {
                 let dbUser: any = await getUserByEmail(email);
+                dbUser = await applyInheritedBlockState(dbUser);
                 logFetchedUserForDebug('jwt', dbUser);
 
                 // ✅ SECURITY FIX: Filter both user (from OAuth) and dbUser (from database)
@@ -194,7 +199,8 @@ export const authOptions: NextAuthOptions = {
             //when update profile triggers then refetch database user
             // https://next-auth.js.org/getting-started/client#updating-the-session
             if (trigger === "update") {
-                const updatedUser: any = await getUserByEmail(email);
+                let updatedUser: any = await getUserByEmail(email);
+                updatedUser = await applyInheritedBlockState(updatedUser);
                 logFetchedUserForDebug('jwt-update', updatedUser);
                 token.dbUser = getDatabaseUserForSession(updatedUser)
             }
@@ -240,6 +246,8 @@ export const authOptions: NextAuthOptions = {
                     image: (dbUser as any).image, // Optional from OAuth
                     isVerified: dbUser.isVerified,
                     active: dbUser.active,
+                    blocked: dbUser.blocked,
+                    blockDetails: dbUser.blockDetails,
                     tenantId: dbUser.tenantId,
                     storeId: dbUser.storeId,
                     platformRole: dbUser.platformRole,
@@ -295,10 +303,11 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 // Step 2: Get user from database
-                const dbUser: any = await getUserByEmail(email);
+                let dbUser: any = await getUserByEmail(email);
+                dbUser = await applyInheritedBlockState(dbUser);
                 logFetchedUserForDebug('credentials', dbUser);
 
-                if (Boolean(dbUser?.isVerified) && Boolean(dbUser?.active)) {
+                if (Boolean(dbUser?.isVerified) && Boolean(dbUser?.active) && !isPlatformEntityBlocked(dbUser)) {
                     // Step 3: Verify password by attempting Firebase Auth signin
                     try {
                         await signInWithEmailAndPassword(firebaseAuth, email, password);
@@ -345,6 +354,55 @@ export const signOutSession = (callbackUrl: string = `/${NAVIGARIONS_ROUTINGS.SI
     })
 }
 
+const getEntityBlockSnapshot = async (collectionName: string, id?: string | number | null) => {
+    if (id == null || id === '') return null;
+
+    try {
+        const snapshot = await getDoc(doc(firebaseClient, collectionName, String(id)));
+        return snapshot.exists() ? snapshot.data() : null;
+    } catch (error) {
+        secureError('[Auth] Failed to fetch entity block context', error as Error, {
+            collectionName,
+            id: String(id),
+        });
+        return null;
+    }
+};
+
+const applyInheritedBlockState = async (dbUser: any): Promise<any> => {
+    if (!dbUser || isPlatformEntityBlocked(dbUser)) return dbUser;
+
+    const tenant = await getEntityBlockSnapshot(DB_COLLECTIONS.TENANTS, dbUser.tenantId);
+    if (isPlatformEntityBlocked(tenant)) {
+        return {
+            ...dbUser,
+            blocked: true,
+            blockDetails: {
+                ...tenant.blockDetails,
+                blocked: true,
+                entityType: 'tenant',
+                entityId: dbUser.tenantId,
+            },
+        };
+    }
+
+    const store = await getEntityBlockSnapshot(DB_COLLECTIONS.STORES, dbUser.storeId);
+    if (isPlatformEntityBlocked(store)) {
+        return {
+            ...dbUser,
+            blocked: true,
+            blockDetails: {
+                ...store.blockDetails,
+                blocked: true,
+                entityType: 'store',
+                entityId: dbUser.storeId,
+            },
+        };
+    }
+
+    return dbUser;
+};
+
 const getDatabaseUserForSession = (dbUser: any): any => {
     // ✅ SECURITY FIX: Create new object instead of mutating
     // Prevents side effects if dbUser is cached elsewhere
@@ -377,6 +435,8 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         image: sanitized.image,
         isVerified: sanitized.isVerified,
         active: sanitized.active,
+        blocked: sanitized.blocked,
+        blockDetails: sanitized.blockDetails,
         tenantId: sanitized.tenantId,
         storeId: sanitized.storeId,
         platformRole: sanitized.platformRole,
@@ -401,6 +461,8 @@ const getDebugUserSnapshot = (dbUser: any) => {
         image: dbUser.image,
         isVerified: dbUser.isVerified,
         active: dbUser.active,
+        blocked: dbUser.blocked,
+        blockDetails: dbUser.blockDetails,
         deleted: dbUser.deleted,
         tenantId: dbUser.tenantId,
         storeId: dbUser.storeId,

@@ -159,6 +159,7 @@ function TopFrictionTable({ entities }: { entities: CanonicaFrictionEntitySummar
             rowKey="entityId"
             pagination={false}
             size="small"
+            scroll={{ x: 'max-content' }}
             locale={{ emptyText: 'No friction data yet. Signals will appear after the nightly run.' }}
         />
     );

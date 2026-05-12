@@ -28,6 +28,7 @@ import {
     Empty,
     Flex,
     Form,
+    Grid,
     Input,
     Modal,
     Popconfirm,
@@ -73,6 +74,8 @@ const ENTITY_TYPE_OPTIONS = Object.entries(CANONICA_ENTITY_TYPES).map(([key, val
 
 export default function EntityManagementDashboard() {
     const session = useClientAuthSession();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
 
@@ -307,6 +310,7 @@ export default function EntityManagementDashboard() {
                     loading={loading}
                     pagination={{ pageSize: 20, showSizeChanger: false }}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: <Empty description="No entities yet. Create your first product entity." /> }}
                 />
             </Card>
@@ -316,7 +320,7 @@ export default function EntityManagementDashboard() {
                 title={editMode ? 'Edit Entity' : 'Entity Detail'}
                 open={drawerOpen}
                 onClose={() => { setDrawerOpen(false); setEditMode(false); }}
-                width={560}
+                width={isMobile ? '100%' : 560}
                 extra={
                     editMode ? (
                         <Space>
@@ -403,7 +407,7 @@ export default function EntityManagementDashboard() {
                 onCancel={() => { setCreateModalOpen(false); createForm.resetFields(); }}
                 onOk={handleCreate}
                 okText="Create"
-                width={500}
+                width={isMobile ? 'calc(100vw - 24px)' : 500}
             >
                 <Form form={createForm} layout="vertical">
                     <Form.Item name="name" label="Entity Name" rules={[{ required: true }]}>

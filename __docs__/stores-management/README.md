@@ -25,6 +25,7 @@
 - **Internal admin tool** for platform operators to manually create tenants and stores
 - Access restricted to users with `ECOMSAI_PLATFORM_USER_ROLE`
 - Two entry points: Tenants Dashboard and Stores Dashboard
+- Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; tenant and store blocks are also enforced on public menu/OBP lookup paths.
 
 ### Multi-Chain State ✅ (Implemented)
 
@@ -67,6 +68,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | Purpose                    | File Path                                                          |
 | -------------------------- | ------------------------------------------------------------------ |
 | **Platform Settings**      | `src/components/templates/platform/settings/index.tsx`             |
+| **Entity Blocks**          | `src/components/templates/platform/settings/EntityBlockSettings.tsx` |
 | **Tenants Dashboard**      | `src/components/templates/platform/tenants/index.tsx`              |
 | **Tenant Details Modal**   | `src/components/templates/platform/tenants/tenantDetailsModal.tsx` |
 | **Stores Dashboard**       | `src/components/templates/platform/stores/index.tsx`               |
@@ -74,6 +76,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | **Business Settings Form** | `src/components/templates/main-app/businessSettings/index.tsx`     |
 | **Stores DAL**             | `src/database/stores/index.tsx`                                    |
 | **Tenants DAL**            | `src/database/tenants/index.tsx`                                   |
+| **Entity Block DAL**       | `src/database/platformEntityBlocks/index.ts`                       |
 | **Platform Summary DAL**   | `src/database/platformSummary/index.ts`                            |
 
 ---
@@ -84,6 +87,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | -------------------- | --------------------------- | -------------------------------------------------------------------- |
 | Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary` |
 | Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary`                            |
+| Block/unblock Entity | `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks revalidate all stores under that tenant |
 | Link Store to Tenant | `updateTenantsStoreslist()` | `tenants`                                                            |
 | Get Next Store ID    | `getPlatformSummary()`      | Read `platformSummary/default`                                       |
 
@@ -100,6 +104,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | Default roles on outlet creation                       | ✅ Done |
 | Multi-chain outlet creation via owner flow             | ✅ Done |
 | Platform summary sync on store create/update           | ✅ Done |
+| Dedicated tenant/store/user block control with audit details | ✅ Done |
 
 ---
 

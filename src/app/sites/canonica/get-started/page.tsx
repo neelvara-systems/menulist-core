@@ -23,7 +23,7 @@ const CRITERIA = [
     { label: 'Biweekly or monthly releases', description: 'Regular product changes that create knowledge drift' },
     { label: '5+ support agents', description: 'Team large enough that knowledge consistency matters' },
     { label: 'Multi-feature product', description: 'Plans, roles, workflows, states — real product complexity' },
-    { label: 'Already using AI support', description: 'Seeing accuracy issues with probabilistic AI answers' },
+    { label: 'Already using automated support', description: 'Seeing accuracy issues with generated answers' },
 ];
 
 export default function CanonicaGetStartedPage() {
@@ -34,17 +34,17 @@ export default function CanonicaGetStartedPage() {
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24">
-                    <div className="mx-auto max-w-3xl">
+                    <div className="mx-auto w-full max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Get Started</p>
-                        <h1 className="mb-4 text-4xl font-bold sm:text-5xl">
+                        <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
                             Request early access
                         </h1>
-                        <p className="mb-12 text-lg text-[#a0a0c0]">
+                        <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
                             Canonica is in private beta. We work with a small number of design partners
                             to validate the canonical answer model against real support traffic.
                         </p>
 
-                        <div className="grid gap-8 md:grid-cols-2">
+                        <div className="grid w-full gap-8 md:grid-cols-2">
                             {/* Left: criteria */}
                             <div>
                                 <h2 className="mb-6 text-xl font-semibold">Ideal design partner</h2>

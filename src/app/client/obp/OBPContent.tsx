@@ -17,6 +17,7 @@ import {
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     doc,
     getDoc,
@@ -139,7 +140,7 @@ const countActiveStoresForTenant = unstable_cache(
             if (!summarySnap.exists()) return 1;
             const stores = summarySnap.data()?.stores || {};
             return Object.values(stores).filter(
-                (store: any) => store.tId === tenantId && store.active !== false,
+                (store: any) => store.tId === tenantId && store.active !== false && !isPlatformEntityBlocked(store),
             ).length;
         } catch {
             return 1;

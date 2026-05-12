@@ -177,9 +177,7 @@ useEntityCandidates.ts, useMutationProposals.ts
 
 Canonica nightly has been removed from `functions/src/decisionBlocksScoring.ts`; do not re-add Canonica scheduled work to MenuList functions.
 
-Remove from `functions/src/triggers/shared.ts`: `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn` exports.
-
-Remove from `functions/src/index.ts`: corresponding exports.
+Keep the legacy MenuList exports for now as shared-mode compatibility. In `NEXT_PUBLIC_CANONICA_FIREBASE_MODE=shared`, `canonicaFunctions` resolves to the MenuList Firebase Functions app, so removing the legacy exports would break local/test deployments that intentionally reuse MenuList Firebase. Production separate-mode calls the same function names from `functions-canonica/`.
 
 ### Deployment Commands
 
@@ -257,14 +255,15 @@ Both MenuList and Canonica collection names live in ONE file. Collection names a
 
 ### 7.5 `requestBodyComposer` Usage in Canonica DAL
 
-Current Canonica DAL files call `requestBodyComposer` which injects `tId`/`sId` from session. After separation:
+Canonica DAL files now call `canonicaRequestBodyComposer` from `src/lib/canonica/documentComposer.ts`, not the shared MenuList composer directly.
 
-- **Single-product Canonica writes** (entities, answers, etc.): `requestBodyComposer` still works IF session has correct Canonica context
-- **Cross-product writes** (tickets from MenuList users): Must NOT use `requestBodyComposer`. Build document from decoded CCT `CanonicaPlatformContext` instead.
+- **Document ownership:** `pId` is forced to `"CN"` for Canonica writes.
+- **Current embedded MenuList compatibility:** existing `tId`/`sId` query scopes are preserved so current screens do not lose their data.
+- **CCT readiness:** `sourceContext`, `traceId`, and `requestId` are added as non-breaking fields. Full CCT verification still routes through `CanonicaPlatformContext` when external clients are activated.
 
 ### 7.6 Feature Docs Reference Old Architecture
 
-20+ Canonica feature docs (`help-center_impl.md`, `ticket-system_impl.md`, `feedback-system_impl.md`, etc.) reference `requestBodyComposer` and shared Firebase. These describe current state — no update needed NOW. But implementation MUST follow new rules from `07-multi-product-tenancy.md`.
+Older feature docs (`help-center_impl.md`, `ticket-system_impl.md`, `feedback-system_impl.md`, etc.) may still mention the shared `requestBodyComposer` pattern. Runtime code now uses `canonicaRequestBodyComposer` for Canonica-owned writes. Feature docs should reference this section rather than re-defining the identity/composer contract.
 
 ### 7.7 `src/services/gemini/prompts/` — Canonica KB Quality
 
@@ -305,16 +304,16 @@ App Check is per-Firebase project. When Canonica project is created, it needs it
 - [x] Ticket messages — MAX_TICKET_MESSAGES = 500 guard added (doc size safety)
 - [x] `contextResolver.ts` — created at `src/lib/platform/`
 - [x] pId validation guard — added to `requestBodyComposer` (never null)
+- [x] `canonicaRequestBodyComposer` — Canonica DAL writes now force `pId = "CN"` and attach source context + trace IDs
+- [x] KB callable functions — `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` exported from `functions-canonica/src/index.ts`
+- [x] Canonica KB embeddings — callable functions use Canonica Firebase Admin/Vertex AI so separate-mode cost/accounting stays inside Canonica
+- [x] API hardening — Canonica translate/widget routes use Canonica Admin surfaces and structured secure logging
 
 ### Pending (User Action Items)
 
 - [ ] Create Canonica Firebase project in GCP console
 - [ ] Fill `CANONICA_FIREBASE_*` env vars
 - [ ] Add env vars to Vercel
-- [ ] Move remaining Cloud Function files to `functions-canonica/src/` (Canonica nightly is already moved)
-- [ ] Copy shared utilities to `functions-canonica/src/`
-- [ ] `npm install` in `functions-canonica/`
-- [ ] Remove remaining moved files from `functions/src/`
 - [ ] Deploy both Firebase projects
 - [ ] Create `canonica_clients` collection with MenuList as client #1
 

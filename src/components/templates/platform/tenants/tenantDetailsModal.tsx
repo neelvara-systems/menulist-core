@@ -13,7 +13,7 @@ import { TenantDataType } from '@type/platform/tenant';
 import { getFormatedDateAndTime } from '@util/dateTime';
 import { getObjectDifferance } from '@util/deepMerge';
 import { removeObjRef } from '@util/utils';
-import { Button, Divider, Flex, Input, Select, Switch, Typography } from 'antd'; // Import Ant Design components
+import { Button, Divider, Flex, Input, Select, Switch, Tag, Typography } from 'antd'; // Import Ant Design components
 import { useFormatter } from 'next-intl';
 import { Fragment, memo, useEffect, useRef, useState } from 'react';
 import { LuPlus, LuTrash, LuUpload, LuUploadCloud, LuX } from 'react-icons/lu';
@@ -156,13 +156,10 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                             />
                         </Flex>
 
-                        <Flex>
+                        <Flex align="center" gap={10}>
                             <Text style={{ minWidth: 150 }}>Blocked</Text>
-                            <Switch
-                                defaultChecked={tenantData?.blocked || false}
-                                value={tenantData?.blocked || false}
-                                onChange={() => onChangeValue('blocked', !Boolean(tenantData?.blocked))}
-                            />
+                            {tenantData?.blocked ? <Tag color="error">Blocked</Tag> : <Tag color="green">Not Blocked</Tag>}
+                            <Text type="secondary">Use Platform Settings → Entity Blocks to change this with an audit reason.</Text>
                         </Flex>
                     </Flex>
 

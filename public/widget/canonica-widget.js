@@ -78,6 +78,8 @@
     var iframe = null;
     var launcher = null;
     var productContext = null;
+    var pendingSuggestion = null;
+    var predictiveRequestTimer = null;
 
     // ===== POSITION HELPERS =====
     function getPositionStyles(elem) {
@@ -207,6 +209,11 @@
 
         container.appendChild(iframe);
         document.body.appendChild(container);
+
+        iframe.addEventListener('load', function () {
+            sendContextToIframe();
+            sendSuggestionToIframe();
+        });
     }
 
     // ===== OPEN / CLOSE =====
@@ -222,9 +229,20 @@
         });
         launcher.textContent = '✕';
         launcher.style.fontSize = (s.iconFont) + 'px';
-        // Send current context to iframe
+        // Send current context and suggestion to iframe
+        sendContextToIframe();
+        sendSuggestionToIframe();
+    }
+
+    function sendContextToIframe() {
         if (productContext && iframe && iframe.contentWindow) {
             iframe.contentWindow.postMessage({ type: 'canonica-context-update', context: productContext }, '*');
+        }
+    }
+
+    function sendSuggestionToIframe() {
+        if (pendingSuggestion && iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: 'canonica-predictive-suggestion', suggestion: pendingSuggestion }, '*');
         }
     }
 
@@ -247,13 +265,43 @@
         setContext: function (ctx) {
             productContext = ctx;
             // Forward to iframe if already loaded
-            if (iframe && iframe.contentWindow) {
-                iframe.contentWindow.postMessage({ type: 'canonica-context-update', context: ctx }, '*');
-            }
+            sendContextToIframe();
+            requestPredictiveHelp(ctx);
         },
+        page: function (ctx) { this.setContext(ctx); },
         open: function () { openWidget(); },
         close: function () { closeWidget(); },
     };
+
+    function requestPredictiveHelp(ctx) {
+        if (!ctx || !ctx.page || !window.fetch) return;
+        if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);
+
+        predictiveRequestTimer = window.setTimeout(function () {
+            fetch(widgetHost + '/api/canonica/predictive-help', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey,
+                },
+                body: JSON.stringify(ctx),
+            }).then(function (response) {
+                if (response.status !== 200) return null;
+                return response.json();
+            }).then(function (data) {
+                if (!data || !data.suggestion) return;
+                pendingSuggestion = data.suggestion;
+                if (launcher && !isOpen) {
+                    launcher.setAttribute('aria-label', 'Open help suggestion');
+                    launcher.setAttribute('title', data.suggestion.title || 'Help suggestion');
+                    launcher.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.18), 0 4px 24px rgba(0,0,0,0.15)';
+                }
+                sendSuggestionToIframe();
+            }).catch(function () {
+                // Predictive help is optional and must never affect the host app.
+            });
+        }, 250);
+    }
 
     // ===== INIT =====
     if (document.readyState === 'loading') {

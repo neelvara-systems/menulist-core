@@ -16,7 +16,8 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getBrandingConfig, saveBrandingConfig } from '@database/canonica/branding';
 import { CanonicaBrandingConfig } from '@type/canonica';
-import { Empty, Tabs } from 'antd';
+import { Empty, Grid, Tabs } from 'antd';
+import type { ComponentType } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuBarChart3,
@@ -52,6 +53,8 @@ interface GovernanceHubProps {
 export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) {
     const [activeTab, setActiveTab] = useState('answers');
     const [brandingConfig, setBrandingConfig] = useState<Partial<CanonicaBrandingConfig> | undefined>(undefined);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
 
     // Load branding config if white-label is enabled
     useEffect(() => {
@@ -79,60 +82,43 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
     }, []);
 
     const tabItems = useMemo(() => {
+        const tabLabel = (Icon: ComponentType<{ size?: number }>, label: string, mobileLabel = label) => (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                <Icon size={16} />
+                {isMobile ? mobileLabel : label}
+            </span>
+        );
+
         const items = [
             {
                 key: 'answers',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuBookOpen /> Canonical Answers
-                    </span>
-                ),
+                label: tabLabel(LuBookOpen, 'Canonical Answers', 'Answers'),
                 children: <CanonicalAnswerEditor />,
             },
             {
                 key: 'entities',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuBoxes /> Product Ontology
-                    </span>
-                ),
+                label: tabLabel(LuBoxes, 'Product Ontology', 'Ontology'),
                 children: <EntityManagementDashboard />,
             },
             {
                 key: 'drift',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuShieldAlert /> Drift Governance
-                    </span>
-                ),
+                label: tabLabel(LuShieldAlert, 'Drift Governance', 'Drift'),
                 children: <DriftDashboard />,
             },
             {
                 key: 'analytics',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuBarChart3 /> Answer Analytics
-                    </span>
-                ),
+                label: tabLabel(LuBarChart3, 'Answer Analytics', 'Analytics'),
                 children: <AnswerUsageAnalytics />,
             },
             {
                 key: 'health',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuHeart /> Entity Health
-                    </span>
-                ),
+                label: tabLabel(LuHeart, 'Entity Health', 'Health'),
                 children: <EntityHealthScore />,
             },
             // Phase 4 tabs
             {
                 key: 'history',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuHistory /> Version History
-                    </span>
-                ),
+                label: tabLabel(LuHistory, 'Version History', 'History'),
                 children: <AnswerVersionHistory tId={tId} sId={sId} />,
             },
         ];
@@ -141,11 +127,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         if (FEATURE_FLAGS.ENABLE_CANONICA_TRUST_METRICS) {
             items.push({
                 key: 'trust',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuShieldCheck /> System Trust
-                    </span>
-                ),
+                label: tabLabel(LuShieldCheck, 'System Trust', 'Trust'),
                 children: <FounderTrustDashboard tId={tId} sId={sId} />,
             });
         }
@@ -153,11 +135,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         if (FEATURE_FLAGS.ENABLE_CANONICA_WHITE_LABEL) {
             items.push({
                 key: 'branding',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuPaintbrush /> Branding
-                    </span>
-                ),
+                label: tabLabel(LuPaintbrush, 'Branding'),
                 children: <WhiteLabelBranding tId={tId} sId={sId} initialConfig={brandingConfig} onSave={handleSaveBranding} />,
             });
         }
@@ -165,11 +143,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         if (FEATURE_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE) {
             items.push({
                 key: 'friction',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuFlame /> Friction
-                    </span>
-                ),
+                label: tabLabel(LuFlame, 'Friction'),
                 children: <FrictionTab tId={tId} sId={sId} />,
             });
         }
@@ -177,11 +151,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         if (FEATURE_FLAGS.ENABLE_CANONICA_MULTI_LANGUAGE) {
             items.push({
                 key: 'languages',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuLanguages /> Languages
-                    </span>
-                ),
+                label: tabLabel(LuLanguages, 'Languages'),
                 children: <MultiLanguageArticles tId={tId} sId={sId} onTranslate={handleTranslateArticle} />,
             });
         }
@@ -189,17 +159,13 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         if (FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) {
             items.push({
                 key: 'triggers',
-                label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <LuZap /> Triggers
-                    </span>
-                ),
+                label: tabLabel(LuZap, 'Triggers'),
                 children: <PredictiveTriggerManager tId={tId} sId={sId} />,
             });
         }
 
         return items;
-    }, [tId, sId, brandingConfig, handleSaveBranding, handleTranslateArticle]);
+    }, [tId, sId, brandingConfig, handleSaveBranding, handleTranslateArticle, isMobile]);
 
     if (!FEATURE_FLAGS.ENABLE_CANONICA_GOVERNANCE_UI) {
         return <Empty description="Canonica Governance UI is not enabled" />;
@@ -210,8 +176,10 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
-            type="card"
+            type={isMobile ? 'line' : 'card'}
             size="small"
+            tabBarGutter={isMobile ? 8 : 16}
+            style={{ maxWidth: '100%' }}
         />
     );
 }

@@ -63,8 +63,8 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Mobile public menus lock pinch zoom on the client route and suppress text selection on menu/category controls while keeping footer/business content selectable.
 - Fullscreen PDP image preview supports its own two-finger pinch zoom; this is scoped to the image viewer and does not re-enable browser-level zoom for the whole menu.
 - Public menu language changes must keep names, descriptions, category labels, and URL `?lang=` state aligned after OBP-to-menu navigation or installed PWA launches.
-- Public item URLs must preserve the selected language query so shared PDP links render the matching item title and description preview.
-- Public menu temporary status belongs in the bottom trust zone as a centered pill, not above the business identity header where it can compete with sticky controls.
+- Public item URLs must preserve the selected language query and update client head metadata while the PDP is open so mobile browser share sheets render the matching item URL, title, and description.
+- Active public menu temporary status belongs in the bottom trust zone as a centered pill, not above the business identity header where it can compete with sticky controls. Expired status data must render nothing and reserve no space.
 
 ## Owner Mobile Interaction
 

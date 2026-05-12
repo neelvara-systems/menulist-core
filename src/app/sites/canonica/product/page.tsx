@@ -24,7 +24,7 @@ const FEATURES = [
         title: 'Product Ontology',
         description: 'Model your entire product as structured entities — features, plans, roles, workflows, states, integrations, and errors. Each entity has a canonical name, type, relationships, and a deterministic search index.',
         capabilities: [
-            'AI-assisted entity extraction from existing KB articles',
+            'Guided entity extraction from existing KB articles',
             'Human-validated candidate approval pipeline',
             'Typed relationships between entities',
             'Deterministic search index with synonyms and stemming',
@@ -35,12 +35,12 @@ const FEATURES = [
         id: 'canonical-answers',
         badge: 'Pillar 2',
         title: 'Canonical Answer Engine',
-        description: 'Replace probabilistic AI outputs with governed, versioned, entity-bound answers. Each answer is a persistent knowledge asset — not an ephemeral generation. Same query, same context, same answer. Every time.',
+        description: 'Replace generated guesses with governed, versioned, entity-bound answers. Each answer is a persistent knowledge asset — not an ephemeral generation. Same query, same context, same answer. Every time.',
         capabilities: [
             'Entity-bound answers with version windows',
             'Scope filtering by plan, role, and product state',
             'Specificity scoring (version match → scope depth → recency → confidence)',
-            'Zero LLM calls during retrieval — fully deterministic',
+            'No generation during retrieval — fully deterministic',
             'RAG fallback for uncovered queries, logged as CANONICAL_MISS',
         ],
     },
@@ -97,7 +97,7 @@ export default function CanonicaProductPage() {
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                         Knowledge infrastructure,{' '}
-                        <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">not another tool</span>
+                        <span className="text-indigo-300">not another tool</span>
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
                         Five architectural pillars that transform how SaaS companies govern support knowledge.

@@ -1,6 +1,6 @@
 # Canonica — Production Readiness Certification
 
-> **Audit Date:** 2026-05-11 (re-audited after scheduler observability and cost hardening)
+> **Audit Date:** 2026-05-12 (re-audited after Canonica callable/function split, identity composer, route hardening, and owner/public UI hardening)
 > **Auditor:** Cascade (Senior Staff Engineer + Systems Auditor)
 > **Method:** Full forensic code-only reconstruction + doc parity verification
 > **TypeScript Check:** PASS (0 errors)
@@ -14,13 +14,15 @@
 
 | Layer                  | Files                                      | Purpose                                                    |
 | ---------------------- | ------------------------------------------ | ---------------------------------------------------------- |
-| **Types**              | `src/types/canonica.ts` (410 lines)        | All type definitions, version helpers                      |
+| **Types**              | `src/types/canonica/index.ts`              | All type definitions, version helpers, Canonica identity fields |
 | **DAL**                | 12 files in `src/database/canonica/`       | Firestore CRUD/read helpers for Canonica tenant collections |
 | **Lib**                | 6 files in `src/lib/canonica/`             | Retrieval, drift, mutation, extraction, signals, tokenizer |
 | **Feature Flags**      | 5 flags in `src/config/features.ts`        | Pillar-gated activation                                    |
 | **DB Constants**       | 14 Canonica constants in database mirrors  | Collection name constants                                  |
 | **Firestore Indexes**  | 29 Canonica-specific composite indexes     | Mirrored for shared and dedicated Firebase deployments      |
 | **Integration Points** | 3 touchpoints (tickets, chat, search-kb)   | Signal emission + retrieval                                |
+| **Owner UI**           | `src/app/(canonica)/canonica/*` + `src/components/canonica/*` | Responsive dashboard shell, governance hub, settings, and operational views |
+| **Public UI**          | `src/app/sites/canonica/*` + `src/app/widget/[apiKey]/*` | Marketing/onboarding pages and embeddable end-user help widget |
 
 ### 1.2 Collections (14 Total — All Verified)
 
@@ -40,8 +42,6 @@
 | 12  | `canonica_integrationEvents` | `CANONICA_INTEGRATION_EVENTS`  | Integration functions  | tId+createdAt, status+createdAt                             |
 | 13  | `canonica_integrationDeliveryLogs` | `CANONICA_INTEGRATION_DELIVERY_LOGS` | Integration functions | eventId+createdAt, tId+adapter+status+createdAt             |
 | 14  | `canonica_predictiveTriggers` | `CANONICA_PREDICTIVE_TRIGGERS` | `predictiveTriggers.ts` | tId+sId+createdOn, tId+sId+status+createdOn                 |
-| 8   | `canonica_auditLogs`         | `CANONICA_AUDIT_LOGS`          | `auditLogs.ts`         | tId+sId+timestamp, tId+sId+entityId+timestamp               |
-| 9   | `canonica_entityCandidates`  | `CANONICA_ENTITY_CANDIDATES`   | `entityCandidates.ts`  | tId+sId+confidence, tId+sId+status+confidence               |
 
 ### 1.3 Feature Flag Chain (Verified)
 
@@ -112,7 +112,8 @@ All flags currently `false`. Correct for pre-activation state.
 addTicket() → emitCanonicaSignal({ type: TICKET, tId, sId, metadata })
   → Feature flag check (ENABLE_CANONICA_SIGNAL_MUTATION)
   → Dynamic import (addSignalEvent)
-  → Fire-and-forget (try/catch, console.warn on error)
+  → canonicaRequestBodyComposer adds pId="CN", sourceContext, traceId, requestId
+  → Fire-and-forget (try/catch; failures never block ticket creation)
 ```
 
 **Verdict:** SAFE. Non-blocking. Types align. No circular imports (dynamic import). No crash risk.
@@ -168,6 +169,50 @@ activateRelease(releaseId)
 - Empty dataset safety: All functions handle `null`/empty returns gracefully
 - Manual trigger safety: `triggerCanonicaNightly` requires `Authorization: Bearer ${CRON_SECRET}` outside the Firebase emulator
 - Dedicated Firebase auth safety: `/api/auth/set-claims` mints a separate Canonica custom token in separate mode so client DAL calls satisfy `firestore-canonica.rules`
+- KB callable safety: `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` are exported from Canonica Functions and run against Canonica Firebase Admin + Vertex AI in separate mode
+
+### Flow F — Widget Key → Search → Feedback
+
+```
+Settings / onboarding
+  → generate cn_* raw key once
+  → store publicApi.apiKeyHash + keyPrefix only
+  → widget search validates X-API-Key by hash
+  → coreSearch writes aiSearchHistory with tId+sId+scoped cacheKey
+  → widget feedback verifies searchHistory.tId/sId before writing feedback
+```
+
+**Verdict:** SAFE. Raw widget keys are not persisted. Rate-limit keys use key hashes, not raw API keys. Feedback cannot update another workspace's search history record.
+
+### Flow G — Guided + Predictive Public Widget
+
+```
+Canonical procedure answer
+  → coreSearch returns procedure
+  → /api/widget/search includes procedure when ENABLE_CANONICA_GUIDED_WORKFLOWS
+  → WidgetClient renders prerequisites, warnings, steps, expected results, and troubleshooting hints
+
+CanonicaWidget.page()/setContext()
+  → POST /api/canonica/predictive-help
+  → trigger suggestion returned
+  → embed script forwards suggestion to iframe
+  → WidgetClient displays proactive help message
+```
+
+**Verdict:** WIRED. Backend procedure/predictive payloads now reach the public end-user surface instead of being silently dropped.
+
+### Flow H — KB Navigation Tenant Scope
+
+```
+KB generation publish
+  → reads job.tId + job.sId
+  → writes kb_categories/categories_{tId}_{sId}
+Owner KB screen
+  → reads categories_{session.tId}_{session.sId}
+  → legacy categories doc fallback is filtered and only exposes unscoped legacy data to PLATFORM users
+```
+
+**Verdict:** HARDENED. The owner knowledge-base navigation screen no longer treats the categories document as global product state.
 
 ---
 
@@ -178,7 +223,8 @@ activateRelease(releaseId)
 | No hardcoded collection names                    | **PASS** — All use `DB_COLLECTIONS` constants                              |
 | No missing tenant filters                        | **PASS** — All DAL queries include `tId` + `sId` where clauses             |
 | No unscoped queries                              | **PASS** — Every query is tenant-scoped                                    |
-| No writes bypassing DAL                          | **PASS** — All writes go through `apiCallComposer` + `requestBodyComposer` |
+| No writes bypassing DAL                          | **PASS** — Canonica client writes go through `apiCallComposer` + `canonicaRequestBodyComposer`; shared MenuList writes keep `requestBodyComposer` |
+| Canonica document ownership                      | **PASS** — Canonica DAL writes force `pId = "CN"` and attach source/trace metadata without changing existing tId/sId query scope |
 | No direct client writes to sensitive collections | **PASS** — All operations server-side via DAL pattern                      |
 | Feature flag gating on all entry points          | **PASS** — Retrieval, signals, drift, extraction all check flags           |
 | Dynamic imports for code splitting               | **PASS** — `signalEmitter.ts` uses dynamic import to avoid bundling        |
@@ -216,7 +262,7 @@ activateRelease(releaseId)
 | 1   | Pillar 5 (Public API) not implemented         | No external integrations possible                              | Deferred per roadmap — feature flag exists              |
 | 2   | Entity extraction depends on Gemini injection | `callGemini` function must be passed in                        | By design — avoids circular dependencies                |
 | 3   | Mutation review UI is minimal                 | List + approve/reject only; no inline canonical answer editing | Sufficient for v1; rich editor deferred                 |
-| 4   | No drift dashboard visualization              | Drifted answers visible via DAL but no visual dashboard        | Coverage KPI tracked; drift data accessible via queries |
+| 4   | Heavy governance authoring is desktop-preferred | Mobile supports access/review, but long structured edits remain desk tasks | Responsive shell, scrollable tables, viewport-width modals |
 
 ### Resolved Limitations (since initial audit)
 
@@ -232,6 +278,9 @@ activateRelease(releaseId)
 | 8   | No signal dedup                 | In-memory Set in `signalEmitter.ts`                                               |
 | 9   | No recurring fallback detection | `detectRecurringFallbacks()` auto-generates proposals for 5+ misses               |
 | 10  | No impact tracking              | `trackMutationImpact()` compares pre/post signals after 14 days                   |
+| 11  | No drift dashboard visualization | `DriftDashboard` in the Canonica governance hub with responsive detail modal      |
+| 12  | Owner shell not mobile-safe      | Canonica layout now uses mobile drawer navigation and no fixed-width content      |
+| 13  | Widget image previews assumed PNG | Widget messages now retain MIME type for uploaded images                          |
 
 ---
 

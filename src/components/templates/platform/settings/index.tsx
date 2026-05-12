@@ -1,5 +1,6 @@
 'use client'
 import SelectedItemCheck from '@atoms/selectedItemCheck';
+import { FEATURE_FLAGS } from '@config/features';
 import { DARK_COLORS, LIGHT_COLORS } from '@constant/common';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -14,12 +15,13 @@ import { TenantDataType } from '@type/platform/tenant';
 import { convertRGBtoOBJ, hexToRgbA } from '@util/utils';
 import { Button, Flex, theme, Typography } from 'antd';
 import { Fragment, useState } from 'react';
-import { LuBuilding, LuBuilding2, LuCaseUpper, LuDollarSign, LuImage, LuList, LuSettings, LuUser } from 'react-icons/lu';
+import { LuBuilding, LuBuilding2, LuCaseUpper, LuDollarSign, LuImage, LuList, LuSettings, LuShieldOff, LuUser } from 'react-icons/lu';
 import AssetsUploader from '../assets';
 import FontPresets from '../fontPresets';
 import PricingPlans from '../pricingPlans';
 import StoresDashboard from '../stores';
 import TenantsDashboard from '../tenants';
+import EntityBlockSettings from './EntityBlockSettings';
 import styles from './settings.module.scss';
 const { Text } = Typography;
 
@@ -47,6 +49,7 @@ function PlatformSettings() {
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "users", name: "Users", icon: <LuUser /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "tenants", name: "Tenants", icon: <LuBuilding /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "stores", name: "Stores", icon: <LuBuilding2 /> },
+        { active: FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS && session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "entity-blocks", name: "Entity Blocks", icon: <LuShieldOff /> },
         { active: session.platformRole == ECOMSAI_PLATFORM_USER_ROLE, route: "pricing-plans", name: "Pricing Plans", icon: <LuDollarSign /> },
     ]
 
@@ -66,6 +69,8 @@ function PlatformSettings() {
                 return <TenantsDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />
             case "stores":
                 return <StoresDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />
+            case "entity-blocks":
+                return <EntityBlockSettings />
             case "assets":
                 return <AssetsUploader />
             case "fonts":

@@ -1,6 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { LuMenu, LuX } from 'react-icons/lu';
 import CanonicaLink from './CanonicaLink';
 
 const NAV_LINKS = [
@@ -11,7 +13,7 @@ const NAV_LINKS = [
 
 export default function CanonicaHeader({ basePath = '' }: { basePath?: string }) {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const L = (props: { href: string; className?: string; onClick?: () => void; children: React.ReactNode }) => (
+    const L = (props: { href: string; className?: string; onClick?: () => void; children: ReactNode }) => (
         <CanonicaLink basePath={basePath} {...props} />
     );
 
@@ -42,14 +44,10 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
 
                 <button
                     onClick={() => setMobileOpen(!mobileOpen)}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white md:hidden"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white md:hidden"
                     aria-label="Toggle menu"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        {mobileOpen
-                            ? <path d="M18 6L6 18M6 6l12 12" />
-                            : <path d="M3 12h18M3 6h18M3 18h18" />}
-                    </svg>
+                    {mobileOpen ? <LuX size={22} aria-hidden /> : <LuMenu size={22} aria-hidden />}
                 </button>
             </div>
 

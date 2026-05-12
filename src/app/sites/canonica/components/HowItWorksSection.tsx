@@ -2,7 +2,7 @@ const STEPS = [
     {
         step: '1',
         title: 'Model your product',
-        description: 'Define entities — features, plans, workflows, errors. Build a structured ontology of your product. AI-assisted extraction from existing docs.',
+        description: 'Define entities — features, plans, workflows, errors. Build a structured ontology of your product from existing docs.',
         visual: '{ }',
     },
     {
@@ -14,7 +14,7 @@ const STEPS = [
     {
         step: '3',
         title: 'Retrieve deterministically',
-        description: 'Customer queries hit the canonical engine first. Entity matching → version filtering → specificity scoring. Zero LLM calls. Same input = same output.',
+        description: 'Customer queries hit the canonical engine first. Entity matching → version filtering → specificity scoring. Same input = same output.',
         visual: '→',
     },
     {

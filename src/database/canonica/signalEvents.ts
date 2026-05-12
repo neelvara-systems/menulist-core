@@ -15,7 +15,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDocs, limit, orderBy, query, Timestamp, where, writeBatch } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaSignalEvent } from "@type/canonica";
@@ -30,7 +30,7 @@ const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
 export const addSignalEvent = async (data: Omit<CanonicaSignalEvent, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaSignalEvent;
         },

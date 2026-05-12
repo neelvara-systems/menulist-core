@@ -42,10 +42,36 @@
     color: #f59e0b;
 }
 
+:global([data-obp-page="true"][data-obp-theme="dark"]) .button {
+    border-color: #2a2e29;
+    background: #101210;
+    color: #5f685c;
+}
+
+:global([data-obp-page="true"][data-obp-theme="dark"]) .buttonActive {
+    border-color: #b45309;
+    background: #2a1f10;
+    color: #fbbf24;
+}
+
 .display {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :global([data-obp-page="true"]:not([data-obp-theme="light"])) .button {
+        border-color: #2a2e29;
+        background: #101210;
+        color: #5f685c;
+    }
+
+    :global([data-obp-page="true"]:not([data-obp-theme="light"])) .buttonActive {
+        border-color: #b45309;
+        background: #2a1f10;
+        color: #fbbf24;
+    }
 }
 
 .displayActive {

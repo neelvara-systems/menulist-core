@@ -31,7 +31,7 @@ export default function CanonicaAboutPage() {
                             Support knowledge deserves infrastructure, not tools.
                         </h1>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Every SaaS company has the same problem: support knowledge scattered across articles, tickets, chat logs, and people&apos;s heads. AI chatbots generate different answers every time. No one knows if answers are still accurate after a product update. Knowledge drifts silently.
+                            Every SaaS company has the same problem: support knowledge scattered across articles, tickets, chat logs, and people&apos;s heads. Automated answers can vary every time. No one knows if answers are still accurate after a product update. Knowledge drifts silently.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
                             Canonica fixes this at the infrastructure level. Not another knowledge base. Not another chatbot. A control plane that governs what your product&apos;s support answers actually are — versioned, entity-bound, drift-detecting, and self-improving.
@@ -45,10 +45,10 @@ export default function CanonicaAboutPage() {
                         <div className="space-y-6">
                             {[
                                 { title: 'Knowledge should behave like infrastructure', body: 'Boring, reliable, deterministic. Same query, same context, same answer. Every time. Not a creative exercise — a governance discipline.' },
-                                { title: 'LLMs assist the control plane, never become it', body: 'AI helps extract entities and cluster signals. But the canonical answer — the governed truth — is written and approved by humans. No autonomous rewriting.' },
+                                { title: 'Automation assists the control plane, never becomes it', body: 'Automation helps extract entities and cluster signals. But the canonical answer — the governed truth — is written and approved by humans. No autonomous rewriting.' },
                                 { title: 'Drift is measurable', body: 'When your product changes, your answers should flag themselves as potentially stale. Four drift classes, nightly audits, release-triggered evaluation. Advisory, never blocking.' },
                                 { title: 'Support friction is signal, not noise', body: 'Every ticket and negative feedback is a structured signal. Signals cluster. Clusters propose mutations. Knowledge evolves from real user pain, not guesswork.' },
-                                { title: 'Canonical coverage is the KPI', body: 'The percentage of customer queries answered by governed canonical answers — not probabilistic AI — is the metric that matters. It must increase over time.' },
+                                { title: 'Canonical coverage is the KPI', body: 'The percentage of customer queries answered by governed canonical answers is the metric that matters. It must increase over time.' },
                             ].map((belief, i) => (
                                 <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
                                     <h3 className="mb-2 text-base font-semibold text-white">{belief.title}</h3>

@@ -314,6 +314,7 @@ export default function EntityHealthScore() {
                     loading={loading}
                     pagination={{ pageSize: 20, showSizeChanger: false }}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: <Empty description="No entities to score" /> }}
                 />
             </Card>

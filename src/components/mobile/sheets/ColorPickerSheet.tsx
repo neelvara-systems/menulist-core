@@ -14,6 +14,7 @@ interface ColorPickerSheetProps {
     defaultMoodColor: string;
     onChange: (color: string | undefined) => void;
     onClose: () => void;
+    showDefaultColorOption?: boolean;
     value?: string;
     visible: boolean;
 }
@@ -25,7 +26,16 @@ const normalizeHexColor = (color?: string) => {
     return /^#[0-9A-Fa-f]{6}$/.test(withHash) ? withHash.toUpperCase() : '';
 };
 
-export default function ColorPickerSheet({ businessBrandColor, currentToneLabel, defaultMoodColor, onChange, onClose, value, visible }: ColorPickerSheetProps) {
+export default function ColorPickerSheet({
+    businessBrandColor,
+    currentToneLabel,
+    defaultMoodColor,
+    onChange,
+    onClose,
+    showDefaultColorOption = true,
+    value,
+    visible,
+}: ColorPickerSheetProps) {
     const t = useTranslations('MobileDesignEditor');
     const { token } = theme.useToken();
     const [hexInput, setHexInput] = useState(value || '');
@@ -120,26 +130,28 @@ export default function ColorPickerSheet({ businessBrandColor, currentToneLabel,
                         </Card>
                     ) : null}
 
-                    <Card
-                        onClick={() => {
-                            setHexInput('');
-                            onChange(undefined);
-                        }}
-                        style={{
-                            ...sectionCardStyle,
-                            borderColor: isToneStyleColorSelected ? token.colorPrimary : token.colorBorderSecondary,
-                            cursor: 'pointer',
-                        }}
-                    >
-                        <Flex align="center" gap={12}>
-                            {renderSwatch(normalizeHexColor(defaultMoodColor) || defaultMoodColor)}
-                            <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                <Text strong>{t('useMoodDefault', { tone: toneLabel })}</Text>
-                                <Text type="secondary">{t('useMoodDefaultDesc', { tone: toneLabel })}</Text>
+                    {showDefaultColorOption ? (
+                        <Card
+                            onClick={() => {
+                                setHexInput('');
+                                onChange(undefined);
+                            }}
+                            style={{
+                                ...sectionCardStyle,
+                                borderColor: isToneStyleColorSelected ? token.colorPrimary : token.colorBorderSecondary,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            <Flex align="center" gap={12}>
+                                {renderSwatch(normalizeHexColor(defaultMoodColor) || defaultMoodColor)}
+                                <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                                    <Text strong>{t('useMoodDefault', { tone: toneLabel })}</Text>
+                                    <Text type="secondary">{t('useMoodDefaultDesc', { tone: toneLabel })}</Text>
+                                </Flex>
+                                {isToneStyleColorSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
                             </Flex>
-                            {isToneStyleColorSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
-                        </Flex>
-                    </Card>
+                        </Card>
+                    ) : null}
 
                     <Card style={sectionCardStyle} title={t('presetColors')}>
                         <div

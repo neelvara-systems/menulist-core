@@ -23,6 +23,7 @@ import {
     ColorPicker,
     Descriptions,
     Flex,
+    Grid,
     Input,
     InputNumber,
     message,
@@ -82,6 +83,8 @@ export default function CanonicaSettings() {
     const session = useClientAuthSession();
     const [storeData, setStoreData] = useState<any>(null);
     const [saving, setSaving] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
 
     // Widget config state
     const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -90,6 +93,7 @@ export default function CanonicaSettings() {
 
     // API key state
     const [apiKey, setApiKey] = useState<string | null>(null);
+    const [apiKeyPrefix, setApiKeyPrefix] = useState<string | null>(null);
     const [generatingKey, setGeneratingKey] = useState(false);
 
     // Load store data
@@ -109,6 +113,10 @@ export default function CanonicaSettings() {
                     }
                     if (store.publicApi?.apiKey) {
                         setApiKey(store.publicApi.apiKey);
+                        setApiKeyPrefix(store.publicApi.apiKey.slice(0, 7));
+                    } else if (store.publicApi?.apiKeyHash || store.publicApi?.keyPrefix) {
+                        setApiKey(null);
+                        setApiKeyPrefix(store.publicApi?.keyPrefix || 'cn_****');
                     }
                 }
             } catch { /* fail silently */ }
@@ -137,18 +145,20 @@ export default function CanonicaSettings() {
     const handleGenerateKey = async () => {
         setGeneratingKey(true);
         try {
-            const res = await fetch('/api/store/public-api-key', {
+            const res = await fetch('/api/canonica/widget-key', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'generate' }),
             });
-            const data = await res.json();
-            if (data.apiKey) {
-                setApiKey(data.apiKey);
-                message.success('API key generated');
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.apiKey) {
+                throw new Error(data.error || 'Failed to generate widget key');
             }
-        } catch {
-            message.error('Failed to generate API key');
+            setApiKey(data.apiKey);
+            setApiKeyPrefix(data.keyPrefix || data.apiKey.slice(0, 7));
+            message.success('Widget key generated');
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to generate widget key');
         } finally {
             setGeneratingKey(false);
         }
@@ -157,15 +167,20 @@ export default function CanonicaSettings() {
     // Revoke API key
     const handleRevokeKey = async () => {
         try {
-            await fetch('/api/store/public-api-key', {
+            const res = await fetch('/api/canonica/widget-key', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'revoke' }),
             });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to revoke widget key');
+            }
             setApiKey(null);
-            message.success('API key revoked');
-        } catch {
-            message.error('Failed to revoke');
+            setApiKeyPrefix(null);
+            message.success('Widget key revoked');
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to revoke widget key');
         }
     };
 
@@ -189,30 +204,49 @@ export default function CanonicaSettings() {
 
     // Build embed code
     const embedCode = buildEmbedCode(apiKey, config);
+    const hasWidgetKey = !!apiKey || !!apiKeyPrefix;
 
     // Copy to clipboard
-    const copyEmbedCode = () => {
-        navigator.clipboard.writeText(embedCode);
-        message.success('Embed code copied');
-    };
+    const copyApiKey = useCallback(async () => {
+        if (!apiKey) {
+            message.info('Stored keys are only shown once. Generate a new key to copy it again.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(apiKey);
+            message.success('Copied');
+        } catch {
+            message.error('Unable to copy key');
+        }
+    }, [apiKey]);
+
+    const copyEmbedCode = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(embedCode);
+            message.success('Embed code copied');
+        } catch {
+            message.error('Unable to copy embed code');
+        }
+    }, [embedCode]);
 
     // Setup progress for onboarding guide
     const setupProgress = useMemo(() => {
         const steps = [
-            { done: !!apiKey, label: 'Generate API Key' },
-            { done: !!storeData?.widgetConfig, label: 'Configure Widget' },
-            { done: (origins.length > 0), label: 'Set Allowed Origins' },
+            { done: hasWidgetKey, label: 'Create widget key' },
+            { done: !!storeData?.widgetConfig, label: 'Configure widget' },
+            { done: (origins.length > 0), label: 'Add allowed origin' },
         ];
         return steps;
-    }, [apiKey, storeData?.widgetConfig, origins.length]);
+    }, [hasWidgetKey, storeData?.widgetConfig, origins.length]);
 
     const completedSteps = setupProgress.filter(s => s.done).length;
+    const workspaceName = storeData?.storeName || storeData?.businessName || storeData?.name || 'Canonica workspace';
 
     return (
-        <Flex vertical gap={24}>
+        <Flex vertical gap={isMobile ? 16 : 24}>
             <div>
                 <Title level={4} style={{ margin: 0 }}>Settings</Title>
-                <Text type="secondary">Widget configuration, API keys, and workspace setup</Text>
+                <Text type="secondary">Widget configuration, access key, and workspace setup</Text>
             </div>
 
             {/* ===== SETUP PROGRESS (shown until all steps done) ===== */}
@@ -227,6 +261,7 @@ export default function CanonicaSettings() {
                         <Steps
                             size="small"
                             current={completedSteps}
+                            direction={isMobile ? 'vertical' : 'horizontal'}
                             items={setupProgress.map(step => ({
                                 title: step.label,
                                 status: step.done ? 'finish' : 'wait',
@@ -239,31 +274,42 @@ export default function CanonicaSettings() {
             <Row gutter={[24, 24]}>
                 {/* ===== API KEY ===== */}
                 <Col xs={24} lg={12}>
-                    <Card title={<Flex align="center" gap={8}><LuKey size={16} /> API Key</Flex>}>
-                        {apiKey ? (
+                    <Card title={<Flex align="center" gap={8}><LuKey size={16} /> Widget Key</Flex>}>
+                        {hasWidgetKey ? (
                             <Flex vertical gap={12}>
                                 <Input.Password
-                                    value={apiKey}
+                                    value={apiKey || `${apiKeyPrefix || 'cn_****'}...stored securely`}
                                     readOnly
                                     style={{ fontFamily: 'monospace' }}
                                 />
-                                <Flex gap={8}>
-                                    <Button size="small" icon={<LuClipboard size={12} />} onClick={() => { navigator.clipboard.writeText(apiKey); message.success('Copied'); }}>
+                                <Flex gap={8} wrap="wrap">
+                                    <Button icon={<LuClipboard size={14} />} onClick={copyApiKey} disabled={!apiKey}>
                                         Copy Key
                                     </Button>
-                                    <Button size="small" danger icon={<LuTrash2 size={12} />} onClick={handleRevokeKey}>
+                                    <Button icon={<LuKey size={14} />} onClick={handleGenerateKey} loading={generatingKey}>
+                                        Regenerate
+                                    </Button>
+                                    <Button danger icon={<LuTrash2 size={14} />} onClick={handleRevokeKey}>
                                         Revoke
                                     </Button>
                                 </Flex>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                    This key authenticates your widget and API requests. Keep it secret.
+                                    This key connects the widget to your Canonica workspace. Keep it private.
                                 </Text>
+                                {!apiKey && (
+                                    <Alert
+                                        message="Existing keys are hidden after creation"
+                                        description="Generate a new key if you need to copy it or build a fresh embed code."
+                                        type="info"
+                                        showIcon
+                                    />
+                                )}
                             </Flex>
                         ) : (
                             <Flex vertical gap={12}>
-                                <Text type="secondary">Generate an API key to enable the widget and public API.</Text>
+                                <Text type="secondary">Create a widget key before adding Canonica to your product.</Text>
                                 <Button type="primary" onClick={handleGenerateKey} loading={generatingKey}>
-                                    Generate API Key
+                                    Create Widget Key
                                 </Button>
                             </Flex>
                         )}
@@ -274,9 +320,8 @@ export default function CanonicaSettings() {
                 <Col xs={24} lg={12}>
                     <Card title={<Flex align="center" gap={8}><LuSettings size={16} /> Workspace</Flex>}>
                         <Descriptions column={1} size="small">
-                            <Descriptions.Item label="Tenant ID"><Text code>{session?.tId || '—'}</Text></Descriptions.Item>
-                            <Descriptions.Item label="Store ID"><Text code>{session?.sId || '—'}</Text></Descriptions.Item>
-                            <Descriptions.Item label="User">{session?.user?.email || '—'}</Descriptions.Item>
+                            <Descriptions.Item label="Workspace">{workspaceName}</Descriptions.Item>
+                            <Descriptions.Item label="Signed in as">{session?.user?.email || '—'}</Descriptions.Item>
                             <Descriptions.Item label="Product"><Tag color="blue">Canonica</Tag></Descriptions.Item>
                         </Descriptions>
                     </Card>
@@ -287,7 +332,7 @@ export default function CanonicaSettings() {
                     <Col xs={24}>
                         <Card
                             title={<Flex align="center" gap={8}><LuCode size={16} /> Widget Configuration</Flex>}
-                            extra={<Button type="primary" onClick={handleSaveConfig} loading={saving}>Save Settings</Button>}
+                            extra={!isMobile && <Button type="primary" onClick={handleSaveConfig} loading={saving}>Save Settings</Button>}
                         >
                             <Row gutter={[24, 16]}>
                                 {/* Position */}
@@ -438,6 +483,13 @@ export default function CanonicaSettings() {
                                         </div>
                                     </Flex>
                                 </Col>
+                                {isMobile && (
+                                    <Col xs={24}>
+                                        <Button type="primary" block onClick={handleSaveConfig} loading={saving}>
+                                            Save Settings
+                                        </Button>
+                                    </Col>
+                                )}
                             </Row>
                         </Card>
                     </Col>
@@ -452,13 +504,13 @@ export default function CanonicaSettings() {
                                     Restrict which domains can embed your widget. Leave empty to allow all domains.
                                 </Text>
 
-                                <Flex gap={8}>
+                                <Flex gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'center'}>
                                     <Input
                                         value={newOrigin}
                                         onChange={(e) => setNewOrigin(e.target.value)}
                                         placeholder="https://app.yourproduct.com"
                                         onPressEnter={handleAddOrigin}
-                                        style={{ maxWidth: 400 }}
+                                        style={{ maxWidth: isMobile ? '100%' : 400 }}
                                     />
                                     <Button icon={<LuPlus size={14} />} onClick={handleAddOrigin}>Add</Button>
                                 </Flex>
@@ -479,7 +531,7 @@ export default function CanonicaSettings() {
                                     <Text type="secondary" style={{ fontSize: 12 }}>All origins allowed (no restrictions)</Text>
                                 )}
 
-                                <Button type="primary" size="small" onClick={handleSaveConfig} loading={saving} style={{ alignSelf: 'flex-start' }}>
+                                <Button type="primary" onClick={handleSaveConfig} loading={saving} style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}>
                                     Save Origins
                                 </Button>
                             </Flex>
@@ -492,13 +544,15 @@ export default function CanonicaSettings() {
                     <Col xs={24}>
                         <Card
                             title={<Flex align="center" gap={8}><LuCode size={16} /> Embed Code</Flex>}
-                            extra={<Button icon={<LuClipboard size={14} />} onClick={copyEmbedCode} size="small">Copy</Button>}
+                            extra={<Button icon={<LuClipboard size={14} />} onClick={copyEmbedCode} size="small" disabled={!apiKey}>Copy</Button>}
                         >
                             <Flex vertical gap={8}>
                                 {!apiKey && (
                                     <Alert
-                                        message="Generate an API key first"
-                                        description="You need an API key before embedding the widget."
+                                        message={hasWidgetKey ? 'Generate a fresh embed code key' : 'Generate a widget key first'}
+                                        description={hasWidgetKey
+                                            ? 'For security, existing widget keys are not shown after creation.'
+                                            : 'You need a widget key before embedding the widget.'}
                                         type="warning"
                                         showIcon
                                     />

@@ -164,9 +164,10 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
 - Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, route `?lang=`, and item share URLs must stay aligned when the customer changes language on the menu after arriving from OBP.
+- Item PDPs opened from the menu must update the client document head (`title`, canonical URL, Open Graph URL/title/description, and Twitter URL/title/description) because mobile browser share sheets can read head metadata after client-side history changes.
 - Public search waits for at least two normalized characters before filtering, allows numeric prefix search for alphanumeric tokens such as `11am` without matching unrelated price tokens such as `115`, rejects ambiguous compressed token matches, aliases expand customer queries rather than stored item meanings, and treats multi-term searches as exact phrase first, then any-term recovery.
 - Starting a search from a deep scroll position must bring the result area back under the sticky command row so customers never have to manually scroll to find the filtered output.
-- Temporary status notices on the public menu belong in the bottom trust zone as centered pills, not above the business identity header.
+- Active temporary status notices on the public menu belong in the bottom trust zone as centered pills, not above the business identity header. Expired status data must not reserve empty space.
 
 ---
 
@@ -174,7 +175,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-12 | Public menu UX fixes: mobile grid odd rows span cleanly, search suggestions are data-based, multi-term search supports any-term recovery, language routing updates server-rendered menu names, item URLs preserve language, PDP nutrition facts display, temporary status moved to the bottom trust zone, and Sections appears only for 3+ sections |
+| 2026-05-12 | Public menu UX fixes: mobile grid odd rows span cleanly, search suggestions are data-based, multi-term search supports any-term recovery, language routing updates server-rendered menu names, item URLs/head metadata preserve language, PDP nutrition facts display, active temporary status moved to the bottom trust zone, and Sections appears only for 3+ sections |
 | 2026-05-10 | Search false-positive hardening: one-character input no longer shows a no-result state, and chai typo recovery no longer matches unrelated choice/cheese/tea-description text |
 | 2026-05-10 | Mobile grid output restored, fullscreen PDP image pinch zoom added, and public menu language switching now keeps item descriptions aligned with the selected language |
 | 2026-05-10 | Desktop menu polish: featured choices use a desktop grid, and footer contact actions render as compact centered chips instead of full-width controls |

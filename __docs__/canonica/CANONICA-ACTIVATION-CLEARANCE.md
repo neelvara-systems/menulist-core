@@ -433,7 +433,7 @@ Every integration point is designed to fail silently:
 | ------------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
 | Signal emitter fails                  | `console.warn`, error swallowed                | Zero — ticket/feedback still created               |
 | Canonical retrieval fails             | Returns `fallbackReason`, falls through to RAG | Zero — customer still gets RAG answer              |
-| Drift evaluation fails during release | `console.warn`, error swallowed                | Zero — release still activated                     |
+| Drift evaluation fails during release | Audit log entry + structured error, error swallowed | Zero — release still activated                 |
 | Nightly job fails for one tenant      | Error logged, continues to next tenant         | Zero — other tenants unaffected                    |
 | Entity extraction Gemini fails        | Structured Cloud Functions error log, continues to next batch | Partial — some entities still extracted            |
 | Feature flag OFF                      | All operations return empty/skip               | Zero — system behaves as if Canonica doesn't exist |
@@ -476,7 +476,7 @@ Every integration point is designed to fail silently:
 | **Tenant isolation**          | Every query includes `where('tId', '==', tId)` AND `where('sId', '==', sId)` |
 | **Feature flag gating**       | Every operation checks its pillar's flag before executing                    |
 | **DAL pattern**               | All operations use `DB_COLLECTIONS` constants (never hardcoded)              |
-| **Write safety**              | All writes wrapped with `requestBodyComposer` (auto timestamps)              |
+| **Write safety**              | Canonica writes use `canonicaRequestBodyComposer` (`pId="CN"`, source context, trace IDs, auto timestamps) |
 | **Error isolation**           | `apiCallComposer` wraps all DAL operations with error handling               |
 | **Type immutability**         | Entity type field is stripped from update operations (cannot be changed)     |
 | **Invariant enforcement**     | Canonical answers require `entityIds.length >= 1` (validated in DAL)         |
@@ -527,9 +527,9 @@ Every integration point is designed to fail silently:
 1. **Entity extraction requires manual trigger** — Not automated (by design — human oversight)
 2. **No auto-apply of mutations** — All require human approval (governance invariant)
 3. **Pillar 5 (Public API) not fully wired** — Feature flag exists but API not implemented yet
-4. **No mobile UI** — Canonica is backend infrastructure; no customer-facing UI exists (N/A for mobile admission test)
+4. **Governance authoring is desktop-preferred** — Mobile access is supported for review/recovery, but long structured edits remain desk tasks
 5. **Mutation review UI is minimal** — List + approve/reject only; no inline editing of canonical answers
-6. **No drift dashboard** — Drifted answers visible via DAL queries but no visual dashboard yet
+6. **Public API still deferred** — Widget/search routes exist, but the full external public API pillar remains behind the roadmap flag
 
 ### Resolved Limitations (fixed 2026-03-03)
 
@@ -538,6 +538,8 @@ Every integration point is designed to fail silently:
 3. ~~No canonical coverage tracking~~ → **Coverage KPI** aggregated nightly, stored in `platformSummary/canonica_{sId}`
 4. ~~Candidates can't become entities without code~~ → **promoteCandidate()** one-click: candidate → entity + search index
 5. ~~Nightly job missing operational loop~~ → **7-step batch** with drift + resolution + mutation + coverage + fallback + impact + confidence
+6. ~~No mobile-safe Canonica shell~~ → **Responsive owner shell** with mobile drawer navigation, sticky header, scrollable governance tables, and viewport-width modals
+7. ~~No public/end-user UI readiness pass~~ → **Public site + widget hardened** for mobile sizing, onboarding routing, MIME-safe image preview, and no tenant/store id exposure
 
 ### Recommended Next Steps
 
@@ -650,7 +652,7 @@ Every integration point is designed to fail silently:
 | 9   | Canonical retrieval wired to search-kb API (with feature flag)            | ✅     |
 | 10  | Drift evaluation wired to release activation (fire-and-forget)            | ✅     |
 | 11  | All DAL files use DB_COLLECTIONS constants                                | ✅     |
-| 12  | All DAL files use apiCallComposer + requestBodyComposer                   | ✅     |
+| 12  | Canonica DAL files use apiCallComposer + canonicaRequestBodyComposer      | ✅     |
 | 13  | All queries have tenant isolation (tId + sId)                             | ✅     |
 | 14  | No stale doc references in source code                                    | ✅     |
 | 15  | Entity type immutability enforced in updateEntity                         | ✅     |

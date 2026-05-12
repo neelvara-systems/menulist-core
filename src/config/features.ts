@@ -1802,6 +1802,21 @@ export const FEATURE_FLAGS = {
     ENABLE_EXTRACTION_MONITORING_DASHBOARD: true,
 
     // ═══════════════════════════════════════════════════════════════
+    // PLATFORM ENTITY BLOCKS (Internal Admin Control)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Enable platform administrators to block tenants, stores, or users
+     * without reusing lifecycle fields such as active/deleted.
+     *
+     * Access: platformRole === 'PLATFORM' only.
+     *
+     * true: Entity Blocks tab appears in platform settings
+     * false: Block management UI hidden
+     */
+    ENABLE_PLATFORM_ENTITY_BLOCKS: true,
+
+    // ═══════════════════════════════════════════════════════════════
     // CANONICA — Support Knowledge Control Plane
     // Per doctrine: 3-YEAR ARCHITECTURE FREEZE
     // @see __docs__/canonica/doctrine/05-architecture-evolution.md

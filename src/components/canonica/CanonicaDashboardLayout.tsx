@@ -16,31 +16,53 @@ import { useAppSelector } from '@hook/useAppSelector';
 import AntdThemeProvider from '@providers/antdThemeProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
 import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
-import { Layout, theme } from 'antd';
+import { Drawer, Grid, Layout } from 'antd';
+import { useState } from 'react';
 import CanonicaSidebar from './CanonicaSidebar';
 import CanonicaHeader from './CanonicaHeader';
 
 const { Content } = Layout;
+const SIDEBAR_WIDTH = 240;
 
 export default function CanonicaDashboardLayout({ children }: { children: React.ReactNode }) {
     const isDarkMode = useAppSelector(getDarkModeState);
-    const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
+    const isDesktop = screens.lg === true;
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const layoutBackground = isDarkMode ? '#141414' : '#f5f5f5';
 
     return (
         <AntdThemeProvider>
             <NetworkStatusProvider>
-                <Layout style={{ minHeight: '100vh' }}>
-                    <CanonicaSidebar />
-                    <Layout style={{ marginLeft: 240 }}>
-                        <CanonicaHeader />
+                <Layout style={{ minHeight: '100vh', minWidth: 0, background: layoutBackground }}>
+                    {isDesktop && <CanonicaSidebar />}
+                    <Drawer
+                        title={null}
+                        placement="left"
+                        open={!isDesktop && mobileNavOpen}
+                        onClose={() => setMobileNavOpen(false)}
+                        width={280}
+                        styles={{ body: { padding: 0 }, header: { display: 'none' } }}
+                    >
+                        <CanonicaSidebar mobile onNavigate={() => setMobileNavOpen(false)} />
+                    </Drawer>
+                    <Layout
+                        style={{
+                            marginLeft: isDesktop ? SIDEBAR_WIDTH : 0,
+                            minWidth: 0,
+                            background: layoutBackground,
+                        }}
+                    >
+                        <CanonicaHeader
+                            showMenuButton={!isDesktop}
+                            onMenuClick={() => setMobileNavOpen(true)}
+                        />
                         <Content
                             style={{
-                                padding: 24,
+                                padding: isDesktop ? 24 : 12,
                                 minHeight: 'calc(100vh - 56px)',
-                                backgroundImage: isDarkMode
-                                    ? `radial-gradient(#dee1ec57 0.8px, transparent 0)`
-                                    : `radial-gradient(#cbcbcb 1px, transparent 0)`,
-                                backgroundSize: '24px 24px',
+                                overflowX: 'hidden',
+                                background: layoutBackground,
                             }}
                         >
                             {children}

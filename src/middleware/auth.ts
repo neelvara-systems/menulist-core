@@ -19,6 +19,7 @@
 
 import { authOptions } from '@lib/auth';
 import { logger } from '@lib/monitoring/logger';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { addCORSHeaders, handleCORSPreflight, validateCORS } from '@lib/security/corsValidation';
 import { secureError } from '@lib/security/secureLogger';
 import { buildSecurityContext } from '@lib/security/securityContext';
@@ -85,6 +86,20 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                 return NextResponse.json(
                     { error: 'Unauthorized', message: 'Authentication required' },
                     { status: 401 }
+                );
+            }
+
+            if (isPlatformEntityBlocked(session.user)) {
+                logger.security('Authorization Failed - Blocked Account', {
+                    ...buildSecurityContext(session, request),
+                    endpoint: request.nextUrl.pathname,
+                    error: 'Blocked account attempted to access protected API',
+                    method: request.method,
+                }, 'high');
+
+                return NextResponse.json(
+                    { error: 'Forbidden', message: 'Account access is blocked' },
+                    { status: 403 }
                 );
             }
 

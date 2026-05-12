@@ -290,6 +290,7 @@ export default function AnswerUsageAnalytics() {
                     loading={loading}
                     pagination={{ pageSize: 15, showSizeChanger: false }}
                     size="small"
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: <Empty description="No answer usage data yet" /> }}
                 />
             </Card>

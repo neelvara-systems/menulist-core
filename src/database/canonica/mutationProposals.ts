@@ -16,7 +16,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, Timestamp, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaMutationProposal } from "@type/canonica";
@@ -97,7 +97,7 @@ export const getMutationProposalById = async (proposalId: string) => {
 export const addMutationProposal = async (data: Omit<CanonicaMutationProposal, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer({
+            const submitData = await canonicaRequestBodyComposer({
                 ...data,
                 status: 'pending_review',
             });
@@ -116,7 +116,7 @@ export const addMutationProposal = async (data: Omit<CanonicaMutationProposal, '
 export const approveMutationProposal = async (proposalId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'approved' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'approved' });
             await runTransaction(canonicaFirebaseClient, async (transaction) => {
                 const docSnap = await transaction.get(getDocRef(proposalId));
                 if (!docSnap.exists()) throw new Error(`Proposal ${proposalId} not found`);
@@ -140,7 +140,7 @@ export const approveMutationProposal = async (proposalId: string) => {
 export const rejectMutationProposal = async (proposalId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'rejected' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'rejected' });
             await runTransaction(canonicaFirebaseClient, async (transaction) => {
                 const docSnap = await transaction.get(getDocRef(proposalId));
                 if (!docSnap.exists()) throw new Error(`Proposal ${proposalId} not found`);
@@ -164,7 +164,7 @@ export const rejectMutationProposal = async (proposalId: string) => {
 export const markMutationImplemented = async (proposalId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'implemented' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'implemented' });
             await runTransaction(canonicaFirebaseClient, async (transaction) => {
                 const docSnap = await transaction.get(getDocRef(proposalId));
                 if (!docSnap.exists()) throw new Error(`Proposal ${proposalId} not found`);
@@ -331,7 +331,7 @@ export const approveDraftAsCanonicalAnswer = async (
             });
 
             // 6. Mark proposal as implemented
-            const implementData = await requestBodyComposer({ status: 'implemented' });
+            const implementData = await canonicaRequestBodyComposer({ status: 'implemented' });
             await setDoc(getDocRef(proposalId), implementData, { merge: true });
 
             // 7. Audit log

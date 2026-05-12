@@ -23,6 +23,7 @@ import {
     Card,
     Col,
     Empty,
+    Grid,
     List,
     Modal,
     Row,
@@ -96,6 +97,8 @@ export default function MultiLanguageArticles({
 }: Props) {
     const [selectedArticle, setSelectedArticle] = useState<ArticleSummary | null>(null);
     const [translating, setTranslating] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
 
     if (!FEATURE_FLAGS.ENABLE_CANONICA_MULTI_LANGUAGE) {
         return <Empty description="Multi-language articles is not enabled" />;
@@ -273,7 +276,7 @@ export default function MultiLanguageArticles({
                 open={!!selectedArticle}
                 onCancel={() => setSelectedArticle(null)}
                 footer={null}
-                width={600}
+                width={isMobile ? 'calc(100vw - 24px)' : 600}
             >
                 {selectedArticle && (
                     <List

@@ -869,6 +869,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const activePhoto = activePhotoIndex != null
         ? photoDrafts[activePhotoIndex]?.previewDataUrl || photoSlots[activePhotoIndex]
         : '';
+    const coverPreviewUrl = coverDraft?.previewDataUrl || formData.businessCover;
     const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
     const handleReset = useCallback(() => {
         setFormData(originalFormData);
@@ -1010,14 +1011,28 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 style={{
                                     backgroundColor: token.colorBgContainer,
                                     border: `1px solid ${token.colorBorderSecondary}`,
-                                    borderRadius: 999,
+                                    borderRadius: coverPreviewUrl ? 12 : 999,
                                     color: formData.businessCover ? token.colorSuccess : token.colorTextTertiary,
                                     flex: '0 0 auto',
-                                    height: 38,
-                                    width: 38,
+                                    height: coverPreviewUrl ? 58 : 38,
+                                    overflow: 'hidden',
+                                    width: coverPreviewUrl ? 78 : 38,
                                 }}
                             >
-                                <LuImagePlus size={18} />
+                                {coverPreviewUrl ? (
+                                    <img
+                                        alt={t('businessCover')}
+                                        src={coverPreviewUrl}
+                                        style={{
+                                            display: 'block',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                            width: '100%',
+                                        }}
+                                    />
+                                ) : (
+                                    <LuImagePlus size={18} />
+                                )}
                             </Flex>
                             <Flex gap={2} style={{ minWidth: 0 }} vertical>
                                 <Text strong>{formData.businessCover ? t('businessCoverUploaded') : t('businessCoverPlaceholder')}</Text>
@@ -1725,6 +1740,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 defaultMoodColor={defaultObpAccentColor}
                 onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color }))}
                 onClose={() => setIsColorPickerOpen(false)}
+                showDefaultColorOption={false}
                 value={formData.accentColor}
                 visible={isColorPickerOpen}
             />

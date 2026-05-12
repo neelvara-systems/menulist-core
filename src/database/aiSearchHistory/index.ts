@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { requestBodyComposer } from '@lib/apiHelper';
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
 import { AiSearchHistory } from '@type/aiSearchHistory';
@@ -19,7 +19,7 @@ const getCollectionRef = async () => {
 export const addAiSearchHistory = async (data: Omit<AiSearchHistory, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(await getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id };
         },
@@ -47,6 +47,7 @@ export const findCachedSearchByCacheKey = async (
             collRef,
             where("cacheKey", "==", cacheKey),
             where("tId", "==", session.tId),
+            where("sId", "==", session.sId),
             limit(1)
         );
         const snapshot = await getDocs(q);
@@ -65,7 +66,7 @@ export const findCachedSearchByCacheKey = async (
 export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHistory>) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer(data);
+            const composedData = await canonicaRequestBodyComposer(data);
             await setDoc(await getDocRef(data.id), composedData, { merge: true });
             return composedData;
         },

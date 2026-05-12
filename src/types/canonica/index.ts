@@ -16,6 +16,15 @@
  */
 
 import { Timestamp } from "firebase/firestore";
+import type { ProductId } from "@constant/product";
+import type { SourceContext } from "@type/multiProduct";
+
+export interface CanonicaDocumentIdentity {
+    pId?: ProductId;
+    sourceContext?: SourceContext;
+    traceId?: string;
+    requestId?: string;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // PILLAR 1 — PRODUCT ONTOLOGY
@@ -41,7 +50,7 @@ export const CANONICA_ENTITY_STATUS = {
 
 export type CanonicaEntityStatus = typeof CANONICA_ENTITY_STATUS[keyof typeof CANONICA_ENTITY_STATUS];
 
-export interface CanonicaEntity {
+export interface CanonicaEntity extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -76,7 +85,7 @@ export const CANONICA_RELATION_TYPES = {
 
 export type CanonicaRelationType = typeof CANONICA_RELATION_TYPES[keyof typeof CANONICA_RELATION_TYPES];
 
-export interface CanonicaEntityRelation {
+export interface CanonicaEntityRelation extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -110,7 +119,7 @@ export const CANONICA_VALIDATION_SOURCE = {
 
 export type CanonicaValidationSource = typeof CANONICA_VALIDATION_SOURCE[keyof typeof CANONICA_VALIDATION_SOURCE];
 
-export interface CanonicaCanonicalAnswer {
+export interface CanonicaCanonicalAnswer extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -187,7 +196,7 @@ export const CANONICA_DRIFT_CLASS = {
 
 export type CanonicaDriftClass = typeof CANONICA_DRIFT_CLASS[keyof typeof CANONICA_DRIFT_CLASS];
 
-export interface CanonicaDriftEvent {
+export interface CanonicaDriftEvent extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -240,7 +249,7 @@ export const CANONICA_SIGNAL_TYPE = {
 
 export type CanonicaSignalType = typeof CANONICA_SIGNAL_TYPE[keyof typeof CANONICA_SIGNAL_TYPE];
 
-export interface CanonicaMutationProposal {
+export interface CanonicaMutationProposal extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -296,7 +305,7 @@ export interface CanonicaMutationProposal {
     modifiedBy?: string;
 }
 
-export interface CanonicaSignalEvent {
+export interface CanonicaSignalEvent extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -321,7 +330,7 @@ export const CANONICA_RELEASE_STATUS = {
 
 export type CanonicaReleaseStatus = typeof CANONICA_RELEASE_STATUS[keyof typeof CANONICA_RELEASE_STATUS];
 
-export interface CanonicaRelease {
+export interface CanonicaRelease extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -340,7 +349,7 @@ export interface CanonicaRelease {
 // ENTITY SEARCH INDEX (Deterministic Retrieval)
 // ═══════════════════════════════════════════════════════════════
 
-export interface CanonicaEntitySearchIndex {
+export interface CanonicaEntitySearchIndex extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -368,7 +377,7 @@ export const CANONICA_CANDIDATE_STATUS = {
 
 export type CanonicaCandidateStatus = typeof CANONICA_CANDIDATE_STATUS[keyof typeof CANONICA_CANDIDATE_STATUS];
 
-export interface CanonicaEntityCandidate {
+export interface CanonicaEntityCandidate extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;
@@ -393,7 +402,7 @@ export interface CanonicaEntityCandidate {
 // AUDIT LOGS
 // ═══════════════════════════════════════════════════════════════
 
-export interface CanonicaAuditLog {
+export interface CanonicaAuditLog extends CanonicaDocumentIdentity {
     id: string;
     tId: number;
     sId: number;

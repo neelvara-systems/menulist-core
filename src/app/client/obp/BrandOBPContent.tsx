@@ -28,6 +28,7 @@ import { getBusinessCoverAltText, getBusinessLogoAltText } from "@lib/media/altT
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { StoreDataType } from "@type/platform/store";
 import {
     collection,
@@ -54,6 +55,7 @@ interface OutletInfo {
     workingHours?: Record<string, string>;
     timeZone?: string;
     active?: boolean;
+    blocked?: boolean;
     modifiedOn?: any;
     isMaster?: boolean;
 }
@@ -68,6 +70,7 @@ const mapSummaryStoreToOutlet = (storeId: string, data: any): OutletInfo => ({
     workingHours: data.workingHours,
     timeZone: data.timeZone,
     active: data.active,
+    blocked: data.blocked,
     isMaster: data.isMaster,
     modifiedOn: data.modifiedOn,
 });
@@ -82,7 +85,7 @@ const getSummaryOutletsForTenant = unstable_cache(
 
         const stores = parseSummaryStores(summarySnap.data());
         const tenantStores = Object.entries(stores)
-            .filter(([, data]: [string, any]) => data?.tId === tenantId && data?.active !== false)
+            .filter(([, data]: [string, any]) => data?.tId === tenantId && data?.active !== false && !isPlatformEntityBlocked(data))
             .map(([storeId, data]: [string, any]) => mapSummaryStoreToOutlet(storeId, data));
 
         if (tenantStores.length === 0) return null;
@@ -129,10 +132,12 @@ const getCollectionOutletsForTenant = unstable_cache(
                     workingHours: data.workingHours,
                     timeZone: data.timeZone,
                     active: data.active,
+                    blocked: data.blocked,
                     isMaster: data.isMaster,
                     modifiedOn: data.modifiedOn,
                 } as OutletInfo & { isMaster?: boolean };
             })
+            .filter((store) => !isPlatformEntityBlocked(store))
             // Sort: master store first, then alphabetical
             .sort((a, b) => {
                 if ((a as any).isMaster) return -1;

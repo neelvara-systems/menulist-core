@@ -62,6 +62,8 @@ interface MenuFooterProps {
     showUpdateMeta?: boolean;
     analyticsIds?: Partial<Pick<TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     trackingEnabled?: boolean;
+    footerExtraAction?: React.ReactNode;
+    showFeedbackLink?: boolean;
 }
 
 // Social media icon mapping
@@ -112,11 +114,13 @@ export default function MenuFooter({
     showUpdateMeta = true,
     analyticsIds,
     trackingEnabled = true,
+    footerExtraAction,
+    showFeedbackLink = true,
 }: MenuFooterProps) {
     const { isMobile } = useDeviceType();
     // Feedback visibility: Both store-level AND project-level must be enabled
     // Default: true if undefined (opt-out pattern)
-    const showFeedback = projectId &&
+    const showFeedback = showFeedbackLink && projectId &&
         storeDetails?.feedbackEnabled !== false &&
         feedbackEnabled !== false;
     // G09 ENFORCEMENT: Business name is required
@@ -298,6 +302,7 @@ export default function MenuFooter({
                     {showCall && callHref && (
                         <a
                             href={callHref}
+                            data-footer-contact-action="true"
                             onClick={(event) => trackBeforeNavigate({
                                 event,
                                 href: callHref,
@@ -313,6 +318,7 @@ export default function MenuFooter({
                     {showWhatsApp && whatsappHref && (
                         <a
                             href={whatsappHref}
+                            data-footer-contact-action="true"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => trackBeforeNavigate({
@@ -330,6 +336,7 @@ export default function MenuFooter({
                     {showDirections && directionsHref && (
                         <a
                             href={directionsHref}
+                            data-footer-contact-action="true"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => trackBeforeNavigate({
@@ -347,6 +354,7 @@ export default function MenuFooter({
                     {showReservation && publicPresence?.reservationUrl && (
                         <a
                             href={publicPresence.reservationUrl}
+                            data-footer-contact-action="true"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => trackBeforeNavigate({
@@ -364,6 +372,7 @@ export default function MenuFooter({
                     {showOrder && publicPresence?.orderUrl && (
                         <a
                             href={publicPresence.orderUrl}
+                            data-footer-contact-action="true"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(event) => trackBeforeNavigate({
@@ -502,6 +511,12 @@ export default function MenuFooter({
                     Share Feedback
                 </a>
             )}
+
+            {footerExtraAction ? (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+                    {footerExtraAction}
+                </div>
+            ) : null}
 
             {/* Language selector */}
             {showLanguageSelector && languages.length > 1 && (

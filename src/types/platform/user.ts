@@ -1,4 +1,5 @@
 import { GlobalAddressType } from "@type/common";
+import type { PlatformBlockDetails } from "./blocking";
 
 export type UserStoreMappingType = {
     storeId: number;
@@ -33,6 +34,8 @@ export type UserDataType = {
     id?: string;
     isVerified: boolean;
     active: boolean;
+    blocked?: boolean;
+    blockDetails?: PlatformBlockDetails;
     index: number;//used to display in users list dropdown in case of ording or assigning user list
 
     deleted: boolean;

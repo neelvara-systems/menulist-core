@@ -23,7 +23,8 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 
@@ -32,6 +33,19 @@ export type ClientStoreLookupResult =
     | null;
 
 const buildStoreRef = () => collection(firebaseClient, DB_COLLECTIONS.STORES);
+const buildTenantDocRef = (tenantId: string | number) => doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
+
+async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boolean> {
+    if (isPlatformEntityBlocked(store)) return true;
+
+    const tenantId = store?.tenantId ?? store?.tId;
+    if (tenantId == null || tenantId === '') return false;
+
+    const tenantSnap = await getDoc(buildTenantDocRef(tenantId));
+    if (!tenantSnap.exists()) return false;
+
+    return isPlatformEntityBlocked(tenantSnap.data());
+}
 
 export const getStoreBySubdomain = cache(
     unstable_cache(
@@ -46,7 +60,8 @@ export const getStoreBySubdomain = cache(
             );
             const directSnap = await getDocs(directQuery);
             if (!directSnap.empty) {
-                return { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
+                const data = { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
+                return await isStoreOrTenantBlocked(data) ? null : data;
             }
             // T1-N-05 / A-03 PUBLIC-ROUTING-DOCTRINE: admin-tier rename chain.
             // Check if any active store has this subdomain in its
@@ -80,7 +95,8 @@ export const getStoreBySubdomain = cache(
                 return Number.isFinite(expiresAtMs) && expiresAtMs > nowMs;
             });
             if (!match) return null;
-            return { id: doc.id, ...data };
+            const storeData = { id: doc.id, ...data };
+            return await isStoreOrTenantBlocked(storeData) ? null : storeData;
         },
         ['client-store-subdomain'],
         { revalidate: 60, tags: ['client-stores'] },
@@ -99,7 +115,8 @@ export const getStoreByCustomDomain = cache(
             );
             const snapshot = await getDocs(q);
             if (snapshot.empty) return null;
-            return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+            const data = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+            return await isStoreOrTenantBlocked(data) ? null : data;
         },
         ['client-store-custom-domain'],
         { revalidate: 60, tags: ['client-stores'] },
@@ -131,7 +148,8 @@ export const getStoreByOutletSlug = cache(
             );
             const directSnap = await getDocs(directQuery);
             if (!directSnap.empty) {
-                return { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
+                const data = { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
+                return await isStoreOrTenantBlocked(data) ? null : data;
             }
             // Fallback: rename-chain lookup via previousOutletSlugs[]. Mirrors
             // the project-slug chain mechanism on outlet stores.
@@ -144,7 +162,8 @@ export const getStoreByOutletSlug = cache(
             );
             const chainSnap = await getDocs(chainQuery);
             if (chainSnap.empty) return null;
-            return { id: chainSnap.docs[0].id, ...chainSnap.docs[0].data() };
+            const data = { id: chainSnap.docs[0].id, ...chainSnap.docs[0].data() };
+            return await isStoreOrTenantBlocked(data) ? null : data;
         },
         ['client-store-outlet-slug'],
         { revalidate: 60, tags: ['client-stores'] },

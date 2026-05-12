@@ -87,7 +87,7 @@ function PlatformUsers() {
             key: Math.random(),
             render: (_, record) => (
                 <>
-                    {!record.active ? <Tag color='error'>Deactivated</Tag> : <>
+                    {record.blocked ? <Tag color='error'>Blocked</Tag> : !record.active ? <Tag color='error'>Deactivated</Tag> : <>
                         {record.isVerified ? <Tag color='green'>Verified</Tag> : <Tag color='warning'>Non Verified</Tag>}
                     </>}
                 </>

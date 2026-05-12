@@ -13,7 +13,7 @@ import { ProductId } from "@constant/product";
  * Contains user identity (always) and source product scope (cross-product only).
  */
 export interface SourceContext {
-    uId: number;
+    uId: number | string;
     name: string;
     email: string;
     phone?: string;
@@ -33,7 +33,7 @@ export interface CanonicaClientTokenPayload {
     pId?: ProductId;
     tId?: number;
     sId?: number;
-    uId: number;
+    uId: number | string;
     name: string;
     email: string;
     phone?: string;

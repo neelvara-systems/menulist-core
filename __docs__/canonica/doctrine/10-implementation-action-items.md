@@ -1,7 +1,7 @@
 # Multi-Product Implementation — Action Items for Founder
 
 > **Created:** 2025-03-05 | Post-implementation checklist
-> **Status:** Cascade completed codebase changes. Below are YOUR manual action items.
+> **Status:** Core codebase split is complete. Remaining items are deployment/configuration actions.
 
 ---
 
@@ -24,6 +24,10 @@
 15. Updated `functions/src/decisionBlocksScoring.ts` — removed Canonica nightly block
 16. `tsc --noEmit` — ZERO ERRORS
 17. Switched 3 helpCenter API routes to `canonicaFirestoreAdmin` (search-kb, search-kb-stream, article-embedding)
+18. Added `src/lib/canonica/documentComposer.ts` — Canonica DAL writes now force `pId = "CN"` and attach `sourceContext`, `traceId`, and `requestId`
+19. Exported KB callables from `functions-canonica/src/index.ts`: `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn`
+20. Added Canonica Functions KB embedding helpers using Canonica Firebase Admin + Vertex AI
+21. Hardened Canonica auth sync so Firebase Auth lookup failures are not mistaken for missing users
 
 ---
 
@@ -67,47 +71,7 @@ Also download the service account JSON and save as `canonica-service-account.jso
 
 Go to Vercel project settings → Environment Variables → add all `CANONICA_FIREBASE_*` vars.
 
-### 4. Move Cloud Function Files
-
-Move these files from `functions/src/` to `functions-canonica/src/`:
-
-```
-Legacy MenuList-side `canonicaNightly.ts` → `functions-canonica/src/canonica/canonicaNightly.ts` (moved; legacy duplicate removed)
-functions/src/logic/embedArticleWorker.ts → functions-canonica/src/logic/embedArticleWorker.ts
-functions/src/logic/regenerateEmbedding.ts → functions-canonica/src/logic/regenerateEmbedding.ts
-functions/src/logic/publishApprovedJob.ts → functions-canonica/src/logic/publishApprovedJob.ts
-functions/src/analytics/kbQuality.ts → functions-canonica/src/analytics/kbQuality.ts
-functions/src/services/gemini/kbQuality.ts → functions-canonica/src/services/gemini/kbQuality.ts
-functions/src/types/knowledgeBase.types.ts → functions-canonica/src/types/knowledgeBase.types.ts
-```
-
-Also copy shared utilities:
-
-```
-functions/src/constants/database.ts → functions-canonica/src/constants/database.ts
-functions/src/constants/features.ts → functions-canonica/src/constants/features.ts
-functions/src/utils/aiUtils.ts → functions-canonica/src/utils/aiUtils.ts
-functions/src/genAiClient.ts → functions-canonica/src/genAiClient.ts
-functions/src/config/secrets.ts → functions-canonica/src/config/secrets.ts
-```
-
-Then update `functions-canonica/src/index.ts` to export the moved functions.
-
-### 5. Install functions-canonica Dependencies
-
-```bash
-cd functions-canonica && npm install
-```
-
-### 6. Remove Moved Files from MenuList Functions
-
-After verifying functions-canonica works, remove:
-
-- legacy MenuList-side Canonica scheduler directory (done for `canonicaNightly`; do not recreate Canonica schedulers in MenuList functions)
-- KB function exports from `functions/src/triggers/shared.ts`
-- KB function exports from `functions/src/index.ts`
-
-### 7. Deploy
+### 4. Deploy
 
 ```bash
 # Deploy MenuList functions
@@ -117,7 +81,7 @@ firebase deploy --only functions --project ecomsai
 cd functions-canonica && npm run deploy
 ```
 
-### 8. Create Canonica Client Registry
+### 5. Create Canonica Client Registry
 
 In Canonica Firestore, create collection `canonica_clients` with MenuList as client #1:
 
@@ -143,8 +107,9 @@ After completing above:
 - [ ] All `CANONICA_FIREBASE_*` env vars filled in `.env`
 - [ ] Same vars added to Vercel
 - [ ] `canonica-service-account.json` exists in project root
-- [ ] `functions-canonica/` has all moved files + dependencies installed
+- [x] `functions-canonica/` has Canonica nightly + KB callable functions
 - [ ] `tsc --noEmit` still passes with zero errors
+- [ ] `npm --prefix functions-canonica run build` still passes with zero errors
 - [ ] MenuList dashboard loads without errors
 - [ ] Help center features work (reads from Canonica Firestore)
 - [ ] KB search works

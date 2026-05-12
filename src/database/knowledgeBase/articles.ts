@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
@@ -39,7 +39,7 @@ export const getArticles = async () => {
 export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(await getCollectionRef(), submitData);
             const savedArticle = { ...submitData, id: docRef.id };
 
@@ -56,7 +56,7 @@ export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => 
 export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer(data);
+            const composedData = await canonicaRequestBodyComposer(data);
             await setDoc(await getDocRef(data.id), composedData, { merge: true });
 
             // E4: Fire-and-forget entity extraction when article content changes
@@ -94,7 +94,7 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
             if (!ids || ids.length === 0) return;
 
             const batch = writeBatch(canonicaFirebaseClient);
-            const composedData = await requestBodyComposer({ status, active: status === 'published' });
+            const composedData = await canonicaRequestBodyComposer({ status, active: status === 'published' });
             for (const id of ids) {
                 const docRef = await getDocRef(id);
                 batch.update(docRef, composedData);
@@ -271,7 +271,7 @@ function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
 
         // If extraction found entity matches, update article with entityIds
         if (result && result.entityIds.length > 0) {
-            const composedData = await requestBodyComposer({ entityIds: result.entityIds });
+            const composedData = await canonicaRequestBodyComposer({ entityIds: result.entityIds });
             await setDoc(await getDocRef(article.id), composedData, { merge: true });
         }
     }).catch(() => {

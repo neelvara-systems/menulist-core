@@ -4,7 +4,7 @@ import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
 import { canonicaAdminApp, canonicaAuthAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
 import { validateAPIInput } from '@lib/security/inputValidation';
-import { secureLog } from '@lib/security/secureLogger';
+import { secureError, secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -43,7 +43,12 @@ async function createCanonicaCustomTokenIfNeeded(
     try {
         const canonicaUser = await canonicaAuthAdmin.getUserByEmail(email);
         canonicaUid = canonicaUser.uid;
-    } catch {
+    } catch (error: any) {
+        if (error?.code !== 'auth/user-not-found') {
+            secureError('[Auth] Canonica user lookup failed during auth sync', error, { email });
+            throw error;
+        }
+
         const newCanonicaUser = await canonicaAuthAdmin.createUser({
             email,
             emailVerified: true,
@@ -117,10 +122,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (uid) {
             await authAdmin.setCustomUserClaims(uid, customClaims);
 
-            console.log(' Custom claims set for existing user:', {
+            secureLog('[Auth] Custom claims set for existing Firebase user', {
                 uid,
                 email: session.user.email,
-                ...customClaims
+                role: customClaims.role,
+                platformRole: customClaims.platformRole,
+                tenantId: customClaims.tenantId,
+                storeId: customClaims.storeId,
             });
 
             return NextResponse.json({
@@ -135,15 +143,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         try {
             const firebaseUser = await authAdmin.getUserByEmail(session.user.email);
             uid = firebaseUser.uid;
-        } catch (error) {
-            // User doesn't exist in Firebase Auth, create them
+        } catch (error: any) {
+            if (error?.code !== 'auth/user-not-found') {
+                secureError('[Auth] Firebase user lookup failed during auth sync', error, { email: session.user.email });
+                throw error;
+            }
+
             const newUser = await authAdmin.createUser({
                 email: session.user.email,
                 emailVerified: true,
                 displayName: session.user.name || undefined,
             });
             uid = newUser.uid;
-            console.log(' Created new Firebase Auth user for OAuth login');
+            secureLog('[Auth] Created Firebase Auth user for OAuth login', { email: session.user.email, uid });
         }
 
         // Set custom claims
@@ -152,10 +164,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // Create custom token for client to sign in with
         const customToken = await authAdmin.createCustomToken(uid, customClaims);
 
-        console.log(' Custom token created for OAuth user:', {
+        secureLog('[Auth] Custom token created for OAuth user', {
             uid,
             email: session.user.email,
-            ...customClaims
+            role: customClaims.role,
+            platformRole: customClaims.platformRole,
+            tenantId: customClaims.tenantId,
+            storeId: customClaims.storeId,
         });
 
         return NextResponse.json({
@@ -166,9 +181,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
     } catch (error) {
-        console.error('Failed to set custom claims:', error);
+        secureError('Failed to set custom claims', error as Error, { email: session?.user?.email });
         return NextResponse.json(
-            { error: 'Failed to set custom claims', details: error instanceof Error ? error.message : 'Unknown error' },
+            { error: 'Failed to set custom claims' },
             { status: 500 }
         );
     }

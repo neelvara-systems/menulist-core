@@ -11,7 +11,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaEntityCandidate } from "@type/canonica";
@@ -75,7 +75,7 @@ export const getPendingCandidates = async (tId: number, sId: number) => {
 export const addEntityCandidate = async (data: Omit<CanonicaEntityCandidate, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer({
+            const submitData = await canonicaRequestBodyComposer({
                 ...data,
                 status: 'pending',
             });
@@ -93,7 +93,7 @@ export const addEntityCandidate = async (data: Omit<CanonicaEntityCandidate, 'id
 export const approveCandidateStatus = async (candidateId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'approved' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'approved' });
             await setDoc(getDocRef(candidateId), composedData, { merge: true });
             return composedData;
         },
@@ -108,7 +108,7 @@ export const approveCandidateStatus = async (candidateId: string) => {
 export const rejectCandidateStatus = async (candidateId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'rejected' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'rejected' });
             await setDoc(getDocRef(candidateId), composedData, { merge: true });
             return composedData;
         },
@@ -199,7 +199,7 @@ export const promoteCandidate = async (candidateId: string, tId: number, sId: nu
             });
 
             // 4. Mark candidate as approved
-            const composedData = await requestBodyComposer({ status: 'approved' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'approved' });
             await setDoc(getDocRef(candidateId), composedData, { merge: true });
 
             // 5. Audit log
@@ -230,7 +230,7 @@ export const promoteCandidate = async (candidateId: string, tId: number, sId: nu
 export const mergeCandidateStatus = async (candidateId: string) => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({ status: 'merged' });
+            const composedData = await canonicaRequestBodyComposer({ status: 'merged' });
             await setDoc(getDocRef(candidateId), composedData, { merge: true });
             return composedData;
         },

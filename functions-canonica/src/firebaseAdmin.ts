@@ -8,6 +8,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { VertexAI } from '@google-cloud/vertexai';
 import { getFirestore } from 'firebase-admin/firestore';
 
 type CredentialPrefix = 'FIREBASE' | 'CANONICA_FIREBASE';
@@ -56,6 +57,12 @@ if (!admin.apps.length) {
 export const firestoreAdmin = process.env.CANONICA_FIRESTORE_DATABASE_ID
     ? getFirestore(admin.app(), process.env.CANONICA_FIRESTORE_DATABASE_ID)
     : admin.firestore();
+const projectId = process.env.GCLOUD_PROJECT || admin.app().options.projectId;
+if (!projectId) {
+    throw new Error('Canonica Firebase project ID could not be determined.');
+}
+
+export const vertexAIClient = new VertexAI({ project: projectId, location: 'us-central1' });
 export const storageAdmin = admin.storage();
 export const authAdmin = admin.auth();
 export { admin };

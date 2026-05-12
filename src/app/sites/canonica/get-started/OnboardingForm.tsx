@@ -1,7 +1,8 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { SessionProvider, signIn, useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
 
@@ -28,10 +29,11 @@ function OnboardingFormInner() {
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<OnboardResult | null>(null);
 
-    // Update step when session loads
-    if (status === 'authenticated' && step === 'auth') {
-        setStep('details');
-    }
+    useEffect(() => {
+        if (status === 'authenticated' && step === 'auth') {
+            setStep('details');
+        }
+    }, [status, step]);
 
     const handleGoogleSignIn = () => {
         signIn('google', { callbackUrl: window.location.href });
@@ -127,8 +129,8 @@ function OnboardingFormInner() {
 
                     <div style={styles.planBadge}>
                         <span style={styles.planLabel}>Beta Plan</span>
-                        <span style={styles.planPrice}>$0/mo</span>
-                        <span style={styles.planDesc}>All features included. 6 months free.</span>
+                        <span style={styles.planPrice}>Free during beta</span>
+                        <span style={styles.planDesc}>All features included during private beta.</span>
                     </div>
 
                     {error && <p style={styles.error}>{error}</p>}
@@ -144,7 +146,7 @@ function OnboardingFormInner() {
                 <div style={styles.card}>
                     <div style={styles.spinner} />
                     <h2 style={styles.cardTitle}>Setting up your account...</h2>
-                    <p style={styles.cardSubtext}>Creating your tenant, configuring your workspace, and generating your API key.</p>
+                    <p style={styles.cardSubtext}>Creating your workspace and preparing your widget key.</p>
                 </div>
             )}
 
@@ -153,19 +155,15 @@ function OnboardingFormInner() {
                 <div style={styles.card}>
                     <div style={styles.successIcon}>✓</div>
                     <h2 style={styles.cardTitle}>Your Canonica account is ready!</h2>
-                    <p style={styles.cardSubtext}>Here are your account details. Save your API key — you will need it to embed the widget.</p>
+                    <p style={styles.cardSubtext}>Save your widget key. You will need it when you add Canonica to your product.</p>
 
                     <div style={styles.detailsGrid}>
-                        <div style={styles.detailItem}>
-                            <span style={styles.detailLabel}>Tenant ID</span>
-                            <span style={styles.detailValue}>{result.tenantId}</span>
-                        </div>
                         <div style={styles.detailItem}>
                             <span style={styles.detailLabel}>Plan</span>
                             <span style={styles.detailValue}>{result.plan.name}{result.plan.isBeta ? ' (Free)' : ''}</span>
                         </div>
                         <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
-                            <span style={styles.detailLabel}>API Key (save this!)</span>
+                            <span style={styles.detailLabel}>Widget key</span>
                             <code style={styles.apiKey}>{result.apiKey}</code>
                         </div>
                     </div>
@@ -173,14 +171,14 @@ function OnboardingFormInner() {
                     <div style={styles.nextSteps}>
                         <h3 style={styles.nextStepsTitle}>Next steps</h3>
                         <ol style={styles.stepsList}>
-                            <li>Upload your KB articles to the dashboard</li>
-                            <li>Run entity extraction to bootstrap your ontology</li>
-                            <li>Create canonical answers for your top entities</li>
-                            <li>Embed the widget in your product using your API key</li>
+                            <li>Upload your help articles to the dashboard</li>
+                            <li>Review suggested product topics</li>
+                            <li>Approve your first governed answers</li>
+                            <li>Add the widget to your product with this key</li>
                         </ol>
                     </div>
 
-                    <a href="/dashboard" style={styles.primaryBtn}>
+                    <a href="/canonica/dashboard" style={styles.primaryBtn}>
                         Go to Dashboard
                     </a>
                 </div>
@@ -189,8 +187,8 @@ function OnboardingFormInner() {
     );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-    container: { maxWidth: 480, width: '100%' },
+const styles: Record<string, CSSProperties> = {
+    container: { maxWidth: 480, width: '100%', boxSizing: 'border-box' },
     card: {
         padding: '2rem',
         borderRadius: '1rem',
@@ -199,9 +197,10 @@ const styles: Record<string, React.CSSProperties> = {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        boxSizing: 'border-box',
     },
-    cardTitle: { fontSize: 20, fontWeight: 600, color: '#fff', margin: '0 0 8px 0', textAlign: 'center' },
-    cardSubtext: { fontSize: 14, color: '#a0a0c0', margin: '0 0 24px 0', textAlign: 'center', lineHeight: 1.5 },
+    cardTitle: { fontSize: 20, fontWeight: 600, color: '#fff', margin: '0 0 8px 0', textAlign: 'center', maxWidth: '100%', overflowWrap: 'break-word' },
+    cardSubtext: { fontSize: 14, color: '#a0a0c0', margin: '0 0 24px 0', textAlign: 'center', lineHeight: 1.5, maxWidth: '100%', overflowWrap: 'break-word' },
     googleBtn: {
         display: 'flex', alignItems: 'center', gap: 10, padding: '12px 24px',
         borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)',
@@ -213,7 +212,7 @@ const styles: Record<string, React.CSSProperties> = {
     input: {
         width: '100%', padding: '10px 14px', borderRadius: 8,
         border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
-        color: '#fff', fontSize: 14, outline: 'none',
+        color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
     },
     planBadge: {
         width: '100%', padding: '12px 16px', borderRadius: 8,
@@ -225,7 +224,7 @@ const styles: Record<string, React.CSSProperties> = {
     planDesc: { fontSize: 11, color: '#6b6b8a', width: '100%' },
     error: { fontSize: 13, color: '#f87171', margin: '0 0 12px 0', textAlign: 'center' },
     primaryBtn: {
-        display: 'block', width: '100%', padding: '12px 24px', borderRadius: 10,
+        display: 'block', width: '100%', minHeight: 44, padding: '12px 24px', borderRadius: 10,
         background: '#6366f1', color: '#fff', fontSize: 14, fontWeight: 600,
         border: 'none', cursor: 'pointer', textAlign: 'center', textDecoration: 'none',
         marginTop: 8,
@@ -241,7 +240,7 @@ const styles: Record<string, React.CSSProperties> = {
         fontSize: 24, fontWeight: 700, marginBottom: 16,
     },
     detailsGrid: {
-        width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20,
+        width: '100%', display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 20,
     },
     detailItem: {
         padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)',

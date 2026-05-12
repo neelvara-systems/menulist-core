@@ -295,6 +295,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         rowKey="entityId"
                         pagination={false}
                         size="small"
+                        scroll={{ x: 'max-content' }}
                     />
                 </Card>
             )}

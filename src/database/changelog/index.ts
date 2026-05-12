@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
-import { requestBodyComposer } from '@lib/apiHelper';
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
@@ -94,7 +94,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
 
         const newEntryId = crypto.randomUUID();
 
-        const newEntryForEstimate = await requestBodyComposer({
+        const newEntryForEstimate = await canonicaRequestBodyComposer({
             id: newEntryId,
             ...entryPayload,
         });
@@ -105,7 +105,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
             const newPageId = `page_${String(newPageNumber).padStart(6, '0')}`;
             const newPageRef = doc(pagesCollectionRef, newPageId);
 
-            const newPageData = await requestBodyComposer({
+            const newPageData = await canonicaRequestBodyComposer({
                 pageNumber: newPageNumber,
                 nextPageId: null,
                 entries: [{ ...newEntryForEstimate, createdOn: Timestamp.now() }],
@@ -126,7 +126,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
                 // Append to the current latest page
                 const newEntries = [{ ...newEntryForEstimate, createdOn: Timestamp.now() }, ...(latestPageData.entries || [])];
                 const newEntryIds = [newEntryId, ...(latestPageData.entryIds || [])];
-                const pageUpdatePayload = await requestBodyComposer({ isUpdate: true });
+                const pageUpdatePayload = await canonicaRequestBodyComposer({ isUpdate: true });
                 tx.update(latestPageRef, {
                     entries: newEntries,
                     entryIds: newEntryIds,
@@ -141,7 +141,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
                 const newPageId = `page_${String(newPageNumber).padStart(6, '0')}`;
                 const newPageRef = doc(pagesCollectionRef, newPageId);
 
-                const newPageData = await requestBodyComposer({
+                const newPageData = await canonicaRequestBodyComposer({
                     pageNumber: newPageNumber,
                     nextPageId: latestPageDoc.id || null,
                     entries: [{ ...newEntryForEstimate, createdOn: Timestamp.now() }],
@@ -263,7 +263,7 @@ export const deleteChangelogEntry = async (entryId: string) => {
         const updatedEntries = pageData.entries.filter(entry => entry.id !== entryId);
         const updatedEntryIds = pageData.entryIds.filter(id => id !== entryId);
 
-        const updatePayload = await requestBodyComposer({ isUpdate: true });
+        const updatePayload = await canonicaRequestBodyComposer({ isUpdate: true });
 
         tx.update(pageRef, {
             entries: updatedEntries,
@@ -305,7 +305,7 @@ export const updateChangelogEntry = async (entryId: string, updatedPayload: any)
             throw new Error(`Entry with ID ${entryId} not found within the page.`);
         }
 
-        const updatePayloadWithTimestamp = await requestBodyComposer({ ...updatedPayload, isUpdate: true });
+        const updatePayloadWithTimestamp = await canonicaRequestBodyComposer({ ...updatedPayload, isUpdate: true });
         const updatedEntries = [...pageData.entries];
         updatedEntries[entryIndex] = { ...updatedEntries[entryIndex], ...updatePayloadWithTimestamp };
 

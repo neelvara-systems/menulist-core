@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { requestBodyComposer } from '@lib/apiHelper';
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
@@ -15,7 +15,7 @@ const getCollectionRef = () => {
 export const addFeedback = async (data: Partial<Feedback>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await requestBodyComposer(data);
+            const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id };
         },

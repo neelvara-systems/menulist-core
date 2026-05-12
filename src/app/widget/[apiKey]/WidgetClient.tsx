@@ -1,9 +1,38 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    LuAlertTriangle,
+    LuBookOpen,
+    LuCheckCircle,
+    LuImage,
+    LuInfo,
+    LuListChecks,
+    LuMessageCircle,
+    LuSend,
+    LuThumbsDown,
+    LuThumbsUp,
+    LuX,
+} from 'react-icons/lu';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_SESSION_MESSAGES = 10; // Keep last 10 messages (5 Q&A pairs)
+
+interface WidgetProcedureStep {
+    stepOrder: number;
+    action?: string;
+    instruction: string;
+    target?: string;
+    expectedResult?: string;
+    troubleshootingHint?: string;
+}
+
+interface WidgetProcedure {
+    steps?: WidgetProcedureStep[];
+    warnings?: { message: string; severity?: string }[];
+    prerequisites?: { description: string; type?: string; value?: string }[];
+}
 
 interface WidgetMessage {
     id: string;
@@ -16,6 +45,8 @@ interface WidgetMessage {
     searchHistoryId?: string;
     feedback?: 'up' | 'down' | null;
     imageBase64?: string;
+    imageMimeType?: string;
+    procedure?: WidgetProcedure;
 }
 
 interface WidgetClientProps {
@@ -45,6 +76,25 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (e.data?.type === 'canonica-context-update' && e.data.context) {
                 setProductContext(e.data.context);
             }
+            if (e.data?.type === 'canonica-predictive-suggestion' && e.data.suggestion) {
+                const suggestion = e.data.suggestion;
+                const content = [suggestion.title, suggestion.summary].filter(Boolean).join('\n\n');
+                if (!content) return;
+
+                setMessages(prev => {
+                    const id = `p-${suggestion.triggerId || Date.now()}`;
+                    if (prev.some(m => m.id === id)) return prev;
+                    return [...prev, {
+                        id,
+                        role: 'assistant',
+                        content,
+                        suggestedQuestions: Array.isArray(suggestion.articles)
+                            ? suggestion.articles.map((article: any) => article.title).filter(Boolean)
+                            : [],
+                        procedure: suggestion.procedure,
+                    }];
+                });
+            }
         };
         window.addEventListener('message', handler);
         return () => window.removeEventListener('message', handler);
@@ -59,18 +109,25 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         }));
     };
 
-    const handleSearch = async (searchQuery?: string) => {
+    const handleSearch = async (
+        searchQuery?: string,
+        options?: { appendUserMessage?: boolean },
+    ) => {
         const q = (searchQuery || query).trim();
         if (!q || loading) return;
+        const shouldAppendUserMessage = options?.appendUserMessage !== false;
 
         const userMsg: WidgetMessage = {
             id: `u-${Date.now()}`,
             role: 'user',
             content: q,
             imageBase64: selectedImage?.base64,
+            imageMimeType: selectedImage?.mimeType,
         };
 
-        setMessages(prev => [...prev, userMsg]);
+        if (shouldAppendUserMessage) {
+            setMessages(prev => [...prev, userMsg]);
+        }
         setQuery('');
         const currentImage = selectedImage;
         setSelectedImage(null);
@@ -112,6 +169,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             }
 
             const data = await res.json();
+            const relatedSuggestions = Array.isArray(data.graphExpansion?.relatedSuggestions)
+                ? data.graphExpansion.relatedSuggestions
+                : [];
 
             const aiMsg: WidgetMessage = {
                 id: `a-${Date.now()}`,
@@ -120,9 +180,10 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 canonical: data.canonical,
                 confidence: data.confidence,
                 references: data.references,
-                suggestedQuestions: data.suggestedQuestions,
+                suggestedQuestions: Array.from(new Set([...(data.suggestedQuestions || []), ...relatedSuggestions])),
                 searchHistoryId: data.searchHistoryId,
                 feedback: null,
+                procedure: data.procedure,
             };
 
             setMessages(prev => [...prev, aiMsg]);
@@ -204,7 +265,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
             {/* Header */}
             <div style={styles.header}>
-                <div style={styles.headerIcon}>?</div>
+                <div style={styles.headerIcon}>
+                    <LuMessageCircle size={16} aria-hidden />
+                </div>
                 <span style={styles.headerTitle}>Help</span>
             </div>
 
@@ -212,7 +275,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             <div style={styles.messagesArea}>
                 {messages.length === 0 && !loading && (
                     <div style={styles.welcomeContainer}>
-                        <div style={styles.welcomeIcon}>💬</div>
+                        <div style={styles.welcomeIcon}>
+                            <LuMessageCircle size={32} aria-hidden />
+                        </div>
                         <p style={styles.welcomeTitle}>How can we help?</p>
                         <p style={styles.welcomeSubtext}>
                             Ask a question and we will find the best answer from our knowledge base.
@@ -225,7 +290,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                         <div style={msg.role === 'user' ? styles.userBubble : styles.aiBubble}>
                             {msg.imageBase64 && (
                                 <img
-                                    src={`data:image/png;base64,${msg.imageBase64}`}
+                                    src={`data:${msg.imageMimeType || 'image/png'};base64,${msg.imageBase64}`}
                                     alt="Uploaded"
                                     style={{ maxWidth: '100%', maxHeight: 120, borderRadius: 8, marginBottom: 6 }}
                                 />
@@ -233,13 +298,69 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                             <p style={styles.msgText}>{msg.content}</p>
 
                             {msg.canonical && (
-                                <div style={styles.canonicalBadge}>✓ Verified answer</div>
+                                <div style={styles.canonicalBadge}>
+                                    <LuCheckCircle size={12} aria-hidden />
+                                    Verified answer
+                                </div>
+                            )}
+
+                            {msg.role === 'assistant' && msg.procedure && (
+                                <div style={styles.procedureContainer}>
+                                    <div style={styles.procedureHeader}>
+                                        <LuListChecks size={14} aria-hidden />
+                                        Guided steps
+                                    </div>
+
+                                    {msg.procedure.prerequisites && msg.procedure.prerequisites.length > 0 && (
+                                        <div style={styles.procedureMetaBox}>
+                                            <LuInfo size={13} aria-hidden />
+                                            <div>
+                                                {msg.procedure.prerequisites.map((item, i) => (
+                                                    <p key={i} style={styles.procedureMetaText}>{item.description}</p>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {msg.procedure.warnings && msg.procedure.warnings.length > 0 && (
+                                        <div style={styles.procedureWarningBox}>
+                                            <LuAlertTriangle size={13} aria-hidden />
+                                            <div>
+                                                {msg.procedure.warnings.map((warning, i) => (
+                                                    <p key={i} style={styles.procedureWarningText}>{warning.message}</p>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={styles.procedureSteps}>
+                                        {[...(msg.procedure.steps || [])]
+                                            .sort((a, b) => a.stepOrder - b.stepOrder)
+                                            .map((step, i) => (
+                                                <div key={`${step.stepOrder}-${i}`} style={styles.procedureStep}>
+                                                    <span style={styles.procedureStepNumber}>{step.stepOrder || i + 1}</span>
+                                                    <div style={styles.procedureStepBody}>
+                                                        <p style={styles.procedureStepText}>{step.instruction}</p>
+                                                        {step.expectedResult && (
+                                                            <p style={styles.procedureStepHint}>{step.expectedResult}</p>
+                                                        )}
+                                                        {step.troubleshootingHint && (
+                                                            <p style={styles.procedureTroubleshoot}>{step.troubleshootingHint}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
                             )}
 
                             {msg.references && msg.references.length > 0 && (
                                 <div style={styles.refsContainer}>
                                     {msg.references.map((ref, i) => (
-                                        <span key={i} style={styles.refTag}>📄 {ref.title}</span>
+                                        <span key={i} style={styles.refTag}>
+                                            <LuBookOpen size={12} aria-hidden />
+                                            {ref.title}
+                                        </span>
                                     ))}
                                 </div>
                             )}
@@ -249,12 +370,17 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 <div style={styles.feedbackRow}>
                                     {msg.feedback ? (
                                         <span style={styles.feedbackDone}>
-                                            {msg.feedback === 'up' ? '👍' : '👎'} Thanks for feedback
+                                            {msg.feedback === 'up' ? <LuThumbsUp size={13} aria-hidden /> : <LuThumbsDown size={13} aria-hidden />}
+                                            Thanks for feedback
                                         </span>
                                     ) : (
                                         <>
-                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, true)} title="Helpful">👍</button>
-                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, false)} title="Not helpful">👎</button>
+                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, true)} title="Helpful" aria-label="Helpful">
+                                                <LuThumbsUp size={15} aria-hidden />
+                                            </button>
+                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, false)} title="Not helpful" aria-label="Not helpful">
+                                                <LuThumbsDown size={15} aria-hidden />
+                                            </button>
                                         </>
                                     )}
                                 </div>
@@ -293,7 +419,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                             onClick={() => {
                                 setError(null);
                                 const lastUser = [...messages].reverse().find(m => m.role === 'user');
-                                if (lastUser) handleSearch(lastUser.content);
+                                if (lastUser) handleSearch(lastUser.content, { appendUserMessage: false });
                             }}
                         >
                             Try again
@@ -309,7 +435,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 <div style={styles.imagePreview}>
                     <img src={`data:${selectedImage.mimeType};base64,${selectedImage.base64}`} alt="Preview" style={{ height: 40, borderRadius: 6 }} />
                     <span style={{ fontSize: 11, color: '#6b7280', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedImage.name}</span>
-                    <button style={styles.imageRemoveBtn} onClick={() => setSelectedImage(null)}>✕</button>
+                    <button style={styles.imageRemoveBtn} onClick={() => setSelectedImage(null)} aria-label="Remove image">
+                        <LuX size={14} aria-hidden />
+                    </button>
                 </div>
             )}
 
@@ -327,12 +455,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
                     title="Attach screenshot"
+                    aria-label="Attach screenshot"
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <path d="M21 15l-5-5L5 21" />
-                    </svg>
+                    <LuImage size={18} aria-hidden />
                 </button>
                 <input
                     ref={inputRef}
@@ -350,10 +475,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     onClick={() => handleSearch()}
                     disabled={loading || !query.trim()}
                     style={{ ...styles.sendBtn, opacity: loading || !query.trim() ? 0.5 : 1 }}
+                    aria-label="Send question"
                 >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                    </svg>
+                    <LuSend size={16} aria-hidden />
                 </button>
             </div>
 
@@ -370,40 +494,53 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-    container: { display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#ffffff', color: '#1a1a2e', fontSize: 14 },
+const styles: Record<string, CSSProperties> = {
+    container: { display: 'flex', flexDirection: 'column', width: '100%', height: '100dvh', minHeight: 0, overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#ffffff', color: '#1a1a2e', fontSize: 14 },
     header: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#6366f1', color: '#ffffff', flexShrink: 0 },
     headerIcon: { width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 },
     headerTitle: { fontSize: 15, fontWeight: 600 },
     messagesArea: { flex: 1, overflowY: 'auto', padding: 16 },
-    welcomeContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 16px' },
-    welcomeIcon: { fontSize: 32, marginBottom: 12 },
-    welcomeTitle: { fontSize: 16, fontWeight: 600, margin: '0 0 8px 0', color: '#1a1a2e' },
-    welcomeSubtext: { fontSize: 13, color: '#6b7280', margin: 0, lineHeight: 1.5 },
+    welcomeContainer: { width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 16px', boxSizing: 'border-box' },
+    welcomeIcon: { color: '#6366f1', marginBottom: 12 },
+    welcomeTitle: { maxWidth: '100%', fontSize: 16, fontWeight: 600, margin: '0 0 8px 0', color: '#1a1a2e', overflowWrap: 'break-word' },
+    welcomeSubtext: { maxWidth: 300, fontSize: 13, color: '#6b7280', margin: 0, lineHeight: 1.5, overflowWrap: 'break-word' },
     userMsgRow: { display: 'flex', justifyContent: 'flex-end', marginBottom: 12 },
     aiMsgRow: { display: 'flex', justifyContent: 'flex-start', marginBottom: 12 },
     userBubble: { maxWidth: '80%', padding: '10px 14px', borderRadius: '16px 16px 4px 16px', background: '#6366f1', color: '#ffffff' },
     aiBubble: { maxWidth: '85%', padding: '10px 14px', borderRadius: '16px 16px 16px 4px', background: '#f3f4f6', color: '#1a1a2e' },
     msgText: { margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontSize: 13 },
-    canonicalBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#ecfdf5', color: '#059669', fontSize: 11, fontWeight: 500 },
+    canonicalBadge: { marginTop: 8, padding: '4px 8px', borderRadius: 6, background: '#ecfdf5', color: '#059669', fontSize: 11, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
+    procedureContainer: { marginTop: 10, padding: 10, borderRadius: 10, background: '#ffffff', border: '1px solid #e5e7eb' },
+    procedureHeader: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#374151', fontSize: 12, fontWeight: 700 },
+    procedureMetaBox: { display: 'flex', gap: 8, padding: 8, borderRadius: 8, background: '#eff6ff', color: '#1d4ed8', marginBottom: 8 },
+    procedureMetaText: { margin: '0 0 3px 0', fontSize: 11, lineHeight: 1.4 },
+    procedureWarningBox: { display: 'flex', gap: 8, padding: 8, borderRadius: 8, background: '#fff7ed', color: '#c2410c', marginBottom: 8 },
+    procedureWarningText: { margin: '0 0 3px 0', fontSize: 11, lineHeight: 1.4 },
+    procedureSteps: { display: 'flex', flexDirection: 'column', gap: 8 },
+    procedureStep: { display: 'flex', gap: 8, alignItems: 'flex-start' },
+    procedureStepNumber: { width: 22, height: 22, borderRadius: '50%', background: '#6366f1', color: '#ffffff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    procedureStepBody: { minWidth: 0, flex: 1 },
+    procedureStepText: { margin: 0, color: '#111827', fontSize: 12, lineHeight: 1.45, overflowWrap: 'break-word' },
+    procedureStepHint: { margin: '3px 0 0 0', color: '#4b5563', fontSize: 11, lineHeight: 1.4, overflowWrap: 'break-word' },
+    procedureTroubleshoot: { margin: '3px 0 0 0', color: '#6b7280', fontSize: 11, lineHeight: 1.4, fontStyle: 'italic', overflowWrap: 'break-word' },
     refsContainer: { marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 },
-    refTag: { padding: '3px 8px', borderRadius: 4, background: '#e5e7eb', fontSize: 11, color: '#4b5563' },
+    refTag: { padding: '3px 8px', borderRadius: 4, background: '#e5e7eb', fontSize: 11, color: '#4b5563', display: 'inline-flex', alignItems: 'center', gap: 4 },
     feedbackRow: { marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 },
-    feedbackBtn: { padding: '2px 8px', borderRadius: 6, border: '1px solid #e5e7eb', background: '#ffffff', fontSize: 14, cursor: 'pointer', lineHeight: 1 },
-    feedbackDone: { fontSize: 11, color: '#9ca3af' },
+    feedbackBtn: { width: 36, height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#ffffff', color: '#4b5563', fontSize: 14, cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+    feedbackDone: { fontSize: 11, color: '#9ca3af', display: 'inline-flex', alignItems: 'center', gap: 4 },
     suggestionsContainer: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 },
     suggestionBtn: { padding: '6px 10px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#ffffff', color: '#6366f1', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const },
     loadingDots: { display: 'flex', gap: 4, padding: '4px 0' },
     dot: { fontSize: 10, color: '#9ca3af' },
     errorContainer: { padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 12 },
     errorText: { margin: '0 0 8px 0', fontSize: 13, color: '#dc2626' },
-    retryBtn: { padding: '4px 12px', borderRadius: 6, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', fontSize: 12, cursor: 'pointer' },
-    imagePreview: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderTop: '1px solid #f3f4f6', background: '#f9fafb' },
-    imageRemoveBtn: { width: 20, height: 20, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    retryBtn: { minHeight: 36, padding: '4px 12px', borderRadius: 6, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', fontSize: 12, cursor: 'pointer' },
+    imagePreview: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderTop: '1px solid #f3f4f6', background: '#f9fafb', minWidth: 0 },
+    imageRemoveBtn: { width: 32, height: 32, borderRadius: '50%', border: 'none', background: '#e5e7eb', color: '#6b7280', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     inputArea: { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderTop: '1px solid #e5e7eb', background: '#ffffff', flexShrink: 0 },
-    imageBtn: { width: 36, height: 36, borderRadius: '50%', border: '1px solid #d1d5db', background: '#ffffff', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-    input: { flex: 1, padding: '10px 14px', borderRadius: 20, border: '1px solid #d1d5db', fontSize: 13, outline: 'none', background: '#f9fafb' },
-    sendBtn: { width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#6366f1', color: '#ffffff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    imageBtn: { width: 44, height: 44, borderRadius: '50%', border: '1px solid #d1d5db', background: '#ffffff', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    input: { flex: 1, minWidth: 0, padding: '12px 14px', borderRadius: 22, border: '1px solid #d1d5db', fontSize: 13, outline: 'none', background: '#f9fafb' },
+    sendBtn: { width: 44, height: 44, borderRadius: '50%', border: 'none', background: '#6366f1', color: '#ffffff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     footer: { padding: '8px 16px', textAlign: 'center' as const, borderTop: '1px solid #f3f4f6', flexShrink: 0 },
     footerText: { fontSize: 11, color: '#9ca3af' },
     footerLink: { color: '#6366f1', textDecoration: 'none', fontWeight: 500 },

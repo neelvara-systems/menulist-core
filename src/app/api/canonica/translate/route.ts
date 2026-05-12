@@ -18,12 +18,20 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { secureError } from '@lib/security/secureLogger';
 import { CANONICA_SUPPORTED_LOCALES } from '@type/canonica';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+
+const TranslateRequestSchema = z.object({
+    articleId: z.string().trim().min(1).max(160),
+    targetLocale: z.enum(CANONICA_SUPPORTED_LOCALES as unknown as [string, ...string[]]),
+});
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
@@ -31,15 +39,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Multi-language is not enabled.' }, { status: 403 });
         }
 
-        const body = await request.json();
-        const { articleId, targetLocale } = body;
-
-        if (!articleId || typeof articleId !== 'string') {
-            return NextResponse.json({ error: 'articleId is required.' }, { status: 400 });
-        }
-        if (!targetLocale || !CANONICA_SUPPORTED_LOCALES.includes(targetLocale)) {
+        const validation = TranslateRequestSchema.safeParse(await request.json());
+        if (!validation.success) {
             return NextResponse.json({ error: `Invalid locale. Supported: ${CANONICA_SUPPORTED_LOCALES.join(', ')}` }, { status: 400 });
         }
+        const { articleId, targetLocale } = validation.data;
         if (targetLocale === 'en-US') {
             return NextResponse.json({ error: 'Cannot translate to source locale (en-US).' }, { status: 400 });
         }
@@ -55,13 +59,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         // Fetch article
-        const db = admin.firestore();
+        const db = canonicaFirestoreAdmin;
         const articleDoc = await db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(articleId).get();
         if (!articleDoc.exists) {
             return NextResponse.json({ error: 'Article not found.' }, { status: 404 });
         }
 
         const article = articleDoc.data()!;
+        const articleTenantId = Number(article.tId ?? article.tenantId);
+        const articleStoreId = Number(article.sId ?? article.storeId);
+        if (
+            !Number.isFinite(articleTenantId) ||
+            !Number.isFinite(articleStoreId) ||
+            articleTenantId !== Number(session.tId) ||
+            articleStoreId !== Number(session.sId)
+        ) {
+            return NextResponse.json({ error: 'Article not found.' }, { status: 404 });
+        }
+
         const title = article.title || '';
 
         // Extract plain text from TipTap JSON content for translation
@@ -163,7 +178,7 @@ Respond in this exact JSON format:
         });
 
     } catch (error) {
-        console.error('[Canonica Translate] Failed:', error);
+        secureError('[Canonica Translate] Failed', error as Error, { userId: session.user.id });
         return NextResponse.json(
             { error: 'Translation failed. Please try again.' },
             { status: 500 }

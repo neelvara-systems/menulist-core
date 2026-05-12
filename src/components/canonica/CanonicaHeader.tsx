@@ -10,16 +10,21 @@
 import { CANONICA_SIDEBAR_NAV } from '@constant/canonica/navigations';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import type { MenuProps } from 'antd';
-import { Avatar, Dropdown, Flex, Layout, theme, Typography } from 'antd';
+import { Avatar, Button, Dropdown, Flex, Layout, theme, Typography } from 'antd';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
-import { LuLogOut, LuUser } from 'react-icons/lu';
+import { LuLogOut, LuMenu, LuUser } from 'react-icons/lu';
 
 const { Header } = Layout;
 const { Text } = Typography;
 
-export default function CanonicaHeader() {
+interface CanonicaHeaderProps {
+    showMenuButton?: boolean;
+    onMenuClick?: () => void;
+}
+
+export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: CanonicaHeaderProps) {
     const session = useClientAuthSession();
     const pathname = usePathname();
     const { token } = theme.useToken();
@@ -57,7 +62,7 @@ export default function CanonicaHeader() {
             style={{
                 background: token.colorBgContainer,
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                padding: '0 24px',
+                padding: showMenuButton ? '0 12px' : '0 24px',
                 height: 56,
                 lineHeight: '56px',
                 display: 'flex',
@@ -68,7 +73,29 @@ export default function CanonicaHeader() {
                 zIndex: 99,
             }}
         >
-            <Text strong style={{ fontSize: 16 }}>{pageTitle}</Text>
+            <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                {showMenuButton && (
+                    <Button
+                        type="text"
+                        aria-label="Open navigation"
+                        icon={<LuMenu size={20} />}
+                        onClick={onMenuClick}
+                        style={{ width: 44, height: 44, flex: '0 0 auto' }}
+                    />
+                )}
+                <Text
+                    strong
+                    style={{
+                        fontSize: 16,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {pageTitle}
+                </Text>
+            </Flex>
 
             <Flex align="center" gap={12}>
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>

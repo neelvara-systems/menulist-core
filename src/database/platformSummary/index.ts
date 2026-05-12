@@ -29,6 +29,7 @@ export interface StoreSummaryData {
     businessType: string;
     businessCategory: string;  // Derived from businessType, used by Cloud Functions
     active: boolean;
+    blocked?: boolean;
     name: string;
     tenantName?: string;
     isMaster?: boolean;
@@ -174,6 +175,7 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
                 [`stores.${storeId}.businessType`]: data.businessType || 'unknown',
                 [`stores.${storeId}.businessCategory`]: data.businessCategory || 'specialty',
                 [`stores.${storeId}.active`]: data.active ?? true,
+                [`stores.${storeId}.blocked`]: data.blocked ?? false,
                 [`stores.${storeId}.name`]: data.name || '',
                 [`stores.${storeId}.tenantName`]: data.tenantName || '',
             };

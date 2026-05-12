@@ -2,7 +2,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitCanonicaSignal } from "@lib/canonica/signalEmitter";
@@ -66,7 +66,7 @@ export const addTicket = async (data: SupportTicketType) => {
             const capturedLogs = getCapturedLogs();
             clearCapturedLogs(); // Clear after capturing to prevent duplicates
 
-            const submitData = await requestBodyComposer({ ...data, deleted: false, logs: capturedLogs });
+            const submitData = await canonicaRequestBodyComposer({ ...data, deleted: false, logs: capturedLogs });
             delete submitData.documents;
             const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
             if (files.length) {
@@ -129,7 +129,7 @@ export const addTicket = async (data: SupportTicketType) => {
 export const updateTicket = async (data: any) => {
     return await apiCallComposer(
         async () => {
-            const updateData = await requestBodyComposer(data);
+            const updateData = await canonicaRequestBodyComposer(data);
 
             const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
             if (files.length) {
@@ -174,7 +174,7 @@ export const addTicketMessage = async (ticketId: string, currentMessages: Ticket
 
             // Update ticket with new message ONLY (requestBodyComposer adds timestamps)
             // No logs - only send logs on initial ticket creation
-            const updateData = await requestBodyComposer({
+            const updateData = await canonicaRequestBodyComposer({
                 messages: updatedMessages
             });
 
@@ -221,7 +221,7 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
 
             // Update both status field and statuses array (requestBodyComposer adds timestamps)
             // No logs - only send logs on initial ticket creation
-            const updateData = await requestBodyComposer({
+            const updateData = await canonicaRequestBodyComposer({
                 status: newStatus,
                 statuses: updatedStatuses
             });
@@ -280,7 +280,7 @@ export const submitTicketSatisfaction = async (ticketId: string, rating: number,
                 comment: comment || '',
                 submittedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
             };
-            const updateData = await requestBodyComposer({ satisfaction });
+            const updateData = await canonicaRequestBodyComposer({ satisfaction });
             const ticketRef = getDocRef(ticketId);
             await setDoc(ticketRef, updateData, { merge: true });
             return satisfaction;

@@ -14,7 +14,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { doc, getDoc, setDoc } from "@firebase/firestore";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CANONICA_DEFAULT_BRANDING, CanonicaBrandingConfig } from "@type/canonica";
@@ -53,7 +53,7 @@ export const saveBrandingConfig = async (
 ): Promise<CanonicaBrandingConfig> => {
     return await apiCallComposer(
         async () => {
-            const composedData = await requestBodyComposer({
+            const composedData = await canonicaRequestBodyComposer({
                 tId,
                 sId,
                 branding: config,

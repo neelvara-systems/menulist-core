@@ -8,7 +8,7 @@ const PILLARS = [
     {
         number: '02',
         title: 'Canonical Answer Engine',
-        description: 'Governed, versioned, entity-bound answers that replace probabilistic AI outputs. Same query = same answer. Every time. Deterministic retrieval with zero LLM calls.',
+        description: 'Governed, versioned, entity-bound answers that replace generated guesses. Same query = same answer. Every time. Deterministic retrieval without generation.',
         highlight: 'Core engine',
     },
     {

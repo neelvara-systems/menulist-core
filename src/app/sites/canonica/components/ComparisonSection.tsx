@@ -1,7 +1,7 @@
 const COMPARISON_ROWS = [
     {
         feature: 'Answer consistency',
-        traditional: 'Different AI output every time',
+        traditional: 'Different generated output every time',
         canonica: 'Same query = same answer. Always.',
     },
     {
@@ -58,37 +58,39 @@ export default function ComparisonSection() {
                 </div>
 
                 {/* Comparison table */}
-                <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
-                    {/* Header */}
-                    <div className="grid grid-cols-3 border-b border-white/[0.06] bg-white/[0.03]">
-                        <div className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
-                            Capability
+                <div className="overflow-x-auto rounded-2xl border border-white/[0.06]">
+                    <div className="min-w-[720px]">
+                        {/* Header */}
+                        <div className="grid grid-cols-3 border-b border-white/[0.06] bg-white/[0.03]">
+                            <div className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
+                                Capability
+                            </div>
+                            <div className="border-l border-white/[0.06] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
+                                Traditional KB / RAG
+                            </div>
+                            <div className="border-l border-white/[0.06] bg-indigo-500/[0.05] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-indigo-400">
+                                Canonica
+                            </div>
                         </div>
-                        <div className="border-l border-white/[0.06] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
-                            Traditional KB / RAG
-                        </div>
-                        <div className="border-l border-white/[0.06] bg-indigo-500/[0.05] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                            Canonica
-                        </div>
-                    </div>
 
-                    {/* Rows */}
-                    {COMPARISON_ROWS.map((row, i) => (
-                        <div
-                            key={i}
-                            className="grid grid-cols-3 border-b border-white/[0.04] last:border-b-0"
-                        >
-                            <div className="px-6 py-4 text-sm font-medium text-white">
-                                {row.feature}
+                        {/* Rows */}
+                        {COMPARISON_ROWS.map((row, i) => (
+                            <div
+                                key={i}
+                                className="grid grid-cols-3 border-b border-white/[0.04] last:border-b-0"
+                            >
+                                <div className="px-6 py-4 text-sm font-medium text-white">
+                                    {row.feature}
+                                </div>
+                                <div className="border-l border-white/[0.06] px-6 py-4 text-sm text-[#6b6b8a]">
+                                    {row.traditional}
+                                </div>
+                                <div className="border-l border-white/[0.06] bg-indigo-500/[0.03] px-6 py-4 text-sm text-[#a0a0c0]">
+                                    {row.canonica}
+                                </div>
                             </div>
-                            <div className="border-l border-white/[0.06] px-6 py-4 text-sm text-[#6b6b8a]">
-                                {row.traditional}
-                            </div>
-                            <div className="border-l border-white/[0.06] bg-indigo-500/[0.03] px-6 py-4 text-sm text-[#a0a0c0]">
-                                {row.canonica}
-                            </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

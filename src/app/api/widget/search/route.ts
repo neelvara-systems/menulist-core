@@ -15,13 +15,34 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { validatePublicApiKey } from '@lib/publicApi/auth';
+import { canonicaStorageAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { hashApiKey, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { secureError } from '@lib/security/secureLogger';
 import { coreSearch } from '@lib/search/searchCore';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const MAX_QUERY_LENGTH = 500;
+const MAX_WIDGET_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_WIDGET_IMAGE_BASE64_LENGTH = Math.ceil((MAX_WIDGET_IMAGE_BYTES * 4) / 3) + 100;
+const ALLOWED_WIDGET_IMAGE_MIME_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+]);
+const WidgetSearchRequestSchema = z.object({
+    query: z.string().trim().min(1).max(MAX_QUERY_LENGTH),
+    context: z.unknown().optional(),
+    conversationHistory: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().max(2000).optional(),
+    })).max(5).optional(),
+    imageBase64: z.string().optional(),
+    imageMimeType: z.string().optional(),
+});
 
 export async function POST(request: NextRequest) {
     // Feature flag check
@@ -44,11 +65,12 @@ export async function POST(request: NextRequest) {
         const { storeData, storeId } = authResult;
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
+        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
 
         // Rate limiting per API key
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
         const rateLimitResult = await checkRateLimit({
-            key: `widget:${apiKey}`,
+            key: `widget:${apiKeyRateLimitId}`,
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
         });
@@ -69,12 +91,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse and validate request body
-        const body = await request.json();
-        const query = typeof body.query === 'string' ? body.query.trim().slice(0, MAX_QUERY_LENGTH) : '';
-
-        if (!query) {
+        const validation = WidgetSearchRequestSchema.safeParse(await request.json());
+        if (!validation.success) {
             return NextResponse.json({ error: 'Query is required' }, { status: 400 });
         }
+        const body = validation.data;
+        const query = body.query;
 
         // ===== CONTEXT-AWARE SUPPORT =====
         let validatedContext: import('@lib/validation/contextSchema').ValidatedContextPayload | undefined;
@@ -91,15 +113,28 @@ export async function POST(request: NextRequest) {
         let imageUrl: string | undefined;
         if (body.imageBase64 && body.imageMimeType) {
             try {
-                const { getStorage } = await import('firebase-admin/storage');
-                const bucket = getStorage().bucket();
+                const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
+                const imageMimeType = typeof body.imageMimeType === 'string' ? body.imageMimeType.toLowerCase() : '';
+
+                if (!ALLOWED_WIDGET_IMAGE_MIME_TYPES.has(imageMimeType)) {
+                    throw new Error(`Unsupported widget image MIME type: ${imageMimeType || 'missing'}`);
+                }
+                if (!imageBase64 || imageBase64.length > MAX_WIDGET_IMAGE_BASE64_LENGTH) {
+                    throw new Error('Widget image payload is empty or too large');
+                }
+
+                const imageBuffer = Buffer.from(imageBase64, 'base64');
+                if (imageBuffer.byteLength > MAX_WIDGET_IMAGE_BYTES) {
+                    throw new Error(`Widget image exceeds ${MAX_WIDGET_IMAGE_BYTES / 1024 / 1024}MB limit`);
+                }
+
+                const bucket = canonicaStorageAdmin.bucket();
                 const imageId = `widget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                 const filePath = `widget-images/${tId}/${sId}/${imageId}`;
                 const file = bucket.file(filePath);
-                const imageBuffer = Buffer.from(body.imageBase64, 'base64');
 
                 await file.save(imageBuffer, {
-                    metadata: { contentType: body.imageMimeType },
+                    metadata: { contentType: imageMimeType },
                 });
 
                 // Generate signed URL (valid 15 min — enough for coreSearch processing)
@@ -108,8 +143,9 @@ export async function POST(request: NextRequest) {
                     expires: Date.now() + 15 * 60 * 1000,
                 });
                 imageUrl = signedUrl;
-            } catch {
+            } catch (error) {
                 // Graceful degradation — continue without image
+                secureError('[Widget Search] Image upload failed', error as Error, { tId, sId });
                 imageUrl = undefined;
             }
         }
@@ -117,7 +153,7 @@ export async function POST(request: NextRequest) {
         // ===== CONVERSATION HISTORY =====
         let conversationHistory: Array<{ role: 'user' | 'assistant'; content?: string }> | undefined;
         if (Array.isArray(body.conversationHistory) && body.conversationHistory.length > 0) {
-            conversationHistory = body.conversationHistory.slice(-5).map((m: any) => ({
+            conversationHistory = body.conversationHistory.slice(-5).map((m) => ({
                 role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
                 content: typeof m.content === 'string' ? m.content.slice(0, 2000) : '',
             }));
@@ -173,7 +209,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(response);
 
     } catch (err: any) {
-        console.error('[Widget Search] Error:', err.message);
+        secureError('[Widget Search] Error', err as Error);
         return NextResponse.json(
             { error: 'Something went wrong. Please try again.' },
             { status: 500 }

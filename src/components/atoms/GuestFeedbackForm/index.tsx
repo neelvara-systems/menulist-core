@@ -51,26 +51,36 @@ const DEFAULT_FORM_STATE: FormState = {
     website: '',
 };
 
-const RATING_COPY: Record<number, { eyebrow: string; prompt: string }> = {
+const RATING_COPY: Record<number, { eyebrow: string; notePrompt: string; placeholder: string; prompt: string }> = {
     1: {
         eyebrow: 'Needs attention',
-        prompt: 'Share what felt off during the visit.',
+        prompt: 'Tell the team what needs attention.',
+        notePrompt: 'A short note about what went wrong helps the business fix it.',
+        placeholder: 'What went wrong, and what should the team improve?',
     },
     2: {
         eyebrow: 'Could be better',
-        prompt: 'Share the detail the team should know.',
+        prompt: 'Tell the team what could be better.',
+        notePrompt: 'Mention the main detail that would have improved your visit.',
+        placeholder: 'What could have been better?',
     },
     3: {
         eyebrow: 'Good',
-        prompt: 'What would have made the experience better for you?',
+        prompt: 'Tell the team what would make it better next time.',
+        notePrompt: 'Share one thing that was good and one thing that could improve.',
+        placeholder: 'What was good, and what would make it better?',
     },
     4: {
         eyebrow: 'Very good',
-        prompt: 'What stood out for you the most?',
+        prompt: 'Tell the team what stood out.',
+        notePrompt: 'Your note helps the team repeat what worked well.',
+        placeholder: 'What stood out for you?',
     },
     5: {
         eyebrow: 'Excellent',
-        prompt: 'What should the team keep doing?',
+        prompt: 'Tell the team what they should keep doing.',
+        notePrompt: 'A quick note helps the business understand what customers value.',
+        placeholder: 'What should the team keep doing?',
     },
 };
 
@@ -89,27 +99,6 @@ function getRatingLabel(rating: number): string {
         default:
             return 'Tap a star to rate';
     }
-}
-
-function getInsightCardCopy(rating: number): { description: string; title: string } {
-    if (rating >= 4) {
-        return {
-            title: 'What worked',
-            description: 'Mention one part of the visit worth repeating.',
-        };
-    }
-
-    if (rating > 0) {
-        return {
-            title: 'What needs attention',
-            description: 'A short note about timing, service, taste, or atmosphere is enough.',
-        };
-    }
-
-    return {
-        title: 'Common details',
-        description: 'Guests often mention service, taste, cleanliness, comfort, or wait time.',
-    };
 }
 
 function getGoogleReviewTitle(rating: number): string {
@@ -208,9 +197,10 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const settings = { ...DEFAULT_FEEDBACK_SETTINGS, ...feedbackDefaults };
     const ratingCopy = RATING_COPY[rating] || {
         eyebrow: 'Your feedback goes straight to the business.',
+        notePrompt: 'After choosing a rating, add a short note so the team knows what to act on.',
+        placeholder: 'What stood out, or what could have been better?',
         prompt: 'Share what stood out, or what could have been better.',
     };
-    const insightCard = useMemo(() => getInsightCardCopy(rating), [rating]);
     const formErrors = useMemo(() => getFormErrors(formValues, settings), [formValues, settings]);
     const hasVisibleErrors = Object.values(formErrors).some(Boolean);
     const moodConfig = useMemo(() => getMoodWithBrandColor(MenuMood.CLEAN, accentColor), [accentColor]);
@@ -294,14 +284,15 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 feedbackEnabled
                 showLanguageSelector={false}
                 showUpdateMeta={false}
+                showFeedbackLink={false}
                 trackingEnabled={false}
+                footerExtraAction={(
+                    <OBPThemeToggle
+                        switchToDarkLabel="Switch to dark theme"
+                        switchToLightLabel="Switch to light theme"
+                    />
+                )}
             />
-            <div className={styles.themeToggleWrap}>
-                <OBPThemeToggle
-                    switchToDarkLabel="Switch to dark theme"
-                    switchToLightLabel="Switch to light theme"
-                />
-            </div>
         </div>
     ) : null;
 
@@ -437,54 +428,38 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                     </p>
                                 ) : null}
 
-                                {rating > 0 ? (
-                                    <div className={styles.hintBox}>
-                                        <p className={styles.hintTitle}>{insightCard.title}</p>
-                                        <p className={styles.hintText}>{insightCard.description}</p>
-                                    </div>
-                                ) : null}
-                            </section>
-
-                            {settings.collectComment ? (
-                                <section className={styles.panel}>
-                                    <div className={styles.panelHeader}>
-                                        <div className={styles.panelIcon}>
-                                            <LuMessageSquare size={18} />
+                                {settings.collectComment ? (
+                                    <div className={`${styles.fieldBlock} ${styles.noteBlock}`}>
+                                        <div className={styles.notePromptRow}>
+                                            <div className={styles.panelIcon}>
+                                                <LuMessageSquare size={18} />
+                                            </div>
+                                            <div>
+                                                <p className={styles.notePromptTitle}>
+                                                    {settings.collectCommentRequired ? 'Add a note' : 'Add a note if you want'}
+                                                </p>
+                                                <p className={styles.notePromptText}>{ratingCopy.notePrompt}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className={styles.panelTitle}>Tell us more</h2>
-                                            <p className={styles.panelText}>
-                                                {settings.collectCommentRequired
-                                                    ? 'Required. Share what stood out or what needs attention.'
-                                                    : 'Optional. Share what stood out or what needs attention.'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className={styles.fieldBlock}>
                                         <textarea
                                             className={`${styles.textarea} ${touchedFields.message && formErrors.message ? styles.inputInvalid : ''}`}
                                             disabled={submitState === 'submitting'}
                                             maxLength={300}
                                             onBlur={() => markFieldTouched('message')}
                                             onChange={(event) => updateField('message', event.target.value)}
-                                            placeholder="What stood out? What needs attention?"
+                                            placeholder={ratingCopy.placeholder}
                                             value={formValues.message}
                                         />
                                         {touchedFields.message && formErrors.message ? (
                                             <p className={styles.fieldError}>{formErrors.message}</p>
                                         ) : null}
-                                        <div className={styles.inlineTip}>
-                                            <span className={styles.inlineTipTitle}>{insightCard.title}</span>
-                                            <span className={styles.inlineTipText}>{insightCard.description}</span>
-                                        </div>
                                         <div className={styles.metaRow}>
                                             <span>{formValues.message.length > 0 ? `${formValues.message.length}/300` : 'Up to 300 characters'}</span>
                                             <span>Your feedback stays private.</span>
                                         </div>
                                     </div>
-                                </section>
-                            ) : null}
+                                ) : null}
+                            </section>
 
                             {(settings.collectName || settings.collectPhone || settings.collectEmail) ? (
                                 <section className={`${styles.panel} ${styles.panelMuted}`}>

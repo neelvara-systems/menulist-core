@@ -1,7 +1,7 @@
 # Canonica Help Widget — Implementation Blueprint
 
-> **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Version:** 2.2.0
+> **Last Updated:** 2026-05-12
 > **Audience:** Developers
 > **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context)
 > **Source:** Codebase audit + ChatGPT review + industry research
@@ -45,10 +45,11 @@ public/widget/canonica-widget.js           # Embed script (vanilla JS, ~4KB)
 ### v2 (New/Modified Files)
 
 ```
-public/widget/canonica-widget.js           # MODIFY: shape/display/size/offset config + context SDK API
-src/app/widget/[apiKey]/WidgetClient.tsx   # MODIFY: session memory, feedback, image upload, context receiver
-src/app/api/widget/search/route.ts        # MODIFY: origin allowlist, conversation history, image base64
-src/app/api/widget/feedback/route.ts      # NEW: feedback endpoint (API key auth, signal emitter)
+public/widget/canonica-widget.js           # Shape/display/size/offset config + context and predictive SDK API
+src/app/widget/[apiKey]/WidgetClient.tsx   # Session memory, feedback, image upload, context receiver, procedure/predictive rendering
+src/app/api/widget/search/route.ts        # Origin allowlist, conversation history, server-side image validation
+src/app/api/widget/feedback/route.ts      # Feedback endpoint with tenant-scoped searchHistory ownership check
+src/app/api/canonica/widget-key/route.ts  # Hash-only widget key generate/revoke endpoint
 src/app/(canonica)/canonica/settings/page.tsx  # Thin page wrapper (dynamic import of template)
 src/components/templates/canonica/CanonicaSettings.tsx  # Widget config UI (9 attributes + origin allowlist + embed code generator + live preview + setup progress)
 src/types/platform/store.ts               # MODIFY: added widgetConfig + widgetAllowedOrigins fields
@@ -101,10 +102,13 @@ v2 additions:
 v2 JavaScript API (exposed on `window.CanonicaWidget`):
 
 - `setContext(payload)` — sets/updates product context, sent with every query
+- `page(payload)` — alias for `setContext(payload)` and also requests predictive help for the current page
 - `open()` — programmatically open widget
 - `close()` — programmatically close widget
 
 Context is passed from host page → embed script → iframe via `postMessage` → WidgetClient state → API request body.
+
+When `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is enabled, `page()/setContext()` also calls `POST /api/canonica/predictive-help`. A returned suggestion is held in memory, indicated on the launcher, and delivered into the iframe as a proactive assistant message. No raw page events are stored.
 
 ### 3.4 Widget Client (`src/app/widget/[apiKey]/WidgetClient.tsx`)
 
@@ -118,6 +122,8 @@ v2 additions:
 - **Feedback UI**: Thumbs up/down on AI answers. Calls `POST /api/widget/feedback`.
 - **Conversation context**: After first Q&A, subsequent questions include history for contextual follow-ups.
 - **postMessage listener**: Receives context updates from host page embed script.
+- **Guided workflow rendering**: Displays `procedure.steps`, prerequisites, warnings, expected results, and troubleshooting hints returned by canonical procedure answers.
+- **Predictive suggestion rendering**: Displays proactive help returned by `POST /api/canonica/predictive-help`.
 
 ### 3.5 Widget Feedback Route (`src/app/api/widget/feedback/route.ts`) — NEW
 
@@ -137,7 +143,8 @@ Implementation:
 
 - API key auth (same as search route)
 - Feature flag: `ENABLE_CANONICA_WIDGET`
-- Writes feedback to `aiSearchHistory` document
+- Verifies the `aiSearchHistory` document belongs to the same `tId/sId` resolved from the API key
+- Writes feedback to the tenant-scoped `aiSearchHistory` document
 - If `isGood === false`, emits Canonica signal via `emitCanonicaSignal({ type: 'chat_negative' })` (feeds mutation pipeline)
 - Rate limited: prevent feedback spam
 
@@ -173,6 +180,7 @@ Response (success):
   "canonical": true,
   "confidence": "high",
   "answerType": "explanation",
+  "procedure": { "steps": [...] },
   "references": [{ "id": "art_123", "title": "Publishing Guide" }],
   "suggestedQuestions": ["How do I fix price validation?", "..."],
   "searchHistoryId": "sh_abc"          // For feedback linking
@@ -194,7 +202,7 @@ Request Body:
 }
 
 Response: { "success": true }
-Errors: 401, 400, 404 (flag OFF), 429, 500
+Errors: 401, 400, 404 (flag OFF or search history not owned by this workspace), 429, 500
 ```
 
 ---
@@ -367,6 +375,7 @@ Per image query: 1 additional Gemini Pro call (~$0.002) for image-to-query gener
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-12 | 2.2.0   | Runtime contract hardening: hash-only widget keys, Canonica-specific key endpoint, tenant-scoped search history feedback, server-side widget image validation, guided workflow rendering, predictive suggestion delivery, and tenant-scoped KB category docs. |
 | 2026-03-09 | 2.1.0   | Settings page refactored: 520-line inline page → thin wrapper + CanonicaSettings template. Feature Status card removed (exposed internal flags). Sidebar now filters nav by feature flags. Governance useMemo deps fixed. Setup progress guide added to settings. |
 | 2026-03-08 | 2.0.0   | Complete rewrite: phased build plan, launcher customization, SDK context API, session memory, feedback signals, origin allowlist, conversation context. ChatGPT conversation reviewed + validated.                                                                |
 | 2026-03-07 | 1.0.0   | Initial implementation                                                                                                                                                                                                                                            |

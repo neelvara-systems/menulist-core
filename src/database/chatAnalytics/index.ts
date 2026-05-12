@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { requestBodyComposer } from '@lib/apiHelper';
+import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
@@ -768,7 +768,7 @@ export const aggregateDailyStats = async (session: any, date: Date) => {
 
             // Save to chatAnalytics collection
             const docRef = await getDocRef(docId);
-            const composedData = await requestBodyComposer(aggregatedData);
+            const composedData = await canonicaRequestBodyComposer(aggregatedData);
             await setDoc(docRef, composedData, { merge: true });
 
             return { success: true, date: dateStr, stats: aggregatedData };

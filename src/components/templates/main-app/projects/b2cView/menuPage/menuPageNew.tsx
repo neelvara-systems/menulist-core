@@ -99,6 +99,42 @@ interface MenuPageNewProps {
     previewMode?: boolean;
 }
 
+const upsertClientHeadMeta = (
+    attribute: 'name' | 'property',
+    key: string,
+    content?: string | null,
+) => {
+    if (typeof document === 'undefined' || !content) return;
+
+    let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
+    if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attribute, key);
+        document.head.appendChild(element);
+    }
+
+    element.setAttribute('content', content);
+};
+
+const upsertClientCanonical = (href?: string | null) => {
+    if (typeof document === 'undefined' || !href) return;
+
+    let element = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!element) {
+        element = document.createElement('link');
+        element.setAttribute('rel', 'canonical');
+        document.head.appendChild(element);
+    }
+
+    element.setAttribute('href', href);
+};
+
+const isActiveTempStatus = (tempStatus?: { expiresAt?: string } | null): boolean => {
+    if (!tempStatus?.expiresAt) return false;
+    const expiresAt = new Date(tempStatus.expiresAt).getTime();
+    return Number.isFinite(expiresAt) && expiresAt > Date.now();
+};
+
 const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefined => {
     switch (filter) {
         case 'popular':
@@ -287,6 +323,10 @@ function MenuPageNew({
             primaryLanguage,
         }),
         [activeLanguage, primaryLanguage, projectData, storeDetails],
+    );
+    const activeTempStatus = useMemo(
+        () => (isActiveTempStatus(storeDetails?.tempStatus) ? storeDetails.tempStatus : null),
+        [storeDetails?.tempStatus],
     );
 
     // Layout properties from config
@@ -1045,6 +1085,62 @@ function MenuPageNew({
     const historyPushedRef = useRef(false);
     const modalCloseFallbackTimerRef = useRef<number | null>(null);
 
+    const buildItemUrl = useCallback((item: any) => {
+        if (typeof window === 'undefined') return '';
+
+        const itemSlugName = getMenuText(item?.name);
+        const itemSlug = slugify(itemSlugName);
+        const shortId = item?.id?.slice(-6) || '';
+        const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item?.id;
+        const basePath = getMenuBasePath();
+        return `${window.location.origin}${basePath}/item/${urlSegment}${getMenuLanguageSearch()}`;
+    }, [getMenuBasePath, getMenuLanguageSearch, getMenuText]);
+
+    const buildBaseMenuUrl = useCallback(() => {
+        if (typeof window === 'undefined') return '';
+        return `${window.location.origin}${getMenuBasePath()}${getMenuLanguageSearch()}`;
+    }, [getMenuBasePath, getMenuLanguageSearch]);
+
+    const applyClientDocumentMeta = useCallback((item?: any | null, explicitUrl?: string) => {
+        if (previewMode || typeof document === 'undefined' || typeof window === 'undefined') return;
+
+        const storeName =
+            getMenuText((storeDetails as any)?.publicPresence?.displayName, '') ||
+            String((storeDetails as any)?.name || (storeDetails as any)?.tenantName || 'Menu').trim();
+        const menuName = getMenuText((projectData as any)?.metadata?.name, 'Menu');
+        const storeDescription =
+            getMenuText((storeDetails as any)?.metaDescription, '') ||
+            getMenuText((storeDetails as any)?.tagline, '') ||
+            `View ${menuName} from ${storeName}.`;
+        const fallbackImage = (storeDetails as any)?.logo || '';
+
+        const category = item?.category
+            ? allCategories.find((entry: any) => entry?.id === item.category)
+            : null;
+        const categoryName = category ? getMenuText(category.name, '') : '';
+        const itemName = item ? getMenuText(item.name, 'Menu item') : '';
+        const itemDescription = item ? getMenuText(item.description, '') : '';
+        const title = itemName ? `${itemName} | ${storeName}` : `${menuName} | ${storeName}`;
+        const description = itemName
+            ? itemDescription || (categoryName ? `${itemName} in ${categoryName} at ${storeName}.` : `${itemName} at ${storeName}.`)
+            : storeDescription;
+        const url = explicitUrl || (itemName ? buildItemUrl(item) : buildBaseMenuUrl());
+        const imageUrl = itemName ? (getPrimaryPublicMenuImage(item) || fallbackImage) : fallbackImage;
+
+        document.title = title;
+        upsertClientCanonical(url);
+        upsertClientHeadMeta('property', 'og:title', title);
+        upsertClientHeadMeta('property', 'og:description', description);
+        upsertClientHeadMeta('property', 'og:url', url);
+        upsertClientHeadMeta('name', 'twitter:title', title);
+        upsertClientHeadMeta('name', 'twitter:description', description);
+        upsertClientHeadMeta('name', 'twitter:url', url);
+        if (imageUrl) {
+            upsertClientHeadMeta('property', 'og:image', imageUrl);
+            upsertClientHeadMeta('name', 'twitter:image', imageUrl);
+        }
+    }, [allCategories, buildBaseMenuUrl, buildItemUrl, getMenuText, previewMode, projectData, storeDetails]);
+
     // G14 - Handle item click with history state
     const handleItemClick = useCallback((item: any) => {
         if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -1101,16 +1197,18 @@ function MenuPageNew({
         const shortId = item.id?.slice(-6) || '';
         const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
         const basePath = getMenuBasePath();
+        const nextItemUrl = `${basePath}/item/${urlSegment}${getMenuLanguageSearch()}`;
 
         if (!previewMode) {
             historyPushedRef.current = true;
             window.history.pushState(
                 { modal: 'item', itemId: item.id },
                 '',
-                `${basePath}/item/${urlSegment}${getMenuLanguageSearch()}`
+                nextItemUrl
             );
+            applyClientDocumentMeta(item, `${window.location.origin}${nextItemUrl}`);
         }
-    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -1133,14 +1231,16 @@ function MenuPageNew({
                 setSelectedItem(null);
                 setSelectedItemTrackView(true);
                 window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
+                applyClientDocumentMeta(null);
             }, 240);
         } else {
             // Direct close without history (e.g., direct link then close)
             window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
             setSelectedItem(null);
             setSelectedItemTrackView(true);
+            applyClientDocumentMeta(null);
         }
-    }, [getMenuBasePath, getMenuLanguageSearch, previewMode]);
+    }, [applyClientDocumentMeta, getMenuBasePath, getMenuLanguageSearch, previewMode]);
 
     // G14 - Track selected item for popstate handler (avoids stale closure)
     // G14 - Handle browser back button (popstate event)
@@ -1156,6 +1256,7 @@ function MenuPageNew({
                 historyPushedRef.current = false;
                 setSelectedItem(null);
                 setSelectedItemTrackView(true);
+                applyClientDocumentMeta(null);
             }
         };
 
@@ -1167,7 +1268,11 @@ function MenuPageNew({
                 modalCloseFallbackTimerRef.current = null;
             }
         };
-    }, []);
+    }, [applyClientDocumentMeta]);
+
+    useEffect(() => {
+        applyClientDocumentMeta(selectedItem);
+    }, [applyClientDocumentMeta, selectedItem]);
 
     // G14 - Direct link load: Open PDP if URL contains item path
     // Supports both new slug URLs (/menu/item/butter-chicken-abc123) and legacy ID URLs (/menu/item/item_abc123)
@@ -1201,11 +1306,12 @@ function MenuPageNew({
             if (item && item.available !== false) {
                 setSelectedItemTrackView(true);
                 setSelectedItem(item);
+                applyClientDocumentMeta(item, window.location.href);
                 // Don't push history - we're already at the correct URL
                 historyPushedRef.current = false;
             }
         }
-    }, [allItems, getMenuText, previewMode]);
+    }, [allItems, applyClientDocumentMeta, getMenuText, previewMode]);
 
     const scrollToCategoryElement = useCallback((categoryId: string) => {
         const element = document.getElementById(`cat-${categoryId}`);
@@ -2372,9 +2478,9 @@ function MenuPageNew({
                             />
                         )}
 
-                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeDetails?.tempStatus && (
+                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && activeTempStatus && (
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
-                            <TempStatusBanner tempStatus={storeDetails.tempStatus as any} variant="pill" />
+                            <TempStatusBanner tempStatus={activeTempStatus as any} variant="pill" />
                         </div>
                     )}
 

@@ -99,11 +99,11 @@ function TenantsDashboard({ tenantsList, setTenantsList }) {
         },
         {
             title: 'Blocked',
-            dataIndex: 'bloked',
+            dataIndex: 'blocked',
             key: 'blocked',
             render: (_, record) => (
                 <>
-                    {record.bloked ? <Tag color='error'>Blocked</Tag> : <Tag color='green'>Not Blocked</Tag>}
+                    {(record.blocked || record.bloked) ? <Tag color='error'>Blocked</Tag> : <Tag color='green'>Not Blocked</Tag>}
                 </>
             ),
         },

@@ -21,6 +21,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
 import { notFound } from 'next/navigation';
@@ -134,6 +135,10 @@ async function getStoreInfo(tId: number, sId: number): Promise<StoreInfo | null>
         }
 
         const storeData = storeDoc.data() || {};
+        if (storeData.active === false || storeData.deleted === true || isPlatformEntityBlocked(storeData)) {
+            return null;
+        }
+
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
         const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
         const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';

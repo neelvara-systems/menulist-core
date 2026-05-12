@@ -50,12 +50,12 @@ const EMPTY_RESULT: CoreSearchResult = {
 
 However, I'm here to help! Here are some things I can assist you with:
 
-- **Menu Management**: Creating, editing, and organizing menus
-- **Order Processing**: Managing orders and tracking
+- **Getting Started**: Setup guides and first steps
 - **Account Settings**: Profile, billing, and preferences
-- **Getting Started**: Setup guides and tutorials
+- **Integrations**: API keys, webhooks, and connected tools
+- **Troubleshooting**: Common errors and recovery steps
 
-Try asking about one of these topics, or feel free to [contact our support team](mailto:support@menulist.ai) for personalized assistance!`,
+Try asking about one of these topics, or contact support for personalized assistance.`,
     references: [],
     suggestedQuestions: [],
     canonical: false,
@@ -226,13 +226,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
                         // Still save to aiSearchHistory for analytics (INV-4)
                         const normalizedTextQueryForKey = normalizeQuery(searchQuery);
-                        const instantCacheKey = imageUrl
+                        const instantCacheKeyBase = imageUrl
                             ? `${normalizedTextQueryForKey}::IMAGE::${hashString(imageUrl)}`
                             : normalizedTextQueryForKey;
+                        const instantCacheKey = `${tId}:${sId}:${instantCacheKeyBase}`;
 
                         const savedHistory = await addAiSearchHistory({
                             query: searchQuery,
                             cacheKey: instantCacheKey,
+                            tId,
+                            sId,
+                            uId,
                             craftedAnswer: cached.craftedAnswer,
                             references: [],
                             canonical: true,
@@ -284,9 +288,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // ===== STAGE 3: CACHE LOOKUP =====
     const normalizedTextQuery = normalizeQuery(searchQuery);
-    const cacheLookupKey = imageUrl
+    const cacheLookupKeyBase = imageUrl
         ? `${normalizedTextQuery}::IMAGE::${hashString(imageUrl)}`
         : normalizedTextQuery;
+    const cacheLookupKey = `${tId}:${sId}:${cacheLookupKeyBase}`;
 
     const cacheStart = Date.now();
     // Widget searches use a prefixed cache key to avoid collision, but hit same pipeline
@@ -355,6 +360,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         const savedHistory = await addAiSearchHistory({
             query: searchQuery,
             cacheKey: cacheLookupKey,
+            tId,
+            sId,
+            uId,
             craftedAnswer: answer.content.structuredSummary,
             references: [],
             canonical: true,
@@ -468,11 +476,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const vectorSearchStart = Date.now();
     const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
 
-    // Multi-tenant KB filtering (when ENABLE_CANONICA_ONTOLOGY is ON)
-    const { FEATURE_FLAGS: canonicaFlags } = await import('@config/features');
+    // Multi-tenant KB filtering is mandatory for every Canonica mount.
     let articleQuery = articlesRef.where('status', '==', 'published');
-    if (canonicaFlags.ENABLE_CANONICA_ONTOLOGY && tId) {
+    if (tId) {
         articleQuery = articleQuery.where('tId', '==', tId);
+    }
+    if (sId) {
+        articleQuery = articleQuery.where('sId', '==', sId);
     }
 
     const snapshot = await articleQuery
@@ -589,6 +599,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         const savedHistory = await addAiSearchHistory({
             query: searchQuery,
             cacheKey: cacheLookupKey,
+            tId,
+            sId,
+            uId,
             generatedQueryFromImage,
             imageUrl: imageUrl || undefined,
             craftedAnswer: generatedData.craftedAnswer,
