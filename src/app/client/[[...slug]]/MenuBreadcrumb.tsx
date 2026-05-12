@@ -1,7 +1,9 @@
+'use client';
+
 /**
  * G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): visible breadcrumb on project pages.
  *
- * Server component. Renders "Business → (Store →) Project" above the menu so
+ * Renders "Business → (Store →) Project" above the menu so
  * the "up" path is always visible — same hierarchy the JSON-LD BreadcrumbList
  * already exposes to search engines.
  *
@@ -14,6 +16,8 @@
  */
 
 import Link from 'next/link';
+import type { CSSProperties, MouseEvent } from 'react';
+import { appendPublicLanguageParam, normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
 import { getBusinessLogoAltText } from '@lib/media/altText';
 
 interface MenuBreadcrumbProps {
@@ -47,17 +51,17 @@ interface MenuBreadcrumbProps {
     };
 }
 
-const baseLinkStyle: React.CSSProperties = {
+const baseLinkStyle: CSSProperties = {
     color: 'inherit',
     textDecoration: 'none',
 };
 
-const separatorStyle: React.CSSProperties = {
+const separatorStyle: CSSProperties = {
     opacity: 0.4,
     userSelect: 'none',
 };
 
-const currentStyle: React.CSSProperties = {
+const currentStyle: CSSProperties = {
     opacity: 1,
     fontWeight: 500,
 };
@@ -76,12 +80,12 @@ export default function MenuBreadcrumb({
     const showOutletNode = Boolean(outletName && outletSlug);
     const resolvedOutletHref = outletHref || (outletSlug ? `/${outletSlug}` : undefined);
     const hasProject = Boolean(projectName);
-    const linkStyle: React.CSSProperties = {
+    const linkStyle: CSSProperties = {
         ...baseLinkStyle,
         color: theme?.textColor || 'inherit',
         opacity: 0.76,
     };
-    const activeStyle: React.CSSProperties = {
+    const activeStyle: CSSProperties = {
         ...currentStyle,
         color: theme?.headingColor || 'inherit',
     };
@@ -90,9 +94,24 @@ export default function MenuBreadcrumb({
     // have an outlet, the outlet itself is the terminal node.
     const outletIsTerminal = showOutletNode && !hasProject;
     const businessInitial = businessName?.trim()?.charAt(0)?.toUpperCase() || 'M';
+    const getCurrentLanguageHref = (href?: string) => {
+        if (!href || typeof window === 'undefined') return href;
+        try {
+            const currentLanguage = normalizePublicLanguageCode(new URL(window.location.href).searchParams.get('lang'));
+            return currentLanguage ? appendPublicLanguageParam(href, currentLanguage) : href;
+        } catch {
+            return href;
+        }
+    };
+    const preserveCurrentLanguage = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {
+        const nextHref = getCurrentLanguageHref(href);
+        if (nextHref && nextHref !== href) {
+            event.currentTarget.href = nextHref;
+        }
+    };
 
     if (variant === 'identity') {
-        const logoBoxStyle: React.CSSProperties = {
+        const logoBoxStyle: CSSProperties = {
             width: 44,
             height: 44,
             borderRadius: logoUrl ? 0 : 12,
@@ -132,7 +151,7 @@ export default function MenuBreadcrumb({
                         minWidth: 0,
                     }}
                 >
-                    <Link href={homeHref} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={`${businessName} home`}>
+                    <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={`${businessName} home`}>
                         {logoUrl ? (
                             <img
                                 src={logoUrl}
@@ -163,6 +182,7 @@ export default function MenuBreadcrumb({
                     >
                         <Link
                             href={homeHref}
+                            onClick={(event) => preserveCurrentLanguage(event, homeHref)}
                             style={{
                                 ...baseLinkStyle,
                                 color: theme?.headingColor || 'inherit',
@@ -201,6 +221,7 @@ export default function MenuBreadcrumb({
                                 ) : (
                                     <Link
                                         href={resolvedOutletHref || `/${outletSlug}`}
+                                        onClick={(event) => preserveCurrentLanguage(event, resolvedOutletHref || `/${outletSlug}`)}
                                         style={{
                                             ...baseLinkStyle,
                                             color: 'inherit',
@@ -261,7 +282,7 @@ export default function MenuBreadcrumb({
             }}
         >
             {/* Business node — always links to OBP root */}
-            <Link href={homeHref} style={linkStyle} prefetch={false}>
+            <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={linkStyle} prefetch={false}>
                 {businessName}
             </Link>
 
@@ -273,7 +294,7 @@ export default function MenuBreadcrumb({
                             {outletName}
                         </span>
                     ) : (
-                        <Link href={resolvedOutletHref || `/${outletSlug}`} style={linkStyle} prefetch={false}>
+                        <Link href={resolvedOutletHref || `/${outletSlug}`} onClick={(event) => preserveCurrentLanguage(event, resolvedOutletHref || `/${outletSlug}`)} style={linkStyle} prefetch={false}>
                             {outletName}
                         </Link>
                     )}

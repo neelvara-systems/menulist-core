@@ -16,10 +16,10 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 | Aspect | Status | Notes |
 |--------|--------|-------|
 | Customer mobile browsing | ✅ | Mobile-first responsive design, 70%+ users on mobile |
-| Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator; public icons preserve owner-selected icon choices |
-| Item display (name/price/image) | ✅ | Responsive grid/list layouts, including compact two-column mobile grid when Grid is selected; image frames render only for items that have images |
-| Search/filter | ✅ | Debounced fuzzy/transliteration search with exact visible-name results first, 16px mobile input sizing, clear exits search mode, and compact sticky command-row behavior |
-| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, fullscreen pinch-to-zoom image inspection, and category identity when enabled |
+| Category navigation | ✅ | Sticky touch rail plus sticky-row `Sections` navigator only for 3+ sections; public icons preserve owner-selected icon choices |
+| Item display (name/price/image) | ✅ | Responsive grid/list layouts, including compact two-column mobile grid when Grid is selected; odd final grid cards span full row, and image frames render only for items that have images |
+| Search/filter | ✅ | Debounced fuzzy/transliteration search with exact visible-name results first, any-term recovery for multi-term searches, 16px mobile input sizing, clear exits search mode, and compact data-based search suggestions |
+| Item detail | ✅ | Mobile uses a bottom sheet with contain-fit images, arrow/dot controls, touch swiping, fullscreen pinch-to-zoom image inspection, category identity, and owner-entered nutrition facts when enabled |
 | SEO (generateMetadata) | ✅ | Server-side, device-independent |
 | Schema.org JSON-LD | ✅ | Server-side active menu data with real freshness fields |
 | Analytics tracking | ✅ | Device-independent |
@@ -39,9 +39,10 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Featured choices must open PDP directly on mobile when the public menu provides a PDP handler; they must not also scroll the underlying menu before the modal opens.
 - Featured choices keep the horizontal scroller on mobile/tablet; the desktop-only grid treatment must not remove touch-friendly horizontal browsing on smaller screens.
 - Public menu shell padding is capped by device: mobile uses 12px, tablet uses 18px, and desktop keeps the configured design spacing so small screens do not lose usable width.
-- Public mobile navigation uses a sticky command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
-- The sticky command row must stay visually stable during vertical scroll; it avoids transform-based compositor hints, and scroll-spy category changes are frame-throttled.
-- On iPhone Chrome/PWA, the sticky command row must anchor at `top: 0`; any visual top gap or notch breathing room belongs inside row padding, not in a dynamic sticky `top` offset or negative cover layer.
+- Public mobile navigation uses one command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
+- The public mobile command row must stay visually stable during vertical scroll; it avoids transform-based compositor hints and clipped sticky ancestors, and switches to a measured fixed layer after it reaches the top to avoid iOS sticky jitter.
+- On iPhone Chrome/PWA, the fixed command row must anchor at `top: 0`; any visual top gap or notch breathing room belongs inside row padding, not in a dynamic sticky `top` offset or negative cover layer.
+- The `Sections` command is shown only for menus with three or more visible sections.
 - The compact top-row language action shows only the language initials; the picker itself keeps full native language labels.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - The `Sections` popup header must stay compact while preserving a reachable close tap target; the close button visual should not set the whole header height.
@@ -53,13 +54,17 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Compact public payloads must preserve the resolved initial render language description so installed PWAs and browser tabs do not show a default-language control with another language's description text.
 - Public mobile analytics must enter the local coalescing queue directly; it must not run through the authenticated DAL wrapper or fetch owner auth/session state per anonymous customer event.
 - Search must stay client-side against the already-loaded public payload; no mobile search API or extra Firestore reads are allowed.
+- Search suggestions must be derived from the loaded menu payload and must not create a new retrieval endpoint or owner setting.
 - One-character search input must not activate mobile filtering or show a hard no-result state. Typo recovery must stay explainable and avoid broad compressed-token false positives.
+- Multi-term search should rank exact phrases first, then items matching all terms, then items matching any term so searches such as `coffee chai` recover both coffee and chai results.
 - Starting search from a scrolled mobile position must bring the result area under the sticky command row so filtered output is immediately visible without manual scroll correction.
 - Offline mode must show a clear reconnect screen instead of cached menu content that could be stale.
 - Platform attribution stays compact and quiet, matches the OBP `Powered by MenuList. All rights reserved` treatment, and does not add a marketing CTA by default.
 - Mobile public menus lock pinch zoom on the client route and suppress text selection on menu/category controls while keeping footer/business content selectable.
 - Fullscreen PDP image preview supports its own two-finger pinch zoom; this is scoped to the image viewer and does not re-enable browser-level zoom for the whole menu.
 - Public menu language changes must keep names, descriptions, category labels, and URL `?lang=` state aligned after OBP-to-menu navigation or installed PWA launches.
+- Public item URLs must preserve the selected language query so shared PDP links render the matching item title and description preview.
+- Public menu temporary status belongs in the bottom trust zone as a centered pill, not above the business identity header where it can compete with sticky controls.
 
 ## Owner Mobile Interaction
 

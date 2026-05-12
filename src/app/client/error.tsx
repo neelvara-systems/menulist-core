@@ -11,6 +11,7 @@
  * if something goes wrong. Must look professional, not broken.
  */
 
+import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { useEffect, useState } from "react";
 
 export default function ClientMenuError({
@@ -109,6 +110,16 @@ export default function ClientMenuError({
             >
                 {isRetrying ? "Retrying..." : "Try Again"}
             </button>
+
+            <ErrorReportButton
+                error={error}
+                label="Report this issue"
+                source="client-menu-error-boundary"
+                style={{
+                    color: "#333",
+                    marginBottom: 16,
+                }}
+            />
 
             <p
                 style={{

@@ -306,7 +306,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                 </Typography.Text>
             )}
             <Flex gap={10} vertical>
-                <Flex align="center" gap={10}>
+                <Flex align="center" gap={12}>
                     <Typography.Text style={{ flex: '0 0 48px' }}>Zoom</Typography.Text>
                     <input
                         aria-label="Zoom"
@@ -314,13 +314,17 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                         min={MIN_ZOOM}
                         onChange={(event) => setCrop((current) => ({ ...current, zoom: clampZoom(Number(event.target.value), getFitZoom(current)) }))}
                         step={0.05}
-                        style={{ width: '100%' }}
+                        style={{
+                            accentColor: token.colorPrimary,
+                            flex: 1,
+                            height: 28,
+                            minWidth: isMobile ? 190 : 320,
+                        }}
                         type="range"
                         value={crop.zoom}
                     />
                 </Flex>
-                <Flex align="center" gap={10} wrap="wrap">
-                    <Typography.Text style={{ flex: '0 0 48px' }}>Rotate</Typography.Text>
+                <Flex align="center" gap={8} justify="space-between" wrap="nowrap">
                     <Button icon={<LuMaximize2 size={16} />} onClick={handleFitToFrame}>
                         Fit
                     </Button>
@@ -349,7 +353,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                 visible={open}
             >
                 <MobileFlex style={{ height: '100%' }} vertical>
-                    <NavBar onBack={isApplying ? undefined : onClose} right={<MobileButton disabled={isApplying} fill="none" onClick={onClose} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}><LuX size={18} /></MobileButton>}>
+                    <NavBar right={<MobileButton disabled={isApplying} fill="none" onClick={onClose} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}><LuX size={18} /></MobileButton>}>
                         Adjust image
                     </NavBar>
                     <MobileFlex flex={1} gap={14} style={{ minHeight: 0, overflowY: 'auto', padding: 16 }} vertical>

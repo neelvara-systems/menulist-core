@@ -30,26 +30,24 @@ const captureWithScope = (
   message: string,
   error?: Error | unknown,
   context?: Record<string, unknown>
-) => {
-  if (!hasMonitoring) return;
+): string | undefined => {
+  if (!hasMonitoring) return undefined;
 
-  Sentry.withScope((scope) => {
+  return Sentry.withScope((scope) => {
     scope.setLevel(level);
     applyMonitoringContext(scope, context);
 
     if (error instanceof Error) {
       scope.setFingerprint([message, error.name]);
-      Sentry.captureException(error);
-      return;
+      return Sentry.captureException(error);
     }
 
     if (error) {
       scope.setContext('error_payload', getSanitizedMonitoringContext({ error }));
-      Sentry.captureMessage(message, level);
-      return;
+      return Sentry.captureMessage(message, level);
     }
 
-    Sentry.captureMessage(message, level);
+    return Sentry.captureMessage(message, level);
   });
 };
 
@@ -92,14 +90,14 @@ export const logger = {
    * Dev: Console with red styling
    * Prod: Console error (monitoring service placeholder)
    */
-  error(message: string, error?: Error | unknown, context?: any) {
+  error(message: string, error?: Error | unknown, context?: any): string | undefined {
     if (isDev) {
       console.error('%c[ERROR]', 'background: red; color: white; padding: 2px 6px; border-radius: 3px;', message, error, context || '');
     } else {
       console.error(`[ERROR] ${message}`, error, context || '');
     }
 
-    captureWithScope('error', message, error, context);
+    return captureWithScope('error', message, error, context);
   },
 
   /**

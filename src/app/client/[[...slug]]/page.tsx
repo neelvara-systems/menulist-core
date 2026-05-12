@@ -20,7 +20,6 @@
  * - joespizza.com/                    → Custom domain default menu
  */
 
-import TempStatusBanner from "@atoms/TempStatusBanner";
 import { getMoodWithBrandColor, resolveMenuDesignConfig } from "@config/designSystem";
 import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
@@ -1817,10 +1816,6 @@ async function MenuContent({
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(pwaSchemaJsonLd) }}
                 />
             ) : null}
-            {/* ── Temporary Status Banner ── */}
-            {FEATURE_FLAGS.ENABLE_TEMP_STATUS && clientStoreDetails?.tempStatus && (
-                <TempStatusBanner tempStatus={clientStoreDetails.tempStatus} />
-            )}
             {/*
               * G-09 (§11 + D-12 PUBLIC-ROUTING-DOCTRINE): visible breadcrumb.
               * Business → (Store →) Project. Outlet node appears only when

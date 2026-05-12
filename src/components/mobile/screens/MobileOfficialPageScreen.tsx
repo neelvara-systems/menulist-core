@@ -1,5 +1,6 @@
 'use client'
 
+import { BRAND_COLOR_PRESETS } from '@config/designSystem';
 import { FEATURE_FLAGS } from '@config/features';
 import type { ObpMenuInfo } from '@/app/client/obp/OBPResolvedSurface';
 import useViewportInfo from '@hook/useViewportInfo';
@@ -80,7 +81,7 @@ function getFirstImageFile(fileList?: FileList | null): File | null {
 function getInitialPresenceForm(storeDetails: any) {
     const initialPresence = storeDetails?.publicPresence || {};
     return {
-        accentColor: initialPresence.accentColor || '#1677ff',
+        accentColor: initialPresence.accentColor || undefined,
         establishedYear: initialPresence.establishedYear,
         googleMapsUrl: initialPresence.googleMapsUrl || '',
         googleRating: initialPresence.googleRating,
@@ -468,6 +469,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [isPreviewSheetOpen, setIsPreviewSheetOpen] = useState(false);
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+    const coverInputRef = useRef<HTMLInputElement | null>(null);
     const replacePhotoInputRef = useRef<HTMLInputElement | null>(null);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
@@ -480,6 +482,11 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [originalLocalizedDrafts, setOriginalLocalizedDrafts] = useState(() => buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails)));
     const currentLocalizedDraft = localizedDrafts[selectedLanguage] || { descriptor: '', knownFor: '', specialNote: '' };
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
+    const defaultObpAccentColor = '#1677FF';
+    const activeAccentColor = formData.accentColor || defaultObpAccentColor;
+    const activeAccentColorLabel = formData.accentColor
+        ? BRAND_COLOR_PRESETS.find((preset) => preset.color.toUpperCase() === formData.accentColor?.toUpperCase())?.name || formData.accentColor.toUpperCase()
+        : defaultObpAccentColor;
     const specialNoteSuggestions = useMemo(() => getMenuSpecialNoteSuggestions(tDesign), [tDesign]);
     const isDirty =
         JSON.stringify(formData) !== JSON.stringify(originalFormData)
@@ -971,23 +978,54 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 ) : null}
 
                 <Card>
-                    <Flex gap={10} vertical>
-                        <Text strong>{t('businessCover')}</Text>
-                        <Text type="secondary">{t('businessCoverHelp')}</Text>
-                        <MediaImageCard
+                    <Flex gap={12} vertical>
+                        <Flex gap={4} vertical>
+                            <Text strong>{t('businessCover')}</Text>
+                            <Text type="secondary">{t('businessCoverHelp')}</Text>
+                        </Flex>
+                        <input
                             accept={getMediaProfileAcceptAttribute('businessCover')}
-                            alt={t('businessCover')}
-                            canAdjust={Boolean(coverDraft?.sourceDataUrl)}
-                            imageType="businessCover"
-                            imageUrl={coverDraft?.previewDataUrl || formData.businessCover}
-                            isBusy={isCoverUploading}
-                            onAdjust={() => setIsCoverAdjustOpen(true)}
-                            onRemove={formData.businessCover || coverDraft?.previewDataUrl ? handleCoverCardRemove : undefined}
-                            onSelectFile={(file) => { void handleCoverUpload(file); }}
-                            placeholderDescription={t('businessCoverPlaceholder')}
-                            placeholderTitle={t('businessCover')}
-                            showDropHint={false}
+                            hidden
+                            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                                const file = getFirstImageFile(event.target.files);
+                                event.target.value = '';
+                                if (file) void handleCoverUpload(file);
+                            }}
+                            ref={coverInputRef}
+                            type="file"
                         />
+                        <Flex
+                            align="center"
+                            gap={10}
+                            style={{
+                                backgroundColor: token.colorFillAlter,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 12,
+                                padding: 12,
+                            }}
+                        >
+                            <Flex
+                                align="center"
+                                justify="center"
+                                style={{
+                                    backgroundColor: token.colorBgContainer,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 999,
+                                    color: formData.businessCover ? token.colorSuccess : token.colorTextTertiary,
+                                    flex: '0 0 auto',
+                                    height: 38,
+                                    width: 38,
+                                }}
+                            >
+                                <LuImagePlus size={18} />
+                            </Flex>
+                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                <Text strong>{formData.businessCover ? t('businessCoverUploaded') : t('businessCoverPlaceholder')}</Text>
+                                <Text type="secondary">
+                                    {coverDraft?.uploadFailed ? t('businessCoverUploadFailed') : t('businessCoverPlaceholder')}
+                                </Text>
+                            </Flex>
+                        </Flex>
                         {coverDraft?.uploadFailed && coverDraft.prepared ? (
                             <Flex align="center" justify="space-between">
                                 <Text style={{ color: token.colorError, fontSize: 12 }}>{t('businessCoverUploadFailed')}</Text>
@@ -1001,18 +1039,63 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 </Button>
                             </Flex>
                         ) : null}
-                        <Button
-                            block
-                            disabled={isCoverUploading}
-                            loading={isCoverGenerating}
-                            onClick={() => { void handleGenerateBusinessCover(); }}
-                            size="large"
-                        >
-                            <Flex align="center" gap={6} justify="center">
-                                <LuSparkles size={18} />
-                                <Text>{formData.businessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</Text>
-                            </Flex>
-                        </Button>
+                        <Flex gap={8} wrap="wrap">
+                            <Button
+                                disabled={isCoverUploading || isCoverGenerating}
+                                fill="outline"
+                                loading={isCoverUploading}
+                                onClick={() => coverInputRef.current?.click()}
+                                size="middle"
+                                style={{ flex: '1 1 130px' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuImagePlus size={16} />
+                                    <Text>{formData.businessCover ? 'Replace' : 'Upload'}</Text>
+                                </Flex>
+                            </Button>
+                            <Button
+                                disabled={isCoverUploading}
+                                fill="outline"
+                                loading={isCoverGenerating}
+                                onClick={() => { void handleGenerateBusinessCover(); }}
+                                size="middle"
+                                style={{ flex: '1 1 130px' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuSparkles size={16} />
+                                    <Text>{formData.businessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</Text>
+                                </Flex>
+                            </Button>
+                            {coverDraft?.sourceDataUrl ? (
+                                <Button
+                                    disabled={isCoverUploading || isCoverGenerating}
+                                    fill="outline"
+                                    onClick={() => setIsCoverAdjustOpen(true)}
+                                    size="middle"
+                                    style={{ flex: '1 1 130px' }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuCrop size={16} />
+                                        <Text>Adjust</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                            {formData.businessCover || coverDraft?.previewDataUrl ? (
+                                <Button
+                                    color="danger"
+                                    disabled={isCoverUploading || isCoverGenerating}
+                                    fill="outline"
+                                    onClick={handleCoverCardRemove}
+                                    size="middle"
+                                    style={{ flex: '1 1 130px' }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuTrash2 size={16} />
+                                        <Text>Remove</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                        </Flex>
                     </Flex>
                 </Card>
 
@@ -1111,7 +1194,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                             <span
                                 aria-hidden
                                 style={{
-                                    backgroundColor: formData.accentColor || '#1677ff',
+                                    backgroundColor: activeAccentColor,
                                     border: `1px solid ${token.colorBorderSecondary}`,
                                     borderRadius: 999,
                                     display: 'inline-block',
@@ -1119,7 +1202,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                     width: 32,
                                 }}
                             />
-                            <Text strong>{(formData.accentColor || '#1677ff').toUpperCase()}</Text>
+                            <Text strong>{activeAccentColorLabel}</Text>
                             <LuPalette color={token.colorTextTertiary} size={18} />
                         </Flex>
                     </Flex>
@@ -1638,8 +1721,9 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                 sourceDataUrl={adjustingPhotoIndex != null ? photoDrafts[adjustingPhotoIndex]?.sourceDataUrl : undefined}
             />
             <ColorPickerSheet
-                defaultMoodColor="#1677FF"
-                onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color || '#1677ff' }))}
+                currentToneLabel={t('officialPage')}
+                defaultMoodColor={defaultObpAccentColor}
+                onChange={(color) => setFormData((previous) => ({ ...previous, accentColor: color }))}
                 onClose={() => setIsColorPickerOpen(false)}
                 value={formData.accentColor}
                 visible={isColorPickerOpen}

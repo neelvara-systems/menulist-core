@@ -134,9 +134,10 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 The public menu is not a website-builder surface. Store/project owners can select the existing `config.design.menu` mood and layout presets, but customer output keeps the following primitives locked:
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
-- Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right.
-- The sticky command row must not use compositor transform hacks; scroll-spy category updates are frame-throttled so normal vertical scrolling does not make the row vibrate.
-- Mobile public menus keep the sticky command row anchored at `top: 0`; visual spacing and safe-area breathing room live inside the row padding, and public mobile uses stable `svh` viewport height so iOS browser/PWA chrome changes do not make the row bounce.
+- Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right when there are three or more sections.
+- The sticky command row must not use compositor transform hacks or clipped sticky ancestors; scroll-spy category updates are frame-throttled so normal vertical scrolling does not make the row vibrate.
+- Mobile public menus switch the command row to a measured fixed layer only after it reaches the top. Visual spacing and safe-area breathing room live inside the row padding, and public mobile uses stable `svh` viewport height so iOS browser/PWA chrome changes do not make the row bounce.
+- Search focus can show compact suggestions derived from visible item/section names; suggestions are client-side only and must not add Firestore/API reads.
 - The compact top-row language control shows only the language initials; full language names remain inside the language picker.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - The `Sections` navigator header stays compact; close controls keep their tap target without creating a tall heading band.
@@ -147,6 +148,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Mobile Menu Design includes a persistent preview-only action so owners can inspect draft design changes through the same public menu renderer before saving.
 - Category headings are structural markers, not decorative title screens.
 - Item cards preserve line limits, price alignment, text-first hierarchy, and render image frames only when an item has an image.
+- Compact two-column mobile Grid output should let a single final card span the full row so odd item counts do not leave an empty second column.
 - Public image rendering normalizes legacy and current stored image shapes before cards, featured choices, PDP galleries, and metadata read item images.
 - PDP close waits for the item-history back event when the item URL was pushed, then restores scroll without synthetic scroll/resize events so iPhone PWAs do not move the category rail while returning to the menu.
 - PDP close must not remount the sticky command row or dispatch synthetic scroll events; featured item PDPs close like regular item PDPs without moving the horizontal category rail.
@@ -161,9 +163,10 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Fullscreen PDP image inspection owns its own touch zoom, so customers can pinch product/service photos without zooming the entire menu surface.
 - Business logos render as the uploaded image itself on menu and OBP surfaces; no extra wrapper border or crop is applied around the logo image.
 - Public menu language persistence is scoped to the store/project session and the project-specific local preference key; old global language preferences are ignored so installed PWAs cannot leak a previous menu language into another project.
-- Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, and URLs must stay aligned when the customer changes language on the menu after arriving from OBP.
-- Public search waits for at least two normalized characters before filtering, allows numeric prefix search for alphanumeric tokens such as `11am` without matching unrelated price tokens such as `115`, rejects ambiguous compressed token matches, and aliases expand customer queries rather than stored item meanings.
+- Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, route `?lang=`, and item share URLs must stay aligned when the customer changes language on the menu after arriving from OBP.
+- Public search waits for at least two normalized characters before filtering, allows numeric prefix search for alphanumeric tokens such as `11am` without matching unrelated price tokens such as `115`, rejects ambiguous compressed token matches, aliases expand customer queries rather than stored item meanings, and treats multi-term searches as exact phrase first, then any-term recovery.
 - Starting a search from a deep scroll position must bring the result area back under the sticky command row so customers never have to manually scroll to find the filtered output.
+- Temporary status notices on the public menu belong in the bottom trust zone as centered pills, not above the business identity header.
 
 ---
 
@@ -171,6 +174,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-12 | Public menu UX fixes: mobile grid odd rows span cleanly, search suggestions are data-based, multi-term search supports any-term recovery, language routing updates server-rendered menu names, item URLs preserve language, PDP nutrition facts display, temporary status moved to the bottom trust zone, and Sections appears only for 3+ sections |
 | 2026-05-10 | Search false-positive hardening: one-character input no longer shows a no-result state, and chai typo recovery no longer matches unrelated choice/cheese/tea-description text |
 | 2026-05-10 | Mobile grid output restored, fullscreen PDP image pinch zoom added, and public menu language switching now keeps item descriptions aligned with the selected language |
 | 2026-05-10 | Desktop menu polish: featured choices use a desktop grid, and footer contact actions render as compact centered chips instead of full-width controls |

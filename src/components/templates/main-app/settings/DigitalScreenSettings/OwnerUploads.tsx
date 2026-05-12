@@ -6,15 +6,15 @@
  * Follows existing pattern: Client-side upload via DAL, not API route
  */
 
-import { removePinnedSlide, uploadScreenSlide } from "@database/campaigns";
+import { removePinnedSlide, updatePinnedSlideCaption, uploadScreenSlide } from "@database/campaigns";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
 import { prepareMediaImage, toPreparedUploadName, type PreparedMediaImage } from "@lib/media/prepareMediaImage";
 import MediaImageCard from "@/components/shared/media/MediaImageCard";
 import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import { ScreenSlide } from "@type/campaigns";
-import { Button, Flex, List, Popconfirm, theme, Typography, message } from "antd";
+import { Button, Flex, Input, List, Popconfirm, Space, theme, Typography, message } from "antd";
 import { useState } from "react";
-import { LuCheck, LuClock, LuTrash2 } from "react-icons/lu";
+import { LuCheck, LuClock, LuPencil, LuTrash2 } from "react-icons/lu";
 
 const { Text } = Typography;
 
@@ -39,7 +39,11 @@ export default function OwnerUploads({
         fileName: string;
         prepared: PreparedMediaImage;
     } | null>(null);
+    const [pendingSlideCaption, setPendingSlideCaption] = useState('');
     const [isPendingSlideAdjustOpen, setIsPendingSlideAdjustOpen] = useState(false);
+    const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+    const [editingSlideCaption, setEditingSlideCaption] = useState('');
+    const [savingCaptionId, setSavingCaptionId] = useState<string | null>(null);
 
     const canUpload = pinnedSlides.length < maxUploads;
 
@@ -57,6 +61,7 @@ export default function OwnerUploads({
                 fileName: file.name,
                 prepared,
             });
+            setPendingSlideCaption(file.name.replace(/\.[^/.]+$/, "") || 'Custom Slide');
             message.success('Slide ready. Review and save it.');
 
         } catch (error: any) {
@@ -75,7 +80,7 @@ export default function OwnerUploads({
         try {
             const { fileName, prepared } = pendingSlide;
             const preparedName = toPreparedUploadName(fileName, prepared.mimeType, fileName);
-            const caption = preparedName.replace(/\.[^/.]+$/, "");
+            const caption = pendingSlideCaption.trim() || preparedName.replace(/\.[^/.]+$/, "") || "Custom Slide";
 
             // Upload via DAL (follows existing pattern from projects/tickets)
             await uploadScreenSlide(
@@ -98,11 +103,27 @@ export default function OwnerUploads({
 
             message.success(`Slide uploaded! Will expire in ${uploadExpiryDays} days`);
             setPendingSlide(null);
+            setPendingSlideCaption('');
             onSlideUploaded();
         } catch (error: any) {
             message.error(error.message || 'Failed to upload slide');
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleSaveSlideCaption = async (slideId: string) => {
+        setSavingCaptionId(slideId);
+        try {
+            await updatePinnedSlideCaption(slideId, editingSlideCaption.trim() || 'Custom Slide');
+            message.success('Slide name updated');
+            setEditingSlideId(null);
+            setEditingSlideCaption('');
+            onSlideUploaded();
+        } catch {
+            message.error('Failed to update slide name');
+        } finally {
+            setSavingCaptionId(null);
         }
     };
 
@@ -149,15 +170,25 @@ export default function OwnerUploads({
                     imageUrl={pendingSlide?.prepared.dataUrl}
                     isBusy={uploading}
                     onAdjust={() => setIsPendingSlideAdjustOpen(true)}
-                    onRemove={pendingSlide ? () => setPendingSlide(null) : undefined}
+                    onRemove={pendingSlide ? () => {
+                        setPendingSlide(null);
+                        setPendingSlideCaption('');
+                    } : undefined}
                     onSelectFile={(file) => { void handleUpload(file); }}
                     placeholderDescription={canUpload ? 'Drop, paste, or choose a widescreen slide.' : `Maximum ${maxUploads} custom slides allowed.`}
                     placeholderTitle={pendingSlide ? 'Slide ready' : 'Upload image'}
                 />
                 {pendingSlide ? (
-                    <Button icon={<LuCheck />} loading={uploading} onClick={() => void handleSavePendingSlide()} type="primary">
-                        Save slide
-                    </Button>
+                    <Flex gap={8} vertical>
+                        <Input
+                            onChange={(event) => setPendingSlideCaption(event.target.value)}
+                            placeholder="Slide name"
+                            value={pendingSlideCaption}
+                        />
+                        <Button icon={<LuCheck />} loading={uploading} onClick={() => void handleSavePendingSlide()} type="primary">
+                            Save slide
+                        </Button>
+                    </Flex>
                 ) : null}
             </Flex>
 
@@ -170,6 +201,18 @@ export default function OwnerUploads({
                         return (
                             <List.Item
                                 actions={[
+                                    editingSlideId === slide.id ? null : (
+                                        <Button
+                                            key="edit"
+                                            type="text"
+                                            icon={<LuPencil />}
+                                            size="small"
+                                            onClick={() => {
+                                                setEditingSlideId(slide.id);
+                                                setEditingSlideCaption(slide.caption || 'Custom Slide');
+                                            }}
+                                        />
+                                    ),
                                     <Popconfirm
                                         key="delete"
                                         title="Delete this custom slide?"
@@ -209,7 +252,28 @@ export default function OwnerUploads({
                                             </div>
                                         )
                                     }
-                                    title={slide.caption || 'Custom Slide'}
+                                    title={editingSlideId === slide.id ? (
+                                        <Space.Compact style={{ width: '100%' }}>
+                                            <Input
+                                                onChange={(event) => setEditingSlideCaption(event.target.value)}
+                                                placeholder="Slide name"
+                                                value={editingSlideCaption}
+                                            />
+                                            <Button
+                                                loading={savingCaptionId === slide.id}
+                                                onClick={() => void handleSaveSlideCaption(slide.id)}
+                                                type="primary"
+                                            >
+                                                Save
+                                            </Button>
+                                            <Button onClick={() => {
+                                                setEditingSlideId(null);
+                                                setEditingSlideCaption('');
+                                            }}>
+                                                Cancel
+                                            </Button>
+                                        </Space.Compact>
+                                    ) : (slide.caption || 'Custom Slide')}
                                     description={
                                         <span style={{ fontSize: 12 }}>
                                             <LuClock style={{ marginRight: 4 }} />

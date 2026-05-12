@@ -645,9 +645,15 @@ export function matchesPublicMenuSearchDocument(
     if (query.text.length >= 3 && containsSearchPhrase(document.text, query.text)) return true;
 
     const documentTokenSet = new Set(document.tokens);
-    return query.tokenVariants.every((queryVariants) =>
+    const tokenMatchResults = query.tokenVariants.map((queryVariants) =>
         tokenMatches(queryVariants, document.tokens, documentTokenSet),
     );
+
+    if (query.tokenVariants.length > 1) {
+        return tokenMatchResults.some(Boolean);
+    }
+
+    return tokenMatchResults.every(Boolean);
 }
 
 export function rankPublicMenuSearchDocument(
@@ -671,7 +677,16 @@ export function rankPublicMenuSearchDocument(
         return 2;
     }
 
-    return 3;
+    if (query.tokenVariants.length > 1) {
+        const documentTokenSet = new Set(document.tokens);
+        const matchedTokenCount = query.tokenVariants.filter((queryVariants) =>
+            tokenMatches(queryVariants, document.tokens, documentTokenSet),
+        ).length;
+        if (matchedTokenCount === query.tokenVariants.length) return 3;
+        if (matchedTokenCount > 0) return 4;
+    }
+
+    return 5;
 }
 
 export function attachPublicMenuSearchIndex(

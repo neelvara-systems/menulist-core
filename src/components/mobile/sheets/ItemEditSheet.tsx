@@ -844,29 +844,38 @@ export default function ItemEditSheet({
 
                     {metadataFields.length > 0 ? (
                         <Card size="small" style={sectionCardStyle}>
-                            <Flex gap={14} vertical>
-                                <Flex gap={2} vertical>
-                                    <Text strong>Item details</Text>
-                                    <Text type="secondary">Only add details you know are correct.</Text>
-                                </Flex>
-                                {metadataFields.map((field) => {
-                                    if (field.key === 'duration') {
-                                        return (
-                                            <Flex gap={6} key={field.key} vertical>
-                                                <Text strong>{field.label}</Text>
-                                                <Input
-                                                    onChange={(value) => updateDecisionFact(field, value ? Number(value) : undefined)}
-                                                    placeholder={field.tooltip}
-                                                    type="number"
-                                                    value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
-                                                />
-                                            </Flex>
-                                        );
-                                    }
+                            <Collapse>
+                                <Collapse.Panel
+                                    key="item-details"
+                                    title={(
+                                        <Flex gap={2} vertical>
+                                            <Text strong>Item details</Text>
+                                            <Text type="secondary">Dietary, nutrition, and other optional details.</Text>
+                                        </Flex>
+                                    )}
+                                >
+                                    <Flex gap={14} vertical>
+                                        <Text type="secondary">Only add details you know are correct.</Text>
+                                        {metadataFields.map((field) => {
+                                            if (field.key === 'duration') {
+                                                return (
+                                                    <Flex gap={6} key={field.key} vertical>
+                                                        <Text strong>{field.label}</Text>
+                                                        <Input
+                                                            onChange={(value) => updateDecisionFact(field, value ? Number(value) : undefined)}
+                                                            placeholder={field.tooltip}
+                                                            type="number"
+                                                            value={draftItem.duration !== undefined ? String(draftItem.duration) : ''}
+                                                        />
+                                                    </Flex>
+                                                );
+                                            }
 
-                                    return renderDecisionFactControl(field);
-                                })}
-                            </Flex>
+                                            return renderDecisionFactControl(field);
+                                        })}
+                                    </Flex>
+                                </Collapse.Panel>
+                            </Collapse>
                         </Card>
                     ) : null}
 

@@ -1120,6 +1120,43 @@ export const removePinnedSlide = async (slideId: string): Promise<void> => {
 };
 
 /**
+ * Update pinned slide caption without re-uploading image.
+ */
+export const updatePinnedSlideCaption = async (slideId: string, caption: string): Promise<void> => {
+    return await apiCallComposer(
+        async () => {
+            const session = await getActiveSession();
+            const docRef = getCampaignsSummaryDocRef(session);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+                throw new Error("Screen not initialized");
+            }
+
+            const data = docSnap.data() as CampaignsSummaryDocument;
+            const currentSlides = data.screen?.pinnedSlides || [];
+            const updatedSlides = currentSlides.map((slide) => (
+                slide.id === slideId
+                    ? { ...slide, caption: caption.trim() || "Custom Slide" }
+                    : slide
+            ));
+
+            await setDoc(docRef, {
+                screen: {
+                    pinnedSlides: updatedSlides,
+                    contentVersion: (data.screen?.contentVersion || 0) + 1,
+                    lastContentChangeAt: Timestamp.now()
+                }
+            }, { merge: true });
+
+            console.log(`✅ [updatePinnedSlideCaption] Updated slide: ${slideId}`);
+        },
+        { slideId },
+        "updatePinnedSlideCaption"
+    );
+};
+
+/**
  * Bump content version (for invalidation)
  * Called when availability or menu changes
  * Per spec: Event-based invalidation for trust

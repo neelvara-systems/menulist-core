@@ -181,7 +181,8 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                                 <img
                                     src={qrDataUrl}
                                     alt="Feedback QR Code"
-                                    className="w-48 h-48 mx-auto"
+                                    className="mx-auto"
+                                    style={{ height: 240, width: 240 }}
                                 />
                             </div>
 

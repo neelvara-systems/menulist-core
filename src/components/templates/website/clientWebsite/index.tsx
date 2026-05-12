@@ -16,6 +16,7 @@ import {
 } from "@template/main-app/projects/b2cView/types";
 import { StoreDataType } from "@type/platform/store";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import MainContentRenderer from "../mainContentRenderer";
 import GoogleSearchConsole from "./GoogleSearchConsole";
@@ -85,6 +86,7 @@ function ClientMenuRenderer({
     initialLanguage,
     menuResolutionLayer,
 }: ClientMenuRendererProps) {
+    const router = useRouter();
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const storeId = storeDetails?.storeId;
     const storeDisplayName = getStoreContextName(storeDetails, "Menu");
@@ -123,15 +125,11 @@ function ClientMenuRenderer({
         try {
             const nextUrl = new URL(window.location.href);
             nextUrl.searchParams.set("lang", resolvedLanguage);
-            window.history.replaceState(
-                window.history.state,
-                "",
-                `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`,
-            );
+            router.replace(`${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`, { scroll: false });
         } catch {
             // URL state is secondary; visible language state remains updated.
         }
-    }, [projectData, storeDetails]);
+    }, [projectData, router, storeDetails]);
     const activeLanguageName = GlobalLanguagesList.find((language) => language.code === activeLanguage)?.name || activeLanguage.toUpperCase();
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>(
         DEVICE_TYPES_LIST.MOBILE,

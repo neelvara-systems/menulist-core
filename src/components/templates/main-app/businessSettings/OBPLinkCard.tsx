@@ -198,7 +198,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                     <div ref={qrRef}>
                         <QRCodeCanvas
                             value={activeQrUrl}
-                            size={180}
+                            size={240}
                             level="M"
                             includeMargin
                         />

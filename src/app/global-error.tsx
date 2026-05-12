@@ -1,5 +1,6 @@
 "use client";
 
+import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { useEffect, useState } from "react";
 
 // Default colors from constants/common.ts
@@ -149,6 +150,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               🏠 Go Home
             </button>
           </div>
+          <ErrorReportButton
+            error={error}
+            source="global-error-boundary"
+            style={{ marginTop: 16 }}
+          />
         </div>
       </body>
     </html>

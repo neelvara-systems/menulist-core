@@ -5,6 +5,7 @@ import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { theme } from 'antd';
@@ -58,6 +59,10 @@ function buildLocalizedSeoDrafts(storeDetails: any, languages: string[]): Record
     );
 }
 
+function getDefaultCanonicalUrl(storeDetails: any): string {
+    return storeDetails?.canonicalUrl || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain) || '';
+}
+
 export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: MobileSeoAnalyticsScreenProps) {
     const t = useTranslations('MobileSeoAnalytics');
     const tSeo = useTranslations('SEO');
@@ -98,7 +103,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
         setSelectedLanguage(nextSelectedLanguage);
         setLocalizedSeoDrafts(nextLocalizedDrafts);
         setOriginalLocalizedSeoDrafts(nextLocalizedDrafts);
-        setCanonicalUrl(storeDetails.canonicalUrl || '');
+        setCanonicalUrl(getDefaultCanonicalUrl(storeDetails));
         setOriginalSeoState(getSeoDraft(storeDetails));
         const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails.analytics);
         setGaId(storeDetails.analytics?.googleAnalyticsId || '');
@@ -1102,7 +1107,7 @@ function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
 function getSeoDraft(storeDetails: any): SeoDraft {
     const preferredLanguage = getStorePreferredLanguage(storeDetails);
     return {
-        canonicalUrl: storeDetails?.canonicalUrl || '',
+        canonicalUrl: getDefaultCanonicalUrl(storeDetails),
         keywords: getLocalizedStoreKeywords(storeDetails?.keywords, preferredLanguage, []).join(', '),
         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, preferredLanguage, ''),
         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, preferredLanguage, ''),

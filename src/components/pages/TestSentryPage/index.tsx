@@ -1,6 +1,8 @@
 'use client';
 
+import ErrorReportButton from '@/components/shared/debug/ErrorReportButton';
 import { logger, trackUserAction, trackAPICall, trackBusinessEvent } from '@lib/monitoring/logger';
+import { isSentryMonitoringEnabled, monitoringDsn, monitoringEnvironment, monitoringRelease } from '@lib/monitoring/sentryShared';
 import { Button, Card, Flex, Space, Typography } from 'antd';
 import { useState } from 'react';
 
@@ -17,6 +19,8 @@ const { Title, Text, Paragraph } = Typography;
  */
 export default function TestSentryPage() {
   const [testResults, setTestResults] = useState<string[]>([]);
+  const clientDsnConfigured = Boolean(monitoringDsn.client);
+  const serverDsnConfigured = Boolean(monitoringDsn.server);
 
   const addResult = (message: string) => {
     setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
@@ -127,6 +131,26 @@ export default function TestSentryPage() {
         </Paragraph>
       </Card>
 
+      <Card title="Runtime Status">
+        <Space direction="vertical">
+          <Text>
+            <strong>Sentry enabled:</strong> {isSentryMonitoringEnabled ? 'Yes' : 'No'}
+          </Text>
+          <Text>
+            <strong>Environment:</strong> {monitoringEnvironment}
+          </Text>
+          <Text>
+            <strong>Release:</strong> {monitoringRelease}
+          </Text>
+          <Text>
+            <strong>Client DSN:</strong> {clientDsnConfigured ? 'Configured' : 'Missing'}
+          </Text>
+          <Text>
+            <strong>Server DSN:</strong> {serverDsnConfigured ? 'Configured' : 'Missing'}
+          </Text>
+        </Space>
+      </Card>
+
       <Card title="📊 Test Actions">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div>
@@ -156,6 +180,20 @@ export default function TestSentryPage() {
               <Button danger onClick={testAsyncError}>
                 ⏱️ Test Async Error
               </Button>
+            </Flex>
+          </div>
+
+          <div>
+            <Text strong>Failure Screen Diagnostics:</Text>
+            <Flex align="center" gap={12} wrap="wrap" style={{ marginTop: 8 }}>
+              <ErrorReportButton
+                error={new Error('Platform Sentry diagnostic test')}
+                label="Send Diagnostic Report"
+                source="platform-sentry-test"
+              />
+              <Text type="secondary">
+                Sends the same payload used by broken-screen report buttons, including report ID, build, URL, and copy fallback.
+              </Text>
             </Flex>
           </div>
 

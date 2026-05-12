@@ -6,6 +6,23 @@
 
 ---
 
+## May 12, 2026 — Client Menu: Public UX Fixes
+
+### Changed
+
+- **Search suggestions stay data-based** — Focusing public menu search now shows compact suggestions from visible item and section names without adding an API call or owner setting.
+- **Temporary status moved out of the top stack** — Public menu temporary notices now render as a centered bottom pill in the trust zone instead of competing with the business header and sticky search row.
+
+### Fixed
+
+- **Mobile grid odd rows fill cleanly** — In compact mobile Grid layout, a single final item spans the full row instead of leaving an empty grid cell.
+- **Multi-term search returns each intent** — Searches such as `coffee chai` now keep exact phrase matching first, then show items that match either term, with items matching both terms ranked above single-term matches.
+- **Menu language changes update routed content** — Changing menu language now updates the `?lang=` route through Next navigation so server-rendered menu names, item descriptions, and share metadata stay aligned.
+- **Item share URLs keep language context** — Public item detail URLs preserve the selected language query so copied item links can render the right title and description preview.
+- **PDP nutrition facts are visible** — Owner-entered nutrition facts now render in the item detail metadata badges, matching the existing schema/search support.
+- **Sections button threshold tightened** — The `Sections` command appears only when a menu has three or more sections.
+- **iPhone command-row stability hardened** — Public mobile menu wrappers no longer clip overflow around the command row, and mobile public output switches to a measured fixed layer once the row reaches the top to avoid iOS sticky positioning instability.
+
 ## May 10, 2026 — Client Menu: Public Hardening Pass
 
 ### Changed

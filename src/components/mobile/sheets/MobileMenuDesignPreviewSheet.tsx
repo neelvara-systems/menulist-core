@@ -55,6 +55,7 @@ export default function MobileMenuDesignPreviewSheet({
                 background: token.colorBgLayout,
                 height: '100vh',
                 maxHeight: '100vh',
+                minHeight: '100vh',
                 overflow: 'hidden',
                 padding: 0,
             }}
@@ -64,7 +65,7 @@ export default function MobileMenuDesignPreviewSheet({
             visible={visible}
             zIndex={1200}
         >
-            <Flex style={{ background: token.colorBgLayout, height: '100%', minHeight: 0 }} vertical>
+            <Flex style={{ background: token.colorBgLayout, height: '100%', minHeight: '100%' }} vertical>
                 <NavBar
                     backIcon={<LuX size={20} />}
                     onBack={onClose}

@@ -1,5 +1,6 @@
 'use client' // Error components must be Client Components
 import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
+import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { logger } from "@lib/monitoring/logger";
 import { clearBrowserCache } from "@util/utils";
 import { Button, Flex, Result, Tooltip, Typography } from "antd";
@@ -38,6 +39,11 @@ export default function Error({ error, reset }: {
                         <Button type="primary" icon={<LuRotateCw />} onClick={() => reset()}>Refresh</Button>
                     </Tooltip>
                 </Flex>
+                <ErrorReportButton
+                    error={error}
+                    source="global-pages-error-boundary"
+                    style={{ marginTop: 16 }}
+                />
             </Flex>
         </ErrorPageThemeWrapper>
     )

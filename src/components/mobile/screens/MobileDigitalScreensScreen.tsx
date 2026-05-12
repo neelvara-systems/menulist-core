@@ -1,6 +1,6 @@
 'use client'
 
-import { getScreenState, initializeScreenState, removePinnedSlide, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
+import { getScreenState, initializeScreenState, removePinnedSlide, updatePinnedSlideCaption, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
@@ -13,8 +13,8 @@ import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Dialog, DotLoading, Flex, Switch, Tag, Text, Title, Toast } from '../antd';
+import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPencil, LuPlay, LuTrash2 } from 'react-icons/lu';
+import { Button, Card, Dialog, DotLoading, Flex, Input, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileDigitalScreensScreenProps {
@@ -53,9 +53,13 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const [ownerOverride, setOwnerOverride] = useState(false);
     const [pinnedSlides, setPinnedSlides] = useState<ScreenSlide[]>([]);
     const [pendingSlide, setPendingSlide] = useState<AdjustableUploadedFile | null>(null);
+    const [pendingSlideCaption, setPendingSlideCaption] = useState('');
     const [isPendingSlideAdjustOpen, setIsPendingSlideAdjustOpen] = useState(false);
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
+    const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+    const [editingSlideCaption, setEditingSlideCaption] = useState('');
+    const [savingCaptionId, setSavingCaptionId] = useState<string | null>(null);
 
     const highlightsUrl = screenUrl ? `${screenUrl}?mode=highlights` : '';
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
@@ -140,6 +144,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }
 
         setPendingSlide(file);
+        setPendingSlideCaption(file.sourceName?.replace(/\.[^/.]+$/, '') || file.name?.replace(/\.[^/.]+$/, '') || 'Custom Slide');
         Toast.show({ content: 'Slide ready. Review and save it.', duration: 1400 });
     };
 
@@ -171,14 +176,33 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         if (!pendingSlide) return;
         setUploading(true);
         try {
-            await uploadScreenSlide(pendingSlide, pendingSlide.name?.replace(/\.[^/.]+$/, '') || 'Custom Slide');
+            await uploadScreenSlide(pendingSlide, pendingSlideCaption.trim() || 'Custom Slide');
             Toast.show({ content: `Slide uploaded. Expires in ${UPLOAD_EXPIRY_DAYS} days.`, duration: 1800 });
             setPendingSlide(null);
+            setPendingSlideCaption('');
             await fetchState();
         } catch (error: any) {
             Toast.show({ content: error?.message || t('failedToUpdate'), duration: 2000 });
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleSaveSlideCaption = async (slideId: string) => {
+        setSavingCaptionId(slideId);
+        try {
+            const nextCaption = editingSlideCaption.trim() || 'Custom Slide';
+            await updatePinnedSlideCaption(slideId, nextCaption);
+            setPinnedSlides((previous) => previous.map((slide) => (
+                slide.id === slideId ? { ...slide, caption: nextCaption } : slide
+            )));
+            setEditingSlideId(null);
+            setEditingSlideCaption('');
+            Toast.show({ content: 'Slide name updated', duration: 1500 });
+        } catch {
+            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+        } finally {
+            setSavingCaptionId(null);
         }
     };
 
@@ -302,18 +326,28 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             imageUrl={pendingSlide?.url}
                             isBusy={uploading}
                             onAdjust={() => setIsPendingSlideAdjustOpen(true)}
-                            onRemove={pendingSlide ? () => setPendingSlide(null) : undefined}
+                            onRemove={pendingSlide ? () => {
+                                setPendingSlide(null);
+                                setPendingSlideCaption('');
+                            } : undefined}
                             onSelectFile={(file) => { void handleSelectSlideFile(file); }}
                             placeholderDescription={canUpload ? 'Drop, paste, or choose a widescreen slide.' : `Maximum ${MAX_UPLOADS} slides reached`}
                             placeholderTitle={pendingSlide ? 'Slide ready' : 'Upload image'}
                         />
                         {pendingSlide ? (
-                            <Button block loading={uploading} onClick={() => void handleSavePendingSlide()} size="small">
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuCheck size={16} />
-                                    <Text>Save</Text>
-                                </Flex>
-                            </Button>
+                            <Flex gap={8} vertical>
+                                <Input
+                                    onChange={setPendingSlideCaption}
+                                    placeholder="Slide name"
+                                    value={pendingSlideCaption}
+                                />
+                                <Button block loading={uploading} onClick={() => void handleSavePendingSlide()} size="small">
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuCheck size={16} />
+                                        <Text>Save</Text>
+                                    </Flex>
+                                </Button>
+                            </Flex>
                         ) : null}
 
                         {sortedSlides.length > 0 ? (
@@ -331,10 +365,54 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                     width: 56,
                                                 }}
                                             />
-                                            <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
-                                                <Text strong>{slide.caption || 'Custom Slide'}</Text>
-                                                <Text type="secondary">{getDaysRemaining(slide.validUntil)} days remaining</Text>
-                                            </Flex>
+                                            {editingSlideId === slide.id ? (
+                                                <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
+                                                    <Input
+                                                        onChange={setEditingSlideCaption}
+                                                        placeholder="Slide name"
+                                                        value={editingSlideCaption}
+                                                    />
+                                                    <Flex gap={6}>
+                                                        <Button
+                                                            block
+                                                            fill="outline"
+                                                            onClick={() => {
+                                                                setEditingSlideId(null);
+                                                                setEditingSlideCaption('');
+                                                            }}
+                                                            size="small"
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                        <Button
+                                                            block
+                                                            loading={savingCaptionId === slide.id}
+                                                            onClick={() => void handleSaveSlideCaption(slide.id)}
+                                                            size="small"
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                    </Flex>
+                                                </Flex>
+                                            ) : (
+                                                <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
+                                                    <Text strong>{slide.caption || 'Custom Slide'}</Text>
+                                                    <Text type="secondary">{getDaysRemaining(slide.validUntil)} days remaining</Text>
+                                                </Flex>
+                                            )}
+                                            {editingSlideId === slide.id ? null : (
+                                                <Button
+                                                    fill="none"
+                                                    onClick={() => {
+                                                        setEditingSlideId(slide.id);
+                                                        setEditingSlideCaption(slide.caption || 'Custom Slide');
+                                                    }}
+                                                    size="small"
+                                                    style={{ minHeight: 36, minWidth: 36, paddingInline: 0 }}
+                                                >
+                                                    <LuPencil size={16} />
+                                                </Button>
+                                            )}
                                             <Button
                                                 color="danger"
                                                 fill="none"

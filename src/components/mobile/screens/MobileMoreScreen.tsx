@@ -185,6 +185,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [isAppSettingsOpen, setIsAppSettingsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [officialPageBackTarget, setOfficialPageBackTarget] = useState<MoreSubScreen>('businessProfileHub');
     const logoutLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressNextLogoutClickRef = useRef(false);
 
@@ -234,8 +235,16 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         window.location.assign(path);
     };
 
+    const openOfficialPage = (backTarget: MoreSubScreen) => {
+        setOfficialPageBackTarget(backTarget);
+        openSubScreen('officialPage');
+    };
+
     const getBackTarget = (currentScreen: MoreSubScreen): MoreSubScreen => {
-        if (['basicSettings', 'officialPage', 'socialSettings', 'businessAttributes', 'customerApp'].includes(currentScreen)) {
+        if (currentScreen === 'officialPage') {
+            return officialPageBackTarget;
+        }
+        if (['basicSettings', 'socialSettings', 'businessAttributes', 'customerApp'].includes(currentScreen)) {
             return 'businessProfileHub';
         }
         if (['domainSettings', 'businessCopySetup', 'seoSettings', 'integrations', 'presenceMonitor'].includes(currentScreen)) {
@@ -263,6 +272,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, keywords: ['temporary closed', 'holiday', 'closed today', 'special hours', 'status'], label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['seasonal menu', 'festival menu', 'limited time', 'brunch', 'special menu'], label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
         { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, keywords: ['theme', 'colors', 'fonts', 'layout', 'images', 'design'], label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') },
+        ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPageTop', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('main') }] : []),
         { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') },
         { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
         { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, keywords: ['payments', 'receipts', 'history', 'billing history', 'charges'], label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
@@ -287,7 +297,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const businessProfileHubItems: MoreListItem[] = [
         { key: 'basicSettings', icon: <LuSettings color="#f97316" size={20} />, keywords: ['logo', 'brand', 'business name', 'phone', 'email', 'address', 'coordinates', 'gst', 'contact person'], label: 'Brand Settings', description: 'Manage brand name, logo, contact details, and address.', onClick: () => openSubScreen('basicSettings') },
-        ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openSubScreen('officialPage') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPage', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('businessProfileHub') }] : []),
         { key: 'socialSettings', icon: <LuGlobe color="#f43f5e" size={20} />, keywords: ['instagram', 'facebook', 'zomato', 'swiggy', 'social links'], label: tBusiness('socialMedia'), description: t('socialSettingsDesc'), onClick: () => openSubScreen('socialSettings') },
         ...(FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES ? [{ key: 'businessAttributes', icon: <LuBuilding2 color="#7c3aed" size={20} />, keywords: ['amenities', 'wifi', 'parking', 'veg', 'pet friendly', 'attributes'], label: tBusiness('businessAttributes'), description: tBusiness('businessAttributesDesc'), onClick: () => openSubScreen('businessAttributes') }] : []),
         ...(FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA ? [{ key: 'customerApp', icon: <LuSmartphone color="#8b5cf6" size={20} />, keywords: ['pwa', 'install app', 'home screen icon', 'customer app', 'mobile app'], label: 'Customer App', description: 'Installable menu app — settings and live install analytics.', onClick: () => openSubScreen('customerApp') }] : []),

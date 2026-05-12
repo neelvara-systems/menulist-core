@@ -307,7 +307,7 @@ function ShareModal({
                             <div id="share-qrcode" style={{ background: qrBgColor, borderRadius: 8, padding: 8 }}>
                                 <QRCode
                                     value={qrShareUrl}
-                                    size={100}
+                                    size={160}
                                     errorLevel="H"
                                     color={qrColor}
                                     bgColor={qrBgColor}

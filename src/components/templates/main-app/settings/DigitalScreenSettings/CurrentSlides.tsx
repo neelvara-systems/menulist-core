@@ -86,7 +86,7 @@ export default function CurrentSlides({ pinnedSlides }: CurrentSlidesProps) {
                                     />
                                 )}
                                 <div style={{ minWidth: 0 }}>
-                                    <Text>{slide.itemName || slide.caption || 'Custom Slide'}</Text>
+                                    <Text>{slide.source === 'pinned' ? (slide.caption || 'Custom Slide') : (slide.itemName || slide.caption || 'Custom Slide')}</Text>
                                     <br />
                                     <Tag color={label.color}>{label.text}</Tag>
                                 </div>

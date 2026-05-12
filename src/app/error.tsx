@@ -1,5 +1,6 @@
 'use client' // Error components must be Client Components
 import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
+import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { logger } from "@lib/monitoring/logger";
 import { Button, Flex, Result, Typography } from "antd";
 import { useEffect, useState } from 'react';
@@ -71,6 +72,11 @@ export default function Error({ error, reset }: {
                         Get Help
                     </Button>
                 </Flex>
+                <ErrorReportButton
+                    error={error}
+                    source="app-error-boundary"
+                    style={{ marginTop: 16 }}
+                />
             </Flex>
         </ErrorPageThemeWrapper>
     )

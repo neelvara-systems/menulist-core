@@ -7,14 +7,16 @@ const runtimeEnvironment =
     || 'development';
 
 const isDevelopment = runtimeEnvironment === 'development';
+const FALLBACK_DEV_DSN = 'https://6d8940082c1030ff67af7e2345684dc9@o4510276442062848.ingest.us.sentry.io/4510276910710784';
+const FALLBACK_PROD_DSN = 'https://74bb29116e9ac34f9e0b97a8121b95c7@o4510276442062848.ingest.us.sentry.io/4510276442259456';
 
 const clientDsn = isDevelopment
-    ? process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || ''
-    : process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || '';
+    ? process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || FALLBACK_DEV_DSN
+    : process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || FALLBACK_PROD_DSN;
 
 const serverDsn = isDevelopment
-    ? process.env.SENTRY_DSN || clientDsn
-    : process.env.SENTRY_DSN || clientDsn;
+    ? process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DEV_DSN || clientDsn
+    : process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || clientDsn;
 
 const ignoredErrorPatterns = [
     /ResizeObserver loop limit exceeded/i,
@@ -82,11 +84,16 @@ export function applyMonitoringContext(scope: any, context?: Record<string, unkn
 
     const tagKeys = [
         'action',
+        'buildId',
         'endpoint',
+        'environment',
         'fileId',
         'model',
         'projectId',
         'requestId',
+        'routePath',
+        'shortBuildId',
+        'source',
         'sourceLang',
         'storeId',
         'targetLang',

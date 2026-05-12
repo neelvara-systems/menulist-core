@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
+import { installClientConsoleBuffer } from './src/lib/debug/clientConsoleBuffer';
 import {
     isSentryMonitoringEnabled,
     monitoringDsn,
@@ -6,6 +7,8 @@ import {
     monitoringRelease,
     shouldSendMonitoringEvent,
 } from './src/lib/monitoring/sentryShared';
+
+installClientConsoleBuffer();
 
 if (isSentryMonitoringEnabled && monitoringDsn.client) {
     Sentry.init({

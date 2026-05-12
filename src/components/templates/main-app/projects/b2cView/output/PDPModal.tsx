@@ -16,7 +16,7 @@ import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsConte
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { getLocalizedText } from '@lib/localization/text';
 import { getMenuItemImageAltText } from '@lib/media/altText';
-import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString } from '@lib/menu/itemDecisionFacts';
+import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from '@lib/menu/itemDecisionFacts';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -295,6 +295,16 @@ function PDPModal({
     const skillLevel = getDecisionFactString(item, 'skillLevel');
     const materials = getDecisionFactString(item, 'materials');
     const warranty = getDecisionFactString(item, 'warranty');
+    const nutritionInfo = getNutritionFact(item) as Record<string, unknown> | undefined;
+    const nutritionBadges = nutritionInfo
+        ? [
+            nutritionInfo.calories ? `${nutritionInfo.calories} cal` : '',
+            nutritionInfo.protein ? `Protein ${nutritionInfo.protein}g` : '',
+            nutritionInfo.carbs ? `Carbs ${nutritionInfo.carbs}g` : '',
+            nutritionInfo.fat ? `Fat ${nutritionInfo.fat}g` : '',
+            nutritionInfo.servingSize ? `Serving ${nutritionInfo.servingSize}` : '',
+        ].filter(Boolean)
+        : [];
 
     const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         imageTouchStartXRef.current = event.touches[0]?.clientX ?? null;
@@ -678,7 +688,7 @@ function PDPModal({
                                 )}
 
                                 {/* Structured Metadata Badges — render owner-provided details when present */}
-                                {(allergens.length || dietaryTags.length || spiceLevel || duration || targetAudience || skillLevel || materials || warranty) && (
+                                {(allergens.length || dietaryTags.length || spiceLevel || duration || targetAudience || skillLevel || materials || warranty || nutritionBadges.length) && (
                                     <div
                                         className="flex flex-wrap gap-1.5 mb-4"
                                         style={{
@@ -728,6 +738,11 @@ function PDPModal({
                                                 Warranty: {warranty}
                                             </span>
                                         )}
+                                        {nutritionBadges.map((badge) => (
+                                            <span key={`nutrition-${badge}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}12`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                                {badge}
+                                            </span>
+                                        ))}
                                     </div>
                                 )}
 

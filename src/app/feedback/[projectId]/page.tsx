@@ -10,6 +10,7 @@
  */
 
 import GuestFeedbackForm from '@atoms/GuestFeedbackForm';
+import feedbackStyles from '@atoms/GuestFeedbackForm/index.module.scss';
 import TempStatusBanner from '@atoms/TempStatusBanner';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -239,7 +240,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     };
 
     return (
-        <div className="min-h-screen overflow-x-hidden bg-[#f7f8fa]" data-obp-page="true">
+        <div className={feedbackStyles.page} data-obp-page="true">
             {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeInfo.tempStatus ? (
                 <TempStatusBanner tempStatus={storeInfo.tempStatus} />
             ) : null}
@@ -250,7 +251,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
                 variant="identity"
                 theme={publicHeaderTheme}
             />
-            <div className="mx-auto w-full max-w-3xl px-4 pb-6 sm:px-6">
+            <div className={feedbackStyles.pageInner}>
                 <GuestFeedbackForm
                     accentColor={storeInfo.accentColor}
                     tId={project.tId}

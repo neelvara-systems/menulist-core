@@ -6,6 +6,7 @@ import {
     getLocalizedStoreKeywords,
     getLocalizedStoreValue,
 } from '@lib/localization/storeContent';
+import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { Button, Card, Divider, Form, Input, Select, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useEffect } from 'react';
@@ -30,6 +31,10 @@ function getLocalizedSeoValues(storeDetails?: any) {
     };
 }
 
+function getDefaultCanonicalUrl(storeDetails?: any): string {
+    return storeDetails?.canonicalUrl || generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain) || '';
+}
+
 function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const t = useTranslations('SEO');
     const form = Form.useFormInstance();
@@ -45,6 +50,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const localizedSeoDrafts = Form.useWatch('__localizedSeoDrafts') || {};
     const storeContentLanguage = Form.useWatch('__storeContentLanguage');
     const localizedSeoValues = getLocalizedSeoValues(storeDetails);
+    const defaultCanonicalUrl = getDefaultCanonicalUrl(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const currentLanguage = storeContentLanguage || getStorePreferredLanguage(storeDetails);
     const referenceLanguage = getStorePreferredLanguage(storeDetails);
@@ -56,7 +62,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         metaTitle,
         tagline,
     }) !== JSON.stringify({
-        canonicalUrl: storeDetails?.canonicalUrl || '',
+        canonicalUrl: defaultCanonicalUrl,
         keywords: localizedSeoValues.keywords,
         metaDescription: localizedSeoValues.metaDescription,
         metaTitle: localizedSeoValues.metaTitle,
@@ -82,6 +88,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         form.setFieldsValue({
             __localizedSeoDrafts: nextDrafts,
             __storeContentLanguage: currentLanguage,
+            canonicalUrl: defaultCanonicalUrl,
             keywords: nextDrafts[currentLanguage]?.keywords || [],
             metaDescription: nextDrafts[currentLanguage]?.metaDescription || '',
             metaTitle: nextDrafts[currentLanguage]?.metaTitle || '',
@@ -119,7 +126,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
         form.setFieldsValue({
             __localizedSeoDrafts: resetDrafts,
             __storeContentLanguage: currentLanguage,
-            canonicalUrl: storeDetails?.canonicalUrl || '',
+            canonicalUrl: defaultCanonicalUrl,
             keywords: resetDrafts[currentLanguage]?.keywords || [],
             metaDescription: resetDrafts[currentLanguage]?.metaDescription || '',
             metaTitle: resetDrafts[currentLanguage]?.metaTitle || '',

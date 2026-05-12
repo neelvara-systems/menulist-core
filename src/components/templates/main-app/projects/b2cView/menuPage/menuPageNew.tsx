@@ -13,6 +13,7 @@
 import { getUnavailableLabel } from '@config/businessLabels';
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
+import TempStatusBanner from '@atoms/TempStatusBanner';
 import TrustSignals from '@atoms/TrustSignals';
 import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
@@ -189,10 +190,14 @@ function MenuPageNew({
     const isPublicSurface = from === 'main-website';
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const searchResultsAnchorRef = useRef<HTMLDivElement | null>(null);
+    const stickySentinelRef = useRef<HTMLDivElement | null>(null);
+    const stickyControlsRef = useRef<HTMLDivElement | null>(null);
     const categoryTabsContainerRef = useRef<HTMLDivElement | null>(null);
     const categoryTabRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
     const activeCategoryIdRef = useRef<string | null>(null);
     const scrollSpyFrameRef = useRef<number | null>(null);
+    const pinScrollFrameRef = useRef<number | null>(null);
+    const commandLayerPinnedRef = useRef(false);
     const categoryNavigationLockRef = useRef<{
         id: string;
         timeoutId: number | null;
@@ -207,6 +212,14 @@ function MenuPageNew({
 
         return window.location.pathname;
     }, []);
+    const getMenuLanguageSearch = useCallback(() => {
+        if (typeof window === 'undefined' || !activeLanguage) return '';
+
+        const params = new URLSearchParams(window.location.search);
+        params.set('lang', activeLanguage);
+        const query = params.toString();
+        return query ? `?${query}` : '';
+    }, [activeLanguage]);
 
     const getActiveScrollContainer = useCallback(() => {
         if (isPublicSurface) return null;
@@ -297,6 +310,8 @@ function MenuPageNew({
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [activeCategory, setActiveCategory] = useState<any>(null);
     const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
+    const [isCommandLayerPinned, setIsCommandLayerPinned] = useState(false);
+    const [stickyControlsHeight, setStickyControlsHeight] = useState(0);
     const selectedItemRef = useRef<any>(null);
 
     useEffect(() => {
@@ -564,11 +579,87 @@ function MenuPageNew({
     }, [storageKey, activeFilter, activeCategory, allCategories, getScrollPosition, previewMode]);
 
     const showTabsBar = !isDesktop && showCategoryTabs;
-    const showSectionsControl = !isDesktop && allCategories.length >= 2;
+    const showSectionsControl = !isDesktop && allCategories.length >= 3;
+    const useFixedMobileCommandLayer = isPublicSurface && !isDesktop && !previewMode;
     const stickyControlsTopBuffer = isDesktop ? 0 : 8;
     const stickyControlsTopOffset = 0;
     const stickyControlsTopPadding = stickyControlsTopBuffer || 0;
     const stickyControlsOffset = isDesktop ? 96 : (showTabsBar ? 124 : 76) + stickyControlsTopBuffer;
+    const effectiveStickyControlsOffset = !isDesktop && stickyControlsHeight > 0
+        ? stickyControlsHeight
+        : stickyControlsOffset;
+
+    useEffect(() => {
+        if (!useFixedMobileCommandLayer) {
+            commandLayerPinnedRef.current = false;
+            setIsCommandLayerPinned(false);
+            setStickyControlsHeight(0);
+            return;
+        }
+
+        const element = stickyControlsRef.current;
+        if (!element) return;
+
+        const updateHeight = () => {
+            const nextHeight = Math.ceil(element.getBoundingClientRect().height || 0);
+            setStickyControlsHeight((current) => (current === nextHeight ? current : nextHeight));
+        };
+
+        updateHeight();
+
+        const observer = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(updateHeight)
+            : null;
+        observer?.observe(element);
+        window.addEventListener('resize', updateHeight);
+
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener('resize', updateHeight);
+        };
+    }, [isCommandLayerPinned, showTabsBar, useFixedMobileCommandLayer]);
+
+    useEffect(() => {
+        if (!useFixedMobileCommandLayer) {
+            if (pinScrollFrameRef.current !== null) {
+                window.cancelAnimationFrame(pinScrollFrameRef.current);
+                pinScrollFrameRef.current = null;
+            }
+            commandLayerPinnedRef.current = false;
+            setIsCommandLayerPinned(false);
+            return;
+        }
+
+        const updatePinnedState = () => {
+            pinScrollFrameRef.current = null;
+            const sentinel = stickySentinelRef.current;
+            if (!sentinel) return;
+
+            const shouldPin = sentinel.getBoundingClientRect().top <= 0;
+            if (commandLayerPinnedRef.current === shouldPin) return;
+
+            commandLayerPinnedRef.current = shouldPin;
+            setIsCommandLayerPinned(shouldPin);
+        };
+
+        const requestUpdate = () => {
+            if (pinScrollFrameRef.current !== null) return;
+            pinScrollFrameRef.current = window.requestAnimationFrame(updatePinnedState);
+        };
+
+        window.addEventListener('scroll', requestUpdate, { passive: true });
+        window.addEventListener('resize', requestUpdate);
+        requestUpdate();
+
+        return () => {
+            window.removeEventListener('scroll', requestUpdate);
+            window.removeEventListener('resize', requestUpdate);
+            if (pinScrollFrameRef.current !== null) {
+                window.cancelAnimationFrame(pinScrollFrameRef.current);
+                pinScrollFrameRef.current = null;
+            }
+        };
+    }, [useFixedMobileCommandLayer]);
 
     // Scroll spy - update active category based on scroll position
     // Activates for: desktop sidebar, tablet category tabs, or mobile with showCategoryTabs
@@ -580,7 +671,7 @@ function MenuPageNew({
             scrollSpyFrameRef.current = null;
             const container = getActiveScrollContainer();
             const scrollOriginTop = container?.getBoundingClientRect().top || 0;
-            const targetTop = scrollOriginTop + stickyControlsOffset + 8;
+            const targetTop = scrollOriginTop + effectiveStickyControlsOffset + 8;
             const lockedCategoryId = categoryNavigationLockRef.current?.id;
 
             if (lockedCategoryId) {
@@ -635,7 +726,7 @@ function MenuPageNew({
             window.removeEventListener('scroll', handleScroll);
             container?.removeEventListener('scroll', handleScroll);
         };
-    }, [allCategories, enableScrollSpy, getActiveScrollContainer, releaseCategoryNavigationLock, stickyControlsOffset]);
+    }, [allCategories, effectiveStickyControlsOffset, enableScrollSpy, getActiveScrollContainer, releaseCategoryNavigationLock]);
 
     // #31: Progressive rendering observer — mark categories visible as they approach viewport
     useEffect(() => {
@@ -701,6 +792,38 @@ function MenuPageNew({
             typeof item.category === 'string' && categoriesById.has(item.category),
         );
     }, [allItems, categoriesById]);
+
+    const searchSuggestions = useMemo(() => {
+        const suggestions: Array<{ id: string; label: string; type: 'item' | 'category' }> = [];
+        const seen = new Set<string>();
+        const addSuggestion = (id: string, label: string, type: 'item' | 'category') => {
+            const normalized = normalizePublicMenuSearchText(label);
+            if (!normalized || seen.has(normalized)) return;
+            seen.add(normalized);
+            suggestions.push({ id, label, type });
+        };
+
+        visibleItems
+            .filter((item: any) => item?.active !== false)
+            .slice(0, 8)
+            .forEach((item: any) => {
+                const label = getMenuText(item.name);
+                if (label) addSuggestion(String(item.id || label), label, 'item');
+            });
+
+        allCategories.slice(0, 4).forEach((category: any) => {
+            const label = getMenuText(category.name);
+            if (label) addSuggestion(String(category.id || label), label, 'category');
+        });
+
+        return suggestions.slice(0, isMobile ? 6 : 8);
+    }, [allCategories, getMenuText, isMobile, visibleItems]);
+
+    const handleSearchSuggestionSelect = useCallback((label: string) => {
+        setSearchTerm(label);
+        setDebouncedSearch(label);
+        setIsSearchFocused(true);
+    }, []);
 
     const visibleItemOrder = useMemo(() => {
         const order = new Map<any, number>();
@@ -984,10 +1107,10 @@ function MenuPageNew({
             window.history.pushState(
                 { modal: 'item', itemId: item.id },
                 '',
-                `${basePath}/item/${urlSegment}`
+                `${basePath}/item/${urlSegment}${getMenuLanguageSearch()}`
             );
         }
-    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     // G14 - Handle modal close (X button / overlay tap)
     const handleModalClose = useCallback(() => {
@@ -1009,15 +1132,15 @@ function MenuPageNew({
                 if (!selectedItemRef.current) return;
                 setSelectedItem(null);
                 setSelectedItemTrackView(true);
-                window.history.replaceState({}, '', getMenuBasePath());
+                window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
             }, 240);
         } else {
             // Direct close without history (e.g., direct link then close)
-            window.history.replaceState({}, '', getMenuBasePath());
+            window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
             setSelectedItem(null);
             setSelectedItemTrackView(true);
         }
-    }, [getMenuBasePath, previewMode]);
+    }, [getMenuBasePath, getMenuLanguageSearch, previewMode]);
 
     // G14 - Track selected item for popstate handler (avoids stale closure)
     // G14 - Handle browser back button (popstate event)
@@ -1089,7 +1212,7 @@ function MenuPageNew({
         if (!element) return false;
 
         const container = getActiveScrollContainer();
-        const offset = stickyControlsOffset + 12;
+        const offset = effectiveStickyControlsOffset + 12;
         const initialElementRect = element.getBoundingClientRect();
 
         if (container) {
@@ -1103,7 +1226,7 @@ function MenuPageNew({
             window.dispatchEvent(new Event('scroll'));
         }, 420);
         return true;
-    }, [getActiveScrollContainer, stickyControlsOffset]);
+    }, [effectiveStickyControlsOffset, getActiveScrollContainer]);
 
     const updateCategoryHash = useCallback((categoryId: string) => {
         if (typeof window === 'undefined') return;
@@ -1139,7 +1262,7 @@ function MenuPageNew({
         if (!anchor) return;
 
         const container = getActiveScrollContainer();
-        const offset = stickyControlsOffset + 12;
+        const offset = effectiveStickyControlsOffset + 12;
         const anchorRect = anchor.getBoundingClientRect();
         const viewportTop = container?.getBoundingClientRect().top || 0;
         const viewportBottom = container?.getBoundingClientRect().bottom || window.innerHeight;
@@ -1161,7 +1284,7 @@ function MenuPageNew({
 
         const documentTop = Math.max(0, window.scrollY + anchorRect.top - offset);
         window.scrollTo({ top: documentTop, behavior });
-    }, [getActiveScrollContainer, stickyControlsOffset]);
+    }, [effectiveStickyControlsOffset, getActiveScrollContainer]);
 
     // Handle category selection (scroll to category)
     const handleCategorySelect = useCallback((category: any) => {
@@ -1251,6 +1374,7 @@ function MenuPageNew({
     const publicViewportMinHeight = from === 'main-website'
         ? (isDesktop ? '100dvh' : '100svh')
         : 'calc(100dvh - 76px)';
+    const mobileStickySafeOverflowX: React.CSSProperties['overflowX'] = isPublicSurface && !isDesktop ? 'visible' : 'clip';
     const containerStyle: React.CSSProperties = {
         minHeight: previewMode ? '100%' : publicViewportMinHeight,
         height: previewMode ? '100%' : undefined,
@@ -1259,7 +1383,7 @@ function MenuPageNew({
             : moodConfig.background,
         display: 'flex',
         flexDirection: 'column',
-        overflowX: 'clip',
+        overflowX: mobileStickySafeOverflowX,
         position: 'relative',
     };
 
@@ -1270,9 +1394,9 @@ function MenuPageNew({
         paddingBottom: `calc(${shellContainerPadding}px + env(safe-area-inset-bottom) + ${isDesktop ? 0 : 24}px)`,
         paddingLeft: shellContainerPadding,
         boxSizing: 'border-box',
-        overflowX: 'clip',
+        overflowX: mobileStickySafeOverflowX,
         overflowY: isPublicSurface ? 'visible' : 'auto',
-        scrollPaddingTop: `calc(${72 + stickyControlsTopBuffer}px + env(safe-area-inset-top))`,
+        scrollPaddingTop: `${Math.ceil(effectiveStickyControlsOffset + 12)}px`,
         scrollPaddingBottom: `calc(96px + env(safe-area-inset-bottom))`,
     };
 
@@ -1281,20 +1405,34 @@ function MenuPageNew({
         margin: '0 auto',
         width: '100%',
         boxSizing: 'border-box',
-        overflowX: 'clip',
+        overflowX: mobileStickySafeOverflowX,
     };
     const stickyControlsStyle: React.CSSProperties = {
-        position: 'sticky',
-        top: stickyControlsTopOffset,
+        position: useFixedMobileCommandLayer
+            ? (isCommandLayerPinned ? 'fixed' : 'relative')
+            : 'sticky',
+        top: useFixedMobileCommandLayer
+            ? (isCommandLayerPinned ? stickyControlsTopOffset : undefined)
+            : stickyControlsTopOffset,
+        left: useFixedMobileCommandLayer && isCommandLayerPinned ? 0 : undefined,
+        right: useFixedMobileCommandLayer && isCommandLayerPinned ? 0 : undefined,
         zIndex: 70,
-        marginBottom: 16,
-        paddingTop: stickyControlsTopPadding,
+        margin: useFixedMobileCommandLayer && isCommandLayerPinned ? '0 auto' : undefined,
+        marginBottom: useFixedMobileCommandLayer && isCommandLayerPinned ? 0 : 16,
+        maxWidth: useFixedMobileCommandLayer && isCommandLayerPinned ? (isTablet ? 960 : 768) : undefined,
+        paddingLeft: useFixedMobileCommandLayer && isCommandLayerPinned ? shellContainerPadding : undefined,
+        paddingRight: useFixedMobileCommandLayer && isCommandLayerPinned ? shellContainerPadding : undefined,
+        paddingTop: useFixedMobileCommandLayer && isCommandLayerPinned
+            ? `calc(${stickyControlsTopBuffer}px + env(safe-area-inset-top))`
+            : stickyControlsTopPadding,
         paddingBottom: showTabsBar ? 8 : 8,
         background: moodConfig.background,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
         boxShadow: `0 1px 0 ${moodConfig.itemStyle.borderColor}`,
+        boxSizing: 'border-box',
         userSelect: 'none',
         WebkitUserSelect: 'none',
+        width: useFixedMobileCommandLayer && isCommandLayerPinned ? '100%' : undefined,
     };
     const commandLayerStyle: React.CSSProperties = {
         display: 'flex',
@@ -1316,6 +1454,36 @@ function MenuPageNew({
         transition: 'max-width 0.22s ease, opacity 0.16s ease, transform 0.18s ease',
         visibility: 'visible',
         width: showSearchSideControls ? 'auto' : 0,
+    };
+    const searchSuggestionsStyle: React.CSSProperties = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: showTabsBar ? 8 : 10,
+        maxHeight: 84,
+        overflow: 'hidden',
+    };
+    const searchSuggestionButtonStyle: React.CSSProperties = {
+        alignItems: 'center',
+        background: moodConfig.itemStyle.background,
+        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderRadius: 999,
+        color: moodConfig.bodyColor,
+        cursor: 'pointer',
+        display: 'inline-flex',
+        fontFamily: moodConfig.bodyFont,
+        fontSize: 12,
+        fontWeight: 600,
+        lineHeight: '18px',
+        maxWidth: isMobile ? 'calc(50% - 3px)' : 180,
+        minHeight: 32,
+        overflow: 'hidden',
+        padding: '6px 10px',
+        textOverflow: 'ellipsis',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+        WebkitUserSelect: 'none',
+        whiteSpace: 'nowrap',
     };
     const categoryTabsStyle: React.CSSProperties = {
         display: 'flex',
@@ -1554,8 +1722,18 @@ function MenuPageNew({
                             width: 1,
                         }}
                     />
+                    <div
+                        ref={stickySentinelRef}
+                        data-menu-sticky-sentinel
+                        aria-hidden="true"
+                        style={{
+                            height: 0,
+                            pointerEvents: 'none',
+                            width: 1,
+                        }}
+                    />
                     {/* Sticky command layer: retrieval first, section navigation second */}
-                    <div data-menu-sticky-controls style={stickyControlsStyle}>
+                    <div ref={stickyControlsRef} data-menu-sticky-controls style={stickyControlsStyle}>
                         <div style={commandLayerStyle}>
                             <MenuSearchBar
                                 searchTerm={searchTerm}
@@ -1675,7 +1853,42 @@ function MenuPageNew({
                                 ))}
                             </div>
                         )}
+
+                        <AnimatePresence initial={false}>
+                            {isSearchFocused && !searchTerm.trim() && searchSuggestions.length > 0 && (
+                                <motion.div
+                                    key="menu-search-suggestions"
+                                    initial={menuSearchStateMotion.initial}
+                                    animate={menuSearchStateMotion.animate}
+                                    exit={menuSearchStateMotion.exit}
+                                    transition={menuSpringTransition}
+                                    style={searchSuggestionsStyle}
+                                    aria-label="Search suggestions"
+                                >
+                                    {searchSuggestions.map((suggestion) => (
+                                        <button
+                                            key={`${suggestion.type}-${suggestion.id}`}
+                                            type="button"
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => handleSearchSuggestionSelect(suggestion.label)}
+                                            style={searchSuggestionButtonStyle}
+                                        >
+                                            {suggestion.label}
+                                        </button>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
+                    {useFixedMobileCommandLayer && isCommandLayerPinned && (
+                        <div
+                            aria-hidden="true"
+                            style={{
+                                height: stickyControlsHeight + 16,
+                                pointerEvents: 'none',
+                            }}
+                        />
+                    )}
 
                     <div
                         ref={searchResultsAnchorRef}
@@ -1865,7 +2078,7 @@ function MenuPageNew({
                                         style={{
                                             marginBottom: spacing.category,
                                             marginTop: categoryIndex > 0 ? Math.max(12, Math.round(spacing.category * 0.45)) : 0,
-                                            scrollMarginTop: `calc(${stickyControlsOffset + 16}px + env(safe-area-inset-top))`,
+                                            scrollMarginTop: `${Math.ceil(effectiveStickyControlsOffset + 16)}px`,
                                         }}
                                     >
                                         <header style={categoryHeaderFrameStyle}>
@@ -1918,6 +2131,11 @@ function MenuPageNew({
                                                     const itemName = getMenuText(item.name, 'Menu item');
                                                     const itemDescription = getMenuText(item.description);
                                                     const itemDecisionChips = getItemDecisionChips(item);
+                                                    const shouldSpanFullGridRow =
+                                                        isCompactGrid &&
+                                                        gridColumns === 2 &&
+                                                        items.length % 2 === 1 &&
+                                                        itemIndex === items.length - 1;
 
                                                     // G10 ENFORCEMENT: Image quota per category
                                                     const itemImageUrl = getPrimaryPublicMenuImage(item);
@@ -1938,6 +2156,7 @@ function MenuPageNew({
                                                             onMouseLeave={isAvailable ? handleItemMouseLeave : undefined}
                                                             style={{
                                                                 ...getItemStyle(),
+                                                                ...(shouldSpanFullGridRow ? { gridColumn: '1 / -1' } : {}),
                                                                 opacity: isAvailable ? 1 : 0.5,
                                                                 cursor: isAvailable ? 'pointer' : 'not-allowed',
                                                             }}
@@ -2152,6 +2371,12 @@ function MenuPageNew({
                                 scrollContainerRef={scrollContainerRef}
                             />
                         )}
+
+                    {FEATURE_FLAGS.ENABLE_TEMP_STATUS && storeDetails?.tempStatus && (
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
+                            <TempStatusBanner tempStatus={storeDetails.tempStatus as any} variant="pill" />
+                        </div>
+                    )}
 
                     {/* Menu meta moves to the bottom so browsing controls stay focused at the top. */}
                     <section style={bottomMetaStyle} aria-label="Menu status and language">
