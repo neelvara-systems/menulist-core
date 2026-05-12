@@ -1,6 +1,7 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_ROUTES } from '@constant/canonica/navigations';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
@@ -15,6 +16,7 @@ import {
     LuAlertTriangle,
     LuActivity,
     LuBarChart3,
+    LuBookOpen,
     LuBuilding2,
     LuClock,
     LuClock3,
@@ -32,6 +34,7 @@ import {
     LuShield,
     LuSmartphone,
     LuSparkles,
+    LuTicket,
     LuTv,
     LuUsers,
     LuX,
@@ -232,6 +235,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const openDesktopRoute = (path: string) => {
         localStorage.setItem('forceDesktopMode', 'true');
+        window.location.assign(path);
+    };
+
+    const openCanonicaRoute = (path: string) => {
         window.location.assign(path);
     };
 
@@ -556,17 +563,31 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 <List>
                     <List.Item
                         arrow
-                        description={<Text type="secondary">{t('helpCenterDesc')}</Text>}
-                        onClick={() => setSubScreen('help')}
+                        description={<Text type="secondary">Open Canonica support overview.</Text>}
+                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.HELP)}
                         prefix={<LuHelpCircle color="#3b82f6" size={20} />}
                         title={<Text strong>{t('helpCenter')}</Text>}
                     />
                     <List.Item
                         arrow
-                        description={<Text type="secondary">{t('contactSupportDesc')}</Text>}
-                        onClick={() => window.open('https://wa.me/917042916884?text=Hi%2C%20I%20need%20help%20with%20MenuList.ai', '_blank')}
-                        prefix={<LuMessageCircle color="#22c55e" size={20} />}
-                        title={<Text strong>{t('contactSupport')}</Text>}
+                        description={<Text type="secondary">Browse Canonica docs and guides.</Text>}
+                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.DOCS)}
+                        prefix={<LuBookOpen color="#8b5cf6" size={20} />}
+                        title={<Text strong>Documentation</Text>}
+                    />
+                    <List.Item
+                        arrow
+                        description={<Text type="secondary">Create or track support tickets.</Text>}
+                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.SUPPORT)}
+                        prefix={<LuTicket color="#f59e0b" size={20} />}
+                        title={<Text strong>Support Tickets</Text>}
+                    />
+                    <List.Item
+                        arrow
+                        description={<Text type="secondary">See recent product changes and fixes.</Text>}
+                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.RELEASE_NOTES)}
+                        prefix={<LuReceipt color="#0ea5e9" size={20} />}
+                        title={<Text strong>Release Notes</Text>}
                     />
                 </List>
             </Card>

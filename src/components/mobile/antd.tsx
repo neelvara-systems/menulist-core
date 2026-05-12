@@ -38,10 +38,6 @@ import { Children, createContext, Fragment, isValidElement, useContext, useEffec
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
 type AnyStyle = CSSProperties & Record<string, any>;
-// iOS standalone PWAs can report safe-area env vars as 0 during drawer mount.
-// Keep sheet headers below the status bar even in that failure mode.
-const PWA_SHEET_TOP_INSET_FALLBACK = 44;
-
 const { Text: AntText, Title } = Typography;
 const MobileSheetContext = createContext(false);
 let activePopupScrollLocks = 0;
@@ -650,7 +646,7 @@ export function NavBar({
     onBack,
     right,
     style,
-    titleAlign = 'center',
+    titleAlign,
 }: {
     backIcon?: ReactNode;
     children?: ReactNode;
@@ -662,19 +658,12 @@ export function NavBar({
 }) {
     const { token } = theme.useToken();
     const isInsideSheet = useContext(MobileSheetContext);
-    const [isPwa, setIsPwa] = useState(false);
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const standaloneMatch = window.matchMedia?.('(display-mode: standalone)')?.matches;
-        const navStandalone = (window.navigator as any)?.standalone === true;
-        setIsPwa(Boolean(standaloneMatch || navStandalone));
-    }, []);
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
-    const navPaddingTop = isInsideSheet && isPwa
-        ? `calc(max(env(safe-area-inset-top), ${PWA_SHEET_TOP_INSET_FALLBACK}px) + 6px)`
-        : `calc(env(safe-area-inset-top) + 6px)`;
+    const navPaddingTop = isInsideSheet ? '6px' : 'calc(env(safe-area-inset-top) + 6px)';
+    const effectiveTitleAlign = isInsideSheet ? 'left' : (titleAlign || 'center');
+    const reserveLeadingSpace = !isInsideSheet || effectiveTitleAlign === 'center';
     return (
         <Flex
             align="center"
@@ -699,14 +688,16 @@ export function NavBar({
                 <Button fill="none" onClick={onBack} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
                     {backIcon ?? <LuArrowLeft size={18} />}
                 </Button>
-            ) : (
+            ) : reserveLeadingSpace ? (
                 <div style={{ minHeight: 40, minWidth: 40 }} />
+            ) : (
+                null
             )}
-            <Flex align="center" justify={titleAlign === 'left' ? 'flex-start' : 'center'} style={{ flex: 1, minWidth: 0 }}>
+            <Flex align="center" justify={effectiveTitleAlign === 'left' ? 'flex-start' : 'center'} style={{ flex: 1, minWidth: 0 }}>
                 {hasTitle ? (
                     <Title
                         level={5}
-                        style={{ lineHeight: 1.2, margin: 0, textAlign: titleAlign }}
+                        style={{ lineHeight: 1.2, margin: 0, textAlign: effectiveTitleAlign }}
                     >
                         {children}
                     </Title>

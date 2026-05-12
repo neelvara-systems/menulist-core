@@ -51,11 +51,11 @@
 
 | Attack Surface | Threat | Mitigation |
 |---------------|--------|-----------|
-| Mis-scoped Firestore query | Cross-tenant data exposure | All queries filtered by tenantId. Composite indexes include tenantId. |
-| Cache contamination | Tenant A sees Tenant B's entities | Cache keys scoped by tenantId. No shared entity cache. |
+| Mis-scoped Firestore query | Cross-tenant data exposure | All queries filtered by `tId` + `sId`. Required query/vector indexes support tenant/store-scoped access patterns. |
+| Cache contamination | Tenant A sees Tenant B's entities | Cache keys scoped by `tId` + `sId`. No shared entity cache. |
 | API error messages | Internal data leakage | Generic error messages. No internal state in responses. |
 | LLM prompt context | Cross-tenant knowledge in prompt | Only include current tenant's data. Never cross-tenant retrieval results. |
-| Logging aggregation | Tenant data mixed in logs | Structured logging with tenantId. Per-tenant log filtering. |
+| Logging aggregation | Tenant data mixed in logs | Structured logging with `tId` + `sId`. Per-tenant log filtering. |
 
 **Zero tolerance category.** Any cross-tenant exposure = Severity 1 incident.
 

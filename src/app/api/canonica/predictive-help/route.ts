@@ -48,6 +48,16 @@ export async function POST(request: NextRequest) {
             return new NextResponse(null, { status: 204 });
         }
 
+        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+        const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
+        const rateLimitResult = await checkRateLimit({
+            key: `canon-predict:${apiKeyRateLimitId}`,
+            ...rateLimitConfig,
+        });
+        if (!rateLimitResult.allowed) {
+            return new NextResponse(null, { status: 204 });
+        }
+
         const authResult = await validatePublicApiKey(apiKey);
         if (!authResult) {
             return new NextResponse(null, { status: 204 });
@@ -57,7 +67,14 @@ export async function POST(request: NextRequest) {
         const { storeData, storeId } = authResult;
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
-        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+            secureError(
+                '[Canonica Predictive Help] Invalid API key workspace context',
+                new Error('Authenticated API key does not resolve to a valid tenant/store'),
+                { storeId }
+            );
+            return new NextResponse(null, { status: 204 });
+        }
 
         const requestOrigin = request.headers.get('origin');
         const allowedOrigins: string[] | undefined = storeData.widgetAllowedOrigins;
@@ -70,16 +87,6 @@ export async function POST(request: NextRequest) {
             return new NextResponse(null, { status: 204 });
         }
         const { page, feature, workflow, plan, userRole, entityHints, userId } = validation.data;
-
-        // Rate limiting per API key
-        const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
-        const rateLimitResult = await checkRateLimit({
-            key: `canon-predict:${apiKeyRateLimitId}`,
-            ...rateLimitConfig,
-        });
-        if (!rateLimitResult.allowed) {
-            return new NextResponse(null, { status: 204 });
-        }
 
         // Build context payload (reuses existing CanonicaContextPayload type)
         const context: CanonicaContextPayload = {

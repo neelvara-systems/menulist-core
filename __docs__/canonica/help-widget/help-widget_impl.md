@@ -1,6 +1,6 @@
 # Canonica Help Widget — Implementation Blueprint
 
-> **Version:** 2.2.0
+> **Version:** 2.2.1
 > **Last Updated:** 2026-05-12
 > **Audience:** Developers
 > **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context)
@@ -78,9 +78,10 @@ Widget calls with `mountContext: 'widget'`. The `mountContext` parameter is logg
 Thin auth wrapper. Responsibilities:
 
 - Feature flag gate (`ENABLE_CANONICA_WIDGET`)
-- API key authentication (`validatePublicApiKey()`)
+- API key rate limiting by hash before Firestore auth lookup
+- API key authentication (`validatePublicApiKey()`), with `ml_`/`cn_` key-shape rejection before Firestore lookup
+- Positive `tId/sId` workspace validation before body parsing, storage upload, or retrieval
 - Origin allowlist check (v2)
-- Rate limiting per API key
 - Context validation via `CanonicaContextSchema`
 - Call `coreSearch()` with widget-specific params
 - Format response: `craftedAnswer` → `answer`, compact references (id + title only)
@@ -143,6 +144,8 @@ Implementation:
 
 - API key auth (same as search route)
 - Feature flag: `ENABLE_CANONICA_WIDGET`
+- Rate limits by key hash before Firestore auth lookup
+- Rejects invalid API-key workspace context before reading request body
 - Verifies the `aiSearchHistory` document belongs to the same `tId/sId` resolved from the API key
 - Writes feedback to the tenant-scoped `aiSearchHistory` document
 - If `isGood === false`, emits Canonica signal via `emitCanonicaSignal({ type: 'chat_negative' })` (feeds mutation pipeline)
@@ -272,7 +275,7 @@ Answer returned with imageProcessed: true
 - **Text query required** — image is context, not the query. Same rule as Help Center (ChatInput.tsx line 59-60).
 - **5MB max** — same limit as Help Center. Validated client-side before sending.
 - **image/\* only** — same restriction as Help Center.
-- **Server-side temp upload** — widget route receives base64, uploads to Firebase Storage at a temp path (`widget-images/{apiKeyHash}/{timestamp}`), passes the Storage URL to coreSearch. Image can be cleaned up by a nightly job.
+- **Server-side temp upload** — widget route receives base64, uploads to Firebase Storage at a temp path (`widget-images/{tId}/{sId}/{imageId}`), passes the Storage URL to coreSearch. Image can be cleaned up by a nightly job.
 - **Graceful degradation** — if image processing fails at any stage, coreSearch falls back to text-only search silently. User still gets an answer.
 - **No image persistence in chat** — widget is stateless, images are not stored in chat sessions. They exist only for the duration of the query processing.
 
@@ -375,6 +378,7 @@ Per image query: 1 additional Gemini Pro call (~$0.002) for image-to-query gener
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-12 | 2.2.1   | Public endpoint cost/security hardening: malformed key short-circuit before Firestore lookup, hash-based rate-limit keys before auth lookup, positive workspace validation, and tenant-filtered vector-search/index documentation. |
 | 2026-05-12 | 2.2.0   | Runtime contract hardening: hash-only widget keys, Canonica-specific key endpoint, tenant-scoped search history feedback, server-side widget image validation, guided workflow rendering, predictive suggestion delivery, and tenant-scoped KB category docs. |
 | 2026-03-09 | 2.1.0   | Settings page refactored: 520-line inline page → thin wrapper + CanonicaSettings template. Feature Status card removed (exposed internal flags). Sidebar now filters nav by feature flags. Governance useMemo deps fixed. Setup progress guide added to settings. |
 | 2026-03-08 | 2.0.0   | Complete rewrite: phased build plan, launcher customization, SDK context API, session memory, feedback signals, origin allowlist, conversation context. ChatGPT conversation reviewed + validated.                                                                |

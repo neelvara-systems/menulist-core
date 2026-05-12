@@ -53,9 +53,9 @@ Sign-off required from: Engineering Lead, Security Owner, Product Owner, Archite
 ## Section 5 — Multi-Tenant Isolation
 
 - [ ] 5.1 Firestore security rules enforce tenant match on all core collections
-- [ ] 5.2 All composite indexes include `tenantId` as leading key
+- [ ] 5.2 All required query/vector indexes support the Canonica `tId` + `sId` tenant/store access pattern
 - [ ] 5.3 Cross-tenant query attempts fail (adversarial test required)
-- [ ] 5.4 Cache keys include `tenantId` (no shared entity cache across tenants)
+- [ ] 5.4 Cache keys include `tId` + `sId` (no shared entity cache across tenants)
 - [ ] 5.5 Background jobs (drift, mutation, signal) partition by tenant
 
 ## Section 6 — Security & RBAC

@@ -28,6 +28,10 @@ import {
 export const CANONICA_BASE_PATH = '/canonica';
 
 export const CANONICA_ROUTES = {
+    HELP: `${CANONICA_BASE_PATH}/help`,
+    DOCS: `${CANONICA_BASE_PATH}/docs`,
+    SUPPORT: `${CANONICA_BASE_PATH}/support`,
+    RELEASE_NOTES: `${CANONICA_BASE_PATH}/release-notes`,
     DASHBOARD: `${CANONICA_BASE_PATH}/dashboard`,
     KNOWLEDGE_BASE: `${CANONICA_BASE_PATH}/knowledge-base`,
     KB_GENERATION: `${CANONICA_BASE_PATH}/kb-generation`,
@@ -48,32 +52,44 @@ export interface CanonicaNavItem {
     route: string;
     icon: any;
     group?: string;
+    platformOnly?: boolean;
     /** Optional feature flag key — if set, nav item is hidden when flag is OFF */
     featureFlag?: string;
 }
 
 export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
-    // Core
-    { key: 'dashboard', label: 'Dashboard', route: CANONICA_ROUTES.DASHBOARD, icon: LuLayoutDashboard, group: 'core' },
-    { key: 'knowledge-base', label: 'Knowledge Base', route: CANONICA_ROUTES.KNOWLEDGE_BASE, icon: LuBook, group: 'core' },
-    { key: 'kb-generation', label: 'KB Generation', route: CANONICA_ROUTES.KB_GENERATION, icon: LuDatabase, group: 'core' },
-    { key: 'tickets', label: 'Tickets', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, group: 'core' },
-    { key: 'conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, group: 'core' },
+    // MenuList client support portal
+    { key: 'help', label: 'Help Center', route: CANONICA_ROUTES.HELP, icon: LuLayoutDashboard, group: 'client' },
+    { key: 'docs', label: 'Documentation', route: CANONICA_ROUTES.DOCS, icon: LuBook, group: 'client' },
+    { key: 'support', label: 'Support Tickets', route: CANONICA_ROUTES.SUPPORT, icon: LuTicket, group: 'client' },
+    { key: 'release-notes', label: 'Release Notes', route: CANONICA_ROUTES.RELEASE_NOTES, icon: LuReceipt, group: 'client' },
+
+    // Canonica operator surfaces
+    { key: 'dashboard', label: 'Dashboard', route: CANONICA_ROUTES.DASHBOARD, icon: LuLayoutDashboard, group: 'core', platformOnly: true },
+    { key: 'knowledge-base', label: 'Knowledge Base', route: CANONICA_ROUTES.KNOWLEDGE_BASE, icon: LuBook, group: 'core', platformOnly: true },
+    { key: 'kb-generation', label: 'KB Generation', route: CANONICA_ROUTES.KB_GENERATION, icon: LuDatabase, group: 'core', platformOnly: true },
+    { key: 'tickets', label: 'Tickets', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, group: 'core', platformOnly: true },
+    { key: 'conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, group: 'core', platformOnly: true },
 
     // Governance (feature-flagged)
-    { key: 'governance', label: 'Governance', route: CANONICA_ROUTES.GOVERNANCE, icon: LuShield, group: 'governance', featureFlag: 'ENABLE_CANONICA_GOVERNANCE_UI' },
+    { key: 'governance', label: 'Governance', route: CANONICA_ROUTES.GOVERNANCE, icon: LuShield, group: 'governance', platformOnly: true, featureFlag: 'ENABLE_CANONICA_GOVERNANCE_UI' },
 
     // Management
-    { key: 'changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, group: 'management' },
-    { key: 'settings', label: 'Settings', route: CANONICA_ROUTES.SETTINGS, icon: LuSettings, group: 'management' },
+    { key: 'changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, group: 'management', platformOnly: true },
+    { key: 'settings', label: 'Settings', route: CANONICA_ROUTES.SETTINGS, icon: LuSettings, group: 'management', platformOnly: true },
 ];
 
 // Group labels for sidebar section dividers
 export const CANONICA_NAV_GROUPS: Record<string, string> = {
-    core: 'Support',
+    client: 'MenuList Support',
+    core: 'Operations',
     governance: 'Governance',
     management: 'Management',
 };
+
+export const CANONICA_ADMIN_ROUTES = CANONICA_SIDEBAR_NAV
+    .filter((nav) => nav.platformOnly)
+    .map((nav) => nav.route);
 
 // All Canonica routes as array (for SKIP_CLIENT_APP_LAYOUT_ROUTINGS detection)
 export const ALL_CANONICA_ROUTES = Object.values(CANONICA_ROUTES);

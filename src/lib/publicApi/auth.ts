@@ -18,13 +18,21 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** Current schema version for pull API responses */
 export const PULL_API_SCHEMA_VERSION = "1.0";
+const PUBLIC_API_KEY_PATTERN = /^(ml|cn)_[A-Za-z0-9_-]{20,128}$/;
+
+function normalizePublicApiKey(apiKey: string | null): string | null {
+    const normalizedApiKey = apiKey?.trim();
+    if (!normalizedApiKey || normalizedApiKey.length < 10) return null;
+    if (!PUBLIC_API_KEY_PATTERN.test(normalizedApiKey)) return null;
+    return normalizedApiKey;
+}
 
 /**
  * Hash an API key using SHA-256.
  * Used for both storage and validation.
  */
 export function hashApiKey(apiKey: string): string {
-    return createHash('sha256').update(apiKey).digest('hex');
+    return createHash('sha256').update(apiKey.trim()).digest('hex');
 }
 
 /**
@@ -84,10 +92,11 @@ export function logApiRequest(
 export async function validatePublicApiKey(
     apiKey: string | null,
 ): Promise<{ storeData: any; storeId: string } | null> {
-    if (!apiKey || apiKey.length < 10) return null;
+    const normalizedApiKey = normalizePublicApiKey(apiKey);
+    if (!normalizedApiKey) return null;
 
     const db = admin.firestore();
-    const keyHash = hashApiKey(apiKey);
+    const keyHash = hashApiKey(normalizedApiKey);
 
     // Primary: lookup by hash (secure)
     let snapshot = await db
@@ -100,7 +109,7 @@ export async function validatePublicApiKey(
     if (snapshot.empty) {
         snapshot = await db
             .collection(DB_COLLECTIONS.STORES)
-            .where('publicApi.apiKey', '==', apiKey)
+            .where('publicApi.apiKey', '==', normalizedApiKey)
             .limit(1)
             .get();
     }

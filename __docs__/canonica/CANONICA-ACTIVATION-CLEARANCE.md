@@ -378,7 +378,7 @@ All flags are in `src/config/features.ts`. All default to `false`.
 | `canonica_integrationDeliveryLogs` | Integration delivery logs      | tId + sId | Server write, client read |
 | `canonica_predictiveTriggers`      | Predictive support triggers    | tId + sId | CRUD                     |
 
-Canonica query-backed collections have 29 composite indexes mirrored in both `firestore.indexes.json` and `firestore-canonica.indexes.json`.
+Canonica query-backed collections have 33 query/vector indexes mirrored in both `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the tenant-filtered `kb_articles` vector search index.
 
 All Canonica collection constants are mirrored in `src/constants/database.ts`, `functions/src/constants/database.ts`, and `functions-canonica/src/constants/database.ts`.
 
@@ -495,7 +495,7 @@ Every integration point is designed to fail silently:
 | `npx tsc --noEmit` (functions)  | **PASS** — 0 errors                                             |
 | DB constants mirrored           | **PASS** — 14 Canonica collections mirrored across client, MenuList functions, and Canonica functions |
 | Feature flags defined           | **PASS** — 10 flags, all `false`                                |
-| Firestore rules and indexes     | **PASS** — tenant rules + 29 composite indexes mirrored for shared and dedicated Firebase modes |
+| Firestore rules and indexes     | **PASS** — tenant rules + 33 query/vector indexes mirrored for shared and dedicated Firebase modes |
 | Scheduler wiring                | **PASS** — `canonicaNightly` exported from `functions-canonica/src/index.ts` at 3:00 AM UTC |
 | DAL pattern compliance          | **PASS** — Canonica DAL files use DB_COLLECTIONS + apiCallComposer |
 | Tenant isolation                | **PASS** — All queries scoped by tId + sId                      |
@@ -617,8 +617,8 @@ Every integration point is designed to fail silently:
 | `functions-canonica/src/index.ts`        | Canonica scheduled + manual function exports |
 | `firestore.rules`                        | Shared-DB Canonica tenant rules              |
 | `firestore-canonica.rules`               | Dedicated Canonica Firebase tenant rules     |
-| `firestore.indexes.json`                 | 29 Canonica composite indexes for shared mode |
-| `firestore-canonica.indexes.json`        | 29 Canonica composite indexes for dedicated mode |
+| `firestore.indexes.json`                 | 33 Canonica query/vector indexes for shared mode |
+| `firestore-canonica.indexes.json`        | 33 Canonica query/vector indexes for dedicated mode |
 | `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` | STEP 9B: Canonica completion rules           |
 | `.cascade/rules/CANONICA_RULES.md`       | Development rules for Canonica               |
 
@@ -645,7 +645,7 @@ Every integration point is designed to fail silently:
 | 2   | TypeScript compiles with 0 errors (functions)                             | ✅     |
 | 3   | All 14 Canonica DB collections defined in all database constant mirrors    | ✅     |
 | 4   | All 10 feature flags defined and set to FALSE                             | ✅     |
-| 5   | All 29 Canonica Firestore indexes mirrored in shared and dedicated index files | ✅     |
+| 5   | All 33 Canonica Firestore query/vector indexes mirrored in shared and dedicated index files | ✅     |
 | 6   | Nightly job exported from functions-canonica/src/index.ts                 | ✅     |
 | 7   | Signal emitter wired to ticket creation (fire-and-forget)                 | ✅     |
 | 8   | Signal emitter wired to chat negative feedback (fire-and-forget)          | ✅     |

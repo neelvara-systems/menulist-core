@@ -10,11 +10,13 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import {
     CANONICA_NAV_GROUPS,
     CANONICA_SIDEBAR_NAV,
     CanonicaNavItem,
 } from '@constant/canonica/navigations';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import type { MenuProps } from 'antd';
 import { Layout, Menu, theme, Typography } from 'antd';
 import { usePathname, useRouter } from 'next/navigation';
@@ -32,6 +34,9 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
     const router = useRouter();
     const pathname = usePathname();
     const { token } = theme.useToken();
+    const session = useClientAuthSession();
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const canUsePlatformSurfaces = platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
 
     // Filter nav items based on feature flags, then build menu items with group dividers
     const menuItems: MenuProps['items'] = useMemo(() => {
@@ -39,6 +44,7 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
         let lastGroup = '';
 
         const visibleNav = CANONICA_SIDEBAR_NAV.filter((nav: CanonicaNavItem) => {
+            if (nav.platformOnly && !canUsePlatformSurfaces) return false;
             if (!nav.featureFlag) return true;
             return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
         });
@@ -70,7 +76,7 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
         });
 
         return items;
-    }, [onNavigate, router]);
+    }, [canUsePlatformSurfaces, onNavigate, router]);
 
     // Determine selected key from pathname
     const selectedKey = useMemo(() => {

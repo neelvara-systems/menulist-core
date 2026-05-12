@@ -13,7 +13,7 @@ const LEGACY_CATEGORIES_DOC_ID = 'categories';
 export const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     const tenantId = Number(tId);
     const storeId = Number(sId);
-    if (Number.isFinite(tenantId) && Number.isFinite(storeId)) {
+    if (Number.isFinite(tenantId) && Number.isFinite(storeId) && tenantId > 0 && storeId > 0) {
         return `categories_${tenantId}_${storeId}`;
     }
     return LEGACY_CATEGORIES_DOC_ID;

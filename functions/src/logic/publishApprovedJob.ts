@@ -8,7 +8,7 @@ import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, EmbedArticleType, INGEST
 const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     const tenantId = Number(tId);
     const storeId = Number(sId);
-    if (Number.isFinite(tenantId) && Number.isFinite(storeId)) {
+    if (Number.isFinite(tenantId) && Number.isFinite(storeId) && tenantId > 0 && storeId > 0) {
         return `categories_${tenantId}_${storeId}`;
     }
     return 'categories';

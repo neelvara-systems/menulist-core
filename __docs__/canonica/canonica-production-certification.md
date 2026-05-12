@@ -19,9 +19,10 @@
 | **Lib**                | 6 files in `src/lib/canonica/`             | Retrieval, drift, mutation, extraction, signals, tokenizer |
 | **Feature Flags**      | 5 flags in `src/config/features.ts`        | Pillar-gated activation                                    |
 | **DB Constants**       | 14 Canonica constants in database mirrors  | Collection name constants                                  |
-| **Firestore Indexes**  | 29 Canonica-specific composite indexes     | Mirrored for shared and dedicated Firebase deployments      |
+| **Firestore Indexes**  | 33 Canonica query/vector indexes           | Mirrored for shared and dedicated Firebase deployments      |
 | **Integration Points** | 3 touchpoints (tickets, chat, search-kb)   | Signal emission + retrieval                                |
-| **Owner UI**           | `src/app/(canonica)/canonica/*` + `src/components/canonica/*` | Responsive dashboard shell, governance hub, settings, and operational views |
+| **Owner UI**           | `src/app/(canonica)/canonica/help|docs|support|release-notes` + shared help-center components | Embedded MenuList client support portal |
+| **Operator UI**        | `src/app/(canonica)/canonica/dashboard|governance|settings|tickets|knowledge-base|kb-generation|changelog` + `src/components/canonica/*` | Responsive dashboard shell, governance hub, settings, and operational views |
 | **Public UI**          | `src/app/sites/canonica/*` + `src/app/widget/[apiKey]/*` | Marketing/onboarding pages and embeddable end-user help widget |
 
 ### 1.2 Collections (14 Total — All Verified)
@@ -177,12 +178,14 @@ activateRelease(releaseId)
 Settings / onboarding
   → generate cn_* raw key once
   → store publicApi.apiKeyHash + keyPrefix only
-  → widget search validates X-API-Key by hash
+  → malformed keys short-circuit before Firestore lookup
+  → widget routes rate-limit by key hash, then validate X-API-Key by hash
+  → resolved store context must have positive tId+sId
   → coreSearch writes aiSearchHistory with tId+sId+scoped cacheKey
   → widget feedback verifies searchHistory.tId/sId before writing feedback
 ```
 
-**Verdict:** SAFE. Raw widget keys are not persisted. Rate-limit keys use key hashes, not raw API keys. Feedback cannot update another workspace's search history record.
+**Verdict:** SAFE. Raw widget keys are not persisted. Rate-limit keys use key hashes, not raw API keys. Malformed keys avoid Firestore reads, misconfigured store contexts fail closed, and feedback cannot update another workspace's search history record.
 
 ### Flow G — Guided + Predictive Public Widget
 
@@ -214,6 +217,23 @@ Owner KB screen
 
 **Verdict:** HARDENED. The owner knowledge-base navigation screen no longer treats the categories document as global product state.
 
+### Flow I — MenuList Client → Canonica Support
+
+```
+MenuList owner clicks Help / Documentation / Support Tickets
+  → desktop sidebar/support popover or mobile More tab resolves a Canonica client route
+  → /canonica/help, /docs, /support, or /release-notes loads
+  → owner sees KB, ticket, and changelog surfaces without the legacy generic mobile FAQ/WhatsApp placeholder
+  → Canonica DAL reads/writes use canonicaFirebaseClient and sourceContext metadata
+
+Platform operator opens Canonica management
+  → /canonica/* authenticated layout loads
+  → platformRole=PLATFORM or PLATFORM_SUPPORT can access governance/management routes
+  → non-platform sessions are redirected back to /canonica/help
+```
+
+**Verdict:** WIRED. MenuList no longer sends mobile owners to generic FAQ/WhatsApp/mail placeholders for primary support actions; the first-client support surface opens Canonica client screens directly while platform-only management screens remain separated.
+
 ---
 
 ## 4. Security Validation
@@ -223,11 +243,13 @@ Owner KB screen
 | No hardcoded collection names                    | **PASS** — All use `DB_COLLECTIONS` constants                              |
 | No missing tenant filters                        | **PASS** — All DAL queries include `tId` + `sId` where clauses             |
 | No unscoped queries                              | **PASS** — Every query is tenant-scoped                                    |
+| Vector retrieval fail-closed                     | **PASS** — `coreSearch()` returns an empty result when `tId/sId` are invalid and vector search always filters `status + tId + sId` |
 | No writes bypassing DAL                          | **PASS** — Canonica client writes go through `apiCallComposer` + `canonicaRequestBodyComposer`; shared MenuList writes keep `requestBodyComposer` |
 | Canonica document ownership                      | **PASS** — Canonica DAL writes force `pId = "CN"` and attach source/trace metadata without changing existing tId/sId query scope |
 | No direct client writes to sensitive collections | **PASS** — All operations server-side via DAL pattern                      |
 | Feature flag gating on all entry points          | **PASS** — Retrieval, signals, drift, extraction all check flags           |
 | Dynamic imports for code splitting               | **PASS** — `signalEmitter.ts` uses dynamic import to avoid bundling        |
+| Public key lookup cost guard                     | **PASS** — Public API keys require `ml_` or `cn_` shape before hash/raw lookup |
 
 ---
 
@@ -239,6 +261,7 @@ Owner KB screen
 | ------------------------------------ | ---------------------------------------------------- | --------------------- | --------------- |
 | Canonical retrieval (50 queries/day) | 50 × (1 index + 3 entity + 1 version) = 250 reads    | 0                     | $0.003          |
 | Signal emission (20 events/day)      | 0                                                    | 20 writes             | $0.0004         |
+| Search-history cache lookup          | 1 cache-key lookup on help-center repeat queries, with scoped key verification | 0 | <$0.0001 |
 | Drift evaluation (1 nightly)         | 1 entities + 1 answers + N signal counts = ~20 reads | ~5 governance updates | $0.0003         |
 | Mutation engine (1 nightly)          | 1 signals query + ~10 answer lookups = ~15 reads     | ~3 proposals          | $0.0002         |
 | **Total per tenant/day**             | ~285 reads                                           | ~28 writes            | **~$0.004/day** |
@@ -327,7 +350,7 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 
 | Risk                                                    | Likelihood | Impact                   | Mitigation                                                                                                  |
 | ------------------------------------------------------- | ---------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Firestore composite index missing for new query pattern | Low        | Query fails at runtime   | All 29 Canonica indexes mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`          |
+| Firestore query/vector index missing for new query pattern | Low        | Query fails at runtime   | All 33 Canonica indexes mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including `kb_articles` tenant-filtered vector search |
 | Stale tokenizer breaks retrieval                        | Low        | Silent query miss        | Tokenizer frozen with `FROZEN` comment; shared between index and query time                                 |
 | Drift engine marks too many answers as drifted          | Medium     | Admin fatigue            | Configurable thresholds in `SIGNAL_DRIFT_THRESHOLDS`                                                        |
 | Signal emission slows ticket creation                   | Very Low   | UX degradation           | Fire-and-forget with try/catch; dynamic import                                                              |
@@ -354,7 +377,7 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 **Additional Verification:**
 
 - All 4 active pillars fully implemented with correct invariants
-- All Firestore indexes pre-defined for both shared and dedicated deployment modes (29 Canonica composite indexes)
+- All Firestore indexes pre-defined for both shared and dedicated deployment modes (33 Canonica query/vector indexes)
 - All integration points wired (tickets, chat, search-kb)
 - Feature flags provide safe activation/rollback
 - Zero unbounded queries (all capped with `limit()`)
@@ -370,7 +393,7 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 1. Seed at least 10 entities + 5 canonical answers for test tenant
 2. Enable `ENABLE_CANONICA_NIGHTLY` (CF flag) + `ENABLE_CANONICA_SIGNAL_MUTATION` (client)
 3. Monitor canonical hit rate for 2 weeks via coverage KPI in `platformSummary/canonica_{sId}`
-4. Verify Firestore rules and indexes are deployed for the selected mode (`firebase deploy --only firestore:rules,firestore:indexes` or the Canonica Firebase alias/config)
+4. Verify Firestore rules and indexes are deployed for the selected mode (`firebase deploy --only firestore:rules,firestore:indexes` or the Canonica Firebase alias/config), including the `kb_articles` `status + tId + sId + embedding` vector index
 5. Enable remaining flags one-by-one following activation order
 
 ---
@@ -379,4 +402,5 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-05-12 | Added public-key lookup cost guards, fail-closed tenant validation, scoped search-cache lookup, and tenant-filtered `kb_articles` vector index coverage |
 | 2026-03-03 | Initial production certification — forensic audit from code |

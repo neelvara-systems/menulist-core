@@ -1,3 +1,4 @@
+import { CANONICA_ROUTES } from '@constant/canonica/navigations';
 import { LuActivity, LuBarChartBig, LuBook, LuBookOpen, LuCalendarCheck2, LuClock3, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageCircle, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory, MdOutlineSupportAgent } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
@@ -20,7 +21,7 @@ export const NAVIGARIONS_ROUTINGS = {
     LOCATIONS: `/locations`,  // Chain Control Panel (Feature #4C)
     USE_MENULIST: `/use-menulist`,  // Output Center — links, screens, print assets
 
-    HELP: `/help-center`,
+    HELP: CANONICA_ROUTES.HELP,
     PLATFORM: `/platform`,
     USERS: `/users`,
     SIGNIN: `/signin`,
@@ -95,22 +96,22 @@ export const SUPPORT_MENU_OPTIONS = [
     {
         key: 'help-center',
         label: 'Help Center',
-        description: 'Browse guides and tutorials',
+        description: 'Open the Canonica support dashboard',
         icon: LuHeartHandshake,
-        route: NAVIGARIONS_ROUTINGS.HELP
+        route: CANONICA_ROUTES.HELP,
     },
     {
         key: 'documentation',
         label: 'Documentation',
-        description: 'Learn how to use features',
+        description: 'Browse docs and guides',
         icon: LuBookOpen,
-        route: NAVIGARIONS_ROUTINGS.HELP,
+        route: CANONICA_ROUTES.DOCS,
     },
     {
         key: 'submit-ticket',
         label: 'Submit a Ticket',
         description: 'Get help from our team',
         icon: LuTicket,
-        route: NAVIGARIONS_ROUTINGS.HELP,
+        route: CANONICA_ROUTES.SUPPORT,
     },
 ] as const;

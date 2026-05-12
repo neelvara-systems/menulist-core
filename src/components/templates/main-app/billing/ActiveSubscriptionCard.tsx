@@ -6,6 +6,7 @@
 'use client'
 
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { CANONICA_ROUTES } from '@constant/canonica/navigations';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -135,7 +136,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                         Retry Payment
                     </Button>
                 ) : (
-                    <Button type="primary" onClick={() => router.push('/help-center')}>
+                    <Button type="primary" onClick={() => router.push(CANONICA_ROUTES.SUPPORT)}>
                         Contact Support
                     </Button>
                 )}

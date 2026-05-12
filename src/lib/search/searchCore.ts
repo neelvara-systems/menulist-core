@@ -96,6 +96,23 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         productContext,
     } = input;
 
+    if (!Number.isFinite(Number(tId)) || !Number.isFinite(Number(sId)) || Number(tId) <= 0 || Number(sId) <= 0) {
+        try {
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                logType: 'ERROR_INVALID_TENANT_CONTEXT',
+                data: {
+                    mountContext,
+                    hasTenantId: tId !== undefined && tId !== null,
+                    hasStoreId: sId !== undefined && sId !== null,
+                },
+            });
+        } catch {
+            // Logging failure should not turn a fail-closed search into a 500.
+        }
+        return EMPTY_RESULT;
+    }
+
     // ===== STAGE 1: SAFE_MODE =====
     // Pure boolean check — doesn't depend on NextResponse (route-agnostic)
     const { FEATURE_FLAGS } = await import('@config/features');
@@ -477,13 +494,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
 
     // Multi-tenant KB filtering is mandatory for every Canonica mount.
-    let articleQuery = articlesRef.where('status', '==', 'published');
-    if (tId) {
-        articleQuery = articleQuery.where('tId', '==', tId);
-    }
-    if (sId) {
-        articleQuery = articleQuery.where('sId', '==', sId);
-    }
+    const articleQuery = articlesRef
+        .where('status', '==', 'published')
+        .where('tId', '==', tId)
+        .where('sId', '==', sId);
 
     const snapshot = await articleQuery
         .findNearest({

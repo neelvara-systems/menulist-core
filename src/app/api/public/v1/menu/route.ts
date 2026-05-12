@@ -12,7 +12,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
-import { apiError, generateETag, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
+import { apiError, generateETag, hashApiKey, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { secureError } from "@lib/security/secureLogger";
 import { NextRequest, NextResponse } from "next/server";
@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Rate limit per API key
-    const rlResult = await checkRateLimit({ key: `public-api:${apiKey}`, limit: 60, window: 60 });
+    const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+    const rlResult = await checkRateLimit({ key: `public-api:${apiKeyRateLimitId}`, limit: 60, window: 60 });
     if (!rlResult.allowed) {
         const retryAfter = Math.ceil((rlResult.resetAt - Date.now()) / 1000);
         return apiError('RATE_LIMIT_EXCEEDED', 'Too many requests', 429, {

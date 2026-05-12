@@ -57,6 +57,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
         }
 
+        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
+        const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
+        const rateLimitResult = await checkRateLimit({
+            key: `widget:${apiKeyRateLimitId}`,
+            limit: rateLimitConfig.limit,
+            window: rateLimitConfig.window,
+        });
+        if (!rateLimitResult.allowed) {
+            const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Please try again later.' },
+                {
+                    status: 429,
+                    headers: { 'Retry-After': String(Math.max(retryAfter, 1)) },
+                }
+            );
+        }
+
         const authResult = await validatePublicApiKey(apiKey);
         if (!authResult) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
@@ -65,20 +83,13 @@ export async function POST(request: NextRequest) {
         const { storeData, storeId } = authResult;
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
-        const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
-
-        // Rate limiting per API key
-        const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
-        const rateLimitResult = await checkRateLimit({
-            key: `widget:${apiKeyRateLimitId}`,
-            limit: rateLimitConfig.limit,
-            window: rateLimitConfig.window,
-        });
-        if (!rateLimitResult.allowed) {
-            return NextResponse.json(
-                { error: 'Rate limit exceeded. Please try again later.' },
-                { status: 429 }
+        if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+            secureError(
+                '[Widget Search] Invalid API key workspace context',
+                new Error('Authenticated API key does not resolve to a valid tenant/store'),
+                { storeId }
             );
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
 
         // ===== ORIGIN ALLOWLIST CHECK =====

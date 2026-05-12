@@ -75,7 +75,16 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - `/platform/knowledge-base` → KB management (platform tab)
 - `/platform/kb-generation` → KB generation pipeline (platform tab)
 
-### Canonica Owner Routes
+### Canonica Client Routes
+
+- `/canonica/help` → `src/app/(canonica)/canonica/help/page.tsx`
+- `/canonica/docs` → `src/app/(canonica)/canonica/docs/page.tsx`
+- `/canonica/support` → `src/app/(canonica)/canonica/support/page.tsx`
+- `/canonica/release-notes` → `src/app/(canonica)/canonica/release-notes/page.tsx`
+
+These routes are the embedded MenuList client support surface: owner help overview, documentation browsing, store-scoped support tickets, and release notes.
+
+### Canonica Operator Routes
 
 - `/canonica/dashboard` → `src/app/(canonica)/canonica/dashboard/page.tsx`
 - `/canonica/governance` → `src/app/(canonica)/canonica/governance/page.tsx`
@@ -86,7 +95,21 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - `/canonica/kb-generation` → `src/app/(canonica)/canonica/kb-generation/page.tsx`
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
 
-The Canonica owner shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
+The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client sessions see only the client support routes; `PLATFORM` and `PLATFORM_SUPPORT` sessions can also access operator management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
+
+### MenuList Client Wiring
+
+MenuList is the first embedded Canonica client. Owner support entry points now hand off to Canonica instead of the legacy generic help content:
+
+- Desktop sidebar Help → `/canonica/help`
+- Desktop support popover Documentation → `/canonica/docs`
+- Desktop support popover Submit a Ticket → `/canonica/support`
+- Mobile More tab Help Center → `/canonica/help`
+- Mobile More tab Documentation → `/canonica/docs`
+- Mobile More tab Support Tickets → `/canonica/support`
+- Mobile More tab Release Notes → `/canonica/release-notes`
+
+The legacy `/help-center` route remains available for compatibility while MenuList client-facing support moves to Canonica. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
 
 ### Canonica Public Routes
 
@@ -95,7 +118,7 @@ The Canonica owner shell is responsive: desktop uses a fixed Canonica sidebar, w
 - `/sites/canonica/product`, `/pricing`, `/about`, `/contact` → public site pages
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/dashboard`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/dashboard`.
 
 ### API Routes
 
@@ -217,7 +240,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_integrationDeliveryLogs` | Integration delivery attempt logs      | Tenant+Store scoped, server-written |
 | `canonica_predictiveTriggers`    | Predictive support trigger rules        | Tenant+Store scoped                 |
 
-**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for shared-DB local/test mode and `firestore-canonica.rules` for dedicated Canonica Firebase deployments. `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`, and the client signs into the Canonica Firebase app with the same `platformRole`, `tenantId`, and `storeId` claims. Canonica composite indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json` so both deployment modes support the same query set.
+**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for shared-DB local/test mode and `firestore-canonica.rules` for dedicated Canonica Firebase deployments. `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`, and the client signs into the Canonica Firebase app with the same `platformRole`, `tenantId`, and `storeId` claims. Canonica query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
 ---
 
@@ -226,7 +249,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - **Owner-side** (Help Center page): Requires authenticated session via NextAuth. Tenant-isolated (`tId`), store-isolated (`sId`), user-isolated (`uId`).
 - **Platform-admin** (Support Tickets, KB Management, Chat Management): Requires `platformRole` check (PLATFORM or PLATFORM_SUPPORT).
 - **End-user chat**: The AI search modal (`AISearchModal/`) can be used by any authenticated user within their tenant.
-- **KB articles**: No auth on read (used in vector search by admin route). Write operations require platform auth.
+- **KB articles**: Server-side retrieval is tenant/store filtered and fail-closed when `tId` or `sId` is missing or invalid. Write operations require platform auth.
 - **Embedding API**: Protected by SAFE_MODE check + rate limiting. No explicit `withAuth()` — relies on session context.
 
 ---
@@ -244,7 +267,7 @@ User Query → [Zod Validation] → [Rate Limit Check] → [SAFE_MODE Check]
     ↓ (Miss)
 [Gemini text-embedding-004] → Generate query vector → Cache it
     ↓
-[Firestore Vector Search] → findNearest(embedding, COSINE, limit=12)
+[Firestore Vector Search] → status + tId + sId filtered findNearest(embedding, COSINE, limit=12)
     ↓
 [Filter: status=published, similarityScore > 0.4-0.6]
     ↓
