@@ -4,24 +4,29 @@
  * Route: /api/app-icons/{storeId}/{size}
  *
  * Strategy:
- *   1. If the store has a `branding.pwaIconOverrideUrl` or a PNG/JPG `logoUrl`,
- *      302-redirect so Firebase Storage + CDN handle delivery (no CPU cost).
+ *   1. If the store has a `publicPresence.pwaIconOverrideUrl` or image logo,
+ *      render it into a square, padded PNG so app icons never look squeezed.
  *   2. Otherwise, generate a deterministic letter-based PNG via Next.js
  *      ImageResponse — no Sharp, no native deps.
  *
- * Supported sizes: 180 (apple-touch), 192, 512. Unsupported sizes clamp to 512.
+ * Supported sizes: common iOS + Android PWA icon sizes. Unsupported sizes clamp to 512.
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import {
+    clampCustomerAppIconSize,
+    CUSTOMER_APP_ICON_CACHE_CONTROL,
+    renderCustomerAppIcon,
+    resolveCustomerAppIconImageUrl,
+} from '@lib/pwa/customerAppAssets';
 import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs'; // Firestore client needs node runtime
 export const dynamic = 'force-dynamic';
 
-const SUPPORTED_SIZES = new Set([180, 192, 512]);
 // Caching rationale (KEPT — do not remove):
 //   - Icons rarely change (logo update / owner override). When they do, busting
 //     happens naturally via a new tenant-origin URL per deploy (Vercel cache).
@@ -30,58 +35,11 @@ const SUPPORTED_SIZES = new Set([180, 192, 512]);
 //   - max-age=3600: browser re-checks after 1h.
 //   - s-maxage=86400: Vercel edge caches 1 day.
 //   - stale-while-revalidate=604800: serve stale for 1wk while refetching.
-const ICON_CACHE_CONTROL = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
-
-function clampSize(raw: string): number {
-    const n = parseInt(raw, 10);
-    if (!Number.isFinite(n)) return 512;
-    if (SUPPORTED_SIZES.has(n)) return n;
-    return 512;
-}
-
-function firstLetter(name: string): string {
-    const trimmed = (name || '').trim();
-    if (!trimmed) return 'M';
-    return trimmed.charAt(0).toUpperCase();
-}
-
-function pickBackgroundColor(seed: string): string {
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-        hash = (hash << 5) - hash + seed.charCodeAt(i);
-        hash |= 0;
-    }
-    const hue = Math.abs(hash) % 360;
-    return `hsl(${hue}, 65%, 45%)`;
-}
-
-function renderLetterIcon(letter: string, bg: string, size: number) {
-    return (
-        <div
-            style={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: bg,
-                color: '#ffffff',
-                fontSize: Math.round(size * 0.55),
-                fontWeight: 700,
-                fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
-                letterSpacing: '-0.02em',
-            }}
-        >
-            {letter}
-        </div>
-    );
-}
-
 export async function GET(
     _request: Request,
     { params }: { params: { storeId: string; size: string } },
 ) {
-    const size = clampSize(params.size);
+    const size = clampCustomerAppIconSize(params.size);
     const storeId = params.storeId;
 
     try {
@@ -89,37 +47,31 @@ export async function GET(
         const snap = await getDoc(ref);
         const store = snap.exists() ? snap.data() : null;
 
-        // Owner-uploaded override lives under publicPresence (the existing
-        // public-facing branding namespace — no new top-level field).
-        const overrideUrl: string | undefined =
-            typeof store?.publicPresence?.pwaIconOverrideUrl === 'string'
-                ? store.publicPresence.pwaIconOverrideUrl
-                : undefined;
-        // Store logo field is named `logo` (not logoUrl) per StoreDataType.
-        const logoUrl: string | undefined =
-            !overrideUrl && typeof store?.logo === 'string' ? store.logo : undefined;
-
-        if (overrideUrl) return Response.redirect(overrideUrl, 302);
-        if (logoUrl && /\.(png|jpe?g|webp)(\?|$)/i.test(logoUrl)) {
-            return Response.redirect(logoUrl, 302);
-        }
-
         const displayName: string = getStoreContextName(store, 'Menu');
-        const letter = firstLetter(displayName);
-        const bg = pickBackgroundColor(`${storeId}:${displayName}`);
+        const imageUrl = resolveCustomerAppIconImageUrl(store);
 
-        return new ImageResponse(renderLetterIcon(letter, bg, size), {
+        return new ImageResponse(renderCustomerAppIcon({
+            displayName,
+            imageUrl,
+            seed: storeId,
+            size,
+            visualRatio: size >= 512 ? 0.72 : 0.74,
+        }), {
             width: size,
             height: size,
-            headers: { 'Cache-Control': ICON_CACHE_CONTROL },
+            headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
         });
     } catch (err) {
         console.error('[app-icons] generation failed:', err);
         // Always return an icon — never 500 for install flows.
-        return new ImageResponse(renderLetterIcon('M', '#0f172a', size), {
+        return new ImageResponse(renderCustomerAppIcon({
+            displayName: 'Menu',
+            seed: storeId,
+            size,
+        }), {
             width: size,
             height: size,
-            headers: { 'Cache-Control': ICON_CACHE_CONTROL },
+            headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
         });
     }
 }

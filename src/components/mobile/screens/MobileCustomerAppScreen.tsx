@@ -512,8 +512,8 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                                             width: 64,
                                             height: 64,
                                             borderRadius: 16,
-                                            objectFit: 'cover',
-                                            background: token.colorFillAlter,
+                                            objectFit: 'contain',
+                                            background: '#ffffff',
                                             flexShrink: 0,
                                             border: `1px solid ${token.colorBorderSecondary}`,
                                         }}

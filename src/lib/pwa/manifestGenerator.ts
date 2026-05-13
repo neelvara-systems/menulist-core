@@ -5,7 +5,7 @@
  * Called by the /manifest.webmanifest route handler.
  *
  * Spec:
- *   - 192, 512, 180 (apple touch) icon sizes
+ *   - Common iOS/Android app icon sizes through the dynamic icon endpoint
  *   - Standalone display mode
  *   - Per-store name / short_name / theme_color
  *   - Store-level app identity; install source paths remain analytics context
@@ -13,6 +13,7 @@
  */
 
 import { APP_THEME_COLOR } from '@constant/common';
+import { deriveCustomerAppShortName } from './customerAppAssets';
 import { buildStoreManifestId } from './manifestIdentity';
 import { buildShortcuts, type ShortcutStoreInfo } from './shortcutsBuilder';
 
@@ -95,19 +96,9 @@ export interface WebAppManifest {
     }>;
 }
 
-/**
- * Derive a short name from the full display name if no explicit override.
- * Trims to 12 chars to meet most OS home-screen label budgets.
- */
-function deriveShortName(displayName: string, override?: string): string {
-    if (override && override.trim().length > 0) return override.trim().slice(0, 12);
-    const firstWord = displayName.split(/\s+/)[0] || displayName;
-    return firstWord.slice(0, 12);
-}
-
 export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const startUrl = input.startUrl && input.startUrl.length > 0 ? input.startUrl : '/';
-    const shortName = deriveShortName(input.displayName, input.shortName);
+    const shortName = deriveCustomerAppShortName(input.displayName, input.shortName);
     const themeColor = input.themeColor || APP_THEME_COLOR;
     const backgroundColor = input.backgroundColor || '#ffffff';
 
@@ -120,7 +111,9 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const iconBase = `/api/app-icons/${input.id}`;
 
     const icons: WebAppManifest['icons'] = [
+        { src: `${iconBase}/180`, sizes: '180x180', type: 'image/png', purpose: 'any' },
         { src: `${iconBase}/192`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: `${iconBase}/384`, sizes: '384x384', type: 'image/png', purpose: 'any' },
         { src: `${iconBase}/512`, sizes: '512x512', type: 'image/png', purpose: 'any' },
         { src: `${iconBase}/192`, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
         { src: `${iconBase}/512`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },

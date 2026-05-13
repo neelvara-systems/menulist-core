@@ -53,6 +53,7 @@ import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescript
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { deriveCustomerAppShortName, getCustomerAppleStartupImages } from "@lib/pwa/customerAppAssets";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
 import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
 import {
@@ -632,14 +633,14 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const appleTouchIconUrl = pwaEnabled
         ? `/api/app-icons/${storeData.id}/180`
         : undefined;
-    const appleWebAppTitle =
+    const pwaShortName =
         getLocalizedText(
             storeData.pwaSettings?.pwaShortName,
             contentLanguage,
             getPrimaryLocalizedLanguage(storeData.pwaSettings?.pwaShortName, contentLanguage),
             '',
-        ).trim() ||
-        storeName;
+        ).trim();
+    const appleWebAppTitle = deriveCustomerAppShortName(storeName, pwaShortName);
     const themeColor = storeData.publicPresence?.accentColor || APP_THEME_COLOR;
 
     const currentPath = params?.slug && params.slug.length > 0
@@ -802,6 +803,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     ? {
                         appleWebApp: {
                             capable: true,
+                            startupImage: getCustomerAppleStartupImages(storeData.id),
                             statusBarStyle: "default",
                             title: appleWebAppTitle,
                         },
@@ -856,6 +858,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             ? {
                 appleWebApp: {
                     capable: true,
+                    startupImage: getCustomerAppleStartupImages(storeData.id),
                     statusBarStyle: "default",
                     title: appleWebAppTitle,
                 },

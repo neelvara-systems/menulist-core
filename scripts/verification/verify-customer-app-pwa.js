@@ -41,6 +41,7 @@ function verifyManifestIdentity() {
 function verifyManifestLink() {
   const page = read('src/app/client/[[...slug]]/page.tsx');
   assertIncludes(page, "const manifestUrl = '/manifest.webmanifest';", 'client metadata');
+  assertIncludes(page, 'startupImage: getCustomerAppleStartupImages(storeData.id)', 'client metadata startup images');
   assertNotIncludes(page, 'manifest.webmanifest?start=', 'client metadata');
 }
 
@@ -102,6 +103,29 @@ function verifyOwnerAuthManifest() {
   }
 }
 
+function verifyCustomerAppAssets() {
+  const appIconRoute = read('src/app/api/app-icons/[storeId]/[size]/route.tsx');
+  const appSplashRoute = read('src/app/api/app-splash/[storeId]/[size]/route.tsx');
+  const assetHelpers = read('src/lib/pwa/customerAppAssets.tsx');
+  const clientPage = read('src/app/client/[[...slug]]/page.tsx');
+  const manifestGenerator = read('src/lib/pwa/manifestGenerator.ts');
+  const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
+  const executableIconRoute = stripJsComments(appIconRoute);
+
+  assertIncludes(appIconRoute, 'renderCustomerAppIcon', 'customer app icon route');
+  assertIncludes(appIconRoute, 'resolveCustomerAppIconImageUrl', 'customer app icon route');
+  assertNotIncludes(executableIconRoute, 'Response.redirect', 'customer app icon route executable code');
+  assertIncludes(appSplashRoute, 'renderCustomerAppSplash', 'customer app splash route');
+  assertIncludes(appSplashRoute, 'parseCustomerAppSplashSize', 'customer app splash route');
+  assertIncludes(assetHelpers, 'CUSTOMER_APPLE_STARTUP_IMAGES', 'customer app asset helpers');
+  assertIncludes(assetHelpers, 'deriveCustomerAppShortName', 'customer app asset helpers');
+  assertIncludes(assetHelpers, "objectFit: 'contain'", 'customer app asset helpers');
+  assertIncludes(clientPage, 'deriveCustomerAppShortName(storeName, pwaShortName)', 'client metadata app title');
+  assertIncludes(manifestGenerator, "`${iconBase}/180`", 'customer app manifest icons');
+  assertIncludes(manifestGenerator, "`${iconBase}/384`", 'customer app manifest icons');
+  assertIncludes(mobileSettings, "objectFit: 'contain'", 'mobile customer app icon preview');
+}
+
 function verifyAnalyticsCoverage() {
   const analytics = read('src/lib/analytics/unified.ts');
   const expectedEvents = [
@@ -142,6 +166,7 @@ const checks = [
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
   ['next-pwa scoping', verifyNextPwaScoping],
   ['owner auth manifest', verifyOwnerAuthManifest],
+  ['customer app assets', verifyCustomerAppAssets],
   ['analytics coverage', verifyAnalyticsCoverage],
   ['menu freshness hook', verifyFreshnessHook],
 ];

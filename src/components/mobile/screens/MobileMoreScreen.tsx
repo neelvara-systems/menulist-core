@@ -109,6 +109,19 @@ const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'chatRoiCalculator',
 ];
 
+const canonicaInternalScreens: MobilePlatformInternalScreenKey[] = [
+    'supportTickets',
+    'feedbackAdmin',
+    'knowledgeBase',
+    'kbGeneration',
+    'changelog',
+    'chatManagement',
+    'chatInsights',
+    'chatBackfill',
+    'chatWeeklyDigest',
+    'chatRoiCalculator',
+];
+
 const isPlatformInternalScreen = (screen: MoreSubScreen): screen is MobilePlatformInternalScreenKey => (
     platformInternalScreens.includes(screen as MobilePlatformInternalScreenKey)
 );
@@ -153,6 +166,7 @@ export type MoreSubScreen =
     | 'canonicaSupport'
     | 'canonicaReleaseNotes'
     | 'platformHub'
+    | 'canonicaHub'
     | 'entityBlocks'
     | 'platformTenants'
     | 'platformStores'
@@ -266,6 +280,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['canonicaHelp', 'canonicaDocs', 'canonicaSupport', 'canonicaReleaseNotes'].includes(currentScreen)) {
             return 'main';
         }
+        if (canonicaInternalScreens.includes(currentScreen as MobilePlatformInternalScreenKey)) {
+            return 'canonicaHub';
+        }
         if (isPlatformInternalScreen(currentScreen)) {
             return 'platformHub';
         }
@@ -336,7 +353,11 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ] : [];
 
     const platformManagementItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'users', 'tickets', 'knowledge base', 'chat', 'changelog'], label: 'Platform Management', description: 'Internal platform settings, admin users, support, content, and diagnostics.', onClick: () => openSubScreen('platformHub') },
+        { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'users', 'tenants', 'stores', 'entity blocks'], label: 'Platform Management', description: 'Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics.', onClick: () => openSubScreen('platformHub') },
+    ] : [];
+
+    const canonicaManagementItems: MoreListItem[] = isPlatformAdmin ? [
+        { key: 'canonicaHub', icon: <LuBookOpen color="#7c3aed" size={20} />, keywords: ['canonica', 'support', 'tickets', 'knowledge base', 'kb', 'chat', 'changelog'], label: 'Canonica', description: 'Canonica support, knowledge base, changelog, chat analytics, and backfill tools.', onClick: () => openSubScreen('canonicaHub') },
     ] : [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
@@ -344,6 +365,15 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'platformTenants', icon: <LuBuilding2 color="#475569" size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
         { key: 'platformStores', icon: <LuMapPin color="#0f766e" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
         { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
+        ...(FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD ? [
+            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openDesktopRoute('/reseller') },
+            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openDesktopRoute('/reseller/manage') },
+            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openDesktopRoute('/reseller/onboard') },
+        ] : []),
+        { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
+    ] : [];
+
+    const canonicaHubItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
         { key: 'feedbackAdmin', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback admin', 'reviews', 'guest feedback'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openSubScreen('feedbackAdmin') },
         { key: 'knowledgeBase', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['knowledge base', 'help articles', 'kb'], label: 'Knowledge Base', description: 'Platform knowledge base editing and publishing.', onClick: () => openSubScreen('knowledgeBase') },
@@ -354,12 +384,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'chatBackfill', icon: <LuRefreshCw color="#0ea5e9" size={20} />, keywords: ['chat backfill', 'analytics backfill'], label: 'Chat Backfill', description: 'Backfill chat analytics and operational data.', onClick: () => openSubScreen('chatBackfill') },
         { key: 'chatWeeklyDigest', icon: <LuClock color="#14b8a6" size={20} />, keywords: ['weekly digest', 'chat digest'], label: 'Chat Weekly Digest', description: 'Review weekly chat digest output.', onClick: () => openSubScreen('chatWeeklyDigest') },
         { key: 'chatRoiCalculator', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['roi', 'calculator', 'chat roi'], label: 'Chat ROI Calculator', description: 'Internal ROI calculator for chat operations.', onClick: () => openSubScreen('chatRoiCalculator') },
-        ...(FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD ? [
-            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openDesktopRoute('/reseller') },
-            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openDesktopRoute('/reseller/manage') },
-            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openDesktopRoute('/reseller/onboard') },
-        ] : []),
-        { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
     ] : [];
 
     const itemSections = useMemo(() => ([
@@ -368,7 +392,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { items: businessPresenceItems, title: 'Business Presence' },
         ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
         ...(platformManagementItems.length ? [{ items: platformManagementItems, title: 'Platform Management' }] : []),
-    ]), [businessIdentityItems, businessPresenceItems, moduleItems, platformManagementItems, platformMonitoringItems]);
+        ...(canonicaManagementItems.length ? [{ items: canonicaManagementItems, title: 'Canonica' }] : []),
+    ]), [businessIdentityItems, businessPresenceItems, canonicaManagementItems, moduleItems, platformManagementItems, platformMonitoringItems]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -400,7 +425,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
-    else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList operations, monitoring, content, support, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
+    else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
+    else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} title="Canonica" />;
     else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
     else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
     else if (subScreen === 'hoursEdit') subScreenContent = <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;

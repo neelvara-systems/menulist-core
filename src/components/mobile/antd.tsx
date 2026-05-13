@@ -34,7 +34,8 @@ import {
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useLocale } from 'next-intl';
 import type { ComponentProps, CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
-import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useState } from 'react';
+import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
 type AnyStyle = CSSProperties & Record<string, any>;
@@ -481,7 +482,21 @@ export function Popover({
     placement?: ComponentProps<typeof AntPopover>['placement'];
     trigger?: ComponentProps<typeof AntPopover>['trigger'];
 }) {
+    const { token } = theme.useToken();
+    const triggerRef = useRef<HTMLSpanElement | null>(null);
+    const overlayRef = useRef<HTMLDivElement | null>(null);
+    const isControlled = typeof open === 'boolean';
+    const [internalOpen, setInternalOpen] = useState(false);
+    const actualOpen = isControlled ? Boolean(open) : internalOpen;
     const [viewportBounds, setViewportBounds] = useState({ height: 640, width: 360 });
+    const [overlayPosition, setOverlayPosition] = useState({ left: 16, top: 16 });
+
+    const setOpenState = (nextOpen: boolean) => {
+        if (!isControlled) {
+            setInternalOpen(nextOpen);
+        }
+        onOpenChange?.(nextOpen);
+    };
 
     useEffect(() => {
         const updateViewportBounds = () => {
@@ -507,49 +522,149 @@ export function Popover({
 
     const tooltipWidth = Math.max(180, Math.min(320, viewportBounds.width - 32));
     const tooltipMaxHeight = Math.max(120, Math.min(360, viewportBounds.height - 120));
+    const isClickTrigger = Array.isArray(trigger) ? trigger.includes('click') : trigger === 'click';
+
+    useEffect(() => {
+        if (!actualOpen) return;
+
+        const updateOverlayPosition = () => {
+            const triggerNode = triggerRef.current;
+            if (!triggerNode || typeof window === 'undefined') return;
+
+            const viewport = window.visualViewport;
+            const viewportLeft = viewport?.offsetLeft || 0;
+            const viewportTop = viewport?.offsetTop || 0;
+            const viewportWidth = viewport?.width || window.innerWidth || viewportBounds.width;
+            const viewportHeight = viewport?.height || window.innerHeight || viewportBounds.height;
+            const viewportRight = viewportLeft + viewportWidth;
+            const viewportBottom = viewportTop + viewportHeight;
+            const rect = triggerNode.getBoundingClientRect();
+            const overlayHeight = Math.min(
+                tooltipMaxHeight,
+                overlayRef.current?.offsetHeight || 220,
+            );
+            const gutter = 16;
+            const gap = 8;
+
+            let left = rect.left;
+            if (String(placement).toLowerCase().includes('right')) {
+                left = rect.right - tooltipWidth;
+            } else if (!String(placement).toLowerCase().includes('left')) {
+                left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+            }
+
+            left = Math.min(
+                Math.max(left, viewportLeft + gutter),
+                viewportRight - tooltipWidth - gutter,
+            );
+
+            const preferredTop = String(placement).toLowerCase().startsWith('top')
+                ? rect.top - overlayHeight - gap
+                : rect.bottom + gap;
+            const fallbackTop = String(placement).toLowerCase().startsWith('top')
+                ? rect.bottom + gap
+                : rect.top - overlayHeight - gap;
+            let top = preferredTop;
+
+            if (top + overlayHeight > viewportBottom - gutter || top < viewportTop + gutter) {
+                top = fallbackTop;
+            }
+
+            top = Math.min(
+                Math.max(top, viewportTop + gutter),
+                viewportBottom - overlayHeight - gutter,
+            );
+
+            setOverlayPosition({ left, top });
+        };
+
+        updateOverlayPosition();
+        const rafId = window.requestAnimationFrame(updateOverlayPosition);
+
+        window.addEventListener('resize', updateOverlayPosition);
+        window.addEventListener('scroll', updateOverlayPosition, true);
+        window.visualViewport?.addEventListener('resize', updateOverlayPosition);
+        window.visualViewport?.addEventListener('scroll', updateOverlayPosition);
+
+        return () => {
+            window.cancelAnimationFrame(rafId);
+            window.removeEventListener('resize', updateOverlayPosition);
+            window.removeEventListener('scroll', updateOverlayPosition, true);
+            window.visualViewport?.removeEventListener('resize', updateOverlayPosition);
+            window.visualViewport?.removeEventListener('scroll', updateOverlayPosition);
+        };
+    }, [actualOpen, placement, tooltipMaxHeight, tooltipWidth, viewportBounds.height, viewportBounds.width]);
+
+    useEffect(() => {
+        if (!actualOpen) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target as Node;
+            if (triggerRef.current?.contains(target) || overlayRef.current?.contains(target)) return;
+            setOpenState(false);
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setOpenState(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [actualOpen]);
 
     return (
-        <AntPopover
-            autoAdjustOverflow
-            align={{
-                overflow: { adjustX: true, adjustY: true },
-                offset: [0, 8],
-            }}
-            content={(
+        <>
+            <span
+                ref={triggerRef}
+                style={{ display: 'inline-flex' }}
+                onClick={isClickTrigger ? () => setOpenState(!actualOpen) : undefined}
+            >
+                {children}
+            </span>
+            {actualOpen && typeof document !== 'undefined' ? createPortal((
                 <div
+                    ref={overlayRef}
+                    role="tooltip"
                     style={{
+                        background: token.colorBgElevated,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: 12,
                         boxSizing: 'border-box',
+                        boxShadow: token.boxShadowSecondary,
+                        color: token.colorText,
+                        fontSize: 14,
+                        left: overlayPosition.left,
+                        lineHeight: 1.45,
                         maxHeight: tooltipMaxHeight,
-                        maxWidth: '100%',
+                        maxWidth: tooltipWidth,
+                        overflow: 'hidden',
                         overflowWrap: 'break-word',
-                        overflowY: 'auto',
-                        whiteSpace: 'normal',
-                        width: '100%',
-                        wordBreak: 'break-word',
+                        padding: 12,
+                        position: 'fixed',
+                        top: overlayPosition.top,
+                        width: tooltipWidth,
+                        zIndex: 5000,
                     }}
                 >
-                    {content}
+                    <div
+                        style={{
+                            maxHeight: tooltipMaxHeight - 24,
+                            overflowY: 'auto',
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                        }}
+                    >
+                        {content}
+                    </div>
                 </div>
-            )}
-            getPopupContainer={(triggerNode) => (
-                triggerNode.closest('[data-mobile-shell-scroll="true"]')
-                || triggerNode.closest('[data-mobile-shell="true"]')
-                || document.body
-            )}
-            onOpenChange={onOpenChange}
-            open={open}
-            overlayStyle={{
-                boxSizing: 'border-box',
-                maxHeight: tooltipMaxHeight,
-                maxWidth: tooltipWidth,
-                overflow: 'hidden',
-                width: tooltipWidth,
-            }}
-            placement={placement}
-            trigger={trigger}
-        >
-            {children}
-        </AntPopover>
+            ), document.body) : null}
+        </>
     );
 }
 

@@ -33,6 +33,9 @@ const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/platform/tenants': 'platformTenants',
     '/platform/stores': 'platformStores',
     '/platform/users': 'platformUsers',
+    '/platform/ops-control-room': 'opsControlRoom',
+    '/platform/extraction-monitor': 'extractionMonitor',
+    '/platform/scheduler-monitor': 'schedulerMonitor',
     '/platform/support-tickets': 'supportTickets',
     '/platform/feedback-admin': 'feedbackAdmin',
     '/platform/knowledge-base': 'knowledgeBase',
@@ -56,6 +59,7 @@ const HELP_CENTER_TAB_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
 };
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
+    'canonicaHub',
     'entityBlocks',
     'platformTenants',
     'platformStores',

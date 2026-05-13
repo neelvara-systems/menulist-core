@@ -1,4 +1,4 @@
-import { LuActivity, LuBarChartBig, LuBook, LuBookOpen, LuCalendarCheck2, LuClock3, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageCircle, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
+import { LuActivity, LuBarChartBig, LuBook, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory, MdOutlineSupportAgent } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
 
@@ -24,9 +24,13 @@ export const NAVIGARIONS_ROUTINGS = {
 
     HELP: HELP_CENTER_ROUTING,
     PLATFORM: `/platform`,
+    CANONICA: `/canonica`,
     USERS: `/users`,
     SIGNIN: `/signin`,
     FORGOT_PASSWORD: 'forgot-password',
+    PLATFORM_ENTITY_BLOCKS: `/platform/entity-blocks`,
+    PLATFORM_TENANTS: `/platform/tenants`,
+    PLATFORM_STORES: `/platform/stores`,
     PLATFORM_USERS: `/platform/users`,
     PLATFORM_SUPPORT_TICKETS: `/platform/support-tickets`,
     PLATFORM_KB_GENERATION: `/platform/kb-generation`,
@@ -38,9 +42,12 @@ export const NAVIGARIONS_ROUTINGS = {
     CHAT_WEEKLY_DIGEST: `/platform/chat-weekly-digest`,
     CHAT_BACKFILL: `/platform/chat-backfill`,
     PLATFORM_FEEDBACK_ADMIN: `/platform/feedback-admin`,
-    OPS_CONTROL_ROOM: `/ops`,
-    OPS_EXTRACTION_MONITOR: `/ops/extraction`,
-    OPS_SCHEDULER_MONITOR: `/ops/scheduler`,
+    OPS_CONTROL_ROOM: `/platform/ops-control-room`,
+    OPS_EXTRACTION_MONITOR: `/platform/extraction-monitor`,
+    OPS_SCHEDULER_MONITOR: `/platform/scheduler-monitor`,
+    LEGACY_OPS_CONTROL_ROOM: `/ops`,
+    LEGACY_OPS_EXTRACTION_MONITOR: `/ops/extraction`,
+    LEGACY_OPS_SCHEDULER_MONITOR: `/ops/scheduler`,
 }
 
 export const SKIP_CLIENT_APP_LAYOUT_ROUTINGS = [NAVIGARIONS_ROUTINGS.SIGNIN, HOME_ROUTING, NAVIGARIONS_ROUTINGS.MENU, NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD];
@@ -61,29 +68,27 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     { label: 'Billing', route: NAVIGARIONS_ROUTINGS.BILLING, icon: LuCreditCard },
     { label: 'Help', route: NAVIGARIONS_ROUTINGS.HELP, icon: LuHeartHandshake },
     {
-        label: 'Conversations', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageCircle,
-        subNav: [
-            { label: 'Chat List', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageSquare },       // Most used - view/manage chats
-            { label: 'Chat Insights', route: NAVIGARIONS_ROUTINGS.CHAT_INSIGHTS, icon: LuBarChartBig },              // Daily analytics & metrics
-            { label: 'Weekly Digest', route: NAVIGARIONS_ROUTINGS.CHAT_WEEKLY_DIGEST, icon: LuLineChart },        // Weekly AI summary (trend line)
-            { label: 'ROI Calculator', route: NAVIGARIONS_ROUTINGS.CHAT_ROI_CALCULATOR, icon: LuPieChart },       // Monthly business value (breakdown)
-            { label: 'Chat Backfill', route: NAVIGARIONS_ROUTINGS.CHAT_BACKFILL, icon: LuDatabaseBackup },        // Admin tool (rare use)
-        ]
-    },
-    {
         label: 'Platform', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: TbSettingsHeart,
         subNav: [
             { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: MdOutlineManageHistory },
             { label: 'Ops Control Room', route: NAVIGARIONS_ROUTINGS.OPS_CONTROL_ROOM, icon: LuActivity },
             { label: 'Scheduler Monitor', route: NAVIGARIONS_ROUTINGS.OPS_SCHEDULER_MONITOR, icon: LuClock3 },
             { label: 'Extraction Monitor', route: NAVIGARIONS_ROUTINGS.OPS_EXTRACTION_MONITOR, icon: LuSparkles },
+            { label: 'Entity Blocks', route: NAVIGARIONS_ROUTINGS.PLATFORM_ENTITY_BLOCKS, icon: LuShieldOff },
+            { label: 'Tenants', route: NAVIGARIONS_ROUTINGS.PLATFORM_TENANTS, icon: LuBuilding2 },
+            { label: 'Stores', route: NAVIGARIONS_ROUTINGS.PLATFORM_STORES, icon: LuMapPin },
             { label: 'Platform Users', route: NAVIGARIONS_ROUTINGS.PLATFORM_USERS, icon: LuUsers },
+        ]
+    },
+    {
+        label: 'Canonica', route: NAVIGARIONS_ROUTINGS.CANONICA, icon: LuBookOpen,
+        subNav: [
             { label: 'Support Tickets', route: NAVIGARIONS_ROUTINGS.PLATFORM_SUPPORT_TICKETS, icon: MdOutlineSupportAgent },
             { label: 'Feedback Admin', route: NAVIGARIONS_ROUTINGS.PLATFORM_FEEDBACK_ADMIN, icon: LuHeartHandshake },
             { label: 'Knowledge Base', route: NAVIGARIONS_ROUTINGS.PLATFORM_KNOWLEDGE_BASE, icon: LuBook },
             { label: 'KB Generation', route: NAVIGARIONS_ROUTINGS.PLATFORM_KB_GENERATION, icon: LuDatabase },
             { label: 'Changelog', route: NAVIGARIONS_ROUTINGS.PLATFORM_CHANGELOG, icon: LuReceipt },
-            { label: 'Chat Management', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageSquare },
+            { label: 'Chat List', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageSquare },
             { label: 'Chat Insights', route: NAVIGARIONS_ROUTINGS.CHAT_INSIGHTS, icon: LuBarChartBig },
             { label: 'Chat Backfill', route: NAVIGARIONS_ROUTINGS.CHAT_BACKFILL, icon: LuDatabaseBackup },
             { label: 'Weekly Digest', route: NAVIGARIONS_ROUTINGS.CHAT_WEEKLY_DIGEST, icon: LuLineChart },

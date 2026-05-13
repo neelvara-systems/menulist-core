@@ -1,12 +1,13 @@
 .settingsWrap {
   width: 100%;
   align-items: flex-start;
+  gap: 16px;
 }
 
 .navigations {
   width: 250px;
   position: sticky;
-  top: 10px;
+  top: calc(var(--header-Height, 64px) + 10px);
   align-self: flex-start;
   max-height: calc(100vh - var(--header-Height) - 20px);
   overflow-y: auto;
@@ -18,4 +19,20 @@
   min-width: 0;
   min-height: calc(100vh - var(--header-Height) - 20px);
   padding: 20px;
+}
+
+@media (max-width: 900px) {
+  .settingsWrap {
+    flex-direction: column;
+  }
+
+  .navigations {
+    width: 100%;
+    top: 0;
+    z-index: 10;
+  }
+
+  .contentWrap {
+    width: 100%;
+  }
 }
