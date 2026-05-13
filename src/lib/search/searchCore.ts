@@ -79,6 +79,7 @@ Try asking about one of these topics, or contact support for personalized assist
 export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResult> {
     const perfStart = Date.now();
     const perfMetrics: SearchPerfMetrics = {};
+    const aiProviderOperations = new Set<string>();
 
     let imageProcessed = false;
     let generatedQueryFromImage: string | undefined;
@@ -95,6 +96,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         imageUrl,
         productContext,
     } = input;
+
+    const withAiProviderUsage = <T extends CoreSearchResult>(result: T): T => ({
+        ...result,
+        aiProviderOperations: Array.from(aiProviderOperations),
+        aiProviderUsed: aiProviderOperations.size > 0,
+    });
 
     if (!Number.isFinite(Number(tId)) || !Number.isFinite(Number(sId)) || Number(tId) <= 0 || Number(sId) <= 0) {
         try {
@@ -175,6 +182,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 imageBuffer.imageBase64,
                 imageBuffer.mimeType
             );
+            aiProviderOperations.add('image_query_generation');
 
         } catch (imageError: any) {
             // Graceful degradation: fallback to text-only search
@@ -275,7 +283,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             }
                         });
 
-                        return {
+                        return withAiProviderUsage({
                             craftedAnswer: cached.craftedAnswer,
                             references: [],
                             suggestedQuestions: [],
@@ -286,7 +294,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             answerType: cached.answerType,
                             procedure: cached.procedure || undefined,
                             imageProcessed,
-                        };
+                        });
                     }
 
                     // Log cache miss for monitoring
@@ -341,14 +349,14 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return {
+        return withAiProviderUsage({
             craftedAnswer: cachedResult.craftedAnswer,
             references: cachedResult.references || [],
             suggestedQuestions: cachedResult.suggestedQuestions || [],
             searchHistoryId: cachedResult.id,
             canonical: !!cachedResult.canonical,
-            imageProcessed: !!cachedResult.imageUrl,
-        };
+            imageProcessed: imageProcessed || !!cachedResult.imageUrl,
+        });
     }
 
     // ===== STAGE 4: CANONICAL-FIRST RETRIEVAL =====
@@ -460,7 +468,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         }
 
-        return result;
+        return withAiProviderUsage(result);
     }
 
     // Log canonical miss for mutation proposal tracking
@@ -485,6 +493,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     if (!queryVector) {
         queryVector = await callGeminiEmbedding(queryForEmbedding);
+        aiProviderOperations.add('embedding_generation');
         await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector);
     }
 
@@ -528,7 +537,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     };
 
     if (snapshot.empty) {
-        return { ...EMPTY_RESULT, escalation: await buildEmptyEscalation() };
+        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
     }
 
     const documentsFound = snapshot.docs.map(doc => {
@@ -550,7 +559,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     if (!documentsFound.length) {
-        return { ...EMPTY_RESULT, escalation: await buildEmptyEscalation() };
+        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
     }
 
     const payloadToGemini = documentsMatched.map((d: any) => ({
@@ -593,6 +602,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         imageBuffer,
         conversationHistory
     );
+    aiProviderOperations.add('answer_generation');
     perfMetrics.answerGeneration = Date.now() - answerStart;
 
     if (geminiAnswer) {
@@ -668,7 +678,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         }
 
-        return {
+        return withAiProviderUsage({
             craftedAnswer: generatedData.craftedAnswer,
             references: resolvedReferences,
             suggestedQuestions: generatedData.suggestedQuestions || [],
@@ -676,9 +686,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             canonical: false,
             imageProcessed,
             escalation,
-        };
+        });
     }
 
     // Gemini returned null — use shared empty escalation helper
-    return { ...EMPTY_RESULT, escalation: await buildEmptyEscalation() };
+    return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
 }

@@ -1,7 +1,7 @@
 # AGENTS.md — Persistent Brain + Execution System
 
-**Version:** 2.0  
-**Status:** 🔒 CRITICAL — SYSTEM AUTHORITY  
+**Version:** 2.2
+**Status:** 🔒 CRITICAL — SYSTEM AUTHORITY
 **Last Updated:** May 2026
 
 ---
@@ -46,10 +46,30 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - For digital menu output work, read menu enforcement rules before editing customer-facing menu output.
 - For website work, load the website workflow and website/content-layer rules before editing `src/app/(website)/`, `src/components/website/`, or `public/locales/menulist.ai/` website copy.
 
+### Proactive Default Execution Loop
+
+This loop is the default for every non-trivial repo request. The user does not need to name a slash command, prompt file, or workflow.
+
+1. **Classify first**: identify product context, request stage, affected surfaces, and risk class before answering or editing.
+2. **Treat master execution as implicit**: use `.codex/workflows/master-execution.md` and `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` as the routing contract whenever a request has implementation, docs, audit, workflow, lifecycle, or unclear-stage implications.
+3. **Load the smallest correct rule set**: after routing, read the stage-specific workflow and IDE prompt, plus security/mobile/documentation/website/customer-facing/Canonica rules only when their triggers apply.
+4. **Use source files as live authority**: `AGENTS.md` is the compact memory layer; `IDE_PROMPTS/*`, `.codex/workflows/*`, `.codex/rules/*`, `.cascade/rules/*`, and relevant `__docs__/` files remain the exact source of truth. Re-open them when wording, checklist details, or current contracts matter.
+5. **Auto-continue within safe scope**: do not wait for the user to explicitly request parity checks, final review, mobile review, docs sync, cache checks, or security checks when the selected workflow requires them. Stop only for core architecture changes, breaking changes, dependency conflicts, or genuinely ambiguous product context.
+6. **Skip only truly trivial requests**: a one-line shell answer or isolated wording change can be handled directly, but any repo behavior, owner/customer surface, public output, data contract, route, docs, or workflow request must go through this loop.
+
+### Strategy Confidence and Error Recovery
+
+- **Apply confidence loops proportionally**: for strategies, architecture, production-impacting fixes, security, cost, public/customer output, data contracts, route behavior, cache behavior, and cross-surface owner/mobile work, ask internally: "Am I factually confident this strategy covers the real risk?" If not, identify loopholes, failure modes, hidden assumptions, and missing evidence; propose fixes; then repeat until no known material gaps remain.
+- **Do not fake certainty**: "100% confident" means evidence-backed and no known material loopholes after code/docs/source verification. If a true unknown remains, state the unknown, reduce scope, gather more evidence, or ask only when the decision cannot be made safely.
+- **Choose the lightest useful loop**: small copy edits, direct shell answers, and isolated mechanical changes do not need a full strategy audit unless they touch product doctrine, public claims, legal/security/cost behavior, or source-of-truth contracts.
+- **Do not fight repeated errors**: if the same command, test, build, runtime, dependency, API, or browser error appears twice, stop guessing. Research current docs and primary sources where available, collect 3-5 plausible fixes, choose the smallest efficient fix that fits this repo's architecture, implement it, and verify.
+- **Record durable learnings**: if the confidence loop or repeated-error research reveals a reusable project rule, update the right rule/doc/memory location instead of leaving it only in chat.
+
 ### IDE Prompt Registry
 
 - `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md`: universal laws; read before feature, docs, implementation, audit, or refactor work.
 - `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md`: central router; use for stage detection, context loading, parity, session lifecycle, and production readiness.
+- `IDE_PROMPTS/0. FEATURE RETRO DOCUMENTATION PROMPT.md`: rebuild docs for an existing implementation from codebase truth.
 - `IDE_PROMPTS/1. CHATGPT-CONVERSATION-REVIEW.md`: validate external AI ideas or pasted conversations against codebase truth.
 - `IDE_PROMPTS/2. DOCUMENT CREATION PROMPT.md`: create the full feature doc set before new feature implementation.
 - `IDE_PROMPTS/3. VALIDATION FEEDBACK PROMPT.md`: process external feedback on docs only.
@@ -64,6 +84,7 @@ These Windsurf-era rules are now part of the Codex working contract for this rep
 - `IDE_PROMPTS/12. POST-IMPL-PARITY-AUDIT.md`: docs-vs-code parity audit after implementation.
 - `IDE_PROMPTS/FINAL FEATURE HARDENING + DOCUMENT GOVERNANCE PROMPT.md`: production-readiness clearance.
 - `IDE_PROMPTS/MULTI-PRODUCT-TENANCY/`: use for multi-product tenancy and long-term architecture trap audits.
+- `IDE_PROMPTS/end.md` and `IDE_PROMPTS/sequence.md`: deprecated rough notes; use `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` as the merged source of truth unless inspecting history.
 
 ---
 
@@ -306,9 +327,12 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 - `/build-debug`: Debug Vercel build failures.
 - `/chatgpt-review`: Cross-check ChatGPT conversations.
+- `/code-feedback`: Validate external feedback on implemented code against spec/impl before applying.
 - `/customer-facing`: Customer-facing screens such as QR menus.
+- `/doc-feedback`: Process external feedback on docs only; no code changes.
 - `/doc-organize`: Clean up `__docs__/` organization.
 - `/doc-rebuild`: Rebuild cluttered feature docs.
+- `/execute`: Short alias for master routing, execute, debug on failure, and repeat until success.
 - `/final-review`: End-of-session verification.
 - `/help`: Smart workflow router.
 - `/master-execution`: Central brain for development.

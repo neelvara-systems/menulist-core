@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from "@config/features";
+import { AI_ACTIONS_TYPES } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
   buildMenuIntakeAnalysis,
@@ -8,6 +9,7 @@ import {
   RawMenuIntakeIdentityResult,
 } from "@data/shared/menuIntakeIdentity";
 import { getStoreContextName } from "@lib/businessIdentity/names";
+import { recordAiOperationForSession } from "@lib/ai/operationLog";
 import { genAIClient } from "@lib/google/genAi";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -293,7 +295,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     };
 
     const { parts, analyzedFileCount, readableFileCount } = await buildGeminiParts(files, context);
-    const raw = readableFileCount > 0
+    const operationStart = Date.now();
+    const geminiResult = readableFileCount > 0
       ? await genAIClient.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [{ role: "user", parts }],
@@ -302,10 +305,31 @@ export const POST = withAuth(async (request: NextRequest, session) => {
           maxOutputTokens: 2048,
           responseMimeType: "application/json",
         },
-      }).then((result: any) => safeJsonParse(result?.text || ""))
+      })
       : null;
+    const raw = geminiResult ? safeJsonParse(geminiResult?.text || "") : null;
 
     const analysis = buildMenuIntakeAnalysis(raw || fallbackRaw(analyzedFileCount), analyzedFileCount, context);
+
+    if (geminiResult) {
+      recordAiOperationForSession(session, {
+        action: AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY,
+        billingMode: "free",
+        clientResponse: {
+          analyzedFileCount,
+          fileCount: files.length,
+          readableFileCount,
+          severity: analysis.decision.severity,
+        },
+        geminiResponse: geminiResult,
+        model: "gemini-2.5-flash",
+        processingTime: Date.now() - operationStart,
+        projectId,
+        source: "menu_intake_identity",
+      }).catch((error) => {
+        secureError("[MenuIntakeIdentity] Operation log failed", error as Error, { projectId });
+      });
+    }
 
     secureLog("[MenuIntakeIdentity] Preflight completed", {
       projectId,

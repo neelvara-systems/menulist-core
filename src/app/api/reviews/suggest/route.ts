@@ -11,11 +11,17 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constant/common';
+import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
+import { checkAICapacity, consumeAICapacity } from '@lib/ai/capacityCheck';
+import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { genAIClient } from '@lib/google/genAi';
 import { checkRateLimit } from '@lib/rateLimit';
+import { buildSecurityContext } from '@lib/security/securityContext';
+import { logger } from '@lib/monitoring/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuth } from '../../../../middleware/auth';
+import { verifyTenantAccess, withAuth } from '../../../../middleware/auth';
 
 const SuggestSchema = z.object({
     reviewText: z.string().min(1).max(2000),
@@ -92,6 +98,8 @@ const FALLBACK_REPLIES: Record<string, string> = {
     neutral: 'Thank you for sharing your feedback. We appreciate you taking the time and are always working to improve. We hope to serve you better on your next visit.',
 };
 
+const ACTION = AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION;
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
@@ -110,6 +118,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         );
     }
 
+    if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
+        logger.security('Tenant Access Violation - Review Suggest API', {
+            ...buildSecurityContext(session, request),
+            endpoint: '/api/reviews/suggest',
+        }, 'critical');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
     const validation = SuggestSchema.safeParse(body);
     if (!validation.success) {
@@ -120,6 +136,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const { reviewText, rating, businessType } = validation.data;
+    const capacityCheck = await checkAICapacity(session.tId, session.sId, ACTION);
+    if (!capacityCheck.allowed) {
+        return NextResponse.json({
+            error: capacityCheck.reason === 'maintenance'
+                ? 'AI enhancements are temporarily unavailable.'
+                : 'Additional AI enhancements needed for your menu.',
+            code: capacityCheck.reason,
+        }, { status: 402 });
+    }
 
     // Build prompt with optional industry constraints
     let systemPrompt = REPLY_SYSTEM_PROMPT;
@@ -136,6 +161,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const userPrompt = `INPUT REVIEW:\n"${reviewText.slice(0, 2000)}"\n\nRATING:\n${rating}\n\nNow write the reply.`;
 
     try {
+        const startTime = Date.now();
         const model = genAIClient.models;
         const result = await model.generateContent({
             model: 'gemini-2.0-flash',
@@ -146,6 +172,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 temperature: 0.7,
             },
         });
+        const processingTime = Date.now() - startTime;
 
         let reply = result.text?.trim() || '';
 
@@ -167,10 +194,53 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             usedFallback = true;
         }
 
+        const unitsConsumed = getUnitCost(ACTION);
+        let remainingBalance = null;
+        let transactionId: string | null = null;
+        try {
+            transactionId = await recordAiOperationForSession(session, {
+                action: ACTION,
+                billingMode: 'billable',
+                businessType: businessType || null,
+                chargePerCredit: CHARGE_PER_CREDIT,
+                clientResponse: {
+                    rating,
+                    reply,
+                    source: usedFallback ? 'fallback' : 'ai',
+                },
+                generationConfig: {
+                    maxOutputTokens: 200,
+                    temperature: 0.7,
+                },
+                geminiResponse: result,
+                model: 'gemini-2.0-flash',
+                processingTime,
+                rating,
+                reviewLength: reviewText.length,
+                tokenPerCredit: TOKENS_PER_CREDIT,
+                unitsConsumed,
+                realCostPaise: getRealCostPaise(ACTION),
+                ourChargePaise: getOurChargePaise(ACTION),
+            });
+            if (capacityCheck.subscription && unitsConsumed > 0) {
+                remainingBalance = await consumeAICapacity(capacityCheck.subscription, unitsConsumed);
+            }
+        } catch (transactionError) {
+            logger.error('Failed to record review reply AI transaction', transactionError, {
+                endpoint: '/api/reviews/suggest',
+                userId: session.uId,
+            });
+        }
+
         return NextResponse.json({
             success: true,
             reply,
             source: usedFallback ? 'fallback' : 'ai',
+            remainingBalance,
+            transaction: {
+                transactionId,
+                unitsConsumed,
+            },
         });
     } catch (error) {
         // AI failure — return fallback

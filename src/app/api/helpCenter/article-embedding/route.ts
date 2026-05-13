@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
+import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { callGeminiEmbedding } from '@lib/vectorEmbeddings';
@@ -41,6 +43,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Article content is required' }, { status: 400 });
         }
         const embeddingInput = `Category: ${embeddingPayload.categoryTitle}\nSection: ${embeddingPayload.sectionTitle}\nTitle: ${embeddingPayload.articleTitle}\nContent: ${text}`;
+        const operationStart = Date.now();
         const vector = await callGeminiEmbedding(embeddingInput);
 
         if (!vector) {
@@ -52,7 +55,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         await writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_GENERATED', data: { embeddingInput, values: values.slice(0, 10) } });
 
         let collectionRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
-        collectionRef.doc(embeddingPayload.articleId).update({ embedding: vector });
+        await collectionRef.doc(embeddingPayload.articleId).update({ embedding: vector });
+        recordAiOperationForSession(session, {
+            action: AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING,
+            articleId: embeddingPayload.articleId,
+            billingMode: 'internal',
+            clientResponse: {
+                categoryTitle: embeddingPayload.categoryTitle,
+                sectionTitle: embeddingPayload.sectionTitle,
+                textLength: text.length,
+                vectorDimensions: values.length,
+            },
+            model: 'text-embedding-004',
+            processingTime: Date.now() - operationStart,
+            source: 'help_center_article_embedding',
+        }).catch((error) => {
+            void writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_OPERATION_LOG_ERROR', data: error });
+        });
         return NextResponse.json({ ok: true, status: 200 });
 
     } catch (err: any) {

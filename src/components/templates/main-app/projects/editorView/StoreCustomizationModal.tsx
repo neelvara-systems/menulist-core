@@ -17,7 +17,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
-import type { InheritanceState } from '@type/multiOutlet.types';
+import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { Badge, Button, Flex, Input, InputNumber, Modal, Switch, Table, Tabs, Tag, theme, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useMemo, useState } from 'react';
@@ -34,6 +34,7 @@ interface StoreCustomizationModalProps {
     itemStates?: Record<string, InheritanceState>;
     categoryStates?: Record<string, InheritanceState>;
     masterPrices?: Record<string, string>; // Master prices for visual diff (FR-8, US-3)
+    outletPolicy?: OutletPolicy | null;
 }
 
 type ItemOverrideRow = {
@@ -70,6 +71,7 @@ export default function StoreCustomizationModal({
     itemStates = {},
     categoryStates = {},
     masterPrices = {},
+    outletPolicy = null,
 }: StoreCustomizationModalProps) {
     const labels = useOfferingLabels();
     const { token } = theme.useToken();
@@ -149,8 +151,12 @@ export default function StoreCustomizationModal({
 
     // Update item field
     const updateItemField = useCallback((itemId: string, fileUid: string, field: string, value: any) => {
+        const inheritanceState = itemStates[itemId];
+        const isInheritedItem = inheritanceState === 'inherited' || inheritanceState === 'overridden';
+        if (isInheritedItem && field === 'price' && outletPolicy?.priceOverride === false) return;
+        if (isInheritedItem && field === 'available' && outletPolicy?.availabilityOverride === false) return;
+
         setProjectData(prev => {
-            const inheritanceState = itemStates[itemId];
             const shouldWriteOverride = inheritanceState === 'inherited' || inheritanceState === 'overridden';
             const updatedFiles = prev.files?.map((file: ProjectFileType) => {
                 if (file.uid !== fileUid) return file;
@@ -191,7 +197,7 @@ export default function StoreCustomizationModal({
             };
         });
         setHasChanges(true);
-    }, [itemStates, setProjectData]);
+    }, [itemStates, outletPolicy?.availabilityOverride, outletPolicy?.priceOverride, setProjectData]);
 
     // Update category field
     const updateCategoryField = useCallback((categoryId: string, fileUid: string, field: string, value: any) => {
@@ -307,6 +313,10 @@ export default function StoreCustomizationModal({
                 <Switch
                     size="small"
                     checked={available}
+                    disabled={
+                        (record.inheritanceState === 'inherited' || record.inheritanceState === 'overridden') &&
+                        outletPolicy?.availabilityOverride === false
+                    }
                     onChange={(checked) => updateItemField(record.id, record.fileUid, 'available', checked)}
                     style={{ backgroundColor: available ? undefined : '#ef4444' }}
                 />
@@ -329,6 +339,10 @@ export default function StoreCustomizationModal({
                     <Input
                         size="small"
                         value={price}
+                        disabled={
+                            (record.inheritanceState === 'inherited' || record.inheritanceState === 'overridden') &&
+                            outletPolicy?.priceOverride === false
+                        }
                         onChange={(e) => updateItemField(record.id, record.fileUid, 'price', e.target.value)}
                         style={{ width: 80 }}
                         placeholder="0.00"

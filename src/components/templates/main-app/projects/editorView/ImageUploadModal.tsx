@@ -48,6 +48,8 @@ interface ImageUploadModalProps {
     itemStates?: Record<string, InheritanceState>;
     /** Multi-outlet: Whether this store is linked to a master */
     isMasterLinked?: boolean;
+    /** Multi-outlet: Whether inherited item images may be locally overridden */
+    allowInheritedImageOverride?: boolean;
 }
 
 export const DefaultGenerationConfig: ImageGenerationConfigType = {
@@ -109,7 +111,8 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     preferredInitialTab = 'upload',
     initialBatchItemIds: initialBatchItemIdsProp,
     itemStates,
-    isMasterLinked = false
+    isMasterLinked = false,
+    allowInheritedImageOverride = false
 }) => {
 
     const { token } = theme.useToken();
@@ -227,12 +230,12 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
         // Multi-outlet: Filter out inherited/overridden items for outlets
         // Outlets can only generate images for local-only items
-        if (isMasterLinked && itemStates) {
+        if (isMasterLinked && itemStates && !allowInheritedImageOverride) {
             allItems = allItems.filter(item => itemStates[item.id] === 'local-only');
         }
 
         return allItems;
-    }, [extractMenuData, projectData?.files, isMasterLinked, itemStates]);
+    }, [allowInheritedImageOverride, extractMenuData, projectData?.files, isMasterLinked, itemStates]);
 
     useEffect(() => {
         if (open) {
@@ -576,7 +579,12 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 <Flex vertical gap={16}>
                     {selectedItem.images && selectedItem.images.length > 0 && <Flex vertical gap={8}>
                         <Typography.Text type='secondary'>Uploaded Images:</Typography.Text>
-                        <UploadedImagesList item={selectedItem} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
+                        <UploadedImagesList
+                            item={selectedItem}
+                            onProjectDataUpdate={onProjectDataUpdate}
+                            projectData={projectData}
+                            onUploadGeneratedImage={onUploadGeneratedImage}
+                        />
                     </Flex>}
                     {selectedItem?.descriptionLine && <Flex vertical gap={8}>
                         <Typography.Text type='secondary'>Description: {selectedItem?.descriptionLine}</Typography.Text>
@@ -641,6 +649,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         <BatchImageGenerationResultView
             activeBatchImageJob={activeBatchImageJob}
             projectData={projectData}
+            onProjectDataUpdate={onProjectDataUpdate}
             onComplete={onClose}
         />
     )

@@ -9,12 +9,13 @@
 
 import { CANONICA_SIDEBAR_NAV } from '@constant/canonica/navigations';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { clearForceDesktopMode } from '@lib/mobile/forceDesktopMode';
 import type { MenuProps } from 'antd';
 import { Avatar, Button, Dropdown, Flex, Layout, theme, Typography } from 'antd';
 import { signOut } from 'next-auth/react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
-import { LuLogOut, LuMenu, LuUser } from 'react-icons/lu';
+import { LuArrowLeft, LuLogOut, LuMenu, LuUser } from 'react-icons/lu';
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -27,6 +28,7 @@ interface CanonicaHeaderProps {
 export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: CanonicaHeaderProps) {
     const session = useClientAuthSession();
     const pathname = usePathname();
+    const router = useRouter();
     const { token } = theme.useToken();
 
     // Derive page title from current route
@@ -56,6 +58,11 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
         const name = session?.user?.name || session?.user?.email || 'U';
         return name.charAt(0).toUpperCase();
     }, [session]);
+
+    const returnToMenuList = () => {
+        clearForceDesktopMode();
+        router.push(showMenuButton ? '/dashboard#mobile/more' : '/dashboard');
+    };
 
     return (
         <Header
@@ -97,7 +104,15 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
                 </Text>
             </Flex>
 
-            <Flex align="center" gap={12}>
+            <Flex align="center" gap={8}>
+                <Button
+                    type="text"
+                    icon={<LuArrowLeft size={16} />}
+                    onClick={returnToMenuList}
+                    style={{ minHeight: 40, paddingInline: showMenuButton ? 8 : 12 }}
+                >
+                    {showMenuButton ? 'MenuList' : 'Back to MenuList'}
+                </Button>
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                     <Avatar
                         size={32}

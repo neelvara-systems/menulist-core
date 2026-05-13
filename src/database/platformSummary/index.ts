@@ -263,35 +263,3 @@ export const updateStoreActiveStatusInSummary = async (storeId: string | number,
         "updateStoreActiveStatusInSummary"
     );
 }
-
-export const updateTenantStoreBlockStatusInSummary = async (tenantId: string | number, tenantBlocked: boolean): Promise<Array<string | number>> => {
-    return await apiCallComposer(
-        async () => {
-            const ref = getStoresSummaryDocRef();
-            const docSnap = await getDoc(ref);
-            if (!docSnap.exists()) {
-                return [];
-            }
-
-            const stores = (docSnap.data() as StoresSummary)?.stores || {};
-            const matchingStoreIds = Object.entries(stores)
-                .filter(([, store]) => String(store?.tId ?? '') === String(tenantId))
-                .map(([storeId]) => storeId);
-
-            if (!matchingStoreIds.length) {
-                return [];
-            }
-
-            await updateDoc(ref, {
-                lastUpdated: serverTimestamp(),
-                ...Object.fromEntries(
-                    matchingStoreIds.map((storeId) => [`stores.${storeId}.tenantBlocked`, tenantBlocked]),
-                ),
-            });
-
-            return matchingStoreIds;
-        },
-        { tenantId, tenantBlocked },
-        "updateTenantStoreBlockStatusInSummary"
-    );
-}

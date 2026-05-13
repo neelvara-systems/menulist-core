@@ -146,6 +146,13 @@ export const AI_ACTIONS_TYPES: any = {
     SEO_AEO_GENERATION: "seo_aeo_generation",
     BUSINESS_COPY_GENERATION: "business_copy_generation",
     CAMPAIGN_CAPTION: "campaign_caption",
+    MENU_INTAKE_IDENTITY: "menu_intake_identity",
+    PUBLIC_MENU_EXTRACTION: "public_menu_extraction",
+    REVIEW_REPLY_SUGGESTION: "review_reply_suggestion",
+    WEEKLY_NARRATIVE: "weekly_narrative",
+    HELP_CENTER_SEARCH: "help_center_search",
+    HELP_CENTER_EMBEDDING: "help_center_embedding",
+    CANONICA_TRANSLATION: "canonica_translation",
     //new item metadata actions
     NEW_ITEM_METADATA: "new_item_metadata",
 }

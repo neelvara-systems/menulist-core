@@ -481,7 +481,32 @@ export function Popover({
     placement?: ComponentProps<typeof AntPopover>['placement'];
     trigger?: ComponentProps<typeof AntPopover>['trigger'];
 }) {
-    const tooltipWidth = 'min(240px, calc(100svw - 64px))';
+    const [viewportBounds, setViewportBounds] = useState({ height: 640, width: 360 });
+
+    useEffect(() => {
+        const updateViewportBounds = () => {
+            if (typeof window === 'undefined') return;
+            const viewport = window.visualViewport;
+            setViewportBounds({
+                height: Math.floor(viewport?.height || window.innerHeight || 640),
+                width: Math.floor(viewport?.width || window.innerWidth || 360),
+            });
+        };
+
+        updateViewportBounds();
+        window.addEventListener('resize', updateViewportBounds);
+        window.visualViewport?.addEventListener('resize', updateViewportBounds);
+        window.visualViewport?.addEventListener('scroll', updateViewportBounds);
+
+        return () => {
+            window.removeEventListener('resize', updateViewportBounds);
+            window.visualViewport?.removeEventListener('resize', updateViewportBounds);
+            window.visualViewport?.removeEventListener('scroll', updateViewportBounds);
+        };
+    }, []);
+
+    const tooltipWidth = Math.max(180, Math.min(320, viewportBounds.width - 32));
+    const tooltipMaxHeight = Math.max(120, Math.min(360, viewportBounds.height - 120));
 
     return (
         <AntPopover
@@ -494,21 +519,29 @@ export function Popover({
                 <div
                     style={{
                         boxSizing: 'border-box',
-                        maxWidth: tooltipWidth,
-                        overflowWrap: 'anywhere',
+                        maxHeight: tooltipMaxHeight,
+                        maxWidth: '100%',
+                        overflowWrap: 'break-word',
+                        overflowY: 'auto',
                         whiteSpace: 'normal',
-                        width: tooltipWidth,
+                        width: '100%',
                         wordBreak: 'break-word',
                     }}
                 >
                     {content}
                 </div>
             )}
+            getPopupContainer={(triggerNode) => (
+                triggerNode.closest('[data-mobile-shell-scroll="true"]')
+                || triggerNode.closest('[data-mobile-shell="true"]')
+                || document.body
+            )}
             onOpenChange={onOpenChange}
             open={open}
             overlayStyle={{
                 boxSizing: 'border-box',
-                maxWidth: 'calc(100svw - 32px)',
+                maxHeight: tooltipMaxHeight,
+                maxWidth: tooltipWidth,
                 overflow: 'hidden',
                 width: tooltipWidth,
             }}

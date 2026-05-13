@@ -94,7 +94,9 @@ type RunDescriptionGenerationParams = {
     onFileProcessingIdChange?: (id: string | null) => void;
     onProgress?: (processedFiles: number, totalFiles: number, file?: ProjectFileType) => void;
     onProjectUpdate?: (project: Project) => void;
+    persistProject?: (project: Project) => Promise<Project | void>;
     projectData: Project;
+    skipPersist?: boolean;
     sourceFile?: ProjectFileType | null;
     tone?: DescriptionTone;
 };
@@ -106,7 +108,9 @@ export async function runDescriptionGeneration({
     onFileProcessingIdChange,
     onProgress,
     onProjectUpdate,
+    persistProject,
     projectData,
+    skipPersist = false,
     sourceFile,
     tone = DEFAULT_DESCRIPTION_TONE,
 }: RunDescriptionGenerationParams): Promise<Project> {
@@ -149,7 +153,13 @@ export async function runDescriptionGeneration({
         onFileProcessingIdChange?.(null);
     }
 
-    await updateProject({ ...nextProject, projectId: nextProject.projectId });
+    if (!skipPersist) {
+        if (persistProject) {
+            await persistProject(removeObjRef(nextProject));
+        } else {
+            await updateProject({ ...nextProject, projectId: nextProject.projectId });
+        }
+    }
     return removeObjRef(nextProject);
 }
 

@@ -134,6 +134,7 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 The public menu is not a website-builder surface. Store/project owners can select the existing `config.design.menu` mood and layout presets, but customer output keeps the following primitives locked:
 
 - Search remains the primary retrieval control and uses the shared `MenuSearchBar`.
+- Tapping the search row must focus the actual input on the first tap, even while the row is expanding and side controls are hiding.
 - Mobile/tablet menus use one sticky command row: search on the left and `Sections` on the right when there are three or more sections.
 - The sticky command row must not use compositor transform hacks or clipped sticky ancestors; scroll-spy category updates are frame-throttled so normal vertical scrolling does not make the row vibrate.
 - Mobile public menus switch the command row to a measured fixed layer only after it reaches the top. Visual spacing and safe-area breathing room live inside the row padding, and public mobile uses stable `svh` viewport height so iOS browser/PWA chrome changes do not make the row bounce.
@@ -141,6 +142,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - The compact top-row language control shows only the language initials; full language names remain inside the language picker.
 - Category navigation remains the orientation layer: lightweight sticky rail/tabs plus the `Sections` bottom-sheet navigator.
 - The `Sections` navigator header stays compact; close controls keep their tap target without creating a tall heading band.
+- Selecting a section from the `Sections` navigator must close the navigator before the page scrolls to that section.
 - Public category icons render through the shared icon system and preserve owner-selected icon choices, including emoji values.
 - Featured cards reuse category icon/emoji identity only when the owner has category icons enabled for the menu design.
 - Featured choices use a full-width grid on desktop and keep horizontal scrolling only on smaller touch layouts.
@@ -176,6 +178,7 @@ The public menu is not a website-builder surface. Store/project owners can selec
 
 | Date       | Change                                                                                                                                                                     |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-13 | Public menu tap hardening: `Sections` now closes before category jump, and the expanding search row focuses the input on the first tap |
 | 2026-05-12 | Public menu UX fixes: mobile grid odd rows span cleanly, search suggestions are data-based, multi-term search supports any-term recovery, language routing updates server-rendered menu names, item URLs/head metadata preserve language, PDP item sharing works in installed PWAs, PDP nutrition facts display, active temporary status moved to the bottom trust zone, and Sections appears only for 3+ sections |
 | 2026-05-10 | Search false-positive hardening: one-character input no longer shows a no-result state, and chai typo recovery no longer matches unrelated choice/cheese/tea-description text |
 | 2026-05-10 | Mobile grid output restored, fullscreen PDP image pinch zoom added, and public menu language switching now keeps item descriptions aligned with the selected language |

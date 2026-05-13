@@ -34,6 +34,8 @@ export type PlatformGlobalDataProviderType = {
 
     activeSubscription: FirestoreSubscriptionDoc | null;
     setActiveSubscription: any;
+    activeSubscriptionLoading: boolean;
+    setActiveSubscriptionLoading: any;
 
     // Multi-Outlet Session Context (Feature #4C — T20/T21)
     isMasterUser: boolean;
@@ -82,6 +84,8 @@ const InititalState: PlatformGlobalDataProviderType = {
 
     activeSubscription: null,
     setActiveSubscription: () => { },
+    activeSubscriptionLoading: false,
+    setActiveSubscriptionLoading: () => { },
 
     isMasterUser: false,
     activeStoreContext: null,

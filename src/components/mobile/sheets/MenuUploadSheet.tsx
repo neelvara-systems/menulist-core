@@ -13,6 +13,7 @@ import createProcessingJob from '@template/main-app/projects/getProcessedFile';
 import type { ProjectFileType } from '@template/main-app/projects/types';
 import { generateMenuFileUid } from '@template/main-app/projects/utils';
 import { validateFile } from '@template/main-app/projects/validation';
+import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
 import type { UploadProps } from 'antd';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -108,7 +109,7 @@ export default function MenuUploadSheet({
 }: MenuUploadSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
     const [step, setStep] = useState<UploadStep>('select');
     const [selectedFiles, setSelectedFiles] = useState<SelectedUploadFile[]>([]);
     const [progress, setProgress] = useState(0);
@@ -127,6 +128,15 @@ export default function MenuUploadSheet({
         () => selectedFiles.reduce((sum, file) => sum + file.size, 0),
         [selectedFiles]
     );
+    const outletPolicy = useMemo<OutletPolicy | null>(() => {
+        if (isMasterUser || storeDetails?.isMaster !== false) return null;
+        return {
+            ...DEFAULT_OUTLET_POLICY,
+            ...((userPermissions as any)?.outletPolicy || {}),
+        };
+    }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
+    const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
+    const canUploadToCurrentContext = Boolean(currentProjectId) || canCreateLocalProjects;
 
     const hasSelectedFiles = selectedFiles.length > 0;
     const totalSelectedMb = (totalSelectedBytes / (1024 * 1024)).toFixed(1);
@@ -145,6 +155,11 @@ export default function MenuUploadSheet({
     }, []);
 
     const handleSelectedFile = useCallback(async (file: File, fileList: File[]) => {
+        if (!canUploadToCurrentContext) {
+            Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
+            return false;
+        }
+
         const validationResult = await validateFile(file, fileList, existingFiles);
         if (validationResult) {
             return validationResult;
@@ -207,7 +222,7 @@ export default function MenuUploadSheet({
         setStep('review');
 
         return false;
-    }, [existingFiles, updateSelectedFiles]);
+    }, [canUploadToCurrentContext, existingFiles, t, updateSelectedFiles]);
 
     const uploadProps: UploadProps = useMemo(() => ({
         accept: '.pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf',
@@ -372,6 +387,11 @@ export default function MenuUploadSheet({
             if (!canCreateNewProject) return { action: 'cancel' };
 
             try {
+                if (!canCreateLocalProjects) {
+                    Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
+                    return { action: 'cancel' };
+                }
+
                 const languageCodes = currentProjectLanguages?.length ? currentProjectLanguages : ['en'];
                 const projectPayload: ProjectCreationPayload = {
                     name: result?.identity?.businessName || t('myMenu'),
@@ -403,7 +423,15 @@ export default function MenuUploadSheet({
             console.warn('[MobileMenuUpload] Intake preflight skipped:', error?.message || error);
             return { action: 'continue', files, ignoredFiles: [] };
         }
-    }, [currentProjectLanguages, maybeAcceptBusinessIdentitySuggestions, t, token.colorTextSecondary]);
+    }, [
+        canCreateLocalProjects,
+        currentProjectLanguages,
+        maybeAcceptBusinessIdentitySuggestions,
+        storeDetails?.businessCategory,
+        storeDetails?.businessType,
+        t,
+        token.colorTextSecondary,
+    ]);
 
     const handleUploadAndProcess = useCallback(async () => {
         if (!selectedFiles.length) return;
@@ -414,6 +442,10 @@ export default function MenuUploadSheet({
 
             let projectId = currentProjectId || null;
             if (!projectId) {
+                if (!canCreateLocalProjects) {
+                    throw new Error('New local menus are not enabled for this location.');
+                }
+
                 setStatusText(t('menuUploadCreatingProject'));
                 const newProject = await addProject({
                     businessCategory: storeDetails?.businessCategory,
@@ -512,7 +544,18 @@ export default function MenuUploadSheet({
             setErrorMessage(error?.message || t('menuUploadRetry'));
             setStep('error');
         }
-    }, [confirmMenuIntakeDecision, currentProjectId, currentProjectLanguages, onJobCreated, prepareFilesForUpload, selectedFiles, t]);
+    }, [
+        canCreateLocalProjects,
+        confirmMenuIntakeDecision,
+        currentProjectId,
+        currentProjectLanguages,
+        onJobCreated,
+        prepareFilesForUpload,
+        selectedFiles,
+        storeDetails?.businessCategory,
+        storeDetails?.businessType,
+        t,
+    ]);
 
     return (
         <Popup
@@ -585,6 +628,7 @@ export default function MenuUploadSheet({
                                         <Button
                                             block
                                             color="primary"
+                                            disabled={!canUploadToCurrentContext}
                                             icon={<LuUpload size={18} />}
                                             size="large"
                                             style={{
@@ -747,6 +791,7 @@ export default function MenuUploadSheet({
                                 <Upload {...uploadProps}>
                                     <Button
                                         block
+                                        disabled={!canUploadToCurrentContext}
                                         fill="outline"
                                         icon={<LuUpload size={16} />}
                                         size="large"
@@ -759,6 +804,7 @@ export default function MenuUploadSheet({
                                 <Button
                                     block
                                     color="primary"
+                                    disabled={!canUploadToCurrentContext}
                                     icon={<LuUpload size={16} />}
                                     onClick={handleUploadAndProcess}
                                     size="large"

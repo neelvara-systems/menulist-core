@@ -10,7 +10,7 @@
  * - Single-line input only
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuSearch, LuX } from 'react-icons/lu';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { MenuMoodConfig } from '../designSystem';
@@ -83,6 +83,17 @@ function MenuSearchBar({
         onSearchChange(e.target.value);
     };
 
+    const focusInput = () => {
+        const input = inputRef.current;
+        if (!input) return;
+
+        try {
+            input.focus({ preventScroll: true });
+        } catch {
+            input.focus();
+        }
+    };
+
     const clearSearch = () => {
         onSearchChange('');
         setIsFocused(false);
@@ -93,15 +104,36 @@ function MenuSearchBar({
         setIsFocused(true);
         onFocusChange?.(true);
     };
+    const handleSearchPointerDown = () => {
+        handleFocus();
+        focusInput();
+    };
     const handleBlur = () => {
         setIsFocused(false);
         onFocusChange?.(false);
     };
 
+    useEffect(() => {
+        if (!expanded || !isFocused) return;
+
+        const frame = window.requestAnimationFrame(() => {
+            if (document.activeElement !== inputRef.current) {
+                focusInput();
+            }
+        });
+
+        return () => window.cancelAnimationFrame(frame);
+    }, [expanded, isFocused]);
+
     return (
         <div
             className="relative mb-4"
             data-menu-search-expanded={expanded ? 'true' : 'false'}
+            onPointerDownCapture={(event) => {
+                const target = event.target as HTMLElement | null;
+                if (target?.closest('button')) return;
+                handleSearchPointerDown();
+            }}
             style={{
                 position: 'relative',
                 width: '100%',
@@ -131,8 +163,8 @@ function MenuSearchBar({
                 placeholder={getSearchPlaceholder(businessType, businessCategory)}
                 value={searchTerm}
                 onChange={handleChange}
-                onPointerDown={handleFocus}
-                onClick={handleFocus}
+                onPointerDown={handleSearchPointerDown}
+                onClick={handleSearchPointerDown}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 className="w-full pl-10 pr-10 py-3 rounded-lg text-sm outline-none transition-all"

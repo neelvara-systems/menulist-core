@@ -24,8 +24,15 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0.0016, // Store-level metadata generation
     [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0.0020, // Multi-surface store copy generation
     [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 0.0008, // Tiny caption generation
+    [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0.0020, // Upload preflight identity/readability check
+    [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0.0080, // Public draft extraction
+    [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0.0016, // Analytics summary narrative
+    [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0.0016, // Support answer generation
+    [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0.0002, // Article/query embedding
+    [AI_ACTIONS_TYPES.CANONICA_TRANSLATION]: 0.0020, // KB article translation
 
     // Paid operations
+    [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 0.0008, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
     [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0400, // Imagen 3: $0.04/image or Flash Image: $0.039
     [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 0.0400, // Per image
@@ -56,10 +63,17 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.NEW_ITEM_METADATA]: 0, // Structural — free
     [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0, // First-pass SEO setup — free
     [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0, // First-pass business copy setup — free
+    [AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY]: 0, // Upload guardrail — free setup operation
+    [AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION]: 0, // Public lead/intake operation — absorbed by platform
+    [AI_ACTIONS_TYPES.WEEKLY_NARRATIVE]: 0, // Internal analytics summary — absorbed by platform
+    [AI_ACTIONS_TYPES.HELP_CENTER_SEARCH]: 0, // Support/control-plane operation — not owner pack usage
+    [AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING]: 0, // Support/control-plane operation — not owner pack usage
+    [AI_ACTIONS_TYPES.CANONICA_TRANSLATION]: 0, // Canonica/control-plane operation — not MenuList owner pack usage
 
     // Paid operations (consumes units from monthly credits)
     // These are VALUE-ADD operations that produce premium outputs.
     [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 1, // Tiny owner-requested campaign copy generation
+    [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 1, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 1, // ₹12 charge vs ₹0.13 cost → ~99x margin
     [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 5, // ₹60 charge vs ₹3.38 cost → ~18x margin
     [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 5, // Per image in batch

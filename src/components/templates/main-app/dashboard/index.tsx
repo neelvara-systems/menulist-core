@@ -8,18 +8,18 @@ import { useContext, useEffect } from 'react';
 import OwnerDashboard from './OwnerDashboard';
 
 function DashboardPage() {
-    const { activeSubscription } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { activeSubscription, activeSubscriptionLoading } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const router = useRouter()
 
     useEffect(() => {
-        // Only redirect after subscription has loaded (non-null means fetch completed)
-        if (activeSubscription !== null && !hasValidSubscriptionAccess(activeSubscription)) {
+        // Only redirect after the subscription lookup has finished.
+        if (!activeSubscriptionLoading && !hasValidSubscriptionAccess(activeSubscription)) {
             router.replace('/billing')
         }
-    }, [activeSubscription, router])
+    }, [activeSubscription, activeSubscriptionLoading, router])
 
-    // Subscription still loading — don't render or redirect yet
-    if (activeSubscription === null) {
+    // Subscription still loading - don't render or redirect yet.
+    if (activeSubscriptionLoading) {
         return <Spin style={{ display: 'block', marginTop: 80, textAlign: 'center' }} />
     }
 

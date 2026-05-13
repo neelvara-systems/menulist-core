@@ -6,6 +6,19 @@
 
 ---
 
+## May 13, 2026 — AI Usage Accounting
+
+### Changed
+
+- **Billing now shows enhancement balance clearly** — Desktop and mobile Billing show total enhancements left, plan balance, pack balance, and used-this-cycle counts.
+- **Enhancement activity is easier to read** — Desktop and mobile Transactions now show credits used and token counts instead of relying on internal charge values.
+- **Support-search audit writes reduced** — Help Center and widget search now create AI operation records only when Gemini is actually used, avoiding extra Firestore writes for canonical and cached answers.
+
+### Fixed
+
+- **Review reply suggestions now use enhancement accounting** — Review reply generation checks capacity, records the AI operation, deducts one enhancement unit, and syncs the remaining balance back to the app.
+- **Silent AI calls now create audit records** — Menu intake checks, public create-menu extraction, weekly analytics narratives, Help Center search/embeddings, and Canonica translation now write AI operation records for cost visibility without draining owner packs.
+
 ## May 12, 2026 — Billing and Enhancement Packs
 
 ### Changed
@@ -38,6 +51,7 @@
 - **Item share URLs keep language context** — Public item detail URLs preserve the selected language query so copied item links can render the right title and description preview.
 - **Browser share sees open items** — Opening an item PDP from the menu now updates the client document title, canonical URL, Open Graph URL, and Twitter metadata so mobile browser share sheets do not fall back to the base menu link.
 - **PWA item sharing added to PDP** — Public item details now include a quiet share action that uses native device sharing when available and copies the exact language-preserving item URL as fallback, without adding Firestore write volume.
+- **Menu section and search taps hardened** — Section selection now dismisses the `Sections` navigator before scrolling, and the expanded search row forces focus into the input on the first tap.
 - **PDP nutrition facts are visible** — Owner-entered nutrition facts now render in the item detail metadata badges, matching the existing schema/search support.
 - **Sections button threshold tightened** — The `Sections` command appears only when a menu has three or more sections.
 - **iPhone command-row stability hardened** — Public mobile menu wrappers no longer clip overflow around the command row, and mobile public output switches to a measured fixed layer once the row reaches the top to avoid iOS sticky positioning instability.

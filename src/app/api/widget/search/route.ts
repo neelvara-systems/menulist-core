@@ -15,6 +15,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { AI_ACTIONS_TYPES } from '@constant/common';
+import { recordAiOperation } from '@lib/ai/operationLog';
 import { canonicaStorageAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { hashApiKey, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -171,6 +173,7 @@ export async function POST(request: NextRequest) {
         }
 
         // ===== CORE SEARCH — Single source of truth =====
+        const operationStart = Date.now();
         const result = await coreSearch({
             query,
             mountContext: 'widget',
@@ -215,6 +218,30 @@ export async function POST(request: NextRequest) {
                 interactionDetected: result.graphExpansion.interactionDetected || null,
                 relatedSuggestions: result.graphExpansion.relatedSuggestions || [],
             };
+        }
+
+        if (result.aiProviderUsed) {
+            recordAiOperation({
+                action: AI_ACTIONS_TYPES.HELP_CENTER_SEARCH,
+                billingMode: 'public',
+                clientResponse: {
+                    aiProviderOperations: result.aiProviderOperations || [],
+                    answerType: result.answerType || null,
+                    canonical: Boolean(result.canonical),
+                    imageProcessed: Boolean(result.imageProcessed),
+                    referencesCount: compactReferences.length,
+                    searchHistoryId: result.searchHistoryId || null,
+                    suggestedQuestionsCount: result.suggestedQuestions?.length || 0,
+                },
+                model: 'coreSearch',
+                processingTime: Date.now() - operationStart,
+                sId,
+                source: 'canonica_widget_search',
+                tId,
+                uId: 'widget',
+            }).catch((error) => {
+                secureError('[Widget Search] Operation log failed', error as Error, { tId, sId });
+            });
         }
 
         return NextResponse.json(response);

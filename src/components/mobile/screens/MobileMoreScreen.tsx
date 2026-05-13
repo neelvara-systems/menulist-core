@@ -1,11 +1,10 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { CANONICA_ROUTES } from '@constant/canonica/navigations';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
-import { clearForceDesktopMode, setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
+import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
 import { theme } from 'antd';
@@ -88,14 +87,16 @@ const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr
 const MobileTodayHistoryScreen = dynamic(() => import('./MobileTodayHistoryScreen'), { ssr: false });
 const MobileCustomerAppScreen = dynamic(() => import('./MobileCustomerAppScreen'), { ssr: false });
 const MobilePresenceMonitorScreen = dynamic(() => import('./MobilePresenceMonitorScreen'), { ssr: false });
+const MobileCanonicaClientScreen = dynamic(() => import('./MobileCanonicaClientScreen'), { ssr: false });
 const MobileExtractionMonitorScreen = dynamic(() => import('./MobileExtractionMonitorScreen'), { ssr: false });
 const MobileOpsControlRoomScreen = dynamic(() => import('./MobileOpsControlRoomScreen'), { ssr: false });
 const MobileSchedulerMonitorScreen = dynamic(() => import('./MobileSchedulerMonitorScreen'), { ssr: false });
 const MobilePlatformInternalScreen = dynamic(() => import('./MobilePlatformInternalScreen'), { ssr: false });
 
 const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
-    'platformSettings',
     'entityBlocks',
+    'platformTenants',
+    'platformStores',
     'platformUsers',
     'supportTickets',
     'feedbackAdmin',
@@ -148,9 +149,14 @@ export type MoreSubScreen =
     | 'todayHistory'
     | 'customerApp'
     | 'presenceMonitor'
+    | 'canonicaHelp'
+    | 'canonicaDocs'
+    | 'canonicaSupport'
+    | 'canonicaReleaseNotes'
     | 'platformHub'
-    | 'platformSettings'
     | 'entityBlocks'
+    | 'platformTenants'
+    | 'platformStores'
     | 'platformUsers'
     | 'supportTickets'
     | 'feedbackAdmin'
@@ -243,11 +249,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         router.push(path);
     };
 
-    const openCanonicaRoute = (path: string) => {
-        clearForceDesktopMode();
-        router.push(path);
-    };
-
     const openOfficialPage = (backTarget: MoreSubScreen) => {
         setOfficialPageBackTarget(backTarget);
         openSubScreen('officialPage');
@@ -262,6 +263,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         }
         if (['domainSettings', 'businessCopySetup', 'seoSettings', 'integrations', 'presenceMonitor'].includes(currentScreen)) {
             return 'searchDiscoveryHub';
+        }
+        if (['canonicaHelp', 'canonicaDocs', 'canonicaSupport', 'canonicaReleaseNotes'].includes(currentScreen)) {
+            return 'main';
         }
         if (isPlatformInternalScreen(currentScreen)) {
             return 'platformHub';
@@ -337,9 +341,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ] : [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'platformSettings', icon: <LuSettings color="#475569" size={20} />, keywords: ['platform settings', 'logs', 'tenants', 'stores', 'pricing'], label: 'Platform Settings', description: 'Logs, tenants, stores, pricing plans, and platform users.', onClick: () => openSubScreen('platformSettings') },
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color="#dc2626" size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
-        { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles'], label: 'Platform Users', description: 'Manage platform-level users and access.', onClick: () => openSubScreen('platformUsers') },
+        { key: 'platformTenants', icon: <LuBuilding2 color="#475569" size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
+        { key: 'platformStores', icon: <LuMapPin color="#0f766e" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
+        { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
         { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
         { key: 'feedbackAdmin', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback admin', 'reviews', 'guest feedback'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openSubScreen('feedbackAdmin') },
         { key: 'knowledgeBase', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['knowledge base', 'help articles', 'kb'], label: 'Knowledge Base', description: 'Platform knowledge base editing and publishing.', onClick: () => openSubScreen('knowledgeBase') },
@@ -427,6 +432,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'todayHistory') subScreenContent = <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
     else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
+    else if (subScreen === 'canonicaHelp') subScreenContent = <MobileCanonicaClientScreen initialView="help" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaDocs') subScreenContent = <MobileCanonicaClientScreen initialView="docs" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaSupport') subScreenContent = <MobileCanonicaClientScreen initialView="support" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaReleaseNotes') subScreenContent = <MobileCanonicaClientScreen initialView="releaseNotes" onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
@@ -573,28 +582,28 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     <List.Item
                         arrow
                         description={<Text type="secondary">Open Canonica support overview.</Text>}
-                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.HELP)}
+                        onClick={() => openSubScreen('canonicaHelp')}
                         prefix={<LuHelpCircle color="#3b82f6" size={20} />}
                         title={<Text strong>{t('helpCenter')}</Text>}
                     />
                     <List.Item
                         arrow
                         description={<Text type="secondary">Browse Canonica docs and guides.</Text>}
-                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.DOCS)}
+                        onClick={() => openSubScreen('canonicaDocs')}
                         prefix={<LuBookOpen color="#8b5cf6" size={20} />}
                         title={<Text strong>Documentation</Text>}
                     />
                     <List.Item
                         arrow
                         description={<Text type="secondary">Create or track support tickets.</Text>}
-                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.SUPPORT)}
+                        onClick={() => openSubScreen('canonicaSupport')}
                         prefix={<LuTicket color="#f59e0b" size={20} />}
                         title={<Text strong>Support Tickets</Text>}
                     />
                     <List.Item
                         arrow
                         description={<Text type="secondary">See recent product changes and fixes.</Text>}
-                        onClick={() => openCanonicaRoute(CANONICA_ROUTES.RELEASE_NOTES)}
+                        onClick={() => openSubScreen('canonicaReleaseNotes')}
                         prefix={<LuReceipt color="#0ea5e9" size={20} />}
                         title={<Text strong>Release Notes</Text>}
                     />

@@ -26,10 +26,11 @@ function normalizeItemImages(images: unknown): UserUploadedFileType[] {
 interface BatchImageGenerationResultViewProps {
     activeBatchImageJob: BatchImageGenerationJobType;
     projectData: Project;
+    onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
     onComplete: () => void;
 }
 
-const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = ({ activeBatchImageJob: initialActiveBatchImageJob, projectData, onComplete }) => {
+const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = ({ activeBatchImageJob: initialActiveBatchImageJob, projectData, onProjectDataUpdate, onComplete }) => {
     const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false);
     const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
     const { token } = theme.useToken();
@@ -102,7 +103,11 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                     }
                 })
             })
-            await updateProject({ ...updatedProjectData, projectId: projectData.projectId });
+            if (onProjectDataUpdate) {
+                await onProjectDataUpdate({ ...updatedProjectData, projectId: projectData.projectId });
+            } else {
+                await updateProject({ ...updatedProjectData, projectId: projectData.projectId });
+            }
 
             let unselectedImages: UserUploadedFileType[] = [];
             activeJobData?.itemsList?.forEach(item => {
@@ -114,7 +119,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 })
             }
 
-            setActiveProject(removeObjRef(updatedProjectData)); // Update global context if needed
+            if (!onProjectDataUpdate) {
+                setActiveProject(removeObjRef(updatedProjectData)); // Update global context if needed
+            }
             resolve()
         })
     }

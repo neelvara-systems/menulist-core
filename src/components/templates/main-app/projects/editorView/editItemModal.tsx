@@ -17,7 +17,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import getNewItemMetadataViaAPI, { mergeGeneratedItemMetadata } from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import { UserUploadedFileType } from '@type/common';
-import type { InheritanceState } from '@type/multiOutlet.types';
+import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Select, Slider, Switch, Tooltip, Typography } from 'antd';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react'; // Added useCallback
@@ -132,14 +132,16 @@ interface EditItemModalProps {
     projectData: Project;
     onImageUpload: (selectedItem: ItemForDropdown, imagesToUpload: UserUploadedFileType[]) => void;
     openAddImageModal: (itemData: ExtractedDataItem) => void;
+    onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
     setUpdatedFileData: any;
     fileData: ProjectFileType;
     onPreviewFile?: (file: ProjectFileType) => void; // Optional: for TraditionalView to show file preview
     // Multi-outlet governance props
     inheritanceState?: InheritanceState;
     isMasterLinked?: boolean;
+    outletPolicy?: OutletPolicy | null;
 }
-const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selectedLanguages, projectData, onImageUpload, openAddImageModal, setUpdatedFileData, fileData, onPreviewFile, inheritanceState, isMasterLinked }) => {
+const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selectedLanguages, projectData, onImageUpload, openAddImageModal, onProjectDataUpdate, setUpdatedFileData, fileData, onPreviewFile, inheritanceState, isMasterLinked, outletPolicy }) => {
 
     const [itemData, setItemData] = useState<ExtractedDataItem | null>(null);
     const [activeTab, setActiveTab] = useState<string[]>(['Images']);
@@ -153,9 +155,11 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     const isFieldLocked = useCallback((field: string) => {
         if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET || !isMasterLinked) return false;
         if (!isInheritedItem) return false;
+        if (field === 'description' && outletPolicy?.descriptionOverride === true) return false;
+        if (field === 'images' && outletPolicy?.imageOverride === true) return false;
         // Lock brand-critical fields for inherited items (per FR-6 in spec)
         return ['name', 'description', 'category', 'images'].includes(field);
-    }, [isMasterLinked, isInheritedItem]);
+    }, [isMasterLinked, isInheritedItem, outletPolicy?.descriptionOverride, outletPolicy?.imageOverride]);
 
     // Get dynamic availability labels based on business type
     const availabilityLabels = useMemo(() => getOwnerLabels(storeDetails?.businessType), [storeDetails?.businessType]);
@@ -401,6 +405,11 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [onChangeValue, isFieldLocked]);
 
     const onGenerateContent = async () => {
+        if (isFieldLocked('description')) {
+            antdMessage.info('Description changes are not enabled for this store.');
+            return;
+        }
+
         dispatch(startLoader("generating_content"));
         try {
             const sourceLanguage = GlobalLanguagesList.find(
@@ -528,13 +537,13 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             label: 'Images',
             children: (
                 <Flex vertical gap={16}>
-                    <UploadedImagesList item={itemData} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
-                    <Button type="dashed" icon={<LuPlus />} onClick={() => openAddImageModal(itemData)} style={{ width: '100%' }}>Add Image</Button>
+                    <UploadedImagesList disabled={isFieldLocked('images')} item={itemData} onProjectDataUpdate={onProjectDataUpdate} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
+                    <Button disabled={isFieldLocked('images')} type="dashed" icon={<LuPlus />} onClick={() => openAddImageModal(itemData)} style={{ width: '100%' }}>Add Image</Button>
                 </Flex>
             )
         });
         return items;
-    }, [itemData, selectedLanguages, categoriesList, renderEditableContent, handleRetryTranslation, handleAddAttribute, handleDeleteAttribute, setItemData, projectData, onUploadGeneratedImage, openAddImageModal]);
+    }, [itemData, selectedLanguages, categoriesList, renderEditableContent, handleRetryTranslation, handleAddAttribute, handleDeleteAttribute, setItemData, projectData, onProjectDataUpdate, onUploadGeneratedImage, isFieldLocked, openAddImageModal]);
 
     return (
         <Modal
@@ -804,8 +813,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                 />
                                 <Flex vertical gap={16}>
                                     <Text strong>Images</Text>
-                                    <UploadedImagesList item={itemData} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
-                                    <Button type="dashed" icon={<LuPlus />} onClick={() => openAddImageModal(itemData)} style={{ width: '100%' }}>Add Image</Button>
+                                    <UploadedImagesList disabled={isFieldLocked('images')} item={itemData} onProjectDataUpdate={onProjectDataUpdate} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
+                                    <Button disabled={isFieldLocked('images')} type="dashed" icon={<LuPlus />} onClick={() => openAddImageModal(itemData)} style={{ width: '100%' }}>Add Image</Button>
                                 </Flex>
                             </Flex>
                         </>

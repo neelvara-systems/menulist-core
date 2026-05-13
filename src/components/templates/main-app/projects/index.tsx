@@ -6,6 +6,7 @@ import { REFRESH_INTERVALS } from '@constant/metrics';
 import { updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -41,6 +42,7 @@ import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@li
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
+import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFilePlus, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
@@ -157,8 +159,18 @@ function ProjectsPage() {
     const b2cViewRef = useRef<B2CViewRef>(null);
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [pdfFiles, setPdfFiles] = useState<{ images: ConvertedImageType[]; action: string } | null>({ images: [], action: "" });
-    const { tenantDetails, storeDetails, setStoreDetails, activeSubscription } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { tenantDetails, storeDetails, setStoreDetails, activeSubscription, activeSubscriptionLoading, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
+    const outletPolicy = useMemo<OutletPolicy | null>(() => {
+        if (isMasterUser || storeDetails?.isMaster !== false) return null;
+        return {
+            ...DEFAULT_OUTLET_POLICY,
+            ...((userPermissions as any)?.outletPolicy || {}),
+        };
+    }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
+    const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
+    const canDeactivateLinkedProjects = !outletPolicy || outletPolicy.allowProjectDeactivate !== false;
+    const skipLinkedOutletDeleteCheck = !canHaveLinkedOutlets(tenantDetails as any);
     const [pdfPagesCount, setPdfPagesCount] = useState(null);
     const cancelPdfRef = useRef(false); // Ref for immediate access in async operations
     const dispatch = useAppDispatch()
@@ -712,6 +724,15 @@ function ProjectsPage() {
         localStorage.setItem('projects_visited', 'true');
     };
 
+    const isLinkedOutletProject = async (project?: ProjectMetadata | Project | null) => {
+        if (!project?.projectId) return false;
+        if ((project as any).masterProjectId) return true;
+        if (activeProject?.projectId === project.projectId && activeProject?.masterProjectId) return true;
+
+        const detailedProject = await getProjectDataWithoutLoader(project.projectId);
+        return Boolean(detailedProject?.masterProjectId);
+    };
+
     const handleProjectEdit = async (values: ProjectFormData) => {
         try {
             const sanitizedNameDrafts = Object.fromEntries(
@@ -809,6 +830,16 @@ function ProjectsPage() {
             );
 
             if (editingProject) {
+                if (
+                    values.active === false &&
+                    (editingProject as any).active !== false &&
+                    !canDeactivateLinkedProjects &&
+                    await isLinkedOutletProject(editingProject)
+                ) {
+                    message.info("Deactivating inherited menus is not enabled for this store.");
+                    return;
+                }
+
                 const defaultReplacement = thisIsDefault && !nextIsDefault
                     ? existingProjects.find((project: any) => (
                         project?.projectId !== editingProject.projectId &&
@@ -880,6 +911,11 @@ function ProjectsPage() {
                 );
                 message.success(`${offeringName} updated successfully`);
             } else {
+                if (!canCreateLocalProjects) {
+                    message.info("New local menus are not enabled for this store.");
+                    return;
+                }
+
                 const shouldBeDefault = promoteThisAsDefault || nextIsDefault;
                 const newProject = await addProject({
                     name: localizedName,
@@ -925,8 +961,13 @@ function ProjectsPage() {
     const handleDelete = async () => {
         if (editingProject) {
             try {
+                if (!canDeactivateLinkedProjects && await isLinkedOutletProject(editingProject)) {
+                    message.info("Removing inherited menus is not enabled for this store.");
+                    return;
+                }
+
                 dispatch(startLoader("Deleting project"))
-                await deleteProject(editingProject.projectId);
+                await deleteProject(editingProject.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
                 message.success(`${offeringName} deleted successfully`);
                 if (selectedProject?.projectId === editingProject.projectId) {
                     setSelectedProject(null);
@@ -952,10 +993,17 @@ function ProjectsPage() {
         if (selectedProject && activeProject) {
             try {
                 dispatch(startLoader("Resetting project"))
+                const isLinkedProject = Boolean(activeProject.masterProjectId)
+                    || await isLinkedOutletProject(activeProject);
+                const resetPatch = {
+                    projectId: selectedProject.projectId,
+                    files: [],
+                    ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
+                } as Partial<Project>;
                 // Optimistically update cache
-                mutateProject({ ...activeProject, files: [] }, false);
+                mutateProject({ ...activeProject, ...resetPatch }, false);
                 setCurrentView(1);
-                await updateProject({ projectId: selectedProject.projectId, files: [] });
+                await updateProject(resetPatch);
                 // Revalidate cache after mutation
                 mutateProject();
                 message.success(`${offeringName} has been reset`);
@@ -987,6 +1035,15 @@ function ProjectsPage() {
         }
 
         try {
+            if (!canCreateLocalProjects) {
+                message.info("New local menus are not enabled for this store.");
+                return;
+            }
+            if (await isLinkedOutletProject(projectToDuplicate)) {
+                message.info("Inherited menus cannot be duplicated in this store.");
+                return;
+            }
+
             dispatch(startLoader("Duplicating project"));
             const result = await duplicateProject(
                 projectToDuplicate.projectId,
@@ -1032,8 +1089,13 @@ function ProjectsPage() {
         }
 
         try {
+            if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
+                message.info("Removing inherited menus is not enabled for this store.");
+                return;
+            }
+
             dispatch(startLoader("Deleting project"));
-            await deleteProject(project.projectId);
+            await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
 
             // Update local state directly instead of refetching
             mutateProjects(
@@ -1095,6 +1157,11 @@ function ProjectsPage() {
                 projectImage: project.projectImage || null,
             });
         } else {
+            if (!canCreateLocalProjects) {
+                message.info("New local menus are not enabled for this store.");
+                return;
+            }
+
             const defaultLanguage = storeDetails?.defaultLanguage || DefaultLanguage;
             setEditingProject(null);
             setProjectFormSourceData(null);
@@ -1421,6 +1488,12 @@ function ProjectsPage() {
                         }
 
                         try {
+                            if (!canCreateLocalProjects) {
+                                message.info("New local menus are not enabled for this store.");
+                                resolve({ action: 'cancel' });
+                                return;
+                            }
+
                             const projectPayload: ProjectCreationPayload = {
                                 name: result?.identity?.businessName || 'New menu',
                                 businessCategory: storeDetails?.businessCategory,
@@ -1466,7 +1539,13 @@ function ProjectsPage() {
             console.warn('[MenuIntakeIdentity] Preflight skipped:', error?.message || error);
             return { action: 'continue', files, ignoredFiles: [] };
         }
-    }, [maybeAcceptBusinessIdentitySuggestions, mutateProjects]);
+    }, [
+        canCreateLocalProjects,
+        maybeAcceptBusinessIdentitySuggestions,
+        mutateProjects,
+        storeDetails?.businessCategory,
+        storeDetails?.businessType,
+    ]);
 
     const uploadAndCreateJob = async (
         filesToProcess: ProjectFileType[],
@@ -1909,7 +1988,7 @@ function ProjectsPage() {
 
     return (
         <Flex vertical gap={10}>
-            {hasValidSubscriptionAccess(activeSubscription) ? <>
+            {activeSubscriptionLoading ? <Spin style={{ display: 'block', marginTop: 80, textAlign: 'center' }} /> : hasValidSubscriptionAccess(activeSubscription) ? <>
 
                 <ProjectsDataProvider
                     contextData={{ activeProject, setActiveProject: (data: Project) => mutateProject(data, { revalidate: false }), currentView, setCurrentView, activeBatchImageJob, setActiveBatchImageJob }}>

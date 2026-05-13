@@ -562,6 +562,35 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         return getPersistableMenuProject(updatedProject);
     }, [getPersistableMenuProject, itemInheritanceStates, outletPolicy?.descriptionOverride, outletPolicy?.imageOverride]);
 
+    const persistMenuProjectImmediately = useCallback(async (project: any) => {
+        if (!project?.projectId) return undefined;
+        const projectToSave = getPersistableMenuProjectWithLinkedOverrides(project);
+        const savedProject = await updateProjectWithoutLoader({
+            ...projectToSave,
+            projectId: project.projectId,
+        });
+        const rawSavedProject = removeObjRef(savedProject || projectToSave);
+        const rawSavedSnapshot = JSON.stringify(rawSavedProject);
+
+        if (persistTimerRef.current) {
+            window.clearTimeout(persistTimerRef.current);
+            persistTimerRef.current = null;
+        }
+        if (retryTimerRef.current) {
+            window.clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = null;
+        }
+
+        pendingMenuRef.current = null;
+        pendingLocalSnapshotRef.current = null;
+        rawMenuProjectRef.current = rawSavedProject;
+        persistedMenuRef.current = rawSavedProject;
+        persistedLocalSnapshotRef.current = rawSavedSnapshot;
+        upsertCachedProject(rawSavedProject);
+
+        return savedProject;
+    }, [getPersistableMenuProjectWithLinkedOverrides, upsertCachedProject]);
+
     const replaceProjectInList = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
         upsertCachedProject(updatedProject);
@@ -3899,8 +3928,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         setIsGenerateDescriptionsOpen(false);
                         resetCommandActionFlow();
                     }}
+                    persistProject={persistMenuProjectImmediately}
                     projectData={menuData}
                     visible={isGenerateDescriptionsOpen}
+                    itemStates={itemInheritanceStates}
+                    isMasterLinked={Boolean(menuData?.masterProjectId)}
+                    allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
                 />
             ) : null}
 
@@ -4318,6 +4351,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         open={isImageUploadOpen}
                         preferredInitialTab={imageModalInitialTab}
                         projectData={menuData}
+                        itemStates={itemInheritanceStates}
+                        isMasterLinked={Boolean(menuData?.masterProjectId)}
+                        allowInheritedImageOverride={outletPolicy?.imageOverride === true}
                     />
                 </ProjectsDataProvider>
             ) : null}
@@ -4367,6 +4403,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 }}
                 projectData={menuData}
                 visible={isBulkActionsOpen}
+                itemStates={itemInheritanceStates}
+                isMasterLinked={Boolean(menuData?.masterProjectId)}
+                allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
                 onClose={() => {
                     handleCommandActionBack(() => {
                         setIsBulkActionsOpen(false);

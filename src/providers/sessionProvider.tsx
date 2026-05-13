@@ -54,6 +54,7 @@ export default function SessionProvider({ children, session }: Props) {
     const [assetsList, setAssetsList] = useState<any>({ images: [] })
 
     const [activeSubscription, setActiveSubscription] = useState<FirestoreSubscriptionDoc | null>(null)
+    const [activeSubscriptionLoading, setActiveSubscriptionLoading] = useState(Boolean(session?.user?.storeId))
 
     // Multi-Outlet Session Context (Feature #4C — T20/T21)
     // Persisted to localStorage so store context survives page refresh
@@ -131,6 +132,7 @@ export default function SessionProvider({ children, session }: Props) {
 
         // Check if the session exists and store details have not been fetched yet
         if (session && (session.user?.platformRole == ECOMSAI_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)) && !Boolean(storeDetails?.storeId)) {
+            setActiveSubscriptionLoading(Boolean(session.user?.storeId));
 
             // Fetch tenant details by tenant ID
             getTenantById(session.user.tenantId).then((fetchedTenant: TenantDataType) => {
@@ -157,6 +159,7 @@ export default function SessionProvider({ children, session }: Props) {
                         fetchedTenant.storesList,
                     )
                     setActiveSubscription(subscriptionData)
+                    setActiveSubscriptionLoading(false)
 
                     // Set user context for Sentry with subscription info (client identification)
                     setUserContext({
@@ -171,11 +174,13 @@ export default function SessionProvider({ children, session }: Props) {
                         subscriptionPlan: subscriptionData?.planId || 'free',
                         subscriptionStatus: subscriptionData?.status || 'none',
                     });
-                })
-            })
+                }).catch(() => setActiveSubscriptionLoading(false))
+            }).catch(() => setActiveSubscriptionLoading(false))
 
         } else if (!session) {
             // Clear Sentry context on logout
+            setActiveSubscription(null);
+            setActiveSubscriptionLoading(false);
             clearUserContext();
         }
     }, [session]) // Re-run the effect when the session changes
@@ -201,11 +206,12 @@ export default function SessionProvider({ children, session }: Props) {
             if (storeDetails?.storeId !== loginStoreDetails.storeId) {
                 setStoreDetails(loginStoreDetails);
             }
+            setActiveSubscriptionLoading(true);
             void getActiveSubscriptionForStore(
                 Number(session.user.tenantId),
                 loginStoreId,
                 tenantDetails.storesList,
-            ).then(setActiveSubscription);
+            ).then(setActiveSubscription).finally(() => setActiveSubscriptionLoading(false));
             return;
         }
 
@@ -217,6 +223,7 @@ export default function SessionProvider({ children, session }: Props) {
 
         let cancelled = false;
         const loadTargetStore = async () => {
+            setActiveSubscriptionLoading(true);
             const targetStore = targetSummary.storeDetails || await getStoreById(targetStoreId);
             if (cancelled) return;
 
@@ -242,10 +249,15 @@ export default function SessionProvider({ children, session }: Props) {
             );
             if (!cancelled) {
                 setActiveSubscription(subscriptionData);
+                setActiveSubscriptionLoading(false);
             }
         };
 
-        void loadTargetStore();
+        void loadTargetStore().catch(() => {
+            if (!cancelled) {
+                setActiveSubscriptionLoading(false);
+            }
+        });
 
         return () => {
             cancelled = true;
@@ -338,6 +350,8 @@ export default function SessionProvider({ children, session }: Props) {
                 setAssetsList,
                 activeSubscription,
                 setActiveSubscription,
+                activeSubscriptionLoading,
+                setActiveSubscriptionLoading,
                 isMasterUser: Boolean((loginStoreDetails || storeDetails)?.isMaster),
                 activeStoreContext,
                 setActiveStoreContext,

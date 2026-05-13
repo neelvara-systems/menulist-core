@@ -6,7 +6,7 @@ import OBPThemeToggle from '@/app/client/obp/OBPThemeToggle';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import MenuFooter from '@template/main-app/projects/b2cView/output/MenuFooter';
 import { message } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     LuBadgeCheck,
     LuChevronRight,
@@ -206,6 +206,24 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const moodConfig = useMemo(() => getMoodWithBrandColor(MenuMood.CLEAN, accentColor), [accentColor]);
     const primaryCtaColor = accentColor || moodConfig.accentColor;
     const primaryCtaTextColor = getReadableTextColor(primaryCtaColor);
+
+    useEffect(() => {
+        if (submitState !== 'success') return;
+
+        const scrollToTop = () => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            document.scrollingElement?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        };
+
+        requestAnimationFrame(scrollToTop);
+        const fallbackTimer = window.setTimeout(scrollToTop, 80);
+
+        return () => {
+            window.clearTimeout(fallbackTimer);
+        };
+    }, [submitState]);
 
     const updateField = (field: keyof FormState, value: string) => {
         setFormValues((current) => ({ ...current, [field]: value }));

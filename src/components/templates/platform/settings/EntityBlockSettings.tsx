@@ -189,8 +189,6 @@ export default function EntityBlockSettings() {
                 setLoading(true);
                 try {
                     const updated = await updatePlatformEntityBlockState({
-                        actorEmail: session?.user?.email,
-                        actorUserId: session?.uId || session?.user?.id,
                         blocked: nextBlockedState,
                         entity: selectedEntity,
                         entityId: selectedEntityId,

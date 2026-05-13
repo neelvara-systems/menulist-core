@@ -24,7 +24,7 @@
 
 - **Internal admin tool** for platform operators to manually create tenants and stores
 - Access restricted to users with `ECOMSAI_PLATFORM_USER_ROLE`
-- Two entry points: Tenants Dashboard and Stores Dashboard
+- Entry points: desktop Platform settings plus mobile More → Platform for Entity Blocks, Tenants, Stores, and Users management
 - Platform administrators can block tenants, stores, or users through Entity Blocks without changing `active` or `deleted` lifecycle fields. Block actions write `blocked` plus `blockDetails` audit metadata on the affected entity; tenant and store blocks are also enforced on public menu/OBP lookup paths.
 
 ### Multi-Chain State ✅ (Implemented)
@@ -42,7 +42,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 │                                                                             │
 │  ENTRY POINT 1: Tenants Dashboard                                           │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                           │
-│  /platform → Tenants Tab → Click Tenant Row → TenantDetailsModal            │
+│  /platform/tenants or /platform → Tenants Tab → TenantDetailsModal          │
 │                                    ↓                                        │
 │                            "Add Store" Button                               │
 │                                    ↓                                        │
@@ -52,7 +52,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 │                                                                             │
 │  ENTRY POINT 2: Stores Dashboard                                            │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                            │
-│  /platform → Stores Tab → Filter by Tenant → "Add Store" Button             │
+│  /platform/stores or /platform → Stores Tab → "Add Store" Button            │
 │                                    ↓                                        │
 │                            StoreDetailsModal                                │
 │                                    ↓                                        │
@@ -87,7 +87,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | -------------------- | --------------------------- | -------------------------------------------------------------------- |
 | Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary` |
 | Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary`                            |
-| Block/unblock Entity | `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks update `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores |
+| Block/unblock Entity | `POST /api/platform/entity-blocks` via `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks update `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores |
 | Link Store to Tenant | `updateTenantsStoreslist()` | `tenants`                                                            |
 | Get Next Store ID    | `getPlatformSummary()`      | Read `platformSummary/default`                                       |
 

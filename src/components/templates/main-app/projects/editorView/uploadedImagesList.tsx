@@ -12,7 +12,19 @@ import { LuMoreVertical, LuPencil, LuTrash } from 'react-icons/lu';
 import { ExtractedDataItem, Project } from '../types';
 import EditImageModal from './AiImageGenerator/EditImageModal';
 
-function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { item: any, projectData: Project, onUploadGeneratedImage }) {
+function UploadedImagesList({
+    disabled = false,
+    item,
+    onProjectDataUpdate,
+    onUploadGeneratedImage,
+    projectData,
+}: {
+    disabled?: boolean;
+    item: any;
+    onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
+    onUploadGeneratedImage: any;
+    projectData: Project;
+}) {
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const dispatch = useAppDispatch()
@@ -21,6 +33,8 @@ function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { ite
     const [mobileActionImageUrl, setMobileActionImageUrl] = useState<string | null>(null);
 
     const onImageDelete = async (selectedItem: ExtractedDataItem, imageToDelete: UserUploadedFileType) => {
+        if (disabled) return;
+
         Modal.confirm({
             title: 'Are you sure you want to delete this image?',
             content: 'This action cannot be undone.',
@@ -58,8 +72,12 @@ function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { ite
                     // because we only modified the existing data structure
                     try {
                         await deleteFileByUrl(imageToDelete.url);
-                        await updateProject({ ...updatedProjectData, projectId: activeProject.projectId });
-                        setActiveProject(removeObjRef(updatedProjectData));
+                        if (onProjectDataUpdate) {
+                            await onProjectDataUpdate({ ...updatedProjectData, projectId: activeProject.projectId });
+                        } else {
+                            await updateProject({ ...updatedProjectData, projectId: activeProject.projectId });
+                            setActiveProject(removeObjRef(updatedProjectData));
+                        }
                         message.success('Image deleted successfully!');
                     } catch (error) {
                         console.error("Failed to delete image:", error);
@@ -82,7 +100,7 @@ function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { ite
     return (
         <Flex wrap gap={12}>
             {item?.images?.map((image: UserUploadedFileType, index: number) => {
-                const imagePreviewConfig = isMobile ? true : {
+                const imagePreviewConfig = disabled || isMobile ? true : {
                     mask: (
                         <Space size={12}>
                             <LuPencil
@@ -143,7 +161,7 @@ function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { ite
                                     preview={imagePreviewConfig}
                                 />
                             </Tooltip>
-                            {isMobile ? (
+                            {isMobile && !disabled ? (
                                 <Popover
                                     content={mobileActionContent}
                                     open={mobileActionImageUrl === image.url}
@@ -169,13 +187,15 @@ function UploadedImagesList({ item, projectData, onUploadGeneratedImage }: { ite
                     </Flex>
                 </Fragment>
             })}
-            <EditImageModal
-                selectedItem={item}
-                open={imageEditModal.active}
-                onClose={() => setImageEditModal({ active: false, imageData: null })}
-                imageData={imageEditModal.imageData}
-                onUploadGeneratedImage={(imagesToUse) => onUploadGeneratedImage(imagesToUse)}
-            />
+            {!disabled ? (
+                <EditImageModal
+                    selectedItem={item}
+                    open={imageEditModal.active}
+                    onClose={() => setImageEditModal({ active: false, imageData: null })}
+                    imageData={imageEditModal.imageData}
+                    onUploadGeneratedImage={(imagesToUse) => onUploadGeneratedImage(imagesToUse)}
+                />
+            ) : null}
         </Flex>
     )
 }

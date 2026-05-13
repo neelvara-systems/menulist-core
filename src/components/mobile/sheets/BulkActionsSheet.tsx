@@ -15,6 +15,7 @@ import { Modal, Segmented, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCheckCheck, LuEye, LuEyeOff, LuFileText, LuFilter, LuFolderInput, LuLanguages, LuSparkles, LuX } from 'react-icons/lu';
+import type { InheritanceState } from '@type/multiOutlet.types';
 import {
     applyBulkActiveInactive,
     applyBulkAvailability,
@@ -44,6 +45,9 @@ interface BulkActionsSheetProps {
     projectData: Project | null;
     initialAction?: BulkAction;
     initialSelectedIds?: string[];
+    itemStates?: Record<string, InheritanceState>;
+    isMasterLinked?: boolean;
+    allowInheritedDescriptionOverride?: boolean;
 }
 
 type BulkAction = 'availability' | 'showHide' | 'pricing' | 'moveCategory' | 'aiRepair' | null;
@@ -83,6 +87,9 @@ export default function BulkActionsSheet({
     projectData,
     initialAction = null,
     initialSelectedIds = [],
+    itemStates,
+    isMasterLinked = false,
+    allowInheritedDescriptionOverride = false,
 }: BulkActionsSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
@@ -356,6 +363,11 @@ export default function BulkActionsSheet({
         () => Array.from(new Set(projectPublicContentGaps.map((gap) => gap.languageCode))),
         [projectPublicContentGaps]
     );
+    const descriptionGovernance = useMemo(() => (
+        isMasterLinked && itemStates && !allowInheritedDescriptionOverride
+            ? { itemStates }
+            : undefined
+    ), [allowInheritedDescriptionOverride, isMasterLinked, itemStates]);
 
     const descriptionStats = useMemo(() => {
         if (!workingProject) {
@@ -367,8 +379,8 @@ export default function BulkActionsSheet({
                 manualDescriptionCount: 0,
             };
         }
-        return getDescriptionGenerationStats(workingProject, null, undefined);
-    }, [workingProject]);
+        return getDescriptionGenerationStats(workingProject, null, descriptionGovernance);
+    }, [descriptionGovernance, workingProject]);
 
     const aiRepairSummary = useMemo(() => {
         const reviewableItems = items.filter((item) => item.active);
@@ -428,6 +440,8 @@ export default function BulkActionsSheet({
                         contentLength: getProjectDescriptionContentLength(updated, businessType),
                         tone: getProjectDescriptionTone(updated, businessType),
                         projectData: updated,
+                        governance: descriptionGovernance,
+                        skipPersist: true,
                     });
                 }
 

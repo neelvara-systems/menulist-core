@@ -60,8 +60,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const sub = activeSubscription;
     const monthlyCredits = sub?.monthlyCredits || 0;
+    const monthlyCreditsAllowance = sub?.monthlyCreditsAllowance || 0;
+    const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const topUpCredits = sub?.topUpCredits || 0;
     const totalCredits = monthlyCredits + topUpCredits;
+    const isLowOnEnhancements = Boolean(sub && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2));
 
     const refetchSubscription = async () => {
         try {
@@ -352,6 +355,18 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         title={<Text>Enhancement balance remaining</Text>}
                                         extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits}</Tag>}
                                     />
+                                    <List.Item
+                                        title={<Text>Plan balance</Text>}
+                                        extra={<Text>{monthlyCredits} of {monthlyCreditsAllowance}</Text>}
+                                    />
+                                    <List.Item
+                                        title={<Text>Used this cycle</Text>}
+                                        extra={<Text>{monthlyCreditsUsed}</Text>}
+                                    />
+                                    <List.Item
+                                        title={<Text>Pack balance</Text>}
+                                        extra={<Text>{topUpCredits}</Text>}
+                                    />
                                 </List>
                             </Card>
 
@@ -465,6 +480,23 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </Tag>
                             </Flex>
                             <Text type="secondary">{t('aiIncludesDesc')}</Text>
+                            <Card size="small" style={{ backgroundColor: isLowOnEnhancements ? '#fef3c7' : '#f8fafc' }}>
+                                <Flex align="center" justify="space-between">
+                                    <Flex gap={2} vertical>
+                                        <Text strong>{totalCredits}</Text>
+                                        <Text type="secondary">enhancements left</Text>
+                                    </Flex>
+                                    <Flex gap={2} style={{ textAlign: 'right' }} vertical>
+                                        <Text>{monthlyCredits} plan</Text>
+                                        <Text type="secondary">{topUpCredits} pack</Text>
+                                    </Flex>
+                                </Flex>
+                                {isLowOnEnhancements ? (
+                                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                                        Running low. Add a pack before generation pauses.
+                                    </Text>
+                                ) : null}
+                            </Card>
                             <Button block color="primary" fill="outline" onClick={() => setShowCredits(true)} size="large">
                                 <Flex align="center" gap={6} justify="center">
                                     <LuZap size={14} />

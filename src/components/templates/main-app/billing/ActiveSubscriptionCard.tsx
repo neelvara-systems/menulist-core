@@ -12,7 +12,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
-import { Button, Card, Col, Divider, Flex, message, Row, Space, Statistic, Tag, theme, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Divider, Flex, message, Progress, Row, Space, Statistic, Tag, theme, Tooltip, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -44,7 +44,12 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
     const router = useRouter();
     const formatter = useFormatter();
     const { onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(dispatch);
-    const monthlyCreditUsage = activeSubscription.monthlyCreditsAllowance > 0 ? (activeSubscription.monthlyCredits / activeSubscription.monthlyCreditsAllowance) * 100 : 0;
+    const monthlyCredits = Number(activeSubscription.monthlyCredits || 0);
+    const topUpCredits = Number(activeSubscription.topUpCredits || 0);
+    const monthlyCreditsAllowance = Number(activeSubscription.monthlyCreditsAllowance || 0);
+    const totalCredits = monthlyCredits + topUpCredits;
+    const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
+    const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
 
     const cardStyle = {
         borderRadius: '16px',
@@ -54,7 +59,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
 
     const creditCardStyle = {
         ...cardStyle,
-        background: `linear-gradient(135deg, ${(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 50 ? token.colorSuccessBg : token.colorErrorBg} 0%, ${token.colorBgContainer} 100%)`,
+        background: `linear-gradient(135deg, ${totalCredits > 50 ? token.colorSuccessBg : token.colorErrorBg} 0%, ${token.colorBgContainer} 100%)`,
     }
 
     const handleConfirmCancellation = async (reason: string, otherReason: string | undefined, consent: boolean) => {
@@ -308,8 +313,8 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             <Flex justify="space-between" align="center" gap={16} style={{ width: '100%' }} >
                                 <Title level={5}>Content Features</Title>
-                                <Tag color={(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'success' : 'warning'}>
-                                    {(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'Active' : 'Exhausted'}
+                                <Tag color={totalCredits > 0 ? 'success' : 'warning'}>
+                                    {totalCredits > 0 ? 'Active' : 'Exhausted'}
                                 </Tag>
                             </Flex>
 
@@ -317,10 +322,48 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                 Your plan includes enhancements for images, descriptions, and translations.
                             </Text>
 
+                            <Statistic
+                                title="Enhancements left"
+                                value={totalCredits}
+                                valueStyle={{
+                                    color: totalCredits > 0 ? token.colorSuccessText : token.colorWarningText,
+                                    fontSize: 36,
+                                    fontWeight: 700,
+                                }}
+                            />
+
+                            <Progress
+                                percent={Math.max(0, Math.min(100, monthlyCreditUsage))}
+                                showInfo={false}
+                                status={monthlyCredits > 0 ? 'active' : 'exception'}
+                                strokeColor={monthlyCredits > 0 ? token.colorSuccess : token.colorWarning}
+                            />
+
+                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                <Flex justify="space-between">
+                                    <Text type="secondary">Plan balance</Text>
+                                    <Text strong>{monthlyCredits} of {monthlyCreditsAllowance}</Text>
+                                </Flex>
+                                <Flex justify="space-between">
+                                    <Text type="secondary">Used this cycle</Text>
+                                    <Text>{monthlyCreditsUsed}</Text>
+                                </Flex>
+                                <Flex justify="space-between">
+                                    <Text type="secondary">Pack balance</Text>
+                                    <Text>{topUpCredits}</Text>
+                                </Flex>
+                            </Space>
+
+                            {totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2) ? (
+                                <Text type="warning">
+                                    Running low. Add a pack before generation pauses.
+                                </Text>
+                            ) : null}
+
                             <Flex align='end' style={{ width: '100%' }} gap={16}>
                                 <Button block icon={<LuHistory />} onClick={() => router.push('/transactions')}>View Usage</Button>
                                 <Button type="primary" ghost block icon={<FaBolt />} onClick={() => setIsCreditsModalOpen(true)}>
-                                    {(activeSubscription.monthlyCredits + activeSubscription.topUpCredits) > 0 ? 'Get Enhancements' : 'Get More Enhancements'}
+                                    {totalCredits > 0 ? 'Get Enhancements' : 'Get More Enhancements'}
                                 </Button>
                             </Flex>
                         </Space>

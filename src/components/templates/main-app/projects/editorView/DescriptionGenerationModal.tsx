@@ -7,6 +7,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import { DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
 import { InheritanceState } from '@type/multiOutlet.types';
+import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Flex, Grid, Modal, Popconfirm, theme, Typography } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -30,11 +31,15 @@ interface DescriptionGenerationModalProps {
     setFileProcessingId: (id: string | null) => void;
     setActiveProject: (project: Project) => void;
     setHasChanges: (hasChanges: boolean) => void;
+    setProjectData?: (project: Project) => void;
+    persistProject?: (project: Project) => Promise<Project | void>;
     projectData: Project;
     /** Multi-outlet: Item inheritance states for governance filtering */
     itemStates?: Record<string, InheritanceState>;
     /** Multi-outlet: Whether this store is linked to a master */
     isMasterLinked?: boolean;
+    /** Multi-outlet: Whether inherited item descriptions may be locally overridden */
+    allowInheritedDescriptionOverride?: boolean;
 }
 
 const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
@@ -44,12 +49,15 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
     setFileProcessingId,
     setActiveProject,
     setHasChanges,
+    setProjectData,
+    persistProject,
     projectData,
     itemStates,
-    isMasterLinked = false
+    isMasterLinked = false,
+    allowInheritedDescriptionOverride = false
 }) => {
     // Multi-outlet: Build governance options for outlets
-    const governance: DescriptionGovernanceOptions | undefined = isMasterLinked && itemStates
+    const governance: DescriptionGovernanceOptions | undefined = isMasterLinked && itemStates && !allowInheritedDescriptionOverride
         ? { itemStates }
         : undefined;
 
@@ -98,14 +106,25 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                     setProcessedCount(processedFiles);
                     setTotalFiles(nextTotalFiles);
                 },
-                onProjectUpdate: setActiveProject,
+                onProjectUpdate: (updatedProject) => {
+                    if (isMasterLinked) {
+                        setProjectData?.(removeObjRef(updatedProject));
+                    } else {
+                        setActiveProject(updatedProject);
+                    }
+                },
+                persistProject,
                 projectData: projectWithPreferences,
                 sourceFile: modalData.sourceFile,
                 tone: nextDescriptionTone,
             });
 
             dispatch(stopLoader("adding description"));
-            setActiveProject(updatedProject);
+            if (isMasterLinked) {
+                setProjectData?.(removeObjRef(updatedProject));
+            } else {
+                setActiveProject(updatedProject);
+            }
             setHasChanges(false); // Already saved, no pending changes
             antdMessage.success('Descriptions updated.');
             onClose();

@@ -24,7 +24,7 @@ import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { AICapacityError } from "@services/ai/capacityError";
 import translateProjectPublicContent from "@services/ai/projectPublicContent/translateProjectPublicContent";
 import { UserUploadedFileType } from "@type/common";
-import type { InheritanceState } from "@type/multiOutlet.types";
+import { DEFAULT_OUTLET_POLICY, type InheritanceState, type OutletPolicy } from "@type/multiOutlet.types";
 import { isSameObjects, removeObjRef } from "@util/utils";
 import {
     message as antdMessage,
@@ -113,7 +113,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const hasShownConfidenceNudgeRef = useRef(false);
     const [isSaving, setIsSaving] = useState(false);
     const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
-    const { tenantDetails, storeDetails } = useContext<PlatformGlobalDataProviderType>(
+    const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(
         PlatformGlobalDataContext,
     );
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
@@ -153,6 +153,13 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const [masterPrices, setMasterPrices] = useState<Record<string, string>>({});
     const [isMasterLinked, setIsMasterLinked] = useState(false);
     const [masterProjectLanguages, setMasterProjectLanguages] = useState<string[]>([]);
+    const outletPolicy = useMemo<OutletPolicy | null>(() => {
+        if (!isMasterLinked || isMasterUser) return null;
+        return {
+            ...DEFAULT_OUTLET_POLICY,
+            ...((userPermissions as any)?.outletPolicy || {}),
+        };
+    }, [isMasterLinked, isMasterUser, userPermissions]);
 
     const [translationProgress, setTranslationProgress] = useState<
         { currentFile: number; totalFiles: number; fileName?: string } | undefined
@@ -404,6 +411,63 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
 
         return errors;
     };
+
+    const getProjectWithLinkedFieldOverrides = useCallback((data: Project) => {
+        if (!data?.masterProjectId) return data;
+
+        const updatedProject = removeObjRef(data);
+        if (outletPolicy?.imageOverride !== true && outletPolicy?.descriptionOverride !== true) {
+            return updatedProject;
+        }
+
+        const nextItemOverrides = {
+            ...(updatedProject.overrides?.items || {}),
+        };
+
+        updatedProject.files?.forEach((file: any) => {
+            file.extractedData?.data?.items?.forEach((item: any) => {
+                const inheritanceState = itemStates[item.id];
+                if (inheritanceState !== 'inherited' && inheritanceState !== 'overridden') return;
+
+                nextItemOverrides[item.id] = {
+                    ...(nextItemOverrides[item.id] || {}),
+                    ...(outletPolicy?.imageOverride === true && Array.isArray(item.images) ? { images: item.images } : {}),
+                    ...(outletPolicy?.descriptionOverride === true && item.description ? { description: item.description } : {}),
+                };
+            });
+        });
+
+        updatedProject.overrides = {
+            items: nextItemOverrides,
+            categories: updatedProject.overrides?.categories || {},
+            attributes: updatedProject.overrides?.attributes || {},
+        };
+
+        return updatedProject;
+    }, [itemStates, outletPolicy?.descriptionOverride, outletPolicy?.imageOverride]);
+
+    const getProjectForPersistence = useCallback((data: Project) => (
+        data?.masterProjectId
+            ? stripResolvedOutletProjectForSave(getProjectWithLinkedFieldOverrides(data), activeProject)
+            : data
+    ), [activeProject, getProjectWithLinkedFieldOverrides]);
+
+    const persistEditorProject = useCallback(async (data: Project) => {
+        const projectToSave = getProjectForPersistence(data);
+        return updateProject({
+            ...projectToSave,
+            projectId: data.projectId || activeProject?.projectId,
+        });
+    }, [activeProject?.projectId, getProjectForPersistence]);
+
+    const applyPersistedEditorProject = useCallback((displayProject: Project, persistedProject?: Project | null) => {
+        const cleanDisplayProject = removeObjRef(displayProject);
+        const cleanPersistedProject = removeObjRef(persistedProject || getProjectForPersistence(displayProject));
+        setProjectData(displayProject.masterProjectId ? cleanDisplayProject : cleanPersistedProject);
+        setActiveProject(cleanPersistedProject);
+        setHasChanges(false);
+        hasChangesRef.current = false;
+    }, [getProjectForPersistence, setActiveProject]);
 
     // Helper function to get all unique categories from all files
     const getAllCategories = () => {
@@ -736,7 +800,11 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                                 antdMessage.error(resultMessage);
                             }
                             prevData = updatedProject;
-                            setActiveProject(updatedProject);
+                            if (isMasterLinked) {
+                                setProjectData(removeObjRef(updatedProject));
+                            } else {
+                                setActiveProject(updatedProject);
+                            }
                             setFileProcessingId(null);
                         }
                     }
@@ -787,12 +855,11 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             }
 
             // Save to database
-            await updateProject({ ...prevData, projectId: prevData.projectId });
+            const persistedProject = await persistEditorProject(prevData);
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
                 await updateProjectMetadata(prevData.projectId, projectMetadataTranslationUpdate);
             }
-            setActiveProject(removeObjRef(prevData));
-            setHasChanges(false);
+            applyPersistedEditorProject(prevData, persistedProject || undefined);
             setIsLanguageModalOpen(false);
 
             if (newLanguages.length > 0) {
@@ -851,16 +918,19 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                         );
                     }
                     prevData = updatedProject;
-                    setActiveProject(updatedProject);
+                    if (isMasterLinked) {
+                        setProjectData(removeObjRef(updatedProject));
+                    } else {
+                        setActiveProject(updatedProject);
+                    }
                     setFileProcessingId(null);
                 }
             }
 
             // Save to database
-            await updateProject({ ...prevData, projectId: prevData.projectId });
+            const persistedProject = await persistEditorProject(prevData);
             dispatch(stopLoader("retrying translations"));
-            setActiveProject(removeObjRef(prevData));
-            setHasChanges(false);
+            applyPersistedEditorProject(prevData, persistedProject || undefined);
             antdMessage.success("Translations updated and saved!");
         } catch (error) {
             if (error instanceof AICapacityError) {
@@ -899,11 +969,11 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
         );
 
         if (updatedProjectData) {
-            await updateProject({
+            const persistedProject = await persistEditorProject({
                 ...updatedProjectData,
                 projectId: activeProject.projectId,
             });
-            setActiveProject(removeObjRef(updatedProjectData));
+            applyPersistedEditorProject(updatedProjectData, persistedProject || undefined);
             message.success("Image added successfully!");
             dispatch(stopLoader("associating image"));
         } else {
@@ -915,6 +985,10 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const handleActionClick = (action: EditorAction) => {
         switch (action) {
             case "language":
+                if (projectData?.masterProjectId && outletPolicy?.canAddLanguages === false) {
+                    antdMessage.info("Language changes are not enabled for this store.");
+                    return;
+                }
                 setIsLanguageModalOpen(true);
                 break;
             case "description":
@@ -1204,11 +1278,14 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 onClose={() => setIsDescModalOpen({ active: false })}
                 setFileProcessingId={setFileProcessingId}
                 setActiveProject={setActiveProject}
+                setProjectData={setProjectData}
                 setHasChanges={setHasChanges}
+                persistProject={persistEditorProject}
                 projectData={projectData}
                 // Multi-outlet: Pass governance for description generation filtering
                 itemStates={isMasterLinked ? itemStates : undefined}
                 isMasterLinked={isMasterLinked}
+                allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
             />
 
             <ImageUploadModal
@@ -1216,15 +1293,11 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 onClose={() => setIsImageModalOpen({ active: false, item: null })}
                 projectData={projectData}
                 onProjectDataUpdate={async (updatedProject) => {
-                    await updateProject({
+                    const persistedProject = await persistEditorProject({
                         ...updatedProject,
                         projectId: activeProject.projectId,
                     });
-                    const cleanProject = removeObjRef(updatedProject);
-                    setProjectData(cleanProject);
-                    setActiveProject(cleanProject);
-                    setHasChanges(false);
-                    hasChangesRef.current = false;
+                    applyPersistedEditorProject(updatedProject, persistedProject || undefined);
                 }}
                 itemToUpdate={isImageModalOpen.item}
                 onImageUpload={onImageUpload}
@@ -1232,6 +1305,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 // Multi-outlet: Pass governance for image generation filtering
                 itemStates={isMasterLinked ? itemStates : undefined}
                 isMasterLinked={isMasterLinked}
+                allowInheritedImageOverride={outletPolicy?.imageOverride === true}
             />
 
             <ReorderMenuModal
@@ -1309,6 +1383,8 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editCategoryModalState.file}
                     projectData={projectData}
+                    inheritanceState={editCategoryModalState.category?.id ? categoryStates[editCategoryModalState.category.id] : undefined}
+                    isMasterLinked={isMasterLinked}
                 />
             )}
 
@@ -1334,8 +1410,15 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     openAddImageModal={(itemData) =>
                         setIsImageModalOpen({ active: true, item: itemData, from: "item" })
                     }
+                    onProjectDataUpdate={async (updatedProject) => {
+                        const persistedProject = await persistEditorProject(updatedProject);
+                        applyPersistedEditorProject(updatedProject, persistedProject || undefined);
+                    }}
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editItemModalState.file}
+                    inheritanceState={editItemModalState.item?.id ? itemStates[editItemModalState.item.id] : undefined}
+                    isMasterLinked={isMasterLinked}
+                    outletPolicy={outletPolicy}
                 />
             )}
 
@@ -1369,6 +1452,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     itemStates={itemStates}
                     categoryStates={categoryStates}
                     masterPrices={masterPrices}
+                    outletPolicy={outletPolicy}
                 />
             )}
         </Flex>

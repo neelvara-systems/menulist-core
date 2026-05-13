@@ -82,7 +82,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - `/canonica/support` → `src/app/(canonica)/canonica/support/page.tsx`
 - `/canonica/release-notes` → `src/app/(canonica)/canonica/release-notes/page.tsx`
 
-These routes are the embedded MenuList client support surface: owner help overview, documentation browsing, store-scoped support tickets, and release notes.
+These routes are the embedded MenuList client support surface for desktop and direct URL access: owner help overview, documentation browsing, store-scoped support tickets, and release notes. The Canonica header includes a Back to MenuList action so mobile/direct-route users can return to the MenuList app without relying on browser history.
 
 ### Canonica Operator Routes
 
@@ -104,12 +104,12 @@ MenuList is the first embedded Canonica client. Owner support entry points now h
 - Desktop sidebar Help → `/canonica/help`
 - Desktop support popover Documentation → `/canonica/docs`
 - Desktop support popover Submit a Ticket → `/canonica/support`
-- Mobile More tab Help Center → `/canonica/help`
-- Mobile More tab Documentation → `/canonica/docs`
-- Mobile More tab Support Tickets → `/canonica/support`
-- Mobile More tab Release Notes → `/canonica/release-notes`
+- Mobile More tab Help Center → native `canonicaHelp` sub-screen inside `MobileShell`
+- Mobile More tab Documentation → native `canonicaDocs` sub-screen inside `MobileShell`
+- Mobile More tab Support Tickets → native `canonicaSupport` sub-screen inside `MobileShell`
+- Mobile More tab Release Notes → native `canonicaReleaseNotes` sub-screen inside `MobileShell`
 
-The legacy `/help-center` route remains available for compatibility while MenuList client-facing support moves to Canonica. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
+The mobile More tab does not route-hop to `/canonica/*`; it renders the same client support surfaces inside the MenuList mobile shell to prevent hash/router fights, accidental desktop fallback, or app reloads. The legacy `/help-center` route remains available for compatibility while MenuList client-facing support moves to Canonica. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
 
 ### Canonica Public Routes
 

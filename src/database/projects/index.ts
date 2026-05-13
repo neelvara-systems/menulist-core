@@ -992,32 +992,48 @@ export const updateProjectWithoutLoader = async (data: Partial<Project>) => {
 export const setProjectActive = async (projectId: string, active: boolean) => {
     return await apiCallComposer(
         async () => {
+            const projectDocRef = await getDataDocRef(projectId);
+
+            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && active === false) {
+                const projectSnap = await getDoc(projectDocRef);
+                const projectData = projectSnap.exists() ? projectSnap.data() as Project : null;
+
+                if (projectData?.masterProjectId) {
+                    const { parseProjectId } = await import("@lib/multiOutlet/resolveProject");
+                    const { DEFAULT_OUTLET_POLICY } = await import("@type/multiOutlet.types");
+                    const { sId: masterStoreId } = parseProjectId(projectData.masterProjectId);
+                    const session = await getActiveSession();
+                    const hasMasterStoreAuthority = Number(session?.sId) === Number(masterStoreId)
+                        || (Array.isArray(session?.user?.stores)
+                            && session.user.stores.some((store: any) => Number(store?.storeId) === Number(masterStoreId)));
+
+                    if (!hasMasterStoreAuthority) {
+                        const masterStoreSnap = await getDoc(doc(firebaseClient, DB_COLLECTIONS.STORES, String(masterStoreId)));
+                        const outletPolicy = {
+                            ...DEFAULT_OUTLET_POLICY,
+                            ...(masterStoreSnap.data()?.outletPolicy || {}),
+                        };
+
+                        if (outletPolicy.allowProjectDeactivate === false) {
+                            throw new Error("Deactivating inherited outlet projects is not enabled for this store.");
+                        }
+                    }
+                }
+            }
+
             // Update project document
-            await setDoc(await getDataDocRef(projectId), { active }, { merge: true });
+            await setDoc(projectDocRef, { active }, { merge: true });
 
-            // Keep projects summary in sync immediately (source for selectors)
-            const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
-            const summaryMap = summaryDoc.exists()
-                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
-                : {};
-            const currentSummary: Partial<ProjectSummaryData> = summaryMap[projectId] || {};
-
-            await syncProjectToSummary(projectId, {
-                name: currentSummary.name || "Untitled",
-                description: currentSummary.description,
-                projectImage: currentSummary.projectImage ?? null,
-                active,
-                isDefault: currentSummary.isDefault ?? false,
-                slug: currentSummary.slug,
-                previousSlugs: currentSummary.previousSlugs,
-                isSpecialMenu: currentSummary.isSpecialMenu,
-                specialMenuDisplayName: currentSummary.specialMenuDisplayName,
-                specialMenuStatus: currentSummary.specialMenuStatus,
-                specialMenuStartsAt: currentSummary.specialMenuStartsAt,
-                specialMenuEndsAt: currentSummary.specialMenuEndsAt,
-                specialMenuMode: currentSummary.specialMenuMode,
-                specialMenuBaseProjectId: currentSummary.specialMenuBaseProjectId,
-            });
+            // Keep projects summary in sync without reading the full summary doc.
+            await setDoc(
+                await getProjectsSummaryDocRef(),
+                {
+                    lastUpdated: serverTimestamp(),
+                    ...buildSummaryProjectFieldPayload(projectId, "active", active),
+                },
+                { merge: true },
+            );
+            await revalidatePublicClientCacheForProject(projectId, "setProjectActive");
 
             return { projectId, active };
         },
@@ -1598,6 +1614,10 @@ export const duplicateProject = async (
             }
 
             const originalData = projectDoc.data() as Project;
+            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && originalData.masterProjectId) {
+                throw new Error("Inherited outlet projects cannot be duplicated. Create a local menu instead.");
+            }
+
             const originalSummary: Partial<ProjectSummaryData> = summaryDoc.exists()
                 ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)[projectId] || {}
                 : {};

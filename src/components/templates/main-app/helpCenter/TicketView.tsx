@@ -4,7 +4,7 @@ import { useTicketCache } from '@hook/useTicketCache';
 import AddSupportTicket from '@organisms/addSupportTicket';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SupportTicketType } from '@type/supportTicket';
-import { Badge, Card, Flex, Tooltip, Typography, message, theme } from 'antd';
+import { Badge, Card, Flex, Grid, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuHistory, LuMessageSquare, LuWifi } from 'react-icons/lu';
@@ -16,9 +16,11 @@ function TicketView() {
     const t = useTranslations('HelpCenter');
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
     const { getAllItems, setAllItems, updateItem, cachedItems } = useTicketCache();
     const [initialFetchDone, setInitialFetchDone] = useState(false);
     const [isRealtimeActive, setIsRealtimeActive] = useState(false);
+    const isNarrow = screens.md !== true;
 
     const fetchTickets = async () => {
         dispatch(startLoader("Fetching your requests..."))
@@ -84,34 +86,35 @@ function TicketView() {
         width: '100%',
         maxWidth: 1400,
         margin: '0 auto',
-        padding: '0 24px'
-    }), []);
+        padding: isNarrow ? 0 : '0 24px'
+    }), [isNarrow]);
 
     const leftCardStyle = useMemo(() => ({
-        flex: '1 1 600px',
-        maxWidth: 700,
+        flex: isNarrow ? '1 1 100%' : '1 1 600px',
+        maxWidth: isNarrow ? '100%' : 700,
+        minWidth: 0,
         borderRadius: token.borderRadiusLG,
         boxShadow: token.boxShadow,
-        padding: 4,
-    }), [token.borderRadiusLG, token.boxShadow]);
+        padding: isNarrow ? 0 : 4,
+    }), [isNarrow, token.borderRadiusLG, token.boxShadow]);
 
     const rightCardStyle = useMemo(() => ({
-        flex: '0 1 450px',
-        minWidth: 380,
-        maxWidth: 480,
+        flex: isNarrow ? '1 1 100%' : '0 1 450px',
+        minWidth: isNarrow ? 0 : 380,
+        maxWidth: isNarrow ? '100%' : 480,
         borderRadius: token.borderRadiusLG,
         boxShadow: token.boxShadow,
         padding: 4,
-        maxHeight: 'calc(100vh - 140px)',
+        maxHeight: isNarrow ? 'none' : 'calc(100vh - 140px)',
         overflow: 'auto'
-    }), [token.borderRadiusLG, token.boxShadow]);
+    }), [isNarrow, token.borderRadiusLG, token.boxShadow]);
 
     const titleMarginStyle = useMemo(() => ({ margin: 0 }), []);
     const paragraphStyle = useMemo(() => ({ margin: 0, color: token.colorTextSecondary, fontSize: 14 }), [token.colorTextSecondary]);
 
     return (
         <Flex
-            gap={24}
+            gap={isNarrow ? 12 : 24}
             wrap="wrap"
             align="flex-start"
             justify="center"

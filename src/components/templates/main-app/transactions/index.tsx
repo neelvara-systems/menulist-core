@@ -6,7 +6,7 @@ import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getMetadataProjectsList } from '@database/projects';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getFormatedDateAndTime } from '@util/dateTime';
-import { formatCurrency, formatProcessingTime } from '@util/formatters';
+import { formatProcessingTime } from '@util/formatters';
 import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter, useTranslations } from 'next-intl';
@@ -35,6 +35,7 @@ interface TransactionData {
     chargePerCredit: number;
     totalCredits: number;
     totalCharge: number;
+    unitsConsumed?: number;
     createdOn: string;
     storeId: string;
     // Fields for language operations
@@ -129,7 +130,6 @@ function TransactionPage() {
 
             // Process results
             const newTransactions: TransactionData[] = response.data;
-            console.log("newTransactions", newTransactions)
             // For the first page, replace transactions
             if (page === 1) {
                 setTransactions(newTransactions);
@@ -182,7 +182,6 @@ function TransactionPage() {
     const fetchProjectsList = async () => {
         const fetchedProjects = await getMetadataProjectsList();
         setProjectsList(fetchedProjects?.projects || fetchedProjects || [])
-        console.log("fetchedProjects", fetchedProjects)
     }
 
     // Apply filters when they change
@@ -267,13 +266,26 @@ function TransactionPage() {
             },
         },
         {
-            title: t('totalCharge'),
-            dataIndex: 'totalCharge',
-            key: 'totalCharge',
-            render: (charge: number) => (
-                <Text type="success">{formatCurrency(charge, 'INR')}</Text>
+            title: 'Credits Used',
+            dataIndex: 'unitsConsumed',
+            key: 'unitsConsumed',
+            render: (units: number) => {
+                const consumed = Number(units ?? 0);
+                if (consumed <= 0) {
+                    return <Tag color="default">No credits used</Tag>;
+                }
+                return <Text type="success">{consumed}</Text>;
+            },
+            sorter: (a: TransactionData, b: TransactionData) => Number(a.unitsConsumed || 0) - Number(b.unitsConsumed || 0),
+        },
+        {
+            title: 'Tokens',
+            dataIndex: 'totalTokenCount',
+            key: 'totalTokenCount',
+            render: (tokens: number) => (
+                <Text>{Number(tokens || 0).toLocaleString()}</Text>
             ),
-            sorter: (a: TransactionData, b: TransactionData) => a.totalCharge - b.totalCharge,
+            sorter: (a: TransactionData, b: TransactionData) => Number(a.totalTokenCount || 0) - Number(b.totalTokenCount || 0),
         },
         {
             title: t('processingTime'),

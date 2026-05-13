@@ -13,9 +13,12 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
+import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID } from '@constant/user';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { applyCategoryIconDefaults } from '@data/shared/categoryIconSuggestions';
+import { recordAiOperation } from '@lib/ai/operationLog';
 import { firestoreAdmin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
@@ -318,6 +321,7 @@ Rules:
 - Return ONLY valid JSON, no markdown, no explanation`;
 
         // Use genAIClient (shared Gemini client) — same pattern as all other AI routes
+        const operationStart = Date.now();
         const response = await genAIClient.models.generateContent({
             model: 'gemini-2.0-flash',
             contents: [
@@ -358,6 +362,28 @@ Rules:
             },
             detectedBusinessName: parsed.businessName || null,
             detectedBusinessType: parsed.businessType || null,
+        });
+
+        recordAiOperation({
+            action: AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION,
+            billingMode: 'public',
+            clientResponse: {
+                businessCategory,
+                categoriesCount: categoriesWithIcons.length,
+                itemsCount: (parsed.items || []).length,
+                languagesCount: normalizeDraftExtractionLanguages(parsed.languages).length,
+            },
+            draftToken,
+            geminiResponse: response,
+            model: 'gemini-2.0-flash',
+            processingTime: Date.now() - operationStart,
+            sId: ECOMSAI_PLATFORM_STORE_ID,
+            source: 'public_create_menu',
+            storagePath,
+            tId: ECOMSAI_PLATFORM_TENANT_ID,
+            uId: String(ECOMSAI_PLATFORM_USER_ID),
+        }).catch((error) => {
+            secureError('[PublicMenuEntry] Operation log failed', error instanceof Error ? error : new Error(String(error)), { draftToken });
         });
 
         secureLog('[PublicMenuEntry] Extraction completed', {

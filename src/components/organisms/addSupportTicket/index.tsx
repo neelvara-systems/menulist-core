@@ -6,7 +6,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { getBase64 } from '@util/utils';
 import type { UploadProps } from 'antd';
-import { Button, Card, Flex, Form, Input, message, Modal, Select, Typography } from 'antd';
+import { Button, Card, Flex, Form, Grid, Input, message, Modal, Select, Typography } from 'antd';
 import { RcFile } from 'antd/es/upload';
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
@@ -29,6 +29,8 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
     const dispatch = useAppDispatch();
     const { data: session } = useSession();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const screens = Grid.useBreakpoint();
+    const isNarrow = screens.md !== true;
 
     const onPasteFiles = (pastedFiles: PastedFile[]) => {
         setAttachments((prevAttachments) => {
@@ -87,13 +89,14 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                 },
             };
             const newTicket = await addTicket(payload);
-            message.success('Ticket submitted successfully!, Ticket ID is #${newTicket.displayId}.');
+            message.success(`Ticket submitted successfully. Ticket ID is #${newTicket.displayId}.`);
             form.resetFields();
             setAttachments([]);
             onTicketSubmitted(newTicket);
             onClose();
         } catch (error: any) {
-            message.error('Submission Failed, ' + error.message || 'Please try again.');
+            const errorMessage = error?.message ? `Submission failed: ${error.message}` : 'Submission failed. Please try again.';
+            message.error(errorMessage);
         } finally {
             dispatch(stopLoader("Submitting ticket..."));
         }
@@ -129,7 +132,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
             onMouseEnter={() => isFormActive.current = true}
             onMouseLeave={() => isFormActive.current = false}
         >
-            <Card style={{ width: '100%', minWidth: 'max-content' }}>
+            <Card style={{ width: '100%', minWidth: isNarrow ? 0 : 'max-content' }}>
                 {showHeader && (
                     <Flex vertical>
                         <Title level={4}>Need help? Let&apos;s get this sorted.</Title>
@@ -137,11 +140,11 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                     </Flex>
                 )}
                 <Form form={form} layout="vertical" name="submit_ticket" onFinish={handleFormSubmit}>
-                    <Flex gap="middle" align="start">
-                        <Form.Item name="category" style={{ flex: 1 }} label="What is this about?" rules={[{ required: true, message: 'Please select a category!' }]}>
+                    <Flex gap={isNarrow ? "small" : "middle"} align={isNarrow ? "stretch" : "start"} vertical={isNarrow}>
+                        <Form.Item name="category" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="What is this about?" rules={[{ required: true, message: 'Please select a category!' }]}>
                             <Select placeholder="Select a category" options={SUPPORT_TICKET_CATEGORY_LIST} />
                         </Form.Item>
-                        <Form.Item name="priority" style={{ flex: 1 }} label="How urgent is this?" initialValue="NORMAL" rules={[{ required: true, message: 'Please select a priority!' }]}>
+                        <Form.Item name="priority" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="How urgent is this?" initialValue="NORMAL" rules={[{ required: true, message: 'Please select a priority!' }]}>
                             <Select placeholder="Select a priority" options={SUPPORT_TICKET_PRIORITY_LIST} />
                         </Form.Item>
                     </Flex>
@@ -156,14 +159,14 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
 
                     <Form.Item label="Add a screenshot or file (optional)">
                         <PasteUpload {...props} onPaste={onPasteFiles} isPastingEnabled={isFormActive} />
-                        <Text type="secondary" italic>💡 Screenshots help us fix issues faster.</Text>
+                        <Text type="secondary" italic>Screenshots help us fix issues faster.</Text>
                     </Form.Item>
 
                     <Form.Item style={{ width: '100%' }}>
                         <Flex align='center' justify='center' gap='small' vertical>
                             {/* <Text>Submit your request — we’ll respond within about 4 business hours.</Text> */}
-                            <Button type="primary" htmlType="submit" size="large">Send Request</Button>
-                            <Text type="secondary" italic>💡 Your request will appear in your ticket history so you can track progress anytime</Text>
+                            <Button block={isNarrow} type="primary" htmlType="submit" size="large">Send Request</Button>
+                            <Text type="secondary" italic style={{ textAlign: 'center' }}>Your request will appear in your ticket history so you can track progress anytime</Text>
                         </Flex>
                     </Form.Item>
                 </Form>
@@ -184,7 +187,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                     <RenderFormContent />
                 </Modal>
             </> : <>
-                <Flex style={{ margin: '0 auto', width: '100%' }} gap="large" justify="flex-start" align="flex-start">
+                <Flex style={{ margin: '0 auto', width: '100%' }} gap={isNarrow ? "small" : "large"} justify="flex-start" align="flex-start">
                     <RenderFormContent />
                 </Flex>
             </>}

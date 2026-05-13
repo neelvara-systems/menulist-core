@@ -7,6 +7,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuRefreshCcw, LuSparkles } from 'react-icons/lu';
+import type { InheritanceState } from '@type/multiOutlet.types';
 import type { Project } from '../../templates/main-app/projects/types';
 import {
     DESCRIPTION_LENGTH_OPTIONS,
@@ -24,16 +25,24 @@ interface GenerateDescriptionsSheetProps {
     businessType?: string;
     onClose: () => void;
     onSaved: (updatedProject: Project) => void;
+    persistProject?: (updatedProject: Project) => Promise<Project | void>;
     projectData: Project;
     visible: boolean;
+    itemStates?: Record<string, InheritanceState>;
+    isMasterLinked?: boolean;
+    allowInheritedDescriptionOverride?: boolean;
 }
 
 export default function GenerateDescriptionsSheet({
     businessType,
     onClose,
     onSaved,
+    persistProject,
     projectData,
     visible,
+    itemStates,
+    isMasterLinked = false,
+    allowInheritedDescriptionOverride = false,
 }: GenerateDescriptionsSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
@@ -52,9 +61,15 @@ export default function GenerateDescriptionsSheet({
         setDescriptionTone(getProjectDescriptionTone(projectData, businessType));
     }, [businessType, projectData]);
 
+    const governance = useMemo(() => (
+        isMasterLinked && itemStates && !allowInheritedDescriptionOverride
+            ? { itemStates }
+            : undefined
+    ), [allowInheritedDescriptionOverride, isMasterLinked, itemStates]);
+
     const { itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(
-        () => getDescriptionGenerationStats(projectData, null, undefined),
-        [projectData]
+        () => getDescriptionGenerationStats(projectData, null, governance),
+        [governance, projectData]
     );
 
     const handleDescriptionRequest = async (action: string) => {
@@ -77,7 +92,9 @@ export default function GenerateDescriptionsSheet({
                     setTotalFiles(nextTotalFiles);
                 },
                 onProjectUpdate: onSaved,
+                persistProject,
                 projectData: projectWithPreferences,
+                governance,
             });
 
             onSaved(updatedProject);

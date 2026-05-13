@@ -19,9 +19,19 @@ The original February audit found missing usage tracking across the billable AI 
 | New item metadata | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
 | SEO/AEO and business copy | Capacity check, operation log, token/cost metadata; currently zero-unit setup actions |
 | Campaign caption | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| Review reply suggestion | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| Menu intake identity preflight | Free setup operation; operation log, token/cost metadata, no owner balance consumption |
+| Public create-menu extraction | Public/platform operation; operation log, token/cost metadata, no owner balance consumption |
+| Weekly analytics narrative | Internal operation; operation log, token/cost metadata, no owner balance consumption |
+| Help Center and widget search plus embeddings | Internal/public support/control-plane operation log, no owner balance consumption |
+| Canonica translation | Internal Canonica operation log, no MenuList owner balance consumption |
 | Cloud Functions menu-image processing | Operation log and token/cost metadata use the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes |
 
 Balance consumption now happens in `consumeAICapacity()` through a Firestore transaction. It deducts `monthlyCredits` first, then `topUpCredits`, and returns `remainingBalance` for desktop/mobile state sync.
+
+Cost optimization: Help Center and widget search write AI operation audit rows only when the shared search core actually reaches an AI provider (`image_query_generation`, `embedding_generation`, or `answer_generation`). Canonical hits, instant-cache hits, and ordinary cached answers do not create `menulistAiOperations` writes.
+
+Rows below this status section are retained as February audit evidence. Any `COMMENTED OUT` or `ZERO TRACKING` labels below should be read as historical findings unless they are explicitly repeated in this May 13 runtime status section.
 
 ---
 

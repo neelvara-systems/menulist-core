@@ -2,11 +2,13 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
-**Last Reviewed:** February 13, 2026  
+**Last Reviewed:** May 13, 2026
 **Verified By:** Cascade AI Assistant  
 **Status:** ✅ Production Ready
 
 > **Note (Feb 13, 2026):** This verification was done on Feb 5. Since then, the following were implemented: OutletPolicy (15 flags), OutletPolicyEditor UI, `applyOutletPolicy()`, default roles (3 + custom), `updateOutletPolicy()` DAL, and complete permission resolution via sessionProvider. See [multi-chain-permissions/](../multi-chain-permissions/) and [roles-permissions/](../roles-permissions/) for full details.
+>
+> **Note (May 13, 2026):** Desktop and mobile menu data handling were re-audited against linked outlet behavior. Linked outlet extraction now compares against the master menu, editor display resolves master + local records, save paths strip resolved master records before persistence, shared description/image flows accept outlet-aware persistence callbacks, mobile/desktop project create/duplicate/deactivate/reset paths honor OutletPolicy, and linked reset clears local files plus overrides to return to inherited master state.
 
 ---
 

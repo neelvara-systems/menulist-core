@@ -68,6 +68,12 @@ export interface CoreSearchResult {
     /** Search history document ID (for feedback linking) */
     searchHistoryId?: string;
 
+    /** Whether this request reached an AI provider instead of cache/canonical-only retrieval */
+    aiProviderUsed?: boolean;
+
+    /** Provider-backed steps used by this request, for audit-only operation logging */
+    aiProviderOperations?: string[];
+
     /** Whether the answer came from canonical retrieval (not RAG) */
     canonical: boolean;
 

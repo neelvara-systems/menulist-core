@@ -14,6 +14,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import { LOG_FILES } from '@constant/logging';
+import { AI_ACTIONS_TYPES } from '@constant/common';
+import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { coreSearch } from '@lib/search/searchCore';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
@@ -75,6 +77,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         // ===== CORE SEARCH — Single source of truth =====
+        const operationStart = Date.now();
         const result = await coreSearch({
             query: searchQuery,
             mountContext: 'help_center',
@@ -130,6 +133,32 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 triggers: result.escalation.triggerTypes,
                 context: result.escalation.escalationContext,
             };
+        }
+
+        if (result.aiProviderUsed) {
+            recordAiOperationForSession(session, {
+                action: AI_ACTIONS_TYPES.HELP_CENTER_SEARCH,
+                billingMode: 'internal',
+                clientResponse: {
+                    aiProviderOperations: result.aiProviderOperations || [],
+                    answerType: result.answerType || null,
+                    canonical: Boolean(result.canonical),
+                    imageProcessed: Boolean(result.imageProcessed),
+                    referencesCount: result.references?.length || 0,
+                    searchHistoryId: result.searchHistoryId || null,
+                    suggestedQuestionsCount: result.suggestedQuestions?.length || 0,
+                },
+                model: 'coreSearch',
+                processingTime: Date.now() - operationStart,
+                source: 'help_center_search',
+            }).catch((error) => {
+                void writeLogEntry({
+                    logFileName: PERF_LOG,
+                    userId: session?.uId,
+                    logType: 'SEARCH_OPERATION_LOG_ERROR',
+                    data: { error: error instanceof Error ? error.message : String(error) },
+                });
+            });
         }
 
         return NextResponse.json(response);

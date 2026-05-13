@@ -152,8 +152,11 @@ function MenuFilters({
 
     const handleCategorySelect = (category: Category, event?: ReactMouseEvent<HTMLAnchorElement>) => {
         event?.preventDefault();
-        onSelectCategory(category, 'MENU-POPOVER');
+        event?.stopPropagation();
         setShowCategories(false);
+        window.requestAnimationFrame(() => {
+            onSelectCategory(category, 'MENU-POPOVER');
+        });
     };
 
     const closeCategories = (

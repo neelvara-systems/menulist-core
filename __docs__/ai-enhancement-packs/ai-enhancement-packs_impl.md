@@ -1,9 +1,21 @@
 # AI Enhancement Packs — Implementation Plan
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
-**Status:** 📝 Ready for Implementation
-**Last Updated:** February 9, 2026
+**Status:** Implemented and hardened
+**Last Updated:** May 13, 2026
 **Audience:** Developers only
+
+## May 13, 2026 Runtime Contract
+
+AI enhancement accounting is now enabled end to end for owner-billable AI operations and auditable for free/internal AI operations.
+
+Billable owner actions call `checkAICapacity()` before Gemini, write a `menulistAiOperations/{tId}/{sId}/{operationId}` event after a successful provider call, then call `consumeAICapacity()` to deduct `monthlyCredits` first and `topUpCredits` second. API responses return `remainingBalance`, and desktop/mobile frontend services sync that balance through `syncBalanceFromResponse()` without an extra subscription read.
+
+Free, public, and internal AI calls also write operation events for cost visibility, but set `unitsConsumed = 0` and do not drain owner packs. Current non-billable audit paths include menu intake identity, public create-menu extraction, weekly analytics narrative, Help Center search, public Canonica widget search, Help Center article embedding, and Canonica translation.
+
+Help Center and widget search are conditional audit paths. The shared search core marks provider-backed work through `aiProviderUsed` and `aiProviderOperations`; wrappers write operation records only when the request actually reached Gemini for image query generation, embedding generation, or answer generation. Canonical hits, instant-cache hits, and ordinary cached answers are not AI operations and do not create `menulistAiOperations` writes.
+
+Owner visibility is exposed in desktop and mobile Billing through total enhancements left, plan balance, used-this-cycle count, and pack balance. Desktop and mobile Transactions show credits used and token counts so owners and support can trace usage without exposing internal margin math.
 
 ---
 

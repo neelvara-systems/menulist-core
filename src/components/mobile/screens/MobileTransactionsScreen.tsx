@@ -3,7 +3,7 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getFormatedDateAndTime } from '@util/dateTime';
-import { formatCurrency, formatProcessingTime } from '@util/formatters';
+import { formatProcessingTime } from '@util/formatters';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuReceipt, LuRefreshCw } from 'react-icons/lu';
@@ -20,7 +20,8 @@ interface TransactionItem {
     id: string;
     processingTime: number;
     projectId?: string;
-    totalCharge: number;
+    totalTokenCount?: number;
+    unitsConsumed?: number;
 }
 
 export default function MobileTransactionsScreen({ onBack }: MobileTransactionsScreenProps) {
@@ -76,6 +77,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     };
 
     const formatActionLabel = (action: string) => action.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const formatCreditsUsed = (tx: TransactionItem) => {
+        const units = Number(tx.unitsConsumed || 0);
+        return units > 0 ? `${units} used` : 'No credits';
+    };
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
@@ -112,9 +117,12 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                             <Flex gap={8}>
                                                 <Text type="secondary">{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>
                                                 <Text type="secondary">{formatProcessingTime(tx.processingTime)}</Text>
+                                                {typeof tx.totalTokenCount === 'number' ? (
+                                                    <Text type="secondary">{tx.totalTokenCount.toLocaleString()} tokens</Text>
+                                                ) : null}
                                             </Flex>
                                         )}
-                                        extra={<Text strong style={{ color: '#16a34a' }}>{formatCurrency(tx.totalCharge, 'INR')}</Text>}
+                                        extra={<Text strong style={{ color: Number(tx.unitsConsumed || 0) > 0 ? '#16a34a' : '#64748b' }}>{formatCreditsUsed(tx)}</Text>}
                                         key={tx.id}
                                         title={(
                                             <Flex align="center" gap={8}>

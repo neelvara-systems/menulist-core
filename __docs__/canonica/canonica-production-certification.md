@@ -221,9 +221,11 @@ Owner KB screen
 
 ```
 MenuList owner clicks Help / Documentation / Support Tickets
-  → desktop sidebar/support popover or mobile More tab resolves a Canonica client route
-  → /canonica/help, /docs, /support, or /release-notes loads
+  → desktop sidebar/support popover resolves a Canonica client route
+  → mobile More tab resolves a native Canonica client sub-screen inside MobileShell
+  → /canonica/help, /docs, /support, or /release-notes loads for desktop/direct URL access
   → owner sees KB, ticket, and changelog surfaces without the legacy generic mobile FAQ/WhatsApp placeholder
+  → direct Canonica shell routes expose Back to MenuList
   → Canonica DAL reads/writes use canonicaFirebaseClient and sourceContext metadata
 
 Platform operator opens Canonica management

@@ -1,6 +1,7 @@
 'use client'
 
 import { addProject, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -16,6 +17,7 @@ import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
+import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -172,7 +174,7 @@ export default function MobileProjectSelectorSheet({
     const { token } = theme.useToken();
     const t = useTranslations('MobileProjectSelector');
     const tShare = useTranslations('MobileShare');
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
     const labels = useOfferingLabels();
     const { isLoading, projectsById, projectsList, removeCachedProject, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
@@ -228,6 +230,16 @@ export default function MobileProjectSelectorSheet({
     };
 
     const projects = projectsList as ProjectSheetProject[];
+    const outletPolicy = useMemo<OutletPolicy | null>(() => {
+        if (isMasterUser || storeDetails?.isMaster !== false) return null;
+        return {
+            ...DEFAULT_OUTLET_POLICY,
+            ...((userPermissions as any)?.outletPolicy || {}),
+        };
+    }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
+    const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
+    const canDeactivateLinkedProjects = !outletPolicy || outletPolicy.allowProjectDeactivate !== false;
+    const skipLinkedOutletDeleteCheck = !canHaveLinkedOutlets(tenantDetails as any);
     const orderedProjects = useMemo(() => {
         return [...projects].sort((a, b) => {
             const aSpecial = a.isSpecialMenu === true ? 1 : 0;
@@ -329,6 +341,11 @@ export default function MobileProjectSelectorSheet({
     };
 
     const openCreate = () => {
+        if (!canCreateLocalProjects) {
+            Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
+            return;
+        }
+
         const defaultLanguage = storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE;
         setManagingProjectId(null);
         setFormMode('create');
@@ -359,6 +376,12 @@ export default function MobileProjectSelectorSheet({
             projectId: project.projectId,
         });
         return detailedProject;
+    };
+
+    const isLinkedOutletProject = async (project: ProjectSheetProject) => {
+        if ((project as any).masterProjectId) return true;
+        const detailedProject = await loadDetailedProject(project);
+        return Boolean(detailedProject?.masterProjectId);
     };
 
     const getDeleteFallbackProject = (projectId: string) => (
@@ -412,6 +435,15 @@ export default function MobileProjectSelectorSheet({
     };
 
     const openDuplicate = async (project: ProjectSheetProject) => {
+        if (!canCreateLocalProjects) {
+            Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
+            return;
+        }
+        if (await isLinkedOutletProject(project)) {
+            Toast.show({ content: 'Inherited menus cannot be duplicated at this location.', duration: 1800 });
+            return;
+        }
+
         const detailedProject = await loadDetailedProject(project);
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
@@ -497,6 +529,10 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'create') {
+                if (!canCreateLocalProjects) {
+                    Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
+                    return;
+                }
                 const currentDefault = projects.find((project) => project.isDefault === true);
                 const nextIsDefault = !hasRegularProject();
                 const result = await addProject({
@@ -543,6 +579,10 @@ export default function MobileProjectSelectorSheet({
             }
 
             if (formMode === 'duplicate' && formProjectId) {
+                if (!canCreateLocalProjects) {
+                    Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
+                    return;
+                }
                 const result = await duplicateProject(
                     formProjectId,
                     nextName,
@@ -892,6 +932,11 @@ export default function MobileProjectSelectorSheet({
         const nextActive = project.active === false;
         const isCurrent = project.projectId === currentProjectId;
 
+        if (!nextActive && !canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
+            Toast.show({ content: 'Deactivating inherited menus is not enabled for this location.', duration: 1800 });
+            return;
+        }
+
         if (!nextActive && isCurrent) {
             const fallback = getDeleteFallbackProject(project.projectId);
             await setProjectActive(project.projectId, false);
@@ -911,18 +956,32 @@ export default function MobileProjectSelectorSheet({
 
     const handleResetProject = async (project: ProjectSheetProject) => {
         setManagingProjectId(null);
-        await updateProjectWithoutLoader({ files: [], projectId: project.projectId });
-        upsertCachedProject({ ...project, files: [] });
+        const isLinkedProject = await isLinkedOutletProject(project);
+        await updateProjectWithoutLoader({
+            files: [],
+            projectId: project.projectId,
+            ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
+        } as any);
+        upsertCachedProject({
+            ...project,
+            files: [],
+            ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
+        });
         await syncSelectionOnly(project.projectId);
         Toast.show({ content: t('catalogReset'), duration: 1400 });
     };
 
     const handleDeleteProject = async (project: ProjectSheetProject) => {
+        if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
+            Toast.show({ content: 'Removing inherited menus is not enabled for this location.', duration: 1800 });
+            return;
+        }
+
         const isCurrent = project.projectId === currentProjectId;
         const fallback = getDeleteFallbackProject(project.projectId);
         const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
         setManagingProjectId(null);
-        await deleteProject(project.projectId);
+        await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
         removeCachedProject(project.projectId);
         if (defaultReplacement?.projectId) {
             upsertCachedProject({

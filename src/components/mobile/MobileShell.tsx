@@ -10,6 +10,7 @@ import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
+import ServerSidePageLoader from '../../app/loading';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuArrowLeft, LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
@@ -27,8 +28,10 @@ const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { s
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
 const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
-    '/platform': 'platformSettings',
+    '/platform': 'platformHub',
     '/platform/entity-blocks': 'entityBlocks',
+    '/platform/tenants': 'platformTenants',
+    '/platform/stores': 'platformStores',
     '/platform/users': 'platformUsers',
     '/platform/support-tickets': 'supportTickets',
     '/platform/feedback-admin': 'feedbackAdmin',
@@ -48,8 +51,9 @@ const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
 };
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
-    'platformSettings',
     'entityBlocks',
+    'platformTenants',
+    'platformStores',
     'platformUsers',
     'supportTickets',
     'feedbackAdmin',
@@ -158,6 +162,7 @@ export default function MobileShell() {
     const {
         activeStoreContext,
         activeSubscription,
+        activeSubscriptionLoading,
         isMasterUser,
         setActiveStoreContext,
         tenantDetails,
@@ -297,6 +302,10 @@ export default function MobileShell() {
         : activeTab === 'more'
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} />;
+
+    if (activeSubscriptionLoading && !hasSubscription && !shouldBypassSubscriptionGate) {
+        return <ServerSidePageLoader page="Mobile App" />;
+    }
 
     if (!hasSubscription && !shouldBypassSubscriptionGate) {
         return (

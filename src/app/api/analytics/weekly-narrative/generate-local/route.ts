@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import getActiveSession from '@lib/auth/getActiveSession';
+import { AI_ACTIONS_TYPES } from '@constant/common';
+import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -148,6 +150,7 @@ Generate a JSON response with:
   "recommendations": ["2-3 actionable recommendations"]
 }`;
 
+    const operationStart = Date.now();
     const geminiResult = await genAIClient.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -189,6 +192,24 @@ Generate a JSON response with:
       .collection('ai')
       .doc('weekly')
       .set(narrative, { merge: true });
+
+    recordAiOperationForSession(session, {
+      action: AI_ACTIONS_TYPES.WEEKLY_NARRATIVE,
+      billingMode: 'internal',
+      clientResponse: {
+        highlightsCount: parsed.highlights?.length || 0,
+        narrativeLength: parsed.narrative?.length || 0,
+        recommendationsCount: parsed.recommendations?.length || 0,
+        weekEnd,
+        weekStart,
+      },
+      geminiResponse: geminiResult,
+      model: 'gemini-2.5-flash',
+      processingTime: Date.now() - operationStart,
+      source: 'weekly_narrative_local',
+    }).catch((logError) => {
+      console.error('[Weekly Narrative Local] Operation log failed:', logError);
+    });
 
     console.log(`[Weekly Narrative Local] Generated successfully`);
 

@@ -11,6 +11,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { Alert, Button, Card, Input, Rate, Space, Tag, Typography, notification } from 'antd';
 import axios from 'axios';
 import { useState } from 'react';
@@ -57,6 +58,8 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
                 businessType,
             });
 
+            syncBalanceFromResponse(res.data);
+
             if (res.data?.success && res.data?.reply) {
                 setReply(res.data.reply);
                 setReplySource(res.data.source || 'ai');
@@ -67,6 +70,8 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
         } catch (err: any) {
             if (err.response?.status === 429) {
                 notification.warning({ message: 'Too many requests. Please wait a moment.' });
+            } else if (err.response?.status === 402) {
+                notification.warning({ message: err.response?.data?.error || 'Additional enhancements needed. Add more from Billing.' });
             } else {
                 notification.error({ message: err.response?.data?.error || 'Failed to generate reply.' });
             }

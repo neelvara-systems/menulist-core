@@ -40,12 +40,14 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Featured choices keep the horizontal scroller on mobile/tablet; the desktop-only grid treatment must not remove touch-friendly horizontal browsing on smaller screens.
 - Public menu shell padding is capped by device: mobile uses 12px, tablet uses 18px, and desktop keeps the configured design spacing so small screens do not lose usable width.
 - Public mobile navigation uses one command row for search plus `Sections`; floating controls remain limited to secondary accessibility actions such as back-to-top.
+- Search-row taps must focus the real input immediately on the first tap, including while the command row expands and side controls animate away.
 - The public mobile command row must stay visually stable during vertical scroll; it avoids transform-based compositor hints and clipped sticky ancestors, and switches to a measured fixed layer after it reaches the top to avoid iOS sticky jitter.
 - On iPhone Chrome/PWA, the fixed command row must anchor at `top: 0`; any visual top gap or notch breathing room belongs inside row padding, not in a dynamic sticky `top` offset or negative cover layer.
 - The `Sections` command is shown only for menus with three or more visible sections.
 - The compact top-row language action shows only the language initials; the picker itself keeps full native language labels.
 - `Sections` and language controls must remain reachable while search is focused, and their popovers must render above sticky/overflow containers.
 - The `Sections` popup header must stay compact while preserving a reachable close tap target; the close button visual should not set the whole header height.
+- Selecting a section from the `Sections` popup must dismiss the popup before triggering the category scroll jump.
 - Expanded sticky search must not reserve the command-row side-control gap; the gap is present only when `Sections` or language controls are visible.
 - Footer freshness must not repeat on mobile: the publish row owns exact update time, and bottom trust signals show only location/open state in that placement.
 - Menu special notes must render centered in the footer trust zone when present in menu settings, legacy project note fields, or the store public note fallback.

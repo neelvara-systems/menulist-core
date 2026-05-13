@@ -11,7 +11,7 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import { generateGradientFromHex } from '@util/utils';
-import { Badge, Empty, Flex, Input, Layout, List, Typography, message, theme } from 'antd';
+import { Badge, Empty, Flex, Grid, Input, Layout, List, Typography, message, theme } from 'antd';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -66,6 +66,8 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
     const { token } = useToken();
+    const screens = Grid.useBreakpoint();
+    const isNarrow = screens.md !== true;
 
     // Track last viewed time for "New" badge
     const lastViewedRef = useRef<number>(0);
@@ -150,29 +152,75 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
         }
     };
 
+    const filterPanel = (
+        <>
+            <Input.Search
+                placeholder="Search changelog..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ marginBottom: 24 }}
+                allowClear
+            />
+
+            <Title level={5} style={{ marginBottom: 16 }}>Filter by Tags</Title>
+            <List
+                dataSource={CHANGELOG_TAG_OPTIONS}
+                renderItem={tag => {
+                    const config = CHANGELOG_TAG_CONFIG[tag];
+                    const Icon = config?.icon;
+                    const color = config?.color;
+                    const isSelected = selectedTags.includes(tag);
+
+                    return (
+                        <List.Item
+                            onClick={() => handleTagChange(tag, !isSelected)}
+                            style={{
+                                cursor: 'pointer',
+                                padding: '8px 12px',
+                                borderRadius: token.borderRadius,
+                                background: isSelected ? token.colorPrimaryBg : 'transparent',
+                                borderLeft: isSelected ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
+                                marginBottom: 4,
+                            }}
+                        >
+                            <Flex align="center" gap={8}>
+                                {Icon && <Icon style={{ color }} />}
+                                <Typography.Text style={{ color: isSelected ? token.colorPrimary : token.colorText }}>
+                                    {tag}
+                                </Typography.Text>
+                            </Flex>
+                        </List.Item>
+                    );
+                }}
+            />
+        </>
+    );
+
     return (
-        <Layout style={{ background: token.colorBgContainer, height: '100%', padding: 12 }}>
+        <Layout style={{ background: token.colorBgContainer, height: '100%', padding: isNarrow ? 8 : 12 }}>
             <Content >
                 <Flex
                     align="center"
                     justify="center"
                     style={{
                         position: 'relative',
-                        height: 120,
+                        height: isNarrow ? 96 : 120,
                         background: `linear-gradient(90deg, ${token.colorPrimaryBorder} 0%, ${token.colorPrimaryBg} 100%)`,
                         borderRadius: token.borderRadiusLG,
-                        marginBottom: 24,
+                        marginBottom: isNarrow ? 16 : 24,
                         overflow: 'hidden',
+                        padding: isNarrow ? '0 16px' : undefined,
                     }}
                 >
                     <AnimatedGradientBubbles colors={['#ffbe0b', '#fb5607', '#8338ec']} count={6} speed="fast" />
                     <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                        <Title level={2} style={{ color: 'white', margin: 0 }}>What&apos;s New?</Title>
-                        <Text style={{ color: 'rgba(255, 255, 255, 0.85)' }}>A log of all the awesome new features and updates.</Text>
+                        <Title level={isNarrow ? 3 : 2} style={{ color: 'white', margin: 0 }}>What&apos;s New?</Title>
+                        <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: isNarrow ? 13 : undefined }}>Recent product fixes and updates.</Text>
                     </div>
                 </Flex>
 
                 <Layout style={{ background: token.colorBgContainer }}>
+                    {isNarrow ? <div style={{ marginBottom: 16 }}>{filterPanel}</div> : null}
                     <Content>
                         {/* <div id="scrollableDivPublic" style={{ height: 'calc(100vh - 260px)', overflow: 'auto' }}> */}
                         <div id="scrollableDivPublic" style={{}}>
@@ -210,35 +258,44 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                                     animate="visible"
                                 >
                                     {filteredEntries.map((item, index) => (
-                                        <motion.div key={item.id} variants={itemVariants} style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start' }}>
+                                        <motion.div
+                                            key={item.id}
+                                            variants={itemVariants}
+                                            style={{
+                                                marginBottom: isNarrow ? 16 : 24,
+                                                display: 'flex',
+                                                flexDirection: isNarrow ? 'column' : 'row',
+                                                alignItems: isNarrow ? 'stretch' : 'flex-start',
+                                            }}
+                                        >
                                             {/* Left Column: Decorative Date and Version */}
                                             <Flex
                                                 vertical
-                                                align="flex-end"
+                                                align={isNarrow ? "flex-start" : "flex-end"}
                                                 justify="space-between"
                                                 style={{
-                                                    width: 120,
+                                                    width: isNarrow ? '100%' : 120,
                                                     flexShrink: 0,
-                                                    padding: '16px 24px 16px 0',
+                                                    padding: isNarrow ? '12px 14px' : '16px 24px 16px 0',
                                                     // background: GRADIENTS[index % GRADIENTS.length],
                                                     background: generateGradientFromHex(token[CHANGELOG_TAG_CONFIG[item.tags[0]]?.color] || token.colorPrimary),
-                                                    borderRadius: `${token.borderRadiusLG}px 0 0 ${token.borderRadiusLG}px`,
-                                                    borderRight: `1px solid ${token.colorBorderSecondary}`,
-                                                    textAlign: 'right',
+                                                    borderRadius: isNarrow ? `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0` : `${token.borderRadiusLG}px 0 0 ${token.borderRadiusLG}px`,
+                                                    borderRight: isNarrow ? undefined : `1px solid ${token.colorBorderSecondary}`,
+                                                    textAlign: isNarrow ? 'left' : 'right',
                                                     position: 'relative',
                                                     overflow: 'hidden',
-                                                    height: '-webkit-fill-available',
+                                                    height: isNarrow ? 'auto' : '-webkit-fill-available',
                                                 }}
                                             >
-                                                <Flex vertical align="flex-end">
+                                                <Flex vertical align={isNarrow ? "flex-start" : "flex-end"}>
                                                     <DateTimeDisplay value={item.releasedOn} />
                                                     {item.version && <Text strong>V{item.version}</Text>}
                                                 </Flex>
-                                                <AnimatedVersionNumber version={item.version} />
+                                                {!isNarrow ? <AnimatedVersionNumber version={item.version} /> : null}
                                             </Flex>
 
                                             {/* Center Column: Timeline Axis */}
-                                            <Flex vertical align="center" style={{ flexShrink: 0, alignSelf: 'stretch', position: 'relative' }}>
+                                            <Flex vertical align="center" style={{ display: isNarrow ? 'none' : undefined, flexShrink: 0, alignSelf: 'stretch', position: 'relative' }}>
                                                 {/* This div creates the continuous line */}
                                                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: 1, backgroundColor: token.colorBorder, transform: 'translateX(-50%)' }} />
                                                 {/* This is the dot for the current item — with "New" badge for unread entries */}
@@ -248,7 +305,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                                             </Flex>
 
                                             {/* Right Column: Content */}
-                                            <div style={{ paddingLeft: 24, paddingBottom: 24, flex: 1 }}>
+                                            <div style={{ paddingLeft: isNarrow ? 0 : 24, paddingBottom: isNarrow ? 0 : 24, flex: 1, minWidth: 0 }}>
                                                 <ChangelogPreview mode="inline" item={item} pageId={changelogPage?.id || ''} />
                                             </div>
                                         </motion.div>
@@ -257,47 +314,11 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                             </InfiniteScroll>
                         </div>
                     </Content>
-                    <Sider width={280} style={{ background: token.colorBgContainer, paddingLeft: 24, borderLeft: `1px solid ${token.colorBorderSecondary}` }}>
-                        <Input.Search
-                            placeholder="Search changelog..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ marginBottom: 24 }}
-                            allowClear
-                        />
-
-                        <Title level={5} style={{ marginBottom: 16 }}>Filter by Tags</Title>
-                        <List
-                            dataSource={CHANGELOG_TAG_OPTIONS}
-                            renderItem={tag => {
-                                const config = CHANGELOG_TAG_CONFIG[tag];
-                                const Icon = config?.icon;
-                                const color = config?.color;
-                                const isSelected = selectedTags.includes(tag);
-
-                                return (
-                                    <List.Item
-                                        onClick={() => handleTagChange(tag, !isSelected)}
-                                        style={{
-                                            cursor: 'pointer',
-                                            padding: '8px 12px',
-                                            borderRadius: token.borderRadius,
-                                            background: isSelected ? token.colorPrimaryBg : 'transparent',
-                                            borderLeft: isSelected ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
-                                            marginBottom: 4,
-                                        }}
-                                    >
-                                        <Flex align="center" gap={8}>
-                                            {Icon && <Icon style={{ color }} />}
-                                            <Typography.Text style={{ color: isSelected ? token.colorPrimary : token.colorText }}>
-                                                {tag}
-                                            </Typography.Text>
-                                        </Flex>
-                                    </List.Item>
-                                );
-                            }}
-                        />
-                    </Sider>
+                    {!isNarrow ? (
+                        <Sider width={280} style={{ background: token.colorBgContainer, paddingLeft: 24, borderLeft: `1px solid ${token.colorBorderSecondary}` }}>
+                            {filterPanel}
+                        </Sider>
+                    ) : null}
                 </Layout>
             </Content>
         </Layout>

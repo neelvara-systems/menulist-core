@@ -2,14 +2,17 @@
 
 import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
 import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
+import type { TenantDataType } from '@type/platform/tenant';
 import dynamic from 'next/dynamic';
-import type { ComponentType } from 'react';
+import type { ComponentType, Dispatch, SetStateAction } from 'react';
+import { useState } from 'react';
 import { DotLoading, Flex, Text } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 export type MobilePlatformInternalScreenKey =
-    | 'platformSettings'
     | 'entityBlocks'
+    | 'platformTenants'
+    | 'platformStores'
     | 'platformUsers'
     | 'supportTickets'
     | 'feedbackAdmin'
@@ -36,6 +39,11 @@ type PlatformScreenConfig = {
     title: string;
 };
 
+type TenantAdminDashboardProps = {
+    tenantsList: TenantDataType[];
+    setTenantsList: Dispatch<SetStateAction<TenantDataType[]>>;
+};
+
 const RouteLoading = () => (
     <Flex align="center" gap={8} justify="center" style={{ minHeight: 160 }} vertical>
         <DotLoading />
@@ -43,7 +51,8 @@ const RouteLoading = () => (
     </Flex>
 );
 
-const PlatformSettings = dynamic(() => import('@template/platform/settings'), { loading: RouteLoading, ssr: false });
+const TenantsDashboard = dynamic<TenantAdminDashboardProps>(() => import('@template/platform/tenants'), { loading: RouteLoading, ssr: false });
+const StoresDashboard = dynamic<TenantAdminDashboardProps>(() => import('@template/platform/stores'), { loading: RouteLoading, ssr: false });
 const EntityBlockSettings = dynamic(() => import('@template/platform/settings/EntityBlockSettings'), { loading: RouteLoading, ssr: false });
 const PlatformUsers = dynamic(() => import('@template/platform/users'), { loading: RouteLoading, ssr: false });
 const SupportTickets = dynamic(() => import('@template/platform/supportTickets'), { loading: RouteLoading, ssr: false });
@@ -57,27 +66,44 @@ const ChatBackfill = dynamic(() => import('@template/platform/admin/AnalyticsBac
 const ChatWeeklyDigest = dynamic(() => import('@template/platform/chatManagement/WeeklyDigest'), { loading: RouteLoading, ssr: false });
 const ChatRoiCalculator = dynamic(() => import('@template/platform/chatManagement/ROICalculator'), { loading: RouteLoading, ssr: false });
 
+function PlatformTenantsRoute() {
+    const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
+    return <TenantsDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />;
+}
+
+function PlatformStoresRoute() {
+    const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
+    return <StoresDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />;
+}
+
 const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformScreenConfig> = {
-    platformSettings: {
-        Component: PlatformSettings,
-        description: 'Logs, tenants, stores, pricing plans, and platform settings.',
-        minWidth: 640,
-        surface: 'Platform Settings',
-        title: 'Platform Settings',
-    },
     entityBlocks: {
         Component: EntityBlockSettings,
         description: 'Block or unblock tenants, stores, and users with audit details.',
-        minWidth: 560,
+        minWidth: 0,
         surface: 'Entity Blocks',
         title: 'Entity Blocks',
     },
+    platformTenants: {
+        Component: PlatformTenantsRoute,
+        description: 'Manage tenant accounts and tenant-level business records.',
+        minWidth: 0,
+        surface: 'Tenants',
+        title: 'Tenants',
+    },
+    platformStores: {
+        Component: PlatformStoresRoute,
+        description: 'Manage stores, outlets, and store-level business records.',
+        minWidth: 0,
+        surface: 'Stores',
+        title: 'Stores',
+    },
     platformUsers: {
         Component: PlatformUsers,
-        description: 'Manage platform-level users and access.',
-        minWidth: 640,
-        surface: 'Platform Users',
-        title: 'Platform Users',
+        description: 'Manage tenant users, verification, roles, and store access.',
+        minWidth: 0,
+        surface: 'Users',
+        title: 'Users',
     },
     supportTickets: {
         Component: SupportTickets,
@@ -192,6 +218,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
 
                     [data-mobile-platform-route] .ant-card {
                         border-radius: 8px;
+                        width: 100%;
                     }
 
                     [data-mobile-platform-route] .ant-card-body,
@@ -217,6 +244,17 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                         overflow-x: auto;
                     }
 
+                    [data-mobile-platform-route] .ant-table {
+                        min-width: 720px;
+                    }
+
+                    [data-mobile-platform-route] .ant-select,
+                    [data-mobile-platform-route] .ant-picker,
+                    [data-mobile-platform-route] .ant-input,
+                    [data-mobile-platform-route] .ant-input-number {
+                        max-width: 100%;
+                    }
+
                     [data-mobile-platform-route] .ant-statistic-title,
                     [data-mobile-platform-route] .ant-typography {
                         white-space: normal;
@@ -239,8 +277,26 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             min-height: 40px;
                         }
 
+                        [data-mobile-platform-route] .ant-card-body,
+                        [data-mobile-platform-route] .ant-card-head {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                        }
+
                         [data-mobile-platform-route] .ant-space {
                             flex-wrap: wrap;
+                        }
+
+                        [data-mobile-platform-route] .ant-flex {
+                            max-width: 100%;
+                        }
+
+                        .ant-drawer-content-wrapper {
+                            width: 100vw !important;
+                        }
+
+                        .ant-modal {
+                            max-width: calc(100vw - 24px);
                         }
                     }
                 `}</style>

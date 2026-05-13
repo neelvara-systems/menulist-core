@@ -16,7 +16,9 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
+import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
@@ -128,6 +130,7 @@ Respond in this exact JSON format:
   "translatedContent": "..."
 }`;
 
+        const operationStart = Date.now();
         const response = await genAIClient.models.generateContent({
             model: 'gemini-2.0-flash',
             contents: prompt,
@@ -168,6 +171,23 @@ Respond in this exact JSON format:
                 translatedBy: 'ai',
                 translatedAt: now,
             },
+        });
+
+        recordAiOperationForSession(session, {
+            action: AI_ACTIONS_TYPES.CANONICA_TRANSLATION,
+            articleId,
+            billingMode: 'internal',
+            clientResponse: {
+                targetLocale,
+                translatedContentLength: translatedContent.length,
+                translatedTitleLength: translatedTitle.length,
+            },
+            geminiResponse: response,
+            model: 'gemini-2.0-flash',
+            processingTime: Date.now() - operationStart,
+            source: 'canonica_translate',
+        }).catch((logError) => {
+            secureError('[Canonica Translate] Operation log failed', logError as Error, { articleId, targetLocale });
         });
 
         return NextResponse.json({

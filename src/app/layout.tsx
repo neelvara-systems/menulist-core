@@ -12,11 +12,50 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
 
 const defaultTitle = 'MenuList — Your Menu, Always Running';
 const defaultDescription = 'MenuList keeps your digital menu accurate, up-to-date, and ready to share. Upload once. Everything stays current automatically.';
+const appleStartupImages = [
+    {
+        href: '/splash/apple-splash-1290x2796.png',
+        media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)',
+    },
+    {
+        href: '/splash/apple-splash-1179x2556.png',
+        media: '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)',
+    },
+    {
+        href: '/splash/apple-splash-1170x2532.png',
+        media: '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)',
+    },
+    {
+        href: '/splash/apple-splash-1125x2436.png',
+        media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
+    },
+    {
+        href: '/splash/apple-splash-1242x2688.png',
+        media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)',
+    },
+    {
+        href: '/splash/apple-splash-828x1792.png',
+        media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)',
+    },
+    {
+        href: '/splash/apple-splash-1242x2208.png',
+        media: '(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)',
+    },
+    {
+        href: '/splash/apple-splash-750x1334.png',
+        media: '(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)',
+    },
+    {
+        href: '/splash/apple-splash-640x1136.png',
+        media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
+    },
+];
 
 export const metadata: Metadata = {
     title: defaultTitle,
     description: defaultDescription,
     metadataBase: new URL(siteUrl),
+    manifest: '/manifest.json',
     keywords: ['digital menu', 'restaurant menu', 'menu management', 'QR menu', 'online menu', 'menu link'],
     authors: [{ name: 'MenuList', url: siteUrl }],
     openGraph: {
@@ -44,6 +83,14 @@ export const metadata: Metadata = {
     icons: {
         icon: '/favicon.ico',
         apple: '/icons/apple-touch-icon.png',
+    },
+    appleWebApp: {
+        capable: true,
+        title: 'MenuList',
+        statusBarStyle: 'default',
+    },
+    formatDetection: {
+        telephone: false,
     },
     robots: {
         index: true,
@@ -76,6 +123,30 @@ export default function RootLayout({ children }: RootLayoutProps) {
     return (
         <html lang="en" className={`${interFont.variable}`} suppressHydrationWarning={true}>
             <head>
+                <meta name="color-scheme" content="light" />
+                <meta name="mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+                <meta name="apple-mobile-web-app-title" content="MenuList" />
+                <style
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            html,
+                            body {
+                                background: #ffffff !important;
+                                color-scheme: light;
+                            }
+                        `,
+                    }}
+                />
+                {appleStartupImages.map((image) => (
+                    <link
+                        key={image.href}
+                        rel="apple-touch-startup-image"
+                        href={image.href}
+                        media={image.media}
+                    />
+                ))}
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
                 {/* CSP Violation Monitor (Development Only) */}
                 {isDev && (
