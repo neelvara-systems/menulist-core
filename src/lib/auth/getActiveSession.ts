@@ -1,4 +1,5 @@
 import LoginUserType from "@type/loginUser";
+import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 
 const CLIENT_SESSION_TTL_MS = 1500;
 
@@ -25,7 +26,7 @@ const getActiveSession = async () => {
         console.log(`%c🔐 Auth%c session cache hit`, AUTH_LOG_BADGE, AUTH_LOG_TEXT, {
             ageMs: now - clientSessionCacheAt,
         });
-        return clientSessionCache;
+        return applyActiveStoreContextToSession(clientSessionCache);
     }
 
     if (clientSessionRequest) {
@@ -41,12 +42,13 @@ const getActiveSession = async () => {
             const sessionWithType = session as unknown as LoginUserType | null;
             clientSessionCache = sessionWithType;
             clientSessionCacheAt = Date.now();
+            const effectiveSession = applyActiveStoreContextToSession(sessionWithType);
             console.log(`%c🔐 Auth%c session fetch success`, AUTH_LOG_BADGE, AUTH_SUCCESS_TEXT, {
-                authenticated: Boolean(sessionWithType?.user),
-                sId: sessionWithType?.sId ?? null,
-                tId: sessionWithType?.tId ?? null,
+                authenticated: Boolean(effectiveSession?.user),
+                sId: effectiveSession?.sId ?? null,
+                tId: effectiveSession?.tId ?? null,
             });
-            return sessionWithType;
+            return effectiveSession;
         } catch (error: any) {
             console.error(`%c🔐 Auth%c session fetch failed`, AUTH_LOG_BADGE, AUTH_ERROR_TEXT, {
                 error: error?.message || 'Unknown error',

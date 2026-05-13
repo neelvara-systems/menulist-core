@@ -8,6 +8,7 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
+import GlobalLanguagesList from "@data/languages";
 import { getProjectDataByStore } from "@database/projects";
 import {
     ExtractedDataCategory,
@@ -36,6 +37,17 @@ const MASTER_CACHE_TTL_MS = 30 * 1000;
 
 /** In-memory cache: masterProjectId -> CacheEntry */
 const masterProjectCache = new Map<string, CacheEntry>();
+
+function toExtractedDataLanguages(languages?: string[]) {
+    return (languages || []).map((code, index) => {
+        const language = GlobalLanguagesList.find(candidate => candidate.code === code);
+        return {
+            code,
+            name: language?.name || code,
+            isPrimary: index === 0,
+        };
+    });
+}
 
 /**
  * Get master project with caching
@@ -260,6 +272,8 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
             return {
                 ...item,
                 price: override.price ?? item.price,
+                description: override.description ?? item.description,
+                images: override.images ?? item.images,
                 available: override.available ?? item.available,
                 active: override.active ?? item.active,
                 isBestSeller: override.isBestSeller ?? item.isBestSeller,
@@ -336,6 +350,7 @@ function mergeProjects(master: Project, store: Project): ResolvedProject {
             store,
             [...resolvedItems, ...localOnlyItems],
             sortedCategories as ExtractedDataCategory[],
+            master,
         ),
         _resolved: {
             isMasterLinked: true,
@@ -389,8 +404,26 @@ function reconstructFiles(
     store: Project,
     items: ExtractedDataItem[],
     categories: ExtractedDataCategory[],
+    master?: Project,
 ): ProjectFileType[] {
-    if (!store.files?.length) return [];
+    if (!store.files?.length) {
+        const masterFirstFile = master?.files?.[0];
+
+        return [{
+            ...(masterFirstFile || {}),
+            uid: masterFirstFile?.uid || `resolved-${store.projectId || store.masterProjectId || 'linked-menu'}`,
+            extractedData: {
+                ...(masterFirstFile?.extractedData || {}),
+                data: {
+                    ...(masterFirstFile?.extractedData?.data || {}),
+                    items,
+                    categories,
+                    languages: masterFirstFile?.extractedData?.data?.languages
+                        || toExtractedDataLanguages(store.languages),
+                },
+            },
+        }];
+    }
 
     // Preserve first file with all its metadata, only replace extractedData.data
     const firstFile = store.files[0];

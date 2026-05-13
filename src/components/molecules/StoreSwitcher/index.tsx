@@ -10,7 +10,7 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
 import { useContext } from 'react';
-import { HiOutlineLocationMarker } from 'react-icons/hi';
+import { LuMapPin, LuStar } from 'react-icons/lu';
 
 export default function StoreSwitcher() {
     const { tenantDetails, storeDetails, userPermissions, isMasterUser, activeStoreContext, setActiveStoreContext } =
@@ -27,7 +27,7 @@ export default function StoreSwitcher() {
         value: store.storeId,
         label: (
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {store.isMaster ? '⭐' : '🏠'}
+                {store.isMaster ? <LuStar size={14} /> : <LuMapPin size={14} />}
                 {resolveStoreName(store)}
                 {store.isMaster && <span style={{ fontSize: 11, opacity: 0.6 }}>(HQ)</span>}
             </span>
@@ -57,7 +57,7 @@ export default function StoreSwitcher() {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <HiOutlineLocationMarker size={16} style={{ opacity: 0.6 }} />
+            <LuMapPin size={16} style={{ opacity: 0.6 }} />
             <Select
                 value={currentStoreId}
                 onChange={handleSwitch}

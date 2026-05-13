@@ -23,6 +23,7 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.NEW_ITEM_METADATA]: 0.0008, // ~500 input + ~200 output tokens
     [AI_ACTIONS_TYPES.SEO_AEO_GENERATION]: 0.0016, // Store-level metadata generation
     [AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION]: 0.0020, // Multi-surface store copy generation
+    [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 0.0008, // Tiny caption generation
 
     // Paid operations
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
@@ -58,6 +59,7 @@ export const AI_UNIT_COSTS: Record<string, number> = {
 
     // Paid operations (consumes units from monthly credits)
     // These are VALUE-ADD operations that produce premium outputs.
+    [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 1, // Tiny owner-requested campaign copy generation
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 1, // ₹12 charge vs ₹0.13 cost → ~99x margin
     [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 5, // ₹60 charge vs ₹3.38 cost → ~18x margin
     [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 5, // Per image in batch

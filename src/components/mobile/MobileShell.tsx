@@ -2,6 +2,7 @@
 
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
@@ -10,7 +11,7 @@ import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { LuCreditCard } from 'react-icons/lu';
+import { LuArrowLeft, LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
@@ -27,6 +28,7 @@ const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
 const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/platform': 'platformSettings',
+    '/platform/entity-blocks': 'entityBlocks',
     '/platform/users': 'platformUsers',
     '/platform/support-tickets': 'supportTickets',
     '/platform/feedback-admin': 'feedbackAdmin',
@@ -47,6 +49,7 @@ const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
     'platformSettings',
+    'entityBlocks',
     'platformUsers',
     'supportTickets',
     'feedbackAdmin',
@@ -152,7 +155,13 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 }
 
 export default function MobileShell() {
-    const { activeSubscription } = useContext(PlatformGlobalDataContext);
+    const {
+        activeStoreContext,
+        activeSubscription,
+        isMasterUser,
+        setActiveStoreContext,
+        tenantDetails,
+    } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const { data: session } = useSession();
     const pathname = usePathname();
@@ -169,6 +178,12 @@ export default function MobileShell() {
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
     const shouldBypassSubscriptionGate = isPlatformAdmin && isPlatformMobileScreen;
+    const activeOutletSummary = isMasterUser && activeStoreContext
+        ? tenantDetails?.storesList?.find((store: any) => store.storeId === activeStoreContext)
+        : null;
+    const activeOutletName = activeOutletSummary
+        ? getStoreContextName(activeOutletSummary, `Store ${activeStoreContext}`)
+        : '';
 
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
@@ -336,6 +351,35 @@ export default function MobileShell() {
                         <Text style={{ color: token.colorTextLightSolid }}>You&apos;re offline. Some features may be limited.</Text>
                     </Card>
                 ) : null}
+                {activeOutletSummary ? (
+                    <Flex
+                        align="center"
+                        gap={8}
+                        justify="space-between"
+                        style={{
+                            background: '#fff7e6',
+                            borderBottom: '1px solid #ffd591',
+                            padding: '8px 12px',
+                            paddingTop: 'calc(env(safe-area-inset-top) + 8px)',
+                        }}
+                    >
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Text strong style={{ color: '#ad6800' }}>{activeOutletName}</Text>
+                            <Text style={{ color: '#ad6800', fontSize: 12 }}>Changes apply to this location.</Text>
+                        </Flex>
+                        <Button
+                            fill="outline"
+                            onClick={() => setActiveStoreContext(null)}
+                            size="small"
+                            style={{ minHeight: 36 }}
+                        >
+                            <Flex align="center" gap={4}>
+                                <LuArrowLeft size={14} />
+                                <Text>HQ</Text>
+                            </Flex>
+                        </Button>
+                    </Flex>
+                ) : null}
                 <Flex
                     data-mobile-shell-scroll="true"
                     flex={1}
@@ -348,7 +392,7 @@ export default function MobileShell() {
                             activeTab === 'share' ||
                             (activeTab === 'today' && todayScreen === 'main') ||
                             (activeTab === 'more' && isMoreRootScreen)
-                                ? 'calc(env(safe-area-inset-top) + 8px)'
+                                ? activeOutletSummary ? 8 : 'calc(env(safe-area-inset-top) + 8px)'
                                 : 0,
                         scrollPaddingBottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                     }}

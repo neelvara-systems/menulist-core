@@ -87,7 +87,7 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | -------------------- | --------------------------- | -------------------------------------------------------------------- |
 | Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary` |
 | Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary`                            |
-| Block/unblock Entity | `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks revalidate all stores under that tenant |
+| Block/unblock Entity | `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks update `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores |
 | Link Store to Tenant | `updateTenantsStoreslist()` | `tenants`                                                            |
 | Get Next Store ID    | `getPlatformSummary()`      | Read `platformSummary/default`                                       |
 

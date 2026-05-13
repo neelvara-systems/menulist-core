@@ -1,13 +1,34 @@
 export const dynamic = 'force-dynamic';
+import { DB_COLLECTIONS } from "@constant/database";
 import { aiEnhancementPacksList } from "@data/PlatformPlansList";
-import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions";
+import { getActiveSubscriptionForStore } from "@database/subscriptions";
+import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
-import { VerifyPaymentRequestSchema } from "@lib/validation/apiSchemas";
+import { VerifyTopupRequestSchema } from "@lib/validation/apiSchemas";
 import { NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+
+const verifyRazorpayOrderSignature = (
+    orderId: string,
+    paymentId: string,
+    signature: string,
+) => {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) return false;
+
+    const expectedSignature = createHmac('sha256', keySecret)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
+    const expected = Buffer.from(expectedSignature, 'hex');
+    const actual = Buffer.from(signature, 'hex');
+
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+};
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -28,9 +49,16 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        if (!(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const rawData = await request.json();
-        const validation = validateAPIInput(VerifyPaymentRequestSchema, rawData);
+        const validation = validateAPIInput(VerifyTopupRequestSchema, rawData);
 
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
@@ -52,12 +80,99 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { razorpay_payment_id, razorpay_order_id } = validation.data;
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = validation.data;
+        if (!verifyRazorpayOrderSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)) {
+            logger.security('Invalid Topup Payment Signature', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Razorpay checkout signature mismatch',
+                orderId: razorpay_order_id,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - payment verification failed' },
+                { status: 403 }
+            );
+        }
+
+        const topupRef = firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).doc(razorpay_order_id);
+        const existingTopupSnap = await topupRef.get();
+        const existingTopup = existingTopupSnap.exists ? existingTopupSnap.data() : null;
+
+        if (
+            existingTopup
+            && (
+                (existingTopup.tenantId != null && Number(existingTopup.tenantId) !== Number(tenantId))
+                || (existingTopup.storeId != null && Number(existingTopup.storeId) !== Number(storeId))
+            )
+        ) {
+            logger.security('Unauthorized Topup Order Verification Attempt', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Stored topup tenant/store mismatch',
+                orderId: razorpay_order_id,
+                storedTenantId: existingTopup.tenantId,
+                storedStoreId: existingTopup.storeId,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (existingTopup?.status === 'paid') {
+            if (existingTopup.providerPaymentId && existingTopup.providerPaymentId !== razorpay_payment_id) {
+                logger.security('Topup Order Payment Mismatch', {
+                    ...buildSecurityContext(session, request),
+                    endpoint: '/api/razorpay/verify-topup',
+                    error: 'Paid topup was verified with a different payment id',
+                    orderId: razorpay_order_id,
+                }, 'critical');
+
+                return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
+            }
+
+            const currentSub = await getActiveSubscriptionForStore(tenantId, storeId);
+            return NextResponse.json({
+                success: true,
+                newCreditBalance: currentSub?.topUpCredits ?? existingTopup.creditsAdded ?? 0,
+                alreadyVerified: true,
+            });
+        }
 
         // Step 3. --- SERVER-SIDE VERIFICATION ---
         // This is the crucial security step. We ask Razorpay's servers for the truth.
 
-        // Step A: Fetch the payment from Razorpay to verify its status is 'captured'
+        // Step A: Fetch the full order details from Razorpay before capture.
+        const order = await razorpayClient.orders.fetch(razorpay_order_id);
+        const orderTenantId = Number(order.notes?.tenantId);
+        const orderStoreId = Number(order.notes?.storeId);
+        if (orderTenantId !== Number(tenantId) || orderStoreId !== Number(storeId)) {
+            logger.security('Unauthorized Topup Order Verification Attempt', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Order tenant/store mismatch',
+                orderTenantId,
+                orderStoreId,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        const packId = order.notes?.packId;
+        if (!packId) {
+            logger.error('Order missing packId', undefined, {
+                orderId: razorpay_order_id,
+                notes: order.notes
+            });
+            return NextResponse.json({ success: false, error: "Order details are missing." }, { status: 400 });
+        }
+
+        // Step B: Fetch the payment from Razorpay to verify its status is 'captured'
         // --- NEW LOGIC: PROGRAMMATIC CAPTURE ---
         const payment = await razorpayClient.payments.fetch(razorpay_payment_id);
         // If the payment is authorized but not yet captured, we capture it now.
@@ -74,7 +189,7 @@ export const POST = withAuth(async (request, session) => {
         // For robustness, let's re-fetch to get the final confirmed status.
         const capturedPayment = await razorpayClient.payments.fetch(razorpay_payment_id);
 
-        // Step B: The critical check. Now it should pass.
+        // Step C: The critical check. Now it should pass.
         if (capturedPayment.status !== 'captured') {
             logger.error('Payment capture failed', undefined, {
                 paymentId: razorpay_payment_id,
@@ -83,15 +198,20 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ success: false, error: "Payment could not be captured." }, { status: 402 });
         }
 
-        // Step C: Fetch the full order details from Razorpay to securely get the notes
-        const order = await razorpayClient.orders.fetch(razorpay_order_id);
-        const packId = order.notes?.packId;
-        if (!packId) {
-            logger.error('Order missing packId', undefined, {
+        const capturedPaymentOrderId = String((capturedPayment as any).order_id || '');
+        if (capturedPaymentOrderId !== razorpay_order_id) {
+            logger.security('Topup Payment Order Mismatch', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Captured payment does not belong to requested order',
                 orderId: razorpay_order_id,
-                notes: order.notes
-            });
-            return NextResponse.json({ success: false, error: "Order details are missing." }, { status: 400 });
+                paymentOrderId: capturedPaymentOrderId,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - payment mismatch' },
+                { status: 403 }
+            );
         }
 
         // Step D: Find the user's active subscription document in our database
@@ -104,14 +224,16 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ success: false, error: "No active subscription found." }, { status: 404 });
         }
 
-        // 🔒 CRITICAL: Double-check subscription belongs to this tenant/store
-        if (internalSub.tenantId !== Number(tenantId) || internalSub.storeId !== Number(storeId)) {
+        // 🔒 CRITICAL: Double-check subscription belongs to this tenant.
+        // Store may differ when an outlet inherits HQ billing.
+        if (Number(internalSub.tenantId) !== Number(tenantId)) {
             logger.security('Unauthorized Topup Verification Attempt', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
-                error: 'Subscription tenant/store mismatch',
+                error: 'Subscription tenant mismatch',
                 subscriptionTenantId: internalSub.tenantId,
                 subscriptionStoreId: internalSub.storeId,
+                requestStoreId: storeId,
             }, 'critical');
 
             return NextResponse.json(
@@ -140,10 +262,80 @@ export const POST = withAuth(async (request, session) => {
             storeId
         });
 
-        const currentTopUpCredits = internalSub.topUpCredits || 0;
-        const newBalance = currentTopUpCredits + creditsToAdd;
+        const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(internalSub.id);
+        const transactionResult = await firestoreAdmin.runTransaction(async (tx) => {
+            const [topupSnap, subscriptionSnap] = await Promise.all([
+                tx.get(topupRef),
+                tx.get(subscriptionRef),
+            ]);
+            const topupData = topupSnap.exists ? topupSnap.data() : null;
+            const subscriptionData = subscriptionSnap.exists ? subscriptionSnap.data() : null;
 
-        await updateSubscription(internalSub.id, { topUpCredits: newBalance });
+            if (topupData?.status === 'paid') {
+                if (topupData.providerPaymentId && topupData.providerPaymentId !== razorpay_payment_id) {
+                    return {
+                        alreadyVerified: false,
+                        newBalance: subscriptionData?.topUpCredits ?? topupData.creditsAdded ?? 0,
+                        paymentMismatch: true,
+                    };
+                }
+
+                return {
+                    alreadyVerified: true,
+                    newBalance: subscriptionData?.topUpCredits ?? topupData.creditsAdded ?? 0,
+                };
+            }
+
+            const currentTopUpCredits = Number(subscriptionData?.topUpCredits ?? internalSub.topUpCredits ?? 0);
+            const newBalance = currentTopUpCredits + creditsToAdd;
+            const serverNow = admin.firestore.FieldValue.serverTimestamp();
+
+            tx.set(subscriptionRef, {
+                topUpCredits: newBalance,
+                modifiedOn: serverNow,
+            }, { merge: true });
+            tx.set(topupRef, {
+                paymentProvider: 'razorpay',
+                providerOrderId: razorpay_order_id,
+                providerPaymentId: razorpay_payment_id,
+                creditsAdded: creditsToAdd,
+                amount: order.amount,
+                currency: (order.currency || capturedPayment.currency || 'INR').toUpperCase(),
+                status: 'paid',
+                userId: session.user.id,
+                tenantId,
+                storeId,
+                packId,
+                type: 'ai_enhancement_pack',
+                packName: selectedPack.name,
+                paidAt: serverNow,
+                updatedOn: serverNow,
+                createdOn: topupData?.createdOn || existingTopup?.createdOn || serverNow,
+            }, { merge: true });
+
+            return { alreadyVerified: false, newBalance, paymentMismatch: false };
+        });
+
+        if (transactionResult.paymentMismatch) {
+            logger.security('Topup Order Payment Mismatch', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Paid topup was verified with a different payment id during transaction',
+                orderId: razorpay_order_id,
+            }, 'critical');
+
+            return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
+        }
+
+        if (transactionResult.alreadyVerified) {
+            return NextResponse.json({
+                success: true,
+                newCreditBalance: transactionResult.newBalance,
+                alreadyVerified: true,
+            });
+        }
+
+        const newBalance = transactionResult.newBalance;
 
         // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
         try {
@@ -187,9 +379,13 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ success: true, newCreditBalance: newBalance });
 
     } catch (error) {
-        console.error('Top-up verification API error:', error);
+        logger.error('Top-up verification API error', error as Error, {
+            endpoint: '/api/razorpay/verify-topup',
+            tenantId: session?.user?.tenantId,
+            storeId: session?.user?.storeId,
+        });
         return NextResponse.json(
-            { error: 'Failed to verify top-up', details: (error as Error).message },
+            { error: 'Failed to verify top-up' },
             { status: 500 }
         );
     }

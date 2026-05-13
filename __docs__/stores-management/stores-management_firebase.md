@@ -28,7 +28,7 @@
 | List all tenants   | `tenants`                       | Platform admin opens Tenants tab         | Per admin session | All tenant docs | Yes              | Admin view loads all tenants.                                               |
 | Get single store   | `stores/{storeId}`              | Admin opens store details / session load | Per store click   | 1               | Direct doc       | Full store document with all settings, roles, outletPolicy.                 |
 | Get tenant stores  | `stores` (query)                | Admin opens tenant details               | Per tenant click  | 1–10            | Yes (`tenantId`) | Query filtered by tenantId.                                                 |
-| Get stores summary | `platformSummary/storesSummary` | Cloud Functions (batch operations)       | Per batch job     | 1               | Direct doc       | Single doc with all stores' essential fields. See Summary Document Pattern. |
+| Get stores summary | `platformSummary/storesSummary` | Cloud Functions, platform entity block store selector, summary-backed public filters | Per batch job / admin block flow | 1               | Direct doc       | Single doc with all stores' essential fields. See Summary Document Pattern. |
 
 ### Writes
 
@@ -39,6 +39,7 @@
 | Update store count    | `platformSummary/summary`         | `addStore()` (non-onboarding)  | Per new store           | 1            | `storesCount` (increment)                                              | `updateStoresCountInPlatformSummary()`. Skipped during onboarding (handled separately). |
 | Update store settings | `stores/{storeId}`                | Admin saves changes            | Per edit                | 1            | Merge update (updateDoc)                                               | 10+ setting sections (business info, location, hours, SEO, analytics, etc.)             |
 | Sync after update     | `platformSummary/storesSummary`   | `updateStore()`                | Per edit                | 1            | Updated summary fields                                                 | Auto-synced by `updateStore()` after every store update.                                |
+| Sync tenant block state | `platformSummary/storesSummary` | `updatePlatformEntityBlockState()` tenant flow | Per tenant block/unblock | 1 | `stores.{storeId}.tenantBlocked` for stores under the tenant | Keeps summary-backed public filters aligned with tenant-level blocks without changing each store's direct `blocked` state. |
 | Create tenant         | `tenants/{tId}`                   | Admin creates tenant           | Per new tenant          | 1            | Full tenant doc                                                        | Billing container, subscription info, storesList.                                       |
 | Update tenant         | `tenants/{tId}`                   | Admin updates tenant           | Per edit                | 1            | Merge update                                                           | Subscription, plan, limits, storesList.                                                 |
 | Upload logo           | Storage: `stores/logos/{storeId}` | Admin uploads logo             | Per upload              | 1            | Base64 → Storage URL                                                   | `uploadBase64ToStorage()` called within `addStore()` / `updateStore()`.                 |
@@ -78,4 +79,5 @@ Negligible — admin operations only, <100 operations/month typically. Under $0.
 | `addStore`                           | `src/database/stores/index.tsx`         | Write (setDoc + syncs)   | 0     | 3      |
 | `updateStore`                        | `src/database/stores/index.tsx`         | Write (updateDoc + sync) | 0     | 2      |
 | `syncStoreToSummary`                 | `src/database/platformSummary/index.ts` | Write (setDoc merge)     | 0     | 1      |
+| `updateTenantStoreBlockStatusInSummary` | `src/database/platformSummary/index.ts` | Write (updateDoc)        | 1     | 1      |
 | `updateStoresCountInPlatformSummary` | `src/database/platformSummary/index.ts` | Write (increment)        | 0     | 1      |

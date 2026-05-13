@@ -68,6 +68,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     }
 
     const storesList = tenantDetails?.storesList || [];
+    const activeStoresList = storesList.filter((store: any) => store.active !== false);
     const outletCount = storesList.filter((store: any) => !store.isMaster).length;
     const currency = activeSubscription?.currency || 'INR';
     const amount = activeSubscription?.amount || 0;
@@ -109,7 +110,14 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
             if (tenantDetails && data.storeId) {
                 const updatedStoresList = [
                     ...tenantDetails.storesList,
-                    { storeId: data.storeId, name: outletName.trim(), tenantName: data.tenantName || tenantDetails.name, isMaster: false },
+                    {
+                        active: true,
+                        isMaster: false,
+                        name: outletName.trim(),
+                        outletSlug: data.outletSlug,
+                        storeId: data.storeId,
+                        tenantName: data.tenantName || tenantDetails.name,
+                    },
                 ];
                 setTenantDetails({ ...tenantDetails, storesList: updatedStoresList });
             }
@@ -169,7 +177,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     <Flex justify="space-between">
                         <Flex gap={2} vertical>
                             <Title level={4} style={{ margin: 0 }}>
-                                {storesList.length}
+                                {activeStoresList.length}
                             </Title>
                             <Text type="secondary">{t('totalStores')}</Text>
                         </Flex>
@@ -181,7 +189,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                         </Flex>
                         <Flex gap={2} vertical>
                             <Title level={5} style={{ margin: 0 }}>
-                                {`${currency} ${amount * storesList.length}`}
+                                {`${currency} ${amount * activeStoresList.length}`}
                             </Title>
                             <Text type="secondary">{t('perMonthTotal')}</Text>
                         </Flex>

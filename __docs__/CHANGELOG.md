@@ -6,6 +6,23 @@
 
 ---
 
+## May 12, 2026 — Billing and Enhancement Packs
+
+### Changed
+
+- **Mobile billing matches desktop handling** — Mobile Billing now supports store selection, inherited HQ billing context for outlets, monthly/yearly plan choices, enhancement pack purchase, and billing history from the effective subscription store.
+- **Billing store context clarified** — Desktop Billing now uses the selected store context and states when an outlet is using the HQ subscription.
+
+### Fixed
+
+- **Enhancement pack audit trail completed** — Razorpay top-up creation now writes `topups/{orderId}` as pending, verification marks it paid, and duplicate verification no longer adds credits twice.
+- **Billing mutation access hardened** — Subscription and enhancement-pack mutation APIs now require the store role to include `canManageSubscription`.
+- **Top-up verification hardened** — Verified enhancement-pack orders must pass Razorpay signature verification and match the authenticated tenant and store from Razorpay order notes before credits are added.
+- **AI balance consumption made transactional** — Paid AI operations now deduct plan credits first and enhancement-pack credits second inside a Firestore transaction, avoiding missed deductions during concurrent requests.
+- **Billing-cycle credit reset made transactional** — Lazy monthly credit reset now re-reads and writes the subscription inside a Firestore transaction, so renewal reset cannot overwrite a concurrent AI usage deduction.
+- **Campaign caption usage accounting added** — Campaign caption generation now records token/cost metadata and consumes one AI unit through the same capacity path.
+- **AI operation credit basis aligned** — Cloud Functions menu-image processing now uses the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes, keeping usage logs consistent across desktop, mobile-triggered, and worker-side AI flows.
+
 ## May 12, 2026 — Client Menu: Public UX Fixes
 
 ### Changed

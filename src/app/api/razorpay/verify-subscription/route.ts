@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getSubscriptionById, updateSubscription } from "@database/subscriptions";
+import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
@@ -22,6 +23,25 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
 
     try {
+        if (!session?.user?.tenantId || !session?.user?.storeId) {
+            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
+        }
+
+        const { tenantId, storeId } = session.user;
+        if (!verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!(await canManageBillingMutation(session, request, '/api/razorpay/verify-subscription'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const rawData = await request.json();
         const validation = validateAPIInput(VerifyPaymentRequestSchema, rawData);

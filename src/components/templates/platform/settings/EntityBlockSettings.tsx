@@ -1,11 +1,13 @@
 'use client'
 
 import { updatePlatformEntityBlockState } from '@database/platformEntityBlocks';
-import { getAllStoresByTenantId } from '@database/stores';
+import { FEATURE_FLAGS } from '@config/features';
+import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { getStoresSummary } from '@database/platformSummary';
+import { getStoreById } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
 import { getUserByTenantId } from '@database/users';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import type { PlatformBlockEntityType } from '@type/platform/blocking';
 import type { StoreDataType } from '@type/platform/store';
 import type { TenantDataType } from '@type/platform/tenant';
@@ -29,8 +31,16 @@ function getEntityId(entityType: PlatformBlockEntityType, entity: any): string |
     return entity.id;
 }
 
-function getBlockStatusTag(entity: any) {
-    return isPlatformEntityBlocked(entity)
+function isEntityDirectlyBlocked(entity: any) {
+    return entity?.blocked === true || entity?.blockDetails?.blocked === true;
+}
+
+function getBlockStatusTag(entity: any, entityType: PlatformBlockEntityType) {
+    if (entityType === 'store' && entity?.tenantBlocked === true && !isEntityDirectlyBlocked(entity)) {
+        return <Tag color="warning">Blocked by tenant</Tag>;
+    }
+
+    return isEntityDirectlyBlocked(entity)
         ? <Tag color="error">Blocked</Tag>
         : <Tag color="green">Not blocked</Tag>;
 }
@@ -39,32 +49,68 @@ export default function EntityBlockSettings() {
     const session = useClientAuthSession();
     const [entityType, setEntityType] = useState<PlatformBlockEntityType>('tenant');
     const [tenants, setTenants] = useState<TenantDataType[]>([]);
-    const [stores, setStores] = useState<StoreDataType[]>([]);
+    const [stores, setStores] = useState<Array<StoreDataType & { tenantBlocked?: boolean }>>([]);
     const [users, setUsers] = useState<UserDataType[]>([]);
     const [tenantId, setTenantId] = useState<number | null>(null);
     const [entityId, setEntityId] = useState<string | number | null>(null);
     const [reason, setReason] = useState('');
     const [loading, setLoading] = useState(false);
+    const canManageEntityBlocks = FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS && session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
 
     useEffect(() => {
+        if (!canManageEntityBlocks) return;
         getAllTenants().then((nextTenants) => {
             setTenants(nextTenants);
         });
-    }, []);
+    }, [canManageEntityBlocks]);
 
     useEffect(() => {
         setEntityId(null);
         setStores([]);
         setUsers([]);
+        if (!canManageEntityBlocks) return;
         if (entityType === 'tenant') return;
         if (tenantId === null) return;
 
         if (entityType === 'store') {
-            getAllStoresByTenantId(tenantId).then(setStores);
+            getStoresSummary().then((summary) => {
+                const summaryStores = Object.entries(summary?.stores || {})
+                    .filter(([, store]) => String(store?.tId ?? '') === String(tenantId))
+                    .map(([storeId, store]) => ({
+                        active: store.active,
+                        blocked: store.blocked,
+                        tenantBlocked: store.tenantBlocked,
+                        deleted: false,
+                        email: '',
+                        logo: store.logo || '',
+                        name: store.name || `Store ${storeId}`,
+                        phoneNumber: '',
+                        storeId: Number(storeId),
+                        storeKey: String(storeId),
+                        tenantId: Number(store.tId),
+                        tenantName: store.tenantName || '',
+                        verified: true,
+                    } as StoreDataType & { tenantBlocked?: boolean }));
+                setStores(summaryStores);
+            });
         } else {
             getUserByTenantId(String(tenantId)).then(setUsers);
         }
-    }, [entityType, tenantId]);
+    }, [canManageEntityBlocks, entityType, tenantId]);
+
+    useEffect(() => {
+        if (!canManageEntityBlocks) return;
+        if (entityType !== 'store' || entityId == null) return;
+
+        getStoreById(Number(entityId)).then((store) => {
+            if (!store) return;
+            setStores((current) => current.map((summaryStore: any) => (
+                String(summaryStore.storeId) === String(entityId)
+                    ? { ...summaryStore, ...store, tenantBlocked: summaryStore.tenantBlocked }
+                    : summaryStore
+            )));
+        });
+    }, [canManageEntityBlocks, entityId, entityType]);
 
     const entityOptions = useMemo(() => {
         if (entityType === 'tenant') {
@@ -87,7 +133,7 @@ export default function EntityBlockSettings() {
         }));
     }, [entityType, stores, tenants, users]);
 
-    const selectedEntity = useMemo(() => {
+    const selectedEntity: any = useMemo(() => {
         if (entityId == null) return null;
         if (entityType === 'tenant') return tenants.find((tenant) => tenant.tenantId === entityId) || null;
         if (entityType === 'store') return stores.find((store) => store.storeId === entityId) || null;
@@ -95,7 +141,7 @@ export default function EntityBlockSettings() {
     }, [entityId, entityType, stores, tenants, users]);
 
     const blockDetails = selectedEntity?.blockDetails;
-    const isBlocked = isPlatformEntityBlocked(selectedEntity);
+    const isBlocked = isEntityDirectlyBlocked(selectedEntity);
     const nextBlockedState = !isBlocked;
 
     const updateLocalEntity = (updated: any) => {
@@ -115,6 +161,11 @@ export default function EntityBlockSettings() {
     };
 
     const onSubmit = () => {
+        if (!canManageEntityBlocks) {
+            message.error('Only platform administrators can manage entity blocks');
+            return;
+        }
+
         const selectedEntityId = getEntityId(entityType, selectedEntity);
         if (!selectedEntity || selectedEntityId == null) {
             message.warning('Select an entity first');
@@ -162,6 +213,16 @@ export default function EntityBlockSettings() {
             },
         });
     };
+
+    if (!canManageEntityBlocks) {
+        return (
+            <Alert
+                message="Only platform administrators can manage entity blocks."
+                showIcon
+                type="error"
+            />
+        );
+    }
 
     return (
         <Flex vertical gap={20}>
@@ -228,7 +289,7 @@ export default function EntityBlockSettings() {
                                 <Flex vertical gap={6}>
                                     <Space>
                                         <Text strong>{selectedEntity.name || selectedEntity.email}</Text>
-                                        {getBlockStatusTag(selectedEntity)}
+                                        {getBlockStatusTag(selectedEntity, entityType)}
                                     </Space>
                                     <Text type="secondary">
                                         ID: {String(getEntityId(entityType, selectedEntity))}

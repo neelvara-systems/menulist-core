@@ -14,6 +14,7 @@ import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
+import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
@@ -21,6 +22,8 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { getDataUrlMimeType } from '@lib/media/imageProfiles';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
+import { resolveProjectForRender } from '@lib/multiOutlet';
+import { stripResolvedOutletProjectForSave } from '@lib/multiOutlet/outletProjectPersistence';
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -29,6 +32,7 @@ import { normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { removeObjRef } from '@util/utils';
+import { DEFAULT_OUTLET_POLICY, type InheritanceState, type OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -415,7 +419,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
     const tShare = useTranslations('MobileShare');
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'menu'), [storeDetails]);
     const {
         isLoading: loadingProjects,
@@ -490,6 +494,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const uncategorizedLabel = t('uncategorized');
     const menuContentTopRef = useRef<HTMLDivElement | null>(null);
     const persistedMenuRef = useRef<any>(null);
+    const rawMenuProjectRef = useRef<any>(null);
     const menuDataRef = useRef<any>(null);
     const pendingMenuRef = useRef<any>(null);
     const persistedLocalSnapshotRef = useRef<string | null>(null);
@@ -499,6 +504,63 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const isPersistingRef = useRef(false);
     const menuUpdateGenerationRef = useRef(0);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
+    const [itemInheritanceStates, setItemInheritanceStates] = useState<Record<string, InheritanceState>>({});
+    const [categoryInheritanceStates, setCategoryInheritanceStates] = useState<Record<string, InheritanceState>>({});
+
+    const outletPolicy = useMemo<OutletPolicy | null>(() => {
+        if (!menuData?.masterProjectId || isMasterUser) return null;
+        return {
+            ...DEFAULT_OUTLET_POLICY,
+            ...((userPermissions as any)?.outletPolicy || {}),
+        };
+    }, [isMasterUser, menuData?.masterProjectId, userPermissions]);
+
+    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction !== false;
+    const canAddLocalItems = userPermissions?.canAddLocalItems !== false;
+    const canAddLocalCategories = userPermissions?.canAddLocalCategories !== false;
+
+    const getPersistableMenuProject = useCallback((project: any) => {
+        if (!project?.masterProjectId) return project;
+        return stripResolvedOutletProjectForSave(
+            project,
+            rawMenuProjectRef.current || persistedMenuRef.current,
+        );
+    }, []);
+
+    const getPersistableMenuProjectWithLinkedOverrides = useCallback((project: any) => {
+        if (!project?.masterProjectId) return project;
+
+        const updatedProject = removeObjRef(project);
+        if (outletPolicy?.imageOverride === true || outletPolicy?.descriptionOverride === true) {
+            const nextItemOverrides = {
+                ...(updatedProject.overrides?.items || {}),
+            };
+
+            updatedProject.files?.forEach((file: any) => {
+                file.extractedData?.data?.items?.forEach((item: any) => {
+                    const inheritanceState = itemInheritanceStates[item.id];
+                    if (
+                        (inheritanceState === 'inherited' || inheritanceState === 'overridden') &&
+                        (Array.isArray(item.images) || item.description)
+                    ) {
+                        nextItemOverrides[item.id] = {
+                            ...(nextItemOverrides[item.id] || {}),
+                            ...(outletPolicy?.imageOverride === true && Array.isArray(item.images) ? { images: item.images } : {}),
+                            ...(outletPolicy?.descriptionOverride === true && item.description ? { description: item.description } : {}),
+                        };
+                    }
+                });
+            });
+
+            updatedProject.overrides = {
+                items: nextItemOverrides,
+                categories: updatedProject.overrides?.categories || {},
+                attributes: updatedProject.overrides?.attributes || {},
+            };
+        }
+
+        return getPersistableMenuProject(updatedProject);
+    }, [getPersistableMenuProject, itemInheritanceStates, outletPolicy?.descriptionOverride, outletPolicy?.imageOverride]);
 
     const replaceProjectInList = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
@@ -626,8 +688,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         pendingLocalSnapshotRef.current = null;
         persistedMenuRef.current = savedProject;
         persistedLocalSnapshotRef.current = savedSnapshot;
+        rawMenuProjectRef.current = savedProject;
         menuDataRef.current = savedProject;
-        setMenuData(savedProject);
+        setMenuData((current: any) => (
+            current?.projectId === savedProject.projectId && current?.masterProjectId
+                ? current
+                : savedProject
+        ));
         replaceProjectInList(savedProject);
 
         setEditingItem((current) => {
@@ -657,7 +724,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             return;
         }
 
-        const snapshot = removeObjRef(pendingMenuRef.current);
+        const pendingDisplayProject = removeObjRef(pendingMenuRef.current);
+        const snapshot = removeObjRef(getPersistableMenuProjectWithLinkedOverrides(pendingDisplayProject));
         const snapshotString = JSON.stringify(snapshot);
         isPersistingRef.current = true;
 
@@ -668,12 +736,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             persistedLocalSnapshotRef.current = snapshotString;
 
             if (pendingMenuRef.current?.projectId === snapshot.projectId) {
-                const pendingSnapshot = JSON.stringify(pendingMenuRef.current);
+                const pendingSnapshot = JSON.stringify(getPersistableMenuProjectWithLinkedOverrides(pendingMenuRef.current));
                 if (pendingSnapshot === snapshotString) {
                     pendingMenuRef.current = null;
                     pendingLocalSnapshotRef.current = null;
+                    rawMenuProjectRef.current = removeObjRef(nextProject);
                     setMenuData((current: any) => (
-                        current?.projectId === nextProject.projectId ? nextProject : current
+                        current?.projectId === nextProject.projectId && current?.masterProjectId
+                            ? current
+                            : nextProject
                     ));
                     replaceProjectInList(nextProject);
                 }
@@ -691,7 +762,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         } finally {
             isPersistingRef.current = false;
 
-            if (pendingMenuRef.current && JSON.stringify(pendingMenuRef.current) !== JSON.stringify(persistedMenuRef.current)) {
+            if (
+                pendingMenuRef.current &&
+                JSON.stringify(getPersistableMenuProjectWithLinkedOverrides(pendingMenuRef.current)) !== JSON.stringify(persistedMenuRef.current)
+            ) {
                 if (!persistTimerRef.current) {
                     persistTimerRef.current = window.setTimeout(() => {
                         persistTimerRef.current = null;
@@ -700,13 +774,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                 }
             }
         }
-    }, [replaceProjectInList, t]);
+    }, [getPersistableMenuProjectWithLinkedOverrides, replaceProjectInList, t]);
 
     const queueMenuPersist = useCallback((updatedProject: any) => {
         if (!updatedProject?.projectId) return;
 
         const nextPendingProject = removeObjRef(updatedProject);
-        const nextPendingSnapshot = JSON.stringify(nextPendingProject);
+        const nextPendingSnapshot = JSON.stringify(getPersistableMenuProjectWithLinkedOverrides(nextPendingProject));
 
         if (nextPendingSnapshot === pendingLocalSnapshotRef.current) {
             return;
@@ -731,15 +805,16 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             persistTimerRef.current = null;
             void flushPendingMenuPersist();
         }, MOBILE_MENU_PERSIST_DEBOUNCE_MS);
-    }, [flushPendingMenuPersist]);
+    }, [flushPendingMenuPersist, getPersistableMenuProjectWithLinkedOverrides]);
 
     const applyLocalMenuUpdate = useCallback((updatedProject: any) => {
+        const cacheProject = getPersistableMenuProjectWithLinkedOverrides(updatedProject);
         menuUpdateGenerationRef.current += 1;
         menuDataRef.current = updatedProject;
         setMenuData(updatedProject);
-        replaceProjectInList(updatedProject);
+        replaceProjectInList(cacheProject);
         queueMenuPersist(updatedProject);
-    }, [queueMenuPersist, replaceProjectInList]);
+    }, [getPersistableMenuProjectWithLinkedOverrides, queueMenuPersist, replaceProjectInList]);
 
     const markPriceOutlierReviewed = useCallback((itemId: string) => {
         const sourceProject = menuDataRef.current;
@@ -767,22 +842,123 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         Toast.show({ content: 'Price review marked as done.', duration: 1200 });
     }, [applyLocalMenuUpdate]);
 
+    const applyLinkedOutletBulkOverrideDiff = useCallback((updatedProject: any, previousProject?: any) => {
+        if (!updatedProject?.masterProjectId || !previousProject?.files?.length) {
+            return { project: updatedProject, skippedInheritedChanges: false };
+        }
+
+        const previousItems = new Map<string, any>();
+        previousProject.files?.forEach((file: any) => {
+            file.extractedData?.data?.items?.forEach((item: any) => {
+                previousItems.set(item.id, item);
+            });
+        });
+
+        const nextProject = removeObjRef(updatedProject);
+        const nextItemOverrides = {
+            ...(nextProject.overrides?.items || {}),
+        };
+        const nextAttributeOverrides = {
+            ...(nextProject.overrides?.attributes || {}),
+        };
+        let skippedInheritedChanges = false;
+
+        nextProject.files?.forEach((file: any) => {
+            file.extractedData?.data?.items?.forEach((item: any) => {
+                const inheritanceState = itemInheritanceStates[item.id];
+                if (inheritanceState !== 'inherited' && inheritanceState !== 'overridden') return;
+
+                const previousItem = previousItems.get(item.id);
+                if (!previousItem) return;
+                const hadExistingOverride = Boolean(nextItemOverrides[item.id]);
+                const itemOverride = {
+                    ...(nextItemOverrides[item.id] || {}),
+                };
+
+                if (String(item.price ?? '') !== String(previousItem.price ?? '')) {
+                    if (outletPolicy?.priceOverride === false) {
+                        item.price = previousItem.price;
+                        skippedInheritedChanges = true;
+                    } else {
+                        itemOverride.price = String(item.price ?? '');
+                    }
+                }
+
+                if ((item.available !== false) !== (previousItem.available !== false)) {
+                    if (outletPolicy?.availabilityOverride === false) {
+                        item.available = previousItem.available;
+                        skippedInheritedChanges = true;
+                    } else {
+                        itemOverride.available = item.available !== false;
+                    }
+                }
+
+                if ((item.active !== false) !== (previousItem.active !== false)) {
+                    itemOverride.active = item.active !== false;
+                }
+
+                if (item.orderIndex !== previousItem.orderIndex && item.orderIndex !== undefined) {
+                    itemOverride.orderIndex = item.orderIndex;
+                }
+
+                if (item.category !== previousItem.category) {
+                    item.category = previousItem.category;
+                    skippedInheritedChanges = true;
+                }
+
+                (item.attributes || []).forEach((attribute: any) => {
+                    const previousAttribute = previousItem.attributes?.find((candidate: any) => candidate.id === attribute.id);
+                    if (!previousAttribute || String(attribute.price ?? '') === String(previousAttribute.price ?? '')) return;
+
+                    if (outletPolicy?.priceOverride === false) {
+                        attribute.price = previousAttribute.price;
+                        skippedInheritedChanges = true;
+                        return;
+                    }
+
+                    nextAttributeOverrides[attribute.id] = {
+                        ...(nextAttributeOverrides[attribute.id] || {}),
+                        price: String(attribute.price ?? ''),
+                    };
+                });
+
+                if (hadExistingOverride || Object.keys(itemOverride).length > 0) {
+                    nextItemOverrides[item.id] = itemOverride;
+                } else {
+                    delete nextItemOverrides[item.id];
+                }
+            });
+        });
+
+        nextProject.overrides = {
+            items: nextItemOverrides,
+            categories: nextProject.overrides?.categories || {},
+            attributes: nextAttributeOverrides,
+        };
+
+        return { project: nextProject, skippedInheritedChanges };
+    }, [itemInheritanceStates, outletPolicy?.availabilityOverride, outletPolicy?.priceOverride]);
+
     const applyUndoableBulkMenuUpdate = useCallback((updatedProject: any, previousProject?: any, updatedCount?: number, successMessage?: string) => {
-        applyLocalMenuUpdate(updatedProject);
+        const linkedUpdate = applyLinkedOutletBulkOverrideDiff(updatedProject, previousProject || menuDataRef.current);
+        applyLocalMenuUpdate(linkedUpdate.project);
 
         const baseMessage = successMessage || t('itemsUpdated', { count: updatedCount || 0 });
+        const displayMessage = linkedUpdate.skippedInheritedChanges
+            ? `${baseMessage}. Some inherited fields were left unchanged.`
+            : baseMessage;
 
         if (!previousProject) {
-            Toast.show({ content: baseMessage, duration: 1800 });
+            Toast.show({ content: displayMessage, duration: 1800 });
             return;
         }
 
         const undoGeneration = menuUpdateGenerationRef.current;
-        const undoProjectId = updatedProject?.projectId;
+        const undoProjectId = linkedUpdate.project?.projectId;
         Toast.show({
             content: (
                 <Flex align="center" gap={12} justify="space-between" style={{ minWidth: 0, width: '100%' }}>
-                    <Text style={{ flex: 1, minWidth: 0 }}>{baseMessage}</Text>
+                    <Text style={{ flex: 1, minWidth: 0 }}>{displayMessage}</Text>
                     <Flex align="center" gap={4}>
                         <Button
                             fill="none"
@@ -816,7 +992,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             ),
             duration: 5000,
         });
-    }, [applyLocalMenuUpdate, t]);
+    }, [applyLinkedOutletBulkOverrideDiff, applyLocalMenuUpdate, t]);
 
     useEffect(() => {
         menuDataRef.current = menuData;
@@ -894,6 +1070,16 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             return;
         }
 
+        const inheritanceState = itemInheritanceStates[selectedItem.id];
+        const isInheritedOutletItem = Boolean(
+            sourceProject.masterProjectId &&
+            (inheritanceState === 'inherited' || inheritanceState === 'overridden')
+        );
+        if (isInheritedOutletItem && outletPolicy?.imageOverride !== true) {
+            Toast.show({ content: 'Image changes are not enabled for this location.', duration: 1800 });
+            return;
+        }
+
         const updatedProject = await associateItemImagesWithProject(
             sourceProject,
             selectedItem,
@@ -905,14 +1091,32 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             return;
         }
 
+        const projectToSave = getPersistableMenuProjectWithLinkedOverrides(updatedProject);
         const savedProject = await updateProjectWithoutLoader({
-            ...updatedProject,
+            ...projectToSave,
             projectId: sourceProject.projectId,
         });
 
-        syncSavedMenuProject(savedProject || updatedProject);
+        if (sourceProject.masterProjectId) {
+            const rawSavedProject = savedProject || projectToSave;
+            rawMenuProjectRef.current = removeObjRef(rawSavedProject);
+            persistedMenuRef.current = removeObjRef(rawSavedProject);
+            persistedLocalSnapshotRef.current = JSON.stringify(removeObjRef(rawSavedProject));
+            menuDataRef.current = updatedProject;
+            setMenuData(updatedProject);
+            replaceProjectInList(rawSavedProject);
+        } else {
+            syncSavedMenuProject(savedProject || updatedProject);
+        }
         Toast.show({ content: t('imageAddedSuccess'), duration: 1200 });
-    }, [syncSavedMenuProject, t]);
+    }, [
+        getPersistableMenuProjectWithLinkedOverrides,
+        itemInheritanceStates,
+        outletPolicy?.imageOverride,
+        replaceProjectInList,
+        syncSavedMenuProject,
+        t,
+    ]);
 
     useEffect(() => {
         const nextProject = selectedProject ? removeObjRef(selectedProject) : null;
@@ -924,12 +1128,17 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (!nextProjectId) {
             menuUpdateGenerationRef.current += 1;
             setMenuData(null);
+            rawMenuProjectRef.current = null;
             persistedMenuRef.current = null;
             pendingMenuRef.current = null;
             persistedLocalSnapshotRef.current = null;
             pendingLocalSnapshotRef.current = null;
+            setItemInheritanceStates({});
+            setCategoryInheritanceStates({});
             return;
         }
+
+        rawMenuProjectRef.current = nextProject;
 
         if (nextProjectId !== currentProjectId) {
             menuUpdateGenerationRef.current += 1;
@@ -964,6 +1173,47 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             persistedLocalSnapshotRef.current = nextSnapshot;
         }
     }, [menuData?.projectId, selectedProject]);
+
+    useEffect(() => {
+        if (!selectedProject?.projectId) return;
+
+        const rawProject = removeObjRef(selectedProject);
+        rawMenuProjectRef.current = rawProject;
+
+        if (!rawProject.masterProjectId) {
+            setItemInheritanceStates({});
+            setCategoryInheritanceStates({});
+            return;
+        }
+
+        let cancelled = false;
+
+        const resolveLinkedProject = async () => {
+            try {
+                const resolved = await resolveProjectForRender({ storeProject: rawProject });
+                if (cancelled || pendingMenuRef.current?.projectId === rawProject.projectId) return;
+
+                setItemInheritanceStates(resolved._resolved?.itemStates || {});
+                setCategoryInheritanceStates(resolved._resolved?.categoryStates || {});
+
+                const resolvedProject = removeObjRef(resolved);
+                menuDataRef.current = resolvedProject;
+                setMenuData((current: any) => (
+                    current?.projectId === rawProject.projectId
+                        ? resolvedProject
+                        : current
+                ));
+            } catch (error) {
+                console.error('[MobileMenu] Failed to resolve linked outlet project:', error);
+            }
+        };
+
+        void resolveLinkedProject();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedProject]);
 
     useEffect(() => {
         if (!menuData?.projectId || activeProcessingState) return;
@@ -1072,49 +1322,45 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         }
 
         if (jobIsPreviewReady && !showReviewSheet && activeJob?.result && menuData?.projectId) {
-            try {
-                const existingItems = menuData.files?.flatMap((file: any) => (file.extractedData?.data?.items || []).map((item: any) => ({
-                    ...item,
-                    fileUid: file.uid,
-                }))) || [];
-                const existingCategories = menuData.files?.flatMap((file: any) => (file.extractedData?.data?.categories || []).map((category: any) => ({
-                    ...category,
-                    fileUid: file.uid,
-                }))) || [];
-                const extractedItems = activeJob.result.combinedData?.items || [];
-                const extractedCategories = activeJob.result.combinedData?.categories || [];
-                const comparisonMode: ComparisonMode = menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE';
-                const primaryLang = menuData?.languages?.[0] || 'en';
+            void (async () => {
+                try {
+                    const storeProject = buildComparisonProjectInput(menuData);
+                    const masterProject = menuData?.masterProjectId
+                        ? await getLinkedMasterComparisonInput(menuData)
+                        : undefined;
+                    const extractedItems = activeJob.result.combinedData?.items || [];
+                    const extractedCategories = activeJob.result.combinedData?.categories || [];
+                    const comparisonMode: ComparisonMode = menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE';
+                    const primaryLang = menuData?.languages?.[0] || 'en';
 
-                const comparison = runComparisonEngine({
-                    extracted: {
-                        categories: extractedCategories,
-                        items: extractedItems,
-                    },
-                    storeProject: {
-                        categories: existingCategories,
-                        items: existingItems,
-                    },
-                    mode: comparisonMode,
-                    primaryLang,
-                });
+                    const comparison = runComparisonEngine({
+                        extracted: {
+                            categories: extractedCategories,
+                            items: extractedItems,
+                        },
+                        storeProject,
+                        masterProject,
+                        mode: comparisonMode,
+                        primaryLang,
+                    });
 
-                setExtractionStats({
-                    qualityScore: activeJob.result.qualityScore,
-                    qualityDetails: activeJob.result.qualityDetails,
-                    categoriesCount: activeJob.result.combinedData?.categories?.length || 0,
-                    itemsCount: activeJob.result.combinedData?.items?.length || 0,
-                });
-                setComparisonResult(comparison);
-                setShowReviewSheet(true);
-            } catch (error) {
-                console.error('[MobileMenu] Comparison engine failed:', error);
-                setFailureMessage(t('comparisonFailed'));
-                setShowFailureState(true);
-                setShowReviewSheet(false);
-                setComparisonResult(null);
-                setActiveProcessingState(null);
-            }
+                    setExtractionStats({
+                        qualityScore: activeJob.result.qualityScore,
+                        qualityDetails: activeJob.result.qualityDetails,
+                        categoriesCount: activeJob.result.combinedData?.categories?.length || 0,
+                        itemsCount: activeJob.result.combinedData?.items?.length || 0,
+                    });
+                    setComparisonResult(comparison);
+                    setShowReviewSheet(true);
+                } catch (error) {
+                    console.error('[MobileMenu] Comparison engine failed:', error);
+                    setFailureMessage(t('comparisonFailed'));
+                    setShowFailureState(true);
+                    setShowReviewSheet(false);
+                    setComparisonResult(null);
+                    setActiveProcessingState(null);
+                }
+            })();
         }
 
         if (jobIsFailed) {
@@ -1939,6 +2185,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
     const handleCategoryAdd = async ({ names, active, icon, presetIds }: { names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => {
         if (!menuData) return;
+        if (menuData.masterProjectId && !canAddLocalCategories) {
+            Toast.show({ content: 'Local categories are not enabled for this location.', duration: 1800 });
+            return;
+        }
         const presets = storeDetails?.timeSlotPresets || [];
         const previous = menuData;
         const updated = removeObjRef(menuData);
@@ -1978,6 +2228,38 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (!menuData) return;
         const presets = storeDetails?.timeSlotPresets || [];
         const updated = removeObjRef(menuData);
+        const inheritanceState = categoryInheritanceStates[categoryId];
+        const isInheritedOutletCategory = Boolean(
+            menuData.masterProjectId &&
+            (inheritanceState === 'inherited' || inheritanceState === 'overridden')
+        );
+
+        if (isInheritedOutletCategory) {
+            updated.overrides = {
+                items: updated.overrides?.items || {},
+                categories: {
+                    ...(updated.overrides?.categories || {}),
+                    [categoryId]: {
+                        ...(updated.overrides?.categories?.[categoryId] || {}),
+                        active,
+                    },
+                },
+                attributes: updated.overrides?.attributes || {},
+            };
+
+            updated.files?.forEach((file: any) => {
+                file.extractedData?.data?.categories?.forEach((category: any) => {
+                    if (category.id === categoryId) {
+                        category.active = active;
+                    }
+                });
+            });
+
+            applyLocalMenuUpdate(updated);
+            Toast.show({ content: active ? t('categoryShown') : t('categoryHidden'), duration: 1000 });
+            return;
+        }
+
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.categories?.forEach((category: any) => {
                 if (category.id === categoryId) {
@@ -2069,6 +2351,16 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
     const handleCategoryDelete = async (categoryId: string) => {
         if (!menuData) return;
+        const inheritanceState = categoryInheritanceStates[categoryId];
+        if (
+            menuData.masterProjectId &&
+            inheritanceState &&
+            inheritanceState !== 'local-only'
+        ) {
+            Toast.show({ content: 'Inherited categories stay connected to the master menu.', duration: 1800 });
+            return;
+        }
+
         const updated = removeObjRef(menuData);
         updated.files?.forEach((file: any) => {
             const hasCategory = file.extractedData?.data?.categories?.some((category: ExtractedDataCategory) => category.id === categoryId);
@@ -2084,6 +2376,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const handleCategoryReorder = async (orderedCategoryIds: string[]) => {
         if (!menuData) return;
         const updated = removeObjRef(menuData);
+        if (menuData.masterProjectId) {
+            const nextCategoryOverrides = {
+                ...(updated.overrides?.categories || {}),
+            };
+            orderedCategoryIds.forEach((categoryId, index) => {
+                const inheritanceState = categoryInheritanceStates[categoryId];
+                if (inheritanceState === 'inherited' || inheritanceState === 'overridden') {
+                    nextCategoryOverrides[categoryId] = {
+                        ...(nextCategoryOverrides[categoryId] || {}),
+                        orderIndex: index,
+                    };
+                }
+            });
+            updated.overrides = {
+                items: updated.overrides?.items || {},
+                categories: nextCategoryOverrides,
+                attributes: updated.overrides?.attributes || {},
+            };
+        }
+
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.categories?.forEach((category: any) => {
                 const index = orderedCategoryIds.findIndex((itemId) => itemId === category.id);
@@ -2098,6 +2410,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const handleCategoryItemReorder = async (categoryId: string, orderedItemIds: string[]) => {
         if (!menuData) return;
         const updated = removeObjRef(menuData);
+        if (menuData.masterProjectId) {
+            const nextItemOverrides = {
+                ...(updated.overrides?.items || {}),
+            };
+            orderedItemIds.forEach((itemId, index) => {
+                const inheritanceState = itemInheritanceStates[itemId];
+                if (inheritanceState === 'inherited' || inheritanceState === 'overridden') {
+                    nextItemOverrides[itemId] = {
+                        ...(nextItemOverrides[itemId] || {}),
+                        orderIndex: index,
+                    };
+                }
+            });
+            updated.overrides = {
+                items: nextItemOverrides,
+                categories: updated.overrides?.categories || {},
+                attributes: updated.overrides?.attributes || {},
+            };
+        }
+
         updated.files?.forEach((file: any) => {
             const currentItems = file.extractedData?.data?.items || [];
             if (!currentItems.length) return;
@@ -2133,7 +2465,30 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     const handleToggleAvailability = useCallback(async (item: MenuItemType) => {
         if (!menuData) return;
         const newAvailability = !item.available;
+        const inheritanceState = itemInheritanceStates[item.id];
+        const isInheritedOutletItem = Boolean(
+            menuData.masterProjectId &&
+            (inheritanceState === 'inherited' || inheritanceState === 'overridden')
+        );
+        if (isInheritedOutletItem && outletPolicy?.availabilityOverride === false) {
+            Toast.show({ content: 'Availability changes are not enabled for this location.', duration: 1800 });
+            return;
+        }
+
         const updated = removeObjRef(menuData);
+        if (isInheritedOutletItem) {
+            updated.overrides = {
+                items: {
+                    ...(updated.overrides?.items || {}),
+                    [item.id]: {
+                        ...(updated.overrides?.items?.[item.id] || {}),
+                        available: newAvailability,
+                    },
+                },
+                categories: updated.overrides?.categories || {},
+                attributes: updated.overrides?.attributes || {},
+            };
+        }
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.items?.forEach((menuItem: any) => {
                 if (menuItem.id === item.id) {
@@ -2147,12 +2502,31 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             content: newAvailability ? availabilityLabels.available : availabilityLabels.unavailable,
             duration: 1000,
         });
-    }, [applyLocalMenuUpdate, availabilityLabels.available, availabilityLabels.unavailable, menuData]);
+    }, [applyLocalMenuUpdate, availabilityLabels.available, availabilityLabels.unavailable, itemInheritanceStates, menuData, outletPolicy?.availabilityOverride]);
 
     const handleToggleCategoryActive = useCallback((categoryId: string, nextActive: boolean) => {
         if (!menuData || categoryId === 'uncategorized') return;
 
         const updated = removeObjRef(menuData);
+        const inheritanceState = categoryInheritanceStates[categoryId];
+        const isInheritedOutletCategory = Boolean(
+            menuData.masterProjectId &&
+            (inheritanceState === 'inherited' || inheritanceState === 'overridden')
+        );
+        if (isInheritedOutletCategory) {
+            updated.overrides = {
+                items: updated.overrides?.items || {},
+                categories: {
+                    ...(updated.overrides?.categories || {}),
+                    [categoryId]: {
+                        ...(updated.overrides?.categories?.[categoryId] || {}),
+                        active: nextActive,
+                    },
+                },
+                attributes: updated.overrides?.attributes || {},
+            };
+        }
+
         updated.files?.forEach((file: any) => {
             file.extractedData?.data?.categories?.forEach((category: any) => {
                 if (category.id === categoryId) {
@@ -2166,7 +2540,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             content: nextActive ? t('categoryShown') : t('categoryHidden'),
             duration: 1000,
         });
-    }, [applyLocalMenuUpdate, menuData, t]);
+    }, [applyLocalMenuUpdate, categoryInheritanceStates, menuData, t]);
 
     const handleRefresh = async () => {
         await flushPendingMenuPersist();
@@ -2178,13 +2552,17 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
     };
 
     const handleOpenUploadSheet = useCallback(() => {
+        if (!canUseMenuExtraction) {
+            Toast.show({ content: 'Menu extraction is not enabled for this location.', duration: 1800 });
+            return;
+        }
         if (isBusy) {
             Toast.show({ content: t('menuUploadProcessingInProgress'), duration: 1800 });
             return;
         }
 
         setIsUploadSheetOpen(true);
-    }, [isBusy, t]);
+    }, [canUseMenuExtraction, isBusy, t]);
 
     const launchCommandAction = useCallback((action: () => void) => {
         setReturnToCommandMenu(true);
@@ -2208,10 +2586,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         categoryId: string | null = null,
         source: 'default' | 'commandMenu' | 'categorySheet' = 'default',
     ) => {
+        if (menuData?.masterProjectId && !canAddLocalItems) {
+            Toast.show({ content: 'Local items are not enabled for this location.', duration: 1800 });
+            return;
+        }
         setAddSheetInitialCategoryId(categoryId);
         setAddSheetSource(source);
         setIsAddSheetOpen(true);
-    }, []);
+    }, [canAddLocalItems, menuData?.masterProjectId]);
 
     const menuPreviewUrl = useMemo(() => {
         const projectName = selectedProjectSummary?.name || selectedProject?.name || menuData?.name;
@@ -2235,6 +2617,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         window.open(withAnalyticsSource(menuPreviewUrl, 'direct'), '_blank');
     }, [menuPreviewUrl, tShare]);
 
+    const editingItemInheritanceState = editingItem?.id ? itemInheritanceStates[editingItem.id] : undefined;
+    const isEditingInheritedOutletItem = Boolean(
+        menuData?.masterProjectId &&
+        (editingItemInheritanceState === 'inherited' || editingItemInheritanceState === 'overridden')
+    );
+    const canEditEditingItemImages = !isEditingInheritedOutletItem || outletPolicy?.imageOverride === true;
+    const canRunLinkedDescriptionActions = !menuData?.masterProjectId || outletPolicy?.descriptionOverride === true;
+    const canManageLinkedLanguages = !menuData?.masterProjectId || outletPolicy?.canAddLanguages !== false;
+
     if (!storeDetails || (loadingProjects && !menuData)) {
         return (
             <Flex align="center" justify="center" style={{ height: '100%' }}>
@@ -2247,27 +2638,25 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         <Flex style={{ height: '100%' }} vertical>
             <Card style={{ borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
                 <Flex gap={12} vertical>
-                    {projectsList.length > 1 ? (
-                        <ProjectSelectorTrigger
-                            clickable={!isBusy}
-                            currentProject={{
-                                active: activeProjectSummary?.active !== false,
-                                deleted: activeProjectSummary?.deleted === true,
-                                id: menuData?.projectId || 'current',
-                                isDefault: activeProjectSummary?.isDefault,
-                                isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
-                                name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
-                                projectImage: activeProjectSummary?.projectImage || menuData?.projectImage || null,
-                                specialMenuBaseProjectId: activeProjectSummary?.specialMenuBaseProjectId,
-                                specialMenuBaseProjectName: activeProjectSummary?.specialMenuBaseProjectId
-                                    ? projectsList.find((project: any) => project.projectId === activeProjectSummary.specialMenuBaseProjectId)?.name
-                                    : undefined,
-                                specialMenuEndsAt: activeProjectSummary?.specialMenuEndsAt,
-                                specialMenuStatus: activeProjectSummary?.specialMenuStatus,
-                            }}
-                            onClick={!isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
-                        />
-                    ) : null}
+                    <ProjectSelectorTrigger
+                        clickable={!isBusy}
+                        currentProject={{
+                            active: activeProjectSummary?.active !== false,
+                            deleted: activeProjectSummary?.deleted === true,
+                            id: menuData?.projectId || 'current',
+                            isDefault: activeProjectSummary?.isDefault,
+                            isSpecialMenu: activeProjectSummary?.isSpecialMenu === true,
+                            name: activeProjectSummary?.name || menuData?.name || t('currentProject'),
+                            projectImage: activeProjectSummary?.projectImage || menuData?.projectImage || null,
+                            specialMenuBaseProjectId: activeProjectSummary?.specialMenuBaseProjectId,
+                            specialMenuBaseProjectName: activeProjectSummary?.specialMenuBaseProjectId
+                                ? projectsList.find((project: any) => project.projectId === activeProjectSummary.specialMenuBaseProjectId)?.name
+                                : undefined,
+                            specialMenuEndsAt: activeProjectSummary?.specialMenuEndsAt,
+                            specialMenuStatus: activeProjectSummary?.specialMenuStatus,
+                        }}
+                        onClick={!isBusy ? () => setIsProjectSelectorOpen(true) : undefined}
+                    />
 
                     {activeProjectSummary?.isSpecialMenu && activeSpecialMenuStatus ? (
                         <Card size="small" style={{ backgroundColor: token.colorWarningBg, borderColor: token.colorWarningBorder }}>
@@ -2386,12 +2775,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     <Button
                                         color="primary"
                                         fill="outline"
-                                        onClick={() => openImageUploadModal(
-                                            undefined,
-                                            'filter-missing-image',
-                                            'generate',
-                                            filteredItems.filter((item) => !item.image).map((item) => item.id),
-                                        )}
+                                        onClick={() => {
+                                            const eligibleItems = filteredItems.filter((item) => (
+                                                !item.image &&
+                                                (
+                                                    !menuData?.masterProjectId ||
+                                                    outletPolicy?.imageOverride === true ||
+                                                    itemInheritanceStates[item.id] === 'local-only'
+                                                )
+                                            ));
+                                            if (!eligibleItems.length) {
+                                                Toast.show({ content: 'Image changes are not enabled for these items.', duration: 1800 });
+                                                return;
+                                            }
+                                            openImageUploadModal(
+                                                undefined,
+                                                'filter-missing-image',
+                                                'generate',
+                                                eligibleItems.map((item) => item.id),
+                                            );
+                                        }}
                                         size="small"
                                     >
                                         {t('generateImages')}
@@ -2401,7 +2804,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                     <Button
                                         color="primary"
                                         fill="outline"
-                                        onClick={() => setIsGenerateDescriptionsOpen(true)}
+                                        onClick={() => {
+                                            if (!canRunLinkedDescriptionActions) {
+                                                Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                                                return;
+                                            }
+                                            setIsGenerateDescriptionsOpen(true);
+                                        }}
                                         size="small"
                                     >
                                         {t('generateDescriptions')}
@@ -2412,6 +2821,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                         color="primary"
                                         fill="outline"
                                         onClick={() => {
+                                            if (menuData?.masterProjectId && outletPolicy?.availabilityOverride === false) {
+                                                Toast.show({ content: 'Availability changes are not enabled for this location.', duration: 1800 });
+                                                return;
+                                            }
                                             setBulkActionType('availability');
                                             setBulkActionInitialSelectedIds(filteredItems.filter((item) => !item.available).map((item) => item.id));
                                             setIsBulkActionsOpen(true);
@@ -3356,27 +3769,57 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     setIsCategorySheetOpen(true);
                 })}
                 onChangeAvailability={() => launchCommandAction(() => {
+                    if (menuData?.masterProjectId && outletPolicy?.availabilityOverride === false) {
+                        Toast.show({ content: 'Availability changes are not enabled for this location.', duration: 1800 });
+                        return;
+                    }
                     setBulkActionType('availability');
                     setIsBulkActionsOpen(true);
                 })}
                 onClose={() => setIsCommandMenuOpen(false)}
                 onAIDefaults={() => launchCommandAction(() => setIsAIDefaultsOpen(true))}
                 onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
-                onGenerateDescriptions={() => launchCommandAction(() => setIsGenerateDescriptionsOpen(true))}
-                onManageLanguages={() => launchCommandAction(() => setIsManageLanguagesOpen(true))}
+                onGenerateDescriptions={() => launchCommandAction(() => {
+                    if (!canRunLinkedDescriptionActions) {
+                        Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                        return;
+                    }
+                    setIsGenerateDescriptionsOpen(true);
+                })}
+                onManageLanguages={() => launchCommandAction(() => {
+                    if (!canManageLinkedLanguages) {
+                        Toast.show({ content: 'Language changes are not enabled for this location.', duration: 1800 });
+                        return;
+                    }
+                    setIsManageLanguagesOpen(true);
+                })}
                 onOpenDesignEditor={onOpenDesignEditor}
                 onRepairMenu={() => launchCommandAction(() => {
+                    if (!canRunLinkedDescriptionActions) {
+                        Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                        return;
+                    }
                     setBulkActionType('aiRepair');
                     setIsBulkActionsOpen(true);
                 })}
                 onPreview={handlePreviewMenu}
-                onTextCase={() => launchCommandAction(() => setIsTextCaseOpen(true))}
+                onTextCase={() => launchCommandAction(() => {
+                    if (menuData?.masterProjectId) {
+                        Toast.show({ content: 'Inherited item names stay connected to the master menu.', duration: 1800 });
+                        return;
+                    }
+                    setIsTextCaseOpen(true);
+                })}
                 onMoveCategory={() => launchCommandAction(() => {
                     setBulkActionType('moveCategory');
                     setIsBulkActionsOpen(true);
                 })}
                 onUploadMenu={() => launchCommandAction(handleOpenUploadSheet)}
                 onPricing={() => launchCommandAction(() => {
+                    if (menuData?.masterProjectId && outletPolicy?.priceOverride === false) {
+                        Toast.show({ content: 'Price changes are not enabled for this location.', duration: 1800 });
+                        return;
+                    }
                     setBulkActionType('pricing');
                     setIsBulkActionsOpen(true);
                 })}
@@ -3452,8 +3895,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     businessType={storeDetails?.businessType}
                     onClose={() => handleCommandActionBack(() => setIsGenerateDescriptionsOpen(false))}
                     onSaved={(updatedProject) => {
-                        setMenuData(updatedProject);
-                        replaceProjectInList(updatedProject);
+                        applyLocalMenuUpdate(updatedProject);
+                        setIsGenerateDescriptionsOpen(false);
                         resetCommandActionFlow();
                     }}
                     projectData={menuData}
@@ -3499,6 +3942,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                     }}
                     onDelete={async (itemId) => {
                         if (!menuData) return;
+                        const inheritanceState = itemInheritanceStates[itemId];
+                        if (
+                            menuData.masterProjectId &&
+                            inheritanceState &&
+                            inheritanceState !== 'local-only'
+                        ) {
+                            Toast.show({ content: 'Inherited items stay connected to the master menu.', duration: 1800 });
+                            return;
+                        }
                         const previous = menuData;
                         const updated = removeObjRef(menuData);
                         updated.files?.forEach((file: any) => {
@@ -3513,12 +3965,19 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         setEditingItem(null);
                         resetCommandActionFlow();
                     }}
-                    onGenerateImage={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
-                    onManageImages={editingItem.id ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
+                    onGenerateImage={editingItem.id && canEditEditingItemImages ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
+                    onManageImages={editingItem.id && canEditEditingItemImages ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
                     projectData={menuData}
+                    inheritanceState={editingItemInheritanceState}
+                    outletPolicy={outletPolicy}
                     onSave={async (updatedItem) => {
                         if (!menuData) return;
                         const updated = removeObjRef(menuData);
+                        const inheritanceState = itemInheritanceStates[editingItem.id];
+                        const isInheritedOutletItem = Boolean(
+                            menuData.masterProjectId &&
+                            (inheritanceState === 'inherited' || inheritanceState === 'overridden')
+                        );
                         const pendingImage = typeof updatedItem.image === 'string' ? updatedItem.image : null;
                         const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
                         const imageName = `${updatedItem.name || editingItem.id}.jpg`;
@@ -3530,6 +3989,94 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                                 activeProjectLanguages
                             )
                             : null;
+
+                        if (isInheritedOutletItem) {
+                            const nextOverride = {
+                                ...(updated.overrides?.items?.[editingItem.id] || {}),
+                            };
+                            const currentPriceValue = String(editingItem.rawItem?.price ?? editingItem.price ?? '');
+                            const nextPriceValue = String(updatedItem.rawItem?.price ?? updatedItem.price ?? '');
+                            const priceChanged = updatedItem.price !== undefined && nextPriceValue !== currentPriceValue;
+                            const availableChanged = updatedItem.available !== undefined && updatedItem.available !== editingItem.available;
+                            const activeChanged = updatedItem.active !== undefined && updatedItem.active !== editingItem.active;
+                            const currentDescriptionValue = String(
+                                editingItem.rawItem?.description?.[primaryLang] ?? editingItem.description ?? ''
+                            );
+                            const nextDescription = rawItem?.description || (
+                                updatedItem.description !== undefined
+                                    ? {
+                                        ...(editingItem.rawItem?.description || {}),
+                                        [primaryLang]: updatedItem.description,
+                                    }
+                                    : undefined
+                            );
+                            const descriptionChanged = Boolean(
+                                nextDescription &&
+                                String(nextDescription[primaryLang] || '') !== currentDescriptionValue
+                            );
+                            const imageChanged = updatedItem.image !== undefined && !shouldUploadImage;
+
+                            if (priceChanged) {
+                                if (outletPolicy?.priceOverride === false) {
+                                    Toast.show({ content: 'Price changes are not enabled for this location.', duration: 1800 });
+                                    return;
+                                }
+                                nextOverride.price = nextPriceValue;
+                            }
+                            if (availableChanged) {
+                                if (outletPolicy?.availabilityOverride === false) {
+                                    Toast.show({ content: 'Availability changes are not enabled for this location.', duration: 1800 });
+                                    return;
+                                }
+                                nextOverride.available = updatedItem.available;
+                            }
+                            if (activeChanged) {
+                                nextOverride.active = updatedItem.active;
+                            }
+                            if (descriptionChanged && nextDescription) {
+                                if (outletPolicy?.descriptionOverride !== true) {
+                                    Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                                    return;
+                                }
+                                nextOverride.description = nextDescription;
+                            }
+                            if (imageChanged) {
+                                if (outletPolicy?.imageOverride !== true) {
+                                    Toast.show({ content: 'Image changes are not enabled for this location.', duration: 1800 });
+                                    return;
+                                }
+                                nextOverride.images = pendingImage ? [{ url: pendingImage, name: imageName }] : [];
+                            }
+
+                            updated.overrides = {
+                                items: {
+                                    ...(updated.overrides?.items || {}),
+                                    [editingItem.id]: nextOverride,
+                                },
+                                categories: updated.overrides?.categories || {},
+                                attributes: updated.overrides?.attributes || {},
+                            };
+
+                            updated.files?.forEach((file: any) => {
+                                file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
+                                    if (menuItem.id !== editingItem.id) return;
+                                    file.extractedData.data.items[idx] = {
+                                        ...menuItem,
+                                        ...(priceChanged ? { price: nextPriceValue } : {}),
+                                        ...(availableChanged ? { available: updatedItem.available } : {}),
+                                        ...(activeChanged ? { active: updatedItem.active } : {}),
+                                        ...(descriptionChanged && nextDescription ? { description: nextDescription, descriptionSource: 'manual' } : {}),
+                                        ...(imageChanged ? { images: pendingImage ? [{ url: pendingImage, name: imageName }] : [] } : {}),
+                                    };
+                                });
+                            });
+
+                            applyLocalMenuUpdate(updated);
+                            Toast.show({ content: t('itemUpdated'), duration: 1000 });
+                            setEditingItem(null);
+                            resetCommandActionFlow();
+                            return;
+                        }
 
                         updated.files?.forEach((file: any) => {
                             file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
@@ -3754,8 +4301,19 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
                         onImageUpload={handleModalImageUpload}
                         onProjectDataUpdate={async (updatedProject) => {
                             if (!updatedProject.projectId) return;
-                            const savedProject = await updateProjectWithoutLoader(updatedProject);
-                            syncSavedMenuProject(savedProject || updatedProject);
+                            const projectToSave = getPersistableMenuProjectWithLinkedOverrides(updatedProject);
+                            const savedProject = await updateProjectWithoutLoader(projectToSave);
+                            if (updatedProject.masterProjectId) {
+                                const rawSavedProject = savedProject || projectToSave;
+                                rawMenuProjectRef.current = removeObjRef(rawSavedProject);
+                                persistedMenuRef.current = removeObjRef(rawSavedProject);
+                                persistedLocalSnapshotRef.current = JSON.stringify(removeObjRef(rawSavedProject));
+                                menuDataRef.current = updatedProject;
+                                setMenuData(updatedProject);
+                                replaceProjectInList(rawSavedProject);
+                            } else {
+                                syncSavedMenuProject(savedProject || updatedProject);
+                            }
                         }}
                         open={isImageUploadOpen}
                         preferredInitialTab={imageModalInitialTab}

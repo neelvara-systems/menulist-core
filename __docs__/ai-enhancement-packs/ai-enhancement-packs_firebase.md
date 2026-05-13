@@ -1,8 +1,8 @@
 # AI Enhancement Packs — Firebase Cost Tracking
 
 **Feature:** AI Enhancement Packs
-**Status:** 📝 Specification Complete
-**Last Updated:** February 9, 2026
+**Status:** ✅ Runtime Updated
+**Last Updated:** May 12, 2026
 **Audience:** Developers, DevOps, Cost Auditing
 
 ---
@@ -14,7 +14,7 @@
 | Collection             | Path                                           | Purpose                                                    | Status                                |
 | ---------------------- | ---------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- |
 | `menulistAiOperations` | `menulistAiOperations/{tId}/{sId}/{docId}`     | Append-only AI usage event log                             | ✅ Exists, logging currently disabled |
-| `topups`               | `topups/{tId}/{sId}/{docId}`                   | Pack purchase records                                      | ✅ Exists, empty                      |
+| `topups`               | `topups/{orderId}`                             | Pack purchase records                                      | ✅ Written by top-up create/verify APIs |
 | `subscriptions`        | `subscriptions/{sub_id}` (filtered by tId+sId) | Subscription with `monthlyCredits` + `topUpCredits` fields | ✅ Exists, capacity already built-in  |
 | `aiCreditTransactions` | Sub-collection of `menulistAiOperations`       | Legacy credit transaction records                          | ✅ Exists                             |
 
@@ -100,36 +100,38 @@ Append-only log of every AI operation. Each document represents one API call to 
 
 ---
 
-## Collection 2: `topups/{tId}/{sId}`
+## Collection 2: `topups/{orderId}`
 
 ### Purpose
 
-Record of every AI Enhancement Pack purchase. Links Razorpay payment to capacity increment.
+Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to the capacity increment. The document ID is the Razorpay order ID so verification can be idempotent.
 
 ### Document Schema
 
 ```typescript
 {
-    // Identity (auto-added by requestBodyComposer)
-    tId: number,                    // Tenant ID
-    sId: number,                    // Store ID
-    uId: string,                    // User ID who purchased
+    // Identity
+    tenantId: number,               // Tenant ID
+    storeId: number,                // Store ID that created the order
+    userId: string,                 // User ID who purchased
     createdOn: Timestamp,           // Purchase timestamp
     updatedOn: Timestamp,           // Same as createdOn (append-only)
 
     // Purchase Details
     type: "ai_enhancement_pack",    // Pack type identifier
+    packId: string,                 // Internal pack ID
+    packName: string,               // Display name at purchase time
     providerOrderId: string,        // Razorpay order ID (provider-agnostic field name)
-    providerPaymentId: string,      // Razorpay payment ID
+    providerPaymentId?: string,     // Razorpay payment ID after verification
     amount: number,                 // Price paid (in paise for INR)
     currency: string,               // "INR" or "USD"
 
     // Capacity
-    unitsAdded: number,             // Internal AI units added to tenant capacity
-    packVersion: string,            // "1.0" — for future pack tier identification
+    creditsAdded: number,           // Internal balance added to subscription.topUpCredits
 
     // Status
-    status: "completed" | "refunded",   // Payment status
+    status: "pending" | "paid" | "refunded", // Payment status
+    paidAt?: Timestamp,                 // Set after verified capture
     refundedAt?: Timestamp,             // If refunded
     refundReason?: string,              // If refunded
 }
@@ -139,7 +141,8 @@ Record of every AI Enhancement Pack purchase. Links Razorpay payment to capacity
 
 | Operation          | Trigger                               | Frequency    | Reads               | Writes            |
 | ------------------ | ------------------------------------- | ------------ | ------------------- | ----------------- |
-| **Write**          | Razorpay verify-topup (pack purchase) | Per purchase | 0                   | 1                 |
+| **Write pending**  | `create-topup-order`                  | Per purchase attempt | 0             | 1                 |
+| **Write paid**     | `verify-topup`                        | Per paid purchase | 1 idempotency read | 1                 |
 | **Read**           | Admin views purchase history          | Very rare    | All docs for tenant | 0                 |
 | **Write (update)** | Refund processed                      | Very rare    | 1 (find doc)        | 1 (update status) |
 
@@ -151,6 +154,12 @@ Record of every AI Enhancement Pack purchase. Links Razorpay payment to capacity
 | 1000 pack purchases/month | 1,000 writes   | ~100 reads    | < $0.01        |
 
 **Negligible cost.** Pack purchases are infrequent events.
+
+### Idempotency and Tenant Checks
+
+`verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the authenticated session before updating `subscriptions.topUpCredits`.
+
+AI usage reset and consumption both write through Firestore transactions. Paid AI routes run `checkAICapacity()` before the provider call; if a billing-period reset is due, `checkAICapacity()` re-reads and resets the subscription inside a transaction. After the provider succeeds, the route logs the operation and calls `consumeAICapacity()`. Consumption deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
 
 ---
 
@@ -183,9 +192,9 @@ Record of every AI Enhancement Pack purchase. Links Razorpay payment to capacity
 | Operation                            | Trigger                                                                      | Frequency         | Reads | Writes |
 | ------------------------------------ | ---------------------------------------------------------------------------- | ----------------- | ----- | ------ |
 | **Read**                             | Every paid AI operation (capacity check via `getActiveSubscriptionForStore`) | Per user action   | 1     | 0      |
-| **Write (decrement credits)**        | After successful AI operation (`updateSubscription`)                         | Per user action   | 0     | 1      |
+| **Write (decrement credits)**        | After successful AI operation (`consumeAICapacity` transaction)              | Per user action   | 1     | 1      |
 | **Write (increment `topUpCredits`)** | Pack purchase verify-topup                                                   | Per purchase      | 0     | 1      |
-| **Write (reset `monthlyCredits`)**   | Subscription renewal                                                         | Monthly per store | 0     | 1      |
+| **Write (reset `monthlyCredits`)**   | Subscription renewal or lazy reset transaction                               | Monthly per store | 0-1   | 1      |
 
 ### Cost Estimate
 
@@ -199,30 +208,27 @@ Record of every AI Enhancement Pack purchase. Links Razorpay payment to capacity
 
 ```typescript
 // After successful AI operation:
-// Decrement monthlyCredits first, then topUpCredits
-import { updateSubscription } from "@database/subscriptions";
+// Re-read the subscription inside a transaction, then decrement
+// monthlyCredits first and topUpCredits second.
+await firestoreAdmin.runTransaction(async (tx) => {
+  const subscriptionSnap = await tx.get(subscriptionRef);
+  const subscription = subscriptionSnap.data();
+  const monthlyRemaining = Number(subscription.monthlyCredits || 0);
+  const topUpRemaining = Number(subscription.topUpCredits || 0);
 
-const monthlyRemaining = subscription.monthlyCredits || 0;
-const topUpRemaining = subscription.topUpCredits || 0;
+  const newMonthly = Math.max(0, monthlyRemaining - unitsToConsume);
+  const remainder = Math.max(0, unitsToConsume - monthlyRemaining);
+  const newTopUp = Math.max(0, topUpRemaining - remainder);
 
-let newMonthly = monthlyRemaining;
-let newTopUp = topUpRemaining;
-
-if (monthlyRemaining >= unitsToConsume) {
-  newMonthly = monthlyRemaining - unitsToConsume;
-} else {
-  const remainder = unitsToConsume - monthlyRemaining;
-  newMonthly = 0;
-  newTopUp = Math.max(0, topUpRemaining - remainder);
-}
-
-await updateSubscription(subscription.id, {
-  monthlyCredits: newMonthly,
-  topUpCredits: newTopUp,
+  tx.set(subscriptionRef, {
+    monthlyCredits: newMonthly,
+    topUpCredits: newTopUp,
+    modifiedOn: serverTimestamp,
+  }, { merge: true });
 });
 ```
 
-**Why not atomic increment?** The decrement needs conditional logic (monthlyCredits first, then topUpCredits). The subscription is fetched in the capacity check step anyway, so the read is already done. The write updates both fields in one call.
+**Why a transaction instead of a plain update?** The decrement needs conditional logic and must re-read the latest balance to avoid missed deductions during concurrent AI requests.
 
 ### Balance Sync Optimization (Feb 2026)
 
@@ -299,8 +305,8 @@ match /menulistAiOperations/{tId}/{sId}/{docId} {
 }
 
 // topups — server-write only
-match /topups/{tId}/{sId}/{docId} {
-    allow read: if request.auth != null && request.auth.token.tId == tId;
+match /topups/{orderId} {
+    allow read: if request.auth != null && request.auth.token.tId == resource.data.tenantId;
     allow write: if false;  // Server-only writes via webhook
 }
 

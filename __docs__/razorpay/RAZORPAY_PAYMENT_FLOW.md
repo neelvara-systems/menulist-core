@@ -140,7 +140,7 @@ This prevents premature credit resets for mid-month subscriptions and handles mo
 - **Monthly plans:** Webhook handles reset reliably when payment succeeds
 - **Yearly plans:** No monthly webhook event exists — lazy reset fills this gap
 - **Safety net:** If webhook fails/delays, lazy reset catches it on next AI call
-- **Race-safe:** Concurrent calls both reset to the same idempotent value (`monthlyCreditsAllowance`)
+- **Race-safe:** Lazy reset re-reads and writes inside a Firestore transaction, so a reset cannot overwrite a concurrent usage deduction.
 
 ### New Field: `creditsLastResetMonth`
 
@@ -158,7 +158,7 @@ This prevents premature credit resets for mid-month subscriptions and handles mo
 | `api/razorpay/verify-subscription/route.ts`   | Set `creditsLastResetMonth` on first verification                    |
 | `api/razorpay/create-subscription/route.ts`   | Set `creditsLastResetMonth` on creation                              |
 | `api/onboarding/create-subscription/route.ts` | Set `creditsLastResetMonth` on onboarding                            |
-| `lib/ai/capacityCheck.ts`                     | Lazy reset logic before capacity check                               |
+| `lib/ai/capacityCheck.ts`                     | Transactional lazy reset before capacity check and transactional consumption |
 
 ---
 
@@ -170,3 +170,4 @@ This prevents premature credit resets for mid-month subscriptions and handles mo
 4. **Grace period:** 7 days for `past_due` status before expiration.
 5. **AI Enhancement Packs:** One-time top-up purchases via Razorpay orders (not subscriptions).
 6. **Two-layer credit reset:** Webhook (monthly plans) + lazy reset in `checkAICapacity` (yearly plans + safety net).
+7. **Transactional consumption:** Paid AI usage deducts `monthlyCredits` first and `topUpCredits` second inside `consumeAICapacity()`.

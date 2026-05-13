@@ -6,10 +6,11 @@
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §17.3
  */
 
+import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Typography } from 'antd';
 import { useContext } from 'react';
-import { HiOutlineArrowLeft } from 'react-icons/hi';
+import { LuArrowLeft } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -23,7 +24,7 @@ export default function OutletContextBanner() {
     const outletStore = tenantDetails?.storesList?.find(
         (s) => s.storeId === activeStoreContext,
     );
-    const outletName = outletStore?.name || `Store ${activeStoreContext}`;
+    const outletName = getStoreContextName(outletStore, `Store ${activeStoreContext}`);
 
     return (
         <div
@@ -44,7 +45,7 @@ export default function OutletContextBanner() {
             </Text>
             <Button
                 size="small"
-                icon={<HiOutlineArrowLeft />}
+                icon={<LuArrowLeft />}
                 onClick={() => setActiveStoreContext(null)}
             >
                 Back to HQ

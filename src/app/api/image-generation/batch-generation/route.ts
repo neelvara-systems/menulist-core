@@ -27,6 +27,19 @@ export async function POST(request: Request) {
         if (safeModeResponse) return safeModeResponse;
     } catch { /* fail-open */ }
 
+    const expectedProjectId = process.env.FIREBASE_PROJECT_ID;
+    const requestProjectId = request.headers.get('project-id');
+    if (!expectedProjectId || requestProjectId !== expectedProjectId) {
+        logger.security('Unauthorized Batch Image Generation Worker Request', {
+            endpoint: '/api/image-generation/batch-generation',
+            error: 'Missing or invalid Cloud Tasks project header',
+            hasExpectedProjectId: Boolean(expectedProjectId),
+            hasRequestProjectId: Boolean(requestProjectId),
+        }, 'critical');
+
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // const mainSession = await getServerSession(authOptions); // Get session early for logging if possible
     let userIdForLog = 'N/A';
     const { generationConfig, projectId, itemDetails, businessType, jobId }: GenerateImageViaApiPayloadBatchType = await request.json();

@@ -12,9 +12,9 @@ import OutletPolicyEditor from '@organisms/OutletPolicyEditor';
 import OutletRenameModal from '@organisms/OutletRenameModal';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
-import { Badge, Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
+import { Badge, Button, Card, Empty, message, Space, Table, Tag, Typography } from 'antd';
 import { useContext, useState } from 'react';
-import { HiOutlineLocationMarker, HiOutlinePlusCircle } from 'react-icons/hi';
+import { LuMapPin, LuPlusCircle, LuStar } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -25,6 +25,7 @@ export default function LocationsPage() {
         userPermissions,
         isMasterUser,
         activeSubscription,
+        activeStoreContext,
         setActiveStoreContext,
     } = useContext(PlatformGlobalDataContext);
 
@@ -38,12 +39,34 @@ export default function LocationsPage() {
 
     const storesList = tenantDetails?.storesList || [];
     const outletCount = storesList.filter((s) => !s.isMaster).length;
-    const activeCount = storesList.length;
+    const activeCount = storesList.filter((s: any) => s.active !== false).length;
 
     // Billing summary
     const amount = activeSubscription?.amount || 0;
     const currency = activeSubscription?.currency || 'INR';
     const totalCost = amount * activeCount;
+
+    const handleSwitchStore = async (targetStoreId: number) => {
+        if (targetStoreId === storeDetails?.storeId) {
+            setActiveStoreContext(null);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/switch-store', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetStoreId }),
+            });
+            if (!res.ok) {
+                message.error('Store switch failed');
+                return;
+            }
+            setActiveStoreContext(targetStoreId);
+        } catch {
+            message.error('Store switch failed');
+        }
+    };
     const columns = [
         {
             title: 'Store',
@@ -51,9 +74,10 @@ export default function LocationsPage() {
             key: 'name',
             render: (name: string, record: any) => (
                 <Space>
-                    {record.isMaster ? '⭐' : '🏠'}
+                    {record.isMaster ? <LuStar /> : <LuMapPin />}
                     <Text strong={record.isMaster}>{name || `Store ${record.storeId}`}</Text>
                     {record.isMaster && <Tag color="gold">HQ</Tag>}
+                    {record.storeId === (activeStoreContext || storeDetails?.storeId) && <Tag color="blue">Current</Tag>}
                 </Space>
             ),
         },
@@ -73,7 +97,7 @@ export default function LocationsPage() {
                     <Space size="small">
                         <Button
                             size="small"
-                            onClick={() => setActiveStoreContext(record.storeId)}
+                            onClick={() => void handleSwitchStore(record.storeId)}
                         >
                             View
                         </Button>
@@ -100,13 +124,13 @@ export default function LocationsPage() {
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={3} style={{ margin: 0 }}>
-                        <HiOutlineLocationMarker style={{ marginRight: 8 }} />
+                        <LuMapPin style={{ marginRight: 8 }} />
                         Locations
                     </Title>
                     {FEATURE_FLAGS.ENABLE_OUTLET_CREATION && userPermissions?.canManageOutlets && (
                         <Button
                             type="primary"
-                            icon={<HiOutlinePlusCircle />}
+                            icon={<LuPlusCircle />}
                             onClick={() => setAddOutletOpen(true)}
                         >
                             Add Outlet

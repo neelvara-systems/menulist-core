@@ -73,7 +73,7 @@ export const MAX_DELAY_BETWEEN_BATCHES_MS = 8000;
 // COST TRACKING (MUST match @constant/common in frontend)
 // ═══════════════════════════════════════════════════════════════
 
-export const TOKENS_PER_CREDIT = 1000;
+export const TOKENS_PER_CREDIT = 500;
 export const CHARGE_PER_CREDIT = 100; // paise
 
 // ═══════════════════════════════════════════════════════════════

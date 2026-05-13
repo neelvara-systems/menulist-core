@@ -1,7 +1,7 @@
 # AI Enhancement Packs — Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ❌ DESKTOP-ONLY — AI pack purchase and usage is infrequent setup/billing
+**Last Updated:** May 12, 2026
+**Decision:** ✅ MOBILE SUPPORTED — billing and enhancement packs are handled on mobile through the same Razorpay + subscription contract as desktop
 
 ---
 
@@ -9,12 +9,12 @@
 
 | Gate | Result | Reasoning |
 |------|--------|-----------|
-| **Frequency** | ❌ FAIL | Pack purchased rarely (when AI capacity exhausted) |
-| **Speed** | ❌ FAIL | Purchase flow is multi-step (review → payment) |
-| **Touch** | ⚠️ PARTIAL | Razorpay modal works on mobile |
-| **Value** | ❌ FAIL | AI operations (image gen, description rewrite) are desktop editor features |
+| **Frequency** | ⚠️ OCCASIONAL | Pack purchase is rare, but billing recovery can block the owner |
+| **Speed** | ✅ PASS | Mobile uses a bottom sheet, one tap selection, and Razorpay checkout |
+| **Touch** | ✅ PASS | Cards, store selector, and plan interval buttons use mobile-sized targets |
+| **Value** | ✅ PASS | Phone-only owners must be able to recover billing and add enhancement capacity without desktop |
 
-**Decision:** Desktop-only. AI Enhancement Packs are purchased through the billing system, which redirects to desktop on mobile. AI operations themselves (image generation, description generation) are desktop-only editor features that fail the 4-gate test.
+**Decision:** Mobile supported. Enhancement pack purchase remains an owner billing action, so it lives in `MobileBillingScreen` and reuses the desktop payment handler instead of creating a mobile-only DAL.
 
 ---
 
@@ -24,4 +24,25 @@ The AI operations that consume pack credits (menu extraction, description genera
 - `MenuUploadSheet` (mobile) — menu photo extraction uses included AI capacity
 - Desktop editor — image generation, description rewrite, bulk operations
 
-Pack purchase is handled via the billing system, accessible through `MobileBillingScreen` → desktop redirect.
+Pack purchase is handled directly in `MobileBillingScreen`.
+
+## Mobile Runtime Contract
+
+| Flow | Mobile Surface | Shared Contract |
+|------|----------------|-----------------|
+| View current subscription | `src/components/mobile/screens/MobileBillingScreen.tsx` | `getActiveSubscriptionForStore(tenantId, storeId, tenant.storesList)` |
+| Switch billing store | `MobileBillingScreen` store picker | Same `/api/auth/switch-store` endpoint used by Locations/Header |
+| Outlet billing fallback | `MobileBillingScreen` | Outlet selection displays the HQ/master subscription returned by the shared DAL |
+| Change plan | `MobileBillingScreen` plan sheet | `usePaymentHandler.onUpgradePlan()` / `onClickPaymentCard()` |
+| Buy enhancement pack | `MobileBillingScreen` enhancement sheet | `usePaymentHandler.handleTopupPurchase()` → Razorpay top-up APIs |
+| Billing history | `MobileBillingScreen` history sheet | `getBillingHistoryForStore()` using the effective subscription store |
+
+## Store Switching Decision
+
+Mobile billing must not assume `session.user.storeId` is always the viewed store. For HQ users, `activeStoreContext` can point at an outlet. The screen resolves:
+
+1. Selected billing store: `activeStoreContext || storeDetails.storeId || session.user.storeId`
+2. Subscription: `getActiveSubscriptionForStore(..., tenantDetails.storesList)`
+3. History store: `activeSubscription.storeId || selected billing store`
+
+If an outlet inherits the HQ subscription, the UI states that billing changes apply to HQ.

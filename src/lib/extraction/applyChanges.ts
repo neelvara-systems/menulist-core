@@ -83,6 +83,54 @@ function getMenuDataFromFiles(files: any[]) {
     }, { businessAttributeSuggestions: [], categories: [], items: [] });
 }
 
+function ensureOutletLocalFile(files: any[], projectId: string, languages: any[] = []) {
+    if (files.length === 0) {
+        files.push({
+            uid: `local-${projectId}`,
+            extractedData: {
+                data: {
+                    categories: [],
+                    items: [],
+                    languages,
+                },
+            },
+        });
+    }
+
+    if (!files[0].extractedData) {
+        files[0].extractedData = { data: { categories: [], items: [], languages } };
+    }
+    if (!files[0].extractedData.data) {
+        files[0].extractedData.data = { categories: [], items: [], languages };
+    }
+    if (!Array.isArray(files[0].extractedData.data.categories)) {
+        files[0].extractedData.data.categories = [];
+    }
+    if (!Array.isArray(files[0].extractedData.data.items)) {
+        files[0].extractedData.data.items = [];
+    }
+    if (!Array.isArray(files[0].extractedData.data.languages)) {
+        files[0].extractedData.data.languages = languages;
+    }
+
+    return files[0];
+}
+
+function upsertById(target: any[], entries: any[]) {
+    for (const entry of entries) {
+        if (!entry?.id) continue;
+        const existingIndex = target.findIndex(candidate => candidate?.id === entry.id);
+        if (existingIndex >= 0) {
+            target[existingIndex] = {
+                ...target[existingIndex],
+                ...entry,
+            };
+        } else {
+            target.push(entry);
+        }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -234,34 +282,24 @@ export async function applyExtractionChanges(
                 throw new Error('No outlet mutations in apply plan');
             }
 
-            // Add local-only categories and items to files[0].extractedData.data
-            // The resolver reads from files[], not from a separate localData field
-            if (files.length === 0) {
-                throw new Error('Project has no files - cannot add local items');
-            }
-
-            if (!files[0].extractedData) {
-                files[0].extractedData = { data: { categories: [], items: [] } };
-            }
-            if (!files[0].extractedData.data) {
-                files[0].extractedData.data = { categories: [], items: [] };
-            }
+            // Add local-only categories and items to files[0].extractedData.data.
+            // Linked outlet projects created by propagation can start with files: [].
+            // Create one stable local file on first local mutation instead of failing.
+            const localFile = ensureOutletLocalFile(
+                files,
+                projectId,
+                projectData.languages || [],
+            );
 
             // Add local-only categories in-memory
             if (mutations.upsertLocalCategories.length > 0) {
-                if (!files[0].extractedData.data.categories) {
-                    files[0].extractedData.data.categories = [];
-                }
-                files[0].extractedData.data.categories.push(...mutations.upsertLocalCategories);
+                upsertById(localFile.extractedData.data.categories, mutations.upsertLocalCategories);
                 stats.categoriesAdded = mutations.upsertLocalCategories.length;
             }
 
             // Add local-only items in-memory
             if (mutations.upsertLocalItems.length > 0) {
-                if (!files[0].extractedData.data.items) {
-                    files[0].extractedData.data.items = [];
-                }
-                files[0].extractedData.data.items.push(...mutations.upsertLocalItems);
+                upsertById(localFile.extractedData.data.items, mutations.upsertLocalItems);
                 stats.itemsAdded = mutations.upsertLocalItems.length;
             }
 

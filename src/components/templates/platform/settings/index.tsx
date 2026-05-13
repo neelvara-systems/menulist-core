@@ -30,13 +30,13 @@ const colorsList = {
     dark: DARK_COLORS,
 }
 
-function PlatformSettings() {
+function PlatformSettings({ initialTab = '' }: { initialTab?: string } = {}) {
 
     const isDarkMode = useAppSelector(getDarkModeState)
     const dispatch = useAppDispatch()
     const lightThemeColor = useAppSelector(getLightColorState)
     const darkThemeColor = useAppSelector(getDarkColorState)
-    const [activetab, setActivetab] = useState('')
+    const [activetab, setActivetab] = useState(initialTab)
     const { token } = theme.useToken();
     const session = useClientAuthSession();
     const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);

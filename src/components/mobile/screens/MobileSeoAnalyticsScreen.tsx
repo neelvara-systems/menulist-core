@@ -953,7 +953,7 @@ function FieldGroup({
                 {tooltip ? (
                     <Popover
                         content={tooltip}
-                        placement="bottomLeft"
+                        placement="bottom"
                         trigger="click"
                     >
                         <button

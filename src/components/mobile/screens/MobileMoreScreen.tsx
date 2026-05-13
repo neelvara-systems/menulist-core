@@ -95,6 +95,7 @@ const MobilePlatformInternalScreen = dynamic(() => import('./MobilePlatformInter
 
 const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'platformSettings',
+    'entityBlocks',
     'platformUsers',
     'supportTickets',
     'feedbackAdmin',
@@ -149,6 +150,7 @@ export type MoreSubScreen =
     | 'presenceMonitor'
     | 'platformHub'
     | 'platformSettings'
+    | 'entityBlocks'
     | 'platformUsers'
     | 'supportTickets'
     | 'feedbackAdmin'
@@ -180,7 +182,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tPresence = useTranslations('MobilePresenceMonitor');
     const { token } = theme.useToken();
     const router = useRouter();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const businessCopyCoverage = useMemo(
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails],
@@ -285,8 +287,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'designEditor', icon: <LuPalette color="#e11d48" size={20} />, keywords: ['theme', 'colors', 'fonts', 'layout', 'images', 'design'], label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') },
         ...(FEATURE_FLAGS.ENABLE_OBP ? [{ key: 'officialPageTop', icon: <LuGlobe color="#1d4ed8" size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: tBusiness('officialPageDesc'), onClick: () => openOfficialPage('main') }] : []),
         { key: 'digitalScreens', icon: <LuTv color="#06b6d4" size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') },
-        { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
-        { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, keywords: ['payments', 'receipts', 'history', 'billing history', 'charges'], label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
+        ...(userPermissions?.canAccessBilling !== false ? [
+            { key: 'billing', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
+            { key: 'transactions', icon: <LuReceipt color="#ec4899" size={20} />, keywords: ['payments', 'receipts', 'history', 'billing history', 'charges'], label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
+        ] : []),
     ];
 
     const businessIdentityItems: MoreListItem[] = [
@@ -334,6 +338,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'platformSettings', icon: <LuSettings color="#475569" size={20} />, keywords: ['platform settings', 'logs', 'tenants', 'stores', 'pricing'], label: 'Platform Settings', description: 'Logs, tenants, stores, pricing plans, and platform users.', onClick: () => openSubScreen('platformSettings') },
+        ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color="#dc2626" size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
         { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles'], label: 'Platform Users', description: 'Manage platform-level users and access.', onClick: () => openSubScreen('platformUsers') },
         { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
         { key: 'feedbackAdmin', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback admin', 'reviews', 'guest feedback'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openSubScreen('feedbackAdmin') },

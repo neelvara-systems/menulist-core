@@ -1,9 +1,8 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@constant/AI/unitCosts";
-import {
-    getActiveSubscriptionForStore,
-    updateSubscription,
-} from "@database/subscriptions";
+import { DB_COLLECTIONS } from "@constant/database";
+import { getActiveSubscriptionForStore } from "@database/subscriptions";
+import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 
 /**
@@ -23,6 +22,50 @@ export interface CapacityCheckResult {
     remaining: number;
     reason?: "free" | "sufficient" | "overdraft" | "exhausted" | "maintenance" | "no_subscription";
     subscription: FirestoreSubscriptionDoc | null;
+}
+
+async function refreshMonthlyCreditsIfNeeded(
+    subscription: FirestoreSubscriptionDoc,
+): Promise<FirestoreSubscriptionDoc> {
+    if (!subscription.id || subscription.monthlyCreditsAllowance <= 0) {
+        return subscription;
+    }
+
+    const currentBillingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
+    if (subscription.creditsLastResetMonth === currentBillingPeriod) {
+        return subscription;
+    }
+
+    const subscriptionRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .doc(subscription.id);
+
+    return firestoreAdmin.runTransaction(async (tx) => {
+        const subscriptionSnap = await tx.get(subscriptionRef);
+        if (!subscriptionSnap.exists) return subscription;
+
+        const current = {
+            ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
+            id: subscription.id,
+        };
+        const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
+
+        if (current.creditsLastResetMonth === billingPeriod || current.monthlyCreditsAllowance <= 0) {
+            return current;
+        }
+
+        tx.set(subscriptionRef, {
+            monthlyCredits: current.monthlyCreditsAllowance,
+            creditsLastResetMonth: billingPeriod,
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        return {
+            ...current,
+            monthlyCredits: current.monthlyCreditsAllowance,
+            creditsLastResetMonth: billingPeriod,
+        };
+    });
 }
 
 /**
@@ -71,7 +114,7 @@ export async function checkAICapacity(
     }
 
     const unitsRequired = getUnitCost(actionType) * quantity;
-    const subscription = await getActiveSubscriptionForStore(tenantId, storeId);
+    let subscription = await getActiveSubscriptionForStore(tenantId, storeId);
 
     if (!subscription) {
         return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };
@@ -81,15 +124,7 @@ export async function checkAICapacity(
     // and acts as safety net for monthly plans. Race-safe (idempotent reset value).
     // Uses billing-cycle anchor day (not calendar month) to avoid premature resets.
     // E.g. sub starts Feb 15 → anchor=15 → billing months are 15th-to-15th.
-    const currentBillingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
-    if (subscription.creditsLastResetMonth !== currentBillingPeriod && subscription.monthlyCreditsAllowance > 0) {
-        subscription.monthlyCredits = subscription.monthlyCreditsAllowance;
-        subscription.creditsLastResetMonth = currentBillingPeriod;
-        await updateSubscription(subscription.id!, {
-            monthlyCredits: subscription.monthlyCreditsAllowance,
-            creditsLastResetMonth: currentBillingPeriod,
-        });
-    }
+    subscription = await refreshMonthlyCreditsIfNeeded(subscription);
 
     const remaining =
         (subscription.monthlyCredits || 0) + (subscription.topUpCredits || 0);
@@ -133,45 +168,67 @@ export async function consumeAICapacity(
 ): Promise<RemainingBalance | null> {
     if (!subscription?.id || unitsToConsume <= 0) return null;
 
-    const monthlyRemaining = subscription.monthlyCredits || 0;
-    const topUpRemaining = subscription.topUpCredits || 0;
+    const subscriptionRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .doc(subscription.id);
 
-    let newMonthly = monthlyRemaining;
-    let newTopUp = topUpRemaining;
+    const updatedBalance = await firestoreAdmin.runTransaction(async (tx) => {
+        const subscriptionSnap = await tx.get(subscriptionRef);
+        if (!subscriptionSnap.exists) return null;
 
-    if (monthlyRemaining >= unitsToConsume) {
-        // Fully covered by monthly credits
-        newMonthly = monthlyRemaining - unitsToConsume;
-    } else {
-        // Use all remaining monthly, rest from topUp
-        const remainder = unitsToConsume - monthlyRemaining;
-        newMonthly = 0;
-        newTopUp = Math.max(0, topUpRemaining - remainder);
-    }
+        const current = subscriptionSnap.data() as FirestoreSubscriptionDoc;
+        const monthlyRemaining = Number(current.monthlyCredits ?? 0);
+        const topUpRemaining = Number(current.topUpCredits ?? 0);
 
-    await updateSubscription(subscription.id, {
-        monthlyCredits: newMonthly,
-        topUpCredits: newTopUp,
+        let newMonthly = monthlyRemaining;
+        let newTopUp = topUpRemaining;
+
+        if (monthlyRemaining >= unitsToConsume) {
+            // Fully covered by monthly credits
+            newMonthly = monthlyRemaining - unitsToConsume;
+        } else {
+            // Use all remaining monthly, rest from topUp
+            const remainder = unitsToConsume - monthlyRemaining;
+            newMonthly = 0;
+            newTopUp = Math.max(0, topUpRemaining - remainder);
+        }
+
+        tx.set(subscriptionRef, {
+            monthlyCredits: newMonthly,
+            topUpCredits: newTopUp,
+            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        return {
+            monthlyCredits: newMonthly,
+            topUpCredits: newTopUp,
+            subscription: current,
+        };
     });
+
+    if (!updatedBalance) return null;
 
     // 📧 LIFECYCLE MESSAGE: Credits exhausted notification (fire-and-forget)
     // Fires when BOTH monthly + topUp credits hit zero after consumption
-    if (newMonthly === 0 && newTopUp === 0) {
+    if (updatedBalance.monthlyCredits === 0 && updatedBalance.topUpCredits === 0) {
         try {
             const { sendLifecycleMessage } = await import('@lib/messaging');
             sendLifecycleMessage({
-                storeId: String(subscription.storeId),
-                tenantId: String(subscription.tenantId),
+                storeId: String(updatedBalance.subscription.storeId),
+                tenantId: String(updatedBalance.subscription.tenantId),
                 eventType: 'CREDITS_EXHAUSTED',
-                referenceId: `credits-exhausted-${subscription.storeId}-${new Date().toISOString().split('T')[0]}`,
-                recipientEmail: subscription.email || '',
-                storeName: subscription.name || '',
+                referenceId: `credits-exhausted-${updatedBalance.subscription.storeId}-${new Date().toISOString().split('T')[0]}`,
+                recipientEmail: updatedBalance.subscription.email || '',
+                storeName: updatedBalance.subscription.name || '',
                 metadata: {},
             }).catch(() => { /* non-blocking */ });
         } catch { /* non-blocking */ }
     }
 
-    return { monthlyCredits: newMonthly, topUpCredits: newTopUp };
+    return {
+        monthlyCredits: updatedBalance.monthlyCredits,
+        topUpCredits: updatedBalance.topUpCredits,
+    };
 }
 
 /**

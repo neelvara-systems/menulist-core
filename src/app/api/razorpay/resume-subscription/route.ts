@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions";
+import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
@@ -30,6 +31,13 @@ export const POST = withAuth(async (request, session) => {
 
         // 🔒 CRITICAL: Verify user owns this tenant/store
         if (!verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!(await canManageBillingMutation(session, request, '/api/razorpay/resume-subscription'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }

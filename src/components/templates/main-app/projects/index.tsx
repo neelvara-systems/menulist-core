@@ -37,6 +37,7 @@ import { useTranslations } from 'next-intl';
 import useMasterJobStatus from '@hook/useMasterJobStatus';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
+import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
@@ -286,13 +287,24 @@ function ProjectsPage() {
     const shouldEnableDesktopProjectsData = hasMounted && (!FEATURE_FLAGS.ENABLE_MOBILE_UI || !isMobile || forceDesktop);
 
     // SWR cache key for projects list
-    const projectsListCacheKey = shouldEnableDesktopProjectsData && loggedInSession?.sId
-        ? `projects-${loggedInSession.tId}-${loggedInSession.sId}`
+    const effectiveTenantId = storeDetails?.tenantId || loggedInSession?.tId;
+    const effectiveStoreId = storeDetails?.storeId || loggedInSession?.sId;
+
+    const projectsListCacheKey = shouldEnableDesktopProjectsData && effectiveTenantId && effectiveStoreId
+        ? `projects-${effectiveTenantId}-${effectiveStoreId}`
         : null;
 
     // SWR cache key for individual project
-    const projectDataCacheKey = shouldEnableDesktopProjectsData && selectedProject?.projectId
-        ? `project-${selectedProject.projectId}`
+    const selectedProjectStoreId = selectedProject?.projectId
+        ? String(selectedProject.projectId).split('-').filter(Boolean).pop()
+        : null;
+    const selectedProjectMatchesStore = Boolean(
+        effectiveStoreId &&
+        selectedProjectStoreId &&
+        selectedProjectStoreId === String(effectiveStoreId),
+    );
+    const projectDataCacheKey = shouldEnableDesktopProjectsData && selectedProjectMatchesStore && selectedProject?.projectId
+        ? `project-${effectiveStoreId}-${selectedProject.projectId}`
         : null;
 
     // Fetch projects list with SWR (automatic caching & deduplication)
@@ -334,6 +346,11 @@ function ProjectsPage() {
             revalidateOnMount: true
         }
     );
+
+    useEffect(() => {
+        setSelectedProject(null);
+        setCurrentView(1);
+    }, [effectiveStoreId]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CHECK FOR EXISTING ACTIVE JOB ON PROJECT LOAD
@@ -563,52 +580,53 @@ function ProjectsPage() {
         }
 
         if (jobIsPreviewReady && !showReviewScreen && activeJob?.result) {
-            // Capture extraction stats for the success modal (after review save)
-            const previewResult = activeJob.result;
-            if (previewResult) {
-                setExtractionStats({
-                    qualityScore: previewResult.qualityScore,
-                    qualityDetails: previewResult.qualityDetails,
-                    categoriesCount: previewResult.combinedData?.categories?.length || 0,
-                    itemsCount: previewResult.combinedData?.items?.length || 0,
-                });
-            }
-            // Re-extraction: raw data ready for client-side comparison
-            try {
-                // Get existing project data for comparison
-                const existingItems = activeProject?.files?.flatMap(f => f.extractedData?.data?.items || []) || [];
-                const existingCategories = activeProject?.files?.flatMap(f => f.extractedData?.data?.categories || []) || [];
+            void (async () => {
+                // Capture extraction stats for the success modal (after review save)
+                const previewResult = activeJob.result;
+                if (previewResult) {
+                    setExtractionStats({
+                        qualityScore: previewResult.qualityScore,
+                        qualityDetails: previewResult.qualityDetails,
+                        categoriesCount: previewResult.combinedData?.categories?.length || 0,
+                        itemsCount: previewResult.combinedData?.items?.length || 0,
+                    });
+                }
+                // Re-extraction: raw data ready for client-side comparison
+                try {
+                    const storeProject = buildComparisonProjectInput(activeProject);
+                    const masterProject = masterProjectId
+                        ? await getLinkedMasterComparisonInput(activeProject)
+                        : undefined;
 
-                // Get extracted data from job result
-                const extractedItems = activeJob.result.combinedData?.items || [];
-                const extractedCategories = activeJob.result.combinedData?.categories || [];
-                const primaryLang = activeProject?.languages?.[0] || 'en';
+                    // Get extracted data from job result
+                    const extractedItems = activeJob.result.combinedData?.items || [];
+                    const extractedCategories = activeJob.result.combinedData?.categories || [];
+                    const primaryLang = activeProject?.languages?.[0] || 'en';
 
-                // Determine comparison mode based on project type
-                const comparisonMode: ComparisonMode = masterProjectId
-                    ? 'OUTLET_LINKED'
-                    : 'SINGLE_STORE'; // MASTER_PROJECT mode is same as SINGLE_STORE for comparison
+                    // Determine comparison mode based on project type
+                    const comparisonMode: ComparisonMode = masterProjectId
+                        ? 'OUTLET_LINKED'
+                        : 'SINGLE_STORE'; // MASTER_PROJECT mode is same as SINGLE_STORE for comparison
 
-                // Run comparison engine
-                const comparison = runComparisonEngine({
-                    extracted: {
-                        categories: extractedCategories,
-                        items: extractedItems,
-                    },
-                    storeProject: {
-                        categories: existingCategories,
-                        items: existingItems,
-                    },
-                    mode: comparisonMode,
-                    primaryLang,
-                });
+                    // Run comparison engine
+                    const comparison = runComparisonEngine({
+                        extracted: {
+                            categories: extractedCategories,
+                            items: extractedItems,
+                        },
+                        storeProject,
+                        masterProject,
+                        mode: comparisonMode,
+                        primaryLang,
+                    });
 
-                setComparisonResult(comparison);
-                setShowReviewScreen(true);
-            } catch (error) {
-                console.error('[JobQueue] Comparison engine error:', error);
-                message.error('Failed to compare extracted data');
-            }
+                    setComparisonResult(comparison);
+                    setShowReviewScreen(true);
+                } catch (error) {
+                    console.error('[JobQueue] Comparison engine error:', error);
+                    message.error('Failed to compare extracted data');
+                }
+            })();
         }
 
         if (jobIsFailed) {

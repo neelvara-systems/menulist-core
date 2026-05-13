@@ -3,7 +3,25 @@
 > **Purpose**: Production-grade audit of every AI touchpoint across the MenuList codebase.
 > **Goal**: Enable output/credit-based pricing + internal AI usage tracking with zero gaps.
 > **Date**: February 9, 2026
-> **Status**: 🔒 AUDIT COMPLETE — Ready for implementation alignment with `ai-enhancement-packs_impl.md`
+> **Status**: Historical audit. See May 13 runtime status below for current implementation.
+
+## May 13, 2026 Runtime Status
+
+The original February audit found missing usage tracking across the billable AI routes. The current runtime has the implementation alignment in place:
+
+| Area | Current status |
+| --- | --- |
+| Single image generation | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| Batch image generation worker | Capacity check, operation log, unit cost, token/cost metadata, balance consumption, Cloud Tasks project-header guard |
+| Image editing | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| Description generation | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| Translation | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| New item metadata | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| SEO/AEO and business copy | Capacity check, operation log, token/cost metadata; currently zero-unit setup actions |
+| Campaign caption | Capacity check, operation log, unit cost, token/cost metadata, balance consumption |
+| Cloud Functions menu-image processing | Operation log and token/cost metadata use the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes |
+
+Balance consumption now happens in `consumeAICapacity()` through a Firestore transaction. It deducts `monthlyCredits` first, then `topUpCredits`, and returns `remainingBalance` for desktop/mobile state sync.
 
 ---
 

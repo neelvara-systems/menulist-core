@@ -73,6 +73,12 @@ export const POST = withAuth(async (request, session) => {
 
         const sub = await getActiveSubscriptionForStore(tenantId, storeId);
         if (sub) {
+            if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && sub.status !== 'active') {
+                return NextResponse.json(
+                    { error: "Billing needs attention before adding another location" },
+                    { status: 402 },
+                );
+            }
             subId = sub.id;
             providerSubId = sub.providerSubscriptionId;
         }
@@ -233,7 +239,7 @@ export const POST = withAuth(async (request, session) => {
                 }, { merge: true });
             }
 
-            return { newStoreId, tenantName };
+            return { newStoreId, outletSlug, tenantName };
         });
         revalidateTag(`menu-store-${result.newStoreId}`);
         revalidateTag(`store-${result.newStoreId}`);
@@ -242,6 +248,7 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({
             success: true,
             storeId: result.newStoreId,
+            outletSlug: result.outletSlug,
             outletName,
             tenantName: result.tenantName,
             quantity: subId ? newQty : null,

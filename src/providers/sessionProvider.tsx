@@ -7,6 +7,10 @@ import {
 import { getStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
+import {
+    readActiveStoreContextId,
+    writeActiveStoreContextId,
+} from '@lib/multiOutlet/activeStoreContext';
 import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
@@ -20,7 +24,7 @@ import { objectNullCheck, removeObjRef } from '@util/utils';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import { SessionProvider as Provider } from 'next-auth/react';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import ServerSidePageLoader from '../app/loading';
 import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataProvider';
 
@@ -37,6 +41,10 @@ export default function SessionProvider({ children, session }: Props) {
     // Define the initial state for store details
     const [storeDetails, setStoreDetails] = useState<StoreDataType>(null)
 
+    // Login store remains the authority store. storeDetails can change when an
+    // HQ user views an outlet, but permissions must still come from this store.
+    const [loginStoreDetails, setLoginStoreDetails] = useState<StoreDataType>(null)
+
     const [userPermissions, setUserPermissions] = useState<any>(null)
 
     const [usersList, setUsersList] = useState<any>(null)
@@ -51,21 +59,15 @@ export default function SessionProvider({ children, session }: Props) {
     // Persisted to localStorage so store context survives page refresh
     const [activeStoreContext, setActiveStoreContextRaw] = useState<number | null>(() => {
         if (typeof window === 'undefined') return null;
-        try {
-            const stored = localStorage.getItem('activeStoreContext');
-            return stored ? Number(stored) : null;
-        } catch { return null; }
+        return readActiveStoreContextId();
     });
-    const setActiveStoreContext = (storeId: number | null) => {
+    const setActiveStoreContext = useCallback((storeId: number | null) => {
         setActiveStoreContextRaw(storeId);
-        try {
-            if (storeId !== null) {
-                localStorage.setItem('activeStoreContext', String(storeId));
-            } else {
-                localStorage.removeItem('activeStoreContext');
-            }
-        } catch { /* localStorage unavailable */ }
-    };
+        writeActiveStoreContextId(storeId, {
+            baseStoreId: session?.user?.storeId ?? null,
+            tenantId: session?.user?.tenantId ?? null,
+        });
+    }, [session?.user?.storeId, session?.user?.tenantId]);
 
     const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp, kBCategories: KbCategoriesMap }>({ cachedOn: null, kBCategories: null })//this are knowledge base categories which used in changelog 
 
@@ -142,13 +144,18 @@ export default function SessionProvider({ children, session }: Props) {
 
                     // Update the store details state with the fetched fetchedStore
                     // console.log("storeDetails fetched inside SessionProvider", fetchedStore)
+                    setLoginStoreDetails(fetchedStore);
                     setStoreDetails(fetchedStore);
 
                     // const users = await getUsersByStoreId(session.user.storeId);
                     // setUsersList(removeObjRef(users))
 
                     // Fetch subscription data
-                    const subscriptionData: any = await getActiveSubscriptionForStore(Number(session.user.tenantId), Number(session.user.storeId))
+                    const subscriptionData: any = await getActiveSubscriptionForStore(
+                        Number(session.user.tenantId),
+                        Number(session.user.storeId),
+                        fetchedTenant.storesList,
+                    )
                     setActiveSubscription(subscriptionData)
 
                     // Set user context for Sentry with subscription info (client identification)
@@ -174,21 +181,102 @@ export default function SessionProvider({ children, session }: Props) {
     }, [session]) // Re-run the effect when the session changes
 
     useEffect(() => {
-        if (objectNullCheck(storeDetails)) {
-            if (!storeDetails?.roles) return;
+        if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
 
-            // Get user's single role for current store
+        const loginStoreId = Number(session.user?.storeId);
+        const canUseStoreContext = Boolean(loginStoreDetails.isMaster);
+        const targetStoreId = canUseStoreContext && activeStoreContext && activeStoreContext !== loginStoreId
+            ? activeStoreContext
+            : null;
+
+        if (activeStoreContext && !targetStoreId) {
+            setActiveStoreContext(null);
+            if (storeDetails?.storeId !== loginStoreDetails.storeId) {
+                setStoreDetails(loginStoreDetails);
+            }
+            return;
+        }
+
+        if (!targetStoreId) {
+            if (storeDetails?.storeId !== loginStoreDetails.storeId) {
+                setStoreDetails(loginStoreDetails);
+            }
+            void getActiveSubscriptionForStore(
+                Number(session.user.tenantId),
+                loginStoreId,
+                tenantDetails.storesList,
+            ).then(setActiveSubscription);
+            return;
+        }
+
+        const targetSummary = tenantDetails.storesList.find((store: any) => store.storeId === targetStoreId);
+        if (!targetSummary) {
+            setActiveStoreContext(null);
+            return;
+        }
+
+        let cancelled = false;
+        const loadTargetStore = async () => {
+            const targetStore = targetSummary.storeDetails || await getStoreById(targetStoreId);
+            if (cancelled) return;
+
+            if (!targetSummary.storeDetails) {
+                setTenantDetails((current: TenantDataType) => {
+                    if (!current?.storesList?.length) return current;
+                    return {
+                        ...current,
+                        storesList: current.storesList.map((store: any) => (
+                            store.storeId === targetStoreId
+                                ? { ...store, storeDetails: removeObjRef(targetStore) }
+                                : store
+                        )),
+                    };
+                });
+            }
+
+            setStoreDetails(targetStore);
+            const subscriptionData = await getActiveSubscriptionForStore(
+                Number(session.user.tenantId),
+                targetStoreId,
+                tenantDetails.storesList,
+            );
+            if (!cancelled) {
+                setActiveSubscription(subscriptionData);
+            }
+        };
+
+        void loadTargetStore();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        activeStoreContext,
+        loginStoreDetails,
+        session,
+        setActiveStoreContext,
+        storeDetails?.storeId,
+        tenantDetails,
+    ]);
+
+    useEffect(() => {
+        const authorityStoreDetails = loginStoreDetails || storeDetails;
+        if (objectNullCheck(authorityStoreDetails)) {
+            if (!authorityStoreDetails?.roles) return;
+
+            // Get user's single role for their login store. HQ users keep HQ
+            // authority while viewing an outlet context.
             const userRoleId = session?.user?.stores?.find(
                 (store: any) => store.storeId === session.user.storeId
             )?.role;
 
             // Find matching role definition from store
-            const userRole = storeDetails.roles?.find((r: any) => r.id === userRoleId);
+            const userRole = authorityStoreDetails.roles?.find((r: any) => r.id === userRoleId);
 
             if (userRole?.permissions) {
                 // For outlet stores: apply master's outletPolicy to restrict permissions
                 // Master store's outletPolicy is the chain-wide gate for what outlets can do
-                const isMaster = Boolean(storeDetails.isMaster);
+                const isMaster = Boolean(authorityStoreDetails.isMaster);
                 if (!isMaster && tenantDetails?.storesList?.length) {
                     const masterStore = tenantDetails.storesList.find((s: any) => s.isMaster);
                     const outletPolicy = masterStore?.storeDetails?.outletPolicy;
@@ -199,7 +287,7 @@ export default function SessionProvider({ children, session }: Props) {
                 }
             }
         }
-    }, [storeDetails, tenantDetails])
+    }, [loginStoreDetails, session?.user?.storeId, session?.user?.stores, storeDetails, tenantDetails])
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -250,7 +338,7 @@ export default function SessionProvider({ children, session }: Props) {
                 setAssetsList,
                 activeSubscription,
                 setActiveSubscription,
-                isMasterUser: Boolean(storeDetails?.isMaster),
+                isMasterUser: Boolean((loginStoreDetails || storeDetails)?.isMaster),
                 activeStoreContext,
                 setActiveStoreContext,
                 cachedKBCategories,

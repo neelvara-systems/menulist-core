@@ -731,6 +731,10 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         hasMasterProject: !!masterProject,
     });
 
+    if (mode === 'OUTLET_LINKED' && !masterProject) {
+        throw new Error('OUTLET_LINKED comparison requires master project data');
+    }
+
     // Initialize stats
     const stats: ComparisonStats = {
         extractedCategories: extracted.categories.length,

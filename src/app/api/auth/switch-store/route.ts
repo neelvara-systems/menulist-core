@@ -10,7 +10,7 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { withAuth } from "../../../../middleware/auth";
+import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const schema = z.object({ targetStoreId: z.number().int().positive() });
 
@@ -20,6 +20,9 @@ export const POST = withAuth(async (request, session) => {
     }
     const { tId: tenantId, sId: currentStoreId } = session;
     if (!tenantId) return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    if (!verifyTenantAccess(session, tenantId, currentStoreId, request)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
 import { createInitialSubscription } from "@database/subscriptions";
+import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -41,6 +42,13 @@ export const POST = withAuth(async (request, session) => {
 
         // 🔒 CRITICAL: Verify user owns this tenant/store
         if (!verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }

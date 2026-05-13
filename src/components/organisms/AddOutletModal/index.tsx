@@ -52,7 +52,14 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             if (tenantDetails && data.storeId) {
                 const updatedStoresList = [
                     ...tenantDetails.storesList,
-                    { storeId: data.storeId, name: outletName.trim(), isMaster: false },
+                    {
+                        active: true,
+                        isMaster: false,
+                        name: outletName.trim(),
+                        outletSlug: data.outletSlug,
+                        storeId: data.storeId,
+                        tenantName: data.tenantName || tenantDetails.name,
+                    },
                 ];
                 setTenantDetails({ ...tenantDetails, storesList: updatedStoresList });
             }

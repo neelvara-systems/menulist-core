@@ -66,5 +66,10 @@ export function applyOutletPolicy(
     effective.canAccessBilling = false;
     effective.canManageSubscription = false;
 
+    // Editor-level outlet flags have no RolePermissions counterpart. Keep them
+    // attached to the effective permission payload so mobile/desktop editors can
+    // enforce direct item-level policy without another master-store read.
+    (effective as RolePermissions & { outletPolicy?: OutletPolicy }).outletPolicy = outletPolicy;
+
     return effective;
 }

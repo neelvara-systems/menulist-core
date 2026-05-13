@@ -9,6 +9,7 @@ import { useOfferingLabels } from "@hook/useOfferingLabels";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { resolveProjectForRender } from "@lib/multiOutlet";
+import { stripResolvedOutletProjectForSave } from "@lib/multiOutlet/outletProjectPersistence";
 import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
 import { getCanonicalProjectSourceLanguage } from "@lib/localization/languagePolicy";
 import {
@@ -191,7 +192,10 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
 
     // Detect unsaved changes
     useEffect(() => {
-        const changesFound = !isSameObjects(activeProject, projectData);
+        const comparableProjectData = projectData?.masterProjectId
+            ? stripResolvedOutletProjectForSave(projectData, activeProject)
+            : projectData;
+        const changesFound = !isSameObjects(activeProject, comparableProjectData);
         setHasChanges(changesFound);
         hasChangesRef.current = changesFound;
     }, [activeProject, projectData]);
@@ -224,10 +228,18 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     }, [fileProcessingId]);
 
     useEffect(() => {
-        if (!activeProject?.files || activeProject.files.length === 0) {
+        if ((!activeProject?.files || activeProject.files.length === 0) && !activeProject?.masterProjectId) {
             setCurrentView(1);
         } else {
             setProjectData(removeObjRef(activeProject));
+        }
+
+        if (!activeProject?.masterProjectId) {
+            setIsMasterLinked(false);
+            setItemStates({});
+            setCategoryStates({});
+            setMasterProjectLanguages([]);
+            setMasterPrices({});
         }
     }, [activeProject]);
 
@@ -254,6 +266,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     setMasterProjectLanguages(resolved._resolved.masterProjectLanguages || []);
                     setMasterPrices(resolved._resolved.masterPrices || {});
                 }
+                setProjectData(removeObjRef(resolved));
             } catch (error) {
                 console.error("[Multi-outlet] Failed to load resolved project:", error);
             }
@@ -415,8 +428,11 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
 
     const syncChanges = useCallback(
         async (updatedData: Project = projectData) => {
+            const projectToSave = updatedData?.masterProjectId
+                ? stripResolvedOutletProjectForSave(updatedData, activeProject)
+                : updatedData;
             // Only sync when there are real changes to avoid unnecessary writes
-            if (!activeProject || isSameObjects(activeProject, updatedData)) {
+            if (!activeProject || isSameObjects(activeProject, projectToSave)) {
                 return;
             }
 
@@ -424,12 +440,13 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
             dispatch(startLoader("syncing changes"));
             try {
                 const updatedProject = await updateProject({
-                    ...updatedData,
+                    ...projectToSave,
                     projectId: selectedProject.projectId,
                 });
                 if (updatedProject) {
                     setHasChanges(false);
-                    setProjectData(updatedProject);
+                    hasChangesRef.current = false;
+                    setProjectData(updatedData.masterProjectId ? updatedData : updatedProject);
                     setActiveProject(updatedProject);
                     setLastSavedAt(Date.now());
                     triggerPosSyncDebounced(

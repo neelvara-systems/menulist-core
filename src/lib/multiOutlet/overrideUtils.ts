@@ -16,6 +16,7 @@ import {
     ItemOverride,
     ProjectOverrides,
 } from "@template/main-app/projects/types/project.types";
+import type { UserUploadedFileType } from "@type/common";
 
 // ══════════════════════════════════════════════════════════════════════════
 // OVERRIDE APPLICATION
@@ -36,6 +37,8 @@ export function applyItemOverride(
         ...item,
         // Apply override values if present, else keep original
         price: override.price ?? item.price,
+        description: override.description ?? item.description,
+        images: override.images ?? item.images,
         available: override.available ?? item.available,
         active: override.active ?? item.active,
         isBestSeller: override.isBestSeller ?? item.isBestSeller,
@@ -158,6 +161,8 @@ export function getCategoryOverrideType(
  */
 export function createItemOverride(params: {
     price?: string;
+    description?: ExtractedDataItem["description"];
+    images?: UserUploadedFileType[];
     available?: boolean;
     active?: boolean;
     orderIndex?: number;
@@ -168,6 +173,8 @@ export function createItemOverride(params: {
     const override: ItemOverride = {};
 
     if (params.price !== undefined) override.price = params.price;
+    if (params.description !== undefined) override.description = params.description;
+    if (params.images !== undefined) override.images = params.images;
     if (params.available !== undefined) override.available = params.available;
     if (params.active !== undefined) override.active = params.active;
     if (params.orderIndex !== undefined) override.orderIndex = params.orderIndex;

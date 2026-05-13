@@ -145,6 +145,7 @@ export const AI_ACTIONS_TYPES: any = {
     REWRITE_DESCRIPTION: "rewrite_description",
     SEO_AEO_GENERATION: "seo_aeo_generation",
     BUSINESS_COPY_GENERATION: "business_copy_generation",
+    CAMPAIGN_CAPTION: "campaign_caption",
     //new item metadata actions
     NEW_ITEM_METADATA: "new_item_metadata",
 }

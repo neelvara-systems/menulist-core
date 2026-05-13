@@ -43,21 +43,25 @@ The following Razorpay-based credit purchase system is **fully built and product
 Client: handleTopupPurchase(pack, currency)                  [usePaymentHandler.ts:147]
     ↓
 POST /api/razorpay/create-topup-order                        [create-topup-order/route.ts]
-    → withAuth() → verifyTenantAccess() → rateLimit(PAYMENT_TOPUP)
-    → Find pack from creditPacksList by packId
+    → withAuth() → verifyTenantAccess() → canManageSubscription → rateLimit(PAYMENT_TOPUP)
+    → Find pack from aiEnhancementPacksList by packId
     → razorpayClient.orders.create({ amount, currency, notes: { tenantId, storeId, packId, creditAmount } })
+    → Write topups/{orderId} as pending
     → Return { order } to client
     ↓
 Client: Opens Razorpay checkout modal (window.Razorpay)      [usePaymentHandler.ts:209]
     → User completes payment
     ↓
 POST /api/razorpay/verify-topup                              [verify-topup/route.ts]
-    → withAuth() → verifyTenantAccess() → Zod validation
+    → withAuth() → verifyTenantAccess() → canManageSubscription → Zod validation
+    → Verify Razorpay checkout signature
+    → Read topups/{orderId} for idempotency
+    → razorpayClient.orders.fetch(order_id) → validate tenant/store notes and extract packId
     → razorpayClient.payments.fetch(payment_id) → auto-capture if authorized
-    → razorpayClient.orders.fetch(order_id) → extract packId from notes
+    → Verify captured payment belongs to order_id
     → getActiveSubscriptionForStore(tenantId, storeId)
-    → Find pack from creditPacksList → get creditAmount
-    → updateSubscription(sub.id, { topUpCredits: currentTopUpCredits + creditsToAdd })
+    → Find pack from aiEnhancementPacksList → get creditAmount
+    → In one Firestore transaction: increment topUpCredits and mark topups/{orderId} paid
     → Return { success: true, newCreditBalance }
     ↓
 Webhook: /api/razorpay/webhook                               [webhook/route.ts]
@@ -202,7 +206,7 @@ SessionProvider: event listener
 
 **Layer 1 — Webhook (monthly plans):** `subscription.charged` event in `api/razorpay/webhook/route.ts` resets credits when Razorpay charges the next cycle.
 
-**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current billing period (YYYYMM key based on subscription anchor day, NOT calendar month). If different, resets credits and writes to Firestore (1 write, first AI call of the billing month only). Anchor day is capped to days-in-month for month-end edge cases (e.g., anchor=31 in Feb→28). Race-safe — concurrent calls reset to the same idempotent value.
+**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current billing period (YYYYMM key based on subscription anchor day, NOT calendar month). If different, it re-reads the subscription in a Firestore transaction, resets credits, and writes to Firestore (1 read + 1 write, first AI call of the billing month only). Anchor day is capped to days-in-month for month-end edge cases (e.g., anchor=31 in Feb→28). Race-safe — concurrent calls cannot overwrite a usage deduction during a reset.
 
 **New field:** `creditsLastResetMonth?: number` on `FirestoreSubscriptionDoc`. Set by all subscription creation routes, webhook, and lazy reset. Old subscriptions without the field get reset on first AI call.
 
@@ -1294,6 +1298,68 @@ AI_ADMIN_DASHBOARD: false,
 | Update `MobileBillingScreen`                        | 4    | ✅     | AI Features status, doctrine-compliant labels (Session 14) |
 
 > **3-Year Freeze Rule:** User confirmed not live yet. Full re-architecture ships at launch. No migration or backward compatibility needed.
+
+---
+
+## May 2026 Runtime Audit — Billing and Enhancement Pack Contract
+
+### Desktop Billing
+
+Desktop billing remains the deepest owner surface:
+
+1. `src/components/templates/main-app/billing/index.tsx` resolves the selected billing store from `activeStoreContext`, `storeDetails.storeId`, or `session.user.storeId`.
+2. `getActiveSubscriptionForStore(tenantId, selectedStoreId, tenantDetails.storesList)` returns the selected store subscription or the HQ subscription for outlet stores.
+3. Billing history uses the effective subscription store (`activeSubscription.storeId`) so outlet views do not query an empty outlet ledger when billing is inherited.
+4. Enhancement-pack purchase still uses `usePaymentHandler.handleTopupPurchase()` and updates local `activeSubscription.topUpCredits` from the verified server balance when available.
+5. If the selected outlet inherits HQ billing, the desktop page explicitly tells the owner that plan changes, retries, and enhancement packs apply to HQ.
+
+### Mobile Billing
+
+Mobile billing now mirrors the same contract in `src/components/mobile/screens/MobileBillingScreen.tsx`:
+
+1. Store picker is available for HQ users with `canSwitchStores`.
+2. Monthly and yearly plan choices are available in the mobile plan sheet.
+3. Enhancement packs are purchased directly on mobile through the same Razorpay top-up handler.
+4. Billing history reads from the effective subscription store, matching desktop and multi-outlet billing inheritance.
+5. Mobile hides Billing and Transactions from users without `canAccessBilling`.
+
+### Enhancement Pack Server Flow
+
+The verified top-up flow is now audit-complete and idempotent:
+
+```
+POST /api/razorpay/create-topup-order
+    -> withAuth + tenant access + canManageSubscription + PAYMENT_TOPUP rate limit
+    -> Zod validates packId + currency
+    -> Razorpay order is created with tenantId, storeId, packId, creditAmount
+    -> topups/{orderId} is written as status="pending"
+
+POST /api/razorpay/verify-topup
+    -> withAuth + tenant access + canManageSubscription
+    -> Zod validates razorpay_payment_id + razorpay_order_id + razorpay_signature
+    -> Razorpay checkout signature is verified server-side
+    -> if topups/{orderId} is already paid, return without adding credits again
+    -> payment is captured/verified with Razorpay
+    -> Razorpay order tenant/store notes must match the session tenant/store
+    -> active subscription is resolved through getActiveSubscriptionForStore()
+    -> topUpCredits is incremented once in a Firestore transaction
+    -> topups/{orderId} is marked status="paid" with providerPaymentId in the same transaction
+```
+
+This keeps `subscriptions.topUpCredits` as the fast balance and `topups` as the financial audit record.
+
+### AI Usage and Balance Consumption
+
+The runtime credit contract is:
+
+1. `monthlyCreditsAllowance` is the plan allowance for the billing period.
+2. `monthlyCredits` is the current recurring balance and resets to `monthlyCreditsAllowance` at renewal.
+3. `topUpCredits` is purchased enhancement-pack balance and does not reset.
+4. Paid AI routes call `checkAICapacity()` before the provider request and `consumeAICapacity()` after a successful operation.
+5. Lazy monthly reset and `consumeAICapacity()` both use Firestore transactions so reset and usage writes cannot overwrite each other during concurrent AI calls.
+6. AI responses return `remainingBalance`; desktop and mobile owner UI listen through `syncBalanceFromResponse()` and update `activeSubscription` without an extra Firestore read.
+7. Campaign caption generation is included as `AI_ACTIONS_TYPES.CAMPAIGN_CAPTION` with a 1-unit cost and the same operation log/capacity path.
+8. Batch image generation worker calls are guarded by the Cloud Tasks project header before they run provider work.
 
 ---
 

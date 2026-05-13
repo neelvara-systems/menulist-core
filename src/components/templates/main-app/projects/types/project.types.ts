@@ -7,6 +7,7 @@
 import type { MasterSnapshot } from "@type/multiOutlet.types";
 import { Timestamp } from "firebase/firestore";
 import type { LocalizedText } from "@lib/localization/text";
+import type { UserUploadedFileType } from "@type/common";
 import { CategoryTimeSlot, ExtractedData } from "./extractedData.types";
 import { ThemeConfig } from "./theme.types";
 
@@ -239,6 +240,8 @@ export interface ItemOverride {
     active?: boolean; // Hide item permanently at this store
     available?: boolean; // Temporary sold-out status
     price?: string; // Override master price
+    description?: { [key: string]: string }; // Store-specific item description
+    images?: UserUploadedFileType[]; // Store-specific item images
     orderIndex?: number; // Local item ordering within category
     isBestSeller?: boolean; // Store can mark local bestsellers
     duration?: number; // Prep time may vary by store

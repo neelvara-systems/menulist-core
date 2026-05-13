@@ -1,7 +1,7 @@
 import type { PlatformBlockDetails } from '@type/platform/blocking';
 
 export function isPlatformEntityBlocked(entity: any): boolean {
-    return entity?.blocked === true || entity?.blockDetails?.blocked === true;
+    return entity?.blocked === true || entity?.tenantBlocked === true || entity?.blockDetails?.blocked === true;
 }
 
 function cleanUndefined<T extends Record<string, any>>(value: T): T {

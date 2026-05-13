@@ -14,6 +14,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import getNewItemMetadataViaAPI, { mergeGeneratedItemMetadata } from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
+import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -42,6 +43,8 @@ interface ItemEditSheetProps {
     projectData?: Project | null;
     selectedLanguages?: string[];
     sourceFile?: ProjectFileType | null;
+    inheritanceState?: InheritanceState;
+    outletPolicy?: OutletPolicy | null;
 }
 
 function createDraftItem({
@@ -141,6 +144,8 @@ export default function ItemEditSheet({
     projectData,
     selectedLanguages = ['en'],
     sourceFile,
+    inheritanceState,
+    outletPolicy,
 }: ItemEditSheetProps) {
     const t = useTranslations('MobileMenu');
     const dispatch = useAppDispatch();
@@ -161,13 +166,24 @@ export default function ItemEditSheet({
     const isAddMode = mode === 'add';
     const primaryLanguage = selectedLanguages[0] || 'en';
     const hasMultipleLanguages = selectedLanguages.length > 1;
+    const isInheritedOutletItem = Boolean(
+        projectData?.masterProjectId &&
+        !isAddMode &&
+        (inheritanceState === 'inherited' || inheritanceState === 'overridden')
+    );
+    const canEditMasterFields = !isInheritedOutletItem;
+    const canEditDescription = !isInheritedOutletItem || outletPolicy?.descriptionOverride === true;
+    const canEditImages = !isInheritedOutletItem || outletPolicy?.imageOverride === true;
+    const canEditPrice = !isInheritedOutletItem || outletPolicy?.priceOverride !== false;
+    const canEditAvailability = !isInheritedOutletItem || outletPolicy?.availabilityOverride !== false;
+    const canDeleteItem = !isInheritedOutletItem;
     const [draftItem, setDraftItem] = useState<ExtractedDataItem>(() => createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
     const [imagePreview, setImagePreview] = useState<string | null>(item?.image || null);
     const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const [isSaving, setIsSaving] = useState(false);
     const [isAiWorking, setIsAiWorking] = useState(false);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
-    const canEditImageInline = isAddMode || !onManageImages;
+    const canEditImageInline = (isAddMode || !onManageImages) && canEditImages;
 
     const resetDraft = () => {
         setDraftItem(createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
@@ -259,6 +275,7 @@ export default function ItemEditSheet({
     const hasChanges = currentComparisonState !== initialComparisonState;
 
     const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!canEditImages) return;
         const file = event.target.files?.[0];
         if (!file) return;
         try {
@@ -272,6 +289,8 @@ export default function ItemEditSheet({
     };
 
     const updateLocalizedField = (language: string, field: 'name' | 'description', value: string) => {
+        if (field === 'name' && !canEditMasterFields) return;
+        if (field === 'description' && !canEditDescription) return;
         setDraftItem((previous) => ({
             ...previous,
             [field]: {
@@ -282,6 +301,7 @@ export default function ItemEditSheet({
     };
 
     const updateAttributeField = (attributeId: string, updates: Partial<LocalizedAttribute>) => {
+        if (!canEditMasterFields) return;
         setDraftItem((previous) => ({
             ...previous,
             attributes: (previous.attributes || []).map((attribute) => (
@@ -291,6 +311,7 @@ export default function ItemEditSheet({
     };
 
     const updateDecisionFact = (field: MetadataFieldConfig, value: any) => {
+        if (!canEditMasterFields) return;
         setDraftItem((previous) => setDecisionFactValue(previous, field.key, value));
     };
 
@@ -407,6 +428,7 @@ export default function ItemEditSheet({
     };
 
     const handleAddAttribute = () => {
+        if (!canEditMasterFields) return;
         setDraftItem((previous) => ({
             ...previous,
             attributes: [
@@ -422,6 +444,7 @@ export default function ItemEditSheet({
     };
 
     const handleRemoveAttribute = (attributeId: string) => {
+        if (!canEditMasterFields) return;
         setDraftItem((previous) => ({
             ...previous,
             attributes: (previous.attributes || []).filter((attribute) => attribute.id !== attributeId),
@@ -429,7 +452,7 @@ export default function ItemEditSheet({
     };
 
     const handleGenerateContent = async () => {
-        if (isAiWorking || !projectData?.projectId || !sourceFile?.uid) return;
+        if (isAiWorking || !canEditDescription || !projectData?.projectId || !sourceFile?.uid) return;
 
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLanguage);
         const targetLanguages = selectedLanguages
@@ -598,7 +621,7 @@ export default function ItemEditSheet({
                     {hasMultipleLanguages ? (
                         <Flex align="center" justify="space-between">
                             <Text strong>{languageLabel}</Text>
-                            {!isAddMode && languageCode !== primaryLanguage ? (
+                            {!isAddMode && languageCode !== primaryLanguage && canEditDescription ? (
                                 <Button
                                     disabled={isAiWorking || isSaving}
                                     fill="outline"
@@ -618,6 +641,7 @@ export default function ItemEditSheet({
                         <Text strong>{t('itemNameLabel')}</Text>
                         <Input
                             autoFocus={isAddMode && languageCode === primaryLanguage}
+                            disabled={!canEditMasterFields}
                             onChange={(value) => updateLocalizedField(languageCode, 'name', value)}
                             placeholder={t('itemNamePlaceholder')}
                             value={getLocalizedValue(draftItem.name, languageCode)}
@@ -628,6 +652,7 @@ export default function ItemEditSheet({
                         <Text strong>{t('descriptionLabel')}</Text>
                         <TextArea
                             autoSize={{ minRows: 4, maxRows: 10 }}
+                            disabled={!canEditDescription}
                             onChange={(value) => updateLocalizedField(languageCode, 'description', value)}
                             placeholder={t('descriptionPlaceholder')}
                             value={getLocalizedValue(draftItem.description, languageCode)}
@@ -640,7 +665,7 @@ export default function ItemEditSheet({
                                 <Text strong>{t('variantsAddOns')}</Text>
                                 <Text type="secondary">{t('variantsAddOnsDesc')}</Text>
                             </Flex>
-                            <Button disabled={isSaving} fill="outline" onClick={handleAddAttribute} size="small">
+                            <Button disabled={isSaving || !canEditMasterFields} fill="outline" onClick={handleAddAttribute} size="small">
                                 <Flex align="center" gap={6}>
                                     <LuPlus size={14} />
                                     <Text>{t('add')}</Text>
@@ -657,7 +682,7 @@ export default function ItemEditSheet({
                                                 <Text strong>{t('optionNumber', { number: index + 1 })}</Text>
                                                 <Button
                                                     color="danger"
-                                                    disabled={isSaving}
+                                                    disabled={isSaving || !canEditMasterFields}
                                                     fill="none"
                                                     onClick={() => handleRemoveAttribute(attribute.id)}
                                                     size="small"
@@ -666,6 +691,7 @@ export default function ItemEditSheet({
                                                 </Button>
                                             </Flex>
                                             <Input
+                                                disabled={!canEditMasterFields}
                                                 onChange={(value) => {
                                                     updateAttributeField(attribute.id, {
                                                         name: {
@@ -681,6 +707,7 @@ export default function ItemEditSheet({
                                                 <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
                                                     <Text type="secondary">{t('variantPrice')}</Text>
                                                     <Input
+                                                        disabled={!canEditMasterFields}
                                                         onChange={(value) => updateAttributeField(attribute.id, { price: value })}
                                                         placeholder={t('variantPrice')}
                                                         type="number"
@@ -692,6 +719,7 @@ export default function ItemEditSheet({
                                                         <Text style={{ fontSize: 12 }} type="secondary">{t('active')}</Text>
                                                         <Switch
                                                             checked={attribute.active !== false}
+                                                            disabled={!canEditMasterFields}
                                                             onChange={(checked) => updateAttributeField(attribute.id, { active: checked })}
                                                         />
                                                     </Flex>
@@ -737,6 +765,7 @@ export default function ItemEditSheet({
                                 <Flex gap={6} vertical>
                                     <Text strong>{t('categoryLabel')}</Text>
                                     <Select
+                                        disabled={!canEditMasterFields}
                                         onChange={(value) => {
                                             setDraftItem((previous) => ({ ...previous, category: value }));
                                             collapseKeyboard();
@@ -771,7 +800,7 @@ export default function ItemEditSheet({
                                             </Flex>
                                         </Card>
                                     )}
-                                    {isAddMode || !onManageImages ? (
+                                    {canEditImages && (isAddMode || !onManageImages) ? (
                                         <>
                                             <input
                                                 accept={getMediaProfileAcceptAttribute('menuItem')}
@@ -787,7 +816,7 @@ export default function ItemEditSheet({
                                                 </Flex>
                                             </Button>
                                         </>
-                                    ) : (
+                                    ) : canEditImages ? (
                                         <Flex gap={8} wrap="wrap">
                                             <Button fill="outline" onClick={onManageImages} size="small">
                                                 <Flex align="center" gap={6}>
@@ -804,7 +833,7 @@ export default function ItemEditSheet({
                                                 </Button>
                                             ) : null}
                                         </Flex>
-                                    )}
+                                    ) : null}
                                 </Flex>
                             </Flex>
 
@@ -812,6 +841,7 @@ export default function ItemEditSheet({
                                 <Flex gap={6} vertical>
                                     <Text strong>{t('priceLabel', { currency: currencySymbol })}</Text>
                                     <Input
+                                        disabled={!canEditPrice}
                                         onChange={(value) => setDraftItem((previous) => ({ ...previous, price: value }))}
                                         placeholder={t('pricePlaceholder')}
                                         type="number"
@@ -826,7 +856,7 @@ export default function ItemEditSheet({
                                         <Text strong>{availabilityLabels.available}</Text>
                                         <Text type="secondary">{t('availableHelp')}</Text>
                                     </Flex>
-                                    <Switch checked={draftItem.available !== false} onChange={(checked) => setDraftItem((previous) => ({ ...previous, available: checked }))} />
+                                    <Switch checked={draftItem.available !== false} disabled={!canEditAvailability} onChange={(checked) => setDraftItem((previous) => ({ ...previous, available: checked }))} />
                                 </Flex>
                             </div>
 
@@ -842,7 +872,7 @@ export default function ItemEditSheet({
                         </Flex>
                     </Card>
 
-                    {metadataFields.length > 0 ? (
+                    {metadataFields.length > 0 && canEditMasterFields ? (
                         <Card size="small" style={sectionCardStyle}>
                             <Collapse>
                                 <Collapse.Panel
@@ -891,7 +921,7 @@ export default function ItemEditSheet({
                         renderLanguagePanel(primaryLanguage)
                     )}
 
-                    {(projectData && sourceFile) ? (
+                    {(projectData && sourceFile && canEditDescription) ? (
                         <Flex gap={6} vertical>
                             <Button
                                 block
@@ -923,7 +953,7 @@ export default function ItemEditSheet({
                 >
                     <Flex gap={12} vertical>
                         <Flex gap={12}>
-                            {!isAddMode && onDelete && item?.id ? (
+                            {!isAddMode && onDelete && item?.id && canDeleteItem ? (
                                 <Button
                                     color="danger"
                                     disabled={isSaving}

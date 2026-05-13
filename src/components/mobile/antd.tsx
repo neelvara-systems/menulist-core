@@ -481,7 +481,7 @@ export function Popover({
     placement?: ComponentProps<typeof AntPopover>['placement'];
     trigger?: ComponentProps<typeof AntPopover>['trigger'];
 }) {
-    const tooltipWidth = 'min(260px, calc(100svw - 56px))';
+    const tooltipWidth = 'min(240px, calc(100svw - 64px))';
 
     return (
         <AntPopover
@@ -508,9 +508,9 @@ export function Popover({
             open={open}
             overlayStyle={{
                 boxSizing: 'border-box',
-                maxWidth: 'calc(100svw - 24px)',
+                maxWidth: 'calc(100svw - 32px)',
                 overflow: 'hidden',
-                width: 'max-content',
+                width: tooltipWidth,
             }}
             placement={placement}
             trigger={trigger}
@@ -541,6 +541,7 @@ export function SearchBar({ onChange, placeholder, style, value }: { onChange?: 
 type SelectOption = { label: ReactNode; value: string };
 
 type BaseSelectProps = {
+    disabled?: boolean;
     options: SelectOption[];
     placeholder?: string;
     showSearch?: boolean;
@@ -562,6 +563,7 @@ type MultiSelectProps = BaseSelectProps & {
 };
 
 export function Select({
+    disabled,
     maxCount,
     mode,
     onChange,
@@ -588,6 +590,7 @@ export function Select({
                 return String(option?.value || '').toLowerCase().includes(input.toLowerCase());
             }}
             getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+            disabled={disabled}
             maxCount={maxCount}
             mode={mode}
             onChange={handleChange}
@@ -618,8 +621,8 @@ export function Text(props: ComponentProps<typeof AntText>) {
     return <AntText {...props} style={shouldInherit ? { color: 'inherit', ...(props.style || {}) } : props.style} />;
 }
 
-export function Switch({ checked, loading, onChange }: { checked?: boolean; loading?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
-    return <AntSwitch checked={checked} loading={loading} onChange={onChange} size="small" />;
+export function Switch({ checked, disabled, loading, onChange, style }: { checked?: boolean; disabled?: boolean; loading?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
+    return <AntSwitch checked={checked} disabled={disabled} loading={loading} onChange={onChange} size="small" style={sanitizeStyle(style)} />;
 }
 
 export const Toast = {
@@ -851,6 +854,7 @@ export function Input({
     autoComplete,
     autoFocus,
     className,
+    disabled,
     enterKeyHint,
     id,
     inputMode,
@@ -870,6 +874,7 @@ export function Input({
     autoComplete?: string;
     autoFocus?: boolean;
     className?: string;
+    disabled?: boolean;
     enterKeyHint?: React.InputHTMLAttributes<HTMLInputElement>['enterKeyHint'];
     id?: string;
     inputMode?: React.InputHTMLAttributes<HTMLInputElement>['inputMode'];
@@ -929,6 +934,7 @@ export function Input({
             autoComplete={autoComplete}
             autoFocus={autoFocus}
             className={className}
+            disabled={disabled}
             enterKeyHint={enterKeyHint}
             id={id}
             inputMode={inputMode || (type === 'number' ? 'decimal' : undefined)}
@@ -950,10 +956,11 @@ export function Input({
     );
 }
 
-export function TextArea({ autoSize, maxLength, onChange, placeholder, rows, showCount, style, value }: { autoSize?: { minRows?: number; maxRows?: number }; maxLength?: number; onChange?: (value: string) => void; placeholder?: string; rows?: number; showCount?: boolean; style?: AnyStyle; value?: string }) {
+export function TextArea({ autoSize, disabled, maxLength, onChange, placeholder, rows, showCount, style, value }: { autoSize?: { minRows?: number; maxRows?: number }; disabled?: boolean; maxLength?: number; onChange?: (value: string) => void; placeholder?: string; rows?: number; showCount?: boolean; style?: AnyStyle; value?: string }) {
     return (
         <AntInput.TextArea
             autoSize={autoSize}
+            disabled={disabled}
             maxLength={maxLength}
             onChange={(event) => onChange?.(event.target.value)}
             placeholder={placeholder}

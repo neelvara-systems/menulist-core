@@ -10,8 +10,8 @@ import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { useContext, useState } from 'react';
-import { LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuX, LuXCircle, LuZap } from 'react-icons/lu';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -21,18 +21,65 @@ interface MobileBillingScreenProps {
 
 export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
-    const { activeSubscription, setActiveSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
+    const {
+        activeSubscription,
+        activeStoreContext,
+        isMasterUser,
+        setActiveStoreContext,
+        setActiveSubscription,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    } = useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
     const [billingHistory, setBillingHistory] = useState<any[]>([]);
     const [showPlans, setShowPlans] = useState(false);
     const [showCredits, setShowCredits] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [showStorePicker, setShowStorePicker] = useState(false);
+    const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH');
     const [isLoading, setIsLoading] = useState(false);
 
     const noopDispatcher = (_action: any) => undefined;
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);
 
-    const currency: Currency = (storeDetails?.currencyCode as Currency) || 'INR';
+    const tenantStoresList = tenantDetails?.storesList || [];
+    const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
+    const canSwitchBillingStore = Boolean(isMasterUser && userPermissions?.canSwitchStores && tenantStoresList.length > 1);
+    const selectedStore = useMemo(
+        () => tenantStoresList.find((store: any) => Number(store.storeId) === billingStoreId),
+        [billingStoreId, tenantStoresList],
+    );
+    const subscriptionStore = useMemo(
+        () => tenantStoresList.find((store: any) => Number(store.storeId) === Number(activeSubscription?.storeId)),
+        [activeSubscription?.storeId, tenantStoresList],
+    );
+    const isInheritedBilling = Boolean(activeSubscription && billingStoreId && Number(activeSubscription.storeId) !== billingStoreId);
+
+    const currency: Currency = activeSubscription?.currency || (storeDetails?.currencyCode as Currency) || 'INR';
+
+    const sub = activeSubscription;
+    const monthlyCredits = sub?.monthlyCredits || 0;
+    const topUpCredits = sub?.topUpCredits || 0;
+    const totalCredits = monthlyCredits + topUpCredits;
+
+    const refetchSubscription = async () => {
+        try {
+            if (!billingStoreId) return;
+            const subscription = await getActiveSubscriptionForStore(
+                Number(session?.user?.tenantId),
+                billingStoreId,
+                tenantStoresList,
+            );
+            setActiveSubscription(subscription);
+        } catch (err) {
+            console.error('Failed to refetch subscription:', err);
+        }
+    };
+
+    useEffect(() => {
+        void refetchSubscription();
+    }, [billingStoreId]);
 
     if (!storeDetails) {
         return (
@@ -48,20 +95,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             </Flex>
         );
     }
-
-    const sub = activeSubscription;
-    const monthlyCredits = sub?.monthlyCredits || 0;
-    const topUpCredits = sub?.topUpCredits || 0;
-    const totalCredits = monthlyCredits + topUpCredits;
-
-    const refetchSubscription = async () => {
-        try {
-            const subscription = await getActiveSubscriptionForStore(session?.user?.tenantId, session?.user?.storeId);
-            setActiveSubscription(subscription);
-        } catch (err) {
-            console.error('Failed to refetch subscription:', err);
-        }
-    };
 
     const formatDate = (timestamp: any) => {
         if (!timestamp) return 'N/A';
@@ -114,9 +147,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         try {
             const pack = aiEnhancementPacksList.find((p: AIEnhancementPack) => p.packId === packId);
             if (!pack) return;
-            await handleTopupPurchase(pack, currency);
+            const paymentResult: any = await handleTopupPurchase(pack, currency);
             Toast.show({ content: t('enhancementsReady'), duration: 2000 });
-            setActiveSubscription({ ...sub, topUpCredits: (sub?.topUpCredits || 0) + pack.creditAmount });
+            setActiveSubscription((previous: any) => previous
+                ? {
+                    ...previous,
+                    topUpCredits: typeof paymentResult?.newCreditBalance === 'number'
+                        ? paymentResult.newCreditBalance
+                        : (previous.topUpCredits || 0) + pack.creditAmount,
+                }
+                : previous);
         } catch (err: any) {
             Toast.show({ content: err?.message || t('purchaseFailed'), duration: 3000 });
         } finally {
@@ -172,7 +212,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const fetchHistory = async () => {
         try {
-            const raw = await getBillingHistoryForStore(Number(session?.user?.tenantId), Number(session?.user?.storeId));
+            const historyStoreId = Number(sub?.storeId || billingStoreId || session?.user?.storeId);
+            const raw = await getBillingHistoryForStore(Number(session?.user?.tenantId), historyStoreId);
             const formatted = raw.map((event: any) => {
                 if (event.event === 'subscription.charged') {
                     const entity = event.payload?.payment?.entity;
@@ -207,7 +248,33 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         }
     };
 
-    const plans = getB2CPlansList().filter((plan) => plan.billingInterval === 'MONTH');
+    const handleBillingStoreChange = async (targetStoreId: number) => {
+        if (targetStoreId === Number(storeDetails?.storeId || session?.user?.storeId)) {
+            setActiveStoreContext(null);
+            setShowStorePicker(false);
+            Toast.show({ content: 'Switched store', duration: 1500 });
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/switch-store', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetStoreId }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to switch store');
+            }
+            setActiveStoreContext(targetStoreId);
+            setShowStorePicker(false);
+            Toast.show({ content: 'Switched store', duration: 1500 });
+        } catch (err: any) {
+            Toast.show({ content: err?.message || 'Failed to switch store', duration: 2000 });
+        }
+    };
+
+    const plans = getB2CPlansList().filter((plan) => plan.billingInterval === billingInterval);
 
     return (
         <Flex style={{ height: '100%' }} vertical>
@@ -218,6 +285,33 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             />
 
             <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+                {canSwitchBillingStore ? (
+                    <Card onClick={() => setShowStorePicker(true)}>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={10}>
+                                {selectedStore?.isMaster ? <LuBuilding2 color="#9333ea" size={18} /> : <LuStore color="#9333ea" size={18} />}
+                                <Flex gap={2} vertical>
+                                    <Text strong>{selectedStore?.name || t('title')}</Text>
+                                    <Text type="secondary">
+                                        {isInheritedBilling
+                                            ? `${subscriptionStore?.name || 'HQ'} handles billing`
+                                            : 'Billing store'}
+                                    </Text>
+                                </Flex>
+                            </Flex>
+                            <LuChevronRight color="#9ca3af" size={16} />
+                        </Flex>
+                    </Card>
+                ) : null}
+
+                {isInheritedBilling ? (
+                    <Card>
+                        <Text type="secondary">
+                            This outlet uses the HQ subscription. Plan changes, payment retries, and enhancement packs apply to {subscriptionStore?.name || 'the HQ store'}.
+                        </Text>
+                    </Card>
+                ) : null}
+
                 {isLoading ? (
                     <Card>
                         <Flex align="center" gap={8} justify="center">
@@ -408,6 +502,24 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         {t('chooseAPlan')}
                     </NavBar>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Flex gap={8}>
+                            <Button
+                                block
+                                color={billingInterval === 'MONTH' ? 'primary' : undefined}
+                                fill={billingInterval === 'MONTH' ? 'solid' : 'outline'}
+                                onClick={() => setBillingInterval('MONTH')}
+                            >
+                                Monthly
+                            </Button>
+                            <Button
+                                block
+                                color={billingInterval === 'YEAR' ? 'primary' : undefined}
+                                fill={billingInterval === 'YEAR' ? 'solid' : 'outline'}
+                                onClick={() => setBillingInterval('YEAR')}
+                            >
+                                Yearly
+                            </Button>
+                        </Flex>
                         <Flex gap={12} vertical>
                             {plans.filter((plan) => plan.planId !== sub?.planId).map((plan) => {
                                 const price = (plan as any)[`price${currency}`]?.price;
@@ -428,9 +540,32 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 );
                             })}
                         </Flex>
-                        <Text type="secondary" style={{ textAlign: 'center' }}>
-                            {t('yearlyAvailable')}
-                        </Text>
+                    </Flex>
+                </Flex>
+            </Popup>
+
+            <Popup bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowStorePicker(false)} position="bottom" visible={showStorePicker}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowStorePicker(false)}>
+                        Billing store
+                    </NavBar>
+                    <Flex style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <List>
+                            {tenantStoresList.map((store: any) => (
+                                <List.Item
+                                    extra={
+                                        <Flex align="center" gap={6}>
+                                            {store.isMaster ? <Tag color="warning">HQ</Tag> : null}
+                                            {Number(store.storeId) === billingStoreId ? <Tag color="processing">Current</Tag> : null}
+                                        </Flex>
+                                    }
+                                    key={store.storeId}
+                                    onClick={() => handleBillingStoreChange(Number(store.storeId))}
+                                    prefix={store.isMaster ? <LuBuilding2 color="#9333ea" size={18} /> : <LuStore color="#9333ea" size={18} />}
+                                    title={<Text strong>{store.name || `Store ${store.storeId}`}</Text>}
+                                />
+                            ))}
+                        </List>
                     </Flex>
                 </Flex>
             </Popup>

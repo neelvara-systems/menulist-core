@@ -187,7 +187,7 @@ const usePaymentHandler = (dispatcher: any) => {
     };
 
     const handleTopupPurchase = async (pack: AIEnhancementPack, currency: Currency) => {
-        return new Promise<void>(async (resolve, reject) => {
+        return new Promise<any>(async (resolve, reject) => {
             const loaderLabel = "Processing Topup Payment";
             if (!isScriptLoaded) {
                 console.log('Razorpay script not loaded or a payment is already in progress.');
@@ -224,13 +224,13 @@ const usePaymentHandler = (dispatcher: any) => {
                                 body: JSON.stringify({
                                     razorpay_payment_id: response.razorpay_payment_id,
                                     razorpay_order_id: order.id,
+                                    razorpay_signature: response.razorpay_signature,
                                 }),
                             });
 
                             const result = await verificationResponse.json();
-                            console.log("verificationResponse", result)
                             if (result.success) {
-                                resolve(response);
+                                resolve({ ...response, ...result });
                             } else {
                                 console.error("Verification failed:", result.error);
                                 reject(result.error);

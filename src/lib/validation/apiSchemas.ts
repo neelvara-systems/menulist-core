@@ -265,6 +265,21 @@ export const VerifyPaymentRequestSchema = z.object({
 
 export type VerifyPaymentRequest = z.infer<typeof VerifyPaymentRequestSchema>;
 
+export const CreateTopupOrderRequestSchema = z.object({
+    packId: z.string().regex(/^[a-zA-Z0-9_-]+$/),
+    currency: z.enum(['INR', 'USD'])
+});
+
+export type CreateTopupOrderRequest = z.infer<typeof CreateTopupOrderRequestSchema>;
+
+export const VerifyTopupRequestSchema = z.object({
+    razorpay_payment_id: z.string().regex(/^pay_[a-zA-Z0-9]+$/),
+    razorpay_order_id: z.string().regex(/^order_[a-zA-Z0-9]+$/),
+    razorpay_signature: z.string().regex(/^[a-fA-F0-9]{64}$/)
+});
+
+export type VerifyTopupRequest = z.infer<typeof VerifyTopupRequestSchema>;
+
 export const CancelSubscriptionRequestSchema = z.object({
     subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
     reason: z.string().min(1).max(500),

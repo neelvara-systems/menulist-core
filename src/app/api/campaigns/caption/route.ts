@@ -1,5 +1,9 @@
 export const dynamic = 'force-dynamic';
+import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
+import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { addAiOperation } from "@database/aiOperations";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
+import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
@@ -12,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const AI_MODEL = "gemini-2.5-flash";
+const ACTION = AI_ACTIONS_TYPES.CAMPAIGN_CAPTION;
 
 /**
  * Campaign Caption Generation API
@@ -71,6 +76,16 @@ export const POST = withAuth(async (request, session) => {
                 }, 'critical');
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+        }
+
+        const capacityCheck = await checkAICapacity(session.tId, session.sId, ACTION);
+        if (!capacityCheck.allowed) {
+            return NextResponse.json({
+                error: capacityCheck.reason === 'maintenance'
+                    ? 'AI enhancements are temporarily unavailable.'
+                    : 'Additional AI enhancements needed for your menu.',
+                code: capacityCheck.reason,
+            }, { status: 402 });
         }
 
         const startTime = Date.now();
@@ -157,6 +172,50 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        const transactionObject: any = {
+            action: ACTION,
+            businessName,
+            campaignType,
+            categoryName,
+            chargePerCredit: CHARGE_PER_CREDIT,
+            clientResponse: generatedData,
+            generationConfig: {
+                responseMimeType: "application/json",
+                temperature: prompt.config.temperature,
+                topP: prompt.config.topP,
+                topK: prompt.config.topK,
+            },
+            geminiResponse: response,
+            itemDescription,
+            itemName,
+            itemPrice,
+            language,
+            model: AI_MODEL,
+            processingTime,
+            projectId,
+            promptTokenCount: response.usageMetadata?.promptTokenCount || 0,
+            candidatesTokenCount: response.usageMetadata?.candidatesTokenCount || 0,
+            totalTokenCount: response.usageMetadata?.totalTokenCount || 0,
+            tokenPerCredit: TOKENS_PER_CREDIT,
+            totalCredits: ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
+            totalCharge: CHARGE_PER_CREDIT * ((response.usageMetadata?.totalTokenCount || 0) / TOKENS_PER_CREDIT),
+            realCostPaise: getRealCostPaise(ACTION),
+            ourChargePaise: getOurChargePaise(ACTION),
+            marginPaise: getOurChargePaise(ACTION) - getRealCostPaise(ACTION),
+            surface,
+            unitsConsumed: getUnitCost(ACTION),
+        };
+
+        let remainingBalance = null;
+        try {
+            transactionObject.transactionId = await addAiOperation(transactionObject);
+            if (capacityCheck.subscription && transactionObject.unitsConsumed > 0) {
+                remainingBalance = await consumeAICapacity(capacityCheck.subscription, transactionObject.unitsConsumed);
+            }
+        } catch (transactionError) {
+            logger.error('Failed to record campaign caption transaction', transactionError, { userId, projectId });
+        }
+
         return NextResponse.json({
             data: generatedData,
             meta: {
@@ -164,7 +223,14 @@ export const POST = withAuth(async (request, session) => {
                 promptVersion: prompt.version.version,
                 surface,
                 campaignType
-            }
+            },
+            remainingBalance,
+            transaction: {
+                totalCharge: transactionObject.totalCharge,
+                totalCredits: transactionObject.totalCredits,
+                processingTime: transactionObject.processingTime,
+                transactionId: transactionObject.transactionId,
+            },
         }, { status: 200 });
 
     } catch (error) {

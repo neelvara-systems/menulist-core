@@ -150,6 +150,8 @@ export default function StoreCustomizationModal({
     // Update item field
     const updateItemField = useCallback((itemId: string, fileUid: string, field: string, value: any) => {
         setProjectData(prev => {
+            const inheritanceState = itemStates[itemId];
+            const shouldWriteOverride = inheritanceState === 'inherited' || inheritanceState === 'overridden';
             const updatedFiles = prev.files?.map((file: ProjectFileType) => {
                 if (file.uid !== fileUid) return file;
                 const updatedItems = file.extractedData?.data?.items?.map((item: ExtractedDataItem) => {
@@ -167,14 +169,35 @@ export default function StoreCustomizationModal({
                     },
                 };
             });
-            return { ...prev, files: updatedFiles };
+
+            if (!shouldWriteOverride) {
+                return { ...prev, files: updatedFiles };
+            }
+
+            return {
+                ...prev,
+                files: updatedFiles,
+                overrides: {
+                    items: {
+                        ...(prev.overrides?.items || {}),
+                        [itemId]: {
+                            ...(prev.overrides?.items?.[itemId] || {}),
+                            [field]: value,
+                        },
+                    },
+                    categories: prev.overrides?.categories || {},
+                    attributes: prev.overrides?.attributes || {},
+                },
+            };
         });
         setHasChanges(true);
-    }, [setProjectData]);
+    }, [itemStates, setProjectData]);
 
     // Update category field
     const updateCategoryField = useCallback((categoryId: string, fileUid: string, field: string, value: any) => {
         setProjectData(prev => {
+            const inheritanceState = categoryStates[categoryId];
+            const shouldWriteOverride = inheritanceState === 'inherited' || inheritanceState === 'overridden';
             const updatedFiles = prev.files?.map((file: ProjectFileType) => {
                 if (file.uid !== fileUid) return file;
                 const updatedCategories = file.extractedData?.data?.categories?.map((cat: ExtractedDataCategory) => {
@@ -192,10 +215,29 @@ export default function StoreCustomizationModal({
                     },
                 };
             });
-            return { ...prev, files: updatedFiles };
+
+            if (!shouldWriteOverride) {
+                return { ...prev, files: updatedFiles };
+            }
+
+            return {
+                ...prev,
+                files: updatedFiles,
+                overrides: {
+                    items: prev.overrides?.items || {},
+                    categories: {
+                        ...(prev.overrides?.categories || {}),
+                        [categoryId]: {
+                            ...(prev.overrides?.categories?.[categoryId] || {}),
+                            [field]: value,
+                        },
+                    },
+                    attributes: prev.overrides?.attributes || {},
+                },
+            };
         });
         setHasChanges(true);
-    }, [setProjectData]);
+    }, [categoryStates, setProjectData]);
 
     // Render inheritance badge
     const renderInheritanceBadge = (state?: InheritanceState) => {

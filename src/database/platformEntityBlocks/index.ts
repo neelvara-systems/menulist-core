@@ -1,6 +1,7 @@
 import { getAllStoresByTenantId, updateStore } from '@database/stores';
 import { updateTenant } from '@database/tenants';
 import { updatePlatformUser } from '@database/users';
+import { updateTenantStoreBlockStatusInSummary } from '@database/platformSummary';
 import { revalidatePublicClientCache } from '@lib/cache/publicClientCache';
 import { buildPlatformBlockDetails } from '@lib/platform/entityBlock';
 import type { PlatformBlockEntityType } from '@type/platform/blocking';
@@ -42,7 +43,10 @@ export async function updatePlatformEntityBlockState({
             blocked,
             blockDetails,
         });
-        const tenantStores = await getAllStoresByTenantId(tenantId);
+        const summaryStoreIds = await updateTenantStoreBlockStatusInSummary(tenantId, blocked);
+        const tenantStores = summaryStoreIds.length
+            ? summaryStoreIds.map((storeId) => ({ storeId }))
+            : await getAllStoresByTenantId(tenantId);
         await Promise.all(
             (tenantStores || []).map((store: any) =>
                 revalidatePublicClientCache(store?.storeId, 'updatePlatformTenantBlockState'),

@@ -84,8 +84,8 @@
 
 | Route | Reads | Writes | Description |
 |-------|-------|--------|-------------|
-| `create-topup-order` | 0 | 0 | Only creates Razorpay order (no Firestore) |
-| `verify-topup` | 1 read | 1 write + 1 create | Update subscription credits + create payment transaction |
+| `create-topup-order` | 0 | 1 | Creates Razorpay order and writes `topups/{orderId}` as `pending` |
+| `verify-topup` | 2 reads | 2 writes | Verifies signature/order/payment, updates subscription credits, and marks `topups/{orderId}` as `paid` in a transaction |
 
 ---
 

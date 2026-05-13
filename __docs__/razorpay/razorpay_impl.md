@@ -468,7 +468,7 @@ Called immediately after Razorpay Checkout completes on the frontend. This is an
 1. Frontend POST /api/razorpay/verify-subscription
    Body: { razorpay_payment_id, razorpay_subscription_id }
 
-2. withAuth() + Zod validation (VerifyPaymentRequestSchema)
+2. withAuth() + verifyTenantAccess() + canManageSubscription + Zod validation (VerifyPaymentRequestSchema)
 3. Fetch payment from Razorpay: razorpayClient.payments.fetch(payment_id)
 4. Fetch subscription from Razorpay: razorpayClient.subscriptions.fetch(sub_id)
 5. Find internal Firestore subscription: getSubscriptionById(sub_id)
@@ -707,39 +707,41 @@ FRONTEND:
    Body: { packId, currency }
 
 BACKEND (create-topup-order):
-4. withAuth() + verifyTenantAccess()
+4. withAuth() + verifyTenantAccess() + canManageSubscription
 5. Rate limit: PAYMENT_TOPUP config
 6. Find pack from aiEnhancementPacksList
 7. razorpayClient.orders.create():
    - amount: pack price
    - currency
    - notes: { tenantId, storeId, userId, packId, creditAmount, packName, price }
-8. Return { order }
+8. Write `topups/{orderId}` as `pending`
+9. Return { order }
 
 FRONTEND (continued):
-9. Open Razorpay Checkout with order_id (NOT subscription_id — this is a one-time order)
-10. User pays
-11. POST /api/razorpay/verify-topup
-    Body: { razorpay_payment_id, razorpay_order_id }
+10. Open Razorpay Checkout with order_id (NOT subscription_id — this is a one-time order)
+11. User pays
+12. POST /api/razorpay/verify-topup
+    Body: { razorpay_payment_id, razorpay_order_id, razorpay_signature }
 
 BACKEND (verify-topup):
-12. withAuth() + verifyTenantAccess()
-13. Zod validation (VerifyPaymentRequestSchema)
-14. Fetch payment: razorpayClient.payments.fetch(payment_id)
-15. If payment.status === "authorized" → programmatic capture:
+13. withAuth() + verifyTenantAccess() + canManageSubscription
+14. Zod validation (VerifyTopupRequestSchema)
+15. Verify Razorpay checkout signature
+16. Read `topups/{orderId}` for idempotency
+17. Fetch order and validate tenant/store notes
+18. Fetch payment: razorpayClient.payments.fetch(payment_id)
+19. If payment.status === "authorized" → programmatic capture:
     razorpayClient.payments.capture(payment_id, amount, currency)
-16. Re-fetch payment → verify status === "captured"
-17. Fetch order → get packId from notes
-18. Find active subscription for store
-19. Verify subscription belongs to tenant/store
-20. Find pack from aiEnhancementPacksList → get creditAmount
-21. newBalance = subscription.topUpCredits + creditsToAdd
-22. updateSubscription(sub.id, { topUpCredits: newBalance })
-23. Return { success: true, newCreditBalance }
+20. Re-fetch payment → verify status === "captured" and payment.order_id matches
+21. Find active subscription for store
+22. Verify subscription belongs to tenant
+23. Find pack from aiEnhancementPacksList → get creditAmount
+24. In one Firestore transaction: increment `subscription.topUpCredits` and mark `topups/{orderId}` as `paid`
+25. Return { success: true, newCreditBalance }
 
 FRONTEND (continued):
-24. Update local state: topUpCredits += pack.creditAmount
-25. Show confetti + success message
+26. Update local state from `newCreditBalance`
+27. Show success message
 ```
 
 ### Key Difference: Orders vs Subscriptions

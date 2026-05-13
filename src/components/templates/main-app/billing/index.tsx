@@ -12,13 +12,14 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BillingHistoryItem, Currency } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
-import { Alert, Button, Card, Empty, Flex, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, message } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { FaBoltLightning } from 'react-icons/fa6';
+import { LuBuilding2, LuStore } from 'react-icons/lu';
 import ActiveSubscriptionCard from './ActiveSubscriptionCard';
 import BillingHistory from './BillingHistory';
 import CreditsPackModal from './CreditsPackModal';
@@ -33,7 +34,16 @@ function BillingPage() {
     const sessionId = searchParams.get('session_id');
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const { data: session } = useSession();
-    const { activeSubscription, setActiveSubscription } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const {
+        activeSubscription,
+        activeStoreContext,
+        isMasterUser,
+        setActiveStoreContext,
+        setActiveSubscription,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const userId = session?.user?.id;
     const dispatch = useAppDispatch();
     const formatter = useFormatter();
@@ -43,19 +53,32 @@ function BillingPage() {
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase } = usePaymentHandler(dispatch);
     const [isSubscriptionFetching, setIsSubscriptionFetching] = useState(false)
     const [showConfetti, setShowConfetti] = useState(false);
+    const tenantStoresList = tenantDetails?.storesList || [];
+    const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
+    const effectiveHistoryStoreId = Number(activeSubscription?.storeId || billingStoreId || session?.user?.storeId || 0);
+    const canSwitchBillingStore = Boolean(isMasterUser && userPermissions?.canSwitchStores && tenantStoresList.length > 1);
+    const selectedStore = useMemo(
+        () => tenantStoresList.find((store: any) => Number(store.storeId) === billingStoreId),
+        [billingStoreId, tenantStoresList],
+    );
+    const subscriptionStore = useMemo(
+        () => tenantStoresList.find((store: any) => Number(store.storeId) === Number(activeSubscription?.storeId)),
+        [activeSubscription?.storeId, tenantStoresList],
+    );
+    const isInheritedBilling = Boolean(activeSubscription && billingStoreId && Number(activeSubscription.storeId) !== billingStoreId);
 
     useEffect(() => {
         if (!sessionId && userId) {
             setIsSubscriptionFetching(true)
             refetchActiveSubscription();
         }
-    }, [sessionId, userId]);
+    }, [billingStoreId, sessionId, userId]);
 
     const fetchBillingHistory = async () => {
-        if (!userId) return;
+        if (!userId || !effectiveHistoryStoreId) return;
 
         // 2. Fetch the raw transaction logs from our Unified Ledger
-        const rawHistory = await getBillingHistoryForStore(Number(session?.user?.tenantId), Number(session?.user?.storeId));
+        const rawHistory = await getBillingHistoryForStore(Number(session?.user?.tenantId), effectiveHistoryStoreId);
         // 3. Transform the raw data into a clean, simple format for the UI
         const formattedHistory = rawHistory.map(event => {
             // Handle subscription charges
@@ -102,11 +125,14 @@ function BillingPage() {
     };
 
     const refetchActiveSubscription = async () => {
-        if (!userId) return;
+        if (!userId || !billingStoreId) return;
         try {
             dispatch(startLoader("Fetching subscription data"));
-            const subscription = await getActiveSubscriptionForStore(session?.user?.tenantId, session?.user?.storeId);
-            console.log("subscription", subscription);
+            const subscription = await getActiveSubscriptionForStore(
+                Number(session?.user?.tenantId),
+                billingStoreId,
+                tenantStoresList,
+            );
             setActiveSubscription(subscription);
             setBillingHistory([]);
         } catch (error) {
@@ -115,6 +141,28 @@ function BillingPage() {
         } finally {
             dispatch(stopLoader("Fetching subscription data"));
             setIsSubscriptionFetching(false)
+        }
+    };
+
+    const handleBillingStoreChange = async (targetStoreId: number) => {
+        if (targetStoreId === Number(storeDetails?.storeId || session?.user?.storeId)) {
+            setActiveStoreContext(null);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/switch-store', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetStoreId }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Store switch failed');
+            }
+            setActiveStoreContext(targetStoreId);
+        } catch (error: any) {
+            message.error(error?.message || 'Store switch failed');
         }
     };
 
@@ -137,11 +185,19 @@ function BillingPage() {
     const handleCreditsPurchase = async (packId: string) => {
         try {
             const pack = aiEnhancementPacksList.find((pack: AIEnhancementPack) => pack.packId === packId);
-            const res = await handleTopupPurchase(pack, activeSubscription.currency);
+            if (!pack) throw new Error('Enhancement pack not found');
+            const paymentResult: any = await handleTopupPurchase(pack, activeSubscription?.currency || (storeDetails?.currencyCode as Currency) || 'INR');
             message.success(t('enhancementsReady'));
             setTimeout(() => setShowConfetti(true), 500);
             setTimeout(() => setShowConfetti(false), 10000);
-            setActiveSubscription({ ...activeSubscription, topUpCredits: activeSubscription.topUpCredits + pack.creditAmount });
+            setActiveSubscription((previous: any) => previous
+                ? {
+                    ...previous,
+                    topUpCredits: typeof paymentResult?.newCreditBalance === 'number'
+                        ? paymentResult.newCreditBalance
+                        : (previous.topUpCredits || 0) + pack.creditAmount,
+                }
+                : previous);
         } catch (error) {
             message.error(t('enhancementsFailed'));
             console.error('Enhancement pack purchase failed in handleCreditsPurchase', error);
@@ -156,6 +212,43 @@ function BillingPage() {
             <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
                 {t('subtitle')}
             </Text>
+
+            {canSwitchBillingStore ? (
+                <Card style={{ marginBottom: 16 }}>
+                    <Flex align="center" justify="space-between" gap={16} wrap>
+                        <Flex align="center" gap={10}>
+                            {selectedStore?.isMaster ? <LuBuilding2 size={18} /> : <LuStore size={18} />}
+                            <Flex vertical>
+                                <Text strong>Billing store</Text>
+                                <Text type="secondary">
+                                    {isInheritedBilling
+                                        ? `${selectedStore?.name || 'Selected outlet'} uses ${subscriptionStore?.name || 'HQ'} billing.`
+                                        : 'Choose which store billing view to check.'}
+                                </Text>
+                            </Flex>
+                        </Flex>
+                        <Select
+                            value={billingStoreId || undefined}
+                            onChange={handleBillingStoreChange}
+                            options={tenantStoresList.map((store: any) => ({
+                                value: Number(store.storeId),
+                                label: `${store.name || `Store ${store.storeId}`}${store.isMaster ? ' (HQ)' : ''}`,
+                            }))}
+                            style={{ minWidth: 240 }}
+                        />
+                    </Flex>
+                </Card>
+            ) : null}
+
+            {isInheritedBilling ? (
+                <Alert
+                    message="This outlet uses the HQ subscription."
+                    description={`Plan changes, payment retries, and enhancement packs apply to ${subscriptionStore?.name || 'the HQ store'} because outlet billing is inherited.`}
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                />
+            ) : null}
 
             {isSubscriptionFetching && (
                 <Card style={{ marginTop: '24px', textAlign: 'center' }} >

@@ -9,6 +9,7 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 
 export type MobilePlatformInternalScreenKey =
     | 'platformSettings'
+    | 'entityBlocks'
     | 'platformUsers'
     | 'supportTickets'
     | 'feedbackAdmin'
@@ -43,6 +44,7 @@ const RouteLoading = () => (
 );
 
 const PlatformSettings = dynamic(() => import('@template/platform/settings'), { loading: RouteLoading, ssr: false });
+const EntityBlockSettings = dynamic(() => import('@template/platform/settings/EntityBlockSettings'), { loading: RouteLoading, ssr: false });
 const PlatformUsers = dynamic(() => import('@template/platform/users'), { loading: RouteLoading, ssr: false });
 const SupportTickets = dynamic(() => import('@template/platform/supportTickets'), { loading: RouteLoading, ssr: false });
 const FeedbackAdmin = dynamic(() => import('@template/platform/feedbackAdmin'), { loading: RouteLoading, ssr: false });
@@ -62,6 +64,13 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         minWidth: 640,
         surface: 'Platform Settings',
         title: 'Platform Settings',
+    },
+    entityBlocks: {
+        Component: EntityBlockSettings,
+        description: 'Block or unblock tenants, stores, and users with audit details.',
+        minWidth: 560,
+        surface: 'Entity Blocks',
+        title: 'Entity Blocks',
     },
     platformUsers: {
         Component: PlatformUsers,

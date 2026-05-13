@@ -1,12 +1,16 @@
 export const dynamic = 'force-dynamic';
-import { Currency } from "@data/common";
+import { DB_COLLECTIONS } from "@constant/database";
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
+import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
+import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
+import { CreateTopupOrderRequestSchema } from "@lib/validation/apiSchemas";
 import { writeErrorLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
@@ -40,6 +44,13 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        if (!(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         // 🔒 RATE LIMITING: Prevent topup spam (centralized config)
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_TOPUP');
         const rateLimitResult = await checkRateLimit({
@@ -63,14 +74,15 @@ export const POST = withAuth(async (request, session) => {
 
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const body = await request.json();
-        const { packId, currency } = body as { packId: string; currency: Currency };
+        const validation = validateAPIInput(CreateTopupOrderRequestSchema, body);
 
-        if (!packId || !currency) {
+        if (!validation.success) {
+            const validationError = 'error' in validation ? validation.error : 'Invalid input';
             // Log to Sentry (CRITICAL - topup order creation)
             logger.security('Input Validation Failed', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
-                error: 'Missing required fields: packId or currency',
+                error: validationError,
                 attemptedData: {
                     packId: body?.packId,
                     currency: body?.currency,
@@ -78,11 +90,12 @@ export const POST = withAuth(async (request, session) => {
             }, 'critical'); // CRITICAL - topup payment order
 
             return NextResponse.json(
-                { error: "Missing required fields: packId or currency." },
+                { error: "Invalid enhancement pack request." },
                 { status: 400 }
             );
         }
 
+        const { packId, currency } = validation.data;
         const priceKey = `price${currency.toUpperCase()}`;
         // 3. Find Pack Details
         const selectedPack = aiEnhancementPacksList.find((p) => p.packId === packId);
@@ -112,6 +125,23 @@ export const POST = withAuth(async (request, session) => {
                 currency,
             },
         });
+
+        await firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).doc(razorpayOrder.id).set({
+            paymentProvider: 'razorpay',
+            providerOrderId: razorpayOrder.id,
+            creditsAdded: selectedPack.creditAmount,
+            amount: price,
+            currency,
+            status: 'pending',
+            userId,
+            tenantId,
+            storeId,
+            packId,
+            type: 'ai_enhancement_pack',
+            packName: selectedPack.name,
+            createdOn: admin.firestore.FieldValue.serverTimestamp(),
+            updatedOn: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
 
         return NextResponse.json({ order: razorpayOrder });
 
