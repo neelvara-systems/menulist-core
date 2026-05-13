@@ -2,11 +2,11 @@
 
 import dynamic from 'next/dynamic';
 
-const CanonicaClientHome = dynamic(
-    () => import('@/components/templates/canonica/clientPortal/CanonicaClientHome'),
+const HelpCenter = dynamic(
+    () => import('@template/main-app/helpCenter'),
     { ssr: false }
 );
 
 export default function CanonicaHelpPage() {
-    return <CanonicaClientHome />;
+    return <HelpCenter />;
 }

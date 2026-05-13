@@ -1,5 +1,6 @@
 'use client'
 
+import { theme } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { LuEye, LuPenLine, LuRotateCcw } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Popup, Text, TextArea, Toast } from '../antd';
@@ -8,8 +9,8 @@ type ComplianceTab = 'privacy' | 'terms' | 'refund';
 type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
 
 interface MobileCompliancePagesEditorProps {
+    baseUrl?: string;
     compact?: boolean;
-    domain?: string;
     type: ComplianceTab;
 }
 
@@ -19,7 +20,8 @@ const TAB_LABELS: Record<ComplianceTab, string> = {
     refund: 'Refund & Cancellation Policy',
 };
 
-export default function MobileCompliancePagesEditor({ compact, domain, type }: MobileCompliancePagesEditorProps) {
+export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: MobileCompliancePagesEditorProps) {
+    const { token } = theme.useToken();
     const [pages, setPages] = useState<Record<ComplianceTab, CompliancePageData>>({
         privacy: null,
         refund: null,
@@ -30,11 +32,15 @@ export default function MobileCompliancePagesEditor({ compact, domain, type }: M
     const [resetting, setResetting] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [isBaselineExpanded, setIsBaselineExpanded] = useState(false);
     const [customText, setCustomText] = useState('');
 
     const pageLabel = TAB_LABELS[type];
     const currentData = pages[type];
-    const pageUrl = useMemo(() => domain ? `https://${domain}/${type}` : `/${type}`, [domain, type]);
+    const pageUrl = useMemo(() => {
+        if (!baseUrl) return `/${type}`;
+        return `${baseUrl.replace(/\/$/, '')}/${type}`;
+    }, [baseUrl, type]);
 
     const fetchData = async () => {
         try {
@@ -59,6 +65,7 @@ export default function MobileCompliancePagesEditor({ compact, domain, type }: M
     const openSheet = () => {
         setCustomText(currentData?.customContent || '');
         setIsEditing(false);
+        setIsBaselineExpanded(false);
         setIsOpen(true);
     };
 
@@ -139,7 +146,14 @@ export default function MobileCompliancePagesEditor({ compact, domain, type }: M
                 visible={isOpen}
             >
                 <Flex style={{ height: '100vh', maxHeight: '100vh', minHeight: '100vh' }} vertical>
-                    <NavBar onBack={() => setIsOpen(false)}>
+                    <NavBar
+                        onBack={() => setIsOpen(false)}
+                        right={
+                            <Button fill="none" onClick={() => window.open(pageUrl, '_blank')} size="small">
+                                View page
+                            </Button>
+                        }
+                    >
                         {pageLabel}
                     </NavBar>
 
@@ -159,10 +173,38 @@ export default function MobileCompliancePagesEditor({ compact, domain, type }: M
                             <>
                                 <Card size="small">
                                     <Flex gap={6} vertical>
-                                        <Text strong>Current page content</Text>
-                                        <Text style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
-                                            {currentData?.content || 'MenuList baseline policy content will be generated automatically from your business information.'}
+                                        <Text strong>Your current content</Text>
+                                        <Text type="secondary">
+                                            {currentData?.customContent?.trim()
+                                                ? 'This is the owner content that appears before the MenuList baseline section.'
+                                                : 'No custom content added yet. Only the MenuList baseline section is currently shown on the public page.'}
                                         </Text>
+                                        {currentData?.customContent?.trim() ? (
+                                            <Text style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                                                {currentData.customContent}
+                                            </Text>
+                                        ) : null}
+                                    </Flex>
+                                </Card>
+
+                                <Card
+                                    size="small"
+                                    onClick={() => setIsBaselineExpanded((previous) => !previous)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <Flex gap={6} vertical>
+                                        <Flex align="center" justify="space-between">
+                                            <Text strong>MenuList baseline content</Text>
+                                            <Text type="secondary">{isBaselineExpanded ? 'Hide' : 'Show'}</Text>
+                                        </Flex>
+                                        <Text type="secondary">
+                                            This baseline policy and platform disclosure content is appended automatically.
+                                        </Text>
+                                        {isBaselineExpanded ? (
+                                            <Text style={{ fontSize: 12, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+                                                {currentData?.systemContent || 'MenuList baseline policy content will be generated automatically from your business information.'}
+                                            </Text>
+                                        ) : null}
                                     </Flex>
                                 </Card>
 
@@ -189,39 +231,40 @@ export default function MobileCompliancePagesEditor({ compact, domain, type }: M
                         gap={8}
                         style={{
                             backdropFilter: 'blur(10px)',
-                            backgroundColor: '#fff',
-                            borderTop: '1px solid rgba(5, 5, 5, 0.06)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
                             padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
                         }}
                         vertical
                     >
-                        <Flex gap={8}>
-                            <Button block fill="outline" onClick={() => window.open(pageUrl, '_blank')} size="large">
-                                View page
+                        {isEditing ? (
+                            <Flex gap={8}>
+                                <Button
+                                    block
+                                    color="danger"
+                                    disabled={currentData?.source !== 'custom'}
+                                    fill="outline"
+                                    loading={resetting}
+                                    onClick={() => void handleReset()}
+                                    size="large"
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuRotateCcw size={16} />
+                                        <Text>Reset</Text>
+                                    </Flex>
+                                </Button>
+                                <Button block disabled={saving} fill="outline" onClick={() => setIsEditing(false)} size="large">
+                                    Cancel
+                                </Button>
+                                <Button block loading={saving} onClick={() => void handleSave()} size="large">
+                                    Save
+                                </Button>
+                            </Flex>
+                        ) : (
+                            <Button block onClick={() => setIsEditing(true)} size="large">
+                                Edit content
                             </Button>
-                            <Button block fill="outline" onClick={() => setIsEditing((previous) => !previous)} size="large">
-                                {isEditing ? 'Hide editor' : 'Edit content'}
-                            </Button>
-                        </Flex>
-                        <Flex gap={8}>
-                            <Button
-                                block
-                                color="danger"
-                                disabled={currentData?.source !== 'custom'}
-                                fill="outline"
-                                loading={resetting}
-                                onClick={() => void handleReset()}
-                                size="large"
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuRotateCcw size={16} />
-                                    <Text>Reset</Text>
-                                </Flex>
-                            </Button>
-                            <Button block disabled={!isEditing} loading={saving} onClick={() => void handleSave()} size="large">
-                                Save
-                            </Button>
-                        </Flex>
+                        )}
                     </Flex>
                 </Flex>
             </Popup>

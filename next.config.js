@@ -249,7 +249,28 @@ const sentryWebpackPluginOptions = {
     widenClientFileUpload: process.env.VERCEL_ENV === 'production',
 };
 
+const withClientOnlyPWA = (config) => {
+    const intlConfig = withNextIntl(config);
+    const pwaConfig = withPWA(intlConfig);
+    const pwaWebpack = pwaConfig.webpack;
+    const baseWebpack = intlConfig.webpack;
+
+    pwaConfig.webpack = (webpackConfig, options) => {
+        if (options.isServer) {
+            return typeof baseWebpack === 'function'
+                ? baseWebpack(webpackConfig, options)
+                : webpackConfig;
+        }
+
+        return typeof pwaWebpack === 'function'
+            ? pwaWebpack(webpackConfig, options)
+            : webpackConfig;
+    };
+
+    return pwaConfig;
+};
+
 module.exports = withSentryConfig(
-    withBundleAnalyzer(withPWA(withNextIntl(nextConfig))),
+    withBundleAnalyzer(withClientOnlyPWA(nextConfig)),
     sentryWebpackPluginOptions
 );

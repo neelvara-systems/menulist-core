@@ -25,10 +25,10 @@ function LandingFooter() {
             }}
         >
             <Flex wrap justify="center" gap={16} align="center" style={{ fontWeight: 500 }}>
-                <Link href="/app/dashboard" style={{ color: token.colorText, textDecoration: 'none' }}>
+                <Link href="/dashboard" style={{ color: token.colorText, textDecoration: 'none' }}>
                     {t('backToDashboard')}
                 </Link>
-                <Link href="/app/help-center?tab=contact-us" style={{ color: token.colorText, textDecoration: 'none' }}>
+                <Link href="/help-center?tab=contact-us" style={{ color: token.colorText, textDecoration: 'none' }}>
                     {t('contactUs')}
                 </Link>
                 <Flex align="center" gap={8}>

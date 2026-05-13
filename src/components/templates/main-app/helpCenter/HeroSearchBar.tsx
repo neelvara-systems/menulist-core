@@ -36,6 +36,8 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
     return (
         <>
             <motion.div
+                className="help-center-hero-search"
+                data-active-tab={activeTab}
                 layout
                 style={{
                     position: 'relative',
@@ -116,6 +118,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                         </AnimatePresence>
 
                         <motion.div
+                            className="help-center-search-width"
                             layout
                             animate={{
                                 width: activeTab === 'home' ? 720 : 600,
@@ -134,7 +137,8 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                             }}
                             style={{
                                 zIndex: 2,
-                                maxWidth: activeTab === 'home' ? 720 : 600
+                                maxWidth: '100%',
+                                minWidth: 0,
                             }}
                         >
                             <div
@@ -153,7 +157,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                     cursor: 'pointer'
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div className="help-center-search-input-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, paddingLeft: 12 }}>
                                         <LuSearch size={18} color={token.colorTextPlaceholder} aria-hidden="true" />
                                         <Input
@@ -220,6 +224,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                 <AnimatePresence>
                     {activeTab !== 'home' && currentTab && (
                         <motion.div
+                            className="help-center-tab-crumbs"
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}

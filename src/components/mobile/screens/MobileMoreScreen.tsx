@@ -87,7 +87,6 @@ const MobilePosSyncScreen = dynamic(() => import('./MobilePosSyncScreen'), { ssr
 const MobileTodayHistoryScreen = dynamic(() => import('./MobileTodayHistoryScreen'), { ssr: false });
 const MobileCustomerAppScreen = dynamic(() => import('./MobileCustomerAppScreen'), { ssr: false });
 const MobilePresenceMonitorScreen = dynamic(() => import('./MobilePresenceMonitorScreen'), { ssr: false });
-const MobileCanonicaClientScreen = dynamic(() => import('./MobileCanonicaClientScreen'), { ssr: false });
 const MobileExtractionMonitorScreen = dynamic(() => import('./MobileExtractionMonitorScreen'), { ssr: false });
 const MobileOpsControlRoomScreen = dynamic(() => import('./MobileOpsControlRoomScreen'), { ssr: false });
 const MobileSchedulerMonitorScreen = dynamic(() => import('./MobileSchedulerMonitorScreen'), { ssr: false });
@@ -432,10 +431,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'todayHistory') subScreenContent = <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
     else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
-    else if (subScreen === 'canonicaHelp') subScreenContent = <MobileCanonicaClientScreen initialView="help" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'canonicaDocs') subScreenContent = <MobileCanonicaClientScreen initialView="docs" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'canonicaSupport') subScreenContent = <MobileCanonicaClientScreen initialView="support" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'canonicaReleaseNotes') subScreenContent = <MobileCanonicaClientScreen initialView="releaseNotes" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaDocs') subScreenContent = <MobileHelpScreen initialTab="kb" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaSupport') subScreenContent = <MobileHelpScreen initialTab="ticket" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'canonicaReleaseNotes') subScreenContent = <MobileHelpScreen initialTab="changelog" onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
@@ -581,14 +580,14 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 <List>
                     <List.Item
                         arrow
-                        description={<Text type="secondary">Open Canonica support overview.</Text>}
+                        description={<Text type="secondary">Search docs, tickets, updates, and support in one place.</Text>}
                         onClick={() => openSubScreen('canonicaHelp')}
                         prefix={<LuHelpCircle color="#3b82f6" size={20} />}
                         title={<Text strong>{t('helpCenter')}</Text>}
                     />
                     <List.Item
                         arrow
-                        description={<Text type="secondary">Browse Canonica docs and guides.</Text>}
+                        description={<Text type="secondary">Browse MenuList docs and guides.</Text>}
                         onClick={() => openSubScreen('canonicaDocs')}
                         prefix={<LuBookOpen color="#8b5cf6" size={20} />}
                         title={<Text strong>Documentation</Text>}

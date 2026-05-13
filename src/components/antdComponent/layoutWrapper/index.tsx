@@ -43,11 +43,12 @@ export default function AntdLayoutWrapper(props: any) {
     const forceDesktop = hasMounted && shouldForceDesktopForPath(pathname, isDesktopOnlyRoute);
     const isPlatformRoute = pathname === '/platform' || pathname.startsWith('/platform/');
     const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
+    const isHelpCenterRoute = pathname === '/help-center';
     const shouldRenderMobileShell = hasMounted
         && FEATURE_FLAGS.ENABLE_MOBILE_UI
         && !forceDesktop
         && !isDesktopOnlyRoute
-        && (isHandheld || (isMobile && (isPlatformRoute || isOpsRoute)));
+        && (isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isHelpCenterRoute)));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
 
     const renderContent = () => {

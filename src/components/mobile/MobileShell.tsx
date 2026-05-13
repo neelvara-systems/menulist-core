@@ -9,7 +9,7 @@ import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ServerSidePageLoader from '../../app/loading';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuArrowLeft, LuCreditCard } from 'react-icons/lu';
@@ -49,6 +49,11 @@ const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/ops/extraction': 'extractionMonitor',
     '/ops/scheduler': 'schedulerMonitor',
 };
+const HELP_CENTER_TAB_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
+    kb: 'canonicaDocs',
+    ticket: 'canonicaSupport',
+    changelog: 'canonicaReleaseNotes',
+};
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
     'entityBlocks',
@@ -73,6 +78,11 @@ const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
 function normalizePathname(pathname: string) {
     if (pathname === '/') return pathname;
     return pathname.replace(/\/+$/, '');
+}
+
+function getHelpCenterMoreScreen(search: string) {
+    const tab = new URLSearchParams(search).get('tab') || '';
+    return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'canonicaHelp';
 }
 
 function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } {
@@ -111,10 +121,18 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
     };
 }
 
-function parseMobileRoutePathname(pathname: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } | null {
+function parseMobileRoutePathname(pathname: string, search = ''): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } | null {
     const normalizedPathname = normalizePathname(pathname);
     const platformScreen = PLATFORM_PATH_TO_MORE_SCREEN[normalizedPathname];
     const opsScreen = OPS_PATH_TO_MORE_SCREEN[normalizedPathname];
+
+    if (normalizedPathname === '/help-center') {
+        return {
+            tab: 'more',
+            todayScreen: 'main',
+            moreScreen: getHelpCenterMoreScreen(search),
+        };
+    }
 
     if (platformScreen) {
         return {
@@ -143,8 +161,8 @@ function parseMobileRoutePathname(pathname: string): { tab: MobileTab; todayScre
     return null;
 }
 
-function parseInitialMobileRoute(pathname: string, hash: string) {
-    return parseMobileRoutePathname(pathname)
+function parseInitialMobileRoute(pathname: string, hash: string, search = '') {
+    return parseMobileRoutePathname(pathname, search)
         || (hash.startsWith(MOBILE_ROUTE_HASH_PREFIX) ? parseMobileRouteHash(hash) : parseMobileRouteHash(''));
 }
 
@@ -171,7 +189,9 @@ export default function MobileShell() {
     const { data: session } = useSession();
     const pathname = usePathname();
     const router = useRouter();
-    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseInitialMobileRoute(pathname, window.location.hash);
+    const searchParams = useSearchParams();
+    const searchParamKey = searchParams.toString();
+    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseInitialMobileRoute(pathname, window.location.hash, window.location.search);
     const [activeTab, setActiveTab] = useState<MobileTab>(initialRoute.tab);
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
@@ -204,7 +224,7 @@ export default function MobileShell() {
 
     useEffect(() => {
         const handleHashChange = () => {
-            const nextRoute = parseMobileRoutePathname(window.location.pathname) || parseMobileRouteHash(window.location.hash);
+            const nextRoute = parseMobileRoutePathname(window.location.pathname, window.location.search) || parseMobileRouteHash(window.location.hash);
             setActiveTab(nextRoute.tab);
             setTodayScreen(nextRoute.todayScreen);
             setMoreScreen(nextRoute.moreScreen);
@@ -218,7 +238,7 @@ export default function MobileShell() {
     }, []);
 
     useEffect(() => {
-        const nextRoute = parseMobileRoutePathname(pathname);
+        const nextRoute = parseMobileRoutePathname(pathname, searchParamKey);
         if (!nextRoute) {
             if (window.location.hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) return;
             return;
@@ -228,7 +248,7 @@ export default function MobileShell() {
         setTodayScreen(nextRoute.todayScreen);
         setMoreScreen(nextRoute.moreScreen);
         setIsMoreRootScreen(nextRoute.moreScreen === 'main');
-    }, [pathname]);
+    }, [pathname, searchParamKey]);
 
     useEffect(() => {
         const nextHash = buildMobileRouteHash(activeTab, todayScreen, moreScreen);

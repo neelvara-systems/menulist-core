@@ -1,4 +1,3 @@
-import { CANONICA_ROUTES } from '@constant/canonica/navigations';
 import { LuActivity, LuBarChartBig, LuBook, LuBookOpen, LuCalendarCheck2, LuClock3, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageCircle, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory, MdOutlineSupportAgent } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
@@ -6,6 +5,8 @@ import { TbSettingsHeart } from 'react-icons/tb';
 
 export const HOME_ROUTING = `/`;
 export const CLIENT_DASHBOARD_ROUTING = `/dashboard`;
+export const HELP_CENTER_ROUTING = `/help-center`;
+export const helpCenterTabRouting = (tab: string) => `${HELP_CENTER_ROUTING}?tab=${tab}`;
 
 export const NAVIGARIONS_ROUTINGS = {
 
@@ -21,7 +22,7 @@ export const NAVIGARIONS_ROUTINGS = {
     LOCATIONS: `/locations`,  // Chain Control Panel (Feature #4C)
     USE_MENULIST: `/use-menulist`,  // Output Center — links, screens, print assets
 
-    HELP: CANONICA_ROUTES.HELP,
+    HELP: HELP_CENTER_ROUTING,
     PLATFORM: `/platform`,
     USERS: `/users`,
     SIGNIN: `/signin`,
@@ -96,22 +97,22 @@ export const SUPPORT_MENU_OPTIONS = [
     {
         key: 'help-center',
         label: 'Help Center',
-        description: 'Open the Canonica support dashboard',
+        description: 'Open the Canonica help center',
         icon: LuHeartHandshake,
-        route: CANONICA_ROUTES.HELP,
+        route: HELP_CENTER_ROUTING,
     },
     {
         key: 'documentation',
         label: 'Documentation',
         description: 'Browse docs and guides',
         icon: LuBookOpen,
-        route: CANONICA_ROUTES.DOCS,
+        route: helpCenterTabRouting('kb'),
     },
     {
         key: 'submit-ticket',
         label: 'Submit a Ticket',
         description: 'Get help from our team',
         icon: LuTicket,
-        route: CANONICA_ROUTES.SUPPORT,
+        route: helpCenterTabRouting('ticket'),
     },
 ] as const;

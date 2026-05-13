@@ -1477,8 +1477,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 <Flex align="center" justify="space-between">
                                     <Flex align="center" gap={8}>
                                         <MobileCompliancePagesEditor
+                                            baseUrl={officialPageUrl}
                                             compact={isCompactHandheld}
-                                            domain={storeDetails?.customDomain || (storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : undefined)}
                                             type="privacy"
                                         />
                                         <Text>{t('showPrivacyLink')}</Text>
@@ -1488,8 +1488,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 <Flex align="center" justify="space-between">
                                     <Flex align="center" gap={8}>
                                         <MobileCompliancePagesEditor
+                                            baseUrl={officialPageUrl}
                                             compact={isCompactHandheld}
-                                            domain={storeDetails?.customDomain || (storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : undefined)}
                                             type="terms"
                                         />
                                         <Text>{t('showTermsLink')}</Text>
@@ -1499,8 +1499,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                                 <Flex align="center" justify="space-between">
                                     <Flex align="center" gap={8}>
                                         <MobileCompliancePagesEditor
+                                            baseUrl={officialPageUrl}
                                             compact={isCompactHandheld}
-                                            domain={storeDetails?.customDomain || (storeDetails?.subdomain ? `${storeDetails.subdomain}.menulist.ai` : undefined)}
                                             type="refund"
                                         />
                                         <Text>{t('showRefundLink')}</Text>

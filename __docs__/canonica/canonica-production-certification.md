@@ -21,7 +21,7 @@
 | **DB Constants**       | 14 Canonica constants in database mirrors  | Collection name constants                                  |
 | **Firestore Indexes**  | 33 Canonica query/vector indexes           | Mirrored for shared and dedicated Firebase deployments      |
 | **Integration Points** | 3 touchpoints (tickets, chat, search-kb)   | Signal emission + retrieval                                |
-| **Owner UI**           | `src/app/(canonica)/canonica/help|docs|support|release-notes` + shared help-center components | Embedded MenuList client support portal |
+| **Owner UI**           | `src/app/(main)/help-center/page.tsx` + shared help-center components; `/canonica/help|docs|support|release-notes` remain direct shell/compatibility routes | Embedded MenuList client support portal |
 | **Operator UI**        | `src/app/(canonica)/canonica/dashboard|governance|settings|tickets|knowledge-base|kb-generation|changelog` + `src/components/canonica/*` | Responsive dashboard shell, governance hub, settings, and operational views |
 | **Public UI**          | `src/app/sites/canonica/*` + `src/app/widget/[apiKey]/*` | Marketing/onboarding pages and embeddable end-user help widget |
 
@@ -221,11 +221,12 @@ Owner KB screen
 
 ```
 MenuList owner clicks Help / Documentation / Support Tickets
-  → desktop sidebar/support popover resolves a Canonica client route
-  → mobile More tab resolves a native Canonica client sub-screen inside MobileShell
-  → /canonica/help, /docs, /support, or /release-notes loads for desktop/direct URL access
+  → desktop sidebar/support popover opens /help-center, /help-center?tab=kb, or /help-center?tab=ticket
+  → mobile More tab renders the existing Help Center home/tabs inside MobileShell
+  → direct mobile /help-center paths resolve to the same More-tab help screens
+  → /canonica/help reuses the same Help Center home for direct shell access
   → owner sees KB, ticket, and changelog surfaces without the legacy generic mobile FAQ/WhatsApp placeholder
-  → direct Canonica shell routes expose Back to MenuList
+  → mobile Help Center and direct Canonica shell routes expose Back to MenuList
   → Canonica DAL reads/writes use canonicaFirebaseClient and sourceContext metadata
 
 Platform operator opens Canonica management

@@ -76,11 +76,30 @@ function verifyOwnerAuthManifest() {
   const authLayout = read('src/app/(global-pages)/layout.tsx');
   const mainLayout = read('src/app/(main)/layout.tsx');
   const ownerManifest = JSON.parse(read('public/manifest.json'));
+  const ownerIconFiles = [
+    'public/apple-touch-icon.png',
+    'public/favicon.ico',
+    'public/icons/apple-touch-icon.png',
+    'public/icons/apple-touch-icon-152x152.png',
+    'public/icons/apple-touch-icon-167x167.png',
+    'public/icons/apple-touch-icon-180x180.png',
+    'public/icons/favicon-16x16.png',
+    'public/icons/favicon-32x32.png',
+    'public/icons/favicon.ico',
+  ];
 
   assertIncludes(authLayout, "manifest: '/manifest.json'", 'owner auth layout metadata');
   assertIncludes(mainLayout, 'manifest: "/manifest.json"', 'owner dashboard layout metadata');
   assert(ownerManifest.start_url === '/dashboard', 'owner manifest start_url must be /dashboard');
   assert(ownerManifest.display === 'standalone', 'owner manifest display must be standalone');
+  assert(Array.isArray(ownerManifest.icons), 'owner manifest icons must be an array');
+  for (const icon of ownerManifest.icons) {
+    assert(icon.src, 'owner manifest icon must include src');
+    assert(fs.existsSync(path.join(ROOT, 'public', icon.src)), `owner manifest icon file missing: ${icon.src}`);
+  }
+  for (const file of ownerIconFiles) {
+    assert(fs.existsSync(path.join(ROOT, file)), `owner PWA icon file missing: ${file}`);
+  }
 }
 
 function verifyAnalyticsCoverage() {

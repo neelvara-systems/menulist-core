@@ -1,12 +1,11 @@
 import { Card, Flex, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { Dispatch, SetStateAction } from 'react';
 
 import { HELP_CENTER_TABS } from './tabsConfig';
 
 interface MainSectionTabsProps {
     activeKey: string;
-    onSelect: Dispatch<SetStateAction<string>>;
+    onSelect: (key: string) => void;
 }
 
 function MainSectionTabs({ activeKey, onSelect }: MainSectionTabsProps) {
@@ -14,14 +13,16 @@ function MainSectionTabs({ activeKey, onSelect }: MainSectionTabsProps) {
     const { token } = theme.useToken();
 
     return (
-        <Flex gap="large" justify="center" style={{ width: '100%', marginBottom: 24 }}>
+        <Flex gap="large" justify="center" wrap style={{ width: '100%', marginBottom: 24 }}>
             {HELP_CENTER_TABS.map(item => (
                 <Card
                     key={item.key}
                     hoverable
                     onClick={() => onSelect(item.key)}
                     style={{
-                        width: 160,
+                        flex: '1 1 150px',
+                        maxWidth: 180,
+                        minWidth: 140,
                         borderRadius: 26,
                         textAlign: 'center',
                         backgroundImage: activeKey === item.key ? `linear-gradient(to bottom, ${token.colorPrimaryBorder}, ${token.colorPrimaryBg})` : 'none',
