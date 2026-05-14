@@ -19,7 +19,7 @@ import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
-import { setMenuAttributeFilterContext, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { setMenuAttributeFilterContext, trackItemDistributionAction, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
 import { getLocalizedText } from '@lib/localization/text';
 import {
@@ -28,6 +28,7 @@ import {
     getDecisionFactString,
     getDecisionFactValue,
 } from '@lib/menu/itemDecisionFacts';
+import { appendItemRouteContext, buildCanonicalItemUrl, buildItemDownloadPath, buildItemOgImagePath } from '@lib/menu/itemTruthUrls';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import {
     buildPublicMenuSearchDocument,
@@ -248,11 +249,17 @@ function MenuPageNew({
 
         return window.location.pathname;
     }, []);
-    const getMenuLanguageSearch = useCallback(() => {
-        if (typeof window === 'undefined' || !activeLanguage) return '';
+    const getMenuLanguageSearch = useCallback((itemId?: string | null) => {
+        if (typeof window === 'undefined') return '';
 
         const params = new URLSearchParams(window.location.search);
-        params.set('lang', activeLanguage);
+        params.delete('item');
+        if (activeLanguage) {
+            params.set('lang', activeLanguage);
+        }
+        if (itemId) {
+            params.set('item', itemId);
+        }
         const query = params.toString();
         return query ? `?${query}` : '';
     }, [activeLanguage]);
@@ -348,11 +355,14 @@ function MenuPageNew({
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
+    const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+    const [linkNotice, setLinkNotice] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState<any>(null);
     const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
     const [isCommandLayerPinned, setIsCommandLayerPinned] = useState(false);
     const [stickyControlsHeight, setStickyControlsHeight] = useState(0);
     const selectedItemRef = useRef<any>(null);
+    const trackedLinkOpenRef = useRef<string | null>(null);
 
     useEffect(() => {
         activeCategoryIdRef.current = activeCategory?.id || null;
@@ -1087,14 +1097,19 @@ function MenuPageNew({
 
     const buildItemUrl = useCallback((item: any) => {
         if (typeof window === 'undefined') return '';
-
-        const itemSlugName = getMenuText(item?.name);
-        const itemSlug = slugify(itemSlugName);
-        const shortId = item?.id?.slice(-6) || '';
-        const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item?.id;
         const basePath = getMenuBasePath();
-        return `${window.location.origin}${basePath}/item/${urlSegment}${getMenuLanguageSearch()}`;
-    }, [getMenuBasePath, getMenuLanguageSearch, getMenuText]);
+        return buildCanonicalItemUrl(`${window.location.origin}${basePath}`, item?.id, activeLanguage);
+    }, [activeLanguage, getMenuBasePath]);
+
+    const buildItemDownloadUrl = useCallback((item: any) => {
+        if (!item?.id) return '';
+        const path = buildItemDownloadPath(item.id, (projectData as any)?.menuVersion || (projectData as any)?.updatedAt || (projectData as any)?.lastPublishedAt);
+        return appendItemRouteContext(path, {
+            projectId: projectData?.projectId,
+            tenantId: storeDetails?.tenantId,
+            storeId: storeDetails?.storeId,
+        });
+    }, [projectData, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const buildBaseMenuUrl = useCallback(() => {
         if (typeof window === 'undefined') return '';
@@ -1125,7 +1140,16 @@ function MenuPageNew({
             ? itemDescription || (categoryName ? `${itemName} in ${categoryName} at ${storeName}.` : `${itemName} at ${storeName}.`)
             : storeDescription;
         const url = explicitUrl || (itemName ? buildItemUrl(item) : buildBaseMenuUrl());
-        const imageUrl = itemName ? (getPrimaryPublicMenuImage(item) || fallbackImage) : fallbackImage;
+        const ogImagePath = item?.id
+            ? appendItemRouteContext(buildItemOgImagePath(item.id, (projectData as any)?.menuVersion || (projectData as any)?.updatedAt || (projectData as any)?.lastPublishedAt), {
+                projectId: (projectData as any)?.projectId,
+                tenantId: (storeDetails as any)?.tenantId,
+                storeId: (storeDetails as any)?.storeId,
+            })
+            : '';
+        const imageUrl = itemName
+            ? (ogImagePath ? `${window.location.origin}${ogImagePath}` : getPrimaryPublicMenuImage(item) || fallbackImage)
+            : fallbackImage;
 
         document.title = title;
         upsertClientCanonical(url);
@@ -1189,15 +1213,7 @@ function MenuPageNew({
         setSelectedItemTrackView(!previewMode);
         setSelectedItem(item);
 
-        // G14: Push history state for back button support
-        // Human-readable slug URLs for shareability + AI crawlability
-        // Format: /menu/item/{slug}-{shortId} — slug for readability, shortId for uniqueness
-        const itemSlugName = getMenuText(item.name);
-        const itemSlug = slugify(itemSlugName);
-        const shortId = item.id?.slice(-6) || '';
-        const urlSegment = itemSlug ? `${itemSlug}-${shortId}` : item.id;
-        const basePath = getMenuBasePath();
-        const nextItemUrl = `${basePath}/item/${urlSegment}${getMenuLanguageSearch()}`;
+        const nextItemUrl = `${getMenuBasePath()}${getMenuLanguageSearch(item.id)}`;
 
         if (!previewMode) {
             historyPushedRef.current = true;
@@ -1208,9 +1224,9 @@ function MenuPageNew({
             );
             applyClientDocumentMeta(item, `${window.location.origin}${nextItemUrl}`);
         }
-    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
-    const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link') => {
+    const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link' | 'download') => {
         if (
             previewMode ||
             !analyticsPreferences.trackMenuViews ||
@@ -1227,21 +1243,34 @@ function MenuPageNew({
         const analyticsCategoryName = getMenuAnalyticsText(category?.name)
             || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
 
-        void trackItemShare(
+        const itemName = getMenuAnalyticsText(item.name, 'Menu item');
+        const analyticsPayload = {
+            categoryId,
+            categoryName: analyticsCategoryName,
+            tenantId: storeDetails.tenantId,
+            storeId: String(storeDetails.storeId),
+            projectId: projectData.projectId,
+            storeTimeZone: storeDetails.timeZone,
+            businessDayEndTime: storeDetails.businessDayEndTime,
+            includeLocation: analyticsPreferences.trackLocation,
+        };
+
+        if (method !== 'download') {
+            void trackItemShare(
+                item.id,
+                itemName,
+                analyticsCategoryName || item.category,
+                method,
+                analyticsPayload,
+            );
+        }
+
+        void trackItemDistributionAction(
+            method === 'native_share' ? 'share_click' : method,
             item.id,
-            getMenuAnalyticsText(item.name, 'Menu item'),
+            itemName,
             analyticsCategoryName || item.category,
-            method,
-            {
-                categoryId,
-                categoryName: analyticsCategoryName,
-                tenantId: storeDetails.tenantId,
-                storeId: String(storeDetails.storeId),
-                projectId: projectData.projectId,
-                storeTimeZone: storeDetails.timeZone,
-                businessDayEndTime: storeDetails.businessDayEndTime,
-                includeLocation: analyticsPreferences.trackLocation,
-            }
+            analyticsPayload,
         );
     }, [
         allCategories,
@@ -1320,44 +1349,86 @@ function MenuPageNew({
         applyClientDocumentMeta(selectedItem);
     }, [applyClientDocumentMeta, selectedItem]);
 
-    // G14 - Direct link load: Open PDP if URL contains item path
-    // Supports both new slug URLs (/menu/item/butter-chicken-abc123) and legacy ID URLs (/menu/item/item_abc123)
+    const scrollToItemElement = useCallback((itemId: string) => {
+        if (typeof window === 'undefined') return;
+        const element = document.getElementById(`item-${itemId}`);
+        if (!element) return;
+
+        const container = getActiveScrollContainer();
+        const offset = effectiveStickyControlsOffset + 18;
+        const rect = element.getBoundingClientRect();
+        if (container) {
+            const top = Math.max(0, container.scrollTop + rect.top - container.getBoundingClientRect().top - offset);
+            container.scrollTo({ top, behavior: 'smooth' });
+        } else {
+            const top = Math.max(0, window.scrollY + rect.top - offset);
+            window.scrollTo({ top, behavior: 'smooth' });
+        }
+
+        setHighlightedItemId(itemId);
+        window.setTimeout(() => setHighlightedItemId((current) => current === itemId ? null : current), 2200);
+    }, [effectiveStickyControlsOffset, getActiveScrollContainer]);
+
+    // G14 - Direct link load: query-param item links are canonical; path links stay backward compatible.
     useEffect(() => {
         if (previewMode) return;
         if (allItems.length === 0) return; // Wait for items to load
 
-        // Segment-based parsing (robust against query params, trailing slashes, locale prefixes)
+        const params = new URLSearchParams(window.location.search);
+        const canonicalItemId = params.get('item');
         const pathSegments = window.location.pathname.split('/');
         const itemIndex = pathSegments.indexOf('item');
-        if (itemIndex !== -1 && pathSegments[itemIndex + 1]) {
-            const urlSegment = pathSegments[itemIndex + 1];
+        const legacyUrlSegment = itemIndex !== -1 ? pathSegments[itemIndex + 1] : null;
+        const urlSegment = canonicalItemId || legacyUrlSegment;
+        if (!urlSegment) return;
 
-            // 1. Try exact ID match first (backward compatible with old URLs)
-            let item = allItems.find((i: any) => i.id === urlSegment);
+        let item = allItems.find((i: any) => i.id === urlSegment);
 
-            // 2. Try slug-shortId match: extract last 6 chars as shortId
-            if (!item && urlSegment.length > 7) {
-                const shortId = urlSegment.slice(-6);
-                item = allItems.find((i: any) => i.id?.endsWith(shortId));
-            }
-
-            // 3. Try slug-only match (best effort for manually constructed URLs)
-            if (!item) {
-                item = allItems.find((i: any) => {
-                    const name = getMenuText(i.name);
-                    return slugify(name) === urlSegment || urlSegment.startsWith(slugify(name));
-                });
-            }
-
-            if (item && item.available !== false) {
-                setSelectedItemTrackView(true);
-                setSelectedItem(item);
-                applyClientDocumentMeta(item, window.location.href);
-                // Don't push history - we're already at the correct URL
-                historyPushedRef.current = false;
-            }
+        if (!item && urlSegment.length > 7) {
+            const shortId = urlSegment.slice(-6);
+            item = allItems.find((i: any) => i.id?.endsWith(shortId));
         }
-    }, [allItems, applyClientDocumentMeta, getMenuText, previewMode]);
+
+        if (!item) {
+            item = allItems.find((i: any) => {
+                const name = getMenuText(i.name);
+                return slugify(name) === urlSegment || urlSegment.startsWith(slugify(name));
+            });
+        }
+
+        if (!item || item.available === false || item.active === false) {
+            setLinkNotice('Item not available');
+            window.setTimeout(() => setLinkNotice(null), 2600);
+            if (canonicalItemId) {
+                window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
+            }
+            return;
+        }
+
+        scrollToItemElement(item.id);
+        setSelectedItemTrackView(true);
+        setSelectedItem(item);
+        applyClientDocumentMeta(item, buildItemUrl(item));
+        historyPushedRef.current = false;
+
+        if (canonicalItemId && trackedLinkOpenRef.current !== item.id && analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
+            trackedLinkOpenRef.current = item.id;
+            const categoryId = typeof item.category === 'string' ? item.category : '';
+            const category = allCategories.find((cat: any) => cat.id === categoryId);
+            const analyticsCategoryName = getMenuAnalyticsText(category?.name)
+                || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
+            void trackItemDistributionAction('link_open', item.id, getMenuAnalyticsText(item.name, 'Menu item'), analyticsCategoryName || item.category, {
+                categoryId,
+                categoryName: analyticsCategoryName,
+                tenantId: storeDetails.tenantId,
+                storeId: String(storeDetails.storeId),
+                projectId: projectData.projectId,
+                storeTimeZone: storeDetails.timeZone,
+                businessDayEndTime: storeDetails.businessDayEndTime,
+                includeLocation: analyticsPreferences.trackLocation,
+            });
+        }
+    }, [allCategories, allItems, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, buildItemUrl, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, scrollToItemElement, storeDetails?.businessDayEndTime, storeDetails?.storeId, storeDetails?.tenantId, storeDetails?.timeZone]);
 
     const scrollToCategoryElement = useCallback((categoryId: string) => {
         const element = document.getElementById(`cat-${categoryId}`);
@@ -1884,6 +1955,26 @@ function MenuPageNew({
                             width: 1,
                         }}
                     />
+                    {linkNotice && (
+                        <div
+                            role="status"
+                            aria-live="polite"
+                            style={{
+                                background: `${moodConfig.accentColor}10`,
+                                border: `1px solid ${moodConfig.accentColor}28`,
+                                borderRadius: 8,
+                                color: moodConfig.bodyColor,
+                                fontFamily: moodConfig.bodyFont,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                lineHeight: '18px',
+                                marginBottom: 12,
+                                padding: '9px 12px',
+                            }}
+                        >
+                            {linkNotice}
+                        </div>
+                    )}
                     {/* Sticky command layer: retrieval first, section navigation second */}
                     <div ref={stickyControlsRef} data-menu-sticky-controls style={stickyControlsStyle}>
                         <div style={commandLayerStyle}>
@@ -2289,6 +2380,7 @@ function MenuPageNew({
                                                         gridColumns === 2 &&
                                                         items.length % 2 === 1 &&
                                                         itemIndex === items.length - 1;
+                                                    const isHighlighted = highlightedItemId === item.id;
 
                                                     // G10 ENFORCEMENT: Image quota per category
                                                     const itemImageUrl = getPrimaryPublicMenuImage(item);
@@ -2312,6 +2404,8 @@ function MenuPageNew({
                                                                 ...(shouldSpanFullGridRow ? { gridColumn: '1 / -1' } : {}),
                                                                 opacity: isAvailable ? 1 : 0.5,
                                                                 cursor: isAvailable ? 'pointer' : 'not-allowed',
+                                                                boxShadow: isHighlighted ? `0 0 0 3px ${moodConfig.accentColor}30` : undefined,
+                                                                borderColor: isHighlighted ? `${moodConfig.accentColor}80` : undefined,
                                                             }}
                                                             // G08 - Tap feedback + desktop hover
                                                             className={isAvailable
@@ -2613,6 +2707,7 @@ function MenuPageNew({
                 recoveryActions={recoveryActions}
                 showCategoryIcons={showCategoryIcons}
                 itemShareUrl={selectedItem && !previewMode ? buildItemUrl(selectedItem) : ''}
+                itemDownloadUrl={FEATURE_FLAGS.ENABLE_ITEM_TRUTH_EXPORT && selectedItem && !previewMode ? buildItemDownloadUrl(selectedItem) : ''}
                 onShare={(method) => handleItemShare(selectedItem, method)}
             />
         </div>

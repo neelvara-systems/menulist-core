@@ -46,6 +46,7 @@ import {
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
+import { appendItemRouteContext, buildCanonicalItemUrl, buildItemOgImagePath } from "@lib/menu/itemTruthUrls";
 import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
 import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
@@ -518,6 +519,7 @@ function buildProjectCanonicalUrl({
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
     const requestedLanguage = normalizePublicLanguageCode(searchParams?.lang);
+    const requestedItemId = Array.isArray(searchParams?.item) ? searchParams?.item[0] : searchParams?.item;
 
     // Lookup store based on tenant type (with retry for transient failures - TASK 4)
     let storeData: any = null;
@@ -676,12 +678,12 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             metadataStore = outletStore;
             metadataOutletSlug = (outletStore.outletSlug || firstSlug || '').toLowerCase() || undefined;
             projectSlugForLookup = slugSegments[1];
-            contextSegments = slugSegments.slice(2);
+            contextSegments = requestedItemId ? ['item', requestedItemId] : slugSegments.slice(2);
         } else {
-            contextSegments = slugSegments.slice(1);
+            contextSegments = requestedItemId ? ['item', requestedItemId] : slugSegments.slice(1);
         }
     } else {
-        contextSegments = slugSegments.slice(1);
+        contextSegments = requestedItemId ? ['item', requestedItemId] : slugSegments.slice(1);
     }
 
     const shouldLoadProjectMetadata = !!projectSlugForLookup || (!FEATURE_FLAGS.ENABLE_OBP && slugSegments.length === 0);
@@ -754,7 +756,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         }
 
         const contextCanonicalWithoutLanguage = projectCanonicalUrl && contextSegments.length
-            ? `${projectCanonicalUrl}/${contextSegments.join('/')}`
+            ? (contextSegments[0] === 'item' && contextSegments[1]
+                ? buildCanonicalItemUrl(projectCanonicalUrl, contextSegments[1])
+                : `${projectCanonicalUrl}/${contextSegments.join('/')}`)
             : projectCanonicalUrl;
         const contextCanonicalUrl = contextCanonicalWithoutLanguage && requestedLanguage
             ? appendPublicLanguageParam(contextCanonicalWithoutLanguage, metadataLanguage)
@@ -767,6 +771,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             currentUrl,
             canonicalUrl: contextCanonicalUrl,
             projectData: metadataProject,
+            projectId: metadataProjectRecord?.projectId || metadataProjectRecord?.id || metadataProject?.projectId,
+            tenantId: metadataStore?.tenantId,
+            storeId: metadataStore?.storeId,
             contextSegments,
             language: metadataLanguage,
         });
@@ -1093,9 +1100,7 @@ function buildCatalogItemStructuredData({
     const nutritionInfo = getNutritionFact(item);
     const itemName = getLocalizedValue(item.name, contentLanguage) || (isFoodCatalog ? "Menu Item" : "Offering");
     const itemId = item.id ? String(item.id) : '';
-    const itemUrl = itemId
-        ? `${canonicalUrl}/item/${slugify(itemName)}-${itemId.slice(-6)}`
-        : undefined;
+    const itemUrl = itemId ? buildCanonicalItemUrl(canonicalUrl, itemId) : undefined;
     const itemImage = showImages ? getPrimaryPublicMenuImage(item) : undefined;
     const schemaPrice = showItemPrices && item.price !== undefined && item.price !== null
         ? String(item.price).replace(/[^0-9.]/g, "")
@@ -1203,7 +1208,7 @@ function optimizeLanguagePayload(projectData: any, _requestedLanguage?: string |
 
 interface PageProps {
     params: { slug?: string[] };
-    searchParams?: { lang?: string | string[] };
+    searchParams?: { lang?: string | string[]; item?: string | string[] };
 }
 
 function getLocalizedValue(
@@ -1277,6 +1282,9 @@ function buildContextMetadata({
     currentUrl,
     canonicalUrl,
     projectData,
+    projectId,
+    tenantId,
+    storeId,
     contextSegments,
     language,
 }: {
@@ -1286,6 +1294,9 @@ function buildContextMetadata({
     currentUrl: string;
     canonicalUrl?: string;
     projectData: any;
+    projectId?: string | null;
+    tenantId?: string | number | null;
+    storeId?: string | number | null;
     contextSegments: string[];
     language?: string;
 }): Pick<Metadata, 'title' | 'description' | 'openGraph' | 'twitter' | 'alternates'> | null {
@@ -1304,7 +1315,13 @@ function buildContextMetadata({
         const itemDescription = getLocalizedValue(item.description, renderLanguage);
         const category = categories.find((entry: any) => entry?.id === item.category);
         const categoryName = getLocalizedValue(category?.name, renderLanguage);
-        const imageUrl = getPrimaryPublicMenuImage(item) || defaultImageUrl;
+        const ogImagePath = appendItemRouteContext(
+            buildItemOgImagePath(item.id, projectData?.menuVersion || projectData?.updatedAt || projectData?.lastPublishedAt),
+            { projectId, tenantId, storeId },
+        );
+        const imageUrl = ogImagePath
+            ? new URL(ogImagePath, currentUrl).toString()
+            : getPrimaryPublicMenuImage(item) || defaultImageUrl;
 
         return {
             title: `${itemName} | ${storeName}`,

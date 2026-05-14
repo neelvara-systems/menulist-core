@@ -24,12 +24,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuChevronLeft, LuChevronRight, LuMaximize2, LuShare2, LuX } from 'react-icons/lu';
+import { LuChevronLeft, LuChevronRight, LuCopy, LuDownload, LuMaximize2, LuShare2, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { menuBottomSheetMotion, menuDialogMotion, menuSpringTransition } from './menuMotion';
 
-type ItemShareMethod = 'native_share' | 'copy_link';
+type ItemShareMethod = 'native_share' | 'copy_link' | 'download';
 
 interface PDPModalProps {
     item: any;
@@ -51,6 +51,7 @@ interface PDPModalProps {
         track: () => Promise<void>;
     }>;
     itemShareUrl?: string;
+    itemDownloadUrl?: string;
     onShare?: (method: ItemShareMethod) => void;
 }
 
@@ -94,6 +95,7 @@ function PDPModal({
     showCategoryIcons = true,
     recoveryActions = [],
     itemShareUrl,
+    itemDownloadUrl,
     onShare,
 }: PDPModalProps) {
     const { trackMenuItemView } = useContext(AnalyticsContext);
@@ -406,6 +408,34 @@ function PDPModal({
         }
     };
 
+    const handleCopyItemLink = async () => {
+        if (!itemShareUrl || isSharingItem) return;
+
+        setIsSharingItem(true);
+        setShareStatus(null);
+        try {
+            await copyTextToClipboard(itemShareUrl);
+            onShare?.('copy_link');
+            setShareStatus('Link copied');
+        } catch {
+            setShareStatus('Could not copy');
+        } finally {
+            setIsSharingItem(false);
+        }
+    };
+
+    const handleDownloadItemCard = () => {
+        if (!itemDownloadUrl) return;
+        onShare?.('download');
+        const link = document.createElement('a');
+        link.href = itemDownloadUrl;
+        link.rel = 'noopener';
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const pdpIconButtonStyle = (positionStyle: React.CSSProperties, disabled = false): React.CSSProperties => ({
         ...positionStyle,
         alignItems: 'center',
@@ -566,6 +596,31 @@ function PDPModal({
                                         style={pdpIconButtonStyle({ position: 'relative' }, isSharingItem)}
                                     >
                                         <LuShare2 size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
+                                    </button>
+                                )}
+                                {itemShareUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyItemLink}
+                                        className="rounded-full transition-opacity hover:opacity-80"
+                                        aria-label="Copy item link"
+                                        title="Copy link"
+                                        disabled={isSharingItem}
+                                        style={pdpIconButtonStyle({ position: 'relative' }, isSharingItem)}
+                                    >
+                                        <LuCopy size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
+                                    </button>
+                                )}
+                                {itemDownloadUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={handleDownloadItemCard}
+                                        className="rounded-full transition-opacity hover:opacity-80"
+                                        aria-label="Download item card"
+                                        title="Download"
+                                        style={pdpIconButtonStyle({ position: 'relative' })}
+                                    >
+                                        <LuDownload size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
                                     </button>
                                 )}
                                 <button

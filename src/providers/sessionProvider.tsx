@@ -24,6 +24,7 @@ import { objectNullCheck, removeObjRef } from '@util/utils';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import { SessionProvider as Provider } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import ServerSidePageLoader from '../app/loading';
 import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataProvider';
@@ -34,6 +35,7 @@ type Props = {
 }
 
 export default function SessionProvider({ children, session }: Props) {
+    const pathname = usePathname();
 
     // Define the initial state for tenant details
     const [tenantDetails, setTenantDetails] = useState<TenantDataType>(null)
@@ -81,6 +83,17 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
+    const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
+    const isPlatformSession = session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const canRenderBeforeStoreData = Boolean(session) && isPlatformSession && (
+        normalizedPathname === '/help-center'
+        || normalizedPathname === '/platform'
+        || normalizedPathname.startsWith('/platform/')
+        || normalizedPathname === '/ops'
+        || normalizedPathname.startsWith('/ops/')
+        || normalizedPathname === '/canonica'
+        || normalizedPathname.startsWith('/canonica/')
+    );
 
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string>();
@@ -370,7 +383,7 @@ export default function SessionProvider({ children, session }: Props) {
                 platformStoreSummaryLoading,
                 setPlatformStoreSummaryLoading
             }}>
-                {(session && !storeDetails) ? (
+                {(session && !storeDetails && !canRenderBeforeStoreData) ? (
                     <ServerSidePageLoader page="Loading Store Data" />
                 ) : (
                     <Suspense fallback={<ServerSidePageLoader page="Main Layout" />}>

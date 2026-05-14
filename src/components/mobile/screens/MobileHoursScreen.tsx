@@ -208,6 +208,20 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         return 'closed_today';
     }, [storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
 
+    const inactiveItemsReminder = useMemo(
+        () => getInactiveItemsReminder(selectedProject as any),
+        [selectedProject]
+    );
+
+    useEffect(() => {
+        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        if (!dismissKey) {
+            setIsInactiveReminderDismissed(false);
+            return;
+        }
+        setIsInactiveReminderDismissed(localStorage.getItem(dismissKey) === '1');
+    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId]);
+
     const handleCloseToday = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsUpdating(true);
@@ -340,10 +354,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         ? (todayCampaigns?.primary as TodayCampaignSummary | undefined)
         : undefined;
     const sortedOperationalCampaigns = sortOperationalCampaignsByPriority(todayCampaigns?.operational || []);
-    const inactiveItemsReminder = useMemo(
-        () => getInactiveItemsReminder(selectedProject as any),
-        [selectedProject]
-    );
     const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
     const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
     const hasMaintenanceCards = Boolean(
@@ -371,15 +381,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             .replace('{mealName}', mealName.toLowerCase())
             .replace('{festivalName}', 'the occasion')
         : '';
-
-    useEffect(() => {
-        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
-        if (!dismissKey) {
-            setIsInactiveReminderDismissed(false);
-            return;
-        }
-        setIsInactiveReminderDismissed(localStorage.getItem(dismissKey) === '1');
-    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId]);
 
     const dismissInactiveReminder = () => {
         const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);

@@ -2275,6 +2275,19 @@ export const FEATURE_FLAGS = {
     ENABLE_MEDIA_IMAGE_SYSTEM: true,
 
     /**
+     * Item Truth Export
+     *
+     * Makes published menu items addressable and portable through:
+     * - canonical `?item={itemId}` public links
+     * - deterministic item OG previews
+     * - item card PNG downloads
+     *
+     * This is a distribution primitive for public menu truth, not a
+     * customization surface.
+     */
+    ENABLE_ITEM_TRUTH_EXPORT: true,
+
+    /**
      * Deployment build visibility for internal debugging.
      *
      * true: Allow on-demand build badge via ?v=1 query param
