@@ -11,7 +11,10 @@ import { LuArrowLeft, LuArrowRight, LuCheck, LuCopy, LuStore } from "react-icons
 const { Title, Text, Paragraph } = Typography;
 
 interface OnboardResult {
+    dashboardUrl?: string;
+    publicUrl?: string;
     storeId: number;
+    subdomain?: string;
     tenantId: number;
     subscriptionId: string;
     shortUrl?: string;
@@ -232,6 +235,30 @@ function OnboardingWizard() {
                                     <Button icon={<LuCopy />} onClick={() => {
                                         navigator.clipboard.writeText(result.shortUrl || '');
                                         message.success('Link copied!');
+                                    }}>Copy</Button>
+                                </Flex>
+                            </Card>
+                        ),
+                        result.dashboardUrl && (
+                            <Card key="dashboardLink" size="small" style={{ marginBottom: 16, textAlign: 'left' }}>
+                                <Text type="secondary">Client dashboard link:</Text>
+                                <Flex align="center" gap={8} style={{ marginTop: 8 }}>
+                                    <Input value={result.dashboardUrl} readOnly />
+                                    <Button icon={<LuCopy />} onClick={() => {
+                                        navigator.clipboard.writeText(result.dashboardUrl || '');
+                                        message.success('Dashboard link copied!');
+                                    }}>Copy</Button>
+                                </Flex>
+                            </Card>
+                        ),
+                        result.publicUrl && (
+                            <Card key="publicLink" size="small" style={{ marginBottom: 16, textAlign: 'left' }}>
+                                <Text type="secondary">Public menu link:</Text>
+                                <Flex align="center" gap={8} style={{ marginTop: 8 }}>
+                                    <Input value={result.publicUrl} readOnly />
+                                    <Button icon={<LuCopy />} onClick={() => {
+                                        navigator.clipboard.writeText(result.publicUrl || '');
+                                        message.success('Public link copied!');
                                     }}>Copy</Button>
                                 </Flex>
                             </Card>

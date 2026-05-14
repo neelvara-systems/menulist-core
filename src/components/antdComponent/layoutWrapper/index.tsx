@@ -24,7 +24,7 @@ const SidebarComponent = dynamic(() => import('@organisms/sidebar'), { ssr: fals
 const MobileShell = dynamic(() => import('../../mobile/MobileShell'), { ssr: false });
 
 const { Content } = Layout;
-const DESKTOP_ONLY_ROUTE_PREFIXES = ['/reseller'];
+const DESKTOP_ONLY_ROUTE_PREFIXES: string[] = [];
 const DESKTOP_ONLY_ROUTES = ['/platform/test-sentry'];
 
 export default function AntdLayoutWrapper(props: any) {
@@ -42,16 +42,17 @@ export default function AntdLayoutWrapper(props: any) {
     ));
     const isPlatformRoute = pathname === '/platform' || pathname.startsWith('/platform/');
     const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
+    const isResellerRoute = pathname === '/reseller' || pathname.startsWith('/reseller/');
     const isHelpCenterRoute = pathname === '/help-center';
     const routeHasMobileShell = !isDesktopOnlyRoute && (
-        isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isHelpCenterRoute))
+        isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute))
     );
     const forceDesktop = hasMounted && !routeHasMobileShell && shouldForceDesktopForPath(pathname, isDesktopOnlyRoute);
     const shouldRenderMobileShell = hasMounted
         && FEATURE_FLAGS.ENABLE_MOBILE_UI
         && !forceDesktop
         && !isDesktopOnlyRoute
-        && (isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isHelpCenterRoute)));
+        && (isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute)));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
 
     const renderContent = () => {

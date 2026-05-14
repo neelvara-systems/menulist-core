@@ -2,7 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -91,6 +91,9 @@ const MobileExtractionMonitorScreen = dynamic(() => import('./MobileExtractionMo
 const MobileOpsControlRoomScreen = dynamic(() => import('./MobileOpsControlRoomScreen'), { ssr: false });
 const MobileSchedulerMonitorScreen = dynamic(() => import('./MobileSchedulerMonitorScreen'), { ssr: false });
 const MobilePlatformInternalScreen = dynamic(() => import('./MobilePlatformInternalScreen'), { ssr: false });
+const MobileResellerDashboardScreen = dynamic(() => import('./MobileResellerDashboardScreen'), { ssr: false });
+const MobileResellerManagementScreen = dynamic(() => import('./MobileResellerManagementScreen'), { ssr: false });
+const MobileResellerOnboardingScreen = dynamic(() => import('./MobileResellerOnboardingScreen'), { ssr: false });
 
 const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'entityBlocks',
@@ -183,7 +186,10 @@ export type MoreSubScreen =
     | 'chatRoiCalculator'
     | 'opsControlRoom'
     | 'extractionMonitor'
-    | 'schedulerMonitor';
+    | 'schedulerMonitor'
+    | 'resellerDashboard'
+    | 'resellerManagement'
+    | 'resellerOnboarding';
 
 interface MobileMoreScreenProps {
     initialScreen?: MoreSubScreen;
@@ -221,6 +227,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const userImage = session?.user?.image || '';
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isResellerAccount = platformRole === RESELLER_USER_ROLE;
+    const canUseResellerScreens = isPlatformAdmin || isResellerAccount;
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');
@@ -366,11 +374,17 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'platformStores', icon: <LuMapPin color="#0f766e" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
         { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
         ...(FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD ? [
-            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openDesktopRoute('/reseller') },
-            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openDesktopRoute('/reseller/manage') },
-            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openDesktopRoute('/reseller/onboard') },
+            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openSubScreen('resellerDashboard') },
+            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openSubScreen('resellerManagement') },
+            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openSubScreen('resellerOnboarding') },
         ] : []),
         { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
+    ] : [];
+
+    const resellerItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
+        { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard', 'clients'], label: 'Reseller Dashboard', description: isPlatformAdmin ? 'View reseller clients across the platform.' : 'View your clients and license status.', onClick: () => openSubScreen('resellerDashboard') },
+        { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding', 'new client'], label: 'Onboard Client', description: 'Create a client account, select a plan, and activate payment.', onClick: () => openSubScreen('resellerOnboarding') },
+        ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
     ] : [];
 
     const canonicaHubItems: MoreListItem[] = isPlatformAdmin ? [
@@ -391,9 +405,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { items: businessIdentityItems, title: 'Business Settings' },
         { items: businessPresenceItems, title: 'Business Presence' },
         ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
+        ...(resellerItems.length ? [{ items: resellerItems, title: 'Reseller' }] : []),
         ...(platformManagementItems.length ? [{ items: platformManagementItems, title: 'Platform Management' }] : []),
         ...(canonicaManagementItems.length ? [{ items: canonicaManagementItems, title: 'Canonica' }] : []),
-    ]), [businessIdentityItems, businessPresenceItems, canonicaManagementItems, moduleItems, platformManagementItems, platformMonitoringItems]);
+    ]), [businessIdentityItems, businessPresenceItems, canonicaManagementItems, moduleItems, platformManagementItems, platformMonitoringItems, resellerItems]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -464,6 +479,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
+    else if (subScreen === 'resellerDashboard') subScreenContent = <MobileResellerDashboardScreen onBack={() => setSubScreen(isResellerAccount && !isPlatformAdmin ? 'main' : 'platformHub')} onOpenManagement={() => setSubScreen('resellerManagement')} onOpenOnboarding={() => setSubScreen('resellerOnboarding')} />;
+    else if (subScreen === 'resellerManagement') subScreenContent = <MobileResellerManagementScreen onBack={() => setSubScreen(isResellerAccount && !isPlatformAdmin ? 'resellerDashboard' : 'platformHub')} />;
+    else if (subScreen === 'resellerOnboarding') subScreenContent = <MobileResellerOnboardingScreen onBack={() => setSubScreen('resellerDashboard')} />;
     else if (isPlatformInternalScreen(subScreen)) subScreenContent = <MobilePlatformInternalScreen onBack={() => setSubScreen(getBackTarget(subScreen))} screen={subScreen} />;
 
     if (subScreenContent) {

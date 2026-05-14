@@ -149,5 +149,10 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-arm64": "^4.60.0"
-  }
+  },
+  "main": "next.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }

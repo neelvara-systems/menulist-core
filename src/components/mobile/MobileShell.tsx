@@ -1,7 +1,7 @@
 'use client'
 
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
@@ -52,6 +52,11 @@ const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/ops/extraction': 'extractionMonitor',
     '/ops/scheduler': 'schedulerMonitor',
 };
+const RESELLER_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
+    '/reseller': 'resellerDashboard',
+    '/reseller/manage': 'resellerManagement',
+    '/reseller/onboard': 'resellerOnboarding',
+};
 const HELP_CENTER_TAB_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     kb: 'canonicaDocs',
     ticket: 'canonicaSupport',
@@ -77,6 +82,11 @@ const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'opsControlRoom',
     'extractionMonitor',
     'schedulerMonitor',
+];
+const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
+    'resellerDashboard',
+    'resellerManagement',
+    'resellerOnboarding',
 ];
 
 function normalizePathname(pathname: string) {
@@ -129,6 +139,7 @@ function parseMobileRoutePathname(pathname: string, search = ''): { tab: MobileT
     const normalizedPathname = normalizePathname(pathname);
     const platformScreen = PLATFORM_PATH_TO_MORE_SCREEN[normalizedPathname];
     const opsScreen = OPS_PATH_TO_MORE_SCREEN[normalizedPathname];
+    const resellerScreen = RESELLER_PATH_TO_MORE_SCREEN[normalizedPathname];
 
     if (normalizedPathname === '/help-center') {
         return {
@@ -151,6 +162,14 @@ function parseMobileRoutePathname(pathname: string, search = ''): { tab: MobileT
             tab: 'more',
             todayScreen: 'main',
             moreScreen: opsScreen,
+        };
+    }
+
+    if (resellerScreen) {
+        return {
+            tab: 'more',
+            todayScreen: 'main',
+            moreScreen: resellerScreen,
         };
     }
 
@@ -205,8 +224,10 @@ export default function MobileShell() {
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const isResellerAccount = platformRole === RESELLER_USER_ROLE;
     const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
-    const shouldBypassSubscriptionGate = isPlatformAdmin && isPlatformMobileScreen;
+    const isResellerMobileScreen = activeTab === 'more' && RESELLER_MORE_SCREENS.includes(moreScreen);
+    const shouldBypassSubscriptionGate = (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen)) || (isResellerAccount && isResellerMobileScreen);
     const activeOutletSummary = isMasterUser && activeStoreContext
         ? tenantDetails?.storesList?.find((store: any) => store.storeId === activeStoreContext)
         : null;

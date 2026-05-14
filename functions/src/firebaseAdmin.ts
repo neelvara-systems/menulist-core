@@ -5,16 +5,20 @@ import * as functions from 'firebase-functions';
 // dotenv is loaded once in index.ts (entrypoint) — NOT here.
 // This file may be imported by other modules, so we don't duplicate dotenv loading.
 
-// Force Admin SDK to connect to CLOUD Firestore/Storage, not local emulators.
-// The emulator suite auto-sets these env vars even when we only want the Functions emulator.
-// We want: local Functions emulator → cloud Firestore/Storage/Auth
-delete process.env.FIRESTORE_EMULATOR_HOST;
-delete process.env.FIREBASE_STORAGE_EMULATOR_HOST;
-delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
+// Respect Firebase emulator environment variables when the emulator suite sets
+// them. Running only the Functions emulator continues to use cloud services,
+// while running `functions,firestore` gives isolated local Firestore tests.
 
 admin.initializeApp();
 const logger = functions.logger;
 logger.log("🔥 Firebase Admin initialized.");
+if (process.env.FUNCTIONS_EMULATOR === 'true') {
+    logger.log("Firebase Admin emulator targets", {
+        firestore: process.env.FIRESTORE_EMULATOR_HOST || 'cloud',
+        storage: process.env.FIREBASE_STORAGE_EMULATOR_HOST || 'cloud',
+        auth: process.env.FIREBASE_AUTH_EMULATOR_HOST || 'cloud',
+    });
+}
 
 const firestoreAdmin = admin.firestore();
 firestoreAdmin.settings({ ignoreUndefinedProperties: true });
@@ -30,4 +34,3 @@ if (!projectId) {
 logger.log("🔥 Initializing Vertex AI for project:", projectId);
 const vertexAIClient = new VertexAI({ project: projectId!, location: 'us-central1' });
 export { admin, authAdmin, firestoreAdmin, storageAdmin, Vector, vertexAIClient };
-

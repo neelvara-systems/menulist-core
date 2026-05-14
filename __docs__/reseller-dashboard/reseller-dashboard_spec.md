@@ -159,7 +159,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 3. Subscription returns `shortUrl` — reseller shares with client (WhatsApp, SMS, email)
 4. Client clicks `shortUrl` → Razorpay checkout → sets up autopay mandate → first payment
 5. Razorpay webhook (`subscription.activated` / `subscription.charged`) → subscription activated
-6. Client receives login credentials
+6. Reseller shares the returned dashboard claim link with the client
 7. Subsequent renewals are automatic (Razorpay handles billing)
 
 **Why Razorpay Subscription (same as self-serve):**
@@ -183,10 +183,10 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 
 1. Reseller creates store → selects tier + duration + Offline payment
 2. Reseller collects cash/UPI from client separately
-3. Reseller clicks "Confirm Payment Received" in dashboard
-4. System immediately activates subscription with `billingMode: 'manual'`
+3. Reseller confirms payment during onboarding
+4. System immediately activates a manual prepaid subscription with `billingMode: 'manual'`
 5. Sets `validUntil` = now + duration
-6. Client receives login credentials
+6. Reseller shares the returned dashboard claim link with the client
 7. Nightly scheduler auto-expires when `validUntil` passes
 
 **Safeguards:**
@@ -207,7 +207,7 @@ Reseller enters:
 - **Business Name** (required, text)
 - **Business Type** (required, dropdown — uses existing `BUSINESS_TYPES` from `src/constants/common.ts`)
 - **Owner Phone** (required — for client's login/contact)
-- **Owner Email** (optional — for credentials)
+- **Owner Email** (optional contact email — dashboard access is delivered through the claim link unless an existing unclaimed user is found)
 
 ### Step 2: Menu Upload
 
@@ -255,12 +255,13 @@ Reseller confirms → System creates everything atomically.
 - Status: `ACTIVE` immediately
 - `validUntil` set
 
-### Step 6: Client Credentials
+### Step 6: Client Access Links
 
 System creates:
 
-- User account (if email provided — Google OAuth or magic link)
-- Or: Client can claim account later via phone verification
+- Public menu link from the generated subdomain.
+- Dashboard claim link for the client to connect Google or set email/password.
+- Razorpay payment link for online reseller sales.
 
 ---
 

@@ -1196,6 +1196,7 @@ export function ProgressBar({ percent, style }: { percent?: number; style?: AnyS
 
 export const Space = AntSpace;
 export const Result = AntResult;
+export { Spin };
 export const Upload = AntUpload;
 
 type CollapsePanelProps = { children?: ReactNode; title?: ReactNode };

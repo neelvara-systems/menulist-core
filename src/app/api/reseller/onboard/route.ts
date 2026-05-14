@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { calculateOfflineAmount, getResellerTierById, RESELLER_CAPS, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { DB_COLLECTIONS } from "@constant/database";
+import { getMenuUrl, MSG_EMAIL_DOMAIN, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { createResellerTransaction, getResellerProfile, incrementResellerOfflineCount, incrementResellerOnlineCount } from "@database/reseller";
 import { createInitialSubscription } from "@database/subscriptions";
@@ -17,11 +18,17 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
 import { ResellerOnboardSchema } from "@lib/validation/resellerSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
+import crypto from "crypto";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "reseller-onboarding.log";
+
+const buildResellerPlaceholderEmail = (storeId: number, phone: string) => {
+    const phoneSuffix = phone.replace(/[^0-9]/g, '').slice(-10) || 'owner';
+    return `reseller-${storeId}-${phoneSuffix}@${MSG_EMAIL_DOMAIN}`;
+};
 
 /**
  * POST /api/reseller/onboard — Reseller creates store + subscription for a client
@@ -104,6 +111,23 @@ export const POST = withAuth(async (request, session) => {
 
         // Pre-check subdomain uniqueness (must be outside transaction)
         const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
+        const normalizedOwnerEmail = ownerEmail?.toLowerCase()?.trim() || '';
+        const existingOwnerSnapshot = normalizedOwnerEmail
+            ? await db.collection(DB_COLLECTIONS.USERS)
+                .where('email', '==', normalizedOwnerEmail)
+                .limit(1)
+                .get()
+            : null;
+        const existingOwnerDoc = existingOwnerSnapshot && !existingOwnerSnapshot.empty
+            ? existingOwnerSnapshot.docs[0]
+            : null;
+        const existingOwnerData = existingOwnerDoc?.data();
+
+        if (existingOwnerData?.tenantId || existingOwnerData?.storeId) {
+            return NextResponse.json({
+                error: "This owner email is already linked to another business. Use a different email or leave it blank and share the claim link.",
+            }, { status: 409 });
+        }
 
         const result = await db.runTransaction(async (transaction) => {
             // Centralized tenant + store creation
@@ -119,27 +143,63 @@ export const POST = withAuth(async (request, session) => {
                 storeExtra: { phone: ownerPhone, resellerId },
             });
 
-            // Create User record for client (if email provided)
-            if (ownerEmail) {
-                const usersSnapshot = await db.collection(DB_COLLECTIONS.USERS)
-                    .where('email', '==', ownerEmail)
-                    .limit(1)
-                    .get();
+            const ownerStoreMapping = { storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() };
+            let userId = '';
+            let claimToken: string | null = null;
 
-                if (!usersSnapshot.empty) {
-                    // User exists — update with new tenant/store
-                    const existingUserDoc = usersSnapshot.docs[0];
-                    transaction.update(existingUserDoc.ref, {
-                        tenantId: core.tenantId,
-                        storeId: core.storeId,
-                        stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],
-                        modifiedOn: core.now,
-                    });
-                }
-                // If user doesn't exist, they'll create account via OAuth later
+            if (existingOwnerDoc) {
+                const currentStores = Array.isArray(existingOwnerData?.stores) ? existingOwnerData.stores : [];
+                const currentStoreIds = Array.isArray(existingOwnerData?.storeIds) ? existingOwnerData.storeIds : [];
+
+                transaction.update(existingOwnerDoc.ref, {
+                    active: existingOwnerData?.active !== false,
+                    isVerified: true,
+                    tenantId: core.tenantId,
+                    storeId: core.storeId,
+                    stores: [...currentStores, ownerStoreMapping],
+                    storeIds: Array.from(new Set([...currentStoreIds, core.storeId])),
+                    platformRole: existingOwnerData?.platformRole || 'OWNER',
+                    onboardingSource: 'RESELLER_ONBOARDING',
+                    phone: ownerPhone,
+                    modifiedOn: core.now,
+                });
+                userId = existingOwnerDoc.id;
+            } else {
+                claimToken = crypto.randomBytes(32).toString("base64url");
+                const userRef = db.collection(DB_COLLECTIONS.USERS).doc();
+                const placeholderEmail = buildResellerPlaceholderEmail(core.storeId, ownerPhone);
+
+                transaction.set(userRef, {
+                    phone: ownerPhone,
+                    email: placeholderEmail,
+                    pendingOwnerEmail: normalizedOwnerEmail || null,
+                    name: businessName,
+                    isVerified: true,
+                    active: true,
+                    platformRole: "OWNER",
+                    tenantId: core.tenantId,
+                    storeId: core.storeId,
+                    stores: [ownerStoreMapping],
+                    storeIds: [core.storeId],
+                    profileImage: "",
+                    createdVia: "reseller-onboarding",
+                    onboardingSource: "RESELLER_ONBOARDING",
+                    claimToken,
+                    claimTokenExpiresAt: null,
+                    createdOn: core.now,
+                    modifiedOn: core.now,
+                });
+                userId = userRef.id;
             }
 
-            return { tenantId: core.tenantId, storeId: core.storeId };
+            return {
+                claimToken,
+                storeId: core.storeId,
+                storeName: core.storeName,
+                subdomain: core.subdomain,
+                tenantId: core.tenantId,
+                userId,
+            };
         });
 
         await writeLogEntry({
@@ -344,6 +404,10 @@ export const POST = withAuth(async (request, session) => {
             tenantId: result.tenantId,
             subscriptionId,
             shortUrl,
+            publicUrl: result.subdomain ? getMenuUrl(result.subdomain) : undefined,
+            dashboardUrl: result.claimToken ? `${SIGNIN_URL}?claim=${result.claimToken}` : SIGNIN_URL,
+            subdomain: result.subdomain,
+            userId: result.userId,
             status: paymentMode === 'offline' ? 'active' : 'pending',
             transactionId,
         });

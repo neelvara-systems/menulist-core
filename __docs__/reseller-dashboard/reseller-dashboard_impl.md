@@ -331,7 +331,7 @@ const ResellerOnboardSchema = z.object({
   businessName: z.string().min(2).max(100),
   businessType: z.string().min(2).max(50),
   ownerPhone: z.string().min(10).max(15),
-  ownerEmail: z.string().email().optional(),
+  ownerEmail: z.string().email().optional(), // Contact email. Login handoff uses claim link unless an unclaimed user already exists.
   pricingTier: z.enum(["FOUNDER_400", "FOUNDER_500", "STANDARD"]),
   billingInterval: z.enum(["MONTH", "YEAR"]).optional().default("MONTH"), // For online only
   commitmentMonths: z.enum(["3", "6", "12"]).transform(Number).optional(), // Tracking only for online, duration for offline
@@ -348,7 +348,9 @@ const ResellerOnboardSchema = z.object({
 4. Atomic transaction:
    - Create tenant (same pattern as `create-subscription/route.ts`)
    - Create store (same pattern)
-   - Create user record for client (with phone/email)
+   - Create or update the owner access record:
+     - If `ownerEmail` matches an existing unclaimed user, attach that user to the new tenant/store.
+     - Otherwise create a claimable placeholder user with `claimToken`.
    - Update platformSummary counts
    - Sync storesSummary
 5. Create subscription doc:
@@ -698,26 +700,28 @@ This is handled by checking `session.platformRole === 'RESELLER'` in the sidebar
 
 ---
 
-## 11. Client Account Creation
+## 11. Client Account Access
 
-When reseller onboards a client, the system creates a user account for the client:
+When reseller onboards a client, the system must return a usable owner access path in the onboarding response.
 
-### If Email Provided
+### If Owner Email Already Exists As An Unclaimed User
 
-- Create user doc with `email`, `name` (from business name), `tenantId`, `storeId`
-- Client can log in via Google OAuth (if same email) or magic link
-- Same as existing auth flow
+- Attach that existing user document to the new `tenantId` and `storeId`.
+- Preserve the owner role mapping in `stores[]`.
+- Return the dashboard sign-in URL.
 
-### If Only Phone Provided
+### If No Existing Owner User Exists
 
-- Create user doc with `phone`, `name`, `tenantId`, `storeId`
-- Client can claim account later via phone verification
-- Uses existing OTP/phone auth if implemented
+- Create a placeholder owner user with a generated `@msg.menulist.ai` email.
+- Store `pendingOwnerEmail` when the reseller provided a contact email.
+- Generate a `claimToken`.
+- Return `dashboardUrl = SIGNIN_URL?claim={claimToken}` so the client can claim with Google or email/password.
 
-### Credential Delivery
+### Link Delivery
 
-- Reseller shares activation link with client
-- Link: `{NEXTAUTH_URL}/activate?token={activationToken}&store={storeId}`
+- Reseller shares the returned `dashboardUrl` with the client for account access.
+- Reseller shares the returned `publicUrl` as the customer-facing menu link.
+- For online payment, reseller also shares the returned Razorpay `shortUrl`.
 - Client clicks → sets up Google OAuth → gets full dashboard access
 
 ---
