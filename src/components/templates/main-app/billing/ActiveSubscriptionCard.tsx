@@ -50,6 +50,13 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
     const totalCredits = monthlyCredits + topUpCredits;
     const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
+    const isManualBilling = activeSubscription.billingMode === 'manual';
+    const isPaymentPending = activeSubscription.status === 'pending';
+    const intervalLabel = activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
+    const amountSuffix = isManualBilling
+        ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
+        : intervalLabel;
+    const formatBillingDate = (value: any, fallback = 'N/A') => value ? formatDateTime(value, "date", formatter) : fallback;
 
     const cardStyle = {
         borderRadius: '16px',
@@ -108,7 +115,22 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
 
     // --- SMART BUTTON RENDERING LOGIC ---
     const renderActionButtons = () => {
-        const isFinalCycle = Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
+        const isFinalCycle = Boolean(activeSubscription.renewsOn?.seconds && activeSubscription.subscriptionEndDate?.seconds)
+            && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
+        if (isPaymentPending) {
+            return activeSubscription.shortUrl ? (
+                <Button type="primary" icon={<FaCreditCard />} href={activeSubscription.shortUrl} target="_blank">
+                    Pay Now
+                </Button>
+            ) : (
+                <Button type="primary" onClick={() => router.push(CANONICA_ROUTES.SUPPORT)}>
+                    Contact Support
+                </Button>
+            );
+        }
+        if (isManualBilling) {
+            return null;
+        }
         if (activeSubscription.status === 'active') {
             return (
                 <Space>
@@ -164,6 +186,9 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
         if (activeSubscription.status === 'past_due') {
             return <Tag style={styles} icon={<LuHeartCrack />} color="warning">Payment Failed</Tag>;
         }
+        if (activeSubscription.status === 'pending') {
+            return <Tag style={styles} icon={<FaCreditCard />} color="processing">Payment Pending</Tag>;
+        }
         if (activeSubscription.status === 'expired') {
             return <Tag style={styles} icon={<LuHeartOff />} color="default">Expired</Tag>;
         }
@@ -172,13 +197,30 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
 
     const renderAccessUntillDate = () => {
 
-        const isFinalCycle = Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
+        const isFinalCycle = Boolean(activeSubscription.renewsOn?.seconds && activeSubscription.subscriptionEndDate?.seconds)
+            && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
+
+        if (isPaymentPending) {
+            return <Statistic
+                valueStyle={{ fontSize: 14 }}
+                title="Payment Status"
+                value="Awaiting payment"
+            />
+        }
+
+        if (isManualBilling) {
+            return <Statistic
+                valueStyle={{ fontSize: 14 }}
+                title="Prepaid Until"
+                value={formatBillingDate(activeSubscription.validUntil || activeSubscription.cycleEndDate)}
+            />
+        }
 
         if (activeSubscription.status === 'cancelled') {
             return <Statistic
                 valueStyle={{ fontSize: 14 }}
                 title="Access Good Until"
-                value={formatDateTime(activeSubscription.cycleEndDate, "date", formatter)}
+                value={formatBillingDate(activeSubscription.cycleEndDate)}
             />
         }
         if (activeSubscription.status === 'past_due') {
@@ -193,14 +235,14 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
             return <Statistic
                 valueStyle={{ fontSize: 14 }}
                 title={isFinalCycle ? "Expires On" : "Renews On"}
-                value={formatDateTime(activeSubscription.renewsOn, "date", formatter)}
+                value={formatBillingDate(activeSubscription.renewsOn)}
             />
         }
         if (activeSubscription.status === 'paused') {
             return <Statistic
                 valueStyle={{ fontSize: 14 }}
                 title="Paused Since"
-                value={formatDateTime(activeSubscription.statuses[activeSubscription.statuses.length - 1]?.timestamp, "date", formatter)}
+                value={formatBillingDate(activeSubscription.statuses[activeSubscription.statuses.length - 1]?.timestamp)}
             />
         }
         return null;
@@ -227,11 +269,16 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                         valueStyle={{ fontSize: 14 }}
                                         title=""
                                         value={formatCurrency(activeSubscription.amount * (activeSubscription.quantity || 1), activeSubscription.currency)}
-                                        suffix={<Text type="secondary">/ {activeSubscription.planType === 'YEAR' ? 'Year' : 'Month'}</Text>}
+                                        suffix={<Text type="secondary">/ {amountSuffix}</Text>}
                                     />
-                                    {(activeSubscription.quantity || 1) > 1 && (
+                                    {(activeSubscription.quantity || 1) > 1 && !isManualBilling && (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
                                             {activeSubscription.quantity} stores × {formatCurrency(activeSubscription.amount, activeSubscription.currency)} each
+                                        </Text>
+                                    )}
+                                    {isManualBilling && (
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Offline payment confirmed by reseller. This is prepaid access, not lifetime access.
                                         </Text>
                                     )}
                                 </Col>
@@ -244,8 +291,8 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                 <Col xs={24} sm={8}>
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
-                                        title="Current Billing Cycle"
-                                        value={`${formatDateTime(activeSubscription.cycleStartDate, "date", formatter)} - ${formatDateTime(activeSubscription.cycleEndDate, "date", formatter)}`}
+                                        title={isManualBilling ? "Prepaid Period" : "Current Billing Cycle"}
+                                        value={isPaymentPending ? "Starts after payment" : `${formatBillingDate(activeSubscription.cycleStartDate)} - ${formatBillingDate(activeSubscription.cycleEndDate)}`}
                                     />
                                 </Col>
                                 <Col xs={24} sm={8}>
@@ -254,8 +301,8 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                 <Col xs={24} sm={8}>
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
-                                        title="Subscription End Date"
-                                        value={formatDateTime(activeSubscription.subscriptionEndDate, "date", formatter)}
+                                        title={isManualBilling ? "Access End Date" : "Subscription End Date"}
+                                        value={formatBillingDate(activeSubscription.subscriptionEndDate, isPaymentPending ? "Starts after payment" : "N/A")}
                                     />
                                 </Col>
                             </Row>
@@ -275,11 +322,19 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                 </Text>
                             </Row>}
 
+                            {isPaymentPending && <Row>
+                                <Text type="warning">
+                                    Payment is pending. Complete the Razorpay checkout to activate this store.
+                                </Text>
+                            </Row>}
+
                             <Row justify="space-between" align="middle">
                                 <Col>
                                     <Space align="center" style={{ display: 'flex' }}>
                                         Payment Method:
-                                        {activeSubscription.paymentMethod?.type == 'card' && <>
+                                        {isManualBilling && <Tag color="purple">Offline one-time prepaid</Tag>}
+                                        {isPaymentPending && <Tag color="processing">Razorpay checkout pending</Tag>}
+                                        {!isManualBilling && !isPaymentPending && activeSubscription.paymentMethod?.type == 'card' && <>
                                             <PaymentMethodIcon brand={activeSubscription.paymentMethod?.brand} />
                                             <Tag color="processing">
                                                 {activeSubscription.paymentMethod?.brand ?
@@ -287,7 +342,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                                     ''}
                                             </Tag>
                                         </>}
-                                        {activeSubscription.paymentMethod?.type == 'upi' && <>
+                                        {!isManualBilling && !isPaymentPending && activeSubscription.paymentMethod?.type == 'upi' && <>
                                             <Tooltip title={activeSubscription.paymentMethod?.upiTransactionId}>
                                                 <Flex gap={8}>
                                                     <Text strong>UPI</Text>
@@ -295,7 +350,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                                 </Flex>
                                             </Tooltip>
                                         </>}
-                                        {!activeSubscription.paymentMethod?.type && <Tag>N/A</Tag>}
+                                        {!isManualBilling && !isPaymentPending && !activeSubscription.paymentMethod?.type && <Tag>N/A</Tag>}
                                     </Space>
                                 </Col>
                                 <Col>
@@ -308,7 +363,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                     </Card>
                 </Col>
 
-                <Col xs={24} lg={8}>
+                {!isPaymentPending ? <Col xs={24} lg={8}>
                     <Card style={creditCardStyle}>
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             <Flex justify="space-between" align="center" gap={16} style={{ width: '100%' }} >
@@ -368,7 +423,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                             </Flex>
                         </Space>
                     </Card>
-                </Col>
+                </Col> : null}
             </Row>
             <CancellationModal
                 isOpen={isCancellationModalOpen}

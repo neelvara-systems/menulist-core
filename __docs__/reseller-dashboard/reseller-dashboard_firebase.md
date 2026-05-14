@@ -19,7 +19,7 @@
 
 | Collection      | Modified Fields                                                                                                                                                                                         | Purpose                               |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `subscriptions` | `billingMode`, `validUntil`, `onboardingSource`, `resellerId`, `resellerPricingTier`, `resellerDurationMonths`, `manualPaymentConfirmed`, `manualPaymentConfirmedAt`, `paymentLinkId`, `paymentLinkUrl` | Reseller metadata on subscription doc |
+| `subscriptions` | `billingMode`, `validUntil`, `onboardingSource`, `resellerId`, `resellerProfileId`, `resellerPricingTier`, `commitmentPeriodMonths`, `manualPaymentConfirmed`, `manualPaymentConfirmedAt`, `shortUrl`, `userId`, `email` | Reseller metadata on subscription doc |
 
 ---
 
@@ -71,6 +71,15 @@ Same as offline, minus reseller profile offline cap update unless a profile exis
 | Query transactions | `resellerTransactions` | READ | 1      | History for this store |
 | **Total**          |                        |      | **2R** |                        |
 
+### 3.5A Claimed Client Billing View
+
+| Operation | Collection | Type | Count | Notes |
+| --------- | ---------- | ---- | ----- | ----- |
+| Query active/current subscription | `subscriptions` | READ | 1 | Existing billing lookup |
+| Query pending subscription fallback | `subscriptions` | READ | 0-1 | Only when no current subscription exists; keeps reseller-online checkout visible before payment |
+| Query billing history | `paymentTransactions` | READ | 0-1 | User-triggered only |
+| **Total** | | | **1-2R + optional history read** | No writes during normal screen load |
+
 ### 3.6 Reseller Profile
 
 | Operation    | Collection         | Type | Count  | Notes        |
@@ -95,6 +104,14 @@ Same as offline, minus reseller profile offline cap update unless a profile exis
 | Update subscription   | `subscriptions`        | WRITE | 1           | Extend validUntil  |
 | Write transaction     | `resellerTransactions` | WRITE | 1           | New renewal record |
 | **Total per renewal** |                        |       | **1R + 2W** |                    |
+
+### 3.8A Account Claim Linkage
+
+| Operation | Collection | Type | Count | Notes |
+| --------- | ---------- | ---- | ----- | ----- |
+| Query subscriptions for tenant/store | `subscriptions` | READ | 1 | Runs only when client claims reseller-created account |
+| Update matching subscriptions | `subscriptions` | WRITE | N | Sets real `userId`, `email`, and owner name; N is normally 1 |
+| **Total per claim** | | | **1R + NW** | Keeps billing/audit owner identity aligned |
 
 ### 3.9 Nightly Expiry Check (Cloud Function)
 

@@ -56,6 +56,21 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
             const pausedDoc = pausedSnapshot.docs[0];
             return { id: pausedDoc.id, ...pausedDoc.data() } as FirestoreSubscriptionDoc;
         }
+        // Pending subscriptions have not started a billing cycle yet, so they
+        // do not have cycle dates. Keep them visible on Billing so the owner
+        // can complete a reseller or self-serve Razorpay checkout.
+        const pendingQuery = query(
+            getCollectionRef(),
+            where("status", "==", "pending"),
+            where("tenantId", "==", tenantId),
+            where("storeId", "==", storeId),
+            limit(1)
+        );
+        const pendingSnapshot = await getDocs(pendingQuery);
+        if (!pendingSnapshot.empty) {
+            const pendingDoc = pendingSnapshot.docs[0];
+            return { id: pendingDoc.id, ...pendingDoc.data() } as FirestoreSubscriptionDoc;
+        }
         return null;
     }
 

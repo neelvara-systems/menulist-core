@@ -59,6 +59,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const currency: Currency = activeSubscription?.currency || (storeDetails?.currencyCode as Currency) || 'INR';
 
     const sub = activeSubscription;
+    const isManualBilling = sub?.billingMode === 'manual';
+    const isPaymentPending = sub?.status === 'pending';
     const monthlyCredits = sub?.monthlyCredits || 0;
     const monthlyCreditsAllowance = sub?.monthlyCreditsAllowance || 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
@@ -111,6 +113,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const getStatusColor = (status: string) => {
         if (status === 'active') return 'success';
+        if (status === 'pending') return 'primary';
         if (status === 'paused') return 'warning';
         if (status === 'past_due') return 'warning';
         if (status === 'cancelled' || status === 'expired') return 'default';
@@ -119,6 +122,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const getStatusLabel = (status: string) => {
         if (status === 'active') return t('statusActive');
+        if (status === 'pending') return 'Payment pending';
         if (status === 'paused') return t('statusPaused');
         if (status === 'past_due') return t('statusPaymentFailed');
         if (status === 'cancelled') return t('statusCancelled');
@@ -127,6 +131,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleUpgrade = async (plan: Plan) => {
+        if (isManualBilling && sub?.status === 'active') {
+            Toast.show({ content: 'This client is on a prepaid offline plan. Renew or change it through the reseller flow.', duration: 3000 });
+            return;
+        }
         setShowPlans(false);
         setIsLoading(true);
         try {
@@ -278,6 +286,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const plans = getB2CPlansList().filter((plan) => plan.billingInterval === billingInterval);
+    const amountLabel = sub
+        ? isManualBilling
+            ? `${formatCurrency(sub.amount, sub.currency)} / one-time prepaid${sub.commitmentPeriodMonths ? ` (${sub.commitmentPeriodMonths} months)` : ''}`
+            : `${formatCurrency(sub.amount * (sub.quantity || 1), sub.currency)} / ${sub.planType === 'YEAR' ? 'year' : 'month'}`
+        : '';
 
     return (
         <Flex style={{ height: '100%' }} vertical>
@@ -333,7 +346,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         {sub.planName || `${sub.planId} Plan`}
                                     </Title>
                                     <Text type="secondary">
-                                        {formatCurrency(sub.amount * (sub.quantity || 1), sub.currency)} / {sub.planType === 'YEAR' ? 'year' : 'month'}
+                                        {amountLabel}
                                     </Text>
                                 </Flex>
                                 <Tag color={getStatusColor(sub.status)}>
@@ -344,12 +357,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Card size="small">
                                 <List>
                                     <List.Item
-                                        title={<Text>{t('billingCycle')}</Text>}
-                                        extra={<Text>{`${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>}
+                                        title={<Text>{isManualBilling ? 'Prepaid period' : t('billingCycle')}</Text>}
+                                        extra={<Text>{isPaymentPending ? 'Starts after payment' : `${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>}
                                     />
                                     <List.Item
-                                        title={<Text>{sub.status === 'active' ? t('renews') : t('expires')}</Text>}
-                                        extra={<Text>{formatDate(sub.renewsOn || sub.cycleEndDate)}</Text>}
+                                        title={<Text>{isManualBilling ? 'Prepaid until' : sub.status === 'active' ? t('renews') : t('expires')}</Text>}
+                                        extra={<Text>{isPaymentPending ? 'After payment' : formatDate(isManualBilling ? (sub.validUntil || sub.cycleEndDate) : (sub.renewsOn || sub.cycleEndDate))}</Text>}
+                                    />
+                                    <List.Item
+                                        title={<Text>Payment type</Text>}
+                                        extra={<Tag color={isManualBilling ? 'purple' : 'processing'}>{isManualBilling ? 'Offline one-time prepaid' : isPaymentPending ? 'Razorpay pending' : 'Razorpay recurring'}</Tag>}
                                     />
                                     <List.Item
                                         title={<Text>Enhancement balance remaining</Text>}
@@ -389,6 +406,27 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </Card>
                             ) : null}
 
+                            {isPaymentPending ? (
+                                <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                                    <Flex gap={8} vertical>
+                                        <Text>Payment is pending. Complete the Razorpay checkout to activate this store.</Text>
+                                        {sub.shortUrl ? (
+                                            <Button color="primary" onClick={() => window.open(sub.shortUrl, '_blank')} size="small">
+                                                Pay Now
+                                            </Button>
+                                        ) : null}
+                                    </Flex>
+                                </Card>
+                            ) : null}
+
+                            {isManualBilling ? (
+                                <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                                    <Text>
+                                        Offline payment was confirmed by the reseller. This is prepaid access for the selected duration, not lifetime access.
+                                    </Text>
+                                </Card>
+                            ) : null}
+
                             {sub.status === 'paused' ? (
                                 <Card size="small" style={{ backgroundColor: '#fff7ed' }}>
                                     <Text>
@@ -400,7 +438,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Flex gap={8} wrap>
                                 {sub.status === 'active' ? (
                                     <>
-                                        {sub.planId !== 'premium' ? (
+                                        {!isManualBilling && sub.planId !== 'premium' ? (
                                             <Button color="primary" onClick={() => setShowPlans(true)} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuZap size={14} />
@@ -408,18 +446,22 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 </Flex>
                                             </Button>
                                         ) : null}
-                                        <Button fill="outline" onClick={handlePause} size="small">
-                                            <Flex align="center" gap={6}>
-                                                <LuPause size={14} />
-                                                <Text>{t('pause')}</Text>
-                                            </Flex>
-                                        </Button>
-                                        <Button color="danger" fill="outline" onClick={handleCancel} size="small">
-                                            <Flex align="center" gap={6}>
-                                                <LuXCircle size={14} />
-                                                <Text>{t('cancel')}</Text>
-                                            </Flex>
-                                        </Button>
+                                        {!isManualBilling ? (
+                                            <>
+                                                <Button fill="outline" onClick={handlePause} size="small">
+                                                    <Flex align="center" gap={6}>
+                                                        <LuPause size={14} />
+                                                        <Text>{t('pause')}</Text>
+                                                    </Flex>
+                                                </Button>
+                                                <Button color="danger" fill="outline" onClick={handleCancel} size="small">
+                                                    <Flex align="center" gap={6}>
+                                                        <LuXCircle size={14} />
+                                                        <Text>{t('cancel')}</Text>
+                                                    </Flex>
+                                                </Button>
+                                            </>
+                                        ) : null}
                                         <Button fill="outline" onClick={fetchHistory} size="small">
                                             <Flex align="center" gap={6}>
                                                 <LuReceipt size={14} />
@@ -427,6 +469,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             </Flex>
                                         </Button>
                                     </>
+                                ) : null}
+                                {isPaymentPending && sub.shortUrl ? (
+                                    <Button color="primary" onClick={() => window.open(sub.shortUrl, '_blank')} size="small">
+                                        Pay Now
+                                    </Button>
                                 ) : null}
                                 {sub.status === 'paused' ? (
                                     <>
@@ -467,7 +514,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 )}
 
-                {sub ? (
+                {sub && !isPaymentPending ? (
                     <Card>
                         <Flex gap={12} vertical>
                             <Flex align="center" justify="space-between">

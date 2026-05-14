@@ -130,13 +130,13 @@ Resellers see predefined discounted tiers. These are NOT visible publicly.
 
 Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for reporting and optional early-cancellation policy. Billing interval remains monthly or yearly — commitment does NOT change how Razorpay charges.
 
-**Offline mode** uses prepaid duration:
+**Offline mode** uses one-time prepaid duration. "One-time payment" means the client prepays for the selected 3 / 6 / 12 month access window; it does not mean lifetime access.
 
-| Duration  | Billing                   |
-| --------- | ------------------------- |
-| 3 months  | Manual prepaid (cash/UPI) |
-| 6 months  | Manual prepaid (cash/UPI) |
-| 12 months | Manual prepaid (cash/UPI) |
+| Duration  | Billing                                  |
+| --------- | ---------------------------------------- |
+| 3 months  | One-time manual prepaid (cash/UPI)       |
+| 6 months  | One-time manual prepaid (cash/UPI)       |
+| 12 months | One-time manual prepaid (cash/UPI)       |
 
 ### 3.4 Pricing Summary
 
@@ -175,7 +175,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 | Channel                      | Billing               | Recurring | Renewal |
 | ---------------------------- | --------------------- | --------- | ------- |
 | Self-serve + Reseller Online | Razorpay Subscription | Yes       | Auto    |
-| Reseller Offline             | Manual (temporary)    | No        | Manual  |
+| Reseller Offline             | Manual prepaid        | No        | Manual  |
 
 ### 4.2 Offline (Cash / UPI / Bank Transfer)
 
@@ -188,6 +188,13 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 5. Sets `validUntil` = now + duration
 6. Reseller shares the returned dashboard claim link with the client
 7. Nightly scheduler auto-expires when `validUntil` passes
+
+**Owner billing screen behavior:**
+
+- Online pending subscriptions stay visible on desktop and mobile billing with a "Pay Now" action using the Razorpay `shortUrl`.
+- Offline subscriptions show as "Offline one-time prepaid" with prepaid period and prepaid-until date.
+- Offline active subscriptions do not show Razorpay pause/cancel/upgrade actions because those actions only apply to recurring Razorpay subscriptions.
+- Enhancement packs remain available while the prepaid subscription is active.
 
 **Safeguards:**
 

@@ -33,7 +33,7 @@ export const getGracePeriodInfo = (pastDueTimestamp: Timestamp | null | undefine
  */
 export function hasValidSubscriptionAccess(sub: FirestoreSubscriptionDoc | null): boolean {
     if (!sub) return false;
-    if (sub.status === 'expired' || sub.status === 'completed') return false;
+    if (sub.status === 'pending' || sub.status === 'expired' || sub.status === 'completed') return false;
 
     // Paused subs with expired billing cycle → no access (but sub is resumable from billing page)
     if (sub.status === 'paused' && sub.cycleEndDate) {

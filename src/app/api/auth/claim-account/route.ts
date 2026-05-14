@@ -35,6 +35,34 @@ const ClaimWithPasswordSchema = z.object({
   name: z.string().max(100).optional(),
 });
 
+async function linkClaimedSubscriptions(params: {
+  email: string;
+  name?: string;
+  now: FirebaseFirestore.Timestamp;
+  storeId: number;
+  tenantId: number;
+  userDocId: string;
+}) {
+  const subscriptionsSnapshot = await db
+    .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+    .where("tenantId", "==", params.tenantId)
+    .where("storeId", "==", params.storeId)
+    .get();
+
+  if (subscriptionsSnapshot.empty) return;
+
+  const batch = db.batch();
+  subscriptionsSnapshot.docs.forEach((subscriptionDoc) => {
+    batch.update(subscriptionDoc.ref, {
+      userId: params.userDocId,
+      email: params.email,
+      ...(params.name ? { name: params.name } : {}),
+      modifiedOn: params.now,
+    });
+  });
+  await batch.commit();
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 🔒 RATE LIMITING: Prevent brute force account claim attempts
@@ -153,6 +181,15 @@ export async function POST(request: NextRequest) {
 
       await batch.commit();
 
+      await linkClaimedSubscriptions({
+        email: lowerEmail,
+        name: name || messagingUser.name,
+        now,
+        storeId: Number(messagingUser.storeId),
+        tenantId: Number(messagingUser.tenantId),
+        userDocId: messagingUserDoc.id,
+      });
+
       // Set custom claims on Firebase Auth
       await authAdmin.setCustomUserClaims(firebaseUid, {
         role: "owner",
@@ -254,6 +291,15 @@ export async function POST(request: NextRequest) {
     batch.update(storeRef, { email: googleEmail, modifiedOn: now });
 
     await batch.commit();
+
+    await linkClaimedSubscriptions({
+      email: googleEmail,
+      name: session.user.name || googleEmail.split("@")[0],
+      now,
+      storeId: Number(messagingUser.storeId),
+      tenantId: Number(messagingUser.tenantId),
+      userDocId: googleUserId,
+    });
 
     console.log(`[claim-account] ✅ Google OAuth claim: ${googleEmail} → tenant ${messagingUser.tenantId}`);
 

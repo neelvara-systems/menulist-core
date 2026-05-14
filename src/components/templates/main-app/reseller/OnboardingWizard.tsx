@@ -86,7 +86,7 @@ function OnboardingWizard() {
         if (!selectedTier) return '';
         if (paymentMode === 'offline' && commitmentMonths) {
             const total = calculateOfflineAmount(selectedTier.id, commitmentMonths);
-            return `₹${(total / 100).toLocaleString()} total (${commitmentMonths} months)`;
+            return `₹${(total / 100).toLocaleString()} one-time prepaid (${commitmentMonths} months)`;
         }
         if (billingInterval === 'YEAR') {
             return `₹${(selectedTier.yearlyPriceINR / 100).toLocaleString()}/year (recurring)`;
@@ -136,7 +136,7 @@ function OnboardingWizard() {
             <Form.Item name="paymentMode" label="Payment Mode" rules={[{ required: true, message: 'Select payment mode' }]}>
                 <Radio.Group size="large">
                     <Radio.Button value="online">Online (Razorpay)</Radio.Button>
-                    <Radio.Button value="offline">Offline (Cash/UPI)</Radio.Button>
+                    <Radio.Button value="offline">Offline (One-time Prepaid)</Radio.Button>
                 </Radio.Group>
             </Form.Item>
 
@@ -160,7 +160,7 @@ function OnboardingWizard() {
                     }
                     if (mode === 'offline') {
                         return (
-                            <Form.Item name="commitmentMonths" label="Duration" rules={[{ required: true, message: 'Select duration' }]}>
+                            <Form.Item name="commitmentMonths" label="One-time prepaid duration" rules={[{ required: true, message: 'Select duration' }]}>
                                 <Radio.Group size="large">
                                     {RESELLER_COMMITMENT_OPTIONS.map(m => (
                                         <Radio.Button key={m} value={m}>{m} months</Radio.Button>
@@ -199,19 +199,19 @@ function OnboardingWizard() {
                     <Col span={8}><Text type="secondary">Tier</Text></Col>
                     <Col span={16}><Text strong>{selectedTier?.name || values.pricingTier}</Text></Col>
                     <Col span={8}><Text type="secondary">Payment</Text></Col>
-                    <Col span={16}><Text>{values.paymentMode === 'online' ? 'Online (Razorpay)' : 'Offline (Cash/UPI)'}</Text></Col>
+                    <Col span={16}><Text>{values.paymentMode === 'online' ? 'Online (Razorpay recurring)' : 'Offline (one-time prepaid)'}</Text></Col>
                     <Col span={8}><Text type="secondary">Amount</Text></Col>
                     <Col span={16}><Text strong>{getDisplayAmount()}</Text></Col>
                 </Row>
                 <Divider />
                 {values.paymentMode === 'offline' && (
                     <Paragraph type="warning" style={{ background: '#fffbe6', padding: 12, borderRadius: 8 }}>
-                        By confirming, you declare that you have collected the payment of {getDisplayAmount()} from the client. The store will be activated immediately.
+                        By confirming, you declare that you have collected {getDisplayAmount()} from the client. The store will be activated immediately until the selected prepaid end date.
                     </Paragraph>
                 )}
                 {values.paymentMode === 'online' && (
                     <Paragraph type="secondary" style={{ background: '#f0f5ff', padding: 12, borderRadius: 8 }}>
-                        A Razorpay checkout link will be generated. Share it with the client to complete payment. The store activates after payment.
+                        A Razorpay recurring checkout link will be generated. Share it with the client to complete payment. The store activates after payment.
                     </Paragraph>
                 )}
             </Card>
@@ -314,7 +314,7 @@ function OnboardingWizard() {
                     </Button>
                 ) : (
                     <Button type="primary" onClick={handleSubmit} loading={loading} icon={<LuCheck />}>
-                        {paymentMode === 'offline' ? 'Confirm Payment & Activate' : 'Create & Generate Link'}
+                        {paymentMode === 'offline' ? 'Confirm Prepaid Payment & Activate' : 'Create Recurring Payment Link'}
                     </Button>
                 )}
             </Flex>

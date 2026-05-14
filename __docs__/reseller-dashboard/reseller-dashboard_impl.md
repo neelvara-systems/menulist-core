@@ -36,7 +36,7 @@
   // ... existing fields ...
 
   // === Reseller Dashboard Fields ===
-  billingMode: 'auto' | 'manual';           // 'auto' = Razorpay recurring, 'manual' = reseller-managed
+  billingMode: 'auto' | 'manual';           // 'auto' = Razorpay recurring, 'manual' = reseller one-time prepaid
   validUntil?: Timestamp | null;             // For manual billing only: when access expires
   onboardingSource?: 'self' | 'reseller' | 'messaging';  // How this store was onboarded
   resellerId?: string | null;                // User ID of the reseller who onboarded this store
@@ -53,6 +53,14 @@
 - Store doc stays clean (business data only)
 - Revenue reporting queries subscription collection
 - Existing billing UI reads subscription doc
+
+Billing UI handling:
+
+- `getActiveSubscriptionForStore()` returns pending subscriptions as visible billing records even before cycle dates exist, so reseller-online clients can complete Razorpay checkout from desktop or mobile Billing.
+- `hasValidSubscriptionAccess()` treats `pending` as no paid access; visibility on Billing does not grant app access.
+- Desktop `ActiveSubscriptionCard` and `MobileBillingScreen` branch on `billingMode: 'manual'` to show prepaid period, prepaid-until date, and offline one-time prepaid messaging.
+- Manual active subscriptions hide Razorpay-only pause/cancel/upgrade actions. Recurring online subscriptions keep the normal Razorpay controls.
+- Account claim links the reseller-created subscription document to the claimed owner `userId` and email so later billing, webhook, and audit flows have the real owner identity.
 
 ### 2.2 New Collection: `resellerTransactions`
 

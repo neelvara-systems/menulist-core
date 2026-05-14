@@ -40,7 +40,7 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 | Screen | Priority | Description |
 |--------|----------|-------------|
 | Reseller Home | P0 | Stats overview + "Onboard New Client" CTA |
-| Onboarding Wizard | P0 | Multi-step form (business details → menu upload → plan selection → confirm) |
+| Onboarding Wizard | P0 | Multi-step form (business details → plan selection → recurring online or one-time prepaid offline confirmation) |
 | My Clients List | P0 | Scrollable list with status badges |
 | Client Detail | P0 | Read-only detail with renewal action |
 | Confirm Payment | P0 | Single-action confirmation for offline payments |
@@ -52,6 +52,7 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 3. **Optimistic updates** — Show "Creating store..." immediately, sync in background
 4. **Offline indicator** — If reseller has poor connectivity at client location, show clear status
 5. **Share payment link** — Native share sheet for sending Razorpay link via WhatsApp/SMS
+6. **Billing parity** — Mobile Billing must show pending reseller-online subscriptions with Pay Now, and manual reseller-offline subscriptions as one-time prepaid access with no Razorpay pause/cancel/upgrade controls.
 
 ---
 

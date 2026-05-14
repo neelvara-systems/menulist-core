@@ -60,24 +60,18 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
     const selectedTier = tiers.find((tier) => tier.id === draft.pricingTier);
 
     const updateDraft = (field: keyof OnboardDraft, value: string) => {
-        setDraft((current) => {
-            const next = { ...current, [field]: value };
-            if (field === 'paymentMode' && value === 'online') {
-                next.commitmentMonths = '';
-            }
-            return next;
-        });
+        setDraft((current) => ({ ...current, [field]: value }));
     };
 
     const amountLabel = () => {
         if (!selectedTier) return 'Select a tier';
         if (draft.paymentMode === 'offline' && draft.commitmentMonths) {
-            return `${formatMoney(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths)))} total`;
+            return `${formatMoney(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths)))} one-time prepaid`;
         }
         if (draft.billingInterval === 'YEAR') {
-            return `${formatMoney(selectedTier.yearlyPriceINR)}/year`;
+            return `${formatMoney(selectedTier.yearlyPriceINR)}/year recurring`;
         }
-        return `${formatMoney(selectedTier.monthlyPriceINR)}/month`;
+        return `${formatMoney(selectedTier.monthlyPriceINR)}/month recurring`;
     };
 
     const validateStep = () => {
@@ -269,8 +263,8 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Card title="Payment mode">
                             <Flex gap={10} vertical>
                                 {[
-                                    { label: 'Online', value: 'online', desc: 'Generate a Razorpay link for the client.' },
-                                    { label: 'Offline', value: 'offline', desc: 'Confirm cash or UPI collected by reseller.' },
+                                    { label: 'Online', value: 'online', desc: 'Generate a Razorpay recurring link for the client.' },
+                                    { label: 'Offline', value: 'offline', desc: 'One-time prepaid cash or UPI collected by reseller.' },
                                 ].map((mode) => (
                                     <Card key={mode.value} onClick={() => updateDraft('paymentMode', mode.value)} style={{ borderColor: draft.paymentMode === mode.value ? '#0054D0' : undefined }}>
                                         <Flex align="center" justify="space-between">
@@ -286,19 +280,34 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         </Card>
 
                         {draft.paymentMode === 'online' ? (
-                            <Card title="Billing interval">
-                                <Flex gap={10}>
-                                    {(['MONTH', 'YEAR'] as BillingInterval[]).map((interval) => (
-                                        <Button key={interval} block fill={draft.billingInterval === interval ? 'solid' : 'outline'} onClick={() => updateDraft('billingInterval', interval)} style={{ minHeight: 44 }}>
-                                            {interval === 'MONTH' ? 'Monthly' : 'Yearly'}
+                            <>
+                                <Card title="Billing interval">
+                                    <Flex gap={10}>
+                                        {(['MONTH', 'YEAR'] as BillingInterval[]).map((interval) => (
+                                            <Button key={interval} block fill={draft.billingInterval === interval ? 'solid' : 'outline'} onClick={() => updateDraft('billingInterval', interval)} style={{ minHeight: 44 }}>
+                                                {interval === 'MONTH' ? 'Monthly' : 'Yearly'}
+                                            </Button>
+                                        ))}
+                                    </Flex>
+                                </Card>
+                                <Card title="Commitment period">
+                                    <Flex gap={10} wrap="wrap">
+                                        <Button fill={!draft.commitmentMonths ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', '')} style={{ minHeight: 44 }}>
+                                            Optional
                                         </Button>
-                                    ))}
-                                </Flex>
-                            </Card>
+                                        {RESELLER_COMMITMENT_OPTIONS.map((months) => (
+                                            <Button key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
+                                                {months} months
+                                            </Button>
+                                        ))}
+                                    </Flex>
+                                    <Text type="secondary">For online billing this is tracking only. Razorpay still charges on the selected recurring interval.</Text>
+                                </Card>
+                            </>
                         ) : null}
 
                         {draft.paymentMode === 'offline' ? (
-                            <Card title="Duration">
+                            <Card title="One-time prepaid duration">
                                 <Flex gap={10} wrap="wrap">
                                     {RESELLER_COMMITMENT_OPTIONS.map((months) => (
                                         <Button key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
@@ -318,13 +327,16 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Flex justify="space-between"><Text type="secondary">Type</Text><Text strong>{draft.businessType}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Phone</Text><Text strong>{draft.ownerPhone}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Tier</Text><Text strong>{selectedTier?.name || draft.pricingTier}</Text></Flex>
-                            <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>{draft.paymentMode === 'online' ? 'Online' : 'Offline'}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>{draft.paymentMode === 'online' ? 'Online recurring' : 'Offline prepaid'}</Text></Flex>
+                            {draft.commitmentMonths ? (
+                                <Flex justify="space-between"><Text type="secondary">{draft.paymentMode === 'online' ? 'Commitment' : 'Duration'}</Text><Text strong>{draft.commitmentMonths} months</Text></Flex>
+                            ) : null}
                             <Flex justify="space-between"><Text type="secondary">Amount</Text><Text strong>{amountLabel()}</Text></Flex>
                             <Card style={{ background: draft.paymentMode === 'offline' ? '#fff7e6' : '#eff6ff' }}>
                                 <Text>
                                     {draft.paymentMode === 'offline'
-                                        ? `Confirm only after collecting ${amountLabel()} from the client.`
-                                        : 'A Razorpay link will be created for the client to complete payment.'}
+                                        ? `Confirm only after collecting ${amountLabel()} from the client. Access ends after the selected prepaid duration.`
+                                        : 'A Razorpay recurring payment link will be created for the client.'}
                                 </Text>
                             </Card>
                         </Flex>
@@ -339,7 +351,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         </Button>
                     ) : (
                         <Button block loading={loading} onClick={submit} style={{ minHeight: 44 }}>
-                            {draft.paymentMode === 'offline' ? 'Confirm & Activate' : 'Create Link'}
+                            {draft.paymentMode === 'offline' ? 'Confirm Prepaid' : 'Create Link'}
                         </Button>
                     )}
                 </Flex>
