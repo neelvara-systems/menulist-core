@@ -437,21 +437,14 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
     const data = request.data as { tenantId?: string; storeId?: string; days?: number };
     const context = request.auth;
 
-    // DEBUG: Log auth context
-    console.log('🔍 Auth context:', {
-        hasContext: !!context,
-        uid: context?.uid,
-        hasToken: !!context?.token,
-        role: context?.token?.role,
-        platformRole: context?.token?.platformRole,
-        tenantId: context?.token?.tenantId,
-        storeId: context?.token?.storeId
-    });
+    if (!context) {
+        throw new HttpsError('unauthenticated', 'You must be logged in to run backfill operations');
+    }
 
-    const requesterRole = String(context?.token?.platformRole || context?.token?.role || '');
+    const requesterRole = String(context.token?.platformRole || context.token?.role || '');
 
     // Security: Only allow PLATFORM role.
-    if (!context || requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
         throw new HttpsError('permission-denied', 'Only platform owners can run backfill operations');
     }
 

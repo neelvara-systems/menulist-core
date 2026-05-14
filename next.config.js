@@ -117,9 +117,17 @@ const nextConfig = {
         config.externals.push({ sharp: 'commonjs sharp', canvas: 'commonjs canvas' });
         config.module.rules.push({ test: /\.svg$/, use: ['@svgr/webpack'] });
 
-        // Disable webpack in-memory cache on Vercel — cache stores all compiled
-        // module artifacts in RAM and exhausts the 8GB build container
-        if (process.env.VERCEL === '1' && !dev) {
+        // Keep server runtime chunk resolution aligned with Next's emitted
+        // `.next/server/chunks/*` files. Without this, the generated runtime can
+        // look for sibling `./1234.js` chunks during page-data collection.
+        if (isServer && nextRuntime !== 'edge' && config.output) {
+            config.output.chunkFilename = 'chunks/[name].js';
+        }
+
+        // Disable webpack cache where it is known to destabilize route builds:
+        // - Local dev: stale/missing pack files can make app chunks 404.
+        // - Vercel build: cache stores all compiled module artifacts in RAM.
+        if (dev || (process.env.VERCEL === '1' && !dev)) {
             config.cache = false;
         }
 
@@ -134,6 +142,9 @@ const nextConfig = {
             { source: '/contact-us', destination: '/contact', permanent: true },
             { source: '/home', destination: '/', permanent: true },
             { source: '/qrCode', destination: '/qr-code', permanent: true },
+            { source: '/ops', destination: '/platform/ops-control-room', permanent: false },
+            { source: '/ops/extraction', destination: '/platform/extraction-monitor', permanent: false },
+            { source: '/ops/scheduler', destination: '/platform/scheduler-monitor', permanent: false },
         ];
     },
 }

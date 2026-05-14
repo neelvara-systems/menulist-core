@@ -1,7 +1,7 @@
 
 'use client';
 
-import { getDeletedSupportTickets, getSupportTickets, subscribeSupportTickets } from '@database/tickets';
+import { getDeletedSupportTickets, subscribeSupportTickets } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useTicketCache } from '@hook/useTicketCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -37,6 +37,7 @@ const SupportTickets = () => {
     // This avoids paying for both getDocs() and onSnapshot() on mount.
     useEffect(() => {
         let mounted = true;
+        let loaderActive = false;
         let unsubscribe: (() => void) | null = null;
         const cachedTickets = cachedTicketsOnMountRef.current;
         const shouldShowLoader = cachedTickets.length === 0;
@@ -45,24 +46,39 @@ const SupportTickets = () => {
             setTickets(cachedTickets);
             setLoading(false);
         } else {
+            loaderActive = true;
             dispatch(startLoader('Loading tickets...'));
         }
 
+        const stopInitialLoader = () => {
+            if (loaderActive) {
+                dispatch(stopLoader('Loading tickets...'));
+                loaderActive = false;
+            }
+        };
+
         const setupListener = async () => {
-            unsubscribe = await subscribeSupportTickets(
+            const listener = await subscribeSupportTickets(
                 (updatedTickets) => {
                     if (!mounted) return;
                     updateTicketsAndCache(updatedTickets);
                     setLoading(false);
-                    if (shouldShowLoader) dispatch(stopLoader('Loading tickets...'));
+                    stopInitialLoader();
                 },
                 () => {
                     if (!mounted) return;
                     message.error('Failed to sync tickets in real-time');
                     setLoading(false);
-                    if (shouldShowLoader) dispatch(stopLoader('Loading tickets...'));
+                    stopInitialLoader();
                 }
             );
+
+            if (!mounted) {
+                listener();
+                return;
+            }
+
+            unsubscribe = listener;
         };
 
         setupListener();
@@ -72,7 +88,9 @@ const SupportTickets = () => {
             if (unsubscribe) {
                 unsubscribe();
             }
-            if (shouldShowLoader) dispatch(stopLoader('Loading tickets...'));
+            if (shouldShowLoader) {
+                stopInitialLoader();
+            }
         };
     }, [dispatch, updateTicketsAndCache]);
 
@@ -189,14 +207,9 @@ const SupportTickets = () => {
                     tickets={deletedTickets}
                     onTicketsUpdate={(updated) => {
                         setDeletedTickets(updated);
-                        // If restored, move to active tickets
-                        fetchDeletedTickets(); // Refresh deleted list
-                        // Refresh active tickets to show restored ones
-                        const fetchTickets = async () => {
-                            const response = await getSupportTickets();
-                            updateTicketsAndCache(response);
-                        };
-                        fetchTickets();
+                        // Active tickets are already maintained by the live listener.
+                        // Refresh only the lazy-loaded trash view after restore/delete actions.
+                        fetchDeletedTickets();
                     }}
                     isTrashView={true}
                 />

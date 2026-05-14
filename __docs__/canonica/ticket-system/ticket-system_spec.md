@@ -1,7 +1,7 @@
 # Ticket System — Product Specification
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-13
 > **Audience:** CEO, PM, Clients
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -204,7 +204,7 @@ Tickets use a session-level cache via `useTicketCache` hook (backed by `Platform
 | ---------------------- | --------------------------------------------------- |
 | **Cache duration**     | 5 minutes default (configurable)                    |
 | **Force refresh**      | Available via `getAllItems({ forceRefresh: true })` |
-| **Real-time sync**     | Cache updated via Firestore `onSnapshot`            |
+| **Real-time sync**     | Cache updated by the Firestore `onSnapshot` initial snapshot and subsequent changes |
 | **Fallback**           | Returns stale cache on fetch error                  |
 | **Single item update** | `updateItem()` uses `updateList()` utility          |
 | **Clear**              | On logout or manual refresh                         |
@@ -263,7 +263,7 @@ All analytics calculated **client-side** from ticket data via `useMemo`.
 - Lazy-loaded: deleted tickets fetched only when trash view is accessed
 - Uses same `PlatformTicketsView` component with `isTrashView={true}` prop
 - Actions: View Details, Restore Ticket (with confirmation modal)
-- Restore moves ticket back to active queue and refreshes both lists
+- Restore moves the ticket back to the active queue; the active list updates through the live listener and the trash list refreshes lazily
 - Badge count on Deleted tab shows number of deleted tickets
 
 ---
@@ -317,9 +317,9 @@ Two-column layout:
 
 | Scope             | Implementation                                        |
 | ----------------- | ----------------------------------------------------- |
-| **Tenant**        | `where('tId', '==', Number(session.tId))`             |
-| **Store**         | `where('sId', '==', Number(session.sId))`             |
-| **Platform-wide** | `getSupportTickets()` — no tenant filter (admin only) |
+| **Tenant**        | `where('tId', '==', session.tId)`                     |
+| **Store**         | `where('sId', '==', session.sId)`                     |
+| **Platform-wide** | `subscribeSupportTickets()` / `getSupportTickets()` with latest-500 cap (admin only) |
 | **Soft delete**   | `where('deleted', '==', false)` — default exclusion   |
 
 ---
@@ -331,8 +331,7 @@ Two-column layout:
 | 1   | No email notifications on ticket status changes                                                                | Not implemented                                                           |
 | 2   | No automated ticket assignment/routing                                                                         | Not implemented                                                           |
 | 3   | SLA is client-side calculation only — no server-side enforcement                                               | By design                                                                 |
-| 4   | Module-level session caching in tickets DAL (`let session = null`)                                             | Known pattern                                                             |
-| 5   | `getSupportTickets()` for platform admin fetches ALL tickets — no pagination                                   | Potential scale concern                                                   |
+| 4   | Platform support admin is capped to latest 500 tickets, not cursor-paginated                                   | Add pagination before support volume exceeds operational cap              |
 | 6   | No ticket de-duplication detection                                                                             | Not implemented                                                           |
 | 7   | Conversation messages stored as array inside ticket document — large tickets could hit Firestore 1MB doc limit | Low risk for now                                                          |
 | 8   | 17x `console.log`/`console.error` across DAL + 7 component files                                               | ✅ RESOLVED — all removed in audit                                        |

@@ -3,7 +3,7 @@ import { addTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { getBase64 } from '@util/utils';
 import type { UploadProps } from 'antd';
 import { Button, Card, Flex, Form, Grid, Input, message, Modal, Select, Typography } from 'antd';
@@ -141,7 +141,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                 )}
                 <Form form={form} layout="vertical" name="submit_ticket" onFinish={handleFormSubmit}>
                     <Flex gap={isNarrow ? "small" : "middle"} align={isNarrow ? "stretch" : "start"} vertical={isNarrow}>
-                        <Form.Item name="category" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="What is this about?" rules={[{ required: true, message: 'Please select a category!' }]}>
+                        <Form.Item name="category" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="What is this about?" initialValue={SUPPORT_TICKET_CATEGORY.TECHNICAL_ISSUE} rules={[{ required: true, message: 'Please select a category!' }]}>
                             <Select placeholder="Select a category" options={SUPPORT_TICKET_CATEGORY_LIST} />
                         </Form.Item>
                         <Form.Item name="priority" style={{ flex: 1, width: isNarrow ? '100%' : undefined }} label="How urgent is this?" initialValue="NORMAL" rules={[{ required: true, message: 'Please select a priority!' }]}>

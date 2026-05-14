@@ -18,18 +18,30 @@ import { logger } from '@lib/monitoring/logger';
 import { buildSecurityContext } from '@lib/security/securityContext';
 import { Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+
+const SafeModeRequestSchema = z.object({
+  action: z.enum(['activate', 'deactivate']),
+  reason: z.string().trim().max(500).optional(),
+});
 
 export const POST = withAuth(async (request, session) => {
   try {
-    const { action, reason } = await request.json();
+    const validation = SafeModeRequestSchema.safeParse(await request.json());
 
-    if (!action || !['activate', 'deactivate'].includes(action)) {
+    if (!validation.success) {
+      logger.security('Ops SAFE_MODE input validation failed', {
+        ...buildSecurityContext(session, request),
+        details: validation.error.flatten(),
+      }, 'medium');
       return NextResponse.json(
-        { error: 'Invalid action. Must be "activate" or "deactivate".' },
+        { error: 'Invalid input', details: validation.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { action, reason } = validation.data;
 
     const db = getFirestore();
     const opsRef = db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system');
@@ -62,7 +74,7 @@ export const POST = withAuth(async (request, session) => {
       return NextResponse.json({ success: true, SAFE_MODE: false });
     }
   } catch (error) {
-    console.error('[API /ops/safe-mode] Error:', error);
+    logger.error('[API /ops/safe-mode] Error', error, buildSecurityContext(session, request));
     return NextResponse.json(
       { error: 'Failed to toggle SAFE_MODE' },
       { status: 500 }

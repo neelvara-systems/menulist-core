@@ -11,6 +11,7 @@ import * as functions from 'firebase-functions';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_OPTIONS } from '../config/secrets';
+import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
 import { activateSafeMode } from '../monitoring/safeMode';
@@ -18,6 +19,37 @@ import { sendTelegramAlert } from '../monitoring/telegramAlert';
 import { resolveBusinessCategory } from '../sharedData/businessTypes';
 import { resolveBusinessDayEndTime } from '../utils/businessDay';
 import { computeSchedulerHour } from '../utils/schedulerHour';
+
+function getRequesterRole(request: { auth?: { token?: Record<string, any> } }): string {
+    return String(request.auth?.token?.platformRole || request.auth?.token?.role || '');
+}
+
+function assertPlatformOwner(request: { auth?: { token?: Record<string, any> } }, action: string) {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', `Must be authenticated to ${action}.`);
+    }
+
+    if (getRequesterRole(request) !== ECOMSAI_PLATFORM_USER_ROLE) {
+        throw new HttpsError('permission-denied', `Only platform owners can ${action}.`);
+    }
+}
+
+function hasTenantStoreAccess(
+    request: { auth?: { token?: Record<string, any> } },
+    tenantId: string | number,
+    storeId: string | number,
+): boolean {
+    if (!request.auth) return false;
+    if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return true;
+
+    const token = request.auth.token || {};
+    const tokenTenantId = String(token.tenantId || token.tId || '');
+    const tokenStoreId = String(token.storeId || token.sId || '');
+    const tokenStoreIds = Array.isArray(token.storeIds) ? token.storeIds.map(String) : [];
+
+    return tokenTenantId === String(tenantId)
+        && (tokenStoreId === String(storeId) || tokenStoreIds.includes(String(storeId)));
+}
 
 // ═══════════════════════════════════════════════════════════════
 // MENU HEALTH MONITOR
@@ -34,8 +66,21 @@ export const verifyMenuPublish = onCall(
         const logger = functions.logger;
         const { storeId, tenantId, publicMenuUrl } = request.data;
 
+        if (!request.auth) {
+            throw new HttpsError('unauthenticated', 'Must be authenticated to verify menu publish.');
+        }
+
         if (!storeId || !tenantId || !publicMenuUrl) {
             throw new HttpsError('invalid-argument', 'Missing required fields: storeId, tenantId, publicMenuUrl');
+        }
+
+        if (!hasTenantStoreAccess(request, tenantId, storeId)) {
+            logger.error('[verifyMenuPublish] Tenant access denied', {
+                uid: request.auth.uid,
+                tenantId,
+                storeId,
+            });
+            throw new HttpsError('permission-denied', 'You do not have access to this store.');
         }
 
         logger.info('[verifyMenuPublish] Verifying', { storeId, publicMenuUrl });
@@ -140,6 +185,8 @@ export const forceRepublish = onCall(
         const logger = functions.logger;
         const { storeId, tenantId } = request.data;
 
+        assertPlatformOwner(request, 'force republish stores');
+
         if (!storeId || !tenantId) {
             throw new HttpsError('invalid-argument', 'Missing required fields: storeId, tenantId');
         }
@@ -201,11 +248,9 @@ export const backfillStoresSummary = onCall({
 }, async (request) => {
     const logger = functions.logger;
 
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'Must be authenticated to run backfill.');
-    }
+    assertPlatformOwner(request, 'run stores summary backfill');
 
-    logger.info('[backfillStoresSummary] Started by user:', request.auth.uid);
+    logger.info('[backfillStoresSummary] Started by user:', request.auth?.uid);
 
     try {
         const storesSnapshot = await db.collection(DB_COLLECTIONS.STORES).get();

@@ -14,10 +14,11 @@ import TicketItem from '../TicketItem';
 
 function RunningTickets() {
     const t = useTranslations('HelpCenter');
-    const { getAllItems, setAllItems, updateItem, cachedItems } = useTicketCache();
+    const { setAllItems, updateItem, cachedItems } = useTicketCache();
     const dispatch = useAppDispatch();
     const [selectedTicket, setSelectedTicket] = useState<SupportTicketType | null>(null);
     const subscriptionRef = useRef<(() => void) | null>(null);
+    const cachedTicketsOnMountRef = useRef<SupportTicketType[]>(cachedItems || []);
     const hasSetupRealtimeRef = useRef(false);
 
     const onTicketSubmitted = (ticket: SupportTicketType) => {
@@ -29,61 +30,65 @@ function RunningTickets() {
         }
     };
 
-    const fetchInitialData = async () => {
-        dispatch(startLoader("Fetching ticket history..."))
-        try {
-            await getAllItems({ maxAge: 5 * 60 * 1000 }); // 5 minutes cache
-        } catch (error) {
-            message.error(t('failedToLoadTickets'));
-        } finally {
-            dispatch(stopLoader("Fetching ticket history..."));
+    // Store tickets use one live snapshot as the initial load.
+    // This avoids paying for both getDocs() and onSnapshot() on mount.
+    useEffect(() => {
+        if (hasSetupRealtimeRef.current) return;
+
+        let mounted = true;
+        let loaderActive = cachedTicketsOnMountRef.current.length === 0;
+        if (loaderActive) {
+            dispatch(startLoader("Fetching ticket history..."));
         }
-    };
 
-    // Initial fetch
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
-    // Real-time listener - setup once when data is available
-    useEffect(() => {
-        // Only subscribe if we have cached data and haven't set up realtime yet
-        const hasData = cachedItems && cachedItems.length > 0;
-
-        if (!hasData || hasSetupRealtimeRef.current) return;
+        const stopInitialLoader = () => {
+            if (loaderActive) {
+                dispatch(stopLoader("Fetching ticket history..."));
+                loaderActive = false;
+            }
+        };
 
         const setupRealtimeSync = async () => {
             try {
                 const unsubscribe = await subscribeStoreTickets(
                     (tickets) => {
-                        // Update cache with real-time data
+                        if (!mounted) return;
                         setAllItems(tickets);
+                        stopInitialLoader();
                     },
                     (error) => {
-                        // Silent fail - user still has cached data
+                        if (!mounted) return;
+                        stopInitialLoader();
+                        if (cachedTicketsOnMountRef.current.length === 0) {
+                            message.error(t('failedToLoadTickets'));
+                        }
                     }
                 );
 
                 subscriptionRef.current = unsubscribe;
                 hasSetupRealtimeRef.current = true;
             } catch (error) {
+                if (!mounted) return;
+                stopInitialLoader();
                 hasSetupRealtimeRef.current = false;
+                if (cachedTicketsOnMountRef.current.length === 0) {
+                    message.error(t('failedToLoadTickets'));
+                }
             }
         };
 
         setupRealtimeSync();
-    }, [cachedItems?.length]); // Only re-run when length changes from 0 to >0
 
-    // Cleanup on unmount
-    useEffect(() => {
         return () => {
+            mounted = false;
             if (subscriptionRef.current) {
                 subscriptionRef.current();
                 subscriptionRef.current = null;
             }
+            stopInitialLoader();
             hasSetupRealtimeRef.current = false;
         };
-    }, []); // Cleanup only on unmount
+    }, [dispatch, setAllItems, t]);
 
     const tickets = cachedItems?.filter(ticket => ticket.status !== SUPPORT_TICKET_STATUS.CLOSED).slice(0, 3) || [];
 

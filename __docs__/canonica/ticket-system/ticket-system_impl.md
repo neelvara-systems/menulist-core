@@ -1,7 +1,7 @@
 # Ticket System — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-13
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -22,7 +22,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 | Route                       | File                                                                | Component                   |
 | --------------------------- | ------------------------------------------------------------------- | --------------------------- |
 | `/help-center` (ticket tab) | `src/app/(main)/help-center/page.tsx`                               | `HelpCenter` → `TicketView` |
-| `/platform/support-tickets` | `src/app/(main)/(platform-pages)/platform/support-tickets/page.tsx` | `SupportTickets`            |
+| `/platform/support-tickets` | `src/app/(main)/platform/support-tickets/page.tsx` | `SupportTickets`            |
 
 ### 2.2 Owner-Side Components
 
@@ -32,13 +32,13 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 | `src/components/templates/main-app/helpCenter/TicketItem.tsx`             | 141   | Ticket card — displays displayId, priority (icon+color), subject (2-line ellipsis), category, status badge, relative time. Hoverable, clickable.                                                                                              |
 | `src/components/templates/main-app/helpCenter/TicketHistoryView.tsx`      | 44    | Ticket history list — maps tickets to `TicketItem` cards, opens `TicketDetailView` on click. Gets latest ticket version from props.                                                                                                           |
 | `src/components/templates/main-app/helpCenter/landing/RunningTickets.tsx` | 148   | Landing page widget — shows top 3 non-closed tickets in responsive grid. Has own real-time subscription (separate from TicketView). Uses ref guards to prevent duplicate subscriptions.                                                       |
-| `src/components/organisms/addSupportTicket/index.tsx`                     | 196   | Ticket creation form — supports modal + inline modes. Fields: category (Select), priority (Select), subject (Input), message (TextArea), attachments (PasteUpload, max 4). Captures browser logs. Injects `clientDetails` from store context. |
+| `src/components/organisms/addSupportTicket/index.tsx`                     | 196   | Ticket creation form — supports modal + inline modes. Fields: category (Select, defaults to Technical Issue), priority (Select, defaults to Normal), subject (Input), message (TextArea), attachments (PasteUpload, max 4). Captures browser logs. Injects `clientDetails` from store context. |
 
 ### 2.3 Platform-Side Components
 
 | File                                                                        | Lines | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | --------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/components/templates/platform/supportTickets/index.tsx`                | 223   | **Root orchestrator** — 3-view Segmented navigation (Analytics Dashboard, Ticket Queue, Deleted/Trash). Fetches tickets at parent level with `getAllItems()`. Real-time listener via `subscribeSupportTickets()` with intelligent merge using `updateList()`. CSV export with 3 column configs (full, minimal, analytics). Deleted tickets lazy-loaded on trash view access. Fullscreen `Spin` loading state.                                      |
+| `src/components/templates/platform/supportTickets/index.tsx`                | —     | **Root orchestrator** — 3-view Segmented navigation (Analytics Dashboard, Ticket Queue, Deleted/Trash). Uses one platform-wide `subscribeSupportTickets()` listener as the active-ticket initial load and live sync source. CSV export with 3 column configs (full, minimal, analytics). Deleted tickets lazy-loaded on trash view access. Fullscreen `Spin` loading state.                                      |
 | `src/components/templates/platform/supportTickets/AnalyticsView.tsx`        | 471   | **Analytics dashboard** — Performance metrics: avg first response time, avg resolution time, high priority count, needs attention count. SLA compliance rate (%), SLA breached count, SLA at risk count. Tickets by status (progress bars with percentages), tickets by category (progress bars), tickets by priority (color-coded cards). All calculated client-side from ticket data via `useMemo`. Uses `calculateSLAStatus()` for SLA metrics. |
 | `src/components/templates/platform/supportTickets/exportConfig.ts`          | 218   | **CSV export columns** — 3 configurations: `ticketCSVColumns` (14 columns — full export with SLA status/time remaining), `ticketCSVColumnsMinimal` (7 columns — quick export), `ticketAnalyticsColumns` (8 columns — first response time, resolution time, SLA breached flag). Uses `calculateSLAStatus()` and `formatTimestampForCSV()`.                                                                                                          |
 | `src/components/templates/platform/supportTickets/PlatformTicketsView.tsx`  | 271   | Admin dashboard — `forwardRef` with `exportFilteredTickets` ref method. Full table view with all filters (status, priority, category, client, dateRange, tags, SLA, longRunning). Soft delete with `updateTicket({ deleted: true })`. Opens detail drawer on row click. High-priority rows highlighted red.                                                                                                                                        |
@@ -78,10 +78,9 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 
 **Key implementation details:**
 
-- Module-level `session` caching: `let session: any = null` — cached for module lifetime
 - `getDisplayId(id)`: `id.slice(0, 6).toUpperCase()` — first 6 chars of Firestore auto-ID
 - `uploadImage()`: Uses `generateStoragePath()` for tenant-scoped paths
-- All numeric type conversion: `Number(session.tId)`, `Number(session.sId)` in queries
+- Ticket queries use the active NextAuth session values for `tId` and `sId`; Canonica documents keep the standard `pId`/`tId`/`sId` shape.
 
 ### 2.6 Types
 
@@ -166,11 +165,10 @@ TicketDetailView handleTicketUpdate({ status: newStatus })
 
 ```
 TicketView mount
-  → fetchTickets() [initial load via useTicketCache.getAllItems()]
-  → After initial fetch completes (initialFetchDone=true):
-    → subscribeStoreTickets(onUpdate, onError) [real-time listener]
-    → On each snapshot: setAllItems(tickets) [cache update]
-    → Set isRealtimeActive badge
+  → Show cached tickets immediately when available
+  → subscribeStoreTickets(onUpdate, onError) [initial snapshot + live listener]
+  → On each snapshot: setAllItems(tickets) [cache update]
+  → Set isRealtimeActive badge
   → On unmount: unsubscribe()
 ```
 
@@ -181,8 +179,8 @@ TicketView mount
 | Layer                  | Implementation                                                           |
 | ---------------------- | ------------------------------------------------------------------------ |
 | **Auth**               | `useSession()` from NextAuth — user must be logged in                    |
-| **Tenant isolation**   | `where('tId', '==', Number(session.tId))` in queries                     |
-| **Store isolation**    | `where('sId', '==', Number(session.sId))` for owner views                |
+| **Tenant isolation**   | `where('tId', '==', session.tId)` in queries                             |
+| **Store isolation**    | `where('sId', '==', session.sId)` for owner views                        |
 | **Platform access**    | Parent route guards for `/platform/*` pages                              |
 | **Input sanitization** | `sanitizeFeedbackComment()` on all user text (subject, message, replies) |
 | **File storage**       | Tenant-scoped paths via `generateStoragePath()`                          |
@@ -226,11 +224,10 @@ TicketView mount
 
 | #   | Issue                                                                  | Severity | File:Line                       | Notes                                                                                                              |
 | --- | ---------------------------------------------------------------------- | -------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 1   | `getSupportTickets()` fetches ALL tickets with no pagination           | Medium   | `database/tickets/index.ts:230` | Will not scale beyond ~500 tickets                                                                                 |
-| 2   | Module-level session caching (`let session = null`)                    | Low      | `database/tickets/index.ts:16`  | Common pattern but could cause stale session                                                                       |
+| 1   | Platform ticket listener is capped to latest 500 tickets, not cursor-paginated | Medium   | `database/tickets/index.ts` | Add cursor pagination when support volume exceeds the current operational cap                                      |
 | 3   | `deleteTicket()` is hard delete, not soft delete                       | Medium   | `database/tickets/index.ts:172` | `handleDelete` in PlatformTicketsView uses soft delete via `updateTicket`, but DAL `deleteTicket` does hard delete |
 | 4   | No `withAuth()` or rate limiting                                       | Medium   | All DAL functions               | Relies on component-level auth                                                                                     |
-| 5   | `addTicketMessage` doesn't validate message count limit                | Low      | `database/tickets/index.ts:107` | Messages array could grow unbounded — Firestore 1MB doc limit                                                      |
+| 5   | Ticket messages are capped at 500 entries                              | Resolved | `database/tickets/index.ts`     | Guard protects Firestore 1MB document limit                                                                        |
 | 6   | `console.log` used instead of `secureLog`                              | Low      | Multiple files                  | Debug logging not using secure logger                                                                              |
 | 7   | Hardcoded English strings in platform components                       | Low      | Multiple platform files         | Not internationalized (owner-side uses `useTranslations`)                                                          |
 | 8   | `RunningTickets` has separate real-time subscription from `TicketView` | Low      | `landing/RunningTickets.tsx`    | Two concurrent listeners for same data                                                                             |
@@ -265,10 +262,10 @@ TicketView mount
 | `getTicketById`           | Not called from current UI                                            |     ⚠️ Available but unused      |
 | `getStoresTickets`        | `useTicketCache.ts`                                                   |                ✅                |
 | `getSupportTickets`       | `useTicketCache.ts`                                                   |                ✅                |
-| `subscribeSupportTickets` | Not currently used (platform gets tickets from parent)                |           ⚠️ Available           |
+| `subscribeSupportTickets` | `SupportTickets/index.tsx`                                           |                ✅                |
 | `subscribeStoreTickets`   | `TicketView.tsx`, `RunningTickets.tsx`                                |                ✅                |
 
-**Note:** 4 DAL functions (`updateTicketStatus`, `deleteTicket`, `restoreTicket`, `getTicketById`) exist but are not directly called from the current UI. They may have been used previously or are available for future use. `subscribeSupportTickets` exists for platform admin real-time updates but isn't currently wired (platform gets tickets from parent component).
+**Note:** 4 DAL functions (`updateTicketStatus`, `deleteTicket`, `restoreTicket`, `getTicketById`) exist but are not directly called from the current UI. They may have been used previously or are available for future use. The platform admin route now uses `subscribeSupportTickets()` directly for initial load and live updates.
 
 ### 7.3 Type Coverage
 

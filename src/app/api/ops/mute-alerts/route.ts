@@ -14,22 +14,33 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { logger } from '@lib/monitoring/logger';
+import { buildSecurityContext } from '@lib/security/securityContext';
 import { Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+
+const MuteAlertsRequestSchema = z.object({
+  durationMinutes: z.number().int().min(1).max(120),
+});
 
 export const POST = withAuth(async (request, session) => {
   try {
-    const { durationMinutes } = await request.json();
+    const validation = MuteAlertsRequestSchema.safeParse(await request.json());
 
-    const duration = Number(durationMinutes);
-    if (!duration || duration < 1 || duration > 120) {
+    if (!validation.success) {
+      logger.security('Ops mute-alerts input validation failed', {
+        ...buildSecurityContext(session, request),
+        details: validation.error.flatten(),
+      }, 'medium');
       return NextResponse.json(
-        { error: 'Invalid duration. Must be between 1 and 120 minutes.' },
+        { error: 'Invalid input', details: validation.error.flatten() },
         { status: 400 }
       );
     }
 
+    const duration = validation.data.durationMinutes;
     const db = getFirestore();
     const opsRef = db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system');
 
@@ -48,7 +59,7 @@ export const POST = withAuth(async (request, session) => {
       durationMinutes: duration,
     });
   } catch (error) {
-    console.error('[API /ops/mute-alerts] Error:', error);
+    logger.error('[API /ops/mute-alerts] Error', error, buildSecurityContext(session, request));
     return NextResponse.json(
       { error: 'Failed to mute alerts' },
       { status: 500 }

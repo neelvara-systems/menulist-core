@@ -6,7 +6,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SupportTicketType } from '@type/supportTicket';
 import { Badge, Card, Flex, Grid, Tooltip, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuHistory, LuMessageSquare, LuWifi } from 'react-icons/lu';
 import TicketHistoryView from './TicketHistoryView';
 
@@ -17,63 +17,68 @@ function TicketView() {
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
-    const { getAllItems, setAllItems, updateItem, cachedItems } = useTicketCache();
-    const [initialFetchDone, setInitialFetchDone] = useState(false);
+    const { setAllItems, updateItem, cachedItems } = useTicketCache();
     const [isRealtimeActive, setIsRealtimeActive] = useState(false);
+    const cachedTicketsOnMountRef = useRef<SupportTicketType[]>(cachedItems || []);
     const isNarrow = screens.md !== true;
 
-    const fetchTickets = async () => {
-        dispatch(startLoader("Fetching your requests..."))
-        try {
-            await getAllItems();
-            setInitialFetchDone(true);
-        } catch (error) {
-            message.error(t('unableToLoadRequests'));
-        } finally {
-            dispatch(stopLoader("Fetching your requests..."));
-        }
-    };
-
-    // Initial fetch on mount
+    // Store tickets use one live snapshot as the initial load.
+    // This avoids paying for both getDocs() and onSnapshot() on mount.
     useEffect(() => {
-        fetchTickets();
-    }, []);
-
-    // Real-time listener - only active when on tickets tab
-    useEffect(() => {
-        if (!initialFetchDone) return; // Wait for initial fetch
-
+        let mounted = true;
+        let loaderActive = cachedTicketsOnMountRef.current.length === 0;
         let unsubscribe: (() => void) | undefined;
+
+        if (loaderActive) {
+            dispatch(startLoader("Fetching your requests..."));
+        }
+
+        const stopInitialLoader = () => {
+            if (loaderActive) {
+                dispatch(stopLoader("Fetching your requests..."));
+                loaderActive = false;
+            }
+        };
 
         const setupRealtimeSync = async () => {
             try {
                 unsubscribe = await subscribeStoreTickets(
                     (tickets) => {
-                        // Update cache with real-time data
+                        if (!mounted) return;
                         setAllItems(tickets);
                         setIsRealtimeActive(true);
+                        stopInitialLoader();
                     },
                     (error) => {
+                        if (!mounted) return;
                         setIsRealtimeActive(false);
-                        // Don't show error to user - fallback to cached data
+                        stopInitialLoader();
+                        if (cachedTicketsOnMountRef.current.length === 0) {
+                            message.error(t('unableToLoadRequests'));
+                        }
                     }
                 );
-                setIsRealtimeActive(true);
             } catch (error) {
+                if (!mounted) return;
                 setIsRealtimeActive(false);
+                stopInitialLoader();
+                if (cachedTicketsOnMountRef.current.length === 0) {
+                    message.error(t('unableToLoadRequests'));
+                }
             }
         };
 
         setupRealtimeSync();
 
-        // Cleanup subscription when component unmounts or navigates away
         return () => {
+            mounted = false;
             if (unsubscribe) {
                 unsubscribe();
             }
+            stopInitialLoader();
             setIsRealtimeActive(false);
         };
-    }, [initialFetchDone, setAllItems]);
+    }, [dispatch, setAllItems, t]);
 
 
     const onTicketSubmitted = (ticket: SupportTicketType) => {

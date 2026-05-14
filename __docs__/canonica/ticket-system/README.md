@@ -1,7 +1,7 @@
 # Ticket System — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-13
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -33,7 +33,7 @@ The Ticket System is MenuList's **structured support request infrastructure** �
 ### Pages
 
 - `/help-center` (ticket tab) → `src/app/(main)/help-center/page.tsx`
-- `/platform/support-tickets` → `src/app/(main)/(platform-pages)/platform/support-tickets/page.tsx`
+- `/platform/support-tickets` → `src/app/(main)/platform/support-tickets/page.tsx`
 
 ### Owner-Side Components
 

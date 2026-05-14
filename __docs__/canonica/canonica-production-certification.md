@@ -171,6 +171,7 @@ activateRelease(releaseId)
 - Manual trigger safety: `triggerCanonicaNightly` requires `Authorization: Bearer ${CRON_SECRET}` outside the Firebase emulator
 - Dedicated Firebase auth safety: `/api/auth/set-claims` mints a separate Canonica custom token in separate mode so client DAL calls satisfy `firestore-canonica.rules`
 - KB callable safety: `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` are exported from Canonica Functions and run against Canonica Firebase Admin + Vertex AI in separate mode
+- Expensive callable auth safety: `regenerateEmbedding` and `publishApprovedJobFn` require callable auth and `platformRole`/`role` of `PLATFORM` or `PLATFORM_SUPPORT` before embedding/publish work starts
 
 ### Flow F — Widget Key → Search → Feedback
 
@@ -233,6 +234,7 @@ Platform operator opens Canonica management
   → /canonica/* authenticated layout loads
   → platformRole=PLATFORM or PLATFORM_SUPPORT can access governance/management routes
   → non-platform sessions are redirected back to /canonica/help
+  → support ticket admin uses one live initial snapshot for active tickets; deleted tickets are lazy-loaded only when opened
 ```
 
 **Verdict:** WIRED. MenuList no longer sends mobile owners to generic FAQ/WhatsApp/mail placeholders for primary support actions; the first-client support surface opens Canonica client screens directly while platform-only management screens remain separated.

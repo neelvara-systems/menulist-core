@@ -24,6 +24,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runCanonicaNightly } from './canonica/canonicaNightly';
+import { assertCanonicaPlatformCallable } from './callableAuth';
 import { FUNCTION_FLAGS } from './constants/features';
 import { processEvent } from './integrations/eventProcessor';
 import { IntegrationEvent } from './integrations/types';
@@ -159,19 +160,31 @@ export const embedArticleWorker = onTaskDispatched(CANONICA_AI_OPTIONS, async (r
 });
 
 export const regenerateEmbedding = onCall(CANONICA_AI_OPTIONS, async (request) => {
+    const caller = assertCanonicaPlatformCallable(request, 'regenerateEmbedding');
     const { articleId } = request.data || {};
     if (!articleId) {
         throw new HttpsError('invalid-argument', 'The function must be called with articleId.');
     }
 
+    logger.info('[Canonica KB] Authorized regenerateEmbedding request', {
+        articleId,
+        uid: caller.uid,
+        platformRole: caller.platformRole,
+    });
     return regenerateEmbeddingLogic(articleId);
 });
 
 export const publishApprovedJobFn = onCall(CANONICA_AI_OPTIONS, async (request) => {
+    const caller = assertCanonicaPlatformCallable(request, 'publishApprovedJobFn');
     const { jobId, finalCategories }: { jobId: string; finalCategories: IngestionJobCategoriesMap } = request.data || {};
     if (!jobId || !finalCategories) {
         throw new HttpsError('invalid-argument', 'Missing required payload: jobId, finalCategories.');
     }
 
+    logger.info('[Canonica KB] Authorized publishApprovedJobFn request', {
+        jobId,
+        uid: caller.uid,
+        platformRole: caller.platformRole,
+    });
     return publishApprovedJobLogic(jobId, finalCategories);
 });

@@ -1,7 +1,7 @@
 # Ticket System — Firebase Cost & Operations Tracking
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-13
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -138,19 +138,19 @@
 | `deleteDoc` | 0 | 1 | — |
 | **Total** | **0** | **1** | **N deletes** |
 
-### 3.6 Get Store Tickets (Owner)
+### 3.6 Get Store Tickets (Owner Fallback / Explicit Fetch)
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
 | Query: `tId + sId + deleted=false + orderBy createdOn desc` | N | 0 |
 | **Total** | **N** | **0** |
 
-### 3.7 Get All Tickets (Platform Admin)
+### 3.7 Get All Tickets (Platform Admin Fallback / Explicit Fetch)
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Query: `deleted=false + orderBy createdOn desc` (or all if includeDeleted) | N | 0 |
-| **Total** | **N (entire collection)** | **0** |
+| Query: `deleted=false + orderBy createdOn desc + limit(500)` (or latest 500 if includeDeleted) | up to 500 | 0 |
+| **Total** | **up to 500** | **0** |
 
 ### 3.8 Real-Time Subscription (Owner)
 
@@ -164,8 +164,16 @@
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
-| Initial snapshot | N (all tickets) | 0 |
+| Initial snapshot | up to 500 active tickets | 0 |
 | Per change | 1 (changed doc) | 0 |
+
+### 3.10 Trash View (Platform)
+
+| Step | Reads | Writes |
+|------|:-----:|:------:|
+| Query deleted tickets: `deleted=true + orderBy createdOn desc + limit(100)` | up to 100 | 0 |
+| Restore ticket | 0 | 1 |
+| Active list after restore | live listener change read | 0 |
 
 ---
 
@@ -187,8 +195,8 @@
 | Create ticket | 50/mo | 0 | 50 |
 | Send messages | 150/mo | 0 | 150 |
 | Status updates | 100/mo | 0 | 100 |
-| Owner view loads (cache 5min) | ~300/mo | 300 × ~5 = 1,500 | 0 |
-| Platform admin loads | ~100/mo | 100 × ~50 = 5,000 | 0 |
+| Owner ticket surface opens (listener initial snapshot) | ~300/mo | 300 × ~5 = 1,500 | 0 |
+| Platform admin opens (listener initial snapshot) | ~100/mo | 100 × ~50 = 5,000 | 0 |
 | Real-time listener (owner) | Continuous | ~3,000 | 0 |
 | Real-time listener (platform) | Continuous | ~2,000 | 0 |
 | **Total** | | **~11,500** | **~300** |
