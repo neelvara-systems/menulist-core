@@ -8,10 +8,12 @@ import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
 import { generateCampaignsForProject, useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
+import { getInactiveItemsReminder, getInactiveReminderDismissKey } from "@lib/today/inactiveItemsReminder";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
-import { Button, Divider, Drawer, Select, Spin, Typography, notification } from "antd";
+import { Button, Card, Divider, Drawer, Select, Spin, Typography, notification } from "antd";
+import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { LuCalendarOff, LuInfo } from "react-icons/lu";
 import useSWR from "swr";
@@ -27,6 +29,7 @@ import StickerSection from "./components/StickerSection";
 import TentCardSection from "./components/TentCardSection";
 import { useCampaignActions } from "./hooks/useCampaignActions";
 import styles from "./styles.module.scss";
+import { sortOperationalCampaignsByPriority } from "@lib/today/todayCampaignPrioritizer";
 
 const { Title, Text } = Typography;
 
@@ -42,6 +45,39 @@ type ProjectSummary = {
 const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
     getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
 );
+
+const toPluralLabel = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
+
+const buildTodayDigest = (
+    hasPrimary: boolean,
+    operationalCount: number,
+    staffPromptEligible: boolean,
+    hasMaintenanceCards: boolean,
+) => {
+    const parts: string[] = [];
+
+    if (hasPrimary) {
+        parts.push(toPluralLabel(1, 'main action', 'main actions'));
+    }
+
+    if (operationalCount > 0) {
+        parts.push(toPluralLabel(operationalCount, 'extra action', 'extra actions'));
+    }
+
+    if (staffPromptEligible) {
+        parts.push('staff prompt ready');
+    }
+
+    if (hasMaintenanceCards) {
+        parts.push('maintenance cards ready');
+    }
+
+    if (!parts.length) {
+        return 'No action suggestions available right now.';
+    }
+
+    return `${parts.join(' · ')}.`;
+};
 
 const resolveSelectedProject = (
     projects: ProjectSummary[],
@@ -63,11 +99,13 @@ const resolveSelectedProject = (
 };
 
 const TodayScreen = () => {
+    const router = useRouter();
     const [screenState, setScreenState] = useState<ScreenState>("loading");
     const [lastAction, setLastAction] = useState<"shared" | "skipped" | null>(null);
     const [lastActionFeedback, setLastActionFeedback] = useState<TodayActionFeedback | null>(null);
     const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
+    const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
 
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading, mutate } = useTodayCampaigns();
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
@@ -90,7 +128,29 @@ const TodayScreen = () => {
         () => projects.find((project) => project.projectId === selectedProjectId) || null,
         [projects, selectedProjectId]
     );
+    const inactiveItemsReminder = useMemo(() => {
+        if (!activeProject?.projectId || activeProject.projectId !== selectedProjectId) return null;
+        return getInactiveItemsReminder(activeProject as any);
+    }, [activeProject, selectedProjectId]);
     const ownerActionPlan = useOwnerActionPlan(selectedProjectId);
+    const sortedOperationalCampaigns = useMemo(
+        () => sortOperationalCampaignsByPriority(todayCampaigns?.operational || []),
+        [todayCampaigns?.operational]
+    );
+    const hasPrimaryCampaign = Boolean(todayCampaigns?.primary);
+    const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
+    const hasMaintenanceCards = Boolean(
+        (physicalSurfaces?.tentCard?.eligible || false)
+        || (physicalSurfaces?.counterSticker?.eligible || false)
+        || (staffPrompt?.eligible || false)
+    );
+    const todayDigest = buildTodayDigest(
+        hasPrimaryCampaign,
+        sortedOperationalCampaigns.length,
+        Boolean(staffPrompt?.eligible),
+        hasMaintenanceCards,
+    );
+    const shouldShowMainActionHint = screenState === "action" && !hasPrimaryCampaign;
 
     // Check if feature is enabled
     const isEnabled = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED;
@@ -118,12 +178,31 @@ const TodayScreen = () => {
             return;
         }
 
-        if (todayCampaigns.primary || todayCampaigns.operational.length > 0) {
+        if (todayCampaigns.primary || sortedOperationalCampaigns.length > 0) {
             setScreenState("action");
         } else {
             setScreenState("empty");
         }
-    }, [todayCampaigns, isLoading]);
+    }, [todayCampaigns, isLoading, sortedOperationalCampaigns.length]);
+
+    useEffect(() => {
+        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        if (!dismissKey) {
+            setIsInactiveReminderDismissed(false);
+            return;
+        }
+        setIsInactiveReminderDismissed(localStorage.getItem(dismissKey) === '1');
+    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId]);
+
+    const dismissInactiveReminder = () => {
+        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        if (dismissKey) {
+            localStorage.setItem(dismissKey, '1');
+        }
+        setIsInactiveReminderDismissed(true);
+    };
+
+    const shouldShowInactiveReminder = Boolean(inactiveItemsReminder && !isInactiveReminderDismissed);
 
     const handleComplete = async (
         campaignId: string,
@@ -189,6 +268,11 @@ const TodayScreen = () => {
             }, 2000);
         } catch (error) {
             console.error("Failed to skip campaign:", error);
+            notification.error({
+                message: "Failed to skip",
+                description: "Please try again.",
+                placement: "bottomRight",
+            });
         }
     };
 
@@ -238,6 +322,34 @@ const TodayScreen = () => {
             </div>
         </Drawer>
     );
+
+    const renderInactiveItemsReminder = () => {
+        if (!shouldShowInactiveReminder || !inactiveItemsReminder) return null;
+
+        const previewNames = inactiveItemsReminder.names.join(', ');
+
+        return (
+            <div className={styles.inactiveReminderCard}>
+                <Text strong>{inactiveItemsReminder.count} inactive {inactiveItemsReminder.count === 1 ? 'item' : 'items'}</Text>
+                <Text type="secondary">
+                    Customers cannot see them until you activate them.
+                </Text>
+                {previewNames ? (
+                    <Text type="secondary">
+                        {previewNames}{inactiveItemsReminder.count > inactiveItemsReminder.names.length ? ' and more.' : '.'}
+                    </Text>
+                ) : null}
+                <div className={styles.inactiveReminderActions}>
+                    <Button type="primary" onClick={() => router.push('/projects')}>
+                        Review items
+                    </Button>
+                    <Button type="text" onClick={dismissInactiveReminder}>
+                        Not now
+                    </Button>
+                </div>
+            </div>
+        );
+    };
 
     // Feature not enabled state
     if (!isEnabled) {
@@ -295,6 +407,8 @@ const TodayScreen = () => {
                     sourceQuality={ownerActionPlan.sourceQuality}
                     analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
                 />
+                <Text className={styles.todayDigest}>{todayDigest}</Text>
+                {renderInactiveItemsReminder()}
                 <EmptyState
                     canGenerate={Boolean(selectedProjectId)}
                     isGenerating={isGeneratingTodayActions}
@@ -332,6 +446,15 @@ const TodayScreen = () => {
                 analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
             />
 
+            {shouldShowMainActionHint ? (
+                <Card className={styles.sectionSummaryCard} size="small">
+                    <Text strong>No main action today</Text>
+                    <Text type="secondary">Use the Generate button if you want a main action now.</Text>
+                </Card>
+            ) : null}
+
+            <Text className={styles.todayDigest}>{todayDigest}</Text>
+
             {/* Primary Campaign */}
             {todayCampaigns.primary && (
                 <PrimaryCard
@@ -342,7 +465,9 @@ const TodayScreen = () => {
                 />
             )}
 
-            {/* Staff Prompt Section - Per spec: Read-only, appears below primary card */}
+            {renderInactiveItemsReminder()}
+
+            {/* Staff Prompt Section - Read-only, appears after action section */}
             <StaffPromptSection staffPrompt={staffPrompt} />
 
             {/* Physical Surfaces - Per spec: Read-only, download only */}
@@ -357,9 +482,9 @@ const TodayScreen = () => {
             )}
 
             {/* Operational Campaigns (Passive) */}
-            {todayCampaigns.operational.length > 0 && (
+            {hasOperationalCampaigns && (
                 <OperationalSection
-                    campaigns={todayCampaigns.operational}
+                    campaigns={sortedOperationalCampaigns}
                     onComplete={handleComplete}
                     onSkip={handleSkip}
                     isProcessing={isProcessing}

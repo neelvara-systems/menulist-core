@@ -16,7 +16,7 @@ import {
     CUSTOMER_APP_ICON_CACHE_CONTROL,
     parseCustomerAppSplashSize,
     renderCustomerAppSplash,
-    resolveCustomerAppIconImageUrl,
+    resolveCustomerAppIconSource,
 } from '@lib/pwa/customerAppAssets';
 import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
@@ -41,13 +41,14 @@ export async function GET(
         const snap = await getDoc(ref);
         const store = snap.exists() ? snap.data() : null;
         const displayName: string = getStoreContextName(store, 'Menu');
-        const imageUrl = resolveCustomerAppIconImageUrl(store);
+        const iconSource = resolveCustomerAppIconSource(store);
         const themeColor = store?.publicPresence?.accentColor || APP_THEME_COLOR;
 
         return new ImageResponse(renderCustomerAppSplash({
             displayName,
             height,
-            imageUrl,
+            iconVisualRatio: iconSource.source === 'override' ? 0.88 : 0.72,
+            imageUrl: iconSource.imageUrl,
             seed: storeId,
             themeColor,
             width,

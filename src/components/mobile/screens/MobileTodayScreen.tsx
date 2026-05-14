@@ -7,6 +7,7 @@ import { updateStore } from '@database/stores';
 import { useOwnerActionPlan } from '@hook/useOwnerActionPlan';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { sortOperationalCampaignsByPriority } from '@lib/today/todayCampaignPrioritizer';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
 import { getExportMethod, getMealName, getShortButtonText } from '@util/campaignUtils';
 import { useTranslations } from 'next-intl';
@@ -31,6 +32,8 @@ const STATUS_OPTIONS = [
 const TODAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
 const getTodayKey = () => TODAY_KEYS[new Date().getDay()];
+
+const toPluralLabel = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
 
 function getTodayTimeRange(value?: string) {
     const normalized = value?.trim() || '';
@@ -323,8 +326,12 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
 
     const mealName = getMealName();
     const primary = todayCampaigns.primary as TodayCampaignSummary | undefined;
-    const operational = (todayCampaigns.operational || []).slice(0, 2) as TodayCampaignSummary[];
+    const operational = sortOperationalCampaignsByPriority(todayCampaigns.operational || []) as TodayCampaignSummary[];
     const hasSuggestions = Boolean(primary) || Boolean(staffPrompt?.eligible) || operational.length > 0;
+    const hasMainAction = Boolean(primary);
+    const todayDigest = hasMainAction
+        ? `${toPluralLabel(1, 'main action', 'main actions')} · ${toPluralLabel(operational.length, 'extra action', 'extra actions')}`
+        : `${toPluralLabel(operational.length, 'extra action', 'extra actions')}`;
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
@@ -339,6 +346,16 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                     sourceQuality={ownerActionPlan.sourceQuality}
                     analyticsAiEntitlement={ownerActionPlan.analyticsAiEntitlement}
                 />
+                <Text type="secondary" style={{ marginBottom: -4 }}>{todayDigest}.</Text>
+
+                {!hasMainAction && operational.length > 0 ? (
+                    <Card>
+                        <Flex gap={8} vertical>
+                            <Text strong>No main action today</Text>
+                            <Text type="secondary">Use the list below for optional actions.</Text>
+                        </Flex>
+                    </Card>
+                ) : null}
 
                 {hasSuggestions ? <Text strong>{t('suggestedForToday')}</Text> : null}
                 {primary ? (
@@ -389,10 +406,10 @@ export default function MobileTodayScreen({ onBack }: MobileTodayScreenProps) {
                 ) : null}
 
                 {operational.length > 0 ? (
-                    <Card title={t('otherSuggestions')}>
+                    <Card title="Needs attention">
                         <Flex gap={8} vertical>
-                            <Text type="secondary">These are extra ready actions. Use them only if they fit today.</Text>
-                            {operational.map((campaign) => {
+                            <Text type="secondary">These are lower-priority actions for today. Use them if they fit your plan.</Text>
+                            {operational.slice(0, 2).map((campaign) => {
                                 const title = campaign.type === 'now_available'
                                     ? t('nowAvailable', { item: campaign.subject?.itemName || 'Item' })
                                     : (ACTION_TITLES[campaign.type] || 'Share')

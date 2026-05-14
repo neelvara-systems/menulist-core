@@ -1429,7 +1429,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         () => getProjectDefaultLanguage(menuData, storeDetails),
         [menuData, storeDetails],
     );
-    const activeProjectLanguages = useMemo(() => menuData?.languages || ['en'], [menuData?.languages]);
+    const activeProjectLanguages = useMemo(() => {
+        const languageCodes = Array.isArray(menuData?.languages) && menuData.languages.length
+            ? menuData.languages
+            : ['en'];
+
+        return languageCodes.includes(primaryLang)
+            ? [primaryLang, ...languageCodes.filter((code) => code !== primaryLang)]
+            : languageCodes;
+    }, [menuData?.languages, primaryLang]);
     const showCategoryIcons = menuData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showItemPrices = menuData?.config?.design?.menu?.showItemPrices ?? true;
     const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);
@@ -1509,11 +1517,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         const labelsByCode = new Map(GlobalLanguagesList.map((language) => [language.code, language.nativeName || language.name]));
         return activeProjectLanguages.map((code) => ({
             code,
-            isPrimary: code === activeProjectLanguages[0],
+            isPrimary: code === primaryLang,
             label: labelsByCode.get(code) || code.toUpperCase(),
             stats: languageStats.find((entry) => entry.code === code) || null,
         }));
-    }, [activeProjectLanguages, languageStats]);
+    }, [activeProjectLanguages, languageStats, primaryLang]);
     const firstLanguageWithMissingTranslations = useMemo(() => {
         const reviewableLanguages = activeProjectLanguages.filter((language) => language !== primaryLang);
         if (reviewableLanguages.length === 0 || !menuData?.files) return null;

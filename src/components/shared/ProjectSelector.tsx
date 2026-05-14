@@ -3,6 +3,7 @@
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { Button, Card, Flex, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
+import { ProjectAvatarImage } from './ProjectAvatarImage';
 import type { SpecialMenuStatus } from '../templates/main-app/projects/types';
 import { LuCheck, LuChevronDown, LuFolderOpen, LuMoreVertical, LuPlus, LuSparkles, LuXCircle } from 'react-icons/lu';
 
@@ -147,13 +148,9 @@ export function ProjectSelectorTrigger({
                             overflow: 'hidden',
                         }}
                     >
-                        {currentProject?.projectImage ? (
-                            <img
-                                alt=""
-                                src={currentProject.projectImage}
-                                style={{ height: '100%', objectFit: 'cover', width: '100%' }}
-                            />
-                        ) : currentProject ? getInitials(projectName) : <LuFolderOpen size={14} />}
+                        <ProjectAvatarImage projectImage={currentProject?.projectImage}>
+                            {currentProject ? getInitials(projectName) : <LuFolderOpen size={14} />}
+                        </ProjectAvatarImage>
                     </Flex>
                     <Text strong ellipsis>{projectName}</Text>
                 </Flex>
@@ -325,13 +322,9 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                     overflow: 'hidden',
                                 }}
                             >
-                                {project.projectImage ? (
-                                    <img
-                                        alt=""
-                                        src={project.projectImage}
-                                        style={{ height: '100%', objectFit: 'cover', width: '100%' }}
-                                    />
-                                ) : getInitials(projectName || t('untitled'))}
+                                <ProjectAvatarImage projectImage={project.projectImage}>
+                                    {getInitials(projectName || t('untitled'))}
+                                </ProjectAvatarImage>
                             </Flex>
                             <Flex align="center" gap={6} justify="center" wrap="wrap">
                                 <Text strong style={{ fontSize: 16, textAlign: 'center' }}>

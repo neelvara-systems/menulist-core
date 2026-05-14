@@ -61,6 +61,7 @@ export const SECRETS = {
     SENTRY_DSN: 'SENTRY_DSN',
     TELEGRAM_BOT_TOKEN: 'TELEGRAM_BOT_TOKEN',
     TELEGRAM_CHAT_ID: 'TELEGRAM_CHAT_ID',
+    GCP_BUDGET_WEBHOOK_SECRET: 'GCP_BUDGET_WEBHOOK_SECRET',
 
     // Public cache invalidation
     REVALIDATION_SECRET: 'REVALIDATION_SECRET',
@@ -124,6 +125,11 @@ export const SECRET_GROUPS = {
         SECRETS.TELEGRAM_CHAT_ID,
     ] as string[],
 
+    /** Inbound Google Cloud budget alert webhook authentication */
+    BUDGET_ALERT: [
+        SECRETS.GCP_BUDGET_WEBHOOK_SECRET,
+    ] as string[],
+
     /** Server-to-server cache invalidation for public menu/OBP pages */
     PUBLIC_CACHE_REVALIDATION: [
         SECRETS.REVALIDATION_SECRET,
@@ -146,6 +152,14 @@ export const FUNCTION_OPTIONS = {
     aiCallable: {
         region: 'us-central1' as const,
         timeoutSeconds: 900,
+        memory: '2GiB' as const,
+        secrets: SECRET_GROUPS.AI,
+    },
+
+    /** Firestore event triggers that use Gemini AI */
+    aiEventTrigger: {
+        region: 'us-central1' as const,
+        timeoutSeconds: 540,
         memory: '2GiB' as const,
         secrets: SECRET_GROUPS.AI,
     },

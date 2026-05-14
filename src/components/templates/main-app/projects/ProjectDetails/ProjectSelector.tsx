@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { ProjectAvatarImage } from '@/components/shared/ProjectAvatarImage';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { Button, Dropdown, Flex, Modal, Tag, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
@@ -234,13 +235,7 @@ const CatalogCard = ({
                         overflow: 'hidden',
                     }}
                 >
-                    {project.projectImage ? (
-                        <img
-                            alt=""
-                            src={project.projectImage}
-                            style={{ height: '100%', objectFit: 'cover', width: '100%' }}
-                        />
-                    ) : (
+                    <ProjectAvatarImage projectImage={project.projectImage}>
                         <Text style={{
                             color: avatarColor.text,
                             fontSize: 22,
@@ -249,7 +244,7 @@ const CatalogCard = ({
                         }}>
                             {initials}
                         </Text>
-                    )}
+                    </ProjectAvatarImage>
                 </div>
 
                 {/* Name */}

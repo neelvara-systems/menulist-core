@@ -25,16 +25,21 @@ let upstash: Redis | null = null;
 function getUpstashClient(): Redis | null {
     if (upstash) return upstash;
 
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = (process.env.UPSTASH_REDIS_REST_URL || '').trim();
+    const token = (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim();
 
     if (!url || !token) {
         functions.logger.warn('[RateLimit] Upstash credentials not found - rate limiting disabled');
         return null;
     }
 
-    upstash = new Redis({ url, token });
-    return upstash;
+    try {
+        upstash = new Redis({ url, token });
+        return upstash;
+    } catch (error) {
+        functions.logger.error('[RateLimit] Failed to initialize Upstash client - rate limiting disabled', error);
+        return null;
+    }
 }
 
 interface RateLimitConfig {

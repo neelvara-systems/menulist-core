@@ -122,7 +122,12 @@ function OpsControlRoom() {
                     const fns = getFunctions();
                     const forceRepublishFn = httpsCallable(fns, 'forceRepublish');
                     const result: any = await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
-                    message.success(`Republished! Verification: ${result.data?.verification || 'done'}`);
+                    const verification = result.data?.verification || 'done';
+                    if (result.data?.success === false) {
+                        message.warning(`Republish triggered, verification: ${verification}`);
+                    } else {
+                        message.success(`Republish triggered, verification: ${verification}`);
+                    }
                     await loadData();
                 } catch (error: any) {
                     message.error(`Force republish failed: ${error.message}`);

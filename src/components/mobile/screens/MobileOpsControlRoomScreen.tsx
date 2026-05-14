@@ -145,8 +145,12 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const forceRepublishFn = httpsCallable(getFunctions(), 'forceRepublish');
-                    await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
-                    Toast.show({ content: 'Republish triggered', duration: 1600 });
+                    const result: any = await forceRepublishFn({ storeId: selectedStore.sId, tenantId: selectedStore.tId });
+                    const verification = result.data?.verification || 'done';
+                    Toast.show({
+                        content: `Republish triggered, verification: ${verification}`,
+                        duration: 1800
+                    });
                     await loadData();
                 } catch (error: any) {
                     Toast.show({ content: error?.message || 'Republish failed', duration: 2200 });

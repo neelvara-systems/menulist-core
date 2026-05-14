@@ -5,6 +5,7 @@
 
 import { getMetadataProjectsList } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveProjectImageUrl } from '@lib/image/projectImageDisplay';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
@@ -175,7 +176,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                 <Flex align="center" gap={12}>
                     <Avatar
                         size={24}
-                        src={p.projectImage || undefined}
+                        src={resolveProjectImageUrl(p.projectImage) || undefined}
                         style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name)).bg, fontSize: 10 }}
                     >
                         {getInitials(resolveProjectName(p.name))}
@@ -218,7 +219,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
             >
                 <Avatar
                     size={28}
-                    src={selectedProject?.projectImage || undefined}
+                    src={resolveProjectImageUrl(selectedProject?.projectImage) || undefined}
                     style={{ backgroundColor: color.bg, color: color.text, fontSize: 11 }}
                 >
                     {selectedProject ? getInitials(resolveProjectName(selectedProject.name)) : <LuFolderOpen size={14} />}

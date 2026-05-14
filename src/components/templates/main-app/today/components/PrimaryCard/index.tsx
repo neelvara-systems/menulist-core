@@ -64,7 +64,7 @@ const PrimaryCard = ({ campaign, onComplete, onSkip, isProcessing }: PrimaryCard
 
     return (
         <Card className={styles.primaryCard} bordered={false}>
-            <p className={styles.cardEyebrow}>Today&apos;s main action</p>
+            <p className={styles.cardEyebrow}>Main action for today</p>
 
             {/* Action Title - Affirmative, present tense */}
             <div className={styles.actionTitle}>
@@ -83,7 +83,7 @@ const PrimaryCard = ({ campaign, onComplete, onSkip, isProcessing }: PrimaryCard
             </p>
 
             <p className={styles.cardHelpText}>
-                This is the main thing MenuList prepared for today. Tap the button to open the ready output and mark this action handled.
+                This is the main thing MenuList prepared for today. Tap the button to open the ready output and mark this action as done for today.
             </p>
 
             <p className={styles.cardOutcomeText}>

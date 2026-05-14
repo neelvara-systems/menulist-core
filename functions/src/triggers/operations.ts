@@ -7,10 +7,11 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { timingSafeEqual } from 'crypto';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { DB_COLLECTIONS } from '../constants/database';
-import { FUNCTION_OPTIONS } from '../config/secrets';
+import { FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
@@ -34,6 +35,16 @@ function assertPlatformOwner(request: { auth?: { token?: Record<string, any> } }
     }
 }
 
+function isSecretMatch(provided: unknown, expected: string): boolean {
+    if (typeof provided !== 'string' || !provided || !expected) return false;
+
+    const providedBuffer = Buffer.from(provided);
+    const expectedBuffer = Buffer.from(expected);
+    if (providedBuffer.length !== expectedBuffer.length) return false;
+
+    return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
 function hasTenantStoreAccess(
     request: { auth?: { token?: Record<string, any> } },
     tenantId: string | number,
@@ -49,6 +60,28 @@ function hasTenantStoreAccess(
 
     return tokenTenantId === String(tenantId)
         && (tokenStoreId === String(storeId) || tokenStoreIds.includes(String(storeId)));
+}
+
+function getPublicTenantBaseDomain(): string {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.menulist.online';
+    try {
+        const hostname = new URL(appUrl).hostname;
+        return hostname.startsWith('app.') ? hostname.slice(4) : hostname;
+    } catch {
+        return 'menulist.online';
+    }
+}
+
+function buildPublicMenuUrl(storeData: Record<string, any> | undefined): string | null {
+    const customDomain = String(storeData?.customDomain || '').trim();
+    if (customDomain) {
+        return `https://${customDomain}`;
+    }
+
+    const subdomain = String(storeData?.subdomain || storeData?.slug || '').trim();
+    if (!subdomain) return null;
+
+    return `https://${subdomain}.${getPublicTenantBaseDomain()}`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -126,7 +159,12 @@ export const verifyMenuPublish = onCall(
  * Auto-activates SAFE_MODE when budget threshold exceeded.
  */
 export const gcpBudgetAlertWebhook = onRequest(
-    { region: 'us-central1', timeoutSeconds: 10, memory: '128MiB' as const },
+    {
+        region: 'us-central1',
+        timeoutSeconds: 10,
+        memory: '256MiB' as const,
+        secrets: SECRET_GROUPS.BUDGET_ALERT,
+    },
     async (req, res) => {
         const logger = functions.logger;
 
@@ -136,17 +174,50 @@ export const gcpBudgetAlertWebhook = onRequest(
         }
 
         try {
-            const pubsubMessage = req.body?.message?.data;
-            let budgetData: any = {};
+            const expectedSecret = process.env.GCP_BUDGET_WEBHOOK_SECRET;
+            const providedSecret = req.header('x-menulist-budget-secret') || req.query.secret;
 
-            if (pubsubMessage) {
-                const decoded = Buffer.from(pubsubMessage, 'base64').toString('utf-8');
-                budgetData = JSON.parse(decoded);
+            if (!expectedSecret) {
+                logger.error('[BudgetAlert] GCP_BUDGET_WEBHOOK_SECRET is not configured');
+                res.status(503).json({ received: false, error: 'Budget webhook is not configured' });
+                return;
             }
 
-            const costAmount = budgetData.costAmount || 0;
-            const budgetAmount = budgetData.budgetAmount || 0;
-            const threshold = budgetData.alertThresholdExceeded || 0;
+            if (!isSecretMatch(providedSecret, expectedSecret)) {
+                logger.warn('[BudgetAlert] Rejected request with missing or invalid webhook secret');
+                res.status(401).json({ received: false, error: 'Unauthorized' });
+                return;
+            }
+
+            const pubsubMessage = req.body?.message?.data;
+            if (!pubsubMessage || typeof pubsubMessage !== 'string') {
+                logger.warn('[BudgetAlert] Rejected request without Pub/Sub message data');
+                res.status(400).json({ received: false, error: 'Missing Pub/Sub message data' });
+                return;
+            }
+
+            const decoded = Buffer.from(pubsubMessage, 'base64').toString('utf-8');
+            const budgetData = JSON.parse(decoded);
+
+            const costAmount = Number(budgetData.costAmount);
+            const budgetAmount = Number(budgetData.budgetAmount);
+            const threshold = Number(budgetData.alertThresholdExceeded);
+
+            if (
+                !Number.isFinite(costAmount)
+                || !Number.isFinite(budgetAmount)
+                || !Number.isFinite(threshold)
+                || budgetAmount <= 0
+                || threshold <= 0
+            ) {
+                logger.warn('[BudgetAlert] Rejected invalid budget alert payload', {
+                    hasCostAmount: budgetData.costAmount !== undefined,
+                    hasBudgetAmount: budgetData.budgetAmount !== undefined,
+                    hasThreshold: budgetData.alertThresholdExceeded !== undefined,
+                });
+                res.status(400).json({ received: false, error: 'Invalid budget alert payload' });
+                return;
+            }
 
             logger.warn('[BudgetAlert] Received', { costAmount, budgetAmount, threshold });
 
@@ -165,7 +236,7 @@ export const gcpBudgetAlertWebhook = onRequest(
             res.status(200).json({ received: true, safeModeActivated: true });
         } catch (error: any) {
             logger.error('[BudgetAlert] Error processing webhook:', error);
-            res.status(200).json({ received: true, error: error.message });
+            res.status(400).json({ received: false, error: 'Invalid budget alert request' });
         }
     },
 );
@@ -219,14 +290,13 @@ export const forceRepublish = onCall(
             // Verify after republish
             const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
             const storeData = storeDoc.data();
-            const slug = storeData?.slug || storeData?.subdomain;
+            const publicMenuUrl = buildPublicMenuUrl(storeData);
 
-            if (slug) {
-                const publicMenuUrl = `https://${slug}.menulist.ai`;
+            if (publicMenuUrl) {
                 const result = await verifyPublish(publicMenuUrl);
                 await updateStoreHealth(storeId, tenantId, result);
 
-                return { success: true, projectId, verification: result.status };
+                return { success: result.status === 'OK', projectId, verification: result.status, publicMenuUrl };
             }
 
             return { success: true, projectId, verification: 'skipped' };

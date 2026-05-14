@@ -43,9 +43,37 @@ export const CUSTOMER_APPLE_STARTUP_IMAGES = [
     },
 ];
 
-export function getCustomerAppleStartupImages(storeId: string | number) {
+export function appendCustomerAppAssetVersion(url: string, version?: string): string {
+    if (!version) return url;
+    const joiner = url.includes('?') ? '&' : '?';
+    return `${url}${joiner}v=${encodeURIComponent(version)}`;
+}
+
+function hashCustomerAppAssetVersion(value: string): string {
+    let hash = 5381;
+    for (let i = 0; i < value.length; i += 1) {
+        hash = ((hash << 5) + hash) ^ value.charCodeAt(i);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+export function getCustomerAppIconVersion(store: any): string {
+    const explicitUpdatedAt = store?.publicPresence?.pwaIconUpdatedAt;
+    if (explicitUpdatedAt) return String(explicitUpdatedAt);
+
+    const mode = store?.publicPresence?.pwaIconMode || 'auto';
+    const override = store?.publicPresence?.pwaIconOverrideUrl || '';
+    const logo = store?.logo || '';
+    return hashCustomerAppAssetVersion(`${mode}:${override}:${logo}`);
+}
+
+export function getCustomerAppIconUrl(storeId: string | number, size: number, version?: string): string {
+    return appendCustomerAppAssetVersion(`/api/app-icons/${storeId}/${size}`, version);
+}
+
+export function getCustomerAppleStartupImages(storeId: string | number, version?: string) {
     return CUSTOMER_APPLE_STARTUP_IMAGES.map((image) => ({
-        url: `/api/app-splash/${storeId}/${image.size}`,
+        url: appendCustomerAppAssetVersion(`/api/app-splash/${storeId}/${image.size}`, version),
         media: image.media,
     }));
 }
@@ -73,15 +101,36 @@ export function deriveCustomerAppShortName(displayName: string, override?: strin
     return firstWord.slice(0, 12);
 }
 
-export function resolveCustomerAppIconImageUrl(store: any): string | undefined {
+export type CustomerAppIconSource = 'override' | 'logo' | 'generated';
+
+export function resolveCustomerAppIconSource(store: any): { imageUrl?: string; source: CustomerAppIconSource } {
     const overrideUrl =
         typeof store?.publicPresence?.pwaIconOverrideUrl === 'string'
             ? store.publicPresence.pwaIconOverrideUrl.trim()
             : '';
-    const logoUrl = !overrideUrl && typeof store?.logo === 'string' ? store.logo.trim() : '';
-    const candidate = overrideUrl || logoUrl;
-    if (!candidate || !/\.(png|jpe?g|webp)(\?|$)/i.test(candidate)) return undefined;
-    return candidate;
+    const mode = typeof store?.publicPresence?.pwaIconMode === 'string'
+        ? store.publicPresence.pwaIconMode
+        : '';
+    const logoUrl = typeof store?.logo === 'string' ? store.logo.trim() : '';
+    const hasUsableImage = (candidate: string) => /\.(png|jpe?g|webp)(\?|$)/i.test(candidate);
+
+    if (mode === 'override' && overrideUrl && hasUsableImage(overrideUrl)) {
+        return { imageUrl: overrideUrl, source: 'override' };
+    }
+    if (mode === 'generated') {
+        return { source: 'generated' };
+    }
+    if (overrideUrl && hasUsableImage(overrideUrl)) {
+        return { imageUrl: overrideUrl, source: 'override' };
+    }
+    if (logoUrl && hasUsableImage(logoUrl)) {
+        return { imageUrl: logoUrl, source: 'logo' };
+    }
+    return { source: 'generated' };
+}
+
+export function resolveCustomerAppIconImageUrl(store: any): string | undefined {
+    return resolveCustomerAppIconSource(store).imageUrl;
 }
 
 export function firstCustomerAppLetter(name: string): string {
@@ -223,6 +272,7 @@ export function renderCustomerAppSplash({
     displayName,
     height,
     imageUrl,
+    iconVisualRatio = 0.72,
     seed,
     themeColor = APP_THEME_COLOR,
     width,
@@ -230,6 +280,7 @@ export function renderCustomerAppSplash({
     displayName: string;
     height: number;
     imageUrl?: string;
+    iconVisualRatio?: number;
     seed: string;
     themeColor?: string;
     width: number;
@@ -297,7 +348,7 @@ export function renderCustomerAppSplash({
                     imageUrl,
                     seed,
                     size: iconSize,
-                    visualRatio: 0.72,
+                    visualRatio: iconVisualRatio,
                 })}
             </div>
         </div>

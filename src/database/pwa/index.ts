@@ -52,6 +52,8 @@ export interface PWAIconOverride {
     /** Full Firebase Storage URL for an owner-uploaded icon. */
     pwaIconOverrideUrl: string | null;
     pwaIconMode: PWAIconMode;
+    /** Cache-busting marker for manifest/apple-touch-icon/startup-image URLs. */
+    pwaIconUpdatedAt?: string;
 }
 
 export interface PWAIconUploadInput {
@@ -115,13 +117,15 @@ export const updatePWAIconOverride = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const pwaIconUpdatedAt = new Date().toISOString();
             const update: Record<string, any> = {
                 'publicPresence.pwaIconMode': override.pwaIconMode,
                 'publicPresence.pwaIconOverrideUrl': override.pwaIconOverrideUrl,
+                'publicPresence.pwaIconUpdatedAt': pwaIconUpdatedAt,
             };
             await updateDoc(getDocRef(storeId), await requestBodyComposer(update));
             await revalidatePublicClientCache(storeId, 'updatePWAIconOverride');
-            return { success: true };
+            return { success: true, pwaIconUpdatedAt };
         },
         { storeId, override },
         'updatePWAIconOverride',

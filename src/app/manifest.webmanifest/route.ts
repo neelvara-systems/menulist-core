@@ -20,6 +20,7 @@ import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clie
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
+import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
 import { doc, getDoc } from 'firebase/firestore';
@@ -149,6 +150,7 @@ export async function GET() {
             shortName,
             themeColor,
             description,
+            iconVersion: getCustomerAppIconVersion(store),
             // Customer App is one store-level app per tenant origin. Install
             // page is source attribution only; it never changes app identity.
             startUrl,

@@ -19,6 +19,18 @@ import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { generateWeeklyNarrativeForStore } from '../analytics/weeklyNarrative';
 import { SECRETS } from '../config/secrets';
 import { DB_COLLECTIONS, SYSTEM_DOCS } from '../constants/database';
+import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
+
+function assertPlatformOwner(request: { auth?: { token?: Record<string, any> } }, action: string) {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', `Must be authenticated to ${action}.`);
+  }
+
+  const requesterRole = String(request.auth.token?.platformRole || request.auth.token?.role || '');
+  if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
+    throw new HttpsError('permission-denied', `Only platform owners can ${action}.`);
+  }
+}
 
 // ================================================================
 // LOCK MANAGEMENT (used by manual triggers to prevent overlap)
@@ -71,11 +83,9 @@ export const triggerSchedulerManually = onCall({
     SECRETS.GEMINI_AI_KEY_4,
   ],
 }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Must be authenticated to trigger scheduler.');
-  }
+  assertPlatformOwner(request, 'trigger scheduler');
 
-  console.log('[ManualTrigger] Initiated by:', request.auth.uid);
+  console.log('[ManualTrigger] Initiated by:', request.auth?.uid);
 
   const lockAcquired = await acquireLock();
   if (!lockAcquired) {
@@ -145,6 +155,8 @@ export const triggerWeeklyNarrativeManually = onCall({
     SECRETS.GEMINI_AI_KEY_4,
   ],
 }, async (request) => {
+  assertPlatformOwner(request, 'trigger weekly narrative generation');
+
   const tId = request.data?.tId;
   const sId = request.data?.sId;
 

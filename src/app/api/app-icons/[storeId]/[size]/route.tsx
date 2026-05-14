@@ -19,7 +19,7 @@ import {
     clampCustomerAppIconSize,
     CUSTOMER_APP_ICON_CACHE_CONTROL,
     renderCustomerAppIcon,
-    resolveCustomerAppIconImageUrl,
+    resolveCustomerAppIconSource,
 } from '@lib/pwa/customerAppAssets';
 import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
@@ -48,14 +48,17 @@ export async function GET(
         const store = snap.exists() ? snap.data() : null;
 
         const displayName: string = getStoreContextName(store, 'Menu');
-        const imageUrl = resolveCustomerAppIconImageUrl(store);
+        const iconSource = resolveCustomerAppIconSource(store);
+        const visualRatio = iconSource.source === 'override'
+            ? size >= 512 ? 0.9 : 0.92
+            : size >= 512 ? 0.72 : 0.74;
 
         return new ImageResponse(renderCustomerAppIcon({
             displayName,
-            imageUrl,
+            imageUrl: iconSource.imageUrl,
             seed: storeId,
             size,
-            visualRatio: size >= 512 ? 0.72 : 0.74,
+            visualRatio,
         }), {
             width: size,
             height: size,

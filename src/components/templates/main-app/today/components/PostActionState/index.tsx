@@ -26,7 +26,7 @@ const PostActionState = ({ action, title, description }: PostActionStateProps) =
     // Simple, calm confirmation
     const message = title || (action === "shared" ? "Shared" : "Skipped");
     const subMessage = description || (action === "shared"
-        ? "This action is marked done for today."
+        ? "This action is marked as done for today."
         : "No action needed. This was skipped for today.");
 
     return (

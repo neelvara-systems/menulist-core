@@ -14,7 +14,13 @@
  */
 
 import { Metadata, Viewport } from 'next';
+import { CUSTOMER_APPLE_STARTUP_IMAGES } from '@lib/pwa/customerAppAssets';
 import { APP_THEME_COLOR } from 'src/constants/common';
+
+const fallbackStartupImages = CUSTOMER_APPLE_STARTUP_IMAGES.map((image) => ({
+    url: `/splash/apple-splash-${image.size}.png`,
+    media: image.media,
+}));
 
 export const metadata: Metadata = {
     // Default metadata - will be overridden by page-level generateMetadata
@@ -25,11 +31,19 @@ export const metadata: Metadata = {
     manifest: '/manifest.webmanifest',
     appleWebApp: {
         capable: true,
+        startupImage: fallbackStartupImages,
         statusBarStyle: 'default',
-        title: 'MenuList',
+        title: 'Menu',
+    },
+    formatDetection: {
+        telephone: false,
     },
     icons: {
         apple: '/apple-touch-icon.png',
+    },
+    other: {
+        'color-scheme': 'light',
+        'mobile-web-app-capable': 'yes',
     },
 };
 
@@ -49,6 +63,17 @@ export default function ClientLayout({
 }) {
     return (
         <>
+            <style
+                dangerouslySetInnerHTML={{
+                    __html: `
+                        html,
+                        body {
+                            background: #ffffff !important;
+                            color-scheme: light;
+                        }
+                    `,
+                }}
+            />
             {children}
         </>
     );

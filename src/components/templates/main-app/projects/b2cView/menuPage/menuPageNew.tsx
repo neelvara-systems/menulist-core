@@ -2066,6 +2066,7 @@ function MenuPageNew({
                             currency={currencySymbol}
                             menuSettings={projectData?.menuSettings}
                             precomputedBlocks={precomputedBlocks}
+                            menuLayout={resolvedLayout}
                             showItemPrices={showItemPrices}
                             showCategoryIcons={showCategoryIcons}
                             analyticsIds={{

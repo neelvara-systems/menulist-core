@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from "react";
 import MainContentRenderer from "../mainContentRenderer";
 import GoogleSearchConsole from "./GoogleSearchConsole";
 import UnifiedAnalyticsTracking from "./UnifiedAnalyticsTracking";
+import { APP_THEME_COLOR } from "@constant/common";
 
 // #34: Lazy-load third-party analytics scripts — they are non-critical and should not
 // block the initial menu render. Only loaded after hydration (ssr: false).
@@ -90,6 +91,7 @@ function ClientMenuRenderer({
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const storeId = storeDetails?.storeId;
     const storeDisplayName = getStoreContextName(storeDetails, "Menu");
+    const brandAccentColor = projectData?.config?.design?.brand?.accentColor || APP_THEME_COLOR;
     const publicBusinessType = resolvePublicBusinessType(
         storeDetails?.businessType,
         storeDetails?.businessIndustry,
@@ -276,6 +278,7 @@ function ClientMenuRenderer({
                     storeName={storeDisplayName}
                     storeTimeZone={storeDetails.timeZone}
                     businessDayEndTime={storeDetails.businessDayEndTime}
+                    themeColor={brandAccentColor}
                     promoteInstallation={
                         (storeDetails as any)?.pwaSettings?.promoteInstallation !== false
                     }

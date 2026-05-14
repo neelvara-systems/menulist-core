@@ -314,6 +314,7 @@ export default function MobileShell() {
                         <MobileHoursScreen
                             onOpenDashboard={() => setTodayScreen('dashboard')}
                             onOpenHistory={() => setTodayScreen('history')}
+                            onOpenMenuTab={handleOpenMenuTab}
                             onOpenShare={() => {
                                 setActiveTab('share');
                                 setTodayScreen('main');

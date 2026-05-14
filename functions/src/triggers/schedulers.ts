@@ -133,7 +133,11 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
 
 export const alertEscalation = onSchedule(
-    { schedule: 'every 30 minutes', region: 'us-central1', memory: '128MiB' as const },
+    {
+        schedule: 'every 30 minutes',
+        region: 'us-central1',
+        memory: '256MiB' as const,
+    },
     async () => {
         const logger = functions.logger;
 

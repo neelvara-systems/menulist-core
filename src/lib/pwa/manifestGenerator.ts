@@ -13,7 +13,7 @@
  */
 
 import { APP_THEME_COLOR } from '@constant/common';
-import { deriveCustomerAppShortName } from './customerAppAssets';
+import { deriveCustomerAppShortName, getCustomerAppIconUrl } from './customerAppAssets';
 import { buildStoreManifestId } from './manifestIdentity';
 import { buildShortcuts, type ShortcutStoreInfo } from './shortcutsBuilder';
 
@@ -36,6 +36,8 @@ export interface ManifestStoreInput {
     shortcutInfo?: ShortcutStoreInfo;
     /** Short description rendered by Android Chrome's install dialog and PWA listings. */
     description?: string;
+    /** Cache-busting marker for app icon URLs. */
+    iconVersion?: string;
     /**
      * Optional categories — defaults to `['food', 'business', 'lifestyle']` which
      * covers restaurants, food trucks, bakeries, and similar SMB verticals. Callers
@@ -108,15 +110,15 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const manifestId = buildStoreManifestId(input.id);
 
     // Icon endpoint — same-origin, so subdomain/custom-domain routing works.
-    const iconBase = `/api/app-icons/${input.id}`;
+    const iconUrl = (size: number) => getCustomerAppIconUrl(input.id, size, input.iconVersion);
 
     const icons: WebAppManifest['icons'] = [
-        { src: `${iconBase}/180`, sizes: '180x180', type: 'image/png', purpose: 'any' },
-        { src: `${iconBase}/192`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: `${iconBase}/384`, sizes: '384x384', type: 'image/png', purpose: 'any' },
-        { src: `${iconBase}/512`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-        { src: `${iconBase}/192`, sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-        { src: `${iconBase}/512`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        { src: iconUrl(180), sizes: '180x180', type: 'image/png', purpose: 'any' },
+        { src: iconUrl(192), sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: iconUrl(384), sizes: '384x384', type: 'image/png', purpose: 'any' },
+        { src: iconUrl(512), sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: iconUrl(192), sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+        { src: iconUrl(512), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ];
 
     const shortcuts = input.shortcutInfo

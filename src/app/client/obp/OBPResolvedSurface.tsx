@@ -1056,6 +1056,7 @@ export default function OBPResolvedSurface({
                     tenantId={store.tenantId}
                     storeName={storeName || t('publicFallbackMenu')}
                     storeTimeZone={store.timeZone}
+                    themeColor={accentColor}
                     promoteInstallation={
                         (store as any)?.pwaSettings?.promoteInstallation !== false
                     }

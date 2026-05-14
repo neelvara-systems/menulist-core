@@ -596,6 +596,8 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                 updateData.suppressedUntil = Timestamp.fromDate(
                     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
                 );
+            } else {
+                delete updateData.suppressedUntil;
             }
             await setDoc(campaignDocRef, updateData, { merge: true });
 

@@ -34,6 +34,7 @@ interface Props {
     storeTimeZone?: string;
     promoteInstallation: boolean;
     trackingEnabled: boolean;
+    themeColor?: string;
 }
 
 export default function OBPCustomerAppMount(props: Props) {

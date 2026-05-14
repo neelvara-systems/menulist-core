@@ -14,9 +14,17 @@ interface Props {
     open: boolean;
     onClose: () => void;
     storeName: string;
+    themeColor?: string;
+    textColor?: string;
 }
 
-export default function InstallInstructions({ open, onClose, storeName }: Props) {
+export default function InstallInstructions({
+    open,
+    onClose,
+    storeName,
+    themeColor,
+    textColor,
+}: Props) {
     // Close on Escape.
     useEffect(() => {
         if (!open) return;
@@ -96,8 +104,8 @@ export default function InstallInstructions({ open, onClose, storeName }: Props)
                         width: '100%',
                         marginTop: 24,
                         padding: '14px 16px',
-                        background: '#0f172a',
-                        color: '#ffffff',
+                        background: themeColor || '#0f172a',
+                        color: textColor || '#ffffff',
                         border: 'none',
                         borderRadius: 12,
                         fontSize: 15,

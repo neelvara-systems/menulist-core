@@ -27,7 +27,7 @@ import {
 
 // STEP 2 - KB Ingestion: Triggered when a new ingestion job doc is created
 export const startGeneration = onDocumentCreated(
-    { ...FUNCTION_OPTIONS.aiCallable, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
+    { ...FUNCTION_OPTIONS.aiEventTrigger, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
     async (event: FirestoreEvent<QueryDocumentSnapshot | undefined, { jobId: string }>) => {
         const logger = functions.logger;
         const snap = event.data;
@@ -46,7 +46,7 @@ export const startGeneration = onDocumentCreated(
 
 // STEP 8 - KB Ingestion: Triggered when ingestion job doc is updated (finalize publish)
 export const finalizePublish = onDocumentUpdated(
-    { ...FUNCTION_OPTIONS.aiCallable, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
+    { ...FUNCTION_OPTIONS.aiEventTrigger, document: `${INGESTION_JOB_COLLECTION}/{jobId}` },
     async (event) => {
         const logger = functions.logger;
         const before = event.data?.before.data() as IngestionJob;

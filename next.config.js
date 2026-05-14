@@ -73,6 +73,11 @@ const nextConfig = {
         ],
     },
     webpack(config, { isServer, dev, nextRuntime }) {
+        config.resolve.alias = {
+            ...config.resolve.alias,
+            'private-next-pages': path.join(__dirname, 'src/pages'),
+        };
+
         if (isServer) {
             config.externals = [
                 ...config.externals,

@@ -53,7 +53,12 @@ import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescript
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
-import { deriveCustomerAppShortName, getCustomerAppleStartupImages } from "@lib/pwa/customerAppAssets";
+import {
+    deriveCustomerAppShortName,
+    getCustomerAppIconUrl,
+    getCustomerAppIconVersion,
+    getCustomerAppleStartupImages,
+} from "@lib/pwa/customerAppAssets";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
 import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
 import {
@@ -630,8 +635,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const pwaEnabled =
         FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA &&
         storeData.pwaSettings?.enableInstallableApp !== false;
+    const pwaIconVersion = getCustomerAppIconVersion(storeData);
     const appleTouchIconUrl = pwaEnabled
-        ? `/api/app-icons/${storeData.id}/180`
+        ? getCustomerAppIconUrl(storeData.id, 180, pwaIconVersion)
         : undefined;
     const pwaShortName =
         getLocalizedText(
@@ -803,7 +809,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     ? {
                         appleWebApp: {
                             capable: true,
-                            startupImage: getCustomerAppleStartupImages(storeData.id),
+                            startupImage: getCustomerAppleStartupImages(storeData.id, pwaIconVersion),
                             statusBarStyle: "default",
                             title: appleWebAppTitle,
                         },
@@ -858,7 +864,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             ? {
                 appleWebApp: {
                     capable: true,
-                    startupImage: getCustomerAppleStartupImages(storeData.id),
+                    startupImage: getCustomerAppleStartupImages(storeData.id, pwaIconVersion),
                     statusBarStyle: "default",
                     title: appleWebAppTitle,
                 },
@@ -1880,7 +1886,10 @@ export default function ClientMenuPage({ params, searchParams }: PageProps) {
         const CompliancePageContent = require('../compliance/CompliancePageContent').default;
         return (
             <Suspense fallback={<div style={{ minHeight: '100dvh', background: '#fafafa' }} />}>
-                <CompliancePageContent type={slug as 'privacy' | 'terms' | 'refund'} />
+                <CompliancePageContent
+                    type={slug as 'privacy' | 'terms' | 'refund'}
+                    backHref={appendPublicLanguageParam('/', requestedLanguage)}
+                />
             </Suspense>
         );
     }

@@ -6,6 +6,7 @@ import { updateProjectMetadata } from '@database/projects';
 import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
+import { getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
@@ -30,6 +31,59 @@ interface ManageLanguagesSheetProps {
     onSaved: (updatedProject: Project) => void;
 }
 
+const normalizeLanguageCode = (value: unknown): string => (
+    typeof value === 'string' ? value.trim().toLowerCase() : ''
+);
+
+const getUniqueLanguageCodes = (languages: unknown, fallback = 'en'): string[] => {
+    const codes = Array.isArray(languages)
+        ? languages
+            .map(normalizeLanguageCode)
+            .filter(Boolean)
+        : [];
+
+    const uniqueCodes = Array.from(new Set(codes));
+    return uniqueCodes.length ? uniqueCodes : [fallback];
+};
+
+const getLanguageName = (code: string): string => (
+    GlobalLanguagesList.find((language) => language.code === code)?.name || code.toUpperCase()
+);
+
+const syncProjectPrimaryLanguage = (project: Project, requestedPrimaryCode: string): Project => {
+    const languageCodes = getUniqueLanguageCodes((project as any).languages);
+    const primaryLanguageCode = languageCodes.includes(requestedPrimaryCode)
+        ? requestedPrimaryCode
+        : languageCodes[0] || 'en';
+
+    (project as any).languages = languageCodes;
+    (project as any).defaultLanguage = primaryLanguageCode;
+
+    project.files?.forEach((file: any) => {
+        const data = file?.extractedData?.data;
+        if (!data) return;
+
+        const existingLanguages = Array.isArray(data.languages) ? data.languages : [];
+        const existingByCode = new Map<string, any>(
+            existingLanguages
+                .map((language: any) => [normalizeLanguageCode(language?.code), language] as [string, any])
+                .filter(([code]) => Boolean(code))
+        );
+
+        data.languages = languageCodes.map((code) => {
+            const existingLanguage: any = existingByCode.get(code) || {};
+            return {
+                ...existingLanguage,
+                code,
+                isPrimary: code === primaryLanguageCode,
+                name: existingLanguage.name || getLanguageName(code),
+            };
+        });
+    });
+
+    return project;
+};
+
 export default function ManageLanguagesSheet({
     projectData,
     visible,
@@ -48,15 +102,32 @@ export default function ManageLanguagesSheet({
         borderRadius: 14,
     } as const;
 
-    const projectLanguages = projectData.languages || ['en'];
-    const sourceLangCode = projectLanguages[0] || 'en';
+    const projectLanguages = useMemo(
+        () => getUniqueLanguageCodes(projectData.languages),
+        [projectData.languages]
+    );
+    const primaryLanguageCode = useMemo(() => {
+        const preferredLanguage = getProjectPreferredLanguage(projectData, storeDetails);
+        return projectLanguages.includes(preferredLanguage)
+            ? preferredLanguage
+            : projectLanguages[0] || 'en';
+    }, [projectData, projectLanguages, storeDetails]);
+    const sourceLangCode = primaryLanguageCode;
     const sourceLang = GlobalLanguagesList.find((lang) => lang.code === sourceLangCode) || GlobalLanguagesList[0];
 
+    const orderedProjectLanguages = useMemo(
+        () => [
+            primaryLanguageCode,
+            ...projectLanguages.filter((code) => code !== primaryLanguageCode),
+        ],
+        [primaryLanguageCode, projectLanguages]
+    );
+
     const currentLanguages = useMemo(
-        () => projectLanguages
+        () => orderedProjectLanguages
             .map((code) => GlobalLanguagesList.find((lang) => lang.code === code))
             .filter(Boolean),
-        [projectLanguages]
+        [orderedProjectLanguages]
     );
 
     const languageIssues = useMemo(
@@ -101,7 +172,12 @@ export default function ManageLanguagesSheet({
                 setIsSaving(true);
                 try {
                     const updated = removeObjRef(projectData);
-                    updated.languages = projectLanguages.filter((code) => code !== languageCode);
+                    const nextLanguages = projectLanguages.filter((code) => code !== languageCode);
+                    updated.languages = nextLanguages;
+                    syncProjectPrimaryLanguage(
+                        updated,
+                        primaryLanguageCode === languageCode ? nextLanguages[0] || 'en' : primaryLanguageCode,
+                    );
                     onSaved(updated);
                     Toast.show({ content: t('languageRemoved'), duration: 1200 });
                 } catch {
@@ -123,6 +199,8 @@ export default function ManageLanguagesSheet({
         try {
             let updated = removeObjRef(projectData);
             updated.languages = [...projectLanguages, targetLang.code];
+            updated.defaultLanguage = primaryLanguageCode;
+            syncProjectPrimaryLanguage(updated, primaryLanguageCode);
 
             const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
             let hadTranslationError = false;
@@ -161,6 +239,8 @@ export default function ManageLanguagesSheet({
             if (hadTranslationError) {
                 throw new Error('Language translation failed.');
             }
+
+            syncProjectPrimaryLanguage(updated, primaryLanguageCode);
 
             const translatedProjectContent = await translateProjectPublicContent({
                 projectDetails: updated,
@@ -227,7 +307,7 @@ export default function ManageLanguagesSheet({
                 setSavingDetail(`Repairing ${language.nativeName || language.name}`);
                 try {
                     const updated = await repairLanguageProject(projectData, languageCode, sourceLang.code);
-                    onSaved(updated);
+                    onSaved(syncProjectPrimaryLanguage(updated, sourceLang.code));
                     Toast.show({ content: `${language.name} repaired`, duration: 1400 });
                 } catch (error) {
                     if (error instanceof AICapacityError) {
@@ -259,6 +339,7 @@ export default function ManageLanguagesSheet({
                     for (const issue of languagesNeedingRepair) {
                         updated = await repairLanguageProject(updated, issue.code, sourceLang.code);
                     }
+                    syncProjectPrimaryLanguage(updated, sourceLang.code);
                     onSaved(updated);
                     Toast.show({ content: 'All language issues repaired', duration: 1500 });
                 } catch (error) {
@@ -277,17 +358,15 @@ export default function ManageLanguagesSheet({
     };
 
     const handleMakePrimary = async (languageCode: string) => {
-        if (!projectLanguages.includes(languageCode) || projectLanguages[0] === languageCode) {
+        if (!projectLanguages.includes(languageCode) || primaryLanguageCode === languageCode) {
             return;
         }
 
         setIsSaving(true);
         try {
             const updated = removeObjRef(projectData);
-            updated.languages = [
-                languageCode,
-                ...projectLanguages.filter((code) => code !== languageCode),
-            ];
+            updated.languages = projectLanguages;
+            syncProjectPrimaryLanguage(updated, languageCode);
             onSaved(updated);
             Toast.show({ content: t('primaryLanguage'), duration: 1200 });
         } catch {

@@ -17,6 +17,7 @@ import {
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { LuChevronLeft } from "react-icons/lu";
 import { doc, getDoc } from "firebase/firestore";
 import { notFound } from "next/navigation";
 
@@ -28,9 +29,10 @@ async function getTenantFromHeaders() {
 
 interface CompliancePageContentProps {
     type: 'privacy' | 'terms' | 'refund';
+    backHref?: string;
 }
 
-export default async function CompliancePageContent({ type }: CompliancePageContentProps) {
+export default async function CompliancePageContent({ type, backHref = '/' }: CompliancePageContentProps) {
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
 
     // Resolve store
@@ -96,9 +98,15 @@ export default async function CompliancePageContent({ type }: CompliancePageCont
 
     const title = titleMap[type] || 'Policy';
     const businessName = inputs.businessName;
+    const logoUrl = storeData?.logo || null;
 
     return (
-        <ComplianceShell title={title} businessName={businessName}>
+        <ComplianceShell
+            title={title}
+            businessName={businessName}
+            logoUrl={logoUrl}
+            backHref={backHref}
+        >
             <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 14, color: '#333' }}>
                 {content}
             </div>
@@ -111,10 +119,14 @@ export default async function CompliancePageContent({ type }: CompliancePageCont
 function ComplianceShell({
     title,
     businessName,
+    logoUrl,
+    backHref = '/',
     children,
 }: {
     title: string;
     businessName: string;
+    logoUrl?: string | null;
+    backHref?: string;
     children: React.ReactNode;
 }) {
     return (
@@ -131,6 +143,81 @@ function ComplianceShell({
                 minHeight: '100dvh',
             }}>
                 {/* Header */}
+                <div style={{
+                    marginBottom: 24,
+                    paddingBottom: 20,
+                    borderBottom: '1px solid #f0f0f0',
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        marginBottom: 16,
+                    }}>
+                        <a
+                            aria-label="Back"
+                            href={backHref}
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 10,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid #e5e5e5',
+                                color: '#222',
+                                textDecoration: 'none',
+                                flex: '0 0 auto',
+                            }}
+                        >
+                            <LuChevronLeft size={18} />
+                        </a>
+                        {logoUrl ? (
+                            <img
+                                src={logoUrl}
+                                alt={`${businessName} logo`}
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 999,
+                                    objectFit: 'cover',
+                                    border: '1px solid #eee',
+                                    background: '#fafafa',
+                                }}
+                            />
+                        ) : (
+                            <div
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 999,
+                                    border: '1px solid #eee',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 18,
+                                    fontWeight: 600,
+                                    color: '#444',
+                                    background: '#f4f4f4',
+                                }}
+                                aria-hidden="true"
+                            >
+                                {businessName?.slice(0, 1).toUpperCase() || 'B'}
+                            </div>
+                        )}
+                        <div>
+                            <h1 style={{
+                                fontSize: 16,
+                                fontWeight: 600,
+                                color: '#111',
+                                margin: 0,
+                                lineHeight: 1.2,
+                            }}>
+                                {businessName}
+                            </h1>
+                        </div>
+                    </div>
+                </div>
                 <div style={{ marginBottom: 32 }}>
                     <h1 style={{
                         fontSize: 14,

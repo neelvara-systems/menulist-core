@@ -11,6 +11,8 @@ import { getHoursConfidenceState } from '@lib/outputControl';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { generateStickerPNG } from '@lib/physical-surfaces/stickerGenerator';
 import { generateTentCardPDF } from '@lib/physical-surfaces/tentCardGenerator';
+import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/today/inactiveItemsReminder';
+import { sortOperationalCampaignsByPriority } from '@lib/today/todayCampaignPrioritizer';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -41,6 +43,39 @@ const parseTimeToMinutes = (value?: string): number | null => {
     if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
     if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
     return hours * 60 + minutes;
+};
+
+const toPluralLabel = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
+
+const buildTodayDigest = (
+    hasPrimary: boolean,
+    operationalCount: number,
+    staffPromptEligible: boolean,
+    hasMaintenanceCards: boolean,
+) => {
+    const parts: string[] = [];
+
+    if (hasPrimary) {
+        parts.push(toPluralLabel(1, 'main action', 'main actions'));
+    }
+
+    if (operationalCount > 0) {
+        parts.push(toPluralLabel(operationalCount, 'extra action', 'extra actions'));
+    }
+
+    if (staffPromptEligible) {
+        parts.push('staff prompt');
+    }
+
+    if (hasMaintenanceCards) {
+        parts.push('maintenance cards');
+    }
+
+    if (!parts.length) {
+        return 'No action suggestions available right now.';
+    }
+
+    return `${parts.join(' · ')}.`;
 };
 
 const getCurrentMinutesForTimeZone = (timeZone?: string): number => {
@@ -82,10 +117,11 @@ const getTodayTimeRange = (value?: string) => {
 interface MobileHoursScreenProps {
     onOpenDashboard?: () => void;
     onOpenHistory?: () => void;
+    onOpenMenuTab: () => void;
     onOpenShare?: () => void;
 }
 
-export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOpenShare }: MobileHoursScreenProps) {
+export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOpenMenuTab, onOpenShare }: MobileHoursScreenProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileHours');
     const tToday = useTranslations('MobileToday');
@@ -93,7 +129,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const tMore = useTranslations('MobileMore');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
-    const { projectsList, selectProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
+    const { projectsList, selectProject, selectedProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
     const currentTempStatus = storeDetails?.tempStatus;
     const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
     const [isUpdating, setIsUpdating] = useState(false);
@@ -115,6 +151,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const [isGeneratingTodayActions, setIsGeneratingTodayActions] = useState(false);
     const [isTodayGuideOpen, setIsTodayGuideOpen] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
     const menuUrl = generateProjectUrl(
@@ -302,8 +339,25 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const primaryCampaign = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading
         ? (todayCampaigns?.primary as TodayCampaignSummary | undefined)
         : undefined;
-    const hasOperationalCampaigns = Boolean(todayCampaigns?.operational?.length);
+    const sortedOperationalCampaigns = sortOperationalCampaignsByPriority(todayCampaigns?.operational || []);
+    const inactiveItemsReminder = useMemo(
+        () => getInactiveItemsReminder(selectedProject as any),
+        [selectedProject]
+    );
+    const hasOperationalCampaigns = sortedOperationalCampaigns.length > 0;
     const hasAnyTodayCampaign = Boolean(primaryCampaign || hasOperationalCampaigns);
+    const hasMaintenanceCards = Boolean(
+        (physicalSurfaces?.tentCard?.eligible || false)
+        || (physicalSurfaces?.counterSticker?.eligible || false)
+        || (staffPrompt?.eligible || false)
+    );
+    const todayDigest = buildTodayDigest(
+        Boolean(primaryCampaign),
+        sortedOperationalCampaigns.length,
+        Boolean(staffPrompt?.eligible),
+        hasMaintenanceCards,
+    );
+    const shouldShowMainActionHint = !primaryCampaign && hasAnyTodayCampaign;
     const shouldShowGenerateTodayAction = FEATURE_FLAGS.SOCIAL_CONTENT_ENABLED && !isCampaignsLoading && !hasAnyTodayCampaign;
     const mealName = primaryCampaign ? getMealName() : '';
     const primaryTitle = primaryCampaign
@@ -317,6 +371,25 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             .replace('{mealName}', mealName.toLowerCase())
             .replace('{festivalName}', 'the occasion')
         : '';
+
+    useEffect(() => {
+        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        if (!dismissKey) {
+            setIsInactiveReminderDismissed(false);
+            return;
+        }
+        setIsInactiveReminderDismissed(localStorage.getItem(dismissKey) === '1');
+    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId]);
+
+    const dismissInactiveReminder = () => {
+        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        if (dismissKey) {
+            localStorage.setItem(dismissKey, '1');
+        }
+        setIsInactiveReminderDismissed(true);
+    };
+
+    const shouldShowInactiveReminder = Boolean(inactiveItemsReminder && !isInactiveReminderDismissed);
 
     const handleOpenPreview = () => {
         if (!menuUrl) {
@@ -781,6 +854,17 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 </Card>
             ) : null}
 
+            <Text type="secondary" style={{ fontSize: 13 }}>{todayDigest}</Text>
+
+            {shouldShowMainActionHint ? (
+                <Card style={{ borderRadius: 20 }}>
+                    <Flex gap={10} vertical>
+                        <Text strong>No main action today</Text>
+                        <Text type="secondary">Generate one suggested action if you want a guided action now.</Text>
+                    </Flex>
+                </Card>
+            ) : null}
+
             {primaryCampaign ? (
                 <Card style={{ borderRadius: 20 }}>
                     <Flex gap={12} vertical>
@@ -848,6 +932,29 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 </Card>
             ) : null}
 
+            {shouldShowInactiveReminder && inactiveItemsReminder ? (
+                <Card style={{ borderRadius: 20 }}>
+                    <Flex gap={10} vertical>
+                        <Text strong>{inactiveItemsReminder.count} inactive {inactiveItemsReminder.count === 1 ? 'item' : 'items'}</Text>
+                        <Text type="secondary">Customers cannot see them until you activate them.</Text>
+                        {inactiveItemsReminder.names.length ? (
+                            <Text type="secondary">
+                                {inactiveItemsReminder.names.join(', ')}
+                                {inactiveItemsReminder.count > inactiveItemsReminder.names.length ? ' and more.' : '.'}
+                            </Text>
+                        ) : null}
+                        <Flex gap={8}>
+                            <Button block color="primary" onClick={onOpenMenuTab} size="large">
+                                Review items
+                            </Button>
+                            <Button block fill="none" onClick={dismissInactiveReminder} size="large">
+                                Not now
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </Card>
+            ) : null}
+
             {staffPrompt?.eligible ? (
                 <Card style={{ borderRadius: 20 }}>
                     <Flex gap={12}>
@@ -862,11 +969,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 </Card>
             ) : null}
 
-            {todayCampaigns?.operational?.length ? (
-                <Card style={{ borderRadius: 20 }} title="Extra actions for today">
+            {hasOperationalCampaigns ? (
+                <Card style={{ borderRadius: 20 }} title="Needs attention">
                     <Flex gap={8} vertical>
-                        <Text type="secondary">Extra ready actions for today. Tap one to open it and mark it handled.</Text>
-                        {todayCampaigns.operational.slice(0, 2).map((campaign) => {
+                        <Text type="secondary">These are lower-priority actions for today. Use them if they fit your plan.</Text>
+                        {sortedOperationalCampaigns.slice(0, 2).map((campaign) => {
                             const title = campaign.type === 'now_available'
                                 ? tToday('nowAvailable', { item: campaign.subject?.itemName || t('itemFallback') })
                                 : (ACTION_TITLES[campaign.type] || 'Share')
@@ -877,7 +984,9 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                                 <Card key={campaign.campaignId} style={{ borderRadius: 14 }}>
                                     <Flex gap={8} vertical>
                                         <Text strong>{title}</Text>
-                                        <Text type="secondary">This is an extra action, not the main one for today.</Text>
+                                        <Text type="secondary">
+                                            Lower-priority action for today. Open it only if it fits your plan.
+                                        </Text>
                                         <Flex justify="end">
                                             <Button
                                                 fill="outline"

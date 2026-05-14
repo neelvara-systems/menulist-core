@@ -268,12 +268,14 @@ firebase deploy --only functions
 ### Step 4: Set up GCP budget alerts
 1. Go to Google Cloud Console → Billing → Budgets
 2. Set alerts at ₹500, ₹1000, ₹2000
-3. Add Telegram as notification channel
+3. For webhook delivery, route Budget → Pub/Sub → `gcpBudgetAlertWebhook`
+4. Configure the Pub/Sub push endpoint with the `GCP_BUDGET_WEBHOOK_SECRET` query parameter or `x-menulist-budget-secret` header. Never leave the budget webhook open without this secret.
+5. Add Telegram as notification channel
 
 ### Step 5: Verify
 1. Go to `/ops` — should load with current data
 2. Toggle SAFE_MODE on/off — verify AI routes return 503
-3. Trigger a test alert — verify Telegram notification
+3. Trigger a test alert with the webhook secret — verify SAFE_MODE and Telegram notification
 
 ---
 
@@ -281,4 +283,5 @@ firebase deploy --only functions
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 | May 14, 2026 | Added budget webhook secret requirement for production-safe alert delivery |
 | 1.0 | February 20, 2026 | Initial guide from implementation |

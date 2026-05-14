@@ -40,8 +40,12 @@ function verifyManifestIdentity() {
 
 function verifyManifestLink() {
   const page = read('src/app/client/[[...slug]]/page.tsx');
+  const clientLayout = read('src/app/client/layout.tsx');
   assertIncludes(page, "const manifestUrl = '/manifest.webmanifest';", 'client metadata');
-  assertIncludes(page, 'startupImage: getCustomerAppleStartupImages(storeData.id)', 'client metadata startup images');
+  assertIncludes(page, 'startupImage: getCustomerAppleStartupImages(storeData.id, pwaIconVersion)', 'client metadata startup images');
+  assertIncludes(clientLayout, 'startupImage: fallbackStartupImages', 'client layout fallback startup images');
+  assertIncludes(clientLayout, "'color-scheme': 'light'", 'client layout color-scheme metadata');
+  assertIncludes(clientLayout, 'background: #ffffff !important', 'client layout launch background');
   assertNotIncludes(page, 'manifest.webmanifest?start=', 'client metadata');
 }
 
@@ -110,20 +114,32 @@ function verifyCustomerAppAssets() {
   const clientPage = read('src/app/client/[[...slug]]/page.tsx');
   const manifestGenerator = read('src/lib/pwa/manifestGenerator.ts');
   const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
+  const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
+  const pwaDal = read('src/database/pwa/index.ts');
   const executableIconRoute = stripJsComments(appIconRoute);
 
   assertIncludes(appIconRoute, 'renderCustomerAppIcon', 'customer app icon route');
-  assertIncludes(appIconRoute, 'resolveCustomerAppIconImageUrl', 'customer app icon route');
+  assertIncludes(appIconRoute, 'resolveCustomerAppIconSource', 'customer app icon route');
+  assertIncludes(appIconRoute, "iconSource.source === 'override'", 'customer app icon route');
   assertNotIncludes(executableIconRoute, 'Response.redirect', 'customer app icon route executable code');
   assertIncludes(appSplashRoute, 'renderCustomerAppSplash', 'customer app splash route');
   assertIncludes(appSplashRoute, 'parseCustomerAppSplashSize', 'customer app splash route');
+  assertIncludes(appSplashRoute, 'resolveCustomerAppIconSource', 'customer app splash route');
+  assertIncludes(appSplashRoute, "iconSource.source === 'override' ? 0.88 : 0.72", 'customer app splash route');
   assertIncludes(assetHelpers, 'CUSTOMER_APPLE_STARTUP_IMAGES', 'customer app asset helpers');
   assertIncludes(assetHelpers, 'deriveCustomerAppShortName', 'customer app asset helpers');
+  assertIncludes(assetHelpers, 'getCustomerAppIconVersion', 'customer app asset helpers');
+  assertIncludes(assetHelpers, "mode === 'generated'", 'customer app asset helpers');
   assertIncludes(assetHelpers, "objectFit: 'contain'", 'customer app asset helpers');
   assertIncludes(clientPage, 'deriveCustomerAppShortName(storeName, pwaShortName)', 'client metadata app title');
-  assertIncludes(manifestGenerator, "`${iconBase}/180`", 'customer app manifest icons');
-  assertIncludes(manifestGenerator, "`${iconBase}/384`", 'customer app manifest icons');
+  assertIncludes(clientPage, 'getCustomerAppIconUrl(storeData.id, 180, pwaIconVersion)', 'client metadata app icon version');
+  assertIncludes(clientPage, 'getCustomerAppleStartupImages(storeData.id, pwaIconVersion)', 'client metadata startup image version');
+  assertIncludes(manifestGenerator, 'getCustomerAppIconUrl(input.id, size, input.iconVersion)', 'customer app manifest icons');
   assertIncludes(mobileSettings, "objectFit: 'contain'", 'mobile customer app icon preview');
+  assertIncludes(mobileSettings, 'pwaIconUpdatedAt', 'mobile customer app icon cache busting');
+  assertIncludes(desktopSettings, "objectFit: 'contain'", 'desktop customer app icon preview');
+  assertIncludes(desktopSettings, 'pwaIconUpdatedAt', 'desktop customer app icon cache busting');
+  assertIncludes(pwaDal, "'publicPresence.pwaIconUpdatedAt'", 'PWA DAL icon update timestamp');
 }
 
 function verifyAnalyticsCoverage() {

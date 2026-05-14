@@ -49,6 +49,7 @@ interface Props {
     /** From store.analytics.trackMenuViews !== false (default true). */
     trackingEnabled?: boolean;
     locationTrackingEnabled?: boolean;
+    themeColor?: string;
 }
 
 export default function CustomerAppController({
@@ -60,6 +61,7 @@ export default function CustomerAppController({
     promoteInstallation = true,
     trackingEnabled = true,
     locationTrackingEnabled = true,
+    themeColor,
 }: Props) {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
@@ -132,6 +134,7 @@ export default function CustomerAppController({
             storeName={storeName}
             storeTimeZone={storeTimeZone}
             businessDayEndTime={businessDayEndTime}
+            themeColor={themeColor}
             deferredPrompt={deferredPrompt}
             trackingEnabled={trackingEnabled}
             locationTrackingEnabled={locationTrackingEnabled}

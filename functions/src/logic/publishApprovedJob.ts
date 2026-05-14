@@ -89,7 +89,7 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
         await firestoreAdmin.runTransaction(async (transaction) => {
             // 2. Pre-flight Check (Idempotency)
             const jobDoc = await transaction.get(jobRef);
-            if (!jobDoc.exists) throw new Error(`Job ${jobId} not found.`);
+            if (!jobDoc.exists) throw new HttpsError('not-found', `Job ${jobId} not found.`);
             const job = jobDoc.data() as IngestionJob;
 
             logger.info(`[publishApprovedJobLogic] Pre-flight check. with job id ${jobId} and job data ${job}`);
@@ -150,9 +150,9 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                     }
                 }
 
-                const articleToReplace = newArticle.similarArticles[0];
-                const newArticleMeta = { id: articleToReplace.id, title: articleToReplace.title, active: true, index: 0, url: "" };
+                const articleToReplace = newArticle.similarArticles?.[0];
                 if (!articleToReplace) return;
+                const newArticleMeta = { id: articleToReplace.id, title: articleToReplace.title, active: true, index: 0, url: "" };
                 // 2. Replace the article in the categories map and remove other similar articles
                 // 3. Remove all other similar articles from the entire map 
                 for (const categoryId in currentCategoriesData.categories) {
@@ -223,10 +223,20 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
 
     } catch (error: any) {
         logger.error(`[publishApprovedJobLogic] Critical error during publish orchestration:`, error);
-        await jobRef.update({
-            status: INGESTION_JOB_STATUS.FAILED,
-            errorMessage: `Publishing failed: ${error.message}`
-        });
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        try {
+            const jobSnapshot = await jobRef.get();
+            if (jobSnapshot.exists) {
+                await jobRef.update({
+                    status: INGESTION_JOB_STATUS.FAILED,
+                    errorMessage: `Publishing failed: ${error.message}`
+                });
+            }
+        } catch (statusError) {
+            logger.error(`[publishApprovedJobLogic] Failed to persist failure status for job ${jobId}:`, statusError);
+        }
         throw new HttpsError('internal', `Failed to publish job ${jobId}.`, error.message);
     }
 };

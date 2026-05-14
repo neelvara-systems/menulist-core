@@ -34,6 +34,9 @@ export const regenerateEmbeddingLogic = async (articleId: string) => {
 
     } catch (error: any) {
         logger.error(`[regenerateEmbeddingLogic] Error regenerating embedding: with article id ${articleId}`, error);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
         throw new HttpsError('internal', `Failed to regenerate embedding for article ${articleId}.`, error.message);
     }
 };

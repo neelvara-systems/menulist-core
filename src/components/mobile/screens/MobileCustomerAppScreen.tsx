@@ -168,6 +168,7 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
             }
 
             let nextIconUrl = savedIconUrl.trim();
+            let nextIconUpdatedAt: string | undefined;
             if (!removeIconOnSave && selectedIconUrl && selectedIconUrl !== originalDraft.iconUrl) {
                 if (!selectedIconUrl.startsWith('data:')) {
                     throw new Error('Selected icon format is invalid. Please reselect the icon.');
@@ -183,23 +184,36 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     tenantId: storeDetails.tenantId,
                     storeId: storeDetails.storeId,
                 });
-                await updatePWAIconOverride(storeDetails.storeId, {
+                const iconResult = await updatePWAIconOverride(storeDetails.storeId, {
                     pwaIconOverrideUrl: uploadedUrl,
                     pwaIconMode: 'override',
                 });
+                nextIconUpdatedAt = iconResult?.pwaIconUpdatedAt;
                 if (nextIconUrl && nextIconUrl !== uploadedUrl && nextIconUrl.includes('firebasestorage.googleapis.com')) {
                     void deleteFileByUrl(nextIconUrl);
                 }
                 nextIconUrl = uploadedUrl;
             } else if (removeIconOnSave && nextIconUrl) {
-                await updatePWAIconOverride(storeDetails.storeId, {
+                const iconResult = await updatePWAIconOverride(storeDetails.storeId, {
                     pwaIconOverrideUrl: null,
                     pwaIconMode: 'generated',
                 });
+                nextIconUpdatedAt = iconResult?.pwaIconUpdatedAt;
                 if (nextIconUrl.includes('firebasestorage.googleapis.com')) {
                     void deleteFileByUrl(nextIconUrl);
                 }
                 nextIconUrl = '';
+            }
+            if (hasIconChanges) {
+                setStoreDetails((previous: any) => ({
+                    ...previous,
+                    publicPresence: {
+                        ...(previous?.publicPresence || {}),
+                        pwaIconMode: nextIconUrl ? 'override' : 'generated',
+                        pwaIconOverrideUrl: nextIconUrl || null,
+                        ...(nextIconUpdatedAt ? { pwaIconUpdatedAt: nextIconUpdatedAt } : {}),
+                    },
+                }));
             }
 
             setSavedIconUrl(nextIconUrl);

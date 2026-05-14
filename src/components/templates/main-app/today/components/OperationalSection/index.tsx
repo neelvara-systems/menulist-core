@@ -26,9 +26,9 @@ const OperationalSection = ({ campaigns, onComplete, onSkip, isProcessing }: Ope
 
     return (
         <div className={styles.operationalSection}>
-            <div className={styles.sectionTitle}>Extra actions for today</div>
+            <div className={styles.sectionTitle}>Needs attention</div>
             <p className={styles.sectionDescription}>
-                These are extra ready actions. You can do the main action only, or use one of these too if they fit today.
+                These are lower-priority actions for today. Use them if they fit your plan.
             </p>
 
             <div className={styles.operationalCards}>
@@ -48,7 +48,7 @@ const OperationalSection = ({ campaigns, onComplete, onSkip, isProcessing }: Ope
                                     <div className={styles.cardText}>
                                         <p className={styles.cardTitle}>{title}</p>
                                         <p className={styles.cardSubtitle}>
-                                            This is an extra action, not the main one for today.
+                                            Lower-priority action for today. Open it if useful; otherwise ignore.
                                         </p>
                                     </div>
                                 </div>

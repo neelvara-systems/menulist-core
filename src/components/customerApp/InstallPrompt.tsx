@@ -21,9 +21,11 @@
 
 import { getSessionId } from '@lib/analytics/session';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
+import { getLuminance } from '@lib/colorEnforcement';
 import type { BeforeInstallPromptEvent } from '@lib/pwa/installDetection';
 import { recordPromptShown } from '@lib/pwa/installTracker';
 import { detectPlatform } from '@lib/pwa/platformDetection';
+import { APP_THEME_COLOR } from '@constant/common';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import InstallInstructions from './InstallInstructions';
 
@@ -37,9 +39,25 @@ interface Props {
     deferredPrompt: BeforeInstallPromptEvent | null;
     trackingEnabled: boolean;
     locationTrackingEnabled?: boolean;
+    themeColor?: string;
     onDismiss: () => void;
     onInstallAccepted: () => void;
 }
+
+const normalizeThemeColor = (value?: string): string => {
+    if (typeof value !== 'string') return APP_THEME_COLOR;
+
+    const trimmed = value.trim();
+    const isValidHex = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(trimmed);
+    if (!isValidHex) return APP_THEME_COLOR;
+
+    return trimmed;
+};
+
+const getSafeContrastColor = (background: string) => {
+    const luminance = getLuminance(background);
+    return luminance > 0.5 ? '#0f172a' : '#ffffff';
+};
 
 export default function InstallPrompt({
     storeId,
@@ -50,12 +68,15 @@ export default function InstallPrompt({
     deferredPrompt,
     trackingEnabled,
     locationTrackingEnabled = true,
+    themeColor,
     onDismiss,
     onInstallAccepted,
 }: Props) {
     const platform = useMemo(() => detectPlatform(), []);
     const [showIosInstructions, setShowIosInstructions] = useState(false);
     const [busy, setBusy] = useState(false);
+    const resolvedThemeColor = normalizeThemeColor(themeColor);
+    const installTextColor = getSafeContrastColor(resolvedThemeColor);
 
     // Fire PROMPT_SHOWN exactly once when the banner mounts (trackEvent's built-in
     // debounce will swallow any accidental re-fire).
@@ -169,8 +190,8 @@ export default function InstallPrompt({
                             width: 44,
                             height: 44,
                             borderRadius: 10,
-                            background: '#0f172a',
-                            color: '#ffffff',
+                            background: resolvedThemeColor,
+                            color: installTextColor,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -225,8 +246,8 @@ export default function InstallPrompt({
                         onClick={handleInstall}
                         disabled={busy}
                         style={{
-                            background: '#0f172a',
-                            color: '#ffffff',
+                            color: installTextColor,
+                            background: resolvedThemeColor,
                             border: 'none',
                             borderRadius: 10,
                             padding: '12px 18px',
@@ -246,6 +267,8 @@ export default function InstallPrompt({
                 open={showIosInstructions}
                 onClose={() => setShowIosInstructions(false)}
                 storeName={storeName}
+                themeColor={resolvedThemeColor}
+                textColor={installTextColor}
             />
         </>
     );

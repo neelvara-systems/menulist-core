@@ -2290,7 +2290,7 @@ export const triggerStoreNightlyScheduler = onCall({
  * Supports:
  * - { tId, sId, projectId } - Process single project
  * - { tId, sId } - Process all projects in a store
- * - {} - Process all projects in all stores
+ * - { runAll: true } or { scope: 'all' } - Process all projects in all stores
  */
 export const triggerDecisionBlocksScoring = onCall({
     region: 'us-central1',
@@ -2317,8 +2317,24 @@ export const triggerDecisionBlocksScoring = onCall({
         throw new HttpsError('permission-denied', 'Only platform owners can trigger Decision Blocks scoring');
     }
 
-    const { tId, sId, projectId } = request.data || {};
+    const data = request.data || {};
+    const tId = data.tId === undefined || data.tId === null ? '' : String(data.tId).trim();
+    const sId = data.sId === undefined || data.sId === null ? '' : String(data.sId).trim();
+    const projectId = data.projectId === undefined || data.projectId === null ? '' : String(data.projectId).trim();
+    const runAll = data.runAll === true || data.scope === 'all';
     const db = firestoreAdmin;
+
+    if (runAll && (tId || sId || projectId)) {
+        throw new HttpsError('invalid-argument', 'Use either runAll=true or a scoped tId/sId/projectId request, not both');
+    }
+
+    if (!runAll && !tId && !sId && !projectId) {
+        throw new HttpsError('invalid-argument', 'Provide tId and sId, or explicitly set runAll=true for an all-store run');
+    }
+
+    if ((tId && !sId) || (!tId && sId) || (projectId && (!tId || !sId))) {
+        throw new HttpsError('invalid-argument', 'Scoped Decision Blocks scoring requires tId and sId; projectId is optional');
+    }
 
     // Case 1: Process single project
     if (tId && sId && projectId) {

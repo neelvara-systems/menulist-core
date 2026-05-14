@@ -39,6 +39,7 @@ import { DecisionBlockEntry, PrecomputedDecisionBlocks } from '../../types';
 import { ExtractedDataCategory, ExtractedDataItem } from '../../types/extractedData.types';
 import { MenuSettings } from '../../types/project.types';
 import { MenuMoodConfig } from '../designSystem';
+import { MenuLayout } from '../designSystem';
 
 interface DecisionBlocksProps {
     items: ExtractedDataItem[];
@@ -59,6 +60,7 @@ interface DecisionBlocksProps {
     analyticsIds?: Partial<Pick<import('@lib/analytics/unified').TrackingData, 'tenantId' | 'storeId' | 'projectId' | 'storeTimeZone' | 'businessDayEndTime'>>;
     /** Controls whether decision-block analytics should fire. */
     trackingEnabled?: boolean;
+    menuLayout?: MenuLayout;
 }
 
 interface ComputedBlock {
@@ -506,6 +508,7 @@ export default function DecisionBlocks({
     showCategoryIcons = true,
     analyticsIds,
     trackingEnabled = true,
+    menuLayout = MenuLayout.LIST,
 }: DecisionBlocksProps) {
     const { deviceType } = useDeviceType();
     const isDesktopLayout = deviceType === 'desktop';
@@ -665,9 +668,13 @@ export default function DecisionBlocks({
         return null;
     }
 
+    const allBlocksHaveImages = blocks.every((rec) => Boolean(getPrimaryPublicMenuImage(rec.item)));
+    const showFeaturedCardLayout = menuLayout === MenuLayout.CARD && blocks.length === 3 && allBlocksHaveImages;
     const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
     const isSingleBlock = blocks.length === 1;
-    const useHorizontalScroller = !isDesktopLayout && !isSingleBlock;
+    const useHorizontalScroller = showFeaturedCardLayout && !isDesktopLayout && !isSingleBlock;
+    const featuredItemGap = showFeaturedCardLayout ? 10 : 8;
+    const featuredListMode = !showFeaturedCardLayout;
 
     return (
         <section
@@ -740,15 +747,26 @@ export default function DecisionBlocks({
                 <div
                     className="flex"
                     style={{
-                        display: isDesktopLayout ? 'grid' : 'flex',
-                        gap: 10,
-                        gridTemplateColumns: isDesktopLayout
-                            ? `repeat(${blocks.length}, minmax(0, 1fr))`
+                        display: showFeaturedCardLayout
+                            ? isDesktopLayout
+                                ? 'grid'
+                                : 'flex'
+                            : 'flex',
+                        flexDirection: featuredListMode ? 'column' : undefined,
+                        gap: featuredItemGap,
+                        gridTemplateColumns: showFeaturedCardLayout
+                            ? isDesktopLayout
+                                ? `repeat(${blocks.length}, minmax(0, 1fr))`
+                                : undefined
                             : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
                         paddingRight: useHorizontalScroller ? 14 : 0,
-                        width: isDesktopLayout || isSingleBlock ? '100%' : 'fit-content',
+                        width: showFeaturedCardLayout && (isDesktopLayout || isSingleBlock)
+                            ? '100%'
+                            : showFeaturedCardLayout
+                                ? 'fit-content'
+                                : '100%',
                     }}
                 >
                     {blocks.map((rec) => {
@@ -759,8 +777,8 @@ export default function DecisionBlocks({
 
                         const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, 'Menu item');
                         const itemImage = getPrimaryPublicMenuImage(rec.item);
-                        const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
-                        const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
+                                const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
+                                const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
                         const categoryMeta = categoryMetaById.get(rec.item.category);
                         const categoryLabel = categoryMeta?.label;
                         const categoryIcon = categoryMeta?.icon;
@@ -775,11 +793,11 @@ export default function DecisionBlocks({
                             ? categoryLabel
                             : translateReason(rec.reason, rec.reasonParams);
 
-                        return (
-                            <button
-                                type="button"
-                                key={rec.blockType}
-                                onClick={() => handleClick(rec)}
+                                return (
+                                    <button
+                                        type="button"
+                                        key={rec.blockType}
+                                        onClick={() => handleClick(rec)}
                                 aria-label={[
                                     displayTitle,
                                     itemName,
@@ -787,11 +805,15 @@ export default function DecisionBlocks({
                                     showItemPrices && itemPrice ? itemPrice : null,
                                 ].filter(Boolean).join('. ')}
                                 className="flex-shrink-0 transition-all duration-150 active:scale-[0.98] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
-                                style={{
-                                    '--tw-ring-color': `${moodConfig.accentColor}AA`,
-                                    alignItems: itemImage ? 'center' : 'stretch',
-                                    appearance: 'none',
-                                    background: moodConfig.itemStyle.background,
+                                        style={{
+                                            '--tw-ring-color': `${moodConfig.accentColor}AA`,
+                                            alignItems: featuredListMode
+                                                ? 'flex-start'
+                                                : itemImage
+                                                    ? 'center'
+                                                    : 'stretch',
+                                            appearance: 'none',
+                                            background: moodConfig.itemStyle.background,
                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                     borderRadius: Math.min(10, moodConfig.itemStyle.borderRadius || 10),
                                     boxShadow: '0 1px 0 rgba(0, 0, 0, 0.03)',
@@ -799,26 +821,26 @@ export default function DecisionBlocks({
                                     cursor: 'pointer',
                                     display: 'flex',
                                     flexShrink: useHorizontalScroller ? 0 : 1,
-                                    gap: itemImage ? 10 : 0,
-                                    minHeight: 86,
-                                    outline: 'none',
-                                    overflow: 'hidden',
-                                    padding: itemImage ? 10 : 12,
-                                    position: 'relative',
-                                    scrollSnapAlign: useHorizontalScroller ? 'start' : 'none',
-                                    textAlign: 'left',
-                                    userSelect: 'none',
-                                    WebkitUserSelect: 'none',
-                                    width: isSingleBlock
-                                        ? '100%'
-                                        : isDesktopLayout
-                                            ? '100%'
-                                            : itemImage
-                                            ? 'min(calc(100vw - 48px), 316px)'
-                                            : 'min(calc(100vw - 56px), 292px)',
-                                    WebkitTapHighlightColor: 'transparent',
-                                } as CSSProperties}
-                            >
+                                            gap: itemImage ? 10 : 0,
+                                            minHeight: featuredListMode ? 74 : 86,
+                                            outline: 'none',
+                                            overflow: 'hidden',
+                                            padding: itemImage ? 10 : 12,
+                                            position: 'relative',
+                                            scrollSnapAlign: useHorizontalScroller ? 'start' : 'none',
+                                            textAlign: 'left',
+                                            userSelect: 'none',
+                                            WebkitUserSelect: 'none',
+                                            width: featuredListMode
+                                                ? '100%'
+                                                : isSingleBlock
+                                                ? '100%'
+                                                : isDesktopLayout
+                                                    ? '100%'
+                                                    : 'min(calc(100vw - 48px), 316px)',
+                                            WebkitTapHighlightColor: 'transparent',
+                                        } as CSSProperties}
+                                    >
                                 {itemImage && (
                                     <div
                                         className="relative flex-shrink-0 overflow-hidden"

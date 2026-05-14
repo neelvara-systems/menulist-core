@@ -40,6 +40,11 @@
   width: 100%;
 }
 
+.todayDigest {
+  display: block;
+  margin-bottom: 8px;
+}
+
 .guideContent {
   display: flex;
   flex-direction: column;
@@ -50,6 +55,28 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.inactiveReminderCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ant-color-warning-bg) 75%, var(--ant-color-bg-container));
+  border: 1px solid var(--ant-color-warning-border);
+  margin-bottom: 24px;
+}
+
+.inactiveReminderActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 // Loading State
@@ -296,6 +323,16 @@
 
   &:hover {
     color: var(--ant-color-text-secondary);
+  }
+}
+
+.sectionSummaryCard {
+  background: color-mix(in srgb, var(--ant-color-bg-layout) 90%, var(--ant-color-bg-container));
+  border: 1px solid var(--ant-color-border-secondary);
+  margin-bottom: 16px;
+
+  :global(.ant-card-body) {
+    padding: 12px 14px;
   }
 }
 
