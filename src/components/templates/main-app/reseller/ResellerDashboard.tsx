@@ -27,9 +27,10 @@ function ResellerDashboard() {
     const { data: session } = useSession();
     const router = useRouter();
     const resellerId = (session as any)?.user?.id || '';
+    const resellerEmail = (session as any)?.user?.email || '';
     const isPlatform = (session as any)?.platformRole === 'PLATFORM';
 
-    const { profile, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform);
+    const { profile, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
 
     if (isLoading) {
         return (

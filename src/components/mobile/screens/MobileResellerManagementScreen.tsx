@@ -51,7 +51,7 @@ function draftFromProfile(profile: ResellerProfile): ResellerDraft {
         maxOfflineActivations: String(profile.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER),
         name: profile.name || '',
         notes: profile.notes || '',
-        password: profile.password || '',
+        password: '',
         phone: profile.phone || '',
         postalCode: profile.postalCode || '',
         state: profile.state || '',

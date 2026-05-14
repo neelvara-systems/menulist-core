@@ -21,6 +21,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { authOptions } from "@lib/auth";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -88,6 +89,12 @@ export async function POST(request: NextRequest) {
 
       const { email: cleanEmail, password: cleanPassword, name } = validation.data;
       const lowerEmail = cleanEmail.toLowerCase().trim();
+      const emailValidation = validateEmail(lowerEmail);
+      if (!emailValidation.valid) {
+        return NextResponse.json({
+          error: getEmailValidationError(lowerEmail),
+        }, { status: 400 });
+      }
 
       // Check if email already exists in Firestore users
       const existingUserQuery = await db

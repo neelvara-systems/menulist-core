@@ -1788,9 +1788,10 @@ export const computeDecisionBlocksScores = onSchedule({
                         });
 
                         // Decrement reseller's concurrent offline count
-                        if (subData.resellerId) {
+                        const resellerProfileId = subData.resellerProfileId || subData.resellerId;
+                        if (resellerProfileId) {
                             try {
-                                const profileRef = db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(subData.resellerId);
+                                const profileRef = db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerProfileId);
                                 await profileRef.update({
                                     currentActiveOfflineStores: FieldValue.increment(-1),
                                 });

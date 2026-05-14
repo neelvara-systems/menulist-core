@@ -1,5 +1,5 @@
 'use client';
-import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import {
     DEPLOYMENT_IDENTITY_STORAGE_KEY,
     emitDeploymentIdentityUpdated,
@@ -85,7 +85,8 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
     const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
     const isPlatformSession = session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const canRenderBeforeStoreData = Boolean(session) && isPlatformSession && (
+    const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
+    const isStoreIndependentRoute =
         normalizedPathname === '/help-center'
         || normalizedPathname === '/platform'
         || normalizedPathname.startsWith('/platform/')
@@ -93,6 +94,11 @@ export default function SessionProvider({ children, session }: Props) {
         || normalizedPathname.startsWith('/ops/')
         || normalizedPathname === '/canonica'
         || normalizedPathname.startsWith('/canonica/')
+        || normalizedPathname === '/reseller'
+        || normalizedPathname.startsWith('/reseller/');
+    const canRenderBeforeStoreData = Boolean(session) && (
+        (isPlatformSession && isStoreIndependentRoute)
+        || (isResellerSession && (normalizedPathname === '/reseller' || normalizedPathname.startsWith('/reseller/')))
     );
 
     // Reference to store previous session key for comparison

@@ -35,30 +35,60 @@ const getProfilesCollectionRef = () => {
     return collection(firebaseClient, PROFILES_COLLECTION);
 };
 
-const getProfileDocRef = (userId: string) => {
-    return doc(firebaseClient, PROFILES_COLLECTION, userId);
+const getProfileDocRef = (profileId: string) => {
+    return doc(firebaseClient, PROFILES_COLLECTION, profileId);
 };
 
 const getTransactionDocRef = (docId: string) => {
     return doc(firebaseClient, TRANSACTIONS_COLLECTION, docId);
 };
 
+const toResellerProfile = (docSnap: { data: () => any; id: string }): ResellerProfile => {
+    const { password: _password, ...data } = docSnap.data();
+    return { ...data, id: docSnap.id } as ResellerProfile;
+};
+
+const timestampMillis = (value: any) => {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const newestFirst = (a: ResellerTransaction, b: ResellerTransaction) => timestampMillis(b.createdOn) - timestampMillis(a.createdOn);
+
 // ═══════════════════════════════════════════════════════════════
 // RESELLER PROFILE OPERATIONS
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Get reseller profile by user ID
- * Firebase cost: 1 READ
+ * Get reseller profile by auth user ID or managed profile email.
+ * Managed reseller profiles are created by platform admins and may use auto IDs,
+ * so email fallback is required for real reseller login accounts.
+ * Firebase cost: 1-2 READS
  */
-export const getResellerProfile = async (userId: string): Promise<ResellerProfile | null> => {
+export const getResellerProfile = async (userId: string, email?: string | null): Promise<ResellerProfile | null> => {
     return await apiCallComposer(
         async () => {
             const docSnap = await getDoc(getProfileDocRef(userId));
-            if (!docSnap.exists()) return null;
-            return { ...docSnap.data(), id: docSnap.id } as ResellerProfile;
+            if (docSnap.exists()) return toResellerProfile(docSnap);
+
+            const normalizedEmail = email?.toLowerCase()?.trim();
+            if (!normalizedEmail) return null;
+
+            const q = query(
+                getProfilesCollectionRef(),
+                where("email", "==", normalizedEmail),
+                limit(1),
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+
+            const profileDoc = snapshot.docs[0];
+            return toResellerProfile(profileDoc);
         },
-        { userId },
+        { userId, email },
         "getResellerProfile"
     );
 };
@@ -180,7 +210,7 @@ export const getAllResellerProfiles = async (): Promise<ResellerProfile[]> => {
                 limit(50)
             );
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ResellerProfile));
+            return snapshot.docs.map(toResellerProfile).filter(profile => !(profile as any).deleted);
         },
         {},
         "getAllResellerProfiles"
@@ -196,7 +226,7 @@ export const getResellerProfileById = async (profileId: string): Promise<Reselle
         async () => {
             const docSnap = await getDoc(doc(firebaseClient, PROFILES_COLLECTION, profileId));
             if (!docSnap.exists()) return null;
-            return { ...docSnap.data(), id: docSnap.id } as ResellerProfile;
+            return toResellerProfile(docSnap);
         },
         { profileId },
         "getResellerProfileById"
@@ -233,6 +263,27 @@ export const updateResellerStatsOnOnboarding = async (
     );
 };
 
+/**
+ * Update reseller revenue stats after a renewal.
+ * Firebase cost: 1 WRITE
+ */
+export const updateResellerStatsOnRenewal = async (
+    profileId: string,
+    amountPaise: number,
+): Promise<void> => {
+    return await apiCallComposer(
+        async () => {
+            await updateDoc(doc(firebaseClient, PROFILES_COLLECTION, profileId), {
+                totalTransactions: increment(1),
+                totalRevenueCollectedPaise: increment(amountPaise),
+                modifiedOn: Timestamp.now(),
+            });
+        },
+        { profileId, amountPaise },
+        "updateResellerStatsOnRenewal"
+    );
+};
+
 // ═══════════════════════════════════════════════════════════════
 // RESELLER TRANSACTION OPERATIONS
 // ═══════════════════════════════════════════════════════════════
@@ -244,22 +295,16 @@ export const updateResellerStatsOnOnboarding = async (
 export const createResellerTransaction = async (
     transaction: Omit<ResellerTransaction, "id" | "createdOn" | "modifiedOn">
 ): Promise<string> => {
-    return await apiCallComposer(
-        async () => {
-            const collRef = getTransactionsCollectionRef();
-            const newDocRef = doc(collRef);
-            const now = Timestamp.now();
-            await setDoc(newDocRef, {
-                ...transaction,
-                id: newDocRef.id,
-                createdOn: now,
-                modifiedOn: now,
-            });
-            return newDocRef.id;
-        },
-        transaction,
-        "createResellerTransaction"
-    );
+    const collRef = getTransactionsCollectionRef();
+    const newDocRef = doc(collRef);
+    const now = Timestamp.now();
+    await setDoc(newDocRef, {
+        ...transaction,
+        id: newDocRef.id,
+        createdOn: now,
+        modifiedOn: now,
+    });
+    return newDocRef.id;
 };
 
 /**
@@ -295,11 +340,12 @@ export const getResellerTransactions = async (
             const q = query(
                 getTransactionsCollectionRef(),
                 where("resellerId", "==", resellerId),
-                orderBy("createdOn", "desc"),
                 limit(maxResults)
             );
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ResellerTransaction));
+            return snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() } as ResellerTransaction))
+                .sort(newestFirst);
         },
         { resellerId },
         "getResellerTransactions"
@@ -319,11 +365,12 @@ export const getResellerTransactionsForStore = async (
             const q = query(
                 getTransactionsCollectionRef(),
                 where("resellerId", "==", resellerId),
-                where("storeId", "==", storeId),
-                orderBy("createdOn", "desc")
+                where("storeId", "==", storeId)
             );
             const snapshot = await getDocs(q);
-            return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ResellerTransaction));
+            return snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() } as ResellerTransaction))
+                .sort(newestFirst);
         },
         { resellerId, storeId },
         "getResellerTransactionsForStore"

@@ -123,6 +123,7 @@ export interface FirestoreSubscriptionDoc {
   validUntil?: Timestamp | null;             // For manual billing only: when access expires
   onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING';  // How this store was onboarded
   resellerId?: string | null;                // User ID of the reseller who onboarded this store
+  resellerProfileId?: string | null;         // resellerProfiles doc used for caps/stats when present
   resellerPricingTier?: string | null;       // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'
   commitmentPeriodMonths?: number | null;    // 3 | 6 | 12 (online: tracking only, offline: duration)
   manualPaymentConfirmed?: boolean;          // For offline: reseller confirmed payment received

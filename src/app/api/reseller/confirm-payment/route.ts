@@ -20,6 +20,7 @@ import { withAuth } from "../../../../middleware/auth";
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
+    const isPlatformUser = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
@@ -41,7 +42,7 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Subscription not found." }, { status: 404 });
         }
 
-        if (subscription.resellerId !== resellerId && session.platformRole !== 'PLATFORM') {
+        if (subscription.resellerId !== resellerId && !isPlatformUser) {
             logger.security('Reseller Confirm Payment - Unauthorized Access', {
                 ...buildSecurityContext(session, request),
                 resellerId,

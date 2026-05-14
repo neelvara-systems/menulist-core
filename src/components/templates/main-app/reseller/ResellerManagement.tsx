@@ -121,7 +121,7 @@ function ResellerManagement() {
             phone: profile.phone,
             email: profile.email,
             username: profile.username,
-            password: profile.password,
+            password: '',
             addressLine: profile.addressLine,
             city: profile.city,
             state: profile.state,

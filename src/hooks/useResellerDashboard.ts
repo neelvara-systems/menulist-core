@@ -11,10 +11,10 @@ import useSWR from "swr";
  * Fetch reseller profile + transactions for the authenticated reseller.
  * Uses SWR for caching and deduplication.
  */
-export function useResellerDashboard(resellerId: string, isPlatform: boolean = false) {
+export function useResellerDashboard(resellerId: string, isPlatform: boolean = false, resellerEmail?: string | null) {
     const { data: profile, error: profileError, isLoading: profileLoading, mutate: mutateProfile } = useSWR<ResellerProfile | null>(
-        resellerId ? `reseller-profile-${resellerId}` : null,
-        () => getResellerProfile(resellerId),
+        resellerId && !isPlatform ? `reseller-profile-${resellerId}-${resellerEmail || ''}` : null,
+        () => getResellerProfile(resellerId, resellerEmail),
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 
@@ -24,16 +24,38 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 
+    const clients = transactions
+        ? Array.from(
+            transactions.reduce((byStore, transaction) => {
+                const existing = byStore.get(transaction.storeId);
+                const currentCreatedOn = (transaction.createdOn as any)?.toMillis?.()
+                    || (transaction.createdOn as any)?.toDate?.()?.getTime?.()
+                    || new Date(transaction.createdOn as any).getTime()
+                    || 0;
+                const existingCreatedOn = existing
+                    ? ((existing.createdOn as any)?.toMillis?.()
+                        || (existing.createdOn as any)?.toDate?.()?.getTime?.()
+                        || new Date(existing.createdOn as any).getTime()
+                        || 0)
+                    : -1;
+                if (!existing || currentCreatedOn >= existingCreatedOn) {
+                    byStore.set(transaction.storeId, transaction);
+                }
+                return byStore;
+            }, new Map<number, ResellerTransaction>()).values()
+        )
+        : [];
+
     const isLoading = profileLoading || transactionsLoading;
     const error = profileError || transactionsError;
 
     // Derived stats
     const stats = transactions ? {
-        total: transactions.length,
-        active: transactions.filter(t => t.status === 'active').length,
-        pending: transactions.filter(t => t.status === 'pending_payment').length,
-        expired: transactions.filter(t => t.status === 'expired').length,
-        expiringSoon: transactions.filter(t => {
+        total: clients.length,
+        active: clients.filter(t => t.status === 'active').length,
+        pending: clients.filter(t => t.status === 'pending_payment').length,
+        expired: clients.filter(t => t.status === 'expired').length,
+        expiringSoon: clients.filter(t => {
             if (t.status !== 'active' || !t.validUntil) return false;
             const expiry = (t.validUntil as any).toDate ? (t.validUntil as any).toDate() : new Date(t.validUntil as any);
             const daysUntilExpiry = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -43,7 +65,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
 
     return {
         profile,
-        transactions: transactions || [],
+        transactions: clients,
         stats,
         isLoading,
         error,

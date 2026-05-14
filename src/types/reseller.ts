@@ -24,6 +24,7 @@ export type ResellerTransactionStatus = 'pending_payment' | 'active' | 'expired'
 export interface ResellerTransaction {
     id: string;
     resellerId: string;
+    resellerProfileId?: string | null;
     resellerEmail: string;
     storeId: number;
     tenantId: number;
@@ -64,7 +65,8 @@ export interface ResellerProfile {
     phone: string;
     email: string;
     username: string;                          // Unique login username for reseller dashboard
-    password: string;                          // Hashed or plain (internal system — not client-facing)
+    authUserId?: string;                       // Firebase Auth / users doc ID for reseller login
+    passwordSetAt?: Timestamp | null;          // Password exists in Firebase Auth only; never stored here
     addressLine?: string;
     city?: string;
     state?: string;

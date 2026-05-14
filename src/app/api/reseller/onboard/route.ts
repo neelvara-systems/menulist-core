@@ -4,7 +4,7 @@ import { calculateOfflineAmount, getResellerTierById, RESELLER_CAPS, RESELLER_SY
 import { DB_COLLECTIONS } from "@constant/database";
 import { getMenuUrl, MSG_EMAIL_DOMAIN, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
-import { createResellerTransaction, getResellerProfile, incrementResellerOfflineCount, incrementResellerOnlineCount } from "@database/reseller";
+import { createResellerTransaction, getResellerProfile, updateResellerStatsOnOnboarding } from "@database/reseller";
 import { createInitialSubscription } from "@database/subscriptions";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { admin } from "@lib/firebase/firebaseAdmin";
@@ -19,6 +19,7 @@ import { buildSecurityContext } from "@lib/security/securityContext";
 import { ResellerOnboardSchema } from "@lib/validation/resellerSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import crypto from "crypto";
+import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
@@ -41,6 +42,7 @@ const buildResellerPlaceholderEmail = (storeId: number, phone: string) => {
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
+    const isPlatformUser = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
 
     try {
         // 0. Feature flag check
@@ -77,8 +79,8 @@ export const POST = withAuth(async (request, session) => {
         const { businessName, businessType, ownerPhone, ownerEmail, pricingTier, billingInterval, commitmentMonths, paymentMode, skipMenuUpload } = validation.data;
 
         // 3. Validate reseller profile exists and is active
-        const resellerProfile = await getResellerProfile(resellerId);
-        if (!resellerProfile || !resellerProfile.active) {
+        const resellerProfile = await getResellerProfile(resellerId, session.user.email);
+        if (!isPlatformUser && (!resellerProfile || !resellerProfile.active)) {
             logger.security('Reseller Onboard - Profile Not Found or Inactive', {
                 ...buildSecurityContext(session, request),
                 resellerId,
@@ -97,9 +99,10 @@ export const POST = withAuth(async (request, session) => {
             if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
                 return NextResponse.json({ error: "Offline payment mode is no longer available." }, { status: 400 });
             }
-            if (resellerProfile.currentActiveOfflineStores >= RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER) {
+            const offlineCap = resellerProfile?.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER;
+            if (!isPlatformUser && resellerProfile && resellerProfile.currentActiveOfflineStores >= offlineCap) {
                 return NextResponse.json({
-                    error: `Maximum offline activations reached (${RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER}). Use online payment mode or wait for existing stores to expire.`,
+                    error: `Maximum offline activations reached (${offlineCap}). Use online payment mode or wait for existing stores to expire.`,
                 }, { status: 400 });
             }
         }
@@ -282,7 +285,7 @@ export const POST = withAuth(async (request, session) => {
                 paymentMethod: { type: "", brand: "", last4: "", upiId: "", upiTransactionId: "" },
                 statuses: [{
                     status: "pending",
-                    timestamp: admin.firestore.Timestamp.now() as any,
+                    timestamp: Timestamp.now(),
                     amount: billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
                     currency: 'INR',
                     remark: `Reseller onboarding (${tier.name}) — awaiting client payment`,
@@ -293,12 +296,19 @@ export const POST = withAuth(async (request, session) => {
                 billingMode: 'auto',
                 onboardingSource: 'RESELLER_ONBOARDING',
                 resellerId,
+                resellerProfileId: resellerProfile?.id || null,
                 resellerPricingTier: pricingTier,
                 commitmentPeriodMonths: commitmentMonths || null,
             };
 
             await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
-            await incrementResellerOnlineCount(resellerId);
+            if (resellerProfile?.id) {
+                await updateResellerStatsOnOnboarding(
+                    resellerProfile.id,
+                    paymentMode,
+                    billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
+                );
+            }
         } else {
             // OFFLINE: Create manual subscription
             const now = new Date();
@@ -325,13 +335,13 @@ export const POST = withAuth(async (request, session) => {
                 lastWebhook: null,
                 planId: tier.planId,
                 planName: tier.displayName,
-                cycleStartDate: admin.firestore.Timestamp.now() as any,
-                subscriptionEndDate: admin.firestore.Timestamp.fromDate(validUntil) as any,
-                subscriptionStartDate: admin.firestore.Timestamp.now() as any,
+                cycleStartDate: Timestamp.now(),
+                subscriptionEndDate: Timestamp.fromDate(validUntil),
+                subscriptionStartDate: Timestamp.now(),
                 pastDueSinceAt: null as any,
                 totalPaymentsNeededCount: 1,
                 totalPaymentsMadeCount: 1,
-                cycleEndDate: admin.firestore.Timestamp.fromDate(validUntil) as any,
+                cycleEndDate: Timestamp.fromDate(validUntil),
                 renewsOn: null as any,
                 monthlyCreditsAllowance: tier.monthlyCredits,
                 monthlyCredits: tier.monthlyCredits,
@@ -341,7 +351,7 @@ export const POST = withAuth(async (request, session) => {
                 paymentMethod: { type: "offline", brand: "", last4: "", upiId: "", upiTransactionId: "" },
                 statuses: [{
                     status: "active",
-                    timestamp: admin.firestore.Timestamp.now() as any,
+                    timestamp: Timestamp.now(),
                     amount: totalAmount,
                     currency: 'INR',
                     remark: `Reseller offline onboarding (${tier.name}) — ${durationForOffline} months`,
@@ -350,13 +360,14 @@ export const POST = withAuth(async (request, session) => {
                 quantity: 1,
                 // Reseller fields
                 billingMode: 'manual',
-                validUntil: admin.firestore.Timestamp.fromDate(validUntil) as any,
+                validUntil: Timestamp.fromDate(validUntil),
                 onboardingSource: 'RESELLER_ONBOARDING',
                 resellerId,
+                resellerProfileId: resellerProfile?.id || null,
                 resellerPricingTier: pricingTier,
                 commitmentPeriodMonths: durationForOffline,
                 manualPaymentConfirmed: true,
-                manualPaymentConfirmedAt: admin.firestore.Timestamp.now() as any,
+                manualPaymentConfirmedAt: Timestamp.now(),
             };
 
             await createInitialSubscription(subscriptionId, subscriptionPayload);
@@ -364,12 +375,15 @@ export const POST = withAuth(async (request, session) => {
                 { ...subscriptionPayload, id: subscriptionId },
                 'api:reseller-onboard-offline',
             );
-            await incrementResellerOfflineCount(resellerId);
+            if (resellerProfile?.id) {
+                await updateResellerStatsOnOnboarding(resellerProfile.id, paymentMode, totalAmount);
+            }
         }
 
         // 8. Create reseller transaction record (immutable)
         const transactionId = await createResellerTransaction({
             resellerId,
+            resellerProfileId: resellerProfile?.id || null,
             resellerEmail: session.user.email || '',
             storeId: result.storeId,
             tenantId: result.tenantId,
@@ -385,12 +399,12 @@ export const POST = withAuth(async (request, session) => {
             paymentMode,
             status: paymentMode === 'offline' ? 'active' : 'pending_payment',
             subscriptionId,
-            validFrom: paymentMode === 'offline' ? admin.firestore.Timestamp.now() as any : null,
-            validUntil: paymentMode === 'offline' ? admin.firestore.Timestamp.fromDate((() => {
+            validFrom: paymentMode === 'offline' ? Timestamp.now() : null,
+            validUntil: paymentMode === 'offline' ? Timestamp.fromDate((() => {
                 const d = new Date();
                 d.setMonth(d.getMonth() + durationForOffline);
                 return d;
-            })()) as any : null,
+            })()) : null,
         });
 
         await writeLogEntry({

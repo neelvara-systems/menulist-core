@@ -91,12 +91,15 @@ interface ResellerTransaction {
 ### 2.3 New Collection: `resellerProfiles`
 
 ```typescript
-// Collection: resellerProfiles/{userId}
+// Collection: resellerProfiles/{profileId}
+// Lookup first checks resellerProfiles/{authUserId}, then falls back to email.
+// Platform users can onboard/renew without a reseller profile; profile caps apply only when a profile exists.
 interface ResellerProfile {
-  userId: string;
+  authUserId?: string;
   email: string;
   name: string;
   phone?: string;
+  passwordSetAt?: Timestamp | null; // Password is stored only in Firebase Auth.
 
   // Caps & limits
   maxOfflineActivations: number; // Default: 20
@@ -114,6 +117,13 @@ interface ResellerProfile {
   createdBy: string; // Founder who activated this reseller
 }
 ```
+
+Reseller profile creation also creates a real MenuList login account:
+
+- Firebase Auth user with the platform custom claim `platformRole: 'RESELLER'`.
+- `users/{authUserId}` document with `platformRole: 'RESELLER'`, no store assignment, and `resellerProfileId`.
+- `resellerProfiles/{authUserId}` document for direct low-cost lookup.
+- Passwords are never stored in Firestore; password changes update Firebase Auth only.
 
 ### 2.4 Constants Addition
 
@@ -363,7 +373,7 @@ const ResellerOnboardSchema = z.object({
    - `commitmentPeriodMonths: commitmentMonths`
 6. If online: create Razorpay Subscription via `getOrCreateRazorpayPlan()` + `razorpayClient.subscriptions.create()` (same as self-serve)
 7. Create `resellerTransactions` record
-8. If offline: increment `resellerProfiles.currentActiveOfflineStores`
+8. If a reseller profile exists, increment counters for active offline slots, online/offline totals, transaction count, and tracked revenue.
 
 **Response:**
 

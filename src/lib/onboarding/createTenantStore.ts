@@ -152,15 +152,37 @@ export async function createTenantStoreInTransaction(
 
     // 1. Read platformSummary (with transaction lock — prevents race conditions)
     const platformSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('summary');
+    const storesSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
     const platformSummary = await transaction.get(platformSummaryRef);
+    const storesSummary = await transaction.get(storesSummaryRef);
 
-    if (!platformSummary.exists) {
-        throw new Error('Platform summary not found');
+    const storesSummaryData = storesSummary.exists ? storesSummary.data() : null;
+    const deriveCountsFromStoresSummary = () => {
+        const stores = storesSummaryData?.stores || {};
+        let maxTenantId = 0;
+        let maxStoreId = 0;
+
+        Object.entries(stores).forEach(([storeId, storeData]: [string, any]) => {
+            const numericStoreId = Number(storeData?.storeId || storeId);
+            const numericTenantId = Number(storeData?.tId || storeData?.tenantId || 0);
+            if (Number.isFinite(numericStoreId)) maxStoreId = Math.max(maxStoreId, numericStoreId);
+            if (Number.isFinite(numericTenantId)) maxTenantId = Math.max(maxTenantId, numericTenantId);
+        });
+
+        return { tenantCount: maxTenantId, storeCount: maxStoreId };
+    };
+
+    const summaryData = platformSummary.exists ? platformSummary.data()! : {};
+    const derivedCounts = deriveCountsFromStoresSummary();
+    const currentTenantCount = Number(summaryData?.tenants?.count || 0) || derivedCounts.tenantCount;
+    const currentStoreCount = Number(summaryData?.stores?.count || 0) || derivedCounts.storeCount;
+
+    if (!currentTenantCount || !currentStoreCount) {
+        throw new Error('Platform summary not found and storesSummary cannot bootstrap counters');
     }
 
-    const summaryData = platformSummary.data()!;
-    const newTenantId = (summaryData?.tenants?.count || 0) + 1;
-    const newStoreId = (summaryData?.stores?.count || 0) + 1;
+    const newTenantId = currentTenantCount + 1;
+    const newStoreId = currentStoreCount + 1;
     const now = admin.firestore.Timestamp.now();
 
     // 2. Derive computed fields
@@ -247,7 +269,6 @@ export async function createTenantStoreInTransaction(
     });
 
     // 8. Sync storesSummary (for Cloud Function cost optimization)
-    const storesSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
     transaction.set(
         storesSummaryRef,
         {
@@ -274,10 +295,15 @@ export async function createTenantStoreInTransaction(
     );
 
     // 9. Update Platform Summary Counts
-    transaction.update(platformSummaryRef, {
-        'tenants.count': newTenantId,
-        'stores.count': newStoreId,
-    });
+    transaction.set(
+        platformSummaryRef,
+        {
+            tenants: { count: newTenantId },
+            stores: { count: newStoreId },
+            modifiedOn: now,
+        },
+        { merge: true },
+    );
 
     return {
         tenantId: newTenantId,

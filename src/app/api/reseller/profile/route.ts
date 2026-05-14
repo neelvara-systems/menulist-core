@@ -18,7 +18,7 @@ export const GET = withAuth(async (request, session) => {
         }
 
         const resellerId = session.user.id;
-        const profile = await getResellerProfile(resellerId);
+        const profile = await getResellerProfile(resellerId, session.user.email);
 
         if (!profile) {
             return NextResponse.json({ error: "Reseller profile not found." }, { status: 404 });

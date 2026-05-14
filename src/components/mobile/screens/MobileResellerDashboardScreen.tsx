@@ -79,9 +79,10 @@ export default function MobileResellerDashboardScreen({
 }) {
     const { data: session } = useSession();
     const resellerId = (session as any)?.user?.id || '';
+    const resellerEmail = (session as any)?.user?.email || '';
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const { profile, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform);
+    const { profile, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
 
     if (isLoading) {
         return (

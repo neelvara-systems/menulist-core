@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { calculateOfflineAmount, getResellerTierById, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
-import { createResellerTransaction, getResellerProfile } from "@database/reseller";
+import { createResellerTransaction, getResellerProfile, updateResellerStatsOnRenewal } from "@database/reseller";
 import { updateSubscription } from "@database/subscriptions";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
@@ -23,6 +23,7 @@ import { withAuth } from "../../../../middleware/auth";
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
+    const isPlatformUser = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
@@ -39,8 +40,8 @@ export const POST = withAuth(async (request, session) => {
         const { storeId, tenantId, pricingTier, durationMonths, paymentMode } = validation.data;
 
         // Validate reseller profile
-        const resellerProfile = await getResellerProfile(resellerId);
-        if (!resellerProfile || !resellerProfile.active) {
+        const resellerProfile = await getResellerProfile(resellerId, session.user.email);
+        if (!isPlatformUser && (!resellerProfile || !resellerProfile.active)) {
             return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
         }
 
@@ -82,7 +83,7 @@ export const POST = withAuth(async (request, session) => {
         const existingSubData = existingSub.data();
 
         // Verify this reseller owns this subscription
-        if (existingSubData.resellerId !== resellerId && session.platformRole !== 'PLATFORM') {
+        if (existingSubData.resellerId !== resellerId && !isPlatformUser) {
             logger.security('Reseller Renew - Unauthorized Access', {
                 ...buildSecurityContext(session, request),
                 resellerId,
@@ -146,6 +147,7 @@ export const POST = withAuth(async (request, session) => {
         // Create new transaction record (append, never mutate old)
         const transactionId = await createResellerTransaction({
             resellerId,
+            resellerProfileId: existingSubData.resellerProfileId || resellerProfile?.id || null,
             resellerEmail: session.user.email || '',
             storeId,
             tenantId,
@@ -162,6 +164,10 @@ export const POST = withAuth(async (request, session) => {
             validFrom: Timestamp.fromDate(renewalStart),
             validUntil: Timestamp.fromDate(newValidUntil),
         });
+        const renewalProfileId = existingSubData.resellerProfileId || resellerProfile?.id || null;
+        if (renewalProfileId) {
+            await updateResellerStatsOnRenewal(renewalProfileId, totalAmount);
+        }
 
         return NextResponse.json({
             success: true,

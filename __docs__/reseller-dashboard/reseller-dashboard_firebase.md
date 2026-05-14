@@ -12,7 +12,8 @@
 | Collection             | Doc ID Pattern | Purpose                                             |
 | ---------------------- | -------------- | --------------------------------------------------- |
 | `resellerTransactions` | Auto-ID        | Immutable transaction log for every reseller action |
-| `resellerProfiles`     | `{userId}`     | Reseller profile with caps, counts, status          |
+| `resellerProfiles`     | `{profileId}`  | Reseller profile with caps, counts, status; lookup uses `{authUserId}` first, then email fallback |
+| `users`                | `{authUserId}` | Reseller login account with `platformRole: 'RESELLER'`; no store assignment |
 
 ## 2. Modified Collections
 
@@ -28,7 +29,7 @@
 
 | Operation                        | Collection             | Type  | Count       | Notes                      |
 | -------------------------------- | ---------------------- | ----- | ----------- | -------------------------- |
-| Read platformSummary             | `platformSummary`      | READ  | 1           | Get next tenant/store IDs  |
+| Read platformSummary             | `platformSummary`      | READ  | 2           | Read `summary` and `storesSummary`; `storesSummary` bootstraps counters if `summary` is missing |
 | Write tenant                     | `tenants`              | WRITE | 1           | Atomic transaction         |
 | Write store                      | `stores`               | WRITE | 1           | Atomic transaction         |
 | Write user (client)              | `users`                | WRITE | 1           | Client account creation    |
@@ -36,14 +37,14 @@
 | Update storesSummary             | `platformSummary`      | WRITE | 1           | Sync store data            |
 | Write subscription               | `subscriptions`        | WRITE | 1           | With billingMode: 'manual' |
 | Write transaction                | `resellerTransactions` | WRITE | 1           | Immutable log              |
-| Update reseller profile          | `resellerProfiles`     | WRITE | 1           | Increment offline count    |
-| **Total per offline onboarding** |                        |       | **1R + 8W** |                            |
+| Update reseller profile          | `resellerProfiles`     | WRITE | 0-1         | Increment offline/online counters, transaction count, and tracked revenue when a reseller profile exists |
+| **Total per offline onboarding** |                        |       | **2R + 7-8W** |                          |
 
 ### 3.2 Reseller Onboarding (Create Store — Online)
 
-Same as offline, minus reseller profile offline cap update. Uses existing Razorpay Subscription creation (external API call, not Firestore). Webhook handling is identical to self-serve — zero additional Firestore cost.
+Same as offline, minus reseller profile offline cap update unless a profile exists for online-count tracking. Uses existing Razorpay Subscription creation (external API call, not Firestore). Webhook handling is identical to self-serve.
 
-| **Total per online onboarding** | | | **1R + 7W** | |
+| **Total per online onboarding** | | | **2R + 6-7W** | |
 
 ### 3.3 Confirm Offline Payment
 
@@ -74,10 +75,19 @@ Same as offline, minus reseller profile offline cap update. Uses existing Razorp
 
 | Operation    | Collection         | Type | Count  | Notes        |
 | ------------ | ------------------ | ---- | ------ | ------------ |
-| Read profile | `resellerProfiles` | READ | 1      | Caps, counts |
-| **Total**    |                    |      | **1R** |              |
+| Read profile | `resellerProfiles` | READ | 1-2    | Direct auth-user doc lookup, then email fallback for legacy auto-ID profiles |
+| **Total**    |                    |      | **1-2R** |            |
 
-### 3.7 Renew License
+### 3.7 Reseller Management
+
+| Operation | Collection / Service | Type | Count | Notes |
+| --------- | -------------------- | ---- | ----- | ----- |
+| Create login account | Firebase Auth | AUTH WRITE | 1 | Password stored only in Firebase Auth |
+| Write reseller user | `users` | WRITE | 1 | `platformRole: 'RESELLER'`, no store assignment |
+| Write reseller profile | `resellerProfiles` | WRITE | 1 | Doc ID matches auth user ID for 1-read profile lookup |
+| Duplicate checks | `resellerProfiles`, `users`, Firebase Auth | READ/AUTH READ | 2R + 1 auth lookup | Prevents duplicate email/username/login accounts |
+
+### 3.8 Renew License
 
 | Operation             | Collection             | Type  | Count       | Notes              |
 | --------------------- | ---------------------- | ----- | ----------- | ------------------ |
@@ -86,7 +96,7 @@ Same as offline, minus reseller profile offline cap update. Uses existing Razorp
 | Write transaction     | `resellerTransactions` | WRITE | 1           | New renewal record |
 | **Total per renewal** |                        |       | **1R + 2W** |                    |
 
-### 3.8 Nightly Expiry Check (Cloud Function)
+### 3.9 Nightly Expiry Check (Cloud Function)
 
 | Operation                | Collection      | Type  | Count       | Notes                      |
 | ------------------------ | --------------- | ----- | ----------- | -------------------------- |
@@ -100,12 +110,12 @@ Same as offline, minus reseller profile offline cap update. Uses existing Razorp
 
 | Function                       | Collection                                                                                     | Operations | Location                                 |
 | ------------------------------ | ---------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------- |
-| `createResellerOnboarding()`   | tenants, stores, users, platformSummary, subscriptions, resellerTransactions, resellerProfiles | 1R + 8W    | `src/database/reseller/index.ts`         |
+| `createResellerOnboarding()`   | tenants, stores, users, platformSummary, subscriptions, resellerTransactions, resellerProfiles | 2R + 7-8W  | `src/app/api/reseller/onboard/route.ts` |
 | `confirmOfflinePayment()`      | subscriptions, resellerTransactions, resellerProfiles                                          | 1R + 3W    | `src/database/reseller/index.ts`         |
 | `getResellerClients()`         | resellerTransactions                                                                           | 1R         | `src/database/reseller/index.ts`         |
 | `getClientDetail()`            | subscriptions, resellerTransactions                                                            | 2R         | `src/database/reseller/index.ts`         |
-| `getResellerProfile()`         | resellerProfiles                                                                               | 1R         | `src/database/reseller/index.ts`         |
-| `renewResellerLicense()`       | subscriptions, resellerTransactions                                                            | 1R + 2W    | `src/database/reseller/index.ts`         |
+| `getResellerProfile()`         | resellerProfiles                                                                               | 1-2R       | `src/database/reseller/index.ts`         |
+| `renewResellerLicense()`       | subscriptions, resellerTransactions, resellerProfiles                                           | 1R + 2-3W  | `src/app/api/reseller/renew/route.ts`    |
 | `checkResellerLicenseExpiry()` | subscriptions                                                                                  | 1R + NW    | `functions/src/decisionBlocksScoring.ts` |
 
 ---
@@ -124,26 +134,11 @@ Same as offline, minus reseller profile offline cap update. Uses existing Razorp
       { "fieldPath": "status", "order": "ASCENDING" },
       { "fieldPath": "validUntil", "order": "ASCENDING" }
     ]
-  },
-  {
-    "collectionGroup": "resellerTransactions",
-    "queryScope": "COLLECTION",
-    "fields": [
-      { "fieldPath": "resellerId", "order": "ASCENDING" },
-      { "fieldPath": "createdOn", "order": "DESCENDING" }
-    ]
-  },
-  {
-    "collectionGroup": "resellerTransactions",
-    "queryScope": "COLLECTION",
-    "fields": [
-      { "fieldPath": "resellerId", "order": "ASCENDING" },
-      { "fieldPath": "storeId", "order": "ASCENDING" },
-      { "fieldPath": "createdOn", "order": "DESCENDING" }
-    ]
   }
 ]
 ```
+
+Reseller transaction screens query by reseller/store and sort the bounded result set in the client. That keeps the dashboard usable without reseller-specific composite indexes and avoids extra index write/storage overhead for a low-volume operational table.
 
 ---
 
@@ -162,7 +157,7 @@ Same as offline, minus reseller profile offline cap update. Uses existing Razorp
 
 | Operation                              | Reads   | Writes  | Deletes |
 | -------------------------------------- | ------- | ------- | ------- |
-| Onboardings (20 × 1R + 8W)             | 20      | 160     | 0       |
+| Onboardings (20 × 2R + 7-8W)           | 40      | 140-160 | 0       |
 | Payment confirmations (10 × 1R + 3W)   | 10      | 30      | 0       |
 | Client list views (5/day × 30 × 1R)    | 150     | 0       | 0       |
 | Client detail views (10/day × 30 × 2R) | 600     | 0       | 0       |
@@ -201,12 +196,12 @@ match /resellerTransactions/{docId} {
   allow read, write: if false; // Admin SDK only (server-side)
 }
 
-match /resellerProfiles/{userId} {
+match /resellerProfiles/{profileId} {
   allow read, write: if false; // Admin SDK only (server-side)
 }
 ```
 
-All reseller operations go through API routes (server-side with `withAuth`). No direct client-side Firestore access.
+Reseller mutations go through API routes (server-side with `withAuth`). Dashboard reads use the existing client DAL with Firestore rules and session-gated UI access.
 
 ---
 
