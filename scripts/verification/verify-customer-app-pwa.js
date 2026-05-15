@@ -6,6 +6,7 @@ require('ts-node').register({
 
 const fs = require('fs');
 const path = require('path');
+const { PNG } = require('pngjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -84,6 +85,8 @@ function verifyOwnerAuthManifest() {
   const ownerManifest = JSON.parse(read('public/manifest.json'));
   const ownerIconFiles = [
     'public/apple-touch-icon.png',
+    'public/favicon-16x16.png',
+    'public/favicon-32x32.png',
     'public/favicon.ico',
     'public/icons/apple-touch-icon.png',
     'public/icons/apple-touch-icon-152x152.png',
@@ -105,6 +108,31 @@ function verifyOwnerAuthManifest() {
   }
   for (const file of ownerIconFiles) {
     assert(fs.existsSync(path.join(ROOT, file)), `owner PWA icon file missing: ${file}`);
+  }
+}
+
+function verifyOwnerFaviconsTransparent() {
+  const faviconPngs = [
+    'public/favicon-16x16.png',
+    'public/favicon-32x32.png',
+    'public/icons/favicon-16x16.png',
+    'public/icons/favicon-32x32.png',
+  ];
+
+  for (const file of faviconPngs) {
+    const png = PNG.sync.read(fs.readFileSync(path.join(ROOT, file)));
+    const cornerAlpha = [
+      [0, 0],
+      [png.width - 1, 0],
+      [0, png.height - 1],
+      [png.width - 1, png.height - 1],
+    ].map(([x, y]) => png.data[((png.width * y + x) << 2) + 3]);
+    const visiblePixels = png.data.reduce((count, value, index) => (
+      index % 4 === 3 && value > 8 ? count + 1 : count
+    ), 0);
+
+    assert(cornerAlpha.every((alpha) => alpha === 0), `${file} must have transparent corners`);
+    assert(visiblePixels > 0, `${file} must contain visible logo pixels`);
   }
 }
 
@@ -184,6 +212,7 @@ const checks = [
   ['customer service worker policy', verifyCustomerServiceWorkerPolicy],
   ['next-pwa scoping', verifyNextPwaScoping],
   ['owner auth manifest', verifyOwnerAuthManifest],
+  ['owner transparent favicons', verifyOwnerFaviconsTransparent],
   ['customer app assets', verifyCustomerAppAssets],
   ['analytics coverage', verifyAnalyticsCoverage],
   ['menu freshness hook', verifyFreshnessHook],

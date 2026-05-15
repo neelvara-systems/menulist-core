@@ -540,6 +540,41 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         </Flex>
     );
 
+    const helpCenterCard = (
+        <Card title={t('helpCenter')}>
+            <List>
+                <List.Item
+                    arrow
+                    description={<Text type="secondary">Search docs, tickets, updates, and support in one place.</Text>}
+                    onClick={() => openSubScreen('canonicaHelp')}
+                    prefix={<LuHelpCircle color="#3b82f6" size={20} />}
+                    title={<Text strong>{t('helpCenter')}</Text>}
+                />
+                <List.Item
+                    arrow
+                    description={<Text type="secondary">Browse MenuList docs and guides.</Text>}
+                    onClick={() => openSubScreen('canonicaDocs')}
+                    prefix={<LuBookOpen color="#8b5cf6" size={20} />}
+                    title={<Text strong>Documentation</Text>}
+                />
+                <List.Item
+                    arrow
+                    description={<Text type="secondary">Create or track support tickets.</Text>}
+                    onClick={() => openSubScreen('canonicaSupport')}
+                    prefix={<LuTicket color="#f59e0b" size={20} />}
+                    title={<Text strong>Support Tickets</Text>}
+                />
+                <List.Item
+                    arrow
+                    description={<Text type="secondary">See recent product changes and fixes.</Text>}
+                    onClick={() => openSubScreen('canonicaReleaseNotes')}
+                    prefix={<LuReceipt color="#0ea5e9" size={20} />}
+                    title={<Text strong>Release Notes</Text>}
+                />
+            </List>
+        </Card>
+    );
+
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
             <Card>
@@ -598,6 +633,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 ) : null}
             </div>
 
+            {!normalizedSearchQuery ? helpCenterCard : null}
+
             {filteredSections.length === 0 ? (
                 <Card>
                     <Flex gap={4} vertical>
@@ -623,39 +660,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     </Card>
                 ))
             )}
-
-            <Card title={t('helpCenter')}>
-                <List>
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">Search docs, tickets, updates, and support in one place.</Text>}
-                        onClick={() => openSubScreen('canonicaHelp')}
-                        prefix={<LuHelpCircle color="#3b82f6" size={20} />}
-                        title={<Text strong>{t('helpCenter')}</Text>}
-                    />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">Browse MenuList docs and guides.</Text>}
-                        onClick={() => openSubScreen('canonicaDocs')}
-                        prefix={<LuBookOpen color="#8b5cf6" size={20} />}
-                        title={<Text strong>Documentation</Text>}
-                    />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">Create or track support tickets.</Text>}
-                        onClick={() => openSubScreen('canonicaSupport')}
-                        prefix={<LuTicket color="#f59e0b" size={20} />}
-                        title={<Text strong>Support Tickets</Text>}
-                    />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">See recent product changes and fixes.</Text>}
-                        onClick={() => openSubScreen('canonicaReleaseNotes')}
-                        prefix={<LuReceipt color="#0ea5e9" size={20} />}
-                        title={<Text strong>Release Notes</Text>}
-                    />
-                </List>
-            </Card>
 
             <Card>
                 <List>

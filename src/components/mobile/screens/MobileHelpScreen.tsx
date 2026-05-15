@@ -84,6 +84,20 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         width: 100%;
                     }
 
+                    [data-mobile-help-center] > .ant-card {
+                        background: transparent !important;
+                        border: 0 !important;
+                        box-shadow: none !important;
+                    }
+
+                    [data-mobile-help-center] > .ant-card > .ant-card-body {
+                        padding: 0 !important;
+                    }
+
+                    [data-mobile-help-center] > .ant-card > .ant-card-body > .ant-flex {
+                        gap: 16px !important;
+                    }
+
                     [data-mobile-help-center] .ant-card-body,
                     [data-mobile-help-center] .ant-card-head {
                         min-width: 0;
@@ -178,7 +192,13 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                     }
 
                     [data-mobile-help-center] .help-center-hero-search[data-active-tab="home"] {
-                        padding: 24px 12px !important;
+                        padding: 20px 12px !important;
+                    }
+
+                    [data-mobile-help-center] .help-center-hero-search[data-active-tab="home"] h2,
+                    [data-mobile-help-center] .help-center-hero-search[data-active-tab="home"] h2 span {
+                        font-size: 28px !important;
+                        line-height: 1.15 !important;
                     }
 
                     [data-mobile-help-center] .help-center-hero-search:not([data-active-tab="home"]) {
@@ -190,12 +210,51 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         width: 100% !important;
                     }
 
+                    [data-mobile-help-center] .help-center-search-width > [role="button"] {
+                        border-radius: 10px !important;
+                        box-shadow: none !important;
+                        min-height: 44px;
+                        padding: 2px !important;
+                    }
+
                     [data-mobile-help-center] .help-center-search-input-row {
-                        flex-wrap: wrap;
+                        gap: 6px !important;
+                        flex-wrap: nowrap;
+                        min-height: 40px;
                     }
 
                     [data-mobile-help-center] .help-center-search-input-row > div:first-child {
+                        flex: 1 1 auto;
                         min-width: 0;
+                        padding-left: 10px !important;
+                    }
+
+                    [data-mobile-help-center] .help-center-search-input-row svg {
+                        height: 16px;
+                        width: 16px;
+                    }
+
+                    [data-mobile-help-center] .help-center-search-input-row .ant-input {
+                        font-size: 13px !important;
+                        height: 36px;
+                        overflow: hidden;
+                        padding: 0 6px !important;
+                        text-overflow: ellipsis;
+                    }
+
+                    [data-mobile-help-center] .help-center-search-shortcut {
+                        display: none !important;
+                    }
+
+                    [data-mobile-help-center] .help-center-search-button {
+                        border-radius: 9px !important;
+                        flex: 0 0 86px;
+                        font-size: 13px !important;
+                        height: 40px !important;
+                        min-height: 40px !important;
+                        min-width: 82px;
+                        padding-left: 10px !important;
+                        padding-right: 10px !important;
                     }
 
                     [data-mobile-help-center] .help-center-tab-crumbs {
@@ -206,6 +265,14 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
 
                     [data-mobile-help-center] .help-center-tab-crumbs .ant-flex {
                         gap: 8px !important;
+                    }
+
+                    [data-mobile-help-center] .help-center-breadcrumb-home-desktop {
+                        display: none !important;
+                    }
+
+                    [data-mobile-help-center] .help-center-breadcrumb-home-mobile {
+                        display: inline !important;
                     }
 
                     [data-mobile-help-center] .help-center-tab-crumbs .ant-breadcrumb {

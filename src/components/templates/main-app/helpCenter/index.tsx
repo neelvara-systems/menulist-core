@@ -31,6 +31,7 @@ function HelpCenter() {
         margin: 'auto' 
     }), [activeTab?.maxWidth]);
     const titleStyle = useMemo(() => ({ marginBottom: 24 }), []);
+    const shouldShowTabTitle = activeKey !== "changelog" && activeKey !== "kb";
 
     useEffect(() => {
         if (requestedTabIsValid && requestedTab) {
@@ -68,7 +69,7 @@ function HelpCenter() {
                             </div>
                         ) : (
                             <Card style={tabCardStyle}>
-                                {activeKey !== "changelog" && <Title level={4} style={titleStyle}>{activeTab?.title ?? DEFAULT_HOME_TAB.title}</Title>}
+                                {shouldShowTabTitle && <Title level={4} style={titleStyle}>{activeTab?.title ?? DEFAULT_HOME_TAB.title}</Title>}
                                 {activeTab?.render}
                             </Card>
                         )}

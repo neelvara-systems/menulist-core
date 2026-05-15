@@ -178,6 +178,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                     </div>
                                     {/* Keyboard hint */}
                                     <div
+                                        className="help-center-search-shortcut"
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -198,6 +199,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                         }}>⌘K</kbd>
                                     </div>
                                     <Button
+                                        className="help-center-search-button"
                                         size="large"
                                         style={{
                                             height: activeTab === 'home' ? 40 : 30,
@@ -245,7 +247,8 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                                         fontWeight: 500
                                                     }}
                                                 >
-                                                    {t('breadcrumbHome')}
+                                                    <span className="help-center-breadcrumb-home-desktop">{t('breadcrumbHome')}</span>
+                                                    <span className="help-center-breadcrumb-home-mobile" style={{ display: 'none' }}>{t('home')}</span>
                                                 </a>
                                             ),
                                         },

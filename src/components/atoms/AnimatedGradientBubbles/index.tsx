@@ -7,6 +7,12 @@ interface AnimatedGradientBubblesProps {
   speed?: 'slow' | 'medium' | 'fast';
 }
 
+const seededUnit = (seed: number) => {
+  let value = Math.imul(seed ^ 0x9e3779b9, 2654435761) >>> 0;
+  value ^= value >>> 16;
+  return value / 4294967295;
+};
+
 const AnimatedGradientBubbles = ({ colors = ['#ffbe0b', '#fb5607', '#8338ec'], count = 3, speed = 'medium' }: AnimatedGradientBubblesProps) => {
   const bubbles = useMemo(() => {
     const speedConfig = {
@@ -16,13 +22,15 @@ const AnimatedGradientBubbles = ({ colors = ['#ffbe0b', '#fb5607', '#8338ec'], c
     };
 
     const { min, range } = speedConfig[speed];
+    const baseSeed = count * 97 + speed.length * 31 + colors.join('|').length;
 
     return Array.from({ length: count }).map((_, index) => {
-      const size = Math.floor(Math.random() * 150) + 100; // 100px to 250px
-      const top = Math.random() * 100;
-      const left = Math.random() * 100;
-      const animationDuration = Math.floor(Math.random() * range) + min;
-      const animationDelay = Math.random() * -20; // -20s to 0s
+      const seed = baseSeed + index * 11;
+      const size = Math.floor(seededUnit(seed + 1) * 150) + 100; // 100px to 250px
+      const top = seededUnit(seed + 2) * 100;
+      const left = seededUnit(seed + 3) * 100;
+      const animationDuration = Math.floor(seededUnit(seed + 4) * range) + min;
+      const animationDelay = seededUnit(seed + 5) * -20; // -20s to 0s
 
       return {
         id: index,
@@ -35,8 +43,8 @@ const AnimatedGradientBubbles = ({ colors = ['#ffbe0b', '#fb5607', '#8338ec'], c
           animationDuration: `${animationDuration}s`,
           animationDelay: `${animationDelay}s`,
           transform: `translate(-${left}%, -${top}%)`,
-          '--x': `${Math.random() * 200 - 100}px`,
-          '--y': `${Math.random() * 200 - 100}px`,
+          '--x': `${seededUnit(seed + 6) * 200 - 100}px`,
+          '--y': `${seededUnit(seed + 7) * 200 - 100}px`,
         } as React.CSSProperties,
       };
     });

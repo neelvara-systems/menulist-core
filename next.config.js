@@ -123,10 +123,11 @@ const nextConfig = {
         config.module.rules.push({ test: /\.svg$/, use: ['@svgr/webpack'] });
 
         // Keep server runtime chunk resolution aligned with Next's emitted
-        // `.next/server/chunks/*` files. Without this, the generated runtime can
-        // look for sibling `./1234.js` chunks during page-data collection.
+        // files. In local dev, numeric chunks can still be required as
+        // sibling `./1234.js` files, so keep dev server chunks in the server
+        // root while preserving production's chunk subdirectory layout.
         if (isServer && nextRuntime !== 'edge' && config.output) {
-            config.output.chunkFilename = 'chunks/[name].js';
+            config.output.chunkFilename = dev ? '[name].js' : 'chunks/[name].js';
         }
 
         // Disable webpack cache where it is known to destabilize route builds:
