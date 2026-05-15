@@ -26,8 +26,10 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
     const cleanContext = mode === 'assistant' && conversationHistory
         ? conversationHistory.slice(-5).map(msg => ({
             role: msg.role,
-            content: msg.role === 'user' ? msg.content : (msg.craftedAnswer || msg.content),
-            ...(msg.image?.url && { imageUrl: msg.image.url }) // Include image URL if present
+            ...(msg.role === 'user'
+                ? { content: msg.content || '' }
+                : { craftedAnswer: msg.craftedAnswer || msg.content || '' }),
+            ...(msg.image?.url && { image: { url: msg.image.url } })
         }))
         : undefined;
 

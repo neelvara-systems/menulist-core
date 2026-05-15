@@ -2,7 +2,8 @@ import * as functions from 'firebase-functions';
 import { vertexAIClient } from '../firebaseAdmin';
 import { tiptapToText } from './tiptapUtils';
 
-const EMBEDDING_MODEL = 'text-embedding-004';
+const EMBEDDING_MODEL = 'gemini-embedding-001';
+const EMBEDDING_OUTPUT_DIMENSIONALITY = 768;
 
 const normalizeVector = (input: unknown): number[] => {
     if (!Array.isArray(input)) return [];
@@ -36,7 +37,11 @@ export const genrateEmbedding = async (article: {
 
     try {
         const embeddingModel = vertexAIClient.getGenerativeModel({ model: EMBEDDING_MODEL });
-        const request = { contents: [{ parts: [{ text: textToEmbed }] }] };
+        const request = {
+            contents: [{ parts: [{ text: textToEmbed }] }],
+            taskType: 'RETRIEVAL_DOCUMENT',
+            outputDimensionality: EMBEDDING_OUTPUT_DIMENSIONALITY,
+        };
         const response = await (embeddingModel as any).embedContents(request);
         const embeddingValues = normalizeVector(response?.embeddings?.[0]?.values);
 

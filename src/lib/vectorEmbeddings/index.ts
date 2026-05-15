@@ -2,15 +2,29 @@ import { Vector } from '@lib/firebase/firebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { writeLogEntry } from 'logs/utils';
 
-const EMBED_MODEL = 'text-embedding-004';
+export const EMBED_MODEL = 'gemini-embedding-001';
+export const EMBED_OUTPUT_DIMENSIONALITY = 768;
+export const EMBEDDING_CACHE_VERSION = `${EMBED_MODEL}:${EMBED_OUTPUT_DIMENSIONALITY}:v1`;
 const CHAT_MODEL = 'gemini-2.5-flash';
 
 type VectorInstance = InstanceType<typeof Vector>;
+type EmbeddingTaskType = 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT';
 
 const LOG_FILE = "kb.log";
 
-export async function callGeminiEmbedding(text: string): Promise<VectorInstance> {
-    const response = await genAIClient.models.embedContent({ model: EMBED_MODEL, contents: text });
+export async function callGeminiEmbedding(
+    text: string,
+    options: { taskType?: EmbeddingTaskType; title?: string } = {}
+): Promise<VectorInstance> {
+    const response = await genAIClient.models.embedContent({
+        model: EMBED_MODEL,
+        contents: text,
+        config: {
+            outputDimensionality: EMBED_OUTPUT_DIMENSIONALITY,
+            taskType: options.taskType || 'RETRIEVAL_QUERY',
+            ...(options.title ? { title: options.title } : {}),
+        },
+    });
     const embedding = response.embeddings[0];
 
     if (!embedding?.values) {
@@ -87,10 +101,13 @@ function trim(s: string, n = 900) {
 function buildConversationContext(conversationHistory?: Array<{ role: 'user' | 'assistant'; content?: string; craftedAnswer?: string }>): string {
     if (!conversationHistory || conversationHistory.length === 0) return '';
 
-    return '\n\nPrevious Conversation:\n' + conversationHistory.map((msg, idx) => {
-        const text = msg.role === 'user' ? msg.content : msg.craftedAnswer;
+    const lines = conversationHistory.map((msg, idx) => {
+        const text = msg.role === 'user' ? msg.content : (msg.craftedAnswer || msg.content);
+        if (!text?.trim()) return null;
         return `${idx + 1}. ${msg.role === 'user' ? 'User' : 'Assistant'}: ${text}`;
-    }).join('\n');
+    }).filter(Boolean);
+
+    return lines.length ? '\n\nPrevious Conversation:\n' + lines.join('\n') : '';
 }
 
 /**
@@ -107,26 +124,31 @@ Answer using ONLY the provided documents, but reference previous messages to mai
 - Maintain consistent terminology from the conversation
 - If the user asks follow-up questions, understand they're related to the previous topic
 
-**CRITICAL RULE - Graceful Failures:** If the provided documents do not contain a relevant answer, do NOT invent information. Instead, politely acknowledge the limitation and suggest helpful next steps.
+**GROUNDING RULES:**
+- Do not invent unsupported facts, prices, hours, menu items, product limits, policies, or setup steps.
+- For recommendations, captions, or improvement advice, use only entities, items, constraints, and facts present in the documents.
+- If the provided documents do not contain a relevant answer, say that the answer is not available in the current knowledge base and suggest a documented next step.
 
 Be conversational yet concise (5–10 sentences). Return STRICT JSON.`;
     }
 
     if (hasImage) {
-        return `You are a precise Help Center assistant in QnA MODE. A user has provided an image and a question. Answer ONLY using the provided documents, using the image as crucial context to understand the user's specific situation. Format your "craftedAnswer" using GitHub-flavored Markdown for clarity (use numbered lists for steps, bullet points for features, **bold** for important UI elements, and \`code blocks\` for technical terms).
+        return `You are a precise Help Center assistant in QnA MODE. A user has provided an image and a question. Answer ONLY using the provided documents, using the image as context to understand the user's situation. Format your "craftedAnswer" using GitHub-flavored Markdown for clarity (use numbered lists for steps, bullet points for features, **bold** for important UI elements, and \`code blocks\` for technical terms).
 
-**CRITICAL RULE - Graceful Failures:** If the provided documents do not contain a relevant answer, do NOT invent information. Instead, politely acknowledge the limitation and suggest helpful next steps. For example:
-- "I couldn't find specific information about that in our knowledge base. However, I can help you with [related topics]. Would any of these be helpful?"
-- "This question is outside the scope of our current documentation. I recommend [contacting support / checking our community forum / etc.]"
+**GROUNDING RULES:**
+- Do not invent unsupported facts, prices, hours, menu items, product limits, policies, or setup steps.
+- The image can clarify the question, but it is not an authority source for facts unless the documents support the answer.
+- If the provided documents do not contain a relevant answer, say that the answer is not available in the current knowledge base and suggest a documented next step.
 
 Be concise and actionable (5–8 sentences). Return STRICT JSON.`;
     }
 
     return `You are a precise Help Center assistant in QnA MODE. Answer ONLY using the provided documents. Format your "craftedAnswer" using GitHub-flavored Markdown for clarity (use numbered lists for steps, bullet points for features, **bold** for important UI elements, and \`code blocks\` for technical terms).
 
-**CRITICAL RULE - Graceful Failures:** If the provided documents do not contain a relevant answer, do NOT invent information. Instead, politely acknowledge the limitation and suggest helpful next steps. For example:
-- "I couldn't find specific information about that in our knowledge base. However, I can help you with [related topics]. Would any of these be helpful?"
-- "This question is outside the scope of our current documentation. I recommend [contacting support / checking our community forum / etc.]"
+**GROUNDING RULES:**
+- Do not invent unsupported facts, prices, hours, menu items, product limits, policies, or setup steps.
+- For recommendations, captions, or improvement advice, use only entities, items, constraints, and facts present in the documents.
+- If the provided documents do not contain a relevant answer, say that the answer is not available in the current knowledge base and suggest a documented next step.
 
 Be concise and actionable (5–8 sentences). Return STRICT JSON.`;
 }
@@ -162,6 +184,7 @@ Return STRICT JSON with exactly this shape:
 }
 Rules:
 - Only include id's of documents actually used in the answer.
+- If the answer is not supported by the documents, set "references" to [] and make "craftedAnswer" clearly say the answer is not available in the current knowledge base.
 ${image ? '- Use the provided image as context to make your answer more specific and relevant.' : ''}
 ${hasConversationHistory ? '- Consider the conversation history to provide contextual answers.' : ''}
 
@@ -219,4 +242,3 @@ export async function callGeminiChat(
 
     return response.text;
 }
-

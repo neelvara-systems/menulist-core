@@ -21,11 +21,11 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { LOG_FILES } from '@constant/logging';
-import { addAiSearchHistory, findCachedSearchByCacheKey } from '@database/aiSearchHistory';
+import { addAiSearchHistoryServer, findCachedSearchByCacheKeyServer } from '@database/aiSearchHistory/server';
 import { getCachedEmbedding, saveCachedEmbedding } from '@database/queryEmbeddings';
 import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { normalizeQuery } from '@lib/string';
-import { callGeminiChat, callGeminiEmbedding, generateSearchQueryFromImage } from '@lib/vectorEmbeddings';
+import { EMBEDDING_CACHE_VERSION, callGeminiChat, callGeminiEmbedding, generateSearchQueryFromImage } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { hashString } from '@util/hash';
 import { writeLogEntry } from 'logs/utils';
@@ -41,6 +41,8 @@ const FETCH_TIMEOUT_MS = 10000; // 10 seconds
 const SIMILARITY_THRESHOLD = 0.6;
 const SIMILARITY_THRESHOLD_LOW = 0.4;
 const VECTOR_SEARCH_LIMIT = 12;
+const RAG_CONTEXT_LIMIT = 6;
+const SEARCH_CACHE_VERSION = 'rag-v3';
 
 const LOG_FILE = LOG_FILES.KB_SEARCH;
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
@@ -254,9 +256,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                         const instantCacheKeyBase = imageUrl
                             ? `${normalizedTextQueryForKey}::IMAGE::${hashString(imageUrl)}`
                             : normalizedTextQueryForKey;
-                        const instantCacheKey = `${tId}:${sId}:${instantCacheKeyBase}`;
+                        const instantCacheKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${instantCacheKeyBase}`;
 
-                        const savedHistory = await addAiSearchHistory({
+                        const savedHistory = await addAiSearchHistoryServer({
                             query: searchQuery,
                             cacheKey: instantCacheKey,
                             tId,
@@ -316,17 +318,17 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const cacheLookupKeyBase = imageUrl
         ? `${normalizedTextQuery}::IMAGE::${hashString(imageUrl)}`
         : normalizedTextQuery;
-    const cacheLookupKey = `${tId}:${sId}:${cacheLookupKeyBase}`;
+    const cacheLookupKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${cacheLookupKeyBase}`;
 
     const cacheStart = Date.now();
     // Widget searches use a prefixed cache key to avoid collision, but hit same pipeline
-    const effectiveCacheKey = mountContext === 'widget' ? `widget:${cacheLookupKey}` : cacheLookupKey;
+    const effectiveCacheKey = `${EMBEDDING_CACHE_VERSION}:${mountContext === 'widget' ? `widget:${cacheLookupKey}` : cacheLookupKey}`;
 
     // Cache lookup only for authenticated contexts (help_center has session for findCachedSearchByCacheKey)
     // Widget skips session-based cache — uses embedding cache only
     let cachedResult: any = null;
     if (mountContext === 'help_center' && uId) {
-        cachedResult = await findCachedSearchByCacheKey(
+        cachedResult = await findCachedSearchByCacheKeyServer(
             cacheLookupKey,
             { tId, sId, uId } as any
         );
@@ -382,7 +384,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         const answer = canonicalResult.answer;
 
         // Save to search history for analytics
-        const savedHistory = await addAiSearchHistory({
+        const savedHistory = await addAiSearchHistoryServer({
             query: searchQuery,
             cacheKey: cacheLookupKey,
             tId,
@@ -492,32 +494,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     let queryVector = await getCachedEmbedding(effectiveCacheKey);
 
     if (!queryVector) {
-        queryVector = await callGeminiEmbedding(queryForEmbedding);
+        queryVector = await callGeminiEmbedding(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
         aiProviderOperations.add('embedding_generation');
         await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector);
     }
 
     perfMetrics.embeddingGeneration = Date.now() - embeddingStart;
-
-    const vectorSearchStart = Date.now();
-    const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
-
-    // Multi-tenant KB filtering is mandatory for every Canonica mount.
-    const articleQuery = articlesRef
-        .where('status', '==', 'published')
-        .where('tId', '==', tId)
-        .where('sId', '==', sId);
-
-    const snapshot = await articleQuery
-        .findNearest({
-            vectorField: 'embedding',
-            queryVector: queryVector,
-            limit: VECTOR_SEARCH_LIMIT,
-            distanceMeasure: 'COSINE',
-            distanceResultField: 'distance',
-        }).get();
-
-    perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
 
     // Helper: evaluate escalation for empty/no-result paths (avoids code duplication)
     const buildEmptyEscalation = async () => {
@@ -535,6 +517,47 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             });
         } catch { return undefined; }
     };
+
+    const vectorSearchStart = Date.now();
+    const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
+
+    // Multi-tenant KB filtering is mandatory for every Canonica mount.
+    const articleQuery = articlesRef
+        .where('status', '==', 'published')
+        .where('tId', '==', tId)
+        .where('sId', '==', sId);
+
+    let snapshot;
+    try {
+        snapshot = await articleQuery
+            .findNearest({
+                vectorField: 'embedding',
+                queryVector: queryVector,
+                limit: VECTOR_SEARCH_LIMIT,
+                distanceMeasure: 'COSINE',
+                distanceResultField: 'distance',
+            }).get();
+    } catch (vectorError: any) {
+        perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
+        perfMetrics.total = Date.now() - perfStart;
+        await writeLogEntry({
+            logFileName: PERF_LOG,
+            userId: uId,
+            logType: 'VECTOR_SEARCH_ERROR',
+            data: {
+                query: searchQuery,
+                error: vectorError?.message || String(vectorError),
+                code: vectorError?.code || null,
+                vectorSearchMs: perfMetrics.vectorSearch,
+                totalMs: perfMetrics.total,
+                mountContext,
+            }
+        });
+
+        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+    }
+
+    perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
 
     if (snapshot.empty) {
         return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
@@ -562,7 +585,27 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
     }
 
-    const payloadToGemini = documentsMatched.map((d: any) => ({
+    if (!documentsMatched.length) {
+        perfMetrics.total = Date.now() - perfStart;
+        await writeLogEntry({
+            logFileName: PERF_LOG,
+            userId: uId,
+            logType: 'VECTOR_LOW_CONFIDENCE_MISS',
+            data: {
+                query: searchQuery,
+                topScore: documentsFound[0]?.similarityScore || 0,
+                threshold: SIMILARITY_THRESHOLD_LOW,
+                totalMs: perfMetrics.total,
+                mountContext,
+            }
+        });
+
+        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+    }
+
+    const documentsForPrompt = documentsMatched.slice(0, RAG_CONTEXT_LIMIT);
+
+    const payloadToGemini = documentsForPrompt.map((d: any) => ({
         docId: d.id,
         category: d.category,
         section: d.section,
@@ -606,13 +649,53 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     perfMetrics.answerGeneration = Date.now() - answerStart;
 
     if (geminiAnswer) {
-        const generatedData: any = JSON.parse(geminiAnswer);
+        let generatedData: any;
+        try {
+            generatedData = JSON.parse(geminiAnswer);
+        } catch (parseError: any) {
+            await writeLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'ANSWER_JSON_PARSE_FAILED',
+                data: {
+                    query: searchQuery,
+                    error: parseError?.message || String(parseError),
+                    responsePreview: String(geminiAnswer).slice(0, 500),
+                    mountContext,
+                }
+            });
+            return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        }
+
+        const craftedAnswer = typeof generatedData.craftedAnswer === 'string'
+            ? generatedData.craftedAnswer.trim()
+            : '';
+        const generatedReferenceIds = Array.isArray(generatedData.references)
+            ? generatedData.references.filter((refDocId: unknown): refDocId is string => typeof refDocId === 'string')
+            : [];
+        const suggestedQuestions = Array.isArray(generatedData.suggestedQuestions)
+            ? generatedData.suggestedQuestions
+                .filter((question: unknown): question is string => typeof question === 'string')
+                .map(question => question.trim())
+                .filter(Boolean)
+                .slice(0, 3)
+            : [];
+
+        if (!craftedAnswer) {
+            await writeLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'ANSWER_EMPTY',
+                data: { query: searchQuery, mountContext }
+            });
+            return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        }
 
         // Resolve reference IDs to full document objects
         const resolvedReferences: any[] = [];
-        if (generatedData.references?.length) {
-            generatedData.references.forEach((refDocId: any) => {
-                const doc = documentsMatched.find(d => d.id === refDocId);
+        if (generatedReferenceIds.length) {
+            generatedReferenceIds.forEach((refDocId: string) => {
+                const doc = documentsForPrompt.find(d => d.id === refDocId);
                 if (doc) {
                     resolvedReferences.push(doc);
                 }
@@ -620,7 +703,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         }
 
         // Save search history
-        const savedHistory = await addAiSearchHistory({
+        const savedHistory = await addAiSearchHistoryServer({
             query: searchQuery,
             cacheKey: cacheLookupKey,
             tId,
@@ -628,7 +711,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             uId,
             generatedQueryFromImage,
             imageUrl: imageUrl || undefined,
-            craftedAnswer: generatedData.craftedAnswer,
+            craftedAnswer,
             references: resolvedReferences,
         });
 
@@ -650,7 +733,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 embeddingGenerationMs: perfMetrics.embeddingGeneration,
                 vectorSearchMs: perfMetrics.vectorSearch,
                 answerGenerationMs: perfMetrics.answerGeneration,
-                answerLength: generatedData.craftedAnswer?.length || 0,
+                answerLength: craftedAnswer.length,
+                promptDocumentCount: documentsForPrompt.length,
                 mountContext,
             }
         });
@@ -671,7 +755,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     sessionFailureCount: input.sessionFailureCount,
                     productContext,
                     effectiveQuery: queryForEmbedding,
-                    answerWasEmpty: !generatedData.craftedAnswer,
+                    answerWasEmpty: !craftedAnswer,
                 });
             } catch {
                 // Graceful degradation — escalation failure never blocks search
@@ -679,9 +763,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         }
 
         return withAiProviderUsage({
-            craftedAnswer: generatedData.craftedAnswer,
+            craftedAnswer,
             references: resolvedReferences,
-            suggestedQuestions: generatedData.suggestedQuestions || [],
+            suggestedQuestions,
             searchHistoryId: savedHistory?.id,
             canonical: false,
             imageProcessed,

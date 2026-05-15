@@ -316,10 +316,10 @@ export function useChatHandlers({
                     });
 
                 } catch (error: any) {
-                    const errorMessage = 'Something went wrong while searching.';
+                    const errorMessage = error?.message || 'Something went wrong while searching.';
                     dispatchChatState({
                         type: 'SEARCH_ERROR',
-                        payload: errorMessage + ' You can still find answers in our documentation.'
+                        payload: `${errorMessage} You can still find answers in our documentation.`
                     });
                     antMessage.error(`Search failed: ${errorMessage}`);
                 }
@@ -401,10 +401,10 @@ export function useChatHandlers({
             });
 
         } catch (error: any) {
-            const errorMessage = 'Something went wrong while searching.';
+            const errorMessage = error?.message || 'Something went wrong while searching.';
             dispatchChatState({
                 type: 'SEARCH_ERROR',
-                payload: errorMessage + ' You can still find answers in our documentation.'
+                payload: `${errorMessage} You can still find answers in our documentation.`
             });
             antMessage.error(`Search failed: ${errorMessage}`);
         }

@@ -1,5 +1,4 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { canonicaFirestoreAdmin as firestoreAdmin, CanonicaVector as Vector } from '@lib/firebase/canonicaFirebaseAdmin';
 
 const COLLECTION = DB_COLLECTIONS.QUERY_EMBEDDINGS;
@@ -24,26 +23,24 @@ export interface QueryEmbeddingCache {
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export const getCachedEmbedding = async (cacheKey: string): Promise<VectorInstance | null> => {
-    return await apiCallComposer(async () => {
-        const docRef = firestoreAdmin.collection(COLLECTION).doc(cacheKey);
-        const docSnap = await docRef.get();
+    const docRef = firestoreAdmin.collection(COLLECTION).doc(cacheKey);
+    const docSnap = await docRef.get();
 
-        if (!docSnap.exists) {
+    if (!docSnap.exists) {
+        return null;
+    }
+
+    const data = docSnap.data() as QueryEmbeddingCache;
+
+    // TTL check: skip stale entries (>30 days). They'll be regenerated on next use.
+    if (data.createdAt) {
+        const createdMs = data.createdAt instanceof Date ? data.createdAt.getTime() : new Date(data.createdAt).getTime();
+        if (Date.now() - createdMs > CACHE_TTL_MS) {
             return null;
         }
+    }
 
-        const data = docSnap.data() as QueryEmbeddingCache;
-
-        // TTL check: skip stale entries (>30 days). They'll be regenerated on next use.
-        if (data.createdAt) {
-            const createdMs = data.createdAt instanceof Date ? data.createdAt.getTime() : new Date(data.createdAt).getTime();
-            if (Date.now() - createdMs > CACHE_TTL_MS) {
-                return null;
-            }
-        }
-
-        return new Vector(data.vector);
-    }, 'getCachedEmbedding');
+    return new Vector(data.vector);
 };
 
 /**
@@ -58,19 +55,17 @@ export const saveCachedEmbedding = async (
     query: string,
     vector: VectorInstance
 ): Promise<void> => {
-    return await apiCallComposer(async () => {
-        const docRef = firestoreAdmin.collection(COLLECTION).doc(cacheKey);
+    const docRef = firestoreAdmin.collection(COLLECTION).doc(cacheKey);
 
-        const vectorValues = vector.values || (vector as any)._values;
+    const vectorValues = vector.values || (vector as any)._values;
 
-        const cacheData: QueryEmbeddingCache = {
-            cacheKey,
-            query,
-            vector: vectorValues,
-            createdAt: new Date(),
-            hitCount: 0
-        };
+    const cacheData: QueryEmbeddingCache = {
+        cacheKey,
+        query,
+        vector: vectorValues,
+        createdAt: new Date(),
+        hitCount: 0
+    };
 
-        await docRef.set(cacheData);
-    }, 'saveCachedEmbedding');
+    await docRef.set(cacheData);
 };

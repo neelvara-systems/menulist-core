@@ -334,6 +334,8 @@ function PDPModal({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isImageViewerOpen, item, onClose]);
 
+    const safeTags = useMemo(() => sanitizePdpTags(item?.tags), [item?.tags]);
+
     if (!item || !mounted) return null;
 
     const hasMultipleImages = images.length > 1;
@@ -362,8 +364,6 @@ function PDPModal({
             nutritionInfo.servingSize ? `Serving ${nutritionInfo.servingSize}` : '',
             ].filter(Boolean)
         : [];
-    const safeTags = useMemo(() => sanitizePdpTags(item?.tags), [item?.tags]);
-
     const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         imageTouchStartXRef.current = event.touches[0]?.clientX ?? null;
     };
