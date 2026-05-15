@@ -58,7 +58,7 @@ import {
     deriveCustomerAppShortName,
     getCustomerAppIconUrl,
     getCustomerAppIconVersion,
-    getCustomerAppleStartupImages,
+    getStaticCustomerAppleStartupImages,
 } from "@lib/pwa/customerAppAssets";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
 import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
@@ -816,7 +816,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     ? {
                         appleWebApp: {
                             capable: true,
-                            startupImage: getCustomerAppleStartupImages(storeData.id, pwaIconVersion),
+                            startupImage: getStaticCustomerAppleStartupImages(),
                             statusBarStyle: "default",
                             title: appleWebAppTitle,
                         },
@@ -871,7 +871,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             ? {
                 appleWebApp: {
                     capable: true,
-                    startupImage: getCustomerAppleStartupImages(storeData.id, pwaIconVersion),
+                    startupImage: getStaticCustomerAppleStartupImages(),
                     statusBarStyle: "default",
                     title: appleWebAppTitle,
                 },

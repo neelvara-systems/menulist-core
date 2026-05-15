@@ -16,6 +16,7 @@ type OnboardDraft = {
     businessType: string;
     commitmentMonths: string;
     ownerEmail: string;
+    ownerPassword: string;
     ownerPhone: string;
     paymentMode: PaymentMode | '';
     pricingTier: string;
@@ -23,6 +24,9 @@ type OnboardDraft = {
 
 type OnboardResult = {
     dashboardUrl?: string;
+    loginEmail?: string;
+    ownerUsername?: string;
+    passwordSet?: boolean;
     publicUrl?: string;
     shortUrl?: string;
     status: string;
@@ -38,6 +42,7 @@ const initialDraft: OnboardDraft = {
     businessType: '',
     commitmentMonths: '',
     ownerEmail: '',
+    ownerPassword: '',
     ownerPhone: '',
     paymentMode: '',
     pricingTier: '',
@@ -76,8 +81,8 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
 
     const validateStep = () => {
         if (step === 0) {
-            if (!draft.businessName.trim() || !draft.businessType || draft.ownerPhone.trim().length < 10) {
-                Toast.show({ content: 'Business name, type, and phone are required.', duration: 2200 });
+            if (!draft.businessName.trim() || !draft.businessType || draft.ownerPhone.trim().length < 10 || draft.ownerPassword.length < 6) {
+                Toast.show({ content: 'Business name, type, phone, and password are required.', duration: 2200 });
                 return false;
             }
         }
@@ -110,6 +115,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     businessType: draft.businessType,
                     commitmentMonths: draft.commitmentMonths ? Number(draft.commitmentMonths) : undefined,
                     ownerEmail: draft.ownerEmail.trim() || undefined,
+                    ownerPassword: draft.ownerPassword,
                     ownerPhone: draft.ownerPhone.trim(),
                     paymentMode: draft.paymentMode,
                     pricingTier: draft.pricingTier,
@@ -160,6 +166,28 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                 <Flex gap={10}>
                                     <Button block fill="outline" onClick={() => copyLink(result.shortUrl || '', 'Payment link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy</Flex></Button>
                                     <Button block onClick={() => shareLink(result.shortUrl || '', 'MenuList payment link')} style={{ minHeight: 44 }}><Flex align="center" gap={6} justify="center"><LuShare2 size={16} /> Share</Flex></Button>
+                                </Flex>
+                            </Flex>
+                        </Card>
+                    ) : null}
+                    {(result.loginEmail || result.ownerUsername) ? (
+                        <Card title="Client login">
+                            <Flex gap={10} vertical>
+                                {result.ownerUsername ? (
+                                    <Flex gap={6} vertical>
+                                        <Text type="secondary">Username</Text>
+                                        <Text copyable>{result.ownerUsername}</Text>
+                                    </Flex>
+                                ) : null}
+                                {result.loginEmail ? (
+                                    <Flex gap={6} vertical>
+                                        <Text type="secondary">Login email</Text>
+                                        <Text copyable>{result.loginEmail}</Text>
+                                    </Flex>
+                                ) : null}
+                                <Flex gap={6} vertical>
+                                    <Text type="secondary">Password</Text>
+                                    <Text copyable>{draft.ownerPassword}</Text>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -231,6 +259,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Select onChange={(value) => updateDraft('businessType', value)} options={businessTypeOptions} placeholder="Business type" value={draft.businessType} />
                             <Input inputMode="tel" onChange={(value) => updateDraft('ownerPhone', value)} placeholder="Owner phone" value={draft.ownerPhone} />
                             <Input inputMode="email" onChange={(value) => updateDraft('ownerEmail', value)} placeholder="Owner email (optional)" type="email" value={draft.ownerEmail} />
+                            <Input onChange={(value) => updateDraft('ownerPassword', value)} placeholder="Owner login password" type="password" value={draft.ownerPassword} />
                         </Flex>
                     </Card>
                 ) : null}
@@ -326,6 +355,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Flex justify="space-between"><Text type="secondary">Business</Text><Text strong>{draft.businessName}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Type</Text><Text strong>{draft.businessType}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Phone</Text><Text strong>{draft.ownerPhone}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Username</Text><Text strong>{draft.ownerPhone.replace(/[^0-9]/g, '')}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Tier</Text><Text strong>{selectedTier?.name || draft.pricingTier}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>{draft.paymentMode === 'online' ? 'Online recurring' : 'Offline prepaid'}</Text></Flex>
                             {draft.commitmentMonths ? (

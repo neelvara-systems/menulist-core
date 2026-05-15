@@ -170,6 +170,7 @@ export type MoreSubScreen =
     | 'canonicaReleaseNotes'
     | 'platformHub'
     | 'canonicaHub'
+    | 'resellerHub'
     | 'entityBlocks'
     | 'platformTenants'
     | 'platformStores'
@@ -291,6 +292,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (canonicaInternalScreens.includes(currentScreen as MobilePlatformInternalScreenKey)) {
             return 'canonicaHub';
         }
+        if (['resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(currentScreen)) {
+            return 'resellerHub';
+        }
         if (isPlatformInternalScreen(currentScreen)) {
             return 'platformHub';
         }
@@ -373,15 +377,14 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'platformTenants', icon: <LuBuilding2 color="#475569" size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
         { key: 'platformStores', icon: <LuMapPin color="#0f766e" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
         { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
-        ...(FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD ? [
-            { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard'], label: 'Reseller Dashboard', description: 'Platform-visible reseller dashboard.', onClick: () => openSubScreen('resellerDashboard') },
-            { key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Manage reseller profiles and platform partner access.', onClick: () => openSubScreen('resellerManagement') },
-            { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding'], label: 'Reseller Onboarding', description: 'Open the reseller onboarding flow.', onClick: () => openSubScreen('resellerOnboarding') },
-        ] : []),
         { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
     ] : [];
 
-    const resellerItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
+    const resellerManagementItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
+        { key: 'resellerHub', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'clients', 'onboarding'], label: 'Reseller', description: isPlatformAdmin ? 'Partner onboarding, client activation, and reseller profile management.' : 'Client onboarding and license management.', onClick: () => openSubScreen('resellerHub') },
+    ] : [];
+
+    const resellerHubItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
         { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard', 'clients'], label: 'Reseller Dashboard', description: isPlatformAdmin ? 'View reseller clients across the platform.' : 'View your clients and license status.', onClick: () => openSubScreen('resellerDashboard') },
         { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding', 'new client'], label: 'Onboard Client', description: 'Create a client account, select a plan, and activate payment.', onClick: () => openSubScreen('resellerOnboarding') },
         ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
@@ -405,10 +408,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { items: businessIdentityItems, title: 'Business Settings' },
         { items: businessPresenceItems, title: 'Business Presence' },
         ...(platformMonitoringItems.length ? [{ items: platformMonitoringItems, title: 'Platform Monitoring' }] : []),
-        ...(resellerItems.length ? [{ items: resellerItems, title: 'Reseller' }] : []),
+        ...(resellerManagementItems.length ? [{ items: resellerManagementItems, title: 'Reseller' }] : []),
         ...(platformManagementItems.length ? [{ items: platformManagementItems, title: 'Platform Management' }] : []),
         ...(canonicaManagementItems.length ? [{ items: canonicaManagementItems, title: 'Canonica' }] : []),
-    ]), [businessIdentityItems, businessPresenceItems, canonicaManagementItems, moduleItems, platformManagementItems, platformMonitoringItems, resellerItems]);
+    ]), [businessIdentityItems, businessPresenceItems, canonicaManagementItems, moduleItems, platformManagementItems, platformMonitoringItems, resellerManagementItems]);
 
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -442,6 +445,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
     else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} title="Canonica" />;
+    else if (subScreen === 'resellerHub') subScreenContent = <MobileMoreHubScreen description="Partner onboarding, client activation, offline prepaid licenses, and reseller profile management." items={resellerHubItems} onBack={() => setSubScreen('main')} title="Reseller" />;
     else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
     else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
     else if (subScreen === 'hoursEdit') subScreenContent = <MobileWorkingHoursEditScreen onBack={() => setSubScreen('main')} />;
@@ -479,8 +483,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
-    else if (subScreen === 'resellerDashboard') subScreenContent = <MobileResellerDashboardScreen onBack={() => setSubScreen(isResellerAccount && !isPlatformAdmin ? 'main' : 'platformHub')} onOpenManagement={() => setSubScreen('resellerManagement')} onOpenOnboarding={() => setSubScreen('resellerOnboarding')} />;
-    else if (subScreen === 'resellerManagement') subScreenContent = <MobileResellerManagementScreen onBack={() => setSubScreen(isResellerAccount && !isPlatformAdmin ? 'resellerDashboard' : 'platformHub')} />;
+    else if (subScreen === 'resellerDashboard') subScreenContent = <MobileResellerDashboardScreen onBack={() => setSubScreen('resellerHub')} onOpenManagement={() => setSubScreen('resellerManagement')} onOpenOnboarding={() => setSubScreen('resellerOnboarding')} />;
+    else if (subScreen === 'resellerManagement') subScreenContent = <MobileResellerManagementScreen onBack={() => setSubScreen('resellerHub')} />;
     else if (subScreen === 'resellerOnboarding') subScreenContent = <MobileResellerOnboardingScreen onBack={() => setSubScreen('resellerDashboard')} />;
     else if (isPlatformInternalScreen(subScreen)) subScreenContent = <MobilePlatformInternalScreen onBack={() => setSubScreen(getBackTarget(subScreen))} screen={subScreen} />;
 

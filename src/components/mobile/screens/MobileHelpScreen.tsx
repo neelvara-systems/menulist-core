@@ -182,7 +182,7 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                     }
 
                     [data-mobile-help-center] .help-center-hero-search:not([data-active-tab="home"]) {
-                        min-height: 96px;
+                        min-height: 88px;
                         padding: 0 !important;
                     }
 
@@ -209,7 +209,16 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                     }
 
                     [data-mobile-help-center] .help-center-tab-crumbs .ant-breadcrumb {
-                        display: none;
+                        display: block;
+                        font-size: 13px;
+                        line-height: 1.35;
+                    }
+
+                    [data-mobile-help-center] .help-center-tab-crumbs .ant-breadcrumb-link,
+                    [data-mobile-help-center] .help-center-tab-crumbs .ant-breadcrumb-separator {
+                        display: inline-flex;
+                        align-items: center;
+                        min-height: 32px;
                     }
                 `}</style>
                 <HelpCenter />

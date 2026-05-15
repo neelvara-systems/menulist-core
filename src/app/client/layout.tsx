@@ -14,13 +14,10 @@
  */
 
 import { Metadata, Viewport } from 'next';
-import { CUSTOMER_APPLE_STARTUP_IMAGES } from '@lib/pwa/customerAppAssets';
+import { getStaticCustomerAppleStartupImages } from '@lib/pwa/customerAppAssets';
 import { APP_THEME_COLOR } from 'src/constants/common';
 
-const fallbackStartupImages = CUSTOMER_APPLE_STARTUP_IMAGES.map((image) => ({
-    url: `/splash/apple-splash-${image.size}.png`,
-    media: image.media,
-}));
+const fallbackStartupImages = getStaticCustomerAppleStartupImages();
 
 export const metadata: Metadata = {
     // Default metadata - will be overridden by page-level generateMetadata

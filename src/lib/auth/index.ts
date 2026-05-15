@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
-import { addPlatformUser, getUserByEmail } from "@database/users";
+import { addPlatformUser, getUserByEmail, getUserByLoginIdentifier, normalizePhoneUsername } from "@database/users";
 import { firebaseAuth, firebaseClient, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
@@ -280,19 +280,38 @@ export const authOptions: NextAuthOptions = {
             name: 'Credentials',
             credentials: {},
             async authorize(credentials): Promise<any> {
-                // ✅ SECURITY FIX: Normalize email to lowercase immediately
-                const email = ((credentials as any).email || '').toLowerCase().trim();
+                // ✅ SECURITY FIX: Normalize login identifier immediately.
+                // This may be an email or a reseller-created phone username.
+                const loginIdentifier = ((credentials as any).email || '').toLowerCase().trim();
                 const password = (credentials as any).password;
+                const isEmailIdentifier = loginIdentifier.includes('@');
+                let email = loginIdentifier;
+                let dbUser: any = null;
 
                 // ✅ EMAIL VALIDATION: Block disposable emails and invalid domains
-                const emailValidation = validateEmail(email);
-                if (!emailValidation.valid) {
-                    const errorMessage = getEmailValidationError(email);
+                if (isEmailIdentifier) {
+                    const emailValidation = validateEmail(email);
+                    if (!emailValidation.valid) {
+                        const errorMessage = getEmailValidationError(email);
 
-                    // Log failed attempt
-                    await logFailedLogin(email, `invalid_email: ${emailValidation.reason}`, 'credentials');
+                        // Log failed attempt
+                        await logFailedLogin(email, `invalid_email: ${emailValidation.reason}`, 'credentials');
 
-                    throw new Error(errorMessage);
+                        throw new Error(errorMessage);
+                    }
+                } else {
+                    const phoneUsername = normalizePhoneUsername(loginIdentifier);
+                    if (phoneUsername.length < 10) {
+                        await logFailedLogin(loginIdentifier, 'invalid_username', 'credentials');
+                        throw new Error("Invalid email/phone or password");
+                    }
+                    dbUser = await getUserByLoginIdentifier(phoneUsername);
+                    email = typeof dbUser?.email === 'string' ? dbUser.email.toLowerCase().trim() : '';
+                    const resolvedEmailValidation = validateEmail(email);
+                    if (!resolvedEmailValidation.valid) {
+                        await logFailedLogin(phoneUsername, 'username_not_found', 'credentials');
+                        throw new Error("Invalid email/phone or password");
+                    }
                 }
 
                 // Step 1: Check for account lockout
@@ -303,7 +322,9 @@ export const authOptions: NextAuthOptions = {
                 }
 
                 // Step 2: Get user from database
-                let dbUser: any = await getUserByEmail(email);
+                if (!dbUser) {
+                    dbUser = await getUserByEmail(email);
+                }
                 dbUser = await applyInheritedBlockState(dbUser);
                 logFetchedUserForDebug('credentials', dbUser);
 
@@ -327,14 +348,14 @@ export const authOptions: NextAuthOptions = {
                         await logFailedLogin(email, 'invalid_password', 'credentials');
 
                         // Security: Use same generic error to prevent user enumeration
-                        throw new Error("Invalid email or password");
+                        throw new Error("Invalid email/phone or password");
                     }
                 } else {
                     // ❌ Failed: Log failed attempt (invalid account)
                     await logFailedLogin(email, 'invalid_account', 'credentials');
 
                     // Security: Use same generic error to prevent user enumeration
-                    throw new Error("Invalid email or password")
+                    throw new Error("Invalid email/phone or password")
                 }
             }
         })

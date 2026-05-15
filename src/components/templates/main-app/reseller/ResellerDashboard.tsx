@@ -23,14 +23,18 @@ const STATUS_LABELS: Record<string, string> = {
     cancelled: 'Cancelled',
 };
 
+function formatMoney(paise?: number) {
+    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
+}
+
 function ResellerDashboard() {
     const { data: session } = useSession();
     const router = useRouter();
     const resellerId = (session as any)?.user?.id || '';
     const resellerEmail = (session as any)?.user?.email || '';
-    const isPlatform = (session as any)?.platformRole === 'PLATFORM';
+    const isPlatform = (session as any)?.platformRole === 'PLATFORM' || (session?.user as any)?.platformRole === 'PLATFORM';
 
-    const { profile, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const { profile, monthlySummary, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
 
     if (isLoading) {
         return (
@@ -155,6 +159,29 @@ function ResellerDashboard() {
                 </Row>
             )}
 
+            {monthlySummary && (
+                <Card
+                    size="small"
+                    title={`This Month (${monthlySummary.month})`}
+                    style={{ marginBottom: 16 }}
+                >
+                    <Row gutter={[16, 16]}>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Clients" value={monthlySummary.totals.clientCount} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Transactions" value={monthlySummary.totals.transactionCount} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Collected" value={monthlySummary.totals.recognizedRevenuePaise / 100} prefix="₹" precision={0} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <Statistic title="Pending Online" value={monthlySummary.totals.onlinePendingPaise / 100} prefix="₹" precision={0} />
+                        </Col>
+                    </Row>
+                </Card>
+            )}
+
             {/* Profile Info (reseller only, not platform) */}
             {!isPlatform && profile && (
                 <Card size="small" style={{ marginBottom: 16 }}>
@@ -164,6 +191,9 @@ function ResellerDashboard() {
                         </Text>
                         <Text type="secondary">
                             Total onboarded: {profile.totalStoresOnboarded}
+                        </Text>
+                        <Text type="secondary">
+                            Lifetime sales: {formatMoney(profile.totalRevenueCollectedPaise)}
                         </Text>
                     </Flex>
                 </Card>

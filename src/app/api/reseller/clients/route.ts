@@ -18,7 +18,7 @@ export const GET = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Feature not available." }, { status: 404 });
         }
 
-        const isPlatform = session.platformRole === 'PLATFORM';
+        const isPlatform = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
         const resellerId = session.user.id;
 
         // PLATFORM role sees all resellers' clients

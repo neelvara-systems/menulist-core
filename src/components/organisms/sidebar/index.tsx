@@ -2,6 +2,7 @@ import EcomsIconLogo from '@atoms/ecomsLogo';
 import EcomsHorizontalLogo from '@atoms/ecomsLogo/ecomsHorizontalLogo';
 import { FEATURE_FLAGS } from '@config/features';
 import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import ClientOnlyProvider from '@providers/clientOnlyProvider';
@@ -10,6 +11,7 @@ import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMo
 import { Button, Popover, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Fragment, useContext, useEffect, useMemo, useState } from 'react';
 import { MdDarkMode, MdLightMode, MdOutlineNavigateNext, MdOutlineSettingsSuggest } from 'react-icons/md';
@@ -25,6 +27,8 @@ const SidebarComponent = () => {
     const isDarkMode = useAppSelector(getDarkModeState);
     const isCollapsed = useAppSelector(getSidebarState)
     const { isMasterUser } = useContext(PlatformGlobalDataContext);
+    const { data: session } = useSession();
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const [hoverId, setHoverId] = useState(null);
     const [activeParentNav, setActiveParentNav] = useState<NavItemType>({ label: '', route: '', icon: '', isChild: false })
     const [activeNav, setActiveNav] = useState<NavItemType>({ label: 'Builder', route: 'builder', icon: 'builder', isChild: false });
@@ -46,6 +50,13 @@ const SidebarComponent = () => {
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
                 return isMasterUser && FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL;
             }
+            if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
+                return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD
+                    && [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole);
+            }
+            if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
+                return false;
+            }
             return true;
         });
 
@@ -58,7 +69,7 @@ const SidebarComponent = () => {
             subNav: nav.subNav?.map(subnav => ({
                 ...subnav,
                 active: false
-            }))
+            })).filter(subnav => !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole))
         }));
 
         let currentNav: NavItemType | null = null;
@@ -86,7 +97,7 @@ const SidebarComponent = () => {
 
         if (currentNav) setActiveNav(currentNav);
         setSidebarMenusList(menuCopy);
-    }, [pathname, isMasterUser])
+    }, [pathname, isMasterUser, platformRole])
 
     const showExpandedSidebar = useMemo(() => Boolean(!isCollapsed || isHover), [isCollapsed, isHover])
 
@@ -431,4 +442,3 @@ const SidebarComponent = () => {
 }
 
 export default SidebarComponent
-

@@ -1,6 +1,7 @@
 import { LuActivity, LuBarChartBig, LuBook, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory, MdOutlineSupportAgent } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
 
 
 export const HOME_ROUTING = `/`;
@@ -25,6 +26,9 @@ export const NAVIGARIONS_ROUTINGS = {
     HELP: HELP_CENTER_ROUTING,
     PLATFORM: `/platform`,
     CANONICA: `/canonica`,
+    RESELLER: `/reseller`,
+    RESELLER_ONBOARD: `/reseller/onboard`,
+    RESELLER_MANAGE: `/reseller/manage`,
     USERS: `/users`,
     SIGNIN: `/signin`,
     FORGOT_PASSWORD: 'forgot-password',
@@ -52,7 +56,7 @@ export const NAVIGARIONS_ROUTINGS = {
 
 export const SKIP_CLIENT_APP_LAYOUT_ROUTINGS = [NAVIGARIONS_ROUTINGS.SIGNIN, HOME_ROUTING, NAVIGARIONS_ROUTINGS.MENU, NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD];
 
-export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean };
+export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean, allowedPlatformRoles?: string[] };
 
 export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard },
@@ -78,6 +82,15 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
             { label: 'Tenants', route: NAVIGARIONS_ROUTINGS.PLATFORM_TENANTS, icon: LuBuilding2 },
             { label: 'Stores', route: NAVIGARIONS_ROUTINGS.PLATFORM_STORES, icon: LuMapPin },
             { label: 'Platform Users', route: NAVIGARIONS_ROUTINGS.PLATFORM_USERS, icon: LuUsers },
+        ]
+    },
+    {
+        label: 'Reseller', route: NAVIGARIONS_ROUTINGS.RESELLER, icon: LuBuilding2,
+        allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE],
+        subNav: [
+            { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.RESELLER, icon: LuLayoutDashboard, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
+            { label: 'Onboard Client', route: NAVIGARIONS_ROUTINGS.RESELLER_ONBOARD, icon: LuSparkles, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
+            { label: 'Reseller Management', route: NAVIGARIONS_ROUTINGS.RESELLER_MANAGE, icon: LuUsers, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
         ]
     },
     {

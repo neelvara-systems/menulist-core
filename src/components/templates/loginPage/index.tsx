@@ -11,7 +11,7 @@ import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { Button, Divider, Flex, Form, Input, Space, theme, Typography } from "antd";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { signIn, useSession } from "next-auth/react";
+import { getSession, signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
@@ -26,6 +26,15 @@ const validateEmail = (email: string) => {
   const localDomains = ['localhost', 'local', 'test', 'example.com', 'example.org'];
   if (localDomains.some(d => domain.includes(d))) return { valid: false, reason: 'Local or test email domains are not allowed' };
   if (/^\d+\.\d+\.\d+\.\d+$/.test(domain)) return { valid: false, reason: 'IP address email domains are not allowed' };
+  return { valid: true };
+};
+
+const validateLoginIdentifier = (value: string) => {
+  const identifier = (value || '').trim();
+  if (!identifier) return { valid: false, reason: 'Email or phone is required' };
+  if (identifier.includes('@')) return validateEmail(identifier);
+  const phoneUsername = identifier.replace(/[^0-9]/g, '');
+  if (phoneUsername.length < 10) return { valid: false, reason: 'Enter a valid email or phone number' };
   return { valid: true };
 };
 
@@ -241,7 +250,9 @@ function LoginPage() {
       // Step 2: Sign in with Firebase Auth (client-side) 
       // This ensures Firebase Functions can access request.auth
       try {
-        const userCredential = await signInWithEmailAndPassword(firebaseAuth, values.email, values.password);
+        const activeSession = await getSession();
+        const firebaseLoginEmail = activeSession?.user?.email || values.email;
+        const userCredential = await signInWithEmailAndPassword(firebaseAuth, firebaseLoginEmail, values.password);
         console.log('✅ Firebase Auth client session established');
 
         // Step 3: Set custom claims on Firebase Auth token
@@ -443,14 +454,13 @@ function LoginPage() {
                     className={styles.formItem}
                     name="email"
                     rules={[
-                      { required: true, message: 'Please input your email!' },
-                      { type: 'email', message: 'Please enter a valid email address!' },
+                      { required: true, message: 'Please input your email or phone!' },
                       {
                         validator: async (_, value) => {
                           if (!value) return Promise.resolve();
-                          const result = validateEmail(value);
+                          const result = validateLoginIdentifier(value);
                           if (!result.valid) {
-                            return Promise.reject(new Error(result.reason || 'Invalid email address'));
+                            return Promise.reject(new Error(result.reason || 'Invalid email or phone'));
                           }
                           return Promise.resolve();
                         }
@@ -463,7 +473,7 @@ function LoginPage() {
                       size="large"
                       prefix={<UserOutlined className="site-form-item-icon" />}
                       allowClear
-                      placeholder="Email"
+                      placeholder="Email or phone"
                     />
                   </Form.Item>
                   <Form.Item

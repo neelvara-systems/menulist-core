@@ -82,7 +82,7 @@ export default function MobileResellerDashboardScreen({
     const resellerEmail = (session as any)?.user?.email || '';
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const { profile, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const { profile, monthlySummary, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
 
     if (isLoading) {
         return (
@@ -143,6 +143,24 @@ export default function MobileResellerDashboardScreen({
                             </Card>
                         ))}
                     </div>
+                ) : null}
+
+                {monthlySummary ? (
+                    <Card title={`This month (${monthlySummary.month})`}>
+                        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+                            {[
+                                ['Clients', monthlySummary.totals.clientCount],
+                                ['Txns', monthlySummary.totals.transactionCount],
+                                ['Collected', formatMoney(monthlySummary.totals.recognizedRevenuePaise)],
+                                ['Online pending', formatMoney(monthlySummary.totals.onlinePendingPaise)],
+                            ].map(([label, value]) => (
+                                <Flex key={label as string} gap={2} vertical>
+                                    <Text type="secondary">{label}</Text>
+                                    <Text strong>{value}</Text>
+                                </Flex>
+                            ))}
+                        </div>
+                    </Card>
                 ) : null}
 
                 {!isPlatform && profile ? (

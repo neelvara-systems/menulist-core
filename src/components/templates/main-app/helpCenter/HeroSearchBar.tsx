@@ -6,7 +6,7 @@ import { Breadcrumb, Button, Flex, Input, Typography, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { LuArrowLeft, LuSearch } from 'react-icons/lu';
+import { LuSearch } from 'react-icons/lu';
 import HelpChat from '../helpChat';
 import { HELP_CENTER_TABS, HOME_TAB_KEY } from './tabsConfig';
 
@@ -232,14 +232,6 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                             style={{ position: 'absolute', top: 0, left: 0, zIndex: 2 }}
                         >
                             <Flex align="center" gap={16}>
-                                <Button
-                                    type="default"
-                                    icon={<LuArrowLeft size={16} />}
-                                    onClick={() => setActiveTab(HOME_TAB_KEY)}
-                                >
-                                    {t('backToHome')}
-                                </Button>
-
                                 <Breadcrumb
                                     separator=">"
                                     items={[

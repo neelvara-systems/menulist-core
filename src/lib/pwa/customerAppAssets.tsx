@@ -78,6 +78,13 @@ export function getCustomerAppleStartupImages(storeId: string | number, version?
     }));
 }
 
+export function getStaticCustomerAppleStartupImages() {
+    return CUSTOMER_APPLE_STARTUP_IMAGES.map((image) => ({
+        url: `/splash/apple-splash-${image.size}.png`,
+        media: image.media,
+    }));
+}
+
 export function clampCustomerAppIconSize(raw: string): number {
     const n = parseInt(raw, 10);
     if (!Number.isFinite(n)) return 512;

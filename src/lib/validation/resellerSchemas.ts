@@ -13,6 +13,7 @@ export const ResellerOnboardSchema = z.object({
     businessType: z.string().min(2).max(50),
     ownerPhone: z.string().min(10, 'Phone number must be at least 10 digits').max(15, 'Phone number too long'),
     ownerEmail: z.string().email('Invalid email address').optional(),
+    ownerPassword: z.string().min(6, 'Password must be at least 6 characters').max(100, 'Password too long'),
     pricingTier: z.enum(['FOUNDER_400', 'FOUNDER_500', 'STANDARD']),
     billingInterval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
     commitmentMonths: z.coerce.number().refine(v => [3, 6, 12].includes(v), 'Must be 3, 6, or 12').optional(),

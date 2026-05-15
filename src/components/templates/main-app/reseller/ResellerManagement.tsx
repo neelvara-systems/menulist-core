@@ -19,6 +19,33 @@ import {
 
 const { Title, Text, Paragraph } = Typography;
 
+type ResellerMonthlySummary = {
+    month: string;
+    resellers: Array<{
+        resellerId: string;
+        resellerName: string;
+        resellerEmail: string;
+        clientCount: number;
+        transactionCount: number;
+        offlineCollectedPaise: number;
+        onlinePendingPaise: number;
+        recognizedRevenuePaise: number;
+        totalExpectedPaise: number;
+    }>;
+    totals: {
+        clientCount: number;
+        transactionCount: number;
+        offlineCollectedPaise: number;
+        onlinePendingPaise: number;
+        recognizedRevenuePaise: number;
+        totalExpectedPaise: number;
+    };
+};
+
+function formatMoney(paise?: number) {
+    return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
+}
+
 /**
  * Reseller Management — Platform Admin Only
  * 
@@ -37,14 +64,16 @@ function ResellerManagement() {
     const [authenticated, setAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [profiles, setProfiles] = useState<ResellerProfile[]>([]);
+    const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);
     const [loading, setLoading] = useState(false);
+    const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<ResellerProfile | null>(null);
     const [saving, setSaving] = useState(false);
     const [form] = Form.useForm();
 
     // Gate: PLATFORM role only
-    const platformRole = (session as any)?.platformRole;
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     if (session && platformRole !== 'PLATFORM') {
         redirect('/dashboard');
     }
@@ -54,6 +83,7 @@ function ResellerManagement() {
         if (passwordInput === ECOMSAI_PLATFORM_PASSWORD) {
             setAuthenticated(true);
             loadProfiles();
+            loadMonthlySummary();
         } else {
             message.error('Invalid password');
         }
@@ -70,6 +100,20 @@ function ResellerManagement() {
             message.error('Failed to load reseller profiles');
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const loadMonthlySummary = useCallback(async () => {
+        setMonthlyLoading(true);
+        try {
+            const res = await fetch('/api/reseller/monthly-summary');
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+            setMonthlySummary(data);
+        } catch (error) {
+            message.error('Failed to load monthly reseller summary');
+        } finally {
+            setMonthlyLoading(false);
         }
     }, []);
 
@@ -244,7 +288,7 @@ function ResellerManagement() {
                     <Text type="secondary">Create and manage reseller profiles (Platform Admin Only)</Text>
                 </div>
                 <Space>
-                    <Button icon={<LuRefreshCw />} onClick={loadProfiles} loading={loading}>Refresh</Button>
+                    <Button icon={<LuRefreshCw />} onClick={() => { loadProfiles(); loadMonthlySummary(); }} loading={loading || monthlyLoading}>Refresh</Button>
                     <Button type="primary" icon={<LuPlus />} onClick={openCreateDrawer}>
                         Add Reseller
                     </Button>
@@ -282,6 +326,67 @@ function ResellerManagement() {
                     </Card>
                 </Col>
             </Row>
+
+            <Card
+                loading={monthlyLoading}
+                title={`This Month${monthlySummary?.month ? ` (${monthlySummary.month})` : ''}`}
+                style={{ marginBottom: 24 }}
+            >
+                <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                    <Col xs={12} md={6}>
+                        <Statistic title="Clients" value={monthlySummary?.totals.clientCount || 0} />
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Statistic title="Transactions" value={monthlySummary?.totals.transactionCount || 0} />
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Statistic title="Offline Collected" value={(monthlySummary?.totals.offlineCollectedPaise || 0) / 100} prefix="₹" precision={0} />
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Statistic title="Online Pending" value={(monthlySummary?.totals.onlinePendingPaise || 0) / 100} prefix="₹" precision={0} />
+                    </Col>
+                </Row>
+                <Table
+                    columns={[
+                        {
+                            title: 'Reseller',
+                            dataIndex: 'resellerName',
+                            key: 'resellerName',
+                            render: (name: string, record: ResellerMonthlySummary['resellers'][number]) => (
+                                <Flex vertical>
+                                    <Text strong>{name}</Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>{record.resellerEmail}</Text>
+                                </Flex>
+                            ),
+                        },
+                        { title: 'Clients', dataIndex: 'clientCount', key: 'clientCount' },
+                        { title: 'Txns', dataIndex: 'transactionCount', key: 'transactionCount' },
+                        {
+                            title: 'Offline Collected',
+                            dataIndex: 'offlineCollectedPaise',
+                            key: 'offlineCollectedPaise',
+                            render: (value: number) => <Text strong>{formatMoney(value)}</Text>,
+                        },
+                        {
+                            title: 'Online Pending',
+                            dataIndex: 'onlinePendingPaise',
+                            key: 'onlinePendingPaise',
+                            render: (value: number) => <Text>{formatMoney(value)}</Text>,
+                        },
+                        {
+                            title: 'Total Expected',
+                            dataIndex: 'totalExpectedPaise',
+                            key: 'totalExpectedPaise',
+                            render: (value: number) => <Text>{formatMoney(value)}</Text>,
+                        },
+                    ]}
+                    dataSource={monthlySummary?.resellers || []}
+                    locale={{ emptyText: 'No reseller transactions this month' }}
+                    pagination={false}
+                    rowKey="resellerId"
+                    size="small"
+                />
+            </Card>
 
             {/* Resellers Table */}
             {loading ? (

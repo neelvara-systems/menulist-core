@@ -53,7 +53,7 @@ const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/ops/scheduler': 'schedulerMonitor',
 };
 const RESELLER_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
-    '/reseller': 'resellerDashboard',
+    '/reseller': 'resellerHub',
     '/reseller/manage': 'resellerManagement',
     '/reseller/onboard': 'resellerOnboarding',
 };
@@ -84,6 +84,7 @@ const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'schedulerMonitor',
 ];
 const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
+    'resellerHub',
     'resellerDashboard',
     'resellerManagement',
     'resellerOnboarding',

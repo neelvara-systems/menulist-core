@@ -12,6 +12,9 @@ const { Title, Text, Paragraph } = Typography;
 
 interface OnboardResult {
     dashboardUrl?: string;
+    loginEmail?: string;
+    ownerUsername?: string;
+    passwordSet?: boolean;
     publicUrl?: string;
     storeId: number;
     subdomain?: string;
@@ -54,6 +57,7 @@ function OnboardingWizard() {
                     businessType: values.businessType,
                     ownerPhone: values.ownerPhone,
                     ownerEmail: values.ownerEmail || undefined,
+                    ownerPassword: values.ownerPassword,
                     pricingTier: values.pricingTier,
                     billingInterval: values.billingInterval || 'MONTH',
                     commitmentMonths: values.commitmentMonths || undefined,
@@ -108,6 +112,9 @@ function OnboardingWizard() {
             </Form.Item>
             <Form.Item name="ownerEmail" label="Owner Email (Optional)">
                 <Input placeholder="e.g., owner@example.com" size="large" type="email" />
+            </Form.Item>
+            <Form.Item name="ownerPassword" label="Owner Login Password" rules={[{ required: true, min: 6, message: 'Password must be at least 6 characters' }]}>
+                <Input.Password placeholder="Create password to share with owner" size="large" />
             </Form.Item>
         </div>
     );
@@ -195,6 +202,8 @@ function OnboardingWizard() {
                             <Col span={16}><Text>{values.ownerEmail}</Text></Col>
                         </>
                     )}
+                    <Col span={8}><Text type="secondary">Username</Text></Col>
+                    <Col span={16}><Text>{String(values.ownerPhone || '').replace(/[^0-9]/g, '')}</Text></Col>
                     <Col span={24}><Divider style={{ margin: '8px 0' }} /></Col>
                     <Col span={8}><Text type="secondary">Tier</Text></Col>
                     <Col span={16}><Text strong>{selectedTier?.name || values.pricingTier}</Text></Col>
@@ -239,6 +248,38 @@ function OnboardingWizard() {
                                 </Flex>
                             </Card>
                         ),
+                        (result.loginEmail || result.ownerUsername) && (
+                            <Card key="loginDetails" size="small" style={{ marginBottom: 16, textAlign: 'left' }}>
+                                <Text type="secondary">Client login details:</Text>
+                                <Flex vertical gap={8} style={{ marginTop: 8 }}>
+                                    {result.ownerUsername && (
+                                        <Flex align="center" gap={8}>
+                                            <Input addonBefore="Username" value={result.ownerUsername} readOnly />
+                                            <Button icon={<LuCopy />} onClick={() => {
+                                                navigator.clipboard.writeText(result.ownerUsername || '');
+                                                message.success('Username copied!');
+                                            }}>Copy</Button>
+                                        </Flex>
+                                    )}
+                                    {result.loginEmail && (
+                                        <Flex align="center" gap={8}>
+                                            <Input addonBefore="Login email" value={result.loginEmail} readOnly />
+                                            <Button icon={<LuCopy />} onClick={() => {
+                                                navigator.clipboard.writeText(result.loginEmail || '');
+                                                message.success('Login email copied!');
+                                            }}>Copy</Button>
+                                        </Flex>
+                                    )}
+                                    <Flex align="center" gap={8}>
+                                        <Input.Password addonBefore="Password" value={form.getFieldValue('ownerPassword') || ''} readOnly />
+                                        <Button icon={<LuCopy />} onClick={() => {
+                                            navigator.clipboard.writeText(form.getFieldValue('ownerPassword') || '');
+                                            message.success('Password copied!');
+                                        }}>Copy</Button>
+                                    </Flex>
+                                </Flex>
+                            </Card>
+                        ),
                         result.dashboardUrl && (
                             <Card key="dashboardLink" size="small" style={{ marginBottom: 16, textAlign: 'left' }}>
                                 <Text type="secondary">Client dashboard link:</Text>
@@ -278,7 +319,7 @@ function OnboardingWizard() {
     const canProceed = () => {
         if (currentStep === 0) {
             const values = form.getFieldsValue();
-            return values.businessName && values.businessType && values.ownerPhone;
+            return values.businessName && values.businessType && values.ownerPhone && values.ownerPassword;
         }
         if (currentStep === 1) {
             const values = form.getFieldsValue();

@@ -7,6 +7,7 @@ import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validator";
+import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
@@ -259,6 +260,7 @@ export async function POST(request: Request) {
                         ],
                     };
                     await updateSubscription(internalSub.id, updatePayload);
+                    await markResellerTransactionsActiveForSubscription(internalSub.id, `webhook:${event.event}`);
                     await safeSyncStorePlanEntitlementFromSubscription(
                         {
                             ...internalSub,

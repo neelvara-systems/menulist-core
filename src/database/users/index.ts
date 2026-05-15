@@ -38,6 +38,39 @@ export const getUserByEmail = (email: string) => {
     })
 }
 
+export const normalizePhoneUsername = (value: string) => value.replace(/[^0-9]/g, '');
+
+const getFirstUserByField = async (field: string, value: string) => {
+    const q = query(getCollectionRef(), where(field, "==", value));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+
+    const userDoc = querySnapshot.docs[0];
+    const safeData = removeDangerousKeys(userDoc.data());
+    return { ...safeData, id: userDoc.id };
+}
+
+export const getUserByLoginIdentifier = async (identifier: string) => {
+    const normalizedIdentifier = (identifier || '').toLowerCase().trim();
+    if (!normalizedIdentifier) return null;
+    if (normalizedIdentifier.includes('@')) {
+        return getUserByEmail(normalizedIdentifier);
+    }
+
+    const phoneUsername = normalizePhoneUsername(normalizedIdentifier);
+    if (!phoneUsername) return null;
+
+    for (const field of ['username', 'loginUsername', 'phoneUsername']) {
+        const user = await getFirstUserByField(field, phoneUsername);
+        if (user) return user;
+    }
+
+    const phoneUser = await getFirstUserByField('phone', phoneUsername);
+    if (phoneUser) return phoneUser;
+
+    return getFirstUserByField('phoneNumber', phoneUsername);
+}
+
 export const getUserByTenantId = (tenantId: string) => {
     return apiCallComposer(
         async () => {

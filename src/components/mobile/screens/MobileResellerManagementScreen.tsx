@@ -25,6 +25,27 @@ type ResellerDraft = {
     username: string;
 };
 
+type ResellerMonthlySummary = {
+    month: string;
+    resellers: Array<{
+        resellerId: string;
+        resellerName: string;
+        resellerEmail: string;
+        clientCount: number;
+        transactionCount: number;
+        offlineCollectedPaise: number;
+        onlinePendingPaise: number;
+        totalExpectedPaise: number;
+    }>;
+    totals: {
+        clientCount: number;
+        transactionCount: number;
+        offlineCollectedPaise: number;
+        onlinePendingPaise: number;
+        totalExpectedPaise: number;
+    };
+};
+
 const emptyDraft = (): ResellerDraft => ({
     active: true,
     addressLine: '',
@@ -70,7 +91,9 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     const [authenticated, setAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
     const [profiles, setProfiles] = useState<ResellerProfile[]>([]);
+    const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);
     const [loading, setLoading] = useState(false);
+    const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editingProfile, setEditingProfile] = useState<ResellerProfile | null>(null);
     const [draft, setDraft] = useState<ResellerDraft>(emptyDraft);
@@ -101,8 +124,25 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
         }
     };
 
+    const loadMonthlySummary = async () => {
+        setMonthlyLoading(true);
+        try {
+            const response = await fetch('/api/reseller/monthly-summary');
+            if (!response.ok) throw new Error('Could not load monthly reseller summary');
+            const data = await response.json();
+            setMonthlySummary(data);
+        } catch (error: any) {
+            Toast.show({ content: error?.message || 'Could not load monthly reseller summary', duration: 2200 });
+        } finally {
+            setMonthlyLoading(false);
+        }
+    };
+
     useEffect(() => {
-        if (authenticated) void loadProfiles();
+        if (authenticated) {
+            void loadProfiles();
+            void loadMonthlySummary();
+        }
     }, [authenticated]);
 
     const openCreate = () => {
@@ -255,7 +295,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 description="Create and manage reseller profiles."
                 onBack={onBack}
                 right={(
-                    <Button fill="none" onClick={() => void loadProfiles()} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                    <Button fill="none" loading={loading || monthlyLoading} onClick={() => { void loadProfiles(); void loadMonthlySummary(); }} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
                         <LuRefreshCw size={18} />
                     </Button>
                 )}
@@ -283,6 +323,39 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                         </Card>
                     ))}
                 </div>
+
+                <Card title={`This month${monthlySummary?.month ? ` (${monthlySummary.month})` : ''}`}>
+                    <Flex gap={10} vertical>
+                        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+                            {[
+                                ['Clients', monthlySummary?.totals.clientCount || 0],
+                                ['Txns', monthlySummary?.totals.transactionCount || 0],
+                                ['Offline collected', formatMoney(monthlySummary?.totals.offlineCollectedPaise)],
+                                ['Online pending', formatMoney(monthlySummary?.totals.onlinePendingPaise)],
+                            ].map(([label, value]) => (
+                                <Flex key={label as string} gap={2} vertical>
+                                    <Text type="secondary">{label}</Text>
+                                    <Text strong>{value}</Text>
+                                </Flex>
+                            ))}
+                        </div>
+                        {(monthlySummary?.resellers || []).length === 0 ? (
+                            <Text type="secondary">No reseller transactions this month.</Text>
+                        ) : (
+                            <Flex gap={8} vertical>
+                                {(monthlySummary?.resellers || []).slice(0, 6).map((row) => (
+                                    <Flex key={row.resellerId} align="center" justify="space-between">
+                                        <Flex style={{ minWidth: 0 }} vertical>
+                                            <Text strong>{row.resellerName}</Text>
+                                            <Text type="secondary">{row.clientCount} clients · {row.transactionCount} txns</Text>
+                                        </Flex>
+                                        <Text strong>{formatMoney(row.totalExpectedPaise)}</Text>
+                                    </Flex>
+                                ))}
+                            </Flex>
+                        )}
+                    </Flex>
+                </Card>
 
                 {loading ? (
                     <Flex align="center" justify="center" style={{ minHeight: 180 }}><Spin /></Flex>

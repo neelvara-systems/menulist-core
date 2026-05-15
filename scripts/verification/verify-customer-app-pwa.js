@@ -42,8 +42,9 @@ function verifyManifestLink() {
   const page = read('src/app/client/[[...slug]]/page.tsx');
   const clientLayout = read('src/app/client/layout.tsx');
   assertIncludes(page, "const manifestUrl = '/manifest.webmanifest';", 'client metadata');
-  assertIncludes(page, 'startupImage: getCustomerAppleStartupImages(storeData.id, pwaIconVersion)', 'client metadata startup images');
+  assertIncludes(page, 'startupImage: getStaticCustomerAppleStartupImages()', 'client metadata startup images');
   assertIncludes(clientLayout, 'startupImage: fallbackStartupImages', 'client layout fallback startup images');
+  assertIncludes(clientLayout, 'const fallbackStartupImages = getStaticCustomerAppleStartupImages();', 'client layout static startup image helper');
   assertIncludes(clientLayout, "'color-scheme': 'light'", 'client layout color-scheme metadata');
   assertIncludes(clientLayout, 'background: #ffffff !important', 'client layout launch background');
   assertNotIncludes(page, 'manifest.webmanifest?start=', 'client metadata');
@@ -129,11 +130,12 @@ function verifyCustomerAppAssets() {
   assertIncludes(assetHelpers, 'CUSTOMER_APPLE_STARTUP_IMAGES', 'customer app asset helpers');
   assertIncludes(assetHelpers, 'deriveCustomerAppShortName', 'customer app asset helpers');
   assertIncludes(assetHelpers, 'getCustomerAppIconVersion', 'customer app asset helpers');
+  assertIncludes(assetHelpers, 'getStaticCustomerAppleStartupImages', 'customer app asset helpers');
   assertIncludes(assetHelpers, "mode === 'generated'", 'customer app asset helpers');
   assertIncludes(assetHelpers, "objectFit: 'contain'", 'customer app asset helpers');
   assertIncludes(clientPage, 'deriveCustomerAppShortName(storeName, pwaShortName)', 'client metadata app title');
   assertIncludes(clientPage, 'getCustomerAppIconUrl(storeData.id, 180, pwaIconVersion)', 'client metadata app icon version');
-  assertIncludes(clientPage, 'getCustomerAppleStartupImages(storeData.id, pwaIconVersion)', 'client metadata startup image version');
+  assertIncludes(clientPage, 'getStaticCustomerAppleStartupImages()', 'client metadata static startup image');
   assertIncludes(manifestGenerator, 'getCustomerAppIconUrl(input.id, size, input.iconVersion)', 'customer app manifest icons');
   assertIncludes(mobileSettings, "objectFit: 'contain'", 'mobile customer app icon preview');
   assertIncludes(mobileSettings, 'pwaIconUpdatedAt', 'mobile customer app icon cache busting');

@@ -7,6 +7,38 @@ import useSWR from "swr";
 // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md
 // ═══════════════════════════════════════════════════════════════
 
+export type ResellerMonthlySummary = {
+    month: string;
+    resellers: Array<{
+        resellerId: string;
+        resellerName: string;
+        resellerEmail: string;
+        clientCount: number;
+        transactionCount: number;
+        offlineCollectedPaise: number;
+        onlineActivePaise: number;
+        onlinePendingPaise: number;
+        recognizedRevenuePaise: number;
+        totalExpectedPaise: number;
+    }>;
+    totals: {
+        clientCount: number;
+        transactionCount: number;
+        offlineCollectedPaise: number;
+        onlineActivePaise: number;
+        onlinePendingPaise: number;
+        recognizedRevenuePaise: number;
+        totalExpectedPaise: number;
+    };
+};
+
+const fetchMonthlySummary = async (): Promise<ResellerMonthlySummary> => {
+    const response = await fetch('/api/reseller/monthly-summary');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Failed to load reseller monthly summary');
+    return data;
+};
+
 /**
  * Fetch reseller profile + transactions for the authenticated reseller.
  * Uses SWR for caching and deduplication.
@@ -21,6 +53,12 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
     const { data: transactions, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = useSWR<ResellerTransaction[]>(
         resellerId ? `reseller-transactions-${resellerId}-${isPlatform}` : null,
         () => isPlatform ? getAllResellerTransactions(200) : getResellerTransactions(resellerId, 100),
+        { revalidateOnFocus: false, dedupingInterval: 60000 }
+    );
+
+    const { data: monthlySummary, error: monthlySummaryError, isLoading: monthlySummaryLoading, mutate: mutateMonthlySummary } = useSWR<ResellerMonthlySummary>(
+        resellerId ? `reseller-monthly-summary-${resellerId}-${isPlatform}` : null,
+        fetchMonthlySummary,
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 
@@ -46,8 +84,8 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         )
         : [];
 
-    const isLoading = profileLoading || transactionsLoading;
-    const error = profileError || transactionsError;
+    const isLoading = profileLoading || transactionsLoading || monthlySummaryLoading;
+    const error = profileError || transactionsError || monthlySummaryError;
 
     // Derived stats
     const stats = transactions ? {
@@ -65,6 +103,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
 
     return {
         profile,
+        monthlySummary,
         transactions: clients,
         stats,
         isLoading,
@@ -74,6 +113,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         refresh: () => {
             mutateProfile();
             mutateTransactions();
+            mutateMonthlySummary();
         },
     };
 }

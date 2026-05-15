@@ -1,4 +1,6 @@
-import { NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
+import { FEATURE_FLAGS } from '@config/features';
+import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { useTodayAction } from '@providers/TodayActionProvider';
@@ -6,6 +8,7 @@ import { getDarkModeState, getSidebarLayoutState, toggleAppSettingsPanel, toggle
 import { Button, Flex, Menu, MenuProps, Popover, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LuArrowBigDown } from 'react-icons/lu';
@@ -25,6 +28,8 @@ const HorizontalSidebarComponent = () => {
     const isDarkMode = useAppSelector(getDarkModeState);
     const currentLayout = useAppSelector(getSidebarLayoutState)
     const pathname = usePathname()
+    const { data: session } = useSession();
+    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
 
     // Today action indicator (per Strategy Doc: small dot when action exists)
     const { hasAction: hasTodayAction } = useTodayAction();
@@ -38,9 +43,21 @@ const HorizontalSidebarComponent = () => {
     const getMenuItems = () => {
         const menuCopy = [];
         SIDEBAR_DASHBOARD_LAYOUT.map((nav: NavItemType) => {
+            if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
+                if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD || ![ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole)) {
+                    return;
+                }
+            }
+            if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
+                return;
+            }
+
             // Add dot indicator for Today when action exists (per Strategy Doc)
             const isToday = nav.label === 'Today';
             const showDot = isToday && hasTodayAction;
+            const visibleSubNav = nav.subNav?.filter((subnav) => (
+                !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole)
+            ));
 
             const navItem: any = {
                 key: nav.label,
@@ -58,8 +75,8 @@ const HorizontalSidebarComponent = () => {
                 ) : tNav(nav.label as any),
                 icon: <nav.icon />,
                 route: `${nav.route}`,
-                children: Boolean(nav.subNav?.length) ?
-                    nav.subNav.map((subnav: NavItemType, subIndex: number) => {
+                children: Boolean(visibleSubNav?.length) ?
+                    visibleSubNav.map((subnav: NavItemType, subIndex: number) => {
                         return {
                             key: `${nav.label}-${subnav.label}`,
                             label: tNav(subnav.label as any),
@@ -101,7 +118,7 @@ const HorizontalSidebarComponent = () => {
                 setActiveNav([currentNav.key])
             }
         }
-    }, [pathname])
+    }, [pathname, platformRole, hasTodayAction])
 
     const onClickNav: MenuProps['onClick'] = (menu: any) => {
         getMenuItems().map((nav: any) => {
@@ -276,4 +293,3 @@ const HorizontalSidebarComponent = () => {
 }
 
 export default HorizontalSidebarComponent
-

@@ -6,6 +6,7 @@ import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subsc
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
 import { VerifyPaymentRequestSchema } from "@lib/validation/apiSchemas";
@@ -204,6 +205,7 @@ export const POST = withAuth(async (request, session) => {
 
         await writeLogEntry({ logFileName: LOG_FILE, userId: userId, logType: 'UPDATE_SUBSCRIPTION_VERIFY_SUBSCRIPTION', data: { updatePayload }, });
         await updateSubscription(razorpay_subscription_id, updatePayload);
+        await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
         await safeSyncStorePlanEntitlementFromSubscription(
             {
                 ...internalSub,
