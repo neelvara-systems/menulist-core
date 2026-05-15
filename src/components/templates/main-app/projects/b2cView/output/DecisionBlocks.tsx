@@ -668,13 +668,15 @@ export default function DecisionBlocks({
         return null;
     }
 
-    const allBlocksHaveImages = blocks.every((rec) => Boolean(getPrimaryPublicMenuImage(rec.item)));
-    const showFeaturedCardLayout = menuLayout === MenuLayout.CARD && blocks.length === 3 && allBlocksHaveImages;
+    const allBlocksHaveFeaturedImages = blocks.every((rec) => Boolean(getPrimaryPublicMenuImage(rec.item)));
+    const shouldUseFeaturedCardLayout = menuLayout === MenuLayout.CARD
+        && blocks.length === 3
+        && allBlocksHaveFeaturedImages;
     const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
     const isSingleBlock = blocks.length === 1;
-    const useHorizontalScroller = showFeaturedCardLayout && !isDesktopLayout && !isSingleBlock;
-    const featuredItemGap = showFeaturedCardLayout ? 10 : 8;
-    const featuredListMode = !showFeaturedCardLayout;
+    const useHorizontalScroller = shouldUseFeaturedCardLayout && !isDesktopLayout && !isSingleBlock;
+    const featuredItemGap = shouldUseFeaturedCardLayout ? 10 : 8;
+    const featuredListMode = !shouldUseFeaturedCardLayout;
 
     return (
         <section
@@ -747,24 +749,22 @@ export default function DecisionBlocks({
                 <div
                     className="flex"
                     style={{
-                        display: showFeaturedCardLayout
+                        display: shouldUseFeaturedCardLayout
                             ? isDesktopLayout
                                 ? 'grid'
                                 : 'flex'
                             : 'flex',
                         flexDirection: featuredListMode ? 'column' : undefined,
                         gap: featuredItemGap,
-                        gridTemplateColumns: showFeaturedCardLayout
-                            ? isDesktopLayout
-                                ? `repeat(${blocks.length}, minmax(0, 1fr))`
-                                : undefined
+                        gridTemplateColumns: shouldUseFeaturedCardLayout && isDesktopLayout
+                            ? `repeat(${blocks.length}, minmax(0, 1fr))`
                             : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
                         paddingRight: useHorizontalScroller ? 14 : 0,
-                        width: showFeaturedCardLayout && (isDesktopLayout || isSingleBlock)
+                        width: shouldUseFeaturedCardLayout && (isDesktopLayout || isSingleBlock)
                             ? '100%'
-                            : showFeaturedCardLayout
+                            : shouldUseFeaturedCardLayout
                                 ? 'fit-content'
                                 : '100%',
                     }}
@@ -777,8 +777,8 @@ export default function DecisionBlocks({
 
                         const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, 'Menu item');
                         const itemImage = getPrimaryPublicMenuImage(rec.item);
-                                const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
-                                const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
+                        const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
+                        const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
                         const categoryMeta = categoryMetaById.get(rec.item.category);
                         const categoryLabel = categoryMeta?.label;
                         const categoryIcon = categoryMeta?.icon;
@@ -793,11 +793,18 @@ export default function DecisionBlocks({
                             ? categoryLabel
                             : translateReason(rec.reason, rec.reasonParams);
 
-                                return (
-                                    <button
-                                        type="button"
-                                        key={rec.blockType}
-                                        onClick={() => handleClick(rec)}
+                        const featuredImageSize = featuredListMode ? 56 : 58;
+                        const featuredRowMinHeight = featuredListMode
+                            ? itemImage
+                                ? 78
+                                : 72
+                            : 86;
+
+                        return (
+                            <button
+                                type="button"
+                                key={rec.blockType}
+                                onClick={() => handleClick(rec)}
                                 aria-label={[
                                     displayTitle,
                                     itemName,
@@ -805,15 +812,15 @@ export default function DecisionBlocks({
                                     showItemPrices && itemPrice ? itemPrice : null,
                                 ].filter(Boolean).join('. ')}
                                 className="flex-shrink-0 transition-all duration-150 active:scale-[0.98] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
-                                        style={{
-                                            '--tw-ring-color': `${moodConfig.accentColor}AA`,
-                                            alignItems: featuredListMode
-                                                ? 'flex-start'
-                                                : itemImage
-                                                    ? 'center'
-                                                    : 'stretch',
-                                            appearance: 'none',
-                                            background: moodConfig.itemStyle.background,
+                                style={{
+                                    '--tw-ring-color': `${moodConfig.accentColor}AA`,
+                                    alignItems: featuredListMode
+                                        ? 'center'
+                                        : itemImage
+                                            ? 'center'
+                                            : 'stretch',
+                                    appearance: 'none',
+                                    background: moodConfig.itemStyle.background,
                                     border: `1px solid ${moodConfig.itemStyle.borderColor}`,
                                     borderRadius: Math.min(10, moodConfig.itemStyle.borderRadius || 10),
                                     boxShadow: '0 1px 0 rgba(0, 0, 0, 0.03)',
@@ -821,34 +828,36 @@ export default function DecisionBlocks({
                                     cursor: 'pointer',
                                     display: 'flex',
                                     flexShrink: useHorizontalScroller ? 0 : 1,
-                                            gap: itemImage ? 10 : 0,
-                                            minHeight: featuredListMode ? 74 : 86,
-                                            outline: 'none',
-                                            overflow: 'hidden',
-                                            padding: itemImage ? 10 : 12,
-                                            position: 'relative',
-                                            scrollSnapAlign: useHorizontalScroller ? 'start' : 'none',
-                                            textAlign: 'left',
-                                            userSelect: 'none',
-                                            WebkitUserSelect: 'none',
-                                            width: featuredListMode
+                                    gap: itemImage ? 10 : 0,
+                                    minHeight: featuredRowMinHeight,
+                                    outline: 'none',
+                                    overflow: 'hidden',
+                                    padding: itemImage ? 10 : 12,
+                                    position: 'relative',
+                                    scrollSnapAlign: useHorizontalScroller ? 'start' : 'none',
+                                    textAlign: 'left',
+                                    userSelect: 'none',
+                                    WebkitUserSelect: 'none',
+                                    width: featuredListMode
+                                        ? '100%'
+                                        : isSingleBlock
+                                            ? '100%'
+                                            : isDesktopLayout
                                                 ? '100%'
-                                                : isSingleBlock
-                                                ? '100%'
-                                                : isDesktopLayout
-                                                    ? '100%'
-                                                    : 'min(calc(100vw - 48px), 316px)',
-                                            WebkitTapHighlightColor: 'transparent',
-                                        } as CSSProperties}
-                                    >
+                                                : 'min(calc(100vw - 48px), 316px)',
+                                    WebkitTapHighlightColor: 'transparent',
+                                } as CSSProperties}
+                            >
                                 {itemImage && (
                                     <div
                                         className="relative flex-shrink-0 overflow-hidden"
                                         style={{
                                             background: `${moodConfig.accentColor}12`,
                                             borderRadius: Math.min(8, moodConfig.itemStyle.imageRadius || 8),
-                                            height: 58,
-                                            width: 58,
+                                            height: featuredImageSize,
+                                            minHeight: featuredImageSize,
+                                            minWidth: featuredImageSize,
+                                            width: featuredImageSize,
                                         }}
                                     >
                                         <Image
@@ -856,7 +865,7 @@ export default function DecisionBlocks({
                                             alt={getMenuItemImageAltText(itemName)}
                                             fill
                                             className="object-cover"
-                                            sizes="58px"
+                                            sizes={`${featuredImageSize}px`}
                                         />
                                     </div>
                                 )}
@@ -868,6 +877,7 @@ export default function DecisionBlocks({
                                         flex: '1 1 auto',
                                         flexDirection: 'column',
                                         justifyContent: 'space-between',
+                                        maxWidth: '100%',
                                         minWidth: 0,
                                         paddingLeft: 0,
                                     }}

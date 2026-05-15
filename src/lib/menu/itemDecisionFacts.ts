@@ -32,6 +32,16 @@ function hasValue(value: unknown): boolean {
     return true;
 }
 
+function isZeroOnlyText(value: string): boolean {
+    return /^\s*0+(\.0+)?\s*$/.test(value.trim());
+}
+
+function sanitizeDecisionFactText(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    const normalized = value.replace(/<[^>]*>/g, '').trim().replace(/\s+/g, ' ');
+    return normalized && !isZeroOnlyText(normalized) ? normalized : '';
+}
+
 function getLegacyFactValue(item: Partial<ExtractedDataItem> | null | undefined, key: ItemDecisionFactKey): DecisionFactValue | undefined {
     const value = item?.[key as keyof ExtractedDataItem] as DecisionFactValue | undefined;
     return hasValue(value) ? value : undefined;
@@ -77,12 +87,25 @@ export function setDecisionFactValue(
 
 export function getDecisionFactArray(item: Partial<ExtractedDataItem> | null | undefined, key: ItemDecisionFactKey): string[] {
     const value = getDecisionFactValue(item, key);
-    return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+    if (!Array.isArray(value)) return [];
+
+    const seen = new Set<string>();
+    return value.reduce((acc: string[], rawValue) => {
+        const text = sanitizeDecisionFactText(rawValue);
+        if (!text) return acc;
+
+        const key = text.toLowerCase();
+        if (seen.has(key)) return acc;
+        seen.add(key);
+        acc.push(text);
+        return acc;
+    }, []);
 }
 
 export function getDecisionFactString(item: Partial<ExtractedDataItem> | null | undefined, key: ItemDecisionFactKey): string | undefined {
     const value = getDecisionFactValue(item, key);
-    return typeof value === 'string' && value.trim() ? value : undefined;
+    const text = sanitizeDecisionFactText(value);
+    return text || undefined;
 }
 
 export function getDecisionFactNumber(item: Partial<ExtractedDataItem> | null | undefined, key: ItemDecisionFactKey): number | undefined {

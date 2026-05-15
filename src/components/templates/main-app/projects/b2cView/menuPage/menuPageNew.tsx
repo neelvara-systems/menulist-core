@@ -19,7 +19,7 @@ import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
 import { hasTrackedSearchTermInSession, markSearchTermTrackedInSession } from '@lib/analytics/searchDedup';
-import { setMenuAttributeFilterContext, trackItemDistributionAction, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
+import { setMenuAttributeFilterContext, trackItemShare, trackMenuAction, trackSearch, trackUnavailableItemAttempt } from '@lib/analytics/unified';
 import { resolvePublicBusinessType } from '@lib/businessIdentity/publicBusinessType';
 import { getLocalizedText } from '@lib/localization/text';
 import {
@@ -28,7 +28,7 @@ import {
     getDecisionFactString,
     getDecisionFactValue,
 } from '@lib/menu/itemDecisionFacts';
-import { appendItemRouteContext, buildCanonicalItemUrl, buildItemDownloadPath, buildItemOgImagePath } from '@lib/menu/itemTruthUrls';
+import { buildCanonicalItemUrl } from '@lib/menu/itemTruthUrls';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import {
     buildPublicMenuSearchDocument,
@@ -362,7 +362,6 @@ function MenuPageNew({
     const [isCommandLayerPinned, setIsCommandLayerPinned] = useState(false);
     const [stickyControlsHeight, setStickyControlsHeight] = useState(0);
     const selectedItemRef = useRef<any>(null);
-    const trackedLinkOpenRef = useRef<string | null>(null);
 
     useEffect(() => {
         activeCategoryIdRef.current = activeCategory?.id || null;
@@ -1101,16 +1100,6 @@ function MenuPageNew({
         return buildCanonicalItemUrl(`${window.location.origin}${basePath}`, item?.id, activeLanguage);
     }, [activeLanguage, getMenuBasePath]);
 
-    const buildItemDownloadUrl = useCallback((item: any) => {
-        if (!item?.id) return '';
-        const path = buildItemDownloadPath(item.id, (projectData as any)?.menuVersion || (projectData as any)?.updatedAt || (projectData as any)?.lastPublishedAt);
-        return appendItemRouteContext(path, {
-            projectId: projectData?.projectId,
-            tenantId: storeDetails?.tenantId,
-            storeId: storeDetails?.storeId,
-        });
-    }, [projectData, storeDetails?.storeId, storeDetails?.tenantId]);
-
     const buildBaseMenuUrl = useCallback(() => {
         if (typeof window === 'undefined') return '';
         return `${window.location.origin}${getMenuBasePath()}${getMenuLanguageSearch()}`;
@@ -1140,15 +1129,8 @@ function MenuPageNew({
             ? itemDescription || (categoryName ? `${itemName} in ${categoryName} at ${storeName}.` : `${itemName} at ${storeName}.`)
             : storeDescription;
         const url = explicitUrl || (itemName ? buildItemUrl(item) : buildBaseMenuUrl());
-        const ogImagePath = item?.id
-            ? appendItemRouteContext(buildItemOgImagePath(item.id, (projectData as any)?.menuVersion || (projectData as any)?.updatedAt || (projectData as any)?.lastPublishedAt), {
-                projectId: (projectData as any)?.projectId,
-                tenantId: (storeDetails as any)?.tenantId,
-                storeId: (storeDetails as any)?.storeId,
-            })
-            : '';
         const imageUrl = itemName
-            ? (ogImagePath ? `${window.location.origin}${ogImagePath}` : getPrimaryPublicMenuImage(item) || fallbackImage)
+            ? getPrimaryPublicMenuImage(item) || fallbackImage
             : fallbackImage;
 
         document.title = title;
@@ -1226,7 +1208,7 @@ function MenuPageNew({
         }
     }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
-    const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link' | 'download') => {
+    const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link') => {
         if (
             previewMode ||
             !analyticsPreferences.trackMenuViews ||
@@ -1255,21 +1237,11 @@ function MenuPageNew({
             includeLocation: analyticsPreferences.trackLocation,
         };
 
-        if (method !== 'download') {
-            void trackItemShare(
-                item.id,
-                itemName,
-                analyticsCategoryName || item.category,
-                method,
-                analyticsPayload,
-            );
-        }
-
-        void trackItemDistributionAction(
-            method === 'native_share' ? 'share_click' : method,
+        void trackItemShare(
             item.id,
             itemName,
             analyticsCategoryName || item.category,
+            method,
             analyticsPayload,
         );
     }, [
@@ -1411,24 +1383,7 @@ function MenuPageNew({
         applyClientDocumentMeta(item, buildItemUrl(item));
         historyPushedRef.current = false;
 
-        if (canonicalItemId && trackedLinkOpenRef.current !== item.id && analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
-            trackedLinkOpenRef.current = item.id;
-            const categoryId = typeof item.category === 'string' ? item.category : '';
-            const category = allCategories.find((cat: any) => cat.id === categoryId);
-            const analyticsCategoryName = getMenuAnalyticsText(category?.name)
-                || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
-            void trackItemDistributionAction('link_open', item.id, getMenuAnalyticsText(item.name, 'Menu item'), analyticsCategoryName || item.category, {
-                categoryId,
-                categoryName: analyticsCategoryName,
-                tenantId: storeDetails.tenantId,
-                storeId: String(storeDetails.storeId),
-                projectId: projectData.projectId,
-                storeTimeZone: storeDetails.timeZone,
-                businessDayEndTime: storeDetails.businessDayEndTime,
-                includeLocation: analyticsPreferences.trackLocation,
-            });
-        }
-    }, [allCategories, allItems, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, buildItemUrl, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, projectData?.projectId, scrollToItemElement, storeDetails?.businessDayEndTime, storeDetails?.storeId, storeDetails?.tenantId, storeDetails?.timeZone]);
+    }, [allItems, applyClientDocumentMeta, buildItemUrl, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, scrollToItemElement]);
 
     const scrollToCategoryElement = useCallback((categoryId: string) => {
         const element = document.getElementById(`cat-${categoryId}`);
@@ -2707,7 +2662,6 @@ function MenuPageNew({
                 recoveryActions={recoveryActions}
                 showCategoryIcons={showCategoryIcons}
                 itemShareUrl={selectedItem && !previewMode ? buildItemUrl(selectedItem) : ''}
-                itemDownloadUrl={FEATURE_FLAGS.ENABLE_ITEM_TRUTH_EXPORT && selectedItem && !previewMode ? buildItemDownloadUrl(selectedItem) : ''}
                 onShare={(method) => handleItemShare(selectedItem, method)}
             />
         </div>

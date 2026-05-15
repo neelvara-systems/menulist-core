@@ -46,7 +46,7 @@ import {
 import { getResolvedStoreKeywords } from "@lib/localization/storeContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from "@lib/menu/itemDecisionFacts";
-import { appendItemRouteContext, buildCanonicalItemUrl, buildItemOgImagePath } from "@lib/menu/itemTruthUrls";
+import { buildCanonicalItemUrl } from "@lib/menu/itemTruthUrls";
 import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
 import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
@@ -771,9 +771,6 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             currentUrl,
             canonicalUrl: contextCanonicalUrl,
             projectData: metadataProject,
-            projectId: metadataProjectRecord?.projectId || metadataProjectRecord?.id || metadataProject?.projectId,
-            tenantId: metadataStore?.tenantId,
-            storeId: metadataStore?.storeId,
             contextSegments,
             language: metadataLanguage,
         });
@@ -1282,9 +1279,6 @@ function buildContextMetadata({
     currentUrl,
     canonicalUrl,
     projectData,
-    projectId,
-    tenantId,
-    storeId,
     contextSegments,
     language,
 }: {
@@ -1294,9 +1288,6 @@ function buildContextMetadata({
     currentUrl: string;
     canonicalUrl?: string;
     projectData: any;
-    projectId?: string | null;
-    tenantId?: string | number | null;
-    storeId?: string | number | null;
     contextSegments: string[];
     language?: string;
 }): Pick<Metadata, 'title' | 'description' | 'openGraph' | 'twitter' | 'alternates'> | null {
@@ -1315,13 +1306,7 @@ function buildContextMetadata({
         const itemDescription = getLocalizedValue(item.description, renderLanguage);
         const category = categories.find((entry: any) => entry?.id === item.category);
         const categoryName = getLocalizedValue(category?.name, renderLanguage);
-        const ogImagePath = appendItemRouteContext(
-            buildItemOgImagePath(item.id, projectData?.menuVersion || projectData?.updatedAt || projectData?.lastPublishedAt),
-            { projectId, tenantId, storeId },
-        );
-        const imageUrl = ogImagePath
-            ? new URL(ogImagePath, currentUrl).toString()
-            : getPrimaryPublicMenuImage(item) || defaultImageUrl;
+        const imageUrl = getPrimaryPublicMenuImage(item) || defaultImageUrl;
 
         return {
             title: `${itemName} | ${storeName}`,

@@ -60,7 +60,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `HeroSearchBar.tsx`          | —     | Search bar connecting to AI chat + tab navigation                                     |
 | `MainSectionTabs.tsx`        | —     | Tab grid navigation cards                                                             |
 | `ChangelogView.tsx`          | —     | Changelog viewer (reads from DAL)                                                     |
-| `ContactUsView.tsx`          | 18    | Static contact info (email link)                                                      |
+| `ContactUsView.tsx`          | —     | Escalation chooser: ticket, assistant, feedback, support email, partnership email      |
 | `FaqView.tsx`                | —     | FAQ display                                                                           |
 | `ShareFeedbackView.tsx`      | 164   | 3-step feedback wizard (general → usage → requests)                                   |
 | `GeneralFeedback.tsx`        | 30    | Step 1: Star rating + comment                                                         |

@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuSearch } from 'react-icons/lu';
 import HelpChat from '../helpChat';
+import { HELP_CENTER_OPEN_AI_SEARCH_EVENT } from './events';
 import { HELP_CENTER_TABS, HOME_TAB_KEY } from './tabsConfig';
 
 const { Paragraph } = Typography;
@@ -31,6 +32,13 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    useEffect(() => {
+        const handleOpenAISearch = () => setShowAISearchModal(true);
+
+        window.addEventListener(HELP_CENTER_OPEN_AI_SEARCH_EVENT, handleOpenAISearch);
+        return () => window.removeEventListener(HELP_CENTER_OPEN_AI_SEARCH_EVENT, handleOpenAISearch);
     }, []);
 
     return (
@@ -141,84 +149,66 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                 minWidth: 0,
                             }}
                         >
-                            <div
-                                role="button"
-                                tabIndex={0}
+                            <Input
+                                readOnly
+                                className="help-center-search-control"
+                                size="large"
+                                placeholder={t('searchPlaceholder')}
+                                aria-label="Search help center"
+                                prefix={<LuSearch className="help-center-search-icon" size={18} color={token.colorTextPlaceholder} aria-hidden="true" />}
+                                suffix={(
+                                    <span className="help-center-search-control-suffix">
+                                        <span
+                                            className="help-center-search-shortcut"
+                                            aria-hidden="true"
+                                        >
+                                            <kbd style={{
+                                                padding: '2px 6px',
+                                                borderRadius: 4,
+                                                background: token.colorBgElevated,
+                                                border: `1px solid ${token.colorBorder}`,
+                                                fontSize: 10
+                                            }}>⌘K</kbd>
+                                        </span>
+                                        <Button
+                                            className="help-center-search-button"
+                                            size="large"
+                                            style={{
+                                                height: activeTab === 'home' ? 40 : 30,
+                                                fontSize: activeTab === 'home' ? 14 : 12,
+                                                paddingLeft: 16,
+                                                paddingRight: 16,
+                                                borderRadius: activeTab === 'home' ? 10 : 7,
+                                                border: 'none',
+                                                background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${APP_THEME_COLOR} 100%)`,
+                                                color: '#ffffff',
+                                                boxShadow: activeTab === 'home' ? `0 8px 18px ${token.colorPrimary}59` : 'none',
+                                                transition: 'all 0.5s ease'
+                                            }}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                setShowAISearchModal(true);
+                                            }}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                        >
+                                            {t('search')}
+                                        </Button>
+                                    </span>
+                                )}
                                 onClick={() => setShowAISearchModal(true)}
                                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setShowAISearchModal(true) }}
                                 style={{
                                     width: '100%',
                                     background: token.colorBgContainer,
-                                    borderRadius: activeTab === 'home' ? 12 : 7,
+                                    borderRadius: activeTab === 'home' ? 12 : 10,
                                     border: `1px solid ${token.colorBorder}`,
                                     boxShadow: activeTab === 'home' ? '0 20px 40px rgba(2,6,23,0.08)' : 'none',
-                                    padding: '3px',
+                                    height: activeTab === 'home' ? 48 : 38,
+                                    padding: '3px 3px 3px 12px',
                                     transition: 'all 0.5s ease',
                                     cursor: 'pointer'
                                 }}
-                            >
-                                <div className="help-center-search-input-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, paddingLeft: 12 }}>
-                                        <LuSearch size={18} color={token.colorTextPlaceholder} aria-hidden="true" />
-                                        <Input
-                                            readOnly
-                                            size="large"
-                                            placeholder={t('searchPlaceholder')}
-                                            aria-label="Search help center"
-                                            style={{
-                                                border: 'none',
-                                                boxShadow: 'none',
-                                                paddingLeft: 0,
-                                                background: 'transparent',
-                                                padding: activeTab === 'home' ? '3px 10px' : '0px',
-                                                fontSize: activeTab === 'home' ? 14 : 12,
-                                                transition: 'all 0.5s ease'
-                                            }}
-                                        />
-                                    </div>
-                                    {/* Keyboard hint */}
-                                    <div
-                                        className="help-center-search-shortcut"
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 4,
-                                            paddingRight: 8,
-                                            fontSize: 11,
-                                            color: token.colorTextTertiary,
-                                            fontWeight: 500
-                                        }}
-                                        aria-hidden="true"
-                                    >
-                                        <kbd style={{
-                                            padding: '2px 6px',
-                                            borderRadius: 4,
-                                            background: token.colorBgElevated,
-                                            border: `1px solid ${token.colorBorder}`,
-                                            fontSize: 10
-                                        }}>⌘K</kbd>
-                                    </div>
-                                    <Button
-                                        className="help-center-search-button"
-                                        size="large"
-                                        style={{
-                                            height: activeTab === 'home' ? 40 : 30,
-                                            fontSize: activeTab === 'home' ? 14 : 12,
-                                            paddingLeft: 16,
-                                            paddingRight: 16,
-                                            borderRadius: activeTab === 'home' ? 12 : 7,
-                                            border: 'none',
-                                            background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${APP_THEME_COLOR} 100%)`,
-                                            color: '#ffffff',
-                                            boxShadow: activeTab === 'home' ? `0 8px 18px ${token.colorPrimary}59` : 'none',
-                                            transition: 'all 0.5s ease'
-                                        }}
-                                        onClick={() => setShowAISearchModal(true)}
-                                    >
-                                        {t('search')}
-                                    </Button>
-                                </div>
-                            </div>
+                            />
                         </motion.div>
                     </Flex>
                 </motion.div>

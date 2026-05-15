@@ -210,36 +210,42 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         width: 100% !important;
                     }
 
-                    [data-mobile-help-center] .help-center-search-width > [role="button"] {
+                    [data-mobile-help-center] .help-center-search-control.ant-input-affix-wrapper {
+                        align-items: center;
                         border-radius: 10px !important;
                         box-shadow: none !important;
+                        cursor: pointer;
+                        height: 44px !important;
                         min-height: 44px;
-                        padding: 2px !important;
+                        padding: 2px 3px 2px 12px !important;
                     }
 
-                    [data-mobile-help-center] .help-center-search-input-row {
-                        gap: 6px !important;
-                        flex-wrap: nowrap;
-                        min-height: 40px;
+                    [data-mobile-help-center] .help-center-search-control .ant-input-prefix {
+                        align-items: center;
+                        display: inline-flex;
+                        margin-inline-end: 8px;
                     }
 
-                    [data-mobile-help-center] .help-center-search-input-row > div:first-child {
-                        flex: 1 1 auto;
-                        min-width: 0;
-                        padding-left: 10px !important;
-                    }
-
-                    [data-mobile-help-center] .help-center-search-input-row svg {
+                    [data-mobile-help-center] .help-center-search-icon {
                         height: 16px;
                         width: 16px;
                     }
 
-                    [data-mobile-help-center] .help-center-search-input-row .ant-input {
+                    [data-mobile-help-center] .help-center-search-control .ant-input {
+                        background: transparent;
                         font-size: 13px !important;
-                        height: 36px;
+                        height: 100%;
+                        line-height: 20px;
                         overflow: hidden;
-                        padding: 0 6px !important;
+                        padding: 0 !important;
                         text-overflow: ellipsis;
+                    }
+
+                    [data-mobile-help-center] .help-center-search-control-suffix {
+                        align-items: center;
+                        display: inline-flex;
+                        flex-shrink: 0;
+                        gap: 6px;
                     }
 
                     [data-mobile-help-center] .help-center-search-shortcut {
@@ -286,6 +292,32 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         display: inline-flex;
                         align-items: center;
                         min-height: 32px;
+                    }
+
+                    [data-mobile-help-center] .changelog-mobile-search-input.ant-input-affix-wrapper {
+                        align-items: center;
+                        border-radius: 10px !important;
+                        height: 44px;
+                        min-height: 44px;
+                        padding: 0 12px !important;
+                    }
+
+                    [data-mobile-help-center] .changelog-mobile-search-input .ant-input-prefix {
+                        align-items: center;
+                        display: inline-flex;
+                        margin-inline-end: 8px;
+                    }
+
+                    [data-mobile-help-center] .changelog-mobile-search-input .ant-input-prefix svg {
+                        height: 16px;
+                        width: 16px;
+                    }
+
+                    [data-mobile-help-center] .changelog-mobile-search-input .ant-input {
+                        background: transparent;
+                        font-size: 13px !important;
+                        line-height: 20px;
+                        padding: 0 !important;
                     }
                 `}</style>
                 <HelpCenter />

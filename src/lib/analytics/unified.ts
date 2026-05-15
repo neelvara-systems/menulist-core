@@ -478,10 +478,6 @@ export enum TrackingEvent {
   LOGIN = 'login',                   // User login
   SIGN_UP = 'sign_up',               // User registration
   SHARE = 'share',                   // Sharing content
-  ITEM_SHARE_CLICK = 'share_click',   // Item distribution: native share tapped
-  ITEM_COPY_LINK = 'copy_link',       // Item distribution: canonical link copied
-  ITEM_DOWNLOAD = 'download',         // Item distribution: card PNG downloaded
-  ITEM_LINK_OPEN = 'link_open',       // Item distribution: canonical item link opened
   USER_LOCATION = 'user_location',   // User location tracking
 
   // Official Business Page (OBP) events
@@ -988,10 +984,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
       case TrackingEvent.LOGIN:
       case TrackingEvent.SIGN_UP:
       case TrackingEvent.SHARE:
-      case TrackingEvent.ITEM_SHARE_CLICK:
-      case TrackingEvent.ITEM_COPY_LINK:
-      case TrackingEvent.ITEM_DOWNLOAD:
-      case TrackingEvent.ITEM_LINK_OPEN:
       case TrackingEvent.USER_LOCATION:
       case TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED:
         // Operational or generic analytics event. Keep in GA4 only unless a
@@ -1222,10 +1214,6 @@ const trackGA4Event = (
         });
         break;
 
-      case TrackingEvent.ITEM_SHARE_CLICK:
-      case TrackingEvent.ITEM_COPY_LINK:
-      case TrackingEvent.ITEM_DOWNLOAD:
-      case TrackingEvent.ITEM_LINK_OPEN:
         window.gtag('event', eventName, {
           content_type: 'menu_item',
           item_id: data.itemId,
@@ -1369,28 +1357,6 @@ export const trackItemShare = (
     itemName,
     itemCategory,
     shareMethod,
-    shareContentType: 'menu_item',
-    ...additionalData,
-  });
-};
-
-export const trackItemDistributionAction = (
-  action: 'share_click' | 'copy_link' | 'download' | 'link_open',
-  itemId: string,
-  itemName: string,
-  itemCategory?: string,
-  additionalData: Partial<TrackingData> = {}
-): Promise<void> => {
-  const eventName =
-    action === 'share_click' ? TrackingEvent.ITEM_SHARE_CLICK :
-      action === 'copy_link' ? TrackingEvent.ITEM_COPY_LINK :
-        action === 'download' ? TrackingEvent.ITEM_DOWNLOAD :
-          TrackingEvent.ITEM_LINK_OPEN;
-
-  return trackEvent(eventName, {
-    itemId,
-    itemName,
-    itemCategory,
     shareContentType: 'menu_item',
     ...additionalData,
   });

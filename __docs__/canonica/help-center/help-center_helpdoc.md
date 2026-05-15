@@ -121,7 +121,14 @@ Click "Read FAQ" in the Help Center tabs to find answers to the most common ques
 
 ## Contact Us
 
-For direct communication, click "Contact Us" in the Help Center tabs. You can reach the team at the email address provided.
+Use Contact Us when you are not sure where to go next:
+
+- Choose **Submit a ticket** for anything that needs follow-up, such as account, menu, upload, billing, or setup issues.
+- Choose **Ask a question** when you want a quick answer from the Help Center assistant.
+- Choose **Share feedback** when you want to suggest an improvement or explain what feels confusing.
+- Use email only when you cannot access tickets or need to forward context from your inbox.
+
+Partnership or business enquiries can go to `partners@menulist.ai`.
 
 ---
 

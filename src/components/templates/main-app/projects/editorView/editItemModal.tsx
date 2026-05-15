@@ -10,7 +10,9 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
+import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -21,13 +23,36 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Select, Slider, Switch, Tooltip, Typography } from 'antd';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react'; // Added useCallback
-import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuLock, LuPlus, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
+import { LuCheck, LuClock, LuDownload, LuExternalLink, LuFileImage, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
 import { ExtractedDataAttribute, ExtractedDataItem, ItemForDropdown, NewItemMetadataAPIParams, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
 import { clearStaleTranslations, translateItem } from '../utils/translationsUtils';
 import UploadedImagesList from './uploadedImagesList';
 
 const { Text } = Typography;
+
+function getLocalizedDraftText(value: unknown, language: string, fallback = ''): string {
+    if (!value) return fallback;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') {
+        const record = value as Record<string, string>;
+        return record[language] || Object.values(record).find(Boolean) || fallback;
+    }
+    return fallback;
+}
+
+function getFirstItemImageUrl(images: unknown): string | undefined {
+    const list = Array.isArray(images) ? images : images ? [images] : [];
+    for (const image of list) {
+        if (typeof image === 'string') return image;
+        if (image && typeof image === 'object') {
+            const record = image as Record<string, unknown>;
+            const url = record.url || record.src || record.imageUrl || record.downloadURL || record.uploadedUrl;
+            if (typeof url === 'string' && url.trim()) return url;
+        }
+    }
+    return undefined;
+}
 
 // Memoize ItemFormView to prevent unnecessary re-renders
 const ItemFormView = memo((
@@ -145,6 +170,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
 
     const [itemData, setItemData] = useState<ExtractedDataItem | null>(null);
     const [activeTab, setActiveTab] = useState<string[]>(['Images']);
+    const [isCardWorking, setIsCardWorking] = useState(false);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const dispatch = useAppDispatch();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
@@ -169,6 +195,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
 
     // Get metadata fields relevant to this store's business category
     const metadataFields = useMemo(() => getMetadataFieldsForBusiness(storeDetails?.businessType), [storeDetails?.businessType]);
+    const primaryLanguage = selectedLanguages[0] || 'en';
 
     useEffect(() => {
         setItemData(modalData.item);
@@ -200,6 +227,59 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         });
         return categoriesForDropdown;
     }, [projectData]);
+    const selectedCategory = useMemo(
+        () => categoriesList.find((category) => category.id === itemData?.category),
+        [categoriesList, itemData?.category],
+    );
+    const sharableCardInput = useMemo<SharableItemCardInput>(() => {
+        const store = storeDetails as any;
+        const itemName = getLocalizedDraftText(itemData?.name, primaryLanguage, 'Menu item');
+        const description = getLocalizedDraftText(itemData?.description, primaryLanguage);
+        const categoryName = getLocalizedDraftText(selectedCategory?.name, primaryLanguage);
+        const projectName = getLocalizedDraftText((projectData as any)?.metadata?.name, primaryLanguage);
+        const price = itemData && !(itemData.attributes || []).length && itemData.price
+            ? formatMenuPrice(itemData.price, store?.currencySymbol || '₹')
+            : '';
+
+        return {
+            itemName,
+            description,
+            categoryName,
+            price,
+            storeName: String(store?.publicPresence?.displayName || store?.name || store?.tenantName || 'Menu').trim(),
+            projectName,
+            imageUrl: getFirstItemImageUrl(itemData?.images),
+            accentColor: store?.publicPresence?.accentColor || (projectData as any)?.config?.design?.brand?.accentColor,
+            updatedLabel: 'Current menu',
+        };
+    }, [itemData, primaryLanguage, projectData, selectedCategory?.name, storeDetails]);
+    const canGenerateSharableCard = FEATURE_FLAGS.ENABLE_SHARABLE_ITEM_CARD_GENERATION && modalData.status === 'edit' && Boolean(itemData?.id);
+
+    const handleShareCard = useCallback(async () => {
+        if (!canGenerateSharableCard || isCardWorking) return;
+        setIsCardWorking(true);
+        try {
+            const result = await shareSharableItemCard(sharableCardInput);
+            antdMessage.success(result === 'shared' ? 'Card shared' : 'Card downloaded');
+        } catch {
+            antdMessage.error('Could not create card.');
+        } finally {
+            setIsCardWorking(false);
+        }
+    }, [canGenerateSharableCard, isCardWorking, sharableCardInput]);
+
+    const handleDownloadCard = useCallback(async () => {
+        if (!canGenerateSharableCard || isCardWorking) return;
+        setIsCardWorking(true);
+        try {
+            await downloadSharableItemCard(sharableCardInput);
+            antdMessage.success('Card downloaded');
+        } catch {
+            antdMessage.error('Could not create card.');
+        } finally {
+            setIsCardWorking(false);
+        }
+    }, [canGenerateSharableCard, isCardWorking, sharableCardInput]);
     const hasMultipleLanguages = selectedLanguages.length > 1;
     const hasAnyDescription = useMemo(
         () => Object.values(itemData?.description || {}).some((description) => hasMeaningfulDescription(description)),
@@ -562,6 +642,12 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 <Flex gap={8} vertical>
                     <Flex gap={16}>
                         <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
+                        {canGenerateSharableCard ? (
+                            <>
+                                <Button disabled={isCardWorking} icon={<LuShare2 />} onClick={handleShareCard}>Share card</Button>
+                                <Button disabled={isCardWorking} icon={<LuDownload />} onClick={handleDownloadCard}>Download card</Button>
+                            </>
+                        ) : null}
                         <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label={contentActionCopy.label} />
                         <Button type="primary" icon={<LuCheck />} onClick={onSave} >Save</Button>
                     </Flex>

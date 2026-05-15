@@ -1,8 +1,9 @@
 'use client'
 import { Card, Flex, Typography } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import HeroSearchBar from './HeroSearchBar';
+import { HELP_CENTER_SELECT_TAB_EVENT, type HelpCenterSelectTabEventDetail } from './events';
 import LandingPage from './landing';
 import MainSectionTabs from './MainSectionTabs';
 import { DEFAULT_HOME_TAB, HELP_CENTER_TABS, HOME_TAB_KEY } from './tabsConfig';
@@ -45,10 +46,25 @@ function HelpCenter() {
         }
     }, [pathname, requestedTab, requestedTabIsValid, router]);
 
-    const handleTabChange = (nextKey: string) => {
+    const handleTabChange = useCallback((nextKey: string) => {
         setActiveKey(nextKey);
         router.replace(nextKey === HOME_TAB_KEY ? pathname : `${pathname}?tab=${nextKey}`, { scroll: false });
-    };
+    }, [pathname, router]);
+
+    useEffect(() => {
+        const handleSelectTab = (event: Event) => {
+            const nextKey = (event as CustomEvent<HelpCenterSelectTabEventDetail>).detail?.tabKey;
+
+            if (!nextKey || (nextKey !== HOME_TAB_KEY && !HELP_CENTER_TABS.some(tab => tab.key === nextKey))) {
+                return;
+            }
+
+            handleTabChange(nextKey);
+        };
+
+        window.addEventListener(HELP_CENTER_SELECT_TAB_EVENT, handleSelectTab);
+        return () => window.removeEventListener(HELP_CENTER_SELECT_TAB_EVENT, handleSelectTab);
+    }, [handleTabChange]);
 
     return (
         <Card style={cardStyle} styles={{ body: cardBodyStyle }}>

@@ -11,11 +11,12 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import { generateGradientFromHex } from '@util/utils';
-import { Badge, Empty, Flex, Grid, Input, Layout, List, Typography, message, theme } from 'antd';
+import { Badge, Button, Empty, Flex, Grid, Input, Layout, List, Popover, Typography, message, theme } from 'antd';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
+import { LuFilter, LuSearch } from 'react-icons/lu';
 import AnimatedVersionNumber from './AnimatedVersionNumber';
 import ChangelogPreview from './ChangelogPreview';
 
@@ -63,6 +64,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
     const [hasMore, setHasMore] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
     const { token } = useToken();
@@ -152,6 +154,95 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
         }
     };
 
+    const tagFilterList = (
+        <List
+            dataSource={CHANGELOG_TAG_OPTIONS}
+            renderItem={tag => {
+                const config = CHANGELOG_TAG_CONFIG[tag];
+                const Icon = config?.icon;
+                const color = config?.color;
+                const isSelected = selectedTags.includes(tag);
+
+                return (
+                    <List.Item
+                        onClick={() => handleTagChange(tag, !isSelected)}
+                        style={{
+                            cursor: 'pointer',
+                            padding: '8px 12px',
+                            borderRadius: token.borderRadius,
+                            background: isSelected ? token.colorPrimaryBg : 'transparent',
+                            borderLeft: isSelected ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
+                            marginBottom: 4,
+                        }}
+                    >
+                        <Flex align="center" gap={8}>
+                            {Icon && <Icon style={{ color }} />}
+                            <Typography.Text style={{ color: isSelected ? token.colorPrimary : token.colorText }}>
+                                {tag}
+                            </Typography.Text>
+                        </Flex>
+                    </List.Item>
+                );
+            }}
+        />
+    );
+
+    const mobileFilterDropdown = (
+        <div
+            style={{
+                maxHeight: 360,
+                maxWidth: 'calc(100vw - 48px)',
+                overflowY: 'auto',
+                width: 280,
+            }}
+        >
+            <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
+                <Text strong>Filter by tags</Text>
+                {selectedTags.length > 0 ? (
+                    <Button size="small" type="link" onClick={() => setSelectedTags([])}>
+                        Clear
+                    </Button>
+                ) : null}
+            </Flex>
+            {tagFilterList}
+        </div>
+    );
+
+    const mobileFilterPanel = (
+        <Flex align="center" gap={8} style={{ marginBottom: 12, width: '100%' }}>
+            <Input
+                className="changelog-mobile-search-input"
+                placeholder="Search changelog..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, minWidth: 0 }}
+                prefix={<LuSearch size={16} aria-hidden="true" />}
+                allowClear
+            />
+            <Popover
+                content={mobileFilterDropdown}
+                onOpenChange={setFiltersOpen}
+                open={filtersOpen}
+                placement="bottomRight"
+                trigger="click"
+            >
+                <Badge count={selectedTags.length} size="small">
+                    <Button
+                        aria-label="Filter changelog by tags"
+                        icon={<LuFilter size={18} />}
+                        style={{
+                            alignItems: 'center',
+                            display: 'inline-flex',
+                            height: 44,
+                            justifyContent: 'center',
+                            minWidth: 44,
+                        }}
+                    />
+                </Badge>
+            </Popover>
+        </Flex>
+    );
+
     const filterPanel = (
         <>
             <Input.Search
@@ -163,36 +254,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
             />
 
             <Title level={5} style={{ marginBottom: 16 }}>Filter by Tags</Title>
-            <List
-                dataSource={CHANGELOG_TAG_OPTIONS}
-                renderItem={tag => {
-                    const config = CHANGELOG_TAG_CONFIG[tag];
-                    const Icon = config?.icon;
-                    const color = config?.color;
-                    const isSelected = selectedTags.includes(tag);
-
-                    return (
-                        <List.Item
-                            onClick={() => handleTagChange(tag, !isSelected)}
-                            style={{
-                                cursor: 'pointer',
-                                padding: '8px 12px',
-                                borderRadius: token.borderRadius,
-                                background: isSelected ? token.colorPrimaryBg : 'transparent',
-                                borderLeft: isSelected ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
-                                marginBottom: 4,
-                            }}
-                        >
-                            <Flex align="center" gap={8}>
-                                {Icon && <Icon style={{ color }} />}
-                                <Typography.Text style={{ color: isSelected ? token.colorPrimary : token.colorText }}>
-                                    {tag}
-                                </Typography.Text>
-                            </Flex>
-                        </List.Item>
-                    );
-                }}
-            />
+            {tagFilterList}
         </>
     );
 
@@ -220,7 +282,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                 </Flex>
 
                 <Layout style={{ background: token.colorBgContainer }}>
-                    {isNarrow ? <div style={{ marginBottom: 16 }}>{filterPanel}</div> : null}
+                    {isNarrow ? mobileFilterPanel : null}
                     <Content>
                         {/* <div id="scrollableDivPublic" style={{ height: 'calc(100vh - 260px)', overflow: 'auto' }}> */}
                         <div id="scrollableDivPublic" style={{}}>
@@ -232,7 +294,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                                 scrollableTarget="scrollableDivPublic"
                                 endMessage={
                                     <>
-                                        {searchQuery || (selectedTags.length > 0) &&
+                                        {(searchQuery || selectedTags.length > 0) &&
                                             <Empty
                                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                                                 description={

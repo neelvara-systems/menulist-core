@@ -192,8 +192,16 @@ End users interact with the **AI chatbot** through the search modal or help chat
 
 ### 3.10 Contact Us
 
-**Purpose:** Simple contact information display.
-**Current content:** Email link to `partners@menulist.ai`
+**Purpose:** Owner-facing escalation chooser for selecting the correct support path without creating another support workflow.
+**Current content:**
+
+- Submit a ticket for account, menu, upload, billing, setup, or other issues that need tracking
+- Ask the Help Center assistant for quick answers from docs and known setup steps
+- Share feedback for product suggestions and confusing workflows
+- Email `support@menulist.ai` as a fallback when tickets are not accessible
+- Partnership note links to `partners@menulist.ai`
+
+**Canonica boundary:** Contact Us does not add a new helpdesk workflow. It routes owners into existing Canonica signal sources: tickets, feedback, and knowledge retrieval.
 
 ### 3.11 FAQ
 

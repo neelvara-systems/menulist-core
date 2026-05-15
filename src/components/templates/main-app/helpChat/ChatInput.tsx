@@ -28,9 +28,10 @@ interface ChatInputProps {
     showQnAActions?: boolean; // Show action buttons instead of input after first QnA answer
     onStartFollowUp?: () => void; // Switch to assistant mode with context
     onNewQuestion?: () => void; // Start new QnA session
+    isMobile?: boolean;
 }
 
-const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, mode, disabled, sessionId, value, hasMessages = false, showQnAActions = false, onStartFollowUp, onNewQuestion }: ChatInputProps) => {
+const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, mode, disabled, sessionId, value, hasMessages = false, showQnAActions = false, onStartFollowUp, onNewQuestion, isMobile = false }: ChatInputProps) => {
     const { token } = theme.useToken();
     const [inputValue, setInputValue] = useState('');
     const [selectedImage, setSelectedImage] = useState<UserUploadedFileType | null>(null);
@@ -274,7 +275,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
         return (
             <div
                 style={{
-                    padding: '12px 20px',
+                    padding: isMobile ? '10px 12px calc(10px + env(safe-area-inset-bottom))' : '12px 20px',
                     borderTop: `1px solid ${token.colorBorderSecondary}`,
                     background: token.colorBgContainer
                 }}
@@ -287,13 +288,14 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             onClick={onStartFollowUp}
                             style={{
                                 flex: 1,
-                                height: 36,
-                                fontSize: 13,
+                                minWidth: 0,
+                                height: isMobile ? 44 : 36,
+                                fontSize: isMobile ? 14 : 13,
                                 fontWeight: 500,
-                                borderRadius: 8
+                                borderRadius: isMobile ? 10 : 8
                             }}
                         >
-                            Follow-up Question
+                            {isMobile ? 'Follow up' : 'Follow-up Question'}
                         </Button>
                         
                         <Button
@@ -301,20 +303,21 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             onClick={onNewQuestion}
                             style={{
                                 flex: 1,
-                                height: 36,
-                                fontSize: 13,
+                                minWidth: 0,
+                                height: isMobile ? 44 : 36,
+                                fontSize: isMobile ? 14 : 13,
                                 fontWeight: 500,
-                                borderRadius: 8
+                                borderRadius: isMobile ? 10 : 8
                             }}
                         >
-                            New Question
+                            {isMobile ? 'New question' : 'New Question'}
                         </Button>
                     </Flex>
                     
                     <Typography.Text
                         type="secondary"
                         style={{
-                            fontSize: 11,
+                            fontSize: isMobile ? 10 : 11,
                             textAlign: 'center',
                             lineHeight: '16px'
                         }}
@@ -331,7 +334,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
         <div
             {...dragHandlers}
             style={{
-                padding: '12px 16px',
+                padding: isMobile ? '10px 12px calc(10px + env(safe-area-inset-bottom))' : '12px 16px',
                 borderTop: `1px solid ${token.colorBorderSecondary}`,
                 background: token.colorBgContainer
             }}
@@ -347,7 +350,8 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             borderRadius: 8,
                             background: token.colorFillQuaternary,
                             border: `1px solid ${token.colorBorderSecondary}`,
-                            width: 'fit-content'
+                            width: isMobile ? '100%' : 'fit-content',
+                            maxWidth: '100%'
                         }}
                     >
                         <Image
@@ -364,7 +368,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                                 cursor: 'pointer'
                             }}
                         />
-                        <span style={{ fontSize: 12, fontWeight: 500, color: token.colorText, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: token.colorText, maxWidth: isMobile ? 160 : 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {selectedImage.name || 'Image'}
                         </span>
                         <span style={{ fontSize: 11, color: token.colorTextTertiary }}>
@@ -377,9 +381,9 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             size="small"
                             style={{
                                 padding: 2,
-                                height: 20,
-                                width: 20,
-                                minWidth: 20,
+                                height: isMobile ? 32 : 20,
+                                width: isMobile ? 32 : 20,
+                                minWidth: isMobile ? 32 : 20,
                                 borderRadius: 4,
                                 color: token.colorTextTertiary
                             }}
@@ -407,8 +411,8 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                         width: '100%',
                         resize: 'none',
                         borderRadius: 24,
-                        padding: '10px 130px 10px 16px',
-                        fontSize: 14,
+                        padding: isMobile ? '12px 128px 12px 14px' : '10px 130px 10px 16px',
+                        fontSize: isMobile ? 16 : 14,
                         border: `1px solid ${isDragging ? token.colorPrimary : token.colorBorder}`,
                         background: isDragging ? token.colorPrimaryBg : token.colorBgElevated,
                         transition: 'all 0.2s ease'
@@ -462,7 +466,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 <div style={{
                     position: 'absolute',
                     right: 6,
-                    bottom: 6,
+                    bottom: isMobile ? 4 : 6,
                     display: 'flex',
                     gap: 4,
                     alignItems: 'center'
@@ -482,9 +486,9 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                                 type="text"
                                 aria-label="Upload image"
                                 style={{
-                                    height: 32,
-                                    width: 32,
-                                    minWidth: 32,
+                                    height: isMobile ? 44 : 32,
+                                    width: isMobile ? 44 : 32,
+                                    minWidth: isMobile ? 44 : 32,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -508,25 +512,27 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             disabled={!inputValue.trim() || disabled}
                             aria-label="Send message to help assistant"
                             style={{
-                                height: 32,
-                                fontSize: 13,
+                                height: isMobile ? 44 : 32,
+                                fontSize: isMobile ? 14 : 13,
                                 fontWeight: 500,
-                                paddingLeft: 12,
-                                paddingRight: 12
+                                paddingLeft: isMobile ? 10 : 12,
+                                paddingRight: isMobile ? 10 : 12
                             }}
                         >
-                            Ask a Question
+                            {isMobile ? 'Ask' : 'Ask a Question'}
                         </Button>
                     </Tooltip>
                 </div>
             </div>
 
             {/* Keyboard Shortcut Hint - Below input, subtle and compact */}
-            <Flex justify="center" align="center" gap={3} style={{ marginTop: 4, opacity: 0.5 }}>
-                <Typography.Text type="secondary" style={{ fontSize: 10 }}>
-                    {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Enter to send
-                </Typography.Text>
-            </Flex>
+            {!isMobile && (
+                <Flex justify="center" align="center" gap={3} style={{ marginTop: 4, opacity: 0.5 }}>
+                    <Typography.Text type="secondary" style={{ fontSize: 10 }}>
+                        {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} + Enter to send
+                    </Typography.Text>
+                </Flex>
+            )}
         </div>
     );
 };

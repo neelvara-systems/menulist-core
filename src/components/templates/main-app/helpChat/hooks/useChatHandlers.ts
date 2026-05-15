@@ -70,7 +70,8 @@ export function useChatHandlers({
 
     // Handler: Create New Chat
     const handleNewChat = () => {
-        setActiveSessionId(null);
+        setChatSessions(prev => prev.filter(session => session.id !== null));
+        setActiveSessionId(undefined);
         setSearchQuery('');
         setCurrentMode('qna');
         dispatchChatState({ type: 'RESET' });
@@ -93,11 +94,14 @@ export function useChatHandlers({
     const performSearch = async (
         content: string,
         image: UserUploadedFileType | undefined,
-        conversationHistory: ChatMessage[] | undefined
+        conversationHistory: ChatMessage[] | undefined,
+        modeOverride?: ChatMode
     ): Promise<SearchAPIResponseType> => {
+        const searchMode = modeOverride || currentModeRef.current;
+
         const result = await searchKnowledgeBase({
             query: content,
-            mode: currentMode,
+            mode: searchMode,
             conversationHistory,
             image,
             sessionFailureCount: sessionFailureCountRef.current,
@@ -151,7 +155,7 @@ export function useChatHandlers({
         const requestId = `req-${Date.now()}`;
 
         // ✅ Use targetMode if provided (for suggested questions), otherwise use currentMode
-        const effectiveMode = targetMode || currentMode;
+        const effectiveMode = targetMode || currentModeRef.current;
 
         // 🔒 FIX: Queue the request to prevent race conditions
         enqueue({
@@ -225,7 +229,8 @@ export function useChatHandlers({
                     const result: SearchAPIResponseType = await performSearch(
                         content,
                         uploadedImage,
-                        conversationHistory
+                        conversationHistory,
+                        effectiveMode
                     );
 
                     // Create AI message
@@ -279,7 +284,7 @@ export function useChatHandlers({
                         // Future: Replace with AI-generated title after first exchange
                         const newSession: ChatSession = {
                             title: content.slice(0, 150) + (content.length > 150 ? '...' : ''),
-                            mode: currentMode,
+                            mode: effectiveMode,
                             messages: [newUserMessage, aiMessage],
                             userName: loggedInSession?.user?.name // Save user's display name for admin UI
                         };
@@ -328,12 +333,13 @@ export function useChatHandlers({
         dispatchChatState({ type: 'SEARCH_START', payload: { query: content } });
 
         try {
-            const conversationHistory = currentMode === 'assistant' && activeSession
+            const retryMode = currentModeRef.current;
+            const conversationHistory = retryMode === 'assistant' && activeSession
                 ? activeSession.messages
                 : undefined;
 
             // Use performSearch via unified coreSearch pipeline
-            const result = await performSearch(content, image, conversationHistory);
+            const result = await performSearch(content, image, conversationHistory, retryMode);
 
             // Calculate retry attempt number
             const previousMessages = activeSession?.messages || [];

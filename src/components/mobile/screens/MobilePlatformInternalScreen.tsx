@@ -1,12 +1,15 @@
 'use client'
 
 import { isCanonicaFirebaseConfigured } from '@lib/firebase/canonicaFirebaseClient';
+import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import CanonicaConfigNotice from '@template/platform/CanonicaConfigNotice';
 import type { TenantDataType } from '@type/platform/tenant';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import type { ComponentType, Dispatch, SetStateAction } from 'react';
 import { useState } from 'react';
-import { DotLoading, Flex, Text } from '../antd';
+import { LuExternalLink } from 'react-icons/lu';
+import { Button, DotLoading, Flex, Text } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 export type MobilePlatformInternalScreenKey =
@@ -33,6 +36,7 @@ type MobilePlatformInternalScreenProps = {
 type PlatformScreenConfig = {
     Component: ComponentType;
     description: string;
+    desktopPath?: string;
     minWidth?: number;
     requiresCanonica?: boolean;
     surface: string;
@@ -107,6 +111,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     supportTickets: {
         Component: SupportTickets,
+        desktopPath: '/platform/support-tickets',
         description: 'Platform support queue and ticket operations.',
         minWidth: 720,
         requiresCanonica: true,
@@ -115,6 +120,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     feedbackAdmin: {
         Component: FeedbackAdmin,
+        desktopPath: '/platform/feedback-admin',
         description: 'Internal feedback administration tools.',
         minWidth: 640,
         requiresCanonica: true,
@@ -123,6 +129,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     knowledgeBase: {
         Component: KnowledgeBase,
+        desktopPath: '/platform/knowledge-base',
         description: 'Platform knowledge base editing and publishing.',
         minWidth: 760,
         requiresCanonica: true,
@@ -131,6 +138,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     kbGeneration: {
         Component: KBGeneration,
+        desktopPath: '/platform/kb-generation',
         description: 'Generate, review, and reconcile knowledge base content.',
         minWidth: 680,
         requiresCanonica: true,
@@ -139,6 +147,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     changelog: {
         Component: Changelog,
+        desktopPath: '/platform/changelog',
         description: 'Create and publish platform release notes.',
         minWidth: 680,
         requiresCanonica: true,
@@ -147,6 +156,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     chatManagement: {
         Component: ChatManagement,
+        desktopPath: '/platform/chat-management',
         description: 'Review and manage customer chat conversations.',
         minWidth: 760,
         requiresCanonica: true,
@@ -155,6 +165,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     chatInsights: {
         Component: ChatInsights,
+        desktopPath: '/platform/chat-insights',
         description: 'Conversation analytics and chat quality signals.',
         minWidth: 680,
         requiresCanonica: true,
@@ -163,6 +174,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     chatBackfill: {
         Component: ChatBackfill,
+        desktopPath: '/platform/chat-backfill',
         description: 'Backfill chat analytics and operational data.',
         minWidth: 640,
         requiresCanonica: true,
@@ -171,6 +183,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     chatWeeklyDigest: {
         Component: ChatWeeklyDigest,
+        desktopPath: '/platform/chat-weekly-digest',
         description: 'Review weekly chat digest output.',
         requiresCanonica: true,
         surface: 'Chat Weekly Digest',
@@ -178,6 +191,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
     },
     chatRoiCalculator: {
         Component: ChatRoiCalculator,
+        desktopPath: '/platform/chat-roi-calculator',
         description: 'Internal ROI calculator for chat operations.',
         requiresCanonica: true,
         surface: 'Chat ROI Calculator',
@@ -188,25 +202,56 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
 export default function MobilePlatformInternalScreen({ onBack, screen }: MobilePlatformInternalScreenProps) {
     const config = PLATFORM_SCREEN_CONFIG[screen];
     const Component = config.Component;
+    const isCanonicaRoute = Boolean(config.requiresCanonica);
+    const router = useRouter();
+
+    const openDesktopTools = () => {
+        if (!config.desktopPath) return;
+        setForceDesktopRoute(config.desktopPath);
+        router.push(config.desktopPath);
+    };
 
     return (
         <Flex style={{ minHeight: '100%', minWidth: 0 }} vertical>
             <MobileSettingsScreenHeader
                 description={config.description}
                 onBack={onBack}
+                right={config.desktopPath ? (
+                    <Button
+                        aria-label={`Open ${config.title} desktop tools`}
+                        fill="none"
+                        onClick={openDesktopTools}
+                        style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                    >
+                        <LuExternalLink size={18} />
+                    </Button>
+                ) : undefined}
                 title={config.title}
             />
             <div
+                data-mobile-canonica-admin={isCanonicaRoute ? 'true' : undefined}
                 data-mobile-platform-route
+                data-mobile-platform-screen={screen}
                 style={{
                     maxWidth: '100%',
                     minWidth: 0,
-                    overflowX: 'auto',
+                    overflowX: 'hidden',
                     padding: 12,
                     WebkitOverflowScrolling: 'touch',
                 }}
             >
                 <style jsx global>{`
+                    [data-mobile-platform-route] {
+                        box-sizing: border-box;
+                        width: 100%;
+                    }
+
+                    [data-mobile-platform-route] *,
+                    [data-mobile-platform-route] *::before,
+                    [data-mobile-platform-route] *::after {
+                        box-sizing: border-box;
+                    }
+
                     [data-mobile-platform-route] .ant-layout {
                         background: transparent !important;
                         min-height: auto !important;
@@ -218,6 +263,9 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
 
                     [data-mobile-platform-route] .ant-card {
                         border-radius: 8px;
+                        max-width: 100%;
+                        min-width: 0;
+                        overflow: hidden;
                         width: 100%;
                     }
 
@@ -227,13 +275,29 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                         padding-right: 12px;
                     }
 
+                    [data-mobile-platform-route] .ant-card-head-title {
+                        min-width: 0;
+                        white-space: normal;
+                    }
+
+                    [data-mobile-platform-route] .ant-flex,
                     [data-mobile-platform-route] .ant-space {
                         max-width: 100%;
+                        min-width: 0;
                     }
 
                     [data-mobile-platform-route] .ant-space,
                     [data-mobile-platform-route] .ant-row {
                         row-gap: 8px;
+                    }
+
+                    [data-mobile-platform-route] .ant-row {
+                        margin-left: 0 !important;
+                        margin-right: 0 !important;
+                    }
+
+                    [data-mobile-platform-route] .ant-col {
+                        min-width: 0;
                     }
 
                     [data-mobile-platform-route] .ant-table-wrapper,
@@ -245,22 +309,34 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                     }
 
                     [data-mobile-platform-route] .ant-table {
-                        min-width: 720px;
+                        min-width: max-content;
                     }
 
                     [data-mobile-platform-route] .ant-select,
                     [data-mobile-platform-route] .ant-picker,
                     [data-mobile-platform-route] .ant-input,
-                    [data-mobile-platform-route] .ant-input-number {
+                    [data-mobile-platform-route] .ant-input-affix-wrapper,
+                    [data-mobile-platform-route] .ant-input-number,
+                    [data-mobile-platform-route] textarea {
                         max-width: 100%;
+                        min-width: 0;
                     }
 
                     [data-mobile-platform-route] .ant-statistic-title,
-                    [data-mobile-platform-route] .ant-typography {
+                    [data-mobile-platform-route] .ant-typography,
+                    [data-mobile-platform-route] p,
+                    [data-mobile-platform-route] span,
+                    [data-mobile-platform-route] a,
+                    [data-mobile-platform-route] button {
+                        overflow-wrap: anywhere;
                         white-space: normal;
                     }
 
                     @media (max-width: 640px) {
+                        [data-mobile-platform-route] {
+                            padding: 12px 10px !important;
+                        }
+
                         [data-mobile-platform-route] h1,
                         [data-mobile-platform-route] .ant-typography h1 {
                             font-size: 24px;
@@ -273,8 +349,15 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             line-height: 1.3;
                         }
 
+                        [data-mobile-platform-route] h3,
+                        [data-mobile-platform-route] .ant-typography h3 {
+                            font-size: 18px;
+                            line-height: 1.35;
+                        }
+
                         [data-mobile-platform-route] .ant-btn {
-                            min-height: 40px;
+                            min-height: 44px;
+                            white-space: normal;
                         }
 
                         [data-mobile-platform-route] .ant-card-body,
@@ -283,12 +366,133 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                             padding-right: 10px;
                         }
 
+                        [data-mobile-canonica-admin="true"] .ant-card-body {
+                            padding-bottom: 12px;
+                            padding-top: 12px;
+                        }
+
                         [data-mobile-platform-route] .ant-space {
                             flex-wrap: wrap;
                         }
 
                         [data-mobile-platform-route] .ant-flex {
                             max-width: 100%;
+                            min-width: 0;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-row {
+                            gap: 12px 0 !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-row > .ant-col {
+                            flex: 0 0 100% !important;
+                            max-width: 100% !important;
+                            padding-left: 0 !important;
+                            padding-right: 0 !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-list-item {
+                            align-items: flex-start;
+                            min-height: 56px;
+                            padding: 12px 0 !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-list-item-meta {
+                            min-width: 0;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-list-item-meta-avatar {
+                            margin-inline-end: 10px !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-list-item-meta-title > .ant-flex,
+                        [data-mobile-canonica-admin="true"] .ant-list-item-meta-description > .ant-flex {
+                            align-items: flex-start !important;
+                            flex-wrap: wrap;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-segmented {
+                            width: 100%;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-segmented-group {
+                            min-width: max-content;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-form-item {
+                            margin-bottom: 14px;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-form-item-label,
+                        [data-mobile-canonica-admin="true"] .ant-form-item-control {
+                            flex: 0 0 100%;
+                            max-width: 100%;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-descriptions-view {
+                            border-radius: 8px;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-descriptions-row,
+                        [data-mobile-canonica-admin="true"] .ant-descriptions-item,
+                        [data-mobile-canonica-admin="true"] .ant-descriptions-item-label,
+                        [data-mobile-canonica-admin="true"] .ant-descriptions-item-content {
+                            display: block;
+                            width: 100% !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-statistic-content {
+                            font-size: 22px;
+                            line-height: 1.2;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-table-wrapper {
+                            border: 1px solid rgba(15, 23, 42, 0.08);
+                            border-radius: 8px;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-table-cell {
+                            padding: 10px 12px !important;
+                            white-space: normal;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-table-cell-fix-left,
+                        [data-mobile-canonica-admin="true"] .ant-table-cell-fix-right {
+                            position: static !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-tabs-nav {
+                            margin-bottom: 12px;
+                            overflow-x: auto;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-splitter {
+                            display: flex !important;
+                            flex-direction: column !important;
+                            gap: 12px;
+                            height: auto !important;
+                            min-height: 0 !important;
+                            width: 100% !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-splitter-panel {
+                            flex: 0 0 auto !important;
+                            height: auto !important;
+                            max-width: 100% !important;
+                            min-height: 160px;
+                            min-width: 0 !important;
+                            width: 100% !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-splitter-bar {
+                            display: none !important;
+                        }
+
+                        [data-mobile-canonica-admin="true"] .ant-upload-wrapper,
+                        [data-mobile-canonica-admin="true"] .ant-upload-list,
+                        [data-mobile-canonica-admin="true"] .ant-upload-list-item {
+                            max-width: 100%;
+                            min-width: 0;
                         }
 
                         .ant-drawer-content-wrapper {
@@ -300,7 +504,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                         }
                     }
                 `}</style>
-                <div style={{ minWidth: config.minWidth || 0, width: '100%' }}>
+                <div style={{ minWidth: isCanonicaRoute ? 0 : config.minWidth || 0, width: '100%' }}>
                     {config.requiresCanonica && !isCanonicaFirebaseConfigured ? (
                         <CanonicaConfigNotice surface={config.surface} />
                     ) : (

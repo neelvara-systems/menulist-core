@@ -10,9 +10,10 @@ interface SuggestedQuestionsProps {
     questions: string[];
     onQuestionClick: (question: string) => void;
     disabled?: boolean;
+    isMobile?: boolean;
 }
 
-const SuggestedQuestions = ({ questions, onQuestionClick, disabled }: SuggestedQuestionsProps) => {
+const SuggestedQuestions = ({ questions, onQuestionClick, disabled, isMobile = false }: SuggestedQuestionsProps) => {
     const { token } = theme.useToken();
 
     if (questions.length === 0) return null;
@@ -41,27 +42,30 @@ const SuggestedQuestions = ({ questions, onQuestionClick, disabled }: SuggestedQ
                 </Flex>
 
                 {/* Question Pills */}
-                <Flex gap={8} wrap="wrap">
+                <Flex gap={8} wrap="wrap" vertical={isMobile}>
                     {questions.map((question, index) => (
                         <motion.div
                             key={`question-${question.substring(0, 30).replace(/\s/g, '-')}-${index}`}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.2, delay: 0.1 * index }}
+                            style={{ width: isMobile ? '100%' : undefined }}
                         >
                             <Button
                                 type="text"
-                                size="small"
+                                size={isMobile ? 'middle' : 'small'}
                                 onClick={() => onQuestionClick(question)}
                                 disabled={disabled}
                                 style={{
                                     height: 'auto',
-                                    padding: '6px 12px',
+                                    minHeight: isMobile ? 44 : undefined,
+                                    width: isMobile ? '100%' : undefined,
+                                    padding: isMobile ? '10px 12px' : '6px 12px',
                                     borderRadius: 12,
                                     background: token.colorBgElevated,
                                     border: `1px solid ${token.colorBorderSecondary}`,
-                                    fontSize: 12,
-                                    fontWeight: 400,
+                                    fontSize: isMobile ? 14 : 12,
+                                    fontWeight: isMobile ? 500 : 400,
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 4,

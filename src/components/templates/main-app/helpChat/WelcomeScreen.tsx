@@ -8,6 +8,7 @@ const { Title, Text } = Typography;
 
 interface WelcomeScreenProps {
     onSendMessage: (message: string) => void;
+    isMobile?: boolean;
 }
 
 const examplePrompts = [
@@ -16,7 +17,7 @@ const examplePrompts = [
     { icon: '🔗', text: 'How to integrate WhatsApp?' }
 ];
 
-const WelcomeScreen = ({ onSendMessage }: WelcomeScreenProps) => {
+const WelcomeScreen = ({ onSendMessage, isMobile = false }: WelcomeScreenProps) => {
     const { token } = theme.useToken();
 
     return (
@@ -75,12 +76,15 @@ const WelcomeScreen = ({ onSendMessage }: WelcomeScreenProps) => {
                         onClick={() => onSendMessage(prompt.text)}
                         style={{
                             height: 'auto',
-                            padding: '8px 16px',
+                            minHeight: 44,
+                            width: isMobile ? '100%' : undefined,
+                            justifyContent: 'center',
+                            padding: isMobile ? '10px 14px' : '8px 16px',
                             borderRadius: 20,
                             background: token.colorBgElevated,
                             border: `1px solid ${token.colorBorderSecondary}`,
-                            fontSize: 13,
-                            fontWeight: 400,
+                            fontSize: isMobile ? 14 : 13,
+                            fontWeight: isMobile ? 500 : 400,
                             display: 'flex',
                             alignItems: 'center',
                             gap: 6,

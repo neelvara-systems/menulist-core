@@ -1,8 +1,9 @@
 'use client'
 
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { Modal } from 'antd';
+import { Button, Drawer, Flex, Grid, Modal, Typography, theme } from 'antd';
 import { useEffect, useReducer, useState } from 'react';
+import { LuHistory, LuPlus, LuX } from 'react-icons/lu';
 import ChatErrorBoundary from './ChatErrorBoundary';
 import ChatHistory from './ChatHistory';
 import ChatPanel from './ChatPanel';
@@ -12,12 +13,18 @@ import { useChatData } from './hooks/useChatData';
 import { useChatHandlers } from './hooks/useChatHandlers';
 import { ChatMode } from './types';
 
+const { Text } = Typography;
+
 interface HelpChatProps {
     open: boolean;
     onClose: () => void;
 }
 
 function HelpChat({ open, onClose }: HelpChatProps) {
+    const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md === false || (typeof window !== 'undefined' && window.innerWidth < 768);
+
     // Auth session
     const loggedInSession = useClientAuthSession();
 
@@ -26,6 +33,7 @@ function HelpChat({ open, onClose }: HelpChatProps) {
     const [currentMode, setCurrentMode] = useState<ChatMode>('qna');
     const [searchQuery, setSearchQuery] = useState('');
     const [queryHistory, setQueryHistory] = useState<string[]>([]);
+    const [historyOpen, setHistoryOpen] = useState(false);
 
     // Chat state for typing animation and loading
     const [chatState, dispatchChatState] = useReducer(chatReducer, initialChatState);
@@ -70,6 +78,7 @@ function HelpChat({ open, onClose }: HelpChatProps) {
         if (!open) {
             setActiveSessionId(undefined);
             setSearchQuery('');
+            setHistoryOpen(false);
         }
     }, [open]);
 
@@ -93,99 +102,210 @@ function HelpChat({ open, onClose }: HelpChatProps) {
         return handlers.handleFeedbackSubmit(values, feedbackMessageId);
     };
 
+    const handleMobileNewChat = () => {
+        handlers.handleNewChat();
+        setHistoryOpen(false);
+    };
+
+    const handleMobileSessionClick = (sessionId: string) => {
+        handlers.handleSessionClick(sessionId);
+        setHistoryOpen(false);
+    };
+
+    const chatHistoryNode = (
+        <ChatHistory
+            sessions={chatSessions.filter(s => s.id !== null)}
+            activeSessionId={activeSessionId}
+            onSessionClick={isMobile ? handleMobileSessionClick : handlers.handleSessionClick}
+            onNewChat={isMobile ? handleMobileNewChat : handlers.handleNewChat}
+            mode={currentMode}
+            onModeChange={handlers.handleModeChange}
+            hasMessages={activeSession?.messages.length > 0 || false}
+            disableModeToggle={activeSession?.mode === 'assistant' && (activeSession?.messages.length > 0)}
+            onRenameSession={handlers.handleRenameSession}
+            onDeleteSession={handlers.handleDeleteSession}
+            onClearAllData={handlers.handleClearAllData}
+            isLoading={isLoadingSessions}
+            searchQuery={searchQuery}
+            isMobile={isMobile}
+        />
+    );
+
+    const chatPanelNode = (
+        <ChatPanel
+            mode={currentMode}
+            messages={activeSession?.messages || []}
+            searchQuery={searchQuery}
+            categoriesData={categoriesData}
+            onSearchQueryChange={setSearchQuery}
+            onSendMessage={handlers.onSendMessage}
+            onRetry={(query) => handlers.onRetry(query)}
+            isNewChat={isNewChat}
+            sessionId={activeSessionId}
+            sessionTitle={activeSession?.title}
+            chatState={chatState}
+            onSkipTyping={() => dispatchChatState({ type: 'SKIP_TYPING' })}
+            onCopy={handlers.handleCopy}
+            onRegenerate={handlers.handleRegenerate}
+            onFeedback={(messageId, type) => {
+                if (type === 'up') {
+                    handlers.handleFeedbackUp(messageId);
+                } else {
+                    handlers.handleFeedbackDown(messageId);
+                }
+            }}
+            messageFeedback={messageFeedback}
+            showQnAActions={
+                currentMode === 'qna' &&
+                activeSession?.messages.length === 2 &&
+                activeSession?.messages[activeSession.messages.length - 1]?.role === 'assistant' &&
+                chatState.status !== 'loading' &&
+                chatState.status !== 'typing'
+            }
+            onStartFollowUp={handlers.handleStartFollowUp}
+            onNewQuestion={isMobile ? handleMobileNewChat : handlers.handleNewChat}
+            onEscalate={handlers.handleEscalate}
+            isMobile={isMobile}
+        />
+    );
+
     return (
         <Modal
             title={null}
             open={open}
             onCancel={onClose}
             footer={null}
-            width="92vw"
-            centered
+            width={isMobile ? '100vw' : '92vw'}
+            centered={!isMobile}
             aria-label="Help Assistant"
             aria-describedby="help-chat-description"
             style={{
-                top: 30,
-                maxWidth: 1500
+                top: isMobile ? 0 : 30,
+                maxWidth: isMobile ? 'none' : 1500,
+                margin: isMobile ? 0 : undefined,
+                paddingBottom: isMobile ? 0 : undefined
             }}
             styles={{
                 body: {
-                    height: 'calc(90vh - 55px)',
+                    height: isMobile ? '100dvh' : 'calc(90vh - 55px)',
                     padding: 0,
                     overflow: 'hidden',
-                    borderRadius: 20
+                    borderRadius: isMobile ? 0 : 20
                 },
                 content: {
-                    borderRadius: 20
+                    borderRadius: isMobile ? 0 : 20,
+                    padding: 0
                 }
             }}
+            closable={!isMobile}
             destroyOnHidden
             maskClosable={true}
             keyboard={true}
         >
             <ChatErrorBoundary onReset={onClose}>
-                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        height: '100%',
+                        overflow: 'hidden',
+                        background: token.colorBgLayout
+                    }}
+                >
                     {/* Screen reader description */}
                     <span id="help-chat-description" style={{ position: 'absolute', left: '-9999px' }}>
                         Help assistant for answering questions and providing guidance.
                         Use Tab to navigate, Enter to select, and Escape to close.
                     </span>
 
-                    {/* Left Sidebar - Chat History */}
-                    <div style={{ width: 320, flexShrink: 0 }}>
-                        <ChatHistory
-                            sessions={chatSessions.filter(s => s.id !== null)}
-                            activeSessionId={activeSessionId}
-                            onSessionClick={handlers.handleSessionClick}
-                            onNewChat={handlers.handleNewChat}
-                            mode={currentMode}
-                            onModeChange={handlers.handleModeChange}
-                            hasMessages={activeSession?.messages.length > 0 || false}
-                            disableModeToggle={activeSession?.mode === 'assistant' && (activeSession?.messages.length > 0)}
-                            onRenameSession={handlers.handleRenameSession}
-                            onDeleteSession={handlers.handleDeleteSession}
-                            onClearAllData={handlers.handleClearAllData}
-                            isLoading={isLoadingSessions}
-                            searchQuery={searchQuery}
-                        />
-                    </div>
+                    {isMobile ? (
+                        <>
+                            <Flex
+                                align="center"
+                                justify="space-between"
+                                gap={8}
+                                style={{
+                                    height: 56,
+                                    padding: '6px 10px',
+                                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                                    background: token.colorBgContainer,
+                                    flexShrink: 0
+                                }}
+                            >
+                                <Button
+                                    icon={<LuHistory size={18} />}
+                                    onClick={() => setHistoryOpen(true)}
+                                    aria-label="Open chat history"
+                                    style={{ height: 44, borderRadius: 10, fontWeight: 600 }}
+                                >
+                                    History
+                                </Button>
 
-                    {/* Right Panel - Chat Interface */}
-                    <div style={{ flex: 1 }}>
-                        <ChatPanel
-                            mode={currentMode}
-                            messages={activeSession?.messages || []}
-                            searchQuery={searchQuery}
-                            categoriesData={categoriesData}
-                            onSearchQueryChange={setSearchQuery}
-                            onSendMessage={handlers.onSendMessage}
-                            onRetry={(query) => handlers.onRetry(query)}
-                            isNewChat={isNewChat}
-                            sessionId={activeSessionId}
-                            sessionTitle={activeSession?.title}
-                            chatState={chatState}
-                            onSkipTyping={() => dispatchChatState({ type: 'SKIP_TYPING' })}
-                            onCopy={handlers.handleCopy}
-                            onRegenerate={handlers.handleRegenerate}
-                            onFeedback={(messageId, type) => {
-                                if (type === 'up') {
-                                    handlers.handleFeedbackUp(messageId);
-                                } else {
-                                    handlers.handleFeedbackDown(messageId);
-                                }
-                            }}
-                            messageFeedback={messageFeedback}
-                            showQnAActions={
-                                currentMode === 'qna' &&
-                                activeSession?.messages.length === 2 &&
-                                activeSession?.messages[activeSession.messages.length - 1]?.role === 'assistant' &&
-                                chatState.status !== 'loading' &&
-                                chatState.status !== 'typing'
-                            }
-                            onStartFollowUp={handlers.handleStartFollowUp}
-                            onNewQuestion={handlers.handleNewChat}
-                            onEscalate={handlers.handleEscalate}
-                        />
-                    </div>
+                                <Text strong style={{ fontSize: 15, textAlign: 'center', flex: 1 }}>
+                                    Help Assistant
+                                </Text>
+
+                                <Flex gap={6} align="center">
+                                    <Button
+                                        type="primary"
+                                        icon={<LuPlus size={17} />}
+                                        onClick={handleMobileNewChat}
+                                        aria-label="Start new chat"
+                                        style={{ height: 44, borderRadius: 10, fontWeight: 600 }}
+                                    >
+                                        New
+                                    </Button>
+                                    <Button
+                                        type="text"
+                                        icon={<LuX size={20} />}
+                                        onClick={onClose}
+                                        aria-label="Close assistant"
+                                        style={{ height: 44, width: 44, minWidth: 44, borderRadius: 10 }}
+                                    />
+                                </Flex>
+                            </Flex>
+
+                            <div style={{ flex: 1, minHeight: 0 }}>
+                                {chatPanelNode}
+                            </div>
+
+                            <Drawer
+                                title="Chat history"
+                                placement="left"
+                                open={historyOpen}
+                                onClose={() => setHistoryOpen(false)}
+                                width="92vw"
+                                zIndex={1100}
+                                styles={{
+                                    body: { padding: 0 },
+                                    header: {
+                                        minHeight: 56,
+                                        padding: '12px 16px',
+                                        borderBottom: `1px solid ${token.colorBorderSecondary}`
+                                    },
+                                    content: {
+                                        borderTopRightRadius: 16,
+                                        borderBottomRightRadius: 16,
+                                        overflow: 'hidden'
+                                    }
+                                }}
+                            >
+                                {chatHistoryNode}
+                            </Drawer>
+                        </>
+                    ) : (
+                        <>
+                            {/* Left Sidebar - Chat History */}
+                            <div style={{ width: 320, flexShrink: 0 }}>
+                                {chatHistoryNode}
+                            </div>
+
+                            {/* Right Panel - Chat Interface */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                {chatPanelNode}
+                            </div>
+                        </>
+                    )}
                 </div>
             </ChatErrorBoundary>
 

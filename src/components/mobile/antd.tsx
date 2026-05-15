@@ -40,11 +40,17 @@ import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons
 
 type AnyStyle = CSSProperties & Record<string, any>;
 const { Text: AntText, Title } = Typography;
-const MobileSheetContext = createContext(false);
+type MobileSheetContextValue = {
+    fullHeight: boolean;
+    inside: boolean;
+};
+
+const MobileSheetContext = createContext<MobileSheetContextValue>({ fullHeight: false, inside: false });
 let activePopupScrollLocks = 0;
 let lockedShellScrollTop = 0;
 let mobileMessageApi: MessageInstance | null = null;
 let pendingToastQueue: Array<{ content?: ReactNode; duration?: number; icon?: string }> = [];
+const MOBILE_DIALOG_Z_INDEX = 2600;
 
 function showToastWithApi(
     api: MessageInstance,
@@ -419,6 +425,7 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     const popupHeight = normalizeViewportHeight((height as string | number | undefined) ?? 'auto');
     const popupMaxHeight = normalizeViewportHeight(maxHeight ?? '88vh');
     const popupMinHeight = normalizeViewportHeight(minHeight);
+    const isFullHeightSheet = typeof popupHeight === 'string' && /100(dvh|svh|vh|%)$/.test(popupHeight.trim());
     const popupContentStyle = {
         height: popupHeight,
         maxHeight: popupMaxHeight,
@@ -460,7 +467,7 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
                 content: popupContentStyle,
             }}
         >
-            <MobileSheetContext.Provider value>
+            <MobileSheetContext.Provider value={{ fullHeight: isFullHeightSheet, inside: true }}>
                 {children}
             </MobileSheetContext.Provider>
         </Drawer>
@@ -813,13 +820,15 @@ export function NavBar({
     titleAlign?: 'center' | 'left';
 }) {
     const { token } = theme.useToken();
-    const isInsideSheet = useContext(MobileSheetContext);
+    const sheetContext = useContext(MobileSheetContext);
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
-    const navPaddingTop = isInsideSheet ? '6px' : 'calc(env(safe-area-inset-top) + 6px)';
-    const effectiveTitleAlign = isInsideSheet ? 'left' : (titleAlign || 'center');
-    const reserveLeadingSpace = !isInsideSheet || effectiveTitleAlign === 'center';
+    const navPaddingTop = sheetContext.inside
+        ? sheetContext.fullHeight ? 'calc(env(safe-area-inset-top) + 6px)' : '6px'
+        : 'calc(env(safe-area-inset-top) + 6px)';
+    const effectiveTitleAlign = sheetContext.inside ? 'left' : (titleAlign || 'center');
+    const reserveLeadingSpace = !sheetContext.inside || effectiveTitleAlign === 'center';
     return (
         <Flex
             align="center"
@@ -1172,12 +1181,13 @@ async function confirmDialog(config: DialogConfig) {
                 resolve(true);
             },
             title: config.title,
+            zIndex: MOBILE_DIALOG_Z_INDEX,
         });
     });
 }
 
 export const Dialog = {
-    alert: (config: DialogConfig) => Modal.info({ content: config.content, title: config.title }),
+    alert: (config: DialogConfig) => Modal.info({ content: config.content, title: config.title, zIndex: MOBILE_DIALOG_Z_INDEX }),
     confirm: confirmDialog,
 };
 

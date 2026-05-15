@@ -16,12 +16,14 @@ interface ConversationTimelineProps {
     ticket: SupportTicketType;
     onReply: (values: Partial<SupportTicketType>) => Promise<void>;
     onMessageAdded?: (updatedTicket: Partial<SupportTicketType>) => void;
+    isMobile?: boolean;
 }
 
-const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onReply, onMessageAdded }) => {
+const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onReply, onMessageAdded, isMobile = false }) => {
     const [form] = Form.useForm();
     const { data: session } = useSession();
     const { token } = theme.useToken();
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const dispatch = useAppDispatch();
 
@@ -43,6 +45,11 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
 
     // Auto-scroll to latest message
     useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+            return;
+        }
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
@@ -115,7 +122,7 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
     return (
         <Flex vertical style={{ height: '100%', position: 'relative' }}>
             {/* Chat Messages - Scrollable */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 16 }}>
+            <div ref={messagesContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: isMobile ? 12 : 16 }}>
                 {messages.length === 0 ? (
                     /* Empty State */
                     <Flex
@@ -190,12 +197,12 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
                                         vertical
                                         gap={4}
                                         style={{
-                                            maxWidth: '70%',
+                                            maxWidth: isMobile ? '88%' : '70%',
                                             alignItems: isCurrentUser ? 'flex-end' : 'flex-start'
                                         }}
                                     >
                                         {showHeader && (
-                                            <Flex align="center" gap={8}>
+                                            <Flex align="center" gap={8} wrap={isMobile ? 'wrap' : false}>
                                                 <Text
                                                     strong
                                                     style={{
@@ -226,7 +233,7 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
                                                     margin: 0,
                                                     whiteSpace: 'pre-wrap',
                                                     color: isCurrentUser ? token.colorBgBase : token.colorText,
-                                                    fontSize: 14,
+                                                    fontSize: isMobile ? 15 : 14,
                                                     lineHeight: 1.6
                                                 }}
                                             >
@@ -253,15 +260,15 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
                 }
                 size="small"
                 styles={{
-                    body: { padding: 16 },
+                    body: { padding: isMobile ? 12 : 16 },
                     header: { borderBottom: `1px solid ${token.colorBorder}` }
                 }}
                 style={{
                     position: 'sticky',
                     bottom: 0,
                     zIndex: 10,
-                    marginTop: 16,
-                    borderRadius: 14
+                    marginTop: isMobile ? 12 : 16,
+                    borderRadius: isMobile ? 12 : 14
                 }}
             >
                 <Form form={form} onFinish={handleReplySubmit} layout="vertical">
@@ -271,17 +278,29 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
                         style={{ marginBottom: 16 }}
                     >
                         <Input.TextArea
-                            rows={4}
-                            placeholder="Type your response here... (Ctrl+Enter to send)"
-                            style={{ fontSize: 14, borderRadius: 8 }}
+                            rows={isMobile ? 3 : 4}
+                            placeholder={isMobile ? "Type your reply..." : "Type your response here... (Ctrl+Enter to send)"}
+                            style={{ fontSize: isMobile ? 16 : 14, borderRadius: 8 }}
                         />
                     </Form.Item>
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Flex justify="space-between" align="center">
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                                Press <Text keyboard>Ctrl</Text> + <Text keyboard>Enter</Text> to send
-                            </Text>
-                            <Button type="primary" htmlType="submit" icon={<LuSend />}>
+                    <Form.Item style={{ marginBottom: 0, textAlign: isMobile ? 'left' : 'right' }}>
+                        <Flex
+                            justify={isMobile ? 'flex-end' : 'space-between'}
+                            align={isMobile ? 'stretch' : 'center'}
+                            vertical={isMobile}
+                            gap={isMobile ? 8 : 0}
+                        >
+                            {!isMobile && (
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    Press <Text keyboard>Ctrl</Text> + <Text keyboard>Enter</Text> to send
+                                </Text>
+                            )}
+                            <Button
+                                type="primary"
+                                htmlType="submit"
+                                icon={<LuSend />}
+                                style={isMobile ? { height: 44, width: '100%' } : undefined}
+                            >
                                 Send Reply
                             </Button>
                         </Flex>

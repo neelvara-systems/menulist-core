@@ -24,12 +24,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LuChevronLeft, LuChevronRight, LuCopy, LuDownload, LuMaximize2, LuShare2, LuX } from 'react-icons/lu';
+import { LuChevronLeft, LuChevronRight, LuMaximize2, LuShare2, LuX } from 'react-icons/lu';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { menuBottomSheetMotion, menuDialogMotion, menuSpringTransition } from './menuMotion';
 
-type ItemShareMethod = 'native_share' | 'copy_link' | 'download';
+type ItemShareMethod = 'native_share' | 'copy_link';
 
 interface PDPModalProps {
     item: any;
@@ -51,7 +51,6 @@ interface PDPModalProps {
         track: () => Promise<void>;
     }>;
     itemShareUrl?: string;
-    itemDownloadUrl?: string;
     onShare?: (method: ItemShareMethod) => void;
 }
 
@@ -80,6 +79,22 @@ function getCompactShareText(value: string): string {
     return `${normalized.slice(0, 137).trim()}...`;
 }
 
+function sanitizePdpTags(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    return value.reduce((acc: string[], rawTag) => {
+        if (typeof rawTag !== 'string') return acc;
+        const tag = rawTag.replace(/<[^>]*>/g, '').trim().replace(/\s+/g, ' ');
+        if (!tag) return acc;
+        if (/^\d+(\.\d+)?$/.test(tag)) return acc;
+        const key = tag.toLowerCase();
+        if (seen.has(key)) return acc;
+        seen.add(key);
+        acc.push(tag);
+        return acc;
+    }, []);
+}
+
 function PDPModal({
     item,
     onClose,
@@ -95,7 +110,6 @@ function PDPModal({
     showCategoryIcons = true,
     recoveryActions = [],
     itemShareUrl,
-    itemDownloadUrl,
     onShare,
 }: PDPModalProps) {
     const { trackMenuItemView } = useContext(AnalyticsContext);
@@ -346,8 +360,9 @@ function PDPModal({
             nutritionInfo.carbs ? `Carbs ${nutritionInfo.carbs}g` : '',
             nutritionInfo.fat ? `Fat ${nutritionInfo.fat}g` : '',
             nutritionInfo.servingSize ? `Serving ${nutritionInfo.servingSize}` : '',
-        ].filter(Boolean)
+            ].filter(Boolean)
         : [];
+    const safeTags = useMemo(() => sanitizePdpTags(item?.tags), [item?.tags]);
 
     const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         imageTouchStartXRef.current = event.touches[0]?.clientX ?? null;
@@ -406,34 +421,6 @@ function PDPModal({
         } finally {
             setIsSharingItem(false);
         }
-    };
-
-    const handleCopyItemLink = async () => {
-        if (!itemShareUrl || isSharingItem) return;
-
-        setIsSharingItem(true);
-        setShareStatus(null);
-        try {
-            await copyTextToClipboard(itemShareUrl);
-            onShare?.('copy_link');
-            setShareStatus('Link copied');
-        } catch {
-            setShareStatus('Could not copy');
-        } finally {
-            setIsSharingItem(false);
-        }
-    };
-
-    const handleDownloadItemCard = () => {
-        if (!itemDownloadUrl) return;
-        onShare?.('download');
-        const link = document.createElement('a');
-        link.href = itemDownloadUrl;
-        link.rel = 'noopener';
-        link.download = '';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     };
 
     const pdpIconButtonStyle = (positionStyle: React.CSSProperties, disabled = false): React.CSSProperties => ({
@@ -596,31 +583,6 @@ function PDPModal({
                                         style={pdpIconButtonStyle({ position: 'relative' }, isSharingItem)}
                                     >
                                         <LuShare2 size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                    </button>
-                                )}
-                                {itemShareUrl && (
-                                    <button
-                                        type="button"
-                                        onClick={handleCopyItemLink}
-                                        className="rounded-full transition-opacity hover:opacity-80"
-                                        aria-label="Copy item link"
-                                        title="Copy link"
-                                        disabled={isSharingItem}
-                                        style={pdpIconButtonStyle({ position: 'relative' }, isSharingItem)}
-                                    >
-                                        <LuCopy size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
-                                    </button>
-                                )}
-                                {itemDownloadUrl && (
-                                    <button
-                                        type="button"
-                                        onClick={handleDownloadItemCard}
-                                        className="rounded-full transition-opacity hover:opacity-80"
-                                        aria-label="Download item card"
-                                        title="Download"
-                                        style={pdpIconButtonStyle({ position: 'relative' })}
-                                    >
-                                        <LuDownload size={16} color={moodConfig.accentColor} strokeWidth={2.4} />
                                     </button>
                                 )}
                                 <button
@@ -832,7 +794,7 @@ function PDPModal({
                                 </div>
 
                                 {/* Tags */}
-                                {item.tags?.length > 0 && (
+                                {safeTags.length > 0 && (
                                     <div
                                         className="flex flex-wrap gap-2 mb-4"
                                         style={{
@@ -842,7 +804,7 @@ function PDPModal({
                                             marginBottom: 16,
                                         }}
                                     >
-                                        {item.tags.map((tag: string, idx: number) => (
+                                        {safeTags.map((tag: string, idx: number) => (
                                             <span
                                                 key={idx}
                                                 className="px-2 py-1 text-xs rounded"

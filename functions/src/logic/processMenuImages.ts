@@ -201,7 +201,7 @@ function scoreExtractionQuality(data: ExtractedMenuData | null): QualityScore {
         descriptionScore = Math.round((descPercentage / 100) * 25);
     }
 
-    const totalScore = categoryScore + itemScore + priceScore + descriptionScore;
+    const totalScore = Math.min(100, categoryScore + itemScore + priceScore + descriptionScore);
     const isLowQuality = totalScore < 40;
 
     return {

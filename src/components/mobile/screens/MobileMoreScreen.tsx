@@ -59,6 +59,11 @@ type MoreListItem = {
     statusTag?: ItemStatusTag;
 };
 
+type MoreListSection = {
+    items: MoreListItem[];
+    title?: string;
+};
+
 const MobileBillingScreen = dynamic(() => import('./MobileBillingScreen'), { ssr: false });
 const MobileBasicSettingsScreen = dynamic(() => import('./MobileBasicSettingsScreen'), { ssr: false });
 const MobileLocaleSettingsScreen = dynamic(() => import('./MobileLocaleSettingsScreen'), { ssr: false });
@@ -402,6 +407,20 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'chatWeeklyDigest', icon: <LuClock color="#14b8a6" size={20} />, keywords: ['weekly digest', 'chat digest'], label: 'Chat Weekly Digest', description: 'Review weekly chat digest output.', onClick: () => openSubScreen('chatWeeklyDigest') },
         { key: 'chatRoiCalculator', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['roi', 'calculator', 'chat roi'], label: 'Chat ROI Calculator', description: 'Internal ROI calculator for chat operations.', onClick: () => openSubScreen('chatRoiCalculator') },
     ] : [];
+    const canonicaHubSections: MoreListSection[] = isPlatformAdmin ? [
+        {
+            title: 'Support',
+            items: canonicaHubItems.filter((item) => ['supportTickets', 'feedbackAdmin'].includes(item.key)),
+        },
+        {
+            title: 'Knowledge',
+            items: canonicaHubItems.filter((item) => ['knowledgeBase', 'kbGeneration', 'changelog'].includes(item.key)),
+        },
+        {
+            title: 'Chat',
+            items: canonicaHubItems.filter((item) => ['chatManagement', 'chatInsights', 'chatBackfill', 'chatWeeklyDigest', 'chatRoiCalculator'].includes(item.key)),
+        },
+    ].filter((section) => section.items.length > 0) : [];
 
     const itemSections = useMemo(() => ([
         { items: moduleItems, title: 'Modules' },
@@ -444,7 +463,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
-    else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} title="Canonica" />;
+    else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} sections={canonicaHubSections} title="Canonica" />;
     else if (subScreen === 'resellerHub') subScreenContent = <MobileMoreHubScreen description="Partner onboarding, client activation, offline prepaid licenses, and reseller profile management." items={resellerHubItems} onBack={() => setSubScreen('main')} title="Reseller" />;
     else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
     else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;
@@ -710,13 +729,17 @@ function MobileMoreHubScreen({
     description,
     items,
     onBack,
+    sections,
     title,
 }: {
     description: string;
     items: MoreListItem[];
     onBack: () => void;
+    sections?: MoreListSection[];
     title: string;
 }) {
+    const displaySections = sections?.length ? sections : [{ items }];
+
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
             <MobileSettingsScreenHeader
@@ -725,22 +748,28 @@ function MobileMoreHubScreen({
                 title={title}
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
-                <Card>
-                    <List>
-                        {items.map((item) => (
-                            <List.Item
-                                key={item.key}
-                                arrow
-                                description={item.description}
-                                prefix={item.icon}
-                                title={item.label}
-                                onClick={item.onClick}
-                            >
-                                {item.statusTag ? <Tag color={item.statusTag.color}>{item.statusTag.label}</Tag> : null}
-                            </List.Item>
-                        ))}
-                    </List>
-                </Card>
+                {displaySections.map((section, sectionIndex) => (
+                    <Card key={section.title || sectionIndex} title={section.title}>
+                        <List>
+                            {section.items.map((item) => (
+                                <List.Item
+                                    key={item.key}
+                                    arrow
+                                    description={(
+                                        <Flex align="flex-start" gap={6} vertical>
+                                            <Text type="secondary">{item.description}</Text>
+                                            {item.statusTag ? <Tag color={item.statusTag.color}>{item.statusTag.label}</Tag> : null}
+                                        </Flex>
+                                    )}
+                                    prefix={item.icon}
+                                    style={{ cursor: 'pointer', minHeight: 64 }}
+                                    title={<Text strong>{item.label}</Text>}
+                                    onClick={item.onClick}
+                                />
+                            ))}
+                        </List>
+                    </Card>
+                ))}
             </Flex>
         </Flex>
     );

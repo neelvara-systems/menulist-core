@@ -2275,17 +2275,13 @@ export const FEATURE_FLAGS = {
     ENABLE_MEDIA_IMAGE_SYSTEM: true,
 
     /**
-     * Item Truth Export
+     * Sharable Item Card Generation
      *
-     * Makes published menu items addressable and portable through:
-     * - canonical `?item={itemId}` public links
-     * - deterministic item OG previews
-     * - item card PNG downloads
-     *
-     * This is a distribution primitive for public menu truth, not a
-     * customization surface.
+     * Owner-side item card PNG generation from already-loaded editor data.
+     * No API route, Firestore read, Firestore write, or dynamic OG pipeline is
+     * used for card generation.
      */
-    ENABLE_ITEM_TRUTH_EXPORT: true,
+    ENABLE_SHARABLE_ITEM_CARD_GENERATION: true,
 
     /**
      * Deployment build visibility for internal debugging.

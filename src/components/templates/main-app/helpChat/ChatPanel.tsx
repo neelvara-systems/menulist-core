@@ -22,7 +22,7 @@ interface ChatPanelProps {
     searchQuery: string;
     categoriesData: KnowledgeBaseCategoriesType | null;
     onSearchQueryChange: (query: string) => void;
-    onSendMessage: (message: string, image?: UserUploadedFileType) => void;
+    onSendMessage: (message: string, image?: UserUploadedFileType, targetMode?: ChatMode) => void;
     onRetry?: (query: string, image?: UserUploadedFileType) => void;
     isNewChat: boolean;
     sessionId?: string | null;
@@ -39,6 +39,7 @@ interface ChatPanelProps {
     onNewQuestion?: () => void;
     // AI Failure Escalation (Item #8)
     onEscalate?: (message: ChatMessage) => void;
+    isMobile?: boolean;
 }
 
 const ChatPanel = ({
@@ -61,7 +62,8 @@ const ChatPanel = ({
     showQnAActions,
     onStartFollowUp,
     onNewQuestion,
-    onEscalate
+    onEscalate,
+    isMobile = false
 }: ChatPanelProps) => {
     const { token } = theme.useToken();
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -109,8 +111,8 @@ const ChatPanel = ({
                 display: 'flex',
                 flexDirection: 'column',
                 background: token.colorBgLayout,
-                borderTopRightRadius: 20,
-                borderBottomRightRadius: 20,
+                borderTopRightRadius: isMobile ? 0 : 20,
+                borderBottomRightRadius: isMobile ? 0 : 20,
                 overflow: 'hidden'
             }}
         >
@@ -152,12 +154,12 @@ const ChatPanel = ({
                                 flexDirection: 'column',
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                padding: '48px 24px'
+                                padding: isMobile ? '24px 14px' : '48px 24px'
                             }}
                         >
                             {/* Welcome Message - Ultra Clean Design */}
                             {!searchQuery && (
-                                <WelcomeScreen onSendMessage={onSendMessage} />
+                                <WelcomeScreen onSendMessage={onSendMessage} isMobile={isMobile} />
                             )}
 
                             {/* Local Search Results */}
@@ -180,7 +182,7 @@ const ChatPanel = ({
                             transition={{ duration: 0.2 }}
                             style={{
                                 flex: 1,
-                                padding: 24
+                                padding: isMobile ? 12 : 24
                             }}
                         >
                             <MessageList
@@ -196,6 +198,7 @@ const ChatPanel = ({
                                 mode={mode}
                                 onStartFollowUp={onStartFollowUp}
                                 onEscalate={onEscalate}
+                                isMobile={isMobile}
                             />
 
                             {/* Local Search Results - Show while typing */}
@@ -251,6 +254,7 @@ const ChatPanel = ({
                 onSearchQueryChange={onSearchQueryChange}
                 onStartFollowUp={onStartFollowUp}
                 onNewQuestion={onNewQuestion}
+                isMobile={isMobile}
             />
         </div>
     );

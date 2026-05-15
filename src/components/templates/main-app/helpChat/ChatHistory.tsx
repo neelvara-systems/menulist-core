@@ -24,9 +24,10 @@ interface ChatHistoryProps {
     onClearAllData?: () => void;
     isLoading?: boolean;
     searchQuery?: string; // Used to determine if New Chat button should be disabled
+    isMobile?: boolean;
 }
 
-const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mode, onModeChange, hasMessages, disableModeToggle, onRenameSession, onDeleteSession, onClearAllData, isLoading = false, searchQuery = '' }: ChatHistoryProps) => {
+const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mode, onModeChange, hasMessages, disableModeToggle, onRenameSession, onDeleteSession, onClearAllData, isLoading = false, searchQuery = '', isMobile = false }: ChatHistoryProps) => {
     const { token } = theme.useToken();
     const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
@@ -65,17 +66,17 @@ const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mod
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                borderRight: `1px solid ${token.colorBorderSecondary}`,
+                borderRight: isMobile ? 'none' : `1px solid ${token.colorBorderSecondary}`,
                 background: token.colorBgContainer,
-                borderTopLeftRadius: 20,
-                borderBottomLeftRadius: 20,
+                borderTopLeftRadius: isMobile ? 0 : 20,
+                borderBottomLeftRadius: isMobile ? 0 : 20,
                 overflow: 'hidden'
             }}
         >
             {/* Header with New Chat Button */}
             <div
                 style={{
-                    padding: 15,
+                    padding: isMobile ? 12 : 15,
                     borderBottom: `1px solid ${token.colorBorderSecondary}`
                 }}
             >
@@ -85,15 +86,15 @@ const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mod
                         // ghost
                         icon={<LuPlus size={16} />}
                         onClick={onNewChat}
-                        disabled={activeSessionId === null && !hasMessages && searchQuery.trim() === ''}
+                        disabled={!isMobile && activeSessionId === null && !hasMessages && searchQuery.trim() === ''}
                         block
                         size="middle"
                         aria-label="Start new chat conversation"
                         style={{
-                            height: 35,
+                            height: isMobile ? 44 : 35,
                             fontWeight: 500,
-                            borderRadius: 6,
-                            fontSize: 14
+                            borderRadius: isMobile ? 10 : 6,
+                            fontSize: isMobile ? 15 : 14
                         }}
                     >
                         New Chat
@@ -123,7 +124,7 @@ const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mod
                 style={{
                     flex: 1,
                     overflowY: 'auto',
-                    padding: 12
+                    padding: isMobile ? '10px 12px' : 12
                 }}
             >
                 {isLoading ? (

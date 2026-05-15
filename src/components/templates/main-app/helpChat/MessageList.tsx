@@ -3,7 +3,7 @@
 import MessageBubble from './MessageBubble';
 import SuggestedQuestions from './SuggestedQuestions';
 import { ChatState } from './chatState';
-import { ChatMessage } from './types';
+import { ChatMessage, ChatMode } from './types';
 
 interface MessageListProps {
     messages: ChatMessage[];
@@ -14,10 +14,11 @@ interface MessageListProps {
     onRegenerate?: (messageId: string) => void;
     onFeedback?: (messageId: string, type: 'up' | 'down') => void;
     onSkipTyping?: () => void;
-    onSendMessage: (message: string) => void;
-    mode?: 'qna' | 'assistant';
+    onSendMessage: (message: string, image?: undefined, targetMode?: ChatMode) => void;
+    mode?: ChatMode;
     onStartFollowUp?: () => void;
     onEscalate?: (message: ChatMessage) => void;
+    isMobile?: boolean;
 }
 
 /**
@@ -50,7 +51,8 @@ const MessageList = ({
     onSendMessage,
     mode,
     onStartFollowUp,
-    onEscalate
+    onEscalate,
+    isMobile = false
 }: MessageListProps) => {
     // Handler for suggested question clicks
     // Automatically switches to assistant mode if in QnA mode (follow-up context)
@@ -61,7 +63,6 @@ const MessageList = ({
             onStartFollowUp();
 
             // Pass 'assistant' mode explicitly to ensure DB update
-            // @ts-ignore - targetMode parameter added to fix race condition
             onSendMessage(question, undefined, 'assistant');
         } else {
             onSendMessage(question);
@@ -119,6 +120,7 @@ const MessageList = ({
                                     questions={suggestedQuestions}
                                     onQuestionClick={handleSuggestedQuestionClick}
                                     disabled={chatState?.status === 'loading' || chatState?.status === 'typing'}
+                                    isMobile={isMobile}
                                 />
                             )}
                         </div>

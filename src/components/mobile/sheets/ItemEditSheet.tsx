@@ -1,6 +1,7 @@
 'use client'
 
 import { getOwnerLabels } from '@config/businessLabels';
+import { FEATURE_FLAGS } from '@config/features';
 import { getMetadataFieldsForBusiness, type MetadataFieldConfig } from '@config/itemMetadataConfig';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
@@ -8,8 +9,10 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
+import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage } from '@lib/media/prepareMediaImage';
+import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -18,7 +21,7 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCamera, LuLanguages, LuPlus, LuSparkles, LuTrash2 } from 'react-icons/lu';
+import { LuCamera, LuDownload, LuLanguages, LuPlus, LuShare2, LuSparkles, LuTrash2 } from 'react-icons/lu';
 import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParams, Project, ProjectFileType } from '../../templates/main-app/projects/types';
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
@@ -182,6 +185,7 @@ export default function ItemEditSheet({
     const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const [isSaving, setIsSaving] = useState(false);
     const [isAiWorking, setIsAiWorking] = useState(false);
+    const [isCardWorking, setIsCardWorking] = useState(false);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
     const canEditImageInline = (isAddMode || !onManageImages) && canEditImages;
 
@@ -225,6 +229,58 @@ export default function ItemEditSheet({
         return images;
     }, [draftItem.images, imagePreview]);
     const imageActionLabel = itemImagePreviews.length > 0 ? t('editImages') : t('addImages');
+    const selectedCategory = useMemo(
+        () => categories.find((category) => category.id === draftItem.category),
+        [categories, draftItem.category],
+    );
+    const sharableCardInput = useMemo<SharableItemCardInput>(() => {
+        const itemName = getLocalizedValue(draftItem.name, primaryLanguage).trim() || item?.name || 'Menu item';
+        const description = getLocalizedValue(draftItem.description, primaryLanguage).trim();
+        const price = !(draftItem.attributes || []).length && draftItem.price
+            ? formatMenuPrice(draftItem.price, currencySymbol)
+            : '';
+        const store = storeDetails as any;
+        const projectName = getLocalizedValue((projectData as any)?.metadata?.name, primaryLanguage);
+
+        return {
+            itemName,
+            description,
+            categoryName: selectedCategory?.name,
+            price,
+            storeName: String(store?.publicPresence?.displayName || store?.name || store?.tenantName || 'Menu').trim(),
+            projectName,
+            imageUrl: itemImagePreviews[0],
+            accentColor: store?.publicPresence?.accentColor || (projectData as any)?.config?.design?.brand?.accentColor,
+            updatedLabel: 'Current menu',
+        };
+    }, [currencySymbol, draftItem.attributes, draftItem.description, draftItem.name, draftItem.price, item?.name, itemImagePreviews, primaryLanguage, projectData, selectedCategory?.name, storeDetails]);
+    const canGenerateSharableCard = FEATURE_FLAGS.ENABLE_SHARABLE_ITEM_CARD_GENERATION && !isAddMode && Boolean(draftItem.id);
+
+    const handleShareCard = async () => {
+        if (!canGenerateSharableCard || isCardWorking) return;
+        setIsCardWorking(true);
+        try {
+            const result = await shareSharableItemCard(sharableCardInput);
+            Toast.show({ content: result === 'shared' ? 'Card shared' : 'Card downloaded', duration: 1500 });
+        } catch {
+            Toast.show({ content: 'Could not create card', duration: 2000 });
+        } finally {
+            setIsCardWorking(false);
+        }
+    };
+
+    const handleDownloadCard = async () => {
+        if (!canGenerateSharableCard || isCardWorking) return;
+        setIsCardWorking(true);
+        try {
+            await downloadSharableItemCard(sharableCardInput);
+            Toast.show({ content: 'Card downloaded', duration: 1500 });
+        } catch {
+            Toast.show({ content: 'Could not create card', duration: 2000 });
+        } finally {
+            setIsCardWorking(false);
+        }
+    };
     const hasAnyDescription = Object.values(draftItem.description || {}).some((description) => hasMeaningfulDescription(description));
     const contentActionCopy = useMemo(() => {
         if (hasMultipleLanguages) {
@@ -835,6 +891,22 @@ export default function ItemEditSheet({
                                         </Flex>
                                     ) : null}
                                 </Flex>
+                                {canGenerateSharableCard ? (
+                                    <Flex gap={8} wrap="wrap">
+                                        <Button disabled={isCardWorking} fill="outline" onClick={handleShareCard} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuShare2 size={14} />
+                                                <Text>Share card</Text>
+                                            </Flex>
+                                        </Button>
+                                        <Button disabled={isCardWorking} fill="outline" onClick={handleDownloadCard} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuDownload size={14} />
+                                                <Text>Download card</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Flex>
+                                ) : null}
                             </Flex>
 
                             {!(draftItem.attributes || []).length ? (

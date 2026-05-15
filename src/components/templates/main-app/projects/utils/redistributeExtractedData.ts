@@ -73,21 +73,47 @@ function sanitizeMultilingualObject(
 function normalizeTags(tags: string[] | Record<string, string> | undefined): string[] | undefined {
     if (!tags) return undefined;
 
+    const sanitizeTagValue = (value: string): string | undefined => {
+        const cleaned = DOMPurify.sanitize(value, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+            .trim()
+            .replace(/\s+/g, ' ');
+        if (!cleaned) return undefined;
+        if (/^\d+(\.\d+)?$/.test(cleaned)) return undefined;
+        return cleaned;
+    };
+
+    const pushUnique = (list: string[]) => {
+        const seen = new Set<string>();
+        return list.reduce((acc, candidate) => {
+            if (!candidate) return acc;
+            const normalized = candidate.trim();
+            if (!normalized) return acc;
+            const key = normalized.toLowerCase();
+            if (seen.has(key)) return acc;
+            seen.add(key);
+            acc.push(normalized);
+            return acc;
+        }, [] as string[]);
+    };
+
     if (Array.isArray(tags)) {
         // Defensive: AI may return non-string values in tag arrays
-        return tags
-            .map(tag => typeof tag === 'string' ? DOMPurify.sanitize(tag, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }) : String(tag))
-            .filter(tag => tag.length > 0);
+        return pushUnique(
+            tags
+                .map(tag => typeof tag === 'string' ? sanitizeTagValue(tag) : undefined)
+                .filter((tag): tag is string => typeof tag === 'string' && tag.length > 0),
+        );
     }
 
     if (typeof tags !== 'object') return undefined;
 
     // It's a multilingual object - extract values and split by comma
-    return Object.values(tags)
-        .filter((v): v is string => typeof v === 'string')
-        .flatMap((tagString) => tagString.split(',').map(tag => tag.trim()))
-        .filter(tag => tag.length > 0)
-        .map(tag => DOMPurify.sanitize(tag, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }));
+    return pushUnique(
+        Object.values(tags)
+            .filter((v): v is string => typeof v === 'string')
+            .flatMap((tagString) => tagString.split(',').map(tag => sanitizeTagValue(tag)))
+            .filter((tag): tag is string => tag !== undefined && tag.length > 0),
+    );
 }
 
 function normalizeStringArray(value: unknown): string[] | undefined {
@@ -308,6 +334,7 @@ export function transformIdsForFile(
 
         // Destructure to exclude attributes, tags, and price from spread (prevent empty {} issues)
         const { attributes: rawAttributes, tags: rawTags, price: rawPrice, ...restItem } = item;
+        const normalizedTags = normalizeTags(rawTags);
 
         // Transform attribute IDs - always return array (even empty) to match sequential format
         const transformedAttributes = Array.isArray(rawAttributes)
@@ -330,7 +357,7 @@ export function transformIdsForFile(
             available: true, // Feature #2: Instant Availability - default to available
             attributes: transformedAttributes,
             // Only include tags if it's a non-empty array
-            ...(Array.isArray(rawTags) && rawTags.length > 0 ? { tags: rawTags } : {})
+            ...(Array.isArray(normalizedTags) && normalizedTags.length > 0 ? { tags: normalizedTags } : {})
         };
     }) || [];
 
