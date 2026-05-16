@@ -3,6 +3,8 @@ import { collection, doc, getDoc, setDoc } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
+import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
+import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { updateList } from "@util/utils";
@@ -27,6 +29,21 @@ const getDocRef = async () => {
     const session = await getActiveSession().catch(() => null);
     return doc(canonicaFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(session?.tId, session?.sId))
 }
+
+const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: string) => {
+    const session = await getActiveSession().catch(() => null);
+    const tId = Number(session?.tId);
+    const sId = Number(session?.sId);
+    if (!Number.isFinite(tId) || tId <= 0 || !Number.isFinite(sId) || sId <= 0) {
+        throw new Error('Cannot update Canonica KB cache version without tenant and store scope.');
+    }
+
+    await bumpCanonicaCacheVersion(CANONICA_CACHE_SOURCES.KB, tId, sId, {
+        reason,
+        sourceId,
+        sourceType: 'kb_category',
+    });
+};
 
 export const getCategories = async () => {
     return await apiCallComposer(
@@ -64,6 +81,7 @@ export const getCategories = async () => {
 export const deleteCategory = async (data: any) => {
     return await apiCallComposer(
         async () => {
+            await bumpKnowledgeBaseVersionForSession('category_delete');
             await setDoc(await getDocRef(), data);
             return data;
         },
@@ -77,6 +95,7 @@ export const addCategory = async (category: any) => {
         async () => {
             const docRef = await getDocRef();
             const composedCategory = await canonicaRequestBodyComposer(category);
+            await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             return composedCategory;
         },
@@ -90,6 +109,7 @@ export const updateCategory = async (category: any) => {
         async () => {
             const docRef = await getDocRef();
             const composedCategory = await canonicaRequestBodyComposer(category);
+            await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
             return composedCategory;
         },
@@ -117,6 +137,7 @@ const _updateSectionArticles = async (
         ...category,
         sections: updatedSections,
     };
+    await bumpKnowledgeBaseVersionForSession('category_section_articles_update', categoryId);
     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
 
     const updatedData = { ...categoriesData };
@@ -163,6 +184,7 @@ export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategor
                         ...category,
                         articles,
                     };
+                    await bumpKnowledgeBaseVersionForSession('category_article_link_update', categoryId);
                     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
 
                     const updatedData = { ...categoriesData };
@@ -202,6 +224,7 @@ export const deleteArticleFromParent = async (
                         ...category,
                         articles,
                     };
+                    await bumpKnowledgeBaseVersionForSession('category_article_link_delete', categoryId);
                     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
 
                     const updatedData = { ...categoriesData };

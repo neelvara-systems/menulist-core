@@ -9,6 +9,7 @@
  */
 
 import { CanonicaProcedure } from '@type/canonica';
+import type { CanonicaCacheSourceVersions } from './cacheVersionManifest';
 
 export interface CachedCanonicalAnswer {
     craftedAnswer: string;
@@ -20,6 +21,7 @@ export interface CachedCanonicalAnswer {
     cachedAt: number;
     answerVersion: number;
     topEntityId: string;
+    sourceVersions?: CanonicaCacheSourceVersions;
 }
 
 export interface InstantCacheConfig {

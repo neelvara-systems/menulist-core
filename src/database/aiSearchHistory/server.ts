@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { getCanonicaTimestampMillis } from '@lib/canonica/cacheFreshness';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
 
@@ -58,22 +59,22 @@ export const findCachedSearchByCacheKeyServer = async (
 ): Promise<AiSearchHistory | null> => {
     const snapshot = await firestoreAdmin.collection(COLLECTION)
         .where('cacheKey', '==', cacheKey)
-        .limit(1)
+        .limit(10)
         .get();
 
     if (snapshot.empty) return null;
 
-    const docSnapshot = snapshot.docs[0];
-    const data = docSnapshot.data();
-    if (
-        Number(data.tId) !== Number(session.tId) ||
-        Number(data.sId) !== Number(session.sId)
-    ) {
-        return null;
-    }
+    const candidates = snapshot.docs
+        .map((docSnapshot) => ({ ...docSnapshot.data(), id: docSnapshot.id } as AiSearchHistory))
+        .filter((data) => (
+            Number(data.tId) === Number(session.tId) &&
+            Number(data.sId) === Number(session.sId)
+        ))
+        .sort((a, b) => {
+            const bCreated = getCanonicaTimestampMillis(b.createdOn || b.modifiedOn);
+            const aCreated = getCanonicaTimestampMillis(a.createdOn || a.modifiedOn);
+            return bCreated - aCreated;
+        });
 
-    return {
-        ...data,
-        id: docSnapshot.id,
-    } as AiSearchHistory;
+    return candidates[0] || null;
 };

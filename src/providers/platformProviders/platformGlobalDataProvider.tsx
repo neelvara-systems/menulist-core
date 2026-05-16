@@ -2,7 +2,7 @@
 
 import { FontPresetsType } from '@type/assets';
 import { ChangelogPage } from '@type/changelog';
-import { KbCategoriesMap, KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { UserDataType } from '@type/platform/user';
@@ -42,7 +42,7 @@ export type PlatformGlobalDataProviderType = {
     activeStoreContext: number | null;  // Which store user is viewing (null = own store)
     setActiveStoreContext: (storeId: number | null) => void;
 
-    cachedKBCategories: { cachedOn: Timestamp, kBCategories: KbCategoriesMap };
+    cachedKBCategories: { cachedOn: Timestamp, kBCategories: KnowledgeBaseCategoriesType };
     setCachedKBCategories: any;
 
     cachedChangelog: { cachedOn: Timestamp, changelog: ChangelogPage };

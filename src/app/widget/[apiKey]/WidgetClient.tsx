@@ -79,6 +79,41 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
     return Object.keys(output).length > 0 ? output : null;
 };
 
+const normalizeSuggestion = (value: unknown): string | null => {
+    if (typeof value === 'string') {
+        const text = value.trim();
+        return text ? text.slice(0, 180) : null;
+    }
+
+    if (value && typeof value === 'object') {
+        const suggestion = value as Record<string, unknown>;
+        const label = suggestion.entityName || suggestion.title || suggestion.question;
+        if (typeof label === 'string') {
+            const text = label.trim();
+            return text ? text.slice(0, 180) : null;
+        }
+    }
+
+    return null;
+};
+
+const normalizeSuggestions = (values: unknown[]): string[] => {
+    const seen = new Set<string>();
+    const normalized: string[] = [];
+
+    for (const value of values) {
+        const suggestion = normalizeSuggestion(value);
+        if (!suggestion) continue;
+        const key = suggestion.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        normalized.push(suggestion);
+        if (normalized.length >= 3) break;
+    }
+
+    return normalized;
+};
+
 export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [messages, setMessages] = useState<WidgetMessage[]>([]);
     const [query, setQuery] = useState('');
@@ -100,9 +135,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     useEffect(() => {
         const handler = (e: MessageEvent) => {
             if (e.source !== window.parent) return;
-            if (e.data?.type === 'canonica-context-update' && e.data.context) {
+            if (e.data?.type === 'canonica-context-update') {
                 const nextContext = sanitizeContextPayload(e.data.context);
-                if (nextContext) setProductContext(nextContext);
+                setProductContext(nextContext);
             }
             if (e.data?.type === 'canonica-predictive-suggestion' && e.data.suggestion) {
                 const suggestion = e.data.suggestion;
@@ -214,7 +249,10 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 canonical: data.canonical,
                 confidence: data.confidence,
                 references: data.references,
-                suggestedQuestions: Array.from(new Set([...(data.suggestedQuestions || []), ...relatedSuggestions])),
+                suggestedQuestions: normalizeSuggestions([
+                    ...(Array.isArray(data.suggestedQuestions) ? data.suggestedQuestions : []),
+                    ...relatedSuggestions,
+                ]),
                 searchHistoryId: data.searchHistoryId,
                 feedback: null,
                 procedure: data.procedure,

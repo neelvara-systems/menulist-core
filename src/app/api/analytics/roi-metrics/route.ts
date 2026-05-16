@@ -8,12 +8,14 @@ export const dynamic = 'force-dynamic';
  * @route GET /api/analytics/roi-metrics
  */
 
-import { getChatStatistics } from '@database/chatSessions';
+import { getChatStatisticsOptimized } from '@database/chatAnalytics';
 import { calculateROI, ChatAnalyticsData, getDefaultROIParams, ROICalculationParams } from '@lib/analytics/roiCalculations';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
+
+const MAX_ROI_RANGE_DAYS = 90;
 
 export async function GET(request: NextRequest) {
     try {
@@ -53,14 +55,17 @@ export async function GET(request: NextRequest) {
         // Get date range from query params (default: last 30 days)
         const searchParams = request.nextUrl.searchParams;
         const daysParam = searchParams.get('days') || '30';
-        const days = parseInt(daysParam, 10);
+        const parsedDays = parseInt(daysParam, 10);
+        const days = Number.isFinite(parsedDays)
+            ? Math.min(Math.max(parsedDays, 1), MAX_ROI_RANGE_DAYS)
+            : 30;
 
         const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(endDate.getDate() - days);
 
-        // Fetch chat statistics from existing function
-        const stats = await getChatStatistics(session, { start: startDate, end: endDate });
+        // Fetch chat statistics from daily aggregates + today's bounded live data.
+        const stats = await getChatStatisticsOptimized(session, days);
 
         // Transform stats to ChatAnalyticsData format
         const analyticsData: ChatAnalyticsData = {

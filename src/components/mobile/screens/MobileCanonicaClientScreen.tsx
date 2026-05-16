@@ -28,22 +28,22 @@ const ChangelogView = dynamic(() => import('@template/main-app/helpCenter/Change
 
 const viewMeta: Record<MobileCanonicaClientView, { description: string; surface: string; title: string }> = {
     help: {
-        description: 'MenuList support, documentation, support tickets, and release notes.',
+        description: 'Support, documentation, support tickets, and release notes.',
         surface: 'Canonica Help',
         title: 'Help Center',
     },
     docs: {
-        description: 'Browse MenuList help articles and guides.',
+        description: 'Browse help articles and guides.',
         surface: 'Canonica Documentation',
         title: 'Documentation',
     },
     support: {
-        description: 'Create or track MenuList support requests.',
+        description: 'Create or track support requests.',
         surface: 'Canonica Support',
         title: 'Support Tickets',
     },
     releaseNotes: {
-        description: 'See recent MenuList fixes and product updates.',
+        description: 'See recent fixes and product updates.',
         surface: 'Canonica Release Notes',
         title: 'Release Notes',
     },
@@ -83,7 +83,7 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                         <List>
                             <List.Item
                                 arrow
-                                description={<Text type="secondary">Browse MenuList help articles and guides.</Text>}
+                                description={<Text type="secondary">Browse help articles and guides.</Text>}
                                 onClick={() => openView('docs')}
                                 prefix={<LuBookOpen color="#8b5cf6" size={20} />}
                                 title={<Text strong>Documentation</Text>}
@@ -222,7 +222,7 @@ export default function MobileCanonicaClientScreen({ initialView = 'help', onBac
                     <Flex gap={4} style={{ maxWidth: 240 }} vertical>
                         <Text strong>{meta.title}</Text>
                         <Text type="secondary">{meta.description}</Text>
-                        <Text type="secondary">Use the back arrow to return to MenuList.</Text>
+                        <Text type="secondary">Use the back arrow to return to the app.</Text>
                     </Flex>
                 )}
                 onBack={handleBack}

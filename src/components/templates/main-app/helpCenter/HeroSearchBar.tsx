@@ -5,7 +5,7 @@ import { APP_THEME_COLOR } from '@constant/common';
 import { Breadcrumb, Button, Flex, Input, Typography, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LuSearch } from 'react-icons/lu';
 import HelpChat from '../helpChat';
 import { HELP_CENTER_OPEN_AI_SEARCH_EVENT } from './events';
@@ -17,12 +17,38 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
     const t = useTranslations('HelpCenter');
     const { token } = theme.useToken();
     const [showAISearchModal, setShowAISearchModal] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    const primaryColor = mounted ? token.colorPrimary : APP_THEME_COLOR;
+    const primaryBg = mounted ? token.colorPrimaryBg : '#eef6ff';
+    const elevatedBg = mounted ? token.colorBgElevated : '#ffffff';
 
     // Get current tab info for breadcrumb
     const currentTab = HELP_CENTER_TABS.find(tab => tab.key === activeTab);
+    const productContext = useMemo(() => {
+        const normalizedTab = activeTab || HOME_TAB_KEY;
+        const workflowByTab: Record<string, string> = {
+            [HOME_TAB_KEY]: 'search_help',
+            kb: 'browse_knowledge_base',
+            ticket: 'submit_ticket',
+            feedback: 'submit_feedback',
+            faq: 'read_faq',
+            contact: 'contact_support',
+            changelog: 'view_changelog',
+        };
+
+        return {
+            contextVersion: 1,
+            feature: 'help_center',
+            page: normalizedTab === HOME_TAB_KEY ? 'help_center_home' : `help_center_${normalizedTab}`,
+            workflow: workflowByTab[normalizedTab] || 'search_help',
+            entityHints: normalizedTab === HOME_TAB_KEY ? ['help_center'] : ['help_center', normalizedTab],
+        };
+    }, [activeTab]);
 
     // Keyboard shortcut: Ctrl+/ or Cmd+/ to open AI search (changed from Cmd+K to avoid conflict with settings)
     useEffect(() => {
+        setMounted(true);
+
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === '/') {
                 e.preventDefault();
@@ -56,7 +82,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                 initial={false}
                 animate={{
                     padding: activeTab === 'home' ? '48px 24px' : '0px',
-                    background: activeTab === 'home' ? `linear-gradient(90deg, ${token.colorPrimaryBg} 0%, ${token.colorBgElevated} 100%)` : 'linear-gradient(90deg, transparent 0%, transparent 100%)',
+                    background: activeTab === 'home' ? `linear-gradient(90deg, ${primaryBg} 0%, ${elevatedBg} 100%)` : 'linear-gradient(90deg, transparent 0%, transparent 100%)',
                 }}
                 transition={{
                     duration: 0.6,
@@ -67,8 +93,8 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                     }
                 }}
             >
-                {activeTab === 'home' && (
-                    <AnimatedGradientBubbles colors={[`${token.colorPrimary}40`, `${token.colorPrimary}20`, `${token.colorPrimary}10`]} count={10} speed="fast" />
+                {mounted && activeTab === 'home' && (
+                    <AnimatedGradientBubbles colors={[`${primaryColor}40`, `${primaryColor}20`, `${primaryColor}10`]} count={10} speed="fast" />
                 )}
 
                 <motion.div
@@ -109,7 +135,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                 >
                                     <h2 style={{ margin: 0, fontSize: token.fontSizeHeading2, fontWeight: 600, lineHeight: token.lineHeightHeading2 }}>
                                         {t('heroTitle')} <span style={{
-                                            backgroundImage: `linear-gradient(90deg, ${token.colorPrimary} 0%, ${APP_THEME_COLOR} 100%)`,
+                                            backgroundImage: `linear-gradient(90deg, ${primaryColor} 0%, ${APP_THEME_COLOR} 100%)`,
                                             WebkitBackgroundClip: 'text',
                                             backgroundClip: 'text',
                                             color: 'transparent',
@@ -180,9 +206,9 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                                 paddingRight: 16,
                                                 borderRadius: activeTab === 'home' ? 10 : 7,
                                                 border: 'none',
-                                                background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${APP_THEME_COLOR} 100%)`,
+                                                background: `linear-gradient(135deg, ${primaryColor} 0%, ${APP_THEME_COLOR} 100%)`,
                                                 color: '#ffffff',
-                                                boxShadow: activeTab === 'home' ? `0 8px 18px ${token.colorPrimary}59` : 'none',
+                                                boxShadow: activeTab === 'home' ? `0 8px 18px ${primaryColor}59` : 'none',
                                                 transition: 'all 0.5s ease'
                                             }}
                                             onClick={(event) => {
@@ -263,6 +289,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
             <HelpChat
                 open={showAISearchModal}
                 onClose={() => setShowAISearchModal(false)}
+                productContext={productContext}
             />
         </>
     );

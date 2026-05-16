@@ -457,21 +457,32 @@ const {
   query: searchQuery,
   imageUrl,
   mode,
-  context: rawSearchContext,
+  context,
+  productContext: rawProductContext,
 } = validatedInput;
 
-// NEW: Parse product context if present
+// Parse product context if present.
+// Current clients send it as a top-level field; legacy context.productContext is
+// still accepted only when context is not conversation history.
 let productContext: ValidatedContextPayload | undefined;
-if (
-  rawSearchContext?.productContext &&
-  FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_AWARE
-) {
+const legacyProductContext =
+  context && !Array.isArray(context) ? context.productContext : undefined;
+const candidateProductContext = rawProductContext || legacyProductContext;
+
+if (candidateProductContext && FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_AWARE) {
   try {
     const { CanonicaContextSchema } =
       await import("@lib/validation/contextSchema");
-    productContext = CanonicaContextSchema.parse(
-      rawSearchContext.productContext,
-    );
+    const parsedContext = CanonicaContextSchema.parse(candidateProductContext);
+
+    // User role is account/session authority, not a trusted client field.
+    const trustedSessionRole = session?.user?.role || session?.role;
+    productContext = {
+      ...parsedContext,
+      ...(trustedSessionRole
+        ? { userRole: String(trustedSessionRole).trim().toLowerCase() }
+        : {}),
+    };
   } catch {
     productContext = undefined;
   }
@@ -484,6 +495,38 @@ const canonicalResult = await attemptCanonicalRetrieval(searchQuery, {
   context: productContext, // NEW
 });
 ```
+
+### 4.6.1 — MenuList Help Center Mount Context
+
+**Files:**
+
+- `src/components/templates/main-app/helpCenter/HeroSearchBar.tsx`
+- `src/components/templates/main-app/helpChat/index.tsx`
+- `src/components/templates/main-app/helpChat/hooks/useChatHandlers.ts`
+- `src/components/templates/main-app/helpChat/api.ts`
+
+The MenuList Help Center builds a transient context payload from the active Help Center tab:
+
+- `feature: "help_center"`
+- `page: "help_center_home"` or `help_center_${tab}`
+- `workflow`: mapped from the current tab (`search_help`, `submit_ticket`, `read_faq`, etc.)
+- `entityHints`: `["help_center"]` plus the active tab when applicable
+
+This context is passed into `HelpChat`, then into `/api/helpCenter/search-kb` as top-level `productContext`. It is never persisted. If the tab changes, the next search uses the updated context.
+
+Boundary rule: this mount context is a transient retrieval hint, not Canonica tenancy or source identity. It must not carry MenuList tenant/store/menu IDs, customer contact data, or a hardcoded source product. Source identity belongs in CCT/`sourceContext`; MenuList is one client adapter, not a Canonica core default.
+
+### 4.6.2 — Server Retrieval Boundary
+
+`coreSearch()` and `attemptCanonicalRetrieval()` run in API routes, so Canonica canonical retrieval, instant-cache entity lookup, graph traversal, predictive trigger lookup, and server signal emission must use `canonicaFirestoreAdmin`. They must not use browser Firebase DAL functions that depend on client auth state.
+
+Current server-side read path:
+
+- `src/lib/search/searchCore.ts` reads entity index and latest release through Canonica Admin Firestore for instant-cache lookup.
+- `src/lib/canonica/canonicalRetrieval.ts` reads entity index, canonical answers, releases, and entity descriptions through Canonica Admin Firestore.
+- `src/lib/canonica/graphTraversal.ts` reads `platformSummary/entityGraphIndex_{tId}_{sId}` through Canonica Admin Firestore.
+- `src/lib/canonica/predictiveEngine.ts` reads `platformSummary/predictiveTriggers_{tId}_{sId}` and active answers through Canonica Admin Firestore.
+- `src/lib/canonica/signalEmitter.ts` writes server-side signals through Canonica Admin Firestore and skips invalid tenant/store context.
 
 ### 4.7 — Feature Flag
 

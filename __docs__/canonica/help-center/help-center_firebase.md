@@ -1,7 +1,7 @@
 # Help Center — Firebase Cost & Operations Tracking
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-01
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-16
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -19,7 +19,7 @@
 | 6 | `kb_review_tasks` | — | Global | Variable | Transient |
 | 7 | `kb_ai_runs` | — | Global | Variable | Per-job |
 | 8 | `kb_sections` | — | Global | Variable | Slow |
-| 9 | `chatSessions` | Auto-ID | `tId + uId` fields | 2-100 KB (grows with messages) | Per-conversation |
+| 9 | `chatSessions` | Auto-ID | `tId + sId + uId` fields | 2-100 KB (grows with messages) | Per-conversation |
 | 10 | `chatAnalytics` | `{tId}_{sId}_{YYYY-MM-DD}` | `tId + sId` fields | 1-5 KB | 1/store/day |
 | 11 | `queryEmbeddings` | Cache key string | Global | 3-4 KB (768-dim vector) | Per-unique-query |
 | 12 | `aiSearchHistory` | Auto-ID | `tId` field | 2-10 KB | Per-search |
@@ -104,14 +104,14 @@
 
 | Operation | Reads | Writes |
 |-----------|-------|--------|
-| Query by tId + sId | N | 0 |
-| **Total** | **N** | **0** |
+| Query by tId + sId | up to 100 | 0 |
+| **Total** | **≤100** | **0** |
 
 **Subscribe to tickets (real-time):**
 
 | Operation | Reads | Writes |
 |-----------|-------|--------|
-| Initial snapshot | N | 0 |
+| Initial snapshot | up to 100 | 0 |
 | Per-change | 1 per change | 0 |
 
 ### 2.4 Changelog Operations
@@ -182,7 +182,7 @@
 | Operation | Reads | Writes |
 |-----------|-------|--------|
 | Historical stats (~30 days) | ~30 | 0 |
-| Today's live stats | N (today only) | 0 |
+| Today's live stats | up to 500 (today only) | 0 |
 | Top questions | ~30 | 0 |
 | Knowledge gaps | ~30 | 0 |
 | Volume chart | ~7 | 0 |
@@ -229,7 +229,7 @@
 
 | Component | Daily Reads | Daily Writes | Monthly Cost |
 |-----------|-------------|-------------|-------------|
-| AI Search (cache hits ~60%) | 50×1 + 20×14 = 330 | 50×1 + 20×4 = 130 | ~$0.05 |
+| AI Search (cache hits ~60%) | 50×2 + 20×14 = 380 | 50×1 + 20×4 = 130 | ~$0.05 |
 | Chat Analytics Aggregation | 10×50 = 500 | 10 | ~$0.02 |
 | Admin Dashboard (5 loads/day) | 5×150 = 750 | 0 | ~$0.01 |
 | Ticket Operations | ~20 | ~10 | ~$0.001 |
@@ -335,9 +335,11 @@
 |----------|---------|----------------|
 | **Response caching** | 60% fewer Gemini calls | `aiSearchHistory.findCachedSearchByCacheKey()` |
 | **Embedding caching** | 40-60% fewer embedding calls | `queryEmbeddings.getCachedEmbedding()` |
+| **Shared KB category cache** | Prevents duplicate same-mount category reads | `useKBCategoriesCache()` |
 | **Aggregated analytics** | 99.95% fewer reads | `chatAnalytics` daily docs vs raw sessions |
 | **Hybrid dashboard** | Fresh data + low reads | Today's live + historical aggregate |
 | **Pagination** | Bounded reads | `limit(pageSize+1)` on all list queries |
+| **Bounded realtime tickets** | Prevents unbounded owner live snapshots | `subscribeStoreTickets(limit 100)` |
 | **Client-side filtering** | No extra queries | Search/feedback filters on fetched data |
 | **Single-doc categories** | 1 read for all KB nav | All categories in one Firestore doc |
 | **Batch operations** | Fewer writes | `writeBatch` for multi-article deletes |

@@ -120,6 +120,7 @@ interface CachedCanonicalAnswer {
   cachedAt: number; // Date.now() when cached
   answerVersion: number; // For debugging/monitoring
   topEntityId: string; // The entity this was cached for
+  sourceVersions?: { canonical?: number; kb?: number }; // Source-version manifest captured at write time
 }
 ```
 
@@ -133,14 +134,15 @@ interface CachedCanonicalAnswer {
 
 ### 3.4 — Invalidation
 
-**Primary:** Version-based (automatic). Cache key includes `answerVersion`. When answer is updated:
+**Primary:** Version-based + source-manifest validation. Cache key includes `answerVersion`, and cache payloads capture `sourceVersions.canonical`. When answer is updated:
 
 1. Answer document gets new version
-2. Next query generates new cache key with new version
-3. Old cache key expires naturally via TTL (24h)
-4. Max staleness: 24 hours after answer update
+2. `canonica_cacheVersions/canonical_{tId}_{sId}` increments
+3. Next cache hit compares cached source version to current manifest
+4. Stale cache entries are bypassed and removed best-effort
+5. Old cache key expires naturally via TTL (24h)
 
-**No active purge needed.** This is the simplest, most reliable invalidation strategy.
+**No active purge needed.** The source-version manifest keeps cache reads cheap while avoiding stale support truth.
 
 ---
 
@@ -522,7 +524,7 @@ Normal behavior. Entity match succeeds but Redis has no entry. Falls through to 
 
 ### 6.2 — Answer Updated Between Cache Write and Read
 
-Cache key includes `answerVersion`. If version changed, new query generates different key → cache miss → fresh answer → new cache entry.
+Cache key includes `answerVersion`, and cache reads validate the canonical source-version manifest before returning. If the answer was edited, archived, marked drifted/review-required, deleted, or no longer belongs to the same tenant/store, the manifest changes and the cache entry is bypassed. Legacy cache entries without `sourceVersions` fall back to direct canonical-answer validation.
 
 ### 6.3 — Plan/Role Change Mid-Session
 
@@ -550,6 +552,7 @@ Context (page, feature, workflow) affects entity matching scores but NOT the cac
 | --------------------- | --------------------------------- | ------------------------------------------------ |
 | `INSTANT_CACHE_HIT`   | Redis returns valid cached answer | query, entityId, answerId, totalMs, mountContext |
 | `INSTANT_CACHE_MISS`  | Entity matched but no Redis entry | query, entityId, mountContext                    |
+| `CACHE_STALE_BYPASS`  | Firestore answer cache exists but source validation fails | query, canonical flag, answerId/reference count |
 | `INSTANT_CACHE_WRITE` | New canonical answer cached       | entityId, answerId, answerVersion, key           |
 | `INSTANT_CACHE_ERROR` | Redis operation failed            | error message (no PII)                           |
 

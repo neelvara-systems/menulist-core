@@ -10,7 +10,7 @@ export default function CanonicaReleaseNotesPage() {
         <Flex vertical gap={16} style={{ width: '100%', maxWidth: 1180, margin: '0 auto' }}>
             <Flex vertical gap={4}>
                 <Title level={3} style={{ margin: 0 }}>Release Notes</Title>
-                <Text type="secondary">See recent MenuList fixes and product updates.</Text>
+                <Text type="secondary">See recent fixes and product updates.</Text>
             </Flex>
             <Card styles={{ body: { padding: 12 } }}>
                 <ChangelogView />

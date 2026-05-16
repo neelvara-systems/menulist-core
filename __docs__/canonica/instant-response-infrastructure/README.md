@@ -1,7 +1,7 @@
 # Canonica — Instant Response Infrastructure
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — Source-Validated Cache
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
 > **Last Updated:** 2026-03-09
 > **Feature Flag:** `ENABLE_CANONICA_INSTANT_CACHE`
@@ -12,7 +12,7 @@
 
 ## Purpose
 
-Reduce Canonica search latency and Firebase costs by caching resolved canonical answers in Upstash Redis. Canonical answers are deterministic, versioned, and entity-bound — making them ideal cache objects. This system ensures that repeated questions hit Redis (~5ms) instead of Firestore (~50-100ms) or the RAG pipeline (~2-5s).
+Reduce Canonica search latency and Firebase costs by caching resolved canonical answers in Upstash Redis. Canonical answers are deterministic, versioned, and entity-bound, making them ideal cache objects. Cached answers are treated as performance hints, not source-of-truth records: new cache entries capture the current Canonica source-version manifest, and cache hits validate that manifest before returning. Older cache entries without source versions still fall back to direct source-document validation.
 
 ---
 
@@ -49,16 +49,20 @@ User Query
 ```
 User Query
   → SAFE_MODE check
-  → Upstash Redis lookup (entity-based cache key, ~5ms)
-    → [HIT] Return cached answer immediately
-  → Firestore cache lookup (aiSearchHistory — existing, unchanged)
+  → Upstash Redis lookup (entity-based cache key)
+    → [HIT] Validate canonical source-version manifest
+    → [FRESH] Return cached answer
+    → [STALE] Delete cache key and continue
+  → Firestore cache lookup (aiSearchHistory)
+    → [HIT] Validate KB/canonical source-version manifest
+    → [STALE] Bypass cache and continue
   → Canonical Retrieval (2 Firestore reads)
     → [HIT] Cache result to Redis, return
   → [miss] RAG Fallback (embedding + vector search + Gemini)
   → Save to aiSearchHistory
 ```
 
-Redis sits as **Layer 0** — before any Firestore read. Only cache misses reach the existing pipeline.
+Redis sits as **Layer 0**. A Redis hit still performs a small freshness check before returning the answer. For new cache entries, this is one tiny `canonica_cacheVersions` manifest read instead of a full canonical answer document read. This protects Canonica's correctness guarantee when a canonical answer is edited, drifted, archived, or deleted after cache write.
 
 ---
 
@@ -89,9 +93,9 @@ This leverages existing infrastructure instead of building a parallel system.
 
 **Cascade decision:** Only cache canonical answer hits. RAG responses are non-deterministic (LLM output varies), context-dependent, and harder to invalidate. Canonical answers are versioned, deterministic, and entity-bound — perfect cache objects. RAG caching already exists via `aiSearchHistory` in Firestore.
 
-### 4. Version-Based Invalidation (NOT Manual Purge)
+### 4. Version-Based + Source-Manifest Invalidation
 
-Cache keys include `answerVersion`. When an answer is updated, its version increments → new cache key → old entries auto-expire via TTL. No manual invalidation needed.
+Cache keys include `answerVersion`, and new cache payloads include `sourceVersions.canonical`. Every canonical answer write, governance drift update, and related scheduler mutation increments `canonica_cacheVersions/canonical_{tId}_{sId}`. Cache hits compare the cached version to the current manifest before returning. If the manifest changed, the cache entry is bypassed and removed best-effort. This keeps cache correctness independent from manual purge timing while avoiding one full answer-document read per fresh hit.
 
 ### 5. No Semantic Caching
 
@@ -137,6 +141,7 @@ Cache keys include `answerVersion`. When an answer is updated, its version incre
 - Entity-based cache keys with version, plan, role
 - TTL-based expiration (24 hours default)
 - Version-based automatic invalidation
+- Source freshness validation before serving cached canonical/RAG answers
 - Cache hit/miss performance logging
 - Feature flag: `ENABLE_CANONICA_INSTANT_CACHE` (default OFF)
 
@@ -154,21 +159,15 @@ Cache keys include `answerVersion`. When an answer is updated, its version incre
 ## Firebase Cost Impact
 
 **Before (per canonical hit):** 2 Firestore reads (search index + answer doc)
-**After (cache hit):** 0 Firestore reads, 1 Upstash REST call
+**After (fresh Redis cache hit):** 1 tiny source-version manifest read, 1 Upstash REST call
 
 **Estimated savings at 1,000 queries/day:**
 - Cache hit rate ~60-70% (conservative, grows over time)
-- Saves ~600-700 Firestore reads/day = ~18,000-21,000 reads/month
-- Firestore cost: $0.036/100K reads → saves ~$0.007/month at this scale
+- Saves the full retrieval/RAG pipeline on safe repeats while keeping one manifest freshness read
+- Firestore cost benefit is better than direct source-document validation because fresh hits do not read full canonical answer documents
 - Upstash cost: Free tier (10K commands/day) covers this entirely
 
-**At scale (100K queries/day):**
-- Saves ~60,000-70,000 reads/day = ~2M reads/month
-- Saves ~$0.72/month Firestore + reduces latency by 50-100ms per cached hit
-- Upstash cost: ~$0.60/month (100K commands/day at $0.20/100K)
-- **Net savings: ~$0.12/month + massive latency improvement**
-
-The primary value is **latency reduction**, not cost savings. Sub-10ms cache hits vs 50-100ms Firestore reads.
+The primary value is **avoiding provider calls and multi-stage retrieval work** while reducing freshness validation to a small manifest read. Canonica should still prefer a cheap validation read over the risk of serving stale support truth.
 
 ---
 
@@ -177,3 +176,5 @@ The primary value is **latency reduction**, not cost savings. Sub-10ms cache hit
 | Date       | Change                                                     |
 | ---------- | ---------------------------------------------------------- |
 | 2026-03-09 | Initial documentation — full doc set created from synthesis |
+| 2026-05-16 | Added source freshness validation for Redis and Firestore answer caches |
+| 2026-05-16 | Switched fresh cache validation to Canonica source-version manifests |

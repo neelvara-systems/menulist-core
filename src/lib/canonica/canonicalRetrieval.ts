@@ -19,11 +19,10 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { getActiveAnswersForEntity } from "@database/canonica/canonicalAnswers";
-import { getEntitySearchIndex } from "@database/canonica/entities";
-import { getLatestRelease } from "@database/canonica/releases";
+import { DB_COLLECTIONS } from "@constant/database";
+import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
 import { canonicaTokenize } from "@lib/canonica/tokenizer";
-import { CanonicaAnswerType, CanonicaCanonicalAnswer, CanonicaContextPayload, CanonicaEntitySearchIndex, CanonicaGraphExpansionResult } from "@type/canonica";
+import { CanonicaAnswerType, CanonicaCanonicalAnswer, CanonicaContextPayload, CanonicaEntity, CanonicaEntitySearchIndex, CanonicaGraphExpansionResult, CanonicaRelease } from "@type/canonica";
 
 // ═══════════════════════════════════════════════════════════════
 // KNOWLEDGE INTEGRITY GUARD (Phase 4 — ChatGPT Review Fix)
@@ -84,7 +83,71 @@ export interface RetrievalContext {
     planId?: string;
     roleId?: string;
     context?: CanonicaContextPayload;
+    preloadedSearchIndex?: CanonicaEntitySearchIndex[];
+    preloadedLatestRelease?: CanonicaRelease | null;
 }
+
+const getCanonicaAdminDb = () => {
+    if (!canonicaFirestoreAdmin || typeof canonicaFirestoreAdmin.collection !== 'function') {
+        throw new Error('Canonica Firestore Admin is not configured');
+    }
+    return canonicaFirestoreAdmin;
+};
+
+const getEntitySearchIndexServer = async (tId: number, sId: number): Promise<CanonicaEntitySearchIndex[]> => {
+    const snapshot = await getCanonicaAdminDb()
+        .collection(DB_COLLECTIONS.CANONICA_ENTITY_SEARCH_INDEX)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .limit(500)
+        .get();
+
+    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as CanonicaEntitySearchIndex));
+};
+
+const getActiveAnswersForEntityServer = async (
+    tId: number,
+    sId: number,
+    entityId: string,
+): Promise<CanonicaCanonicalAnswer[]> => {
+    const snapshot = await getCanonicaAdminDb()
+        .collection(DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('scope.entityIds', 'array-contains', entityId)
+        .where('status', '==', 'active')
+        .limit(200)
+        .get();
+
+    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as CanonicaCanonicalAnswer));
+};
+
+const getLatestReleaseServer = async (tId: number, sId: number): Promise<CanonicaRelease | null> => {
+    const snapshot = await getCanonicaAdminDb()
+        .collection(DB_COLLECTIONS.CANONICA_RELEASES)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('status', '==', 'active')
+        .orderBy('versionNormalized', 'desc')
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { ...doc.data(), id: doc.id } as CanonicaRelease;
+};
+
+const getEntityByIdServer = async (entityId: string, tId: number, sId: number): Promise<CanonicaEntity | null> => {
+    const doc = await getCanonicaAdminDb()
+        .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
+        .doc(entityId)
+        .get();
+
+    if (!doc.exists) return null;
+    const entity = { ...doc.data(), id: doc.id } as CanonicaEntity;
+    if (Number(entity.tId) !== Number(tId) || Number(entity.sId) !== Number(sId)) return null;
+    return entity;
+};
 
 // ═══════════════════════════════════════════════════════════════
 // LAYER 1 — DETERMINISTIC ENTITY INDEX LOOKUP
@@ -387,7 +450,7 @@ export async function attemptCanonicalRetrieval(
 
     try {
         // Layer 1: Deterministic entity index lookup
-        const searchIndex = await getEntitySearchIndex(context.tId, context.sId);
+        const searchIndex = context.preloadedSearchIndex ?? await getEntitySearchIndexServer(context.tId, context.sId);
         if (!searchIndex || searchIndex.length === 0) {
             return {
                 found: false,
@@ -455,7 +518,9 @@ export async function attemptCanonicalRetrieval(
         // Get current version for version window filtering
         let currentVersion = context.currentVersion;
         if (!currentVersion) {
-            const latestRelease = await getLatestRelease(context.tId, context.sId);
+            const latestRelease = context.preloadedLatestRelease !== undefined
+                ? context.preloadedLatestRelease
+                : await getLatestReleaseServer(context.tId, context.sId);
             if (latestRelease) {
                 currentVersion = latestRelease.versionNormalized;
             }
@@ -489,7 +554,7 @@ export async function attemptCanonicalRetrieval(
         // Fetch canonical answers for top matched entities (parallel for latency)
         const topEntityIds = effectiveEntityIds;
         const answerResults = await Promise.all(
-            topEntityIds.map(entityId => getActiveAnswersForEntity(context.tId, context.sId, entityId))
+            topEntityIds.map(entityId => getActiveAnswersForEntityServer(context.tId, context.sId, entityId))
         );
         const allAnswers: CanonicaCanonicalAnswer[] = [];
         for (const answers of answerResults) {
@@ -602,11 +667,10 @@ export async function getEntityDescriptions(
     if (!entityIds || entityIds.length === 0) return [];
 
     try {
-        const { getEntityById } = await import('@database/canonica/entities');
         const descriptions: { name: string; description: string }[] = [];
 
         for (const entityId of entityIds.slice(0, 5)) {
-            const entity = await getEntityById(entityId);
+            const entity = await getEntityByIdServer(entityId, tId, sId);
             if (entity && entity.status === 'active' && entity.description) {
                 descriptions.push({
                     name: entity.name,

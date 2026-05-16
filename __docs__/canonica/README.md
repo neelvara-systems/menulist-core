@@ -38,6 +38,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 | 7   | `help-center/help-center_helpdoc.md`             | End users       | Customer help documentation                                   |
 | 8   | `help-center/help-center_mobile-support.md`      | Mobile team     | 4-gate admission test, mobile architecture                    |
 | 9   | `help-center/help-center_decoupling-analysis.md` | Strategy/Arch   | Future standalone SaaS readiness assessment                   |
+| 10  | `firebase-cost-optimization-audit.md`            | Developers/Ops  | Canonica-wide Firebase read/write/listener cost map and latest optimizations |
 
 ---
 
@@ -194,7 +195,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `ENABLE_CANONICA_CANONICAL_ANSWERS` | `src/config/features.ts`                       | `false` | Canonical-first retrieval + coverage KPI         |
 | `ENABLE_CANONICA_DRIFT_DETECTION`   | `src/config/features.ts`                       | `false` | 4-class drift engine                             |
 | `ENABLE_CANONICA_SIGNAL_MUTATION`   | `src/config/features.ts`                       | `false` | Signal mutation + proposal review                |
-| `ENABLE_CANONICA_PUBLIC_API`        | `src/config/features.ts`                       | `false` | Public canonical answer API (Pillar 5 — future)  |
+| `ENABLE_CANONICA_PUBLIC_API`        | `src/config/features.ts`                       | `false` | Public answers, entities, and signal ingestion API (Pillar 5; implemented and rollout-gated) |
 | `ENABLE_CANONICA_WIDGET`            | `src/config/features.ts`                       | `false` | Embeddable help widget + onboarding gate         |
 | `ENABLE_CANONICA_NOTIFICATIONS`     | `src/config/features.ts`                       | `false` | Email notifications for ticket events            |
 | `ENABLE_CANONICA_GOVERNANCE_UI`     | `src/config/features.ts`                       | `false` | Governance hub (answer editor, drift, analytics) |

@@ -1,12 +1,10 @@
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import { getUserChatSessions } from '@database/chatSessions';
-import { getCategories } from '@database/knowledgeBase/categories';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { ChatSession } from '@type/chatSession';
 import { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { message as antMessage } from 'antd';
-import { Timestamp } from 'firebase/firestore';
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 
 interface UseChatDataProps {
@@ -16,8 +14,7 @@ interface UseChatDataProps {
 
 export function useChatData({ open, loggedInSession }: UseChatDataProps) {
     const [categoriesData, setCategoriesData] = useState<KnowledgeBaseCategoriesType | null>(null);
-
-    const { cachedKBCategories, setCachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { getCategoriesCached } = useKBCategoriesCache();
 
     // Generate SWR cache key for chat sessions
     const sessionsCacheKey = (open && loggedInSession?.tId && loggedInSession?.uId)
@@ -55,30 +52,13 @@ export function useChatData({ open, loggedInSession }: UseChatDataProps) {
         antMessage.error('Failed to load chat history. Please try again.');
     }
 
-    // Fetch categories on mount (keep existing context-based caching)
+    // Fetch categories on open using shared in-flight/context cache.
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const hasCachedCategories = cachedKBCategories?.kBCategories &&
-                    Object.keys(cachedKBCategories.kBCategories).length > 0;
-
-                if (hasCachedCategories) {
-                    // Use cached categories
-                    setCategoriesData({ categories: cachedKBCategories.kBCategories });
-                } else {
-                    // Fetch and cache categories
-                    const categoriesResult = await getCategories();
-                    if (categoriesResult) {
-                        setCategoriesData(categoriesResult);
-
-                        // Cache only the categories map for future use
-                        if (categoriesResult.categories) {
-                            setCachedKBCategories({
-                                cachedOn: Timestamp.now(),
-                                kBCategories: categoriesResult.categories
-                            });
-                        }
-                    }
+                const categoriesResult = await getCategoriesCached();
+                if (categoriesResult) {
+                    setCategoriesData(categoriesResult);
                 }
             } catch (error) {
                 antMessage.error('Failed to load categories. Please try again.');
@@ -88,8 +68,7 @@ export function useChatData({ open, loggedInSession }: UseChatDataProps) {
         if (open) {
             fetchCategories();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open]);
+    }, [getCategoriesCached, open]);
 
     return {
         chatSessions,

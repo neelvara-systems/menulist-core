@@ -16,7 +16,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
@@ -115,8 +115,8 @@ export const addEntity = async (data: Omit<CanonicaEntity, 'id'>) => {
                 where('sId', '==', data.sId),
                 limit(CANONICA_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT)
             );
-            const countSnap = await getDocs(countQuery);
-            if (countSnap.size >= CANONICA_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT) {
+            const countSnap = await getCountFromServer(countQuery);
+            if (countSnap.data().count >= CANONICA_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT) {
                 throw new Error(
                     `Entity limit reached (${CANONICA_ONTOLOGY_CONSTRAINTS.MAX_ENTITIES_PER_TENANT}). ` +
                     `Consider merging similar entities before adding new ones.`

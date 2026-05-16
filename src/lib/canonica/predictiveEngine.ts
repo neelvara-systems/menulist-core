@@ -23,10 +23,9 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import { getActiveAnswersForEntity } from '@database/canonica/canonicalAnswers';
-import { doc, getDoc } from '@firebase/firestore';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import type {
+    CanonicaCanonicalAnswer,
     CanonicaContextPayload,
     CanonicaPredictiveSuggestion,
     CanonicaPredictiveTrigger,
@@ -39,6 +38,13 @@ import type {
 // ═══════════════════════════════════════════════════════════════
 
 const PLATFORM_SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
+const getCanonicaAdminDb = () => {
+    if (!canonicaFirestoreAdmin || typeof canonicaFirestoreAdmin.collection !== 'function') {
+        throw new Error('Canonica Firestore Admin is not configured');
+    }
+    return canonicaFirestoreAdmin;
+};
+
 const normalizeConditionValue = (value: string | undefined): string | undefined => {
     if (typeof value !== 'string') return undefined;
     const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 100);
@@ -58,17 +64,32 @@ export async function loadTriggerIndex(
     if (!FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) return null;
 
     try {
-        const docRef = doc(
-            canonicaFirebaseClient,
-            PLATFORM_SUMMARY_COLLECTION,
-            `predictiveTriggers_${tId}_${sId}`
-        );
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) return null;
+        const snap = await getCanonicaAdminDb()
+            .collection(PLATFORM_SUMMARY_COLLECTION)
+            .doc(`predictiveTriggers_${tId}_${sId}`)
+            .get();
+        if (!snap.exists) return null;
         return snap.data() as CanonicaPredictiveTriggerIndex;
     } catch {
         return null;
     }
+}
+
+async function getActiveAnswersForEntityServer(
+    tId: number,
+    sId: number,
+    entityId: string,
+): Promise<CanonicaCanonicalAnswer[]> {
+    const snapshot = await getCanonicaAdminDb()
+        .collection(DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('scope.entityIds', 'array-contains', entityId)
+        .where('status', '==', 'active')
+        .limit(20)
+        .get();
+
+    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as CanonicaCanonicalAnswer));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -182,7 +203,7 @@ async function resolveSuggestion(
     // Resolve from entity → canonical answer
     if (trigger.action.entityId) {
         try {
-            const answers = await getActiveAnswersForEntity(tId, sId, trigger.action.entityId);
+            const answers = await getActiveAnswersForEntityServer(tId, sId, trigger.action.entityId);
             if (answers && answers.length > 0) {
                 const best = answers[0];
                 title = trigger.action.customTitle || best.title;

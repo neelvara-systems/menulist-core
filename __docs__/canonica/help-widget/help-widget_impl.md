@@ -104,12 +104,13 @@ v2 JavaScript API (exposed on `window.CanonicaWidget`):
 
 - `setContext(payload)` — sets/updates product context, sent with every query
 - `page(payload)` — alias for `setContext(payload)` and also requests predictive help for the current page
+- `setContext(null)` — clears product context and sends a clear message to the iframe so stale page context is not reused
 - `open()` — programmatically open widget
 - `close()` — programmatically close widget
 
 Context is normalized and size-limited before it leaves the host page, then passed from host page → embed script → iframe via `postMessage` → WidgetClient state → API request body.
 
-When `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is enabled, `page()/setContext()` also calls `POST /api/canonica/predictive-help`. A returned suggestion is held in memory, indicated on the launcher, and delivered into the iframe as a proactive assistant message. No raw page events are stored.
+When `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is enabled, `page()/setContext()` also calls `POST /api/canonica/predictive-help` only when a valid context payload is present. A returned suggestion is held in memory, indicated on the launcher, and delivered into the iframe as a proactive assistant message. No raw page events are stored.
 
 Global security headers keep `frame-ancestors 'none'` for the app by default. `/widget/*` is the explicit exception: middleware omits `X-Frame-Options` and allows HTTPS/localhost frame ancestors so the embeddable iframe can render. API calls still enforce API-key auth, rate limits, and the per-store origin allowlist.
 
@@ -125,8 +126,10 @@ v2 additions:
 - **Feedback UI**: Thumbs up/down on AI answers. Calls `POST /api/widget/feedback`.
 - **Conversation context**: After first Q&A, subsequent questions include history for contextual follow-ups.
 - **postMessage listener**: Receives context updates from host page embed script.
+- **Context clearing**: A `canonica-context-update` message with `context: null` clears in-memory product context to prevent stale page/feature boosts after navigation.
 - **Guided workflow rendering**: Displays `procedure.steps`, prerequisites, warnings, expected results, and troubleshooting hints returned by canonical procedure answers.
 - **Predictive suggestion rendering**: Displays proactive help returned by `POST /api/canonica/predictive-help`.
+- **Suggestion normalization**: Graph-related suggestions are normalized to display strings before rendering or being used as follow-up queries.
 
 ### 3.5 Widget Feedback Route (`src/app/api/widget/feedback/route.ts`) — NEW
 
@@ -290,6 +293,14 @@ Answer returned with imageProcessed: true
 | `generateSearchQueryFromImage()` | `vectorEmbeddings/index.ts` | Converts image + text prompt → keyword-rich search query                         |
 | `callGeminiChat()` with image    | `vectorEmbeddings/index.ts` | Passes image as `inlineData` to Gemini Flash for visual context                  |
 | Image size/type validation       | `ChatInput.tsx` pattern     | Same 5MB limit, image/\* only                                                    |
+
+### 5.6 Server Retrieval Boundary
+
+The widget route is public/API-key based, but retrieval runs in Next.js API code. Server retrieval therefore uses `canonicaFirestoreAdmin`, not browser Firebase DALs:
+
+- Canonical entity index, active answers, releases, graph index, and predictive trigger cache are read through Canonica Admin Firestore.
+- Server signal writes use Canonica Admin Firestore.
+- Client Firebase DALs remain valid for authenticated dashboard/governance UI, not public widget API retrieval.
 
 ### Cost Impact
 

@@ -57,6 +57,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             imageUrl,
             mode,
             context,
+            productContext: rawProductContext,
             sessionFailureCount
         } = validatedInput;
 
@@ -68,10 +69,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // Parse product context from request if present (feature-flagged)
         const { FEATURE_FLAGS: contextFlags } = await import('@config/features');
         let productContext: import('@lib/validation/contextSchema').ValidatedContextPayload | undefined;
-        if (context?.productContext && contextFlags.ENABLE_CANONICA_CONTEXT_AWARE) {
+        const legacyProductContext = context && !Array.isArray(context)
+            ? (context as any).productContext
+            : undefined;
+        const candidateProductContext = rawProductContext || legacyProductContext;
+        if (candidateProductContext && contextFlags.ENABLE_CANONICA_CONTEXT_AWARE) {
             try {
                 const { CanonicaContextSchema } = await import('@lib/validation/contextSchema');
-                productContext = CanonicaContextSchema.parse(context.productContext);
+                const parsedContext = CanonicaContextSchema.parse(candidateProductContext);
+                const trustedSessionRole = session?.user?.role || session?.role;
+                productContext = {
+                    ...parsedContext,
+                    ...(trustedSessionRole ? { userRole: String(trustedSessionRole).trim().toLowerCase() } : {}),
+                };
             } catch {
                 productContext = undefined;
             }

@@ -1,7 +1,7 @@
 # Knowledge Base — Firebase Cost & Operations Tracking
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-16
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -16,7 +16,7 @@
 | **Collection**              | `kb_articles`                                      |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.KB_ARTICLES`                       |
 | **Doc ID**                  | Auto-generated                                     |
-| **Scoping**                 | **Global** (no tenant filter)                      |
+| **Scoping**                 | `tId + sId` for current Canonica workspaces; legacy global data only via filtered fallback |
 | **Avg Doc Size**            | 5-50 KB (content ~2-40KB + embedding ~3KB)         |
 | **Growth Rate**             | Slow (manual creation + AI generation)             |
 | **Vector Index**            | `embedding` field, 768 dimensions, COSINE distance |
@@ -27,8 +27,8 @@
 | --------------------------- | ----------------------------------------------------------- |
 | **Collection**              | `kb_categories`                                             |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.KB_CATEGORIES`                              |
-| **Doc ID**                  | `categories` (single hardcoded doc)                         |
-| **Scoping**                 | **Global** (single document for all categories)             |
+| **Doc ID**                  | `categories_{tId}_{sId}` with legacy `categories` fallback  |
+| **Scoping**                 | `tId + sId` document per workspace                          |
 | **Avg Doc Size**            | 10-100 KB (grows with categories/sections/article metadata) |
 | **Growth Rate**             | Very slow                                                   |
 
@@ -40,8 +40,8 @@
 
 | Step                                    | Reads | Writes | Notes                          |
 | --------------------------------------- | :---: | :----: | ------------------------------ |
-| Load categories (first time)            |   1   |   0    | Single doc read                |
-| Load categories (cached)                |   0   |   0    | From PlatformGlobalDataContext |
+| Load categories (first time)            |   1   |   0    | Scoped doc read; legacy fallback can add 1 read |
+| Load categories (cached)                |   0   |   0    | From shared `useKBCategoriesCache()` |
 | Browse categories → sections → articles |   0   |   0    | All from cached categories doc |
 | **Total (first load)**                  | **1** | **0**  |                                |
 | **Total (cached)**                      | **0** | **0**  |                                |
@@ -96,7 +96,7 @@
 
 | Step                         | Reads | Writes  | Notes                                    |
 | ---------------------------- | :---: | :-----: | ---------------------------------------- |
-| Get all articles in category |   N   |    0    | `getArticlesByCategoryId()`              |
+| Get all articles in category | up to 500 | 0 | `getArticlesByCategoryId()` scoped by `tId+sId` when session exists |
 | Delete each article          |   0   |    N    | `deleteArticle()` per article            |
 | Delete category from doc     |   0   |    1    | `deleteCategory()` overwrites categories |
 | **Total**                    | **N** | **N+1** | N = articles in category                 |
@@ -105,7 +105,7 @@
 
 | Step                             | Reads | Writes  | Notes                         |
 | -------------------------------- | :---: | :-----: | ----------------------------- |
-| Get all articles in section      |   N   |    0    | `getArticlesBySectionId()`    |
+| Get all articles in section      | up to 500 | 0 | `getArticlesBySectionId()` scoped by `tId+sId` when session exists |
 | Delete each article              |   0   |    N    | `deleteArticle()` per article |
 | Update category (remove section) |   0   |    1    | `updateCategory()`            |
 | **Total**                        | **N** | **N+1** | N = articles in section       |

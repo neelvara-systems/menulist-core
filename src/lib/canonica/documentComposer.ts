@@ -1,4 +1,4 @@
-import { PRODUCT_IDS } from '@constant/product';
+import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { requestBodyComposer } from '@lib/apiHelper';
 import getActiveSession from '@lib/auth/getActiveSession';
 
@@ -14,6 +14,45 @@ const normalizeNumber = (value: unknown): number | undefined => {
     return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const normalizeProductId = (value: unknown): ProductId | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toUpperCase();
+    return Object.values(PRODUCT_IDS).includes(normalized as ProductId)
+        ? normalized as ProductId
+        : undefined;
+};
+
+const normalizeSourceContext = (sourceContext: unknown) => {
+    if (!sourceContext || typeof sourceContext !== 'object' || Array.isArray(sourceContext)) {
+        return undefined;
+    }
+
+    const normalized = { ...(sourceContext as Record<string, any>) };
+    const sourcePId = normalizeProductId(normalized.pId);
+    const sourceTId = normalizeNumber(normalized.tId);
+    const sourceSId = normalizeNumber(normalized.sId);
+
+    if (sourcePId) {
+        normalized.pId = sourcePId;
+        if (sourceTId !== undefined) {
+            normalized.tId = sourceTId;
+        } else {
+            delete normalized.tId;
+        }
+        if (sourceSId !== undefined) {
+            normalized.sId = sourceSId;
+        } else {
+            delete normalized.sId;
+        }
+    } else {
+        delete normalized.pId;
+        delete normalized.tId;
+        delete normalized.sId;
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+};
+
 const buildSourceContextFromSession = async () => {
     const session = await getActiveSession();
     if (!session) return undefined;
@@ -21,6 +60,14 @@ const buildSourceContextFromSession = async () => {
     const uId = (session as any).uId || session.user?.id;
     const email = session.user?.email;
     const name = session.user?.name || email;
+    const phone = (session as any).phone || (session.user as any)?.phone;
+    const sourcePId =
+        normalizeProductId((session as any).sourceContext?.pId)
+        || normalizeProductId((session as any).sourceProductId)
+        || normalizeProductId((session as any).pId)
+        || normalizeProductId((session.user as any)?.pId);
+    const sourceTId = normalizeNumber((session as any).tId);
+    const sourceSId = normalizeNumber((session as any).sId);
 
     if (!uId || !email || !name) return undefined;
 
@@ -28,23 +75,24 @@ const buildSourceContextFromSession = async () => {
         uId,
         name,
         email,
-        phone: (session as any).phone || (session.user as any)?.phone || undefined,
-        pId: (session as any).pId || PRODUCT_IDS.MENULIST,
-        tId: normalizeNumber((session as any).tId),
-        sId: normalizeNumber((session as any).sId),
+        ...(phone ? { phone } : {}),
+        ...(sourcePId ? {
+            pId: sourcePId,
+            ...(sourceTId !== undefined ? { tId: sourceTId } : {}),
+            ...(sourceSId !== undefined ? { sId: sourceSId } : {}),
+        } : {}),
     };
 };
 
 /**
  * Canonica write composer.
  *
- * Keeps Canonica document ownership (`pId: "CN"`) centralized while preserving
- * the existing tId/sId behavior used by current embedded MenuList screens.
- * `sourceContext`, `traceId`, and `requestId` are additive fields for the CCT
- * model and do not change current query scopes.
+ * Keeps Canonica document ownership (`pId: "CN"`) centralized. Source product
+ * identity is accepted only when the caller/session provides it explicitly; the
+ * shared composer must not assume MenuList or any other client as the default.
  */
 export const canonicaRequestBodyComposer = async <T extends Record<string, any>>(data: T) => {
-    const sourceContext = data.sourceContext || await buildSourceContextFromSession();
+    const sourceContext = normalizeSourceContext(data.sourceContext) || await buildSourceContextFromSession();
     const traceId = data.traceId || createTraceId();
 
     return requestBodyComposer({

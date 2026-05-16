@@ -1,6 +1,6 @@
 # Canonica — Production Readiness Certification
 
-> **Audit Date:** 2026-05-12 (re-audited after Canonica callable/function split, identity composer, route hardening, and owner/public UI hardening)
+> **Audit Date:** 2026-05-12 (re-audited after Canonica callable/function split, identity composer, route hardening, owner/public UI hardening, and May 16 Firebase cost optimization pass)
 > **Auditor:** Cascade (Senior Staff Engineer + Systems Auditor)
 > **Method:** Full forensic code-only reconstruction + doc parity verification
 > **TypeScript Check:** PASS (0 errors)
@@ -68,7 +68,7 @@ All flags currently `false`. Correct for pre-activation state.
 | **2 — Canonical Answer Engine** | Governed, versioned, scoped answers; canonical-first retrieval | `canonicalAnswers.ts` + `canonicalRetrieval.ts` — 3-layer retrieval stack, version filtering, specificity scoring                                     | **VERIFIED**                               |
 | **3 — Drift Governance**        | 4 drift classes, deterministic, idempotent                     | `driftDetection.ts` — all 4 classes implemented: version, signal, scope conflict, orphan                                                              | **VERIFIED**                               |
 | **4 — Signal Mutation**         | 3 signal sources, 4 mutation types, human approval             | `signalMutation.ts` + `signalEmitter.ts` + `mutationProposals.ts` — entity-based clustering, proposal generation, state machine guards                | **VERIFIED**                               |
-| **5 — Public API**              | Public retrieval, webhooks, signal ingestion                   | Feature flag exists but no API routes implemented                                                                                                     | **NOT IMPLEMENTED** (deferred per roadmap) |
+| **5 — Public API**              | Public retrieval, webhooks, signal ingestion                   | `public/v1/answers`, `public/v1/entities`, and `public/v1/signals` implemented with `cn_*` key auth, rate limits, tenant-derived context, and workflow integration event bus for outbound drift/governance delivery | **VERIFIED** |
 
 ### 2.2 Invariants
 
@@ -266,7 +266,9 @@ Platform operator opens Canonica management
 | ------------------------------------ | ---------------------------------------------------- | --------------------- | --------------- |
 | Canonical retrieval (50 queries/day) | 50 × (1 index + 3 entity + 1 version) = 250 reads    | 0                     | $0.003          |
 | Signal emission (20 events/day)      | 0                                                    | 20 writes             | $0.0004         |
-| Search-history cache lookup          | 1 cache-key lookup on help-center repeat queries, with scoped key verification | 0 | <$0.0001 |
+| Search-history cache lookup          | 1 cache-key lookup on help-center repeat queries, with scoped key/source-freshness verification | 0 | <$0.0001 |
+| Help Center KB category load         | 1 scoped category doc read per session, shared by landing/KB/chat/changelog picker | 0 | <$0.0001 |
+| Owner ticket live listener           | Initial snapshot capped to latest 100 store tickets, then 1 read per changed ticket | 0 | usage-based |
 | Drift evaluation (1 nightly)         | 1 entities + 1 answers + N signal counts = ~20 reads | ~5 governance updates | $0.0003         |
 | Mutation engine (1 nightly)          | 1 signals query + ~10 answer lookups = ~15 reads     | ~3 proposals          | $0.0002         |
 | **Total per tenant/day**             | ~285 reads                                           | ~28 writes            | **~$0.004/day** |
@@ -287,10 +289,9 @@ Platform operator opens Canonica management
 
 | #   | Limitation                                    | Impact                                                         | Mitigation                                              |
 | --- | --------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------- |
-| 1   | Pillar 5 (Public API) not implemented         | No external integrations possible                              | Deferred per roadmap — feature flag exists              |
-| 2   | Entity extraction depends on Gemini injection | `callGemini` function must be passed in                        | By design — avoids circular dependencies                |
-| 3   | Mutation review UI is minimal                 | List + approve/reject only; no inline canonical answer editing | Sufficient for v1; rich editor deferred                 |
-| 4   | Heavy governance authoring is desktop-preferred | Mobile supports access/review, but long structured edits remain desk tasks | Responsive shell, scrollable tables, viewport-width modals |
+| 1   | Entity extraction depends on Gemini injection | `callGemini` function must be passed in                        | By design — avoids circular dependencies                |
+| 2   | Mutation review UI is minimal                 | List + approve/reject only; no inline canonical answer editing | Sufficient for v1; rich editor deferred                 |
+| 3   | Heavy governance authoring is desktop-preferred | Mobile supports access/review, but long structured edits remain desk tasks | Responsive shell, scrollable tables, viewport-width modals |
 
 ### Resolved Limitations (since initial audit)
 
@@ -309,6 +310,15 @@ Platform operator opens Canonica management
 | 11  | No drift dashboard visualization | `DriftDashboard` in the Canonica governance hub with responsive detail modal      |
 | 12  | Owner shell not mobile-safe      | Canonica layout now uses mobile drawer navigation and no fixed-width content      |
 | 13  | Widget image previews assumed PNG | Widget messages now retain MIME type for uploaded images                          |
+| 14  | Help Center did not pass context-aware product context into AI search | `HeroSearchBar` now builds tab-aware `productContext`; `HelpChat` sends it as top-level request data |
+| 15  | Server retrieval fast paths could depend on client Firebase DALs | Canonical retrieval, instant-cache search, graph traversal, predictive help, and server signal writes now use Canonica Admin Firestore |
+| 16  | Widget context clearing could leave stale context inside iframe | `setContext(null)` now clears widget state and posts the cleared context to the iframe |
+| 17  | Graph suggestions could render non-string objects in the widget | Widget suggestions are normalized before rendering and before quick-question clicks |
+| 18  | Help Center hero used token-dependent render state during SSR | Token-dependent decorative layer is mounted client-side with stable SSR fallbacks |
+| 19  | Pillar 5 public API was deferred | Flag-gated public API now exposes canonical answers, entity registry, and signal ingestion |
+| 20  | Paid Canonica onboarding was beta-only | Non-beta plans now create Razorpay recurring subscriptions and pending subscription records |
+| 21  | Repeated-question caches could serve stale source snapshots | Firestore answer cache and Redis instant cache now validate live source freshness before returning cached answers |
+| 22  | Shared Canonica document composer could infer MenuList as source product | Composer now accepts source product scope only from explicit session/source context and keeps direct-client context product-neutral |
 
 ---
 
@@ -320,7 +330,7 @@ Per doctrine and feature flag chain:
 2. **ENABLE_CANONICA_CANONICAL_ANSWERS** → Canonical answer engine, retrieval pipeline
 3. **ENABLE_CANONICA_DRIFT_DETECTION** → 4-class drift engine, governance flags
 4. **ENABLE_CANONICA_SIGNAL_MUTATION** → Signal emission, mutation proposals, nightly job
-5. **ENABLE_CANONICA_PUBLIC_API** → External API surface (future)
+5. **ENABLE_CANONICA_PUBLIC_API** → External API surface for canonical answers, entity registry, and signal ingestion
 
 Each flag depends on all previous flags being enabled first.
 
@@ -346,6 +356,18 @@ Each flag depends on all previous flags being enabled first.
 | 14  | No post-mutation impact tracking                             | `canonicaNightly.ts`         | Added `trackMutationImpact()`                            |
 | 15  | No confidence auto-adjustment                                | `canonicaNightly.ts`         | Added `autoAdjustConfidence()`                           |
 | 16  | Master Execution Prompt missing Canonica rules               | `MASTER-EXECUTION-PROMPT.md` | Added STEP 9B with 5-component readiness checklist       |
+| 17  | Context-aware Help Center mounting was incomplete            | `HeroSearchBar.tsx`, `HelpChat`, `search-kb/route.ts` | Added validated top-level `productContext` flow and backend session-role override |
+| 18  | Context schema allowed fragile or sensitive free-form strings | `contextSchema.ts`           | Added trimming, size limits, sanitization, unknown-field stripping, and contact-detail rejection |
+| 19  | Server search/retrieval paths mixed client Firebase access into API code | `canonicalRetrieval.ts`, `searchCore.ts`, `graphTraversal.ts` | Replaced server reads with Canonica Admin Firestore helpers |
+| 20  | Widget could keep stale context after host context reset      | `canonica-widget.js`, `WidgetClient.tsx` | Clear-context messages now update iframe state instead of being ignored |
+| 21  | Widget graph suggestions could break React rendering          | `WidgetClient.tsx`           | Added suggestion normalization for object/string suggestion payloads |
+| 22  | Public API routes missing for Pillar 5                        | `src/app/api/canonica/public/v1/*` | Added answers, entities, and signals endpoints with `cn_*` key auth, rate limits, and tenant-derived context |
+| 23  | Paid Canonica plan onboarding did not create provider subscription | `src/app/api/canonica/onboard/route.ts` | Added Razorpay plan/subscription creation for non-beta Canonica plans |
+| 24  | Repeated-question cache could outlive source truth             | `cacheFreshness.ts`, `searchCore.ts`, `instantCache.ts` | Added source-document validation before serving cached answer snapshots |
+| 25  | Help Center home could duplicate KB category reads across sibling widgets | `useKBCategoriesCache.ts`, Help Center/KB/chat/changelog consumers | Added shared in-flight/context cache and fixed category payload shape |
+| 26  | Owner ticket realtime listener and user chat history could grow unbounded | `tickets/index.ts`, `chatSessions/index.ts` | Added latest-100 ticket cap and latest-50 store-scoped chat-session cap |
+| 27  | ROI calculator used raw chat-session scan despite aggregate analytics existing | `/api/analytics/roi-metrics`, `chatAnalytics/index.ts` | Switched ROI to aggregate DAL, clamped range to 90 days, capped today live reads |
+| 25  | Canonica core still had a hidden MenuList source-product fallback | `documentComposer.ts`, direct Canonica client shell copy | Removed the fallback; direct Canonica client-shell labels now use generic client support wording |
 
 All fixes verified with `npx tsc --noEmit` → 0 errors.
 

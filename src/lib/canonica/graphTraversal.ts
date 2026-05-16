@@ -12,8 +12,8 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
-import { doc, getDoc } from '@firebase/firestore';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { DB_COLLECTIONS } from '@constant/database';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import type {
     CanonicaCanonicalAnswer,
     CanonicaEntityGraphIndex,
@@ -35,8 +35,6 @@ const MIN_INTERACTION_CONFIDENCE = 0.5;
 // GRAPH INDEX LOADING
 // ═══════════════════════════════════════════════════════════════
 
-const PLATFORM_SUMMARY_COLLECTION = 'platformSummary';
-
 /**
  * Load the precomputed entity graph index for a tenant.
  * Single Firestore read. Returns null if not available.
@@ -50,13 +48,15 @@ export async function loadGraphIndex(
     if (!FEATURE_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH) return null;
 
     try {
-        const docRef = doc(
-            canonicaFirebaseClient,
-            PLATFORM_SUMMARY_COLLECTION,
-            `entityGraphIndex_${tId}_${sId}`
-        );
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) return null;
+        if (!canonicaFirestoreAdmin || typeof canonicaFirestoreAdmin.collection !== 'function') {
+            return null;
+        }
+
+        const snap = await canonicaFirestoreAdmin
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(`entityGraphIndex_${tId}_${sId}`)
+            .get();
+        if (!snap.exists) return null;
         return snap.data() as CanonicaEntityGraphIndex;
     } catch {
         return null;

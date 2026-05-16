@@ -1,14 +1,14 @@
 # Instant Response Infrastructure — Firebase & Cost Analysis
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
 > **Audience:** DevOps, Finance, Developers
 
 ---
 
-## §1 — Firestore Operations (ZERO New Collections)
+## §1 — Firestore Operations
 
-This feature adds **zero new Firestore collections**. It reduces Firestore reads by inserting an Upstash Redis cache before the Firestore path.
+This feature uses one tiny Canonica-owned metadata collection, `canonica_cacheVersions`, to validate cached answers without reading every source article or canonical answer document on fresh hits. It reduces Firestore reads by inserting an Upstash Redis cache before the Firestore path and by validating cached rows against a per-store source-version manifest.
 
 ### 1.1 — Operations Per Query (Cache HIT)
 
@@ -16,9 +16,10 @@ This feature adds **zero new Firestore collections**. It reduces Firestore reads
 | --------- | ---------- | ---- | ----- | ---- |
 | Entity search index read | `canonica_entitySearchIndex` | READ | 1 | $0.00006 |
 | Redis cache lookup | N/A (Upstash) | REST | 1 | Free tier |
+| Source-version manifest read | `canonica_cacheVersions` | READ | 1 | $0.00006 |
 | aiSearchHistory write | `aiSearchHistory` | WRITE | 1 | $0.00018 |
 | Performance log write | Log file | WRITE | 1 | $0 (file log) |
-| **TOTAL** | | | **3 ops** | **~$0.00024** |
+| **TOTAL** | | | **4 ops** | **~$0.00030** |
 
 **Compared to current (no cache):**
 
@@ -31,7 +32,7 @@ This feature adds **zero new Firestore collections**. It reduces Firestore reads
 | Performance log write | Log file | WRITE | 1 | $0 |
 | **TOTAL** | | | **4-6 ops** | **~$0.00030-0.00048** |
 
-**Savings per cache hit: 1-4 Firestore reads saved**
+**Savings per cache hit: 1-4 source/retrieval Firestore reads saved.** Older cache rows without `sourceVersions` fall back to direct source-document freshness validation.
 
 ### 1.2 — Operations Per Query (Cache MISS)
 
@@ -72,16 +73,17 @@ Same as current pipeline — no additional cost. The entity search index read in
 
 ---
 
-## §3 — Collections Referenced (Read Only)
+## §3 — Collections Referenced
 
 | Collection | Read? | Write? | Purpose |
 | ---------- | ----- | ------ | ------- |
 | `canonica_entitySearchIndex` | ✅ | ❌ | Entity matching for cache key generation |
-| `canonica_canonicalAnswers` | ✅ (miss only) | ❌ | Answer retrieval on cache miss |
+| `canonica_cacheVersions` | ✅ | ✅ | Per-store KB/canonical source-version manifest for cache freshness |
+| `canonica_canonicalAnswers` | ✅ (miss or legacy cache fallback) | ✅ | Answer retrieval on cache miss; writes bump canonical manifest |
 | `canonica_releases` | ✅ | ❌ | Version lookup for cache key |
 | `aiSearchHistory` | ❌ | ✅ | Analytics write (unchanged from current) |
 
-**No new collections. No new indexes. No new Firestore rules changes.**
+**No new indexes. No Firestore rules change is required for the server-side search path.**
 
 ---
 
@@ -95,6 +97,8 @@ Same as current pipeline — no additional cost. The entity search index read in
 | `addAiSearchHistory()` | `src/database/aiSearchHistory/index.ts` | Write analytics | Existing |
 | `instantCacheLookup()` | `src/lib/canonica/instantCache.ts` | Redis read | **NEW** |
 | `instantCacheWrite()` | `src/lib/canonica/instantCache.ts` | Redis write | **NEW** |
+| `getCanonicaCacheVersionServer()` | `src/lib/canonica/cacheVersionServer.ts` | Read source-version manifest | **NEW** |
+| `bumpCanonicaCacheVersion*()` | `src/lib/canonica/cacheVersionClient.ts`, `src/lib/canonica/cacheVersionAdmin.ts`, `functions-canonica/src/canonica/cacheVersionManifest.ts` | Write source-version manifest | **NEW** |
 
 ---
 
@@ -110,13 +114,13 @@ Same as current pipeline — no additional cost. The entity search index read in
 
 **With instant cache:**
 - 400 misses × 3 reads = 1,200 Firestore reads/day (entity index shared)
-- 600 hits × 1 read = 600 Firestore reads/day (entity index only)
+- 600 hits × 2 reads = 1,200 Firestore reads/day (entity index + source-version manifest)
 - 1,000 × 1 write (aiSearchHistory) = 1,000 writes/day
-- Monthly: 54,000 reads + 30,000 writes
-- Cost: ~$0.02 reads + ~$0.05 writes = **~$0.07/month**
+- Monthly: 72,000 reads + 30,000 writes
+- Cost: ~$0.03 reads + ~$0.05 writes = **~$0.08/month**
 - Upstash: ~2,000 commands/day = **$0/month** (free tier)
 
-**Net savings: ~$0.01/month + ~50ms latency improvement per cached hit**
+**Net savings: small Firestore reduction + larger provider/retrieval avoidance + latency improvement per cached hit**
 
 ### Scenario: 100,000 queries/day, 70% cache hit rate
 
@@ -126,12 +130,12 @@ Same as current pipeline — no additional cost. The entity search index read in
 
 **With instant cache:**
 - 30,000 misses × 3 reads = 90,000 reads/day
-- 70,000 hits × 1 read = 70,000 reads/day
-- Monthly: 4.8M reads/month
-- Cost: ~$1.73/month reads
+- 70,000 hits × 2 reads = 140,000 reads/day
+- Monthly: 6.9M reads/month
+- Cost: ~$2.48/month reads
 - Upstash: ~200,000 commands/day = **~$1.20/month**
 
-**Net savings: ~$0.31/month + massive latency improvement**
+**Net impact:** Firestore reads still drop by ~2.1M/month. Upstash can outweigh raw Firestore read savings at high volume, so the business value is provider-call avoidance and latency, not pure Firestore-read arbitrage.
 
 ---
 
@@ -151,4 +155,4 @@ No new indexes required. Existing indexes for `canonica_entitySearchIndex` (tId 
 
 ## §8 — Firestore Rules
 
-No changes needed. The instant cache does not introduce new collections or change access patterns.
+Server-side search uses Firebase Admin for source-version validation. If direct client access to `canonica_cacheVersions` is needed later, add explicit read/write rules at that time instead of exposing the collection broadly.

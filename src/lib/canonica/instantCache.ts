@@ -16,7 +16,9 @@
 import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
 import { CanonicaCanonicalAnswer } from '@type/canonica';
+import { isCachedCanonicalAnswerFresh } from './cacheFreshness';
 import { CachedCanonicalAnswer, INSTANT_CACHE_DEFAULTS } from './instantCache.types';
+import type { CanonicaCacheSourceVersions } from './cacheVersionManifest';
 
 // Reuse existing Upstash connection pattern from rateLimit.ts
 const redis = FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE
@@ -53,7 +55,8 @@ export async function instantCacheLookup(
     topEntityId: string,
     answerVersion: number,
     planId?: string,
-    roleId?: string
+    roleId?: string,
+    currentSourceVersions?: CanonicaCacheSourceVersions,
 ): Promise<CachedCanonicalAnswer | null> {
     if (!redis || !FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE) return null;
 
@@ -68,7 +71,26 @@ export async function instantCacheLookup(
             ),
         ]);
 
-        return result || null;
+        if (!result) return null;
+
+        const isFresh = await isCachedCanonicalAnswerFresh({
+            canonicalAnswerId: result.canonicalAnswerId,
+            tId,
+            sId,
+            cachedAtMs: result.cachedAt,
+            answerVersion: result.answerVersion,
+            sourceVersions: result.sourceVersions,
+            currentSourceVersions,
+        });
+
+        if (!isFresh) {
+            redis.del(key).catch(() => {
+                // Best-effort cleanup only. Retrieval falls back to the live pipeline.
+            });
+            return null;
+        }
+
+        return result;
     } catch {
         // Graceful degradation — cache failure never blocks user
         return null;
@@ -86,7 +108,8 @@ export async function instantCacheWrite(
     answer: CanonicaCanonicalAnswer,
     matchedEntityIds: string[],
     planId?: string,
-    roleId?: string
+    roleId?: string,
+    sourceVersions?: CanonicaCacheSourceVersions,
 ): Promise<void> {
     if (!redis || !FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE) return;
 
@@ -107,6 +130,7 @@ export async function instantCacheWrite(
             cachedAt: Date.now(),
             answerVersion,
             topEntityId,
+            sourceVersions,
         };
 
         // Check payload size before writing

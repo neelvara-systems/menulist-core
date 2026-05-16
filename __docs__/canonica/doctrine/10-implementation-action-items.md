@@ -24,7 +24,7 @@
 15. Updated `functions/src/decisionBlocksScoring.ts` — removed Canonica nightly block
 16. `tsc --noEmit` — ZERO ERRORS
 17. Switched 3 helpCenter API routes to `canonicaFirestoreAdmin` (search-kb, search-kb-stream, article-embedding)
-18. Added `src/lib/canonica/documentComposer.ts` — Canonica DAL writes now force `pId = "CN"` and attach `sourceContext`, `traceId`, and `requestId`
+18. Added `src/lib/canonica/documentComposer.ts` — Canonica DAL writes now force `pId = "CN"` and attach `sourceContext`, `traceId`, and `requestId`; source product scope (`pId/tId/sId`) is accepted only when explicitly provided by session/CCT context
 19. Exported KB callables from `functions-canonica/src/index.ts`: `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn`
 20. Added Canonica Functions KB embedding helpers using Canonica Firebase Admin + Vertex AI
 21. Hardened Canonica auth sync so Firebase Auth lookup failures are not mistaken for missing users

@@ -19,6 +19,8 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { bumpCanonicaCacheVersionAdmin } from '@lib/canonica/cacheVersionAdmin';
+import { CANONICA_CACHE_SOURCES } from '@lib/canonica/cacheVersionManifest';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
@@ -163,6 +165,11 @@ Respond in this exact JSON format:
 
         // Save translation to article document
         const now = admin.firestore.Timestamp.now();
+        await bumpCanonicaCacheVersionAdmin(CANONICA_CACHE_SOURCES.KB, articleTenantId, articleStoreId, {
+            reason: 'article_translation_update',
+            sourceId: articleId,
+            sourceType: 'kb_article',
+        });
         await db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(articleId).update({
             [`translations.${targetLocale}`]: {
                 locale: targetLocale,

@@ -17,6 +17,7 @@ import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaEntityCandidate } from "@type/canonica";
 
 const COLLECTION = DB_COLLECTIONS.CANONICA_ENTITY_CANDIDATES;
+const PENDING_CANDIDATES_LIMIT = 200;
 
 const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(canonicaFirebaseClient, COLLECTION, docId);
@@ -56,7 +57,8 @@ export const getPendingCandidates = async (tId: number, sId: number) => {
                 where('tId', '==', tId),
                 where('sId', '==', sId),
                 where('status', '==', 'pending'),
-                orderBy('confidence', 'desc')
+                orderBy('confidence', 'desc'),
+                limit(PENDING_CANDIDATES_LIMIT)
             );
             const snapshot = await getDocs(q);
             const list: CanonicaEntityCandidate[] = [];

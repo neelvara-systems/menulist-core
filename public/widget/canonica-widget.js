@@ -260,7 +260,7 @@
     }
 
     function sendContextToIframe() {
-        if (productContext && iframe && iframe.contentWindow) {
+        if (iframe && iframe.contentWindow) {
             iframe.contentWindow.postMessage({ type: 'canonica-context-update', context: productContext }, widgetHost);
         }
     }
@@ -290,11 +290,10 @@
     window.CanonicaWidget = {
         setContext: function (ctx) {
             var sanitizedContext = sanitizeContextPayload(ctx);
-            if (!sanitizedContext) return;
             productContext = sanitizedContext;
             // Forward to iframe if already loaded
             sendContextToIframe();
-            requestPredictiveHelp(sanitizedContext);
+            if (sanitizedContext) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
         open: function () { openWidget(); },

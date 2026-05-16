@@ -15,7 +15,7 @@ import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { ChangelogPage } from '@type/changelog';
-import { KbCategoriesMap, KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -72,7 +72,7 @@ export default function SessionProvider({ children, session }: Props) {
         });
     }, [session?.user?.storeId, session?.user?.tenantId]);
 
-    const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp, kBCategories: KbCategoriesMap }>({ cachedOn: null, kBCategories: null })//this are knowledge base categories which used in changelog 
+    const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp, kBCategories: KnowledgeBaseCategoriesType }>({ cachedOn: null, kBCategories: null })//this are knowledge base categories which used in changelog
 
     const [cachedChangelog, setCachedChangelog] = useState<{ cachedOn: Timestamp, changelog: ChangelogPage }>({ cachedOn: null, changelog: null })
 

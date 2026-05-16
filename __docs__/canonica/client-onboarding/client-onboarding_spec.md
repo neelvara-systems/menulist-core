@@ -43,7 +43,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 | Tenant | `tenants` | Company profile, onboardingSource: CANONICA_ONBOARDING, productId: CN |
 | Store | `stores` | Product workspace, roles, API key auto-generated |
 | User update | `users` | Link tenantId + storeId to user |
-| Subscription | `subscriptions` | Beta: active immediately, 6-month window. Paid: Razorpay flow |
+| Subscription | `subscriptions` | Beta: active immediately, 6-month window. Paid: Razorpay subscription starts as pending and activates through the existing payment webhook/reconciliation flow |
 | API key | store.publicApi | `cn_*` key returned once; `apiKeyHash` + `keyPrefix` persisted for widget authentication |
 | Platform summary | `platformSummary` | Counts incremented atomically |
 
@@ -64,4 +64,5 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-16 | 1.1.0 | Paid plans wired to Razorpay subscription flow |
 | 2026-03-07 | 1.0.0 | Initial spec: beta plan, Google OAuth, self-service |

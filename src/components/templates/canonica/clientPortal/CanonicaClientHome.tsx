@@ -14,7 +14,7 @@ const supportActions = [
     {
         key: 'docs',
         title: 'Documentation',
-        description: 'Browse MenuList guides and answers.',
+        description: 'Browse help guides and answers.',
         icon: LuBookOpen,
         route: CANONICA_ROUTES.DOCS,
     },
@@ -42,7 +42,7 @@ export default function CanonicaClientHome() {
         <Flex vertical gap={20} style={{ width: '100%', maxWidth: 1180, margin: '0 auto' }}>
             <Flex vertical gap={4}>
                 <Title level={3} style={{ margin: 0 }}>Help Center</Title>
-                <Text type="secondary">MenuList support runs through Canonica.</Text>
+                <Text type="secondary">Client support runs through Canonica.</Text>
             </Flex>
 
             <Row gutter={[12, 12]}>

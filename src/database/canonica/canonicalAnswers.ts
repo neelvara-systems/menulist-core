@@ -18,6 +18,8 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, query, setDoc, where } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
+import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
 import { normalizeStepOrder, validateProcedure } from "@lib/canonica/procedureValidation";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaCanonicalAnswer } from "@type/canonica";
@@ -26,6 +28,48 @@ const COLLECTION = DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS;
 
 const getCollectionRef = () => collection(canonicaFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(canonicaFirebaseClient, COLLECTION, docId);
+
+const resolveAnswerScope = async (
+    data?: Partial<CanonicaCanonicalAnswer> | null,
+    answerId?: string,
+) => {
+    const dataTId = Number(data?.tId);
+    const dataSId = Number(data?.sId);
+    if (Number.isFinite(dataTId) && dataTId > 0 && Number.isFinite(dataSId) && dataSId > 0) {
+        return { tId: dataTId, sId: dataSId };
+    }
+
+    if (answerId) {
+        const docSnap = await getDoc(getDocRef(answerId));
+        if (docSnap.exists()) {
+            const existing = docSnap.data() as Partial<CanonicaCanonicalAnswer>;
+            const existingTId = Number(existing.tId);
+            const existingSId = Number(existing.sId);
+            if (Number.isFinite(existingTId) && existingTId > 0 && Number.isFinite(existingSId) && existingSId > 0) {
+                return { tId: existingTId, sId: existingSId };
+            }
+        }
+    }
+
+    return null;
+};
+
+const bumpCanonicalAnswerVersion = async (
+    data: Partial<CanonicaCanonicalAnswer> | null,
+    reason: string,
+    answerId?: string,
+) => {
+    const scope = await resolveAnswerScope(data, answerId);
+    if (!scope) {
+        throw new Error('Cannot update Canonica canonical cache version without tenant and store scope.');
+    }
+
+    await bumpCanonicaCacheVersion(CANONICA_CACHE_SOURCES.CANONICAL, scope.tId, scope.sId, {
+        reason,
+        sourceId: answerId,
+        sourceType: 'canonical_answer',
+    });
+};
 
 /**
  * Get all canonical answers for a tenant+store
@@ -135,6 +179,7 @@ export const addCanonicalAnswer = async (data: Omit<CanonicaCanonicalAnswer, 'id
                 }
             }
             const submitData = await canonicaRequestBodyComposer(data);
+            await bumpCanonicalAnswerVersion(submitData as Partial<CanonicaCanonicalAnswer>, 'canonical_answer_create');
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as CanonicaCanonicalAnswer;
         },
@@ -159,6 +204,11 @@ export const updateCanonicalAnswer = async (data: Partial<CanonicaCanonicalAnswe
                 }
             }
             const composedData = await canonicaRequestBodyComposer(data);
+            await bumpCanonicalAnswerVersion(
+                composedData as Partial<CanonicaCanonicalAnswer>,
+                'canonical_answer_update',
+                data.id,
+            );
             await setDoc(getDocRef(data.id), composedData, { merge: true });
             return composedData;
         },
@@ -177,6 +227,7 @@ export const updateAnswerGovernance = async (
     return await apiCallComposer(
         async () => {
             const composedData = await canonicaRequestBodyComposer({ governance });
+            await bumpCanonicalAnswerVersion(null, 'canonical_answer_governance_update', answerId);
             await setDoc(getDocRef(answerId), composedData, { merge: true });
             return composedData;
         },
@@ -195,6 +246,7 @@ export const updateAnswerSignalMetrics = async (
     return await apiCallComposer(
         async () => {
             const composedData = await canonicaRequestBodyComposer({ signalMetrics });
+            await bumpCanonicalAnswerVersion(null, 'canonical_answer_signal_update', answerId);
             await setDoc(getDocRef(answerId), composedData, { merge: true });
             return composedData;
         },

@@ -3,6 +3,8 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
+import { bumpCanonicaCacheVersionAdmin } from '@lib/canonica/cacheVersionAdmin';
+import { CANONICA_CACHE_SOURCES } from '@lib/canonica/cacheVersionManifest';
 import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { EMBED_MODEL, callGeminiEmbedding } from '@lib/vectorEmbeddings';
@@ -103,6 +105,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         });
 
+        await bumpCanonicaCacheVersionAdmin(CANONICA_CACHE_SOURCES.KB, articleTenantId, articleStoreId, {
+            reason: 'article_embedding_api_update',
+            sourceId: embeddingPayload.articleId,
+            sourceType: 'kb_article',
+        });
         await articleRef.update({ embedding: vector });
         recordAiOperationForSession(session, {
             action: AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING,

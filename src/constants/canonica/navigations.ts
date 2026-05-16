@@ -58,7 +58,7 @@ export interface CanonicaNavItem {
 }
 
 export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
-    // MenuList client support portal
+    // Client support portal
     { key: 'help', label: 'Help Center', route: CANONICA_ROUTES.HELP, icon: LuLayoutDashboard, group: 'client' },
     { key: 'docs', label: 'Documentation', route: CANONICA_ROUTES.DOCS, icon: LuBook, group: 'client' },
     { key: 'support', label: 'Support Tickets', route: CANONICA_ROUTES.SUPPORT, icon: LuTicket, group: 'client' },
@@ -81,7 +81,7 @@ export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
 
 // Group labels for sidebar section dividers
 export const CANONICA_NAV_GROUPS: Record<string, string> = {
-    client: 'MenuList Support',
+    client: 'Client Support',
     core: 'Operations',
     governance: 'Governance',
     management: 'Management',

@@ -21,6 +21,13 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timest
 
 const ANALYTICS_COLLECTION = 'chatAnalytics'; // New collection for aggregated stats
 const CHAT_SESSIONS_COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
+const TODAY_LIVE_STATS_LIMIT = 500;
+const MAX_ANALYTICS_RANGE_DAYS = 90;
+
+const normalizeAnalyticsDays = (days: number, fallback = 30) => {
+    if (!Number.isFinite(days)) return fallback;
+    return Math.min(Math.max(Math.floor(days), 1), MAX_ANALYTICS_RANGE_DAYS);
+};
 
 const getDocRef = async (docId: string) => {
     return doc(canonicaFirebaseClient, ANALYTICS_COLLECTION, docId);
@@ -82,7 +89,8 @@ export const getTodayLiveStats = async (session: any) => {
                 where('tId', '==', session.tId),
                 where('sId', '==', session.sId), // CRITICAL: Filter by storeId
                 where('createdOn', '>=', Timestamp.fromDate(todayStart)),
-                where('createdOn', '<=', Timestamp.fromDate(todayEnd))
+                where('createdOn', '<=', Timestamp.fromDate(todayEnd)),
+                limit(TODAY_LIVE_STATS_LIMIT)
             );
 
             const querySnapshot = await getDocs(q);
@@ -163,10 +171,11 @@ export const getTodayLiveStats = async (session: any) => {
 export const getChatStatisticsOptimized = async (session: any, days: number = 30) => {
     return await apiCallComposer(
         async () => {
+            const safeDays = normalizeAnalyticsDays(days, 30);
             const today = new Date().toISOString().split('T')[0];
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
+            startDate.setDate(startDate.getDate() - safeDays);
 
             // Query aggregated daily stats for THIS STORE (excluding today)
             const yesterday = new Date();
@@ -265,7 +274,7 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
                 regenerationRate
             };
         },
-        { session, days },
+        { session, days: normalizeAnalyticsDays(days, 30) },
         'getChatStatisticsOptimized'
     );
 };
@@ -279,7 +288,7 @@ export const getTopQuestionsOptimized = async (session: any, days: number = 30) 
         async () => {
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
+            startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
 
             const q = query(
                 await getCollectionRef(),
@@ -307,7 +316,7 @@ export const getTopQuestionsOptimized = async (session: any, days: number = 30) 
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 10);
         },
-        { session, days },
+        { session, days: normalizeAnalyticsDays(days, 30) },
         'getTopQuestionsOptimized'
     );
 };
@@ -321,7 +330,7 @@ export const getKnowledgeGapsOptimized = async (session: any, days: number = 30)
         async () => {
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
+            startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
 
             const q = query(
                 await getCollectionRef(),
@@ -361,7 +370,7 @@ export const getKnowledgeGapsOptimized = async (session: any, days: number = 30)
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 20);
         },
-        { session, days },
+        { session, days: normalizeAnalyticsDays(days, 30) },
         'getKnowledgeGapsOptimized'
     );
 };
@@ -376,7 +385,7 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
         async () => {
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
+            startDate.setDate(startDate.getDate() - normalizeAnalyticsDays(days, 30));
 
             const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
@@ -501,7 +510,7 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
                     .slice(0, 20),
             };
         },
-        { session, days },
+        { session, days: normalizeAnalyticsDays(days, 30) },
         'getChatDashboardAggregatesOptimized'
     );
 };
@@ -513,9 +522,10 @@ export const getChatDashboardAggregatesOptimized = async (session: any, days: nu
 export const getChatVolumeOverTimeOptimized = async (session: any, days: number = 7) => {
     return await apiCallComposer(
         async () => {
+            const safeDays = normalizeAnalyticsDays(days, 7);
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
+            startDate.setDate(startDate.getDate() - safeDays);
             startDate.setHours(0, 0, 0, 0);
 
             const q = query(
@@ -531,7 +541,7 @@ export const getChatVolumeOverTimeOptimized = async (session: any, days: number 
             const dailyCounts: Record<string, number> = {};
 
             // Initialize all days with 0
-            for (let i = 0; i < days; i++) {
+            for (let i = 0; i < safeDays; i++) {
                 const date = new Date(startDate);
                 date.setDate(date.getDate() + i);
                 const dateKey = date.toISOString().split('T')[0];
@@ -549,7 +559,7 @@ export const getChatVolumeOverTimeOptimized = async (session: any, days: number 
             // Convert to array
             return Object.entries(dailyCounts).map(([date, count]) => ({ date, count }));
         },
-        { session, days },
+        { session, days: normalizeAnalyticsDays(days, 7) },
         'getChatVolumeOverTimeOptimized'
     );
 };

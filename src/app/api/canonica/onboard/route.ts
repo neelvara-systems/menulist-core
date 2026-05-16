@@ -40,6 +40,7 @@ const OnboardRequestSchema = z.object({
     productName: z.string().trim().max(120).optional(),
     planId: z.string().trim().max(80).optional().default('canonica_beta'),
     interval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
+    currency: z.enum(['INR', 'USD']).optional().default('INR'),
 });
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -80,7 +81,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!validation.success) {
             return NextResponse.json({ error: 'Company name is required (min 2 chars).' }, { status: 400 });
         }
-        const { companyName, productName, planId, interval } = validation.data;
+        const { companyName, productName, planId, interval, currency } = validation.data;
 
         // 4. Resolve plan
         const plan = planId === 'canonica_beta'
@@ -121,11 +122,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return { tenantId: core.tenantId, storeId: core.storeId };
         });
 
-        // 6. Create Subscription (Beta: free, no Razorpay needed)
+        // 6. Create Subscription (Beta: free, no Razorpay needed; paid: Razorpay recurring)
         const isBeta = planId === 'canonica_beta';
-        const subscriptionId = isBeta
+        let subscriptionId = isBeta
             ? `canonica_beta_${result.tenantId}_${result.storeId}_${Date.now()}`
             : `canonica_${result.tenantId}_${result.storeId}_${Date.now()}`;
+        let razorpaySubscription: any = null;
 
         if (isBeta) {
             // Beta: Create free subscription directly (no Razorpay)
@@ -177,8 +179,88 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             };
 
             await createInitialSubscription(subscriptionId, subscriptionPayload);
+        } else {
+            const { getOrCreateRazorpayPlan } = await import('@lib/razorpay/plan-handler');
+            const { razorpayClient } = await import('@lib/razorpay/razorpay');
+            const price = currency === 'USD' ? plan.priceUSD.price : plan.priceINR.price;
+            const monthlyCredits = currency === 'USD' ? plan.priceUSD.monthlyCredits : plan.priceINR.monthlyCredits;
+            const razorpayPlanId = await getOrCreateRazorpayPlan({
+                price,
+                currency,
+                interval,
+                userType: 'B2B',
+                planId: plan.planId,
+            });
+            const totalCount = interval === 'MONTH' ? 36 : 3;
+
+            razorpaySubscription = await razorpayClient.subscriptions.create({
+                plan_id: razorpayPlanId,
+                total_count: totalCount,
+                quantity: 1,
+                notes: {
+                    productId: 'CN',
+                    tenantId: result.tenantId,
+                    storeId: result.storeId,
+                    userId,
+                    userType: 'B2B',
+                    planId: plan.planId,
+                    interval,
+                    currency,
+                    name: session.user.name,
+                    email: session.user.email,
+                    price,
+                    remainingCredits: 0,
+                    onboardingSource: 'CANONICA_ONBOARDING',
+                },
+            });
+            subscriptionId = razorpaySubscription.id;
+
+            const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
+                paymentProvider: 'razorpay',
+                providerSubscriptionId: razorpaySubscription.id,
+                providerPlanId: razorpayPlanId,
+                userId,
+                name: session.user.name || '',
+                email: session.user.email || '',
+                tenantId: result.tenantId,
+                storeId: result.storeId,
+                planType: interval,
+                userType: 'B2B',
+                currency,
+                amount: price,
+                status: 'pending',
+                lastWebhook: null,
+                planId: plan.planId,
+                planName: plan.name,
+                cycleStartDate: null as any,
+                subscriptionEndDate: null as any,
+                subscriptionStartDate: null as any,
+                pastDueSinceAt: null as any,
+                totalPaymentsNeededCount: razorpaySubscription.total_count,
+                totalPaymentsMadeCount: 0,
+                cycleEndDate: null as any,
+                renewsOn: null as any,
+                monthlyCreditsAllowance: monthlyCredits,
+                monthlyCredits,
+                topUpCredits: 0,
+                creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
+                shortUrl: razorpaySubscription.short_url || '',
+                paymentMethod: { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
+                statuses: [{
+                    status: 'pending',
+                    timestamp: admin.firestore.Timestamp.now() as any,
+                    amount: price,
+                    currency,
+                    remark: 'Canonica paid subscription initiated',
+                }],
+                billingHistory: [],
+                quantity: 1,
+                billingMode: 'auto' as any,
+                onboardingSource: 'CANONICA_ONBOARDING' as any,
+            };
+
+            await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
         }
-        // TODO: For paid plans, create Razorpay subscription (same pattern as MenuList)
 
         // 7. Generate API key for the widget
         const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
@@ -209,6 +291,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             storeId: result.storeId,
             subscriptionId,
             apiKey,
+            subscription: razorpaySubscription ? {
+                id: razorpaySubscription.id,
+                shortUrl: razorpaySubscription.short_url || null,
+                status: razorpaySubscription.status || 'created',
+            } : null,
             plan: {
                 id: plan.planId,
                 name: plan.name,

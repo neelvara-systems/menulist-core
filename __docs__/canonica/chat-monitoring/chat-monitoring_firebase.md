@@ -1,7 +1,7 @@
 # Chat Monitoring — Firebase Cost & Operations Tracking
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-16
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -53,7 +53,7 @@
 |------|:-----:|:------:|
 | Conversations list (page 1) | 21 | 0 |
 | Historical stats (~30 days) | ~30 | 0 |
-| Today's live stats | N (today only, ~5-20) | 0 |
+| Today's live stats | up to 500 today sessions | 0 |
 | Top questions (30 days) | ~30 | 0 |
 | Knowledge gaps (30 days) | ~30 | 0 |
 | Volume chart (7 days) | ~7 | 0 |
@@ -94,6 +94,8 @@
 |------|:-----:|:------:|:------:|
 | Call `triggerSchedulerManually()` Cloud Function | varies | varies | 1+ |
 | **Total** | **varies** | **varies** | **1+ Gemini** |
+
+Optimized analytics DAL callers clamp date windows to 1-90 days even if a UI or API caller sends a larger value.
 
 ### 2.8 Nightly Aggregation (Cloud Function)
 
@@ -165,6 +167,7 @@
 |----------|---------|
 | **Aggregated analytics** | 99.95% fewer reads than raw session scanning |
 | **Hybrid dashboard** | Today's live + historical aggregates |
+| **ROI aggregate path** | ROI metrics use daily aggregates instead of raw session scan |
 | **Paginated conversations** | 21 reads per page vs entire collection |
 | **Client-side filters** | No extra Firestore queries for quality/status/priority/tags |
 | **SWR caching** | Prevents redundant fetches on re-renders |

@@ -346,7 +346,7 @@ All flags are in `src/config/features.ts`. All default to `false`.
 | `ENABLE_CANONICA_CANONICAL_ANSWERS` | Canonical-first retrieval in search-kb                           | Yes, but needs ontology data to be useful    |
 | `ENABLE_CANONICA_DRIFT_DETECTION`   | 4-class drift evaluation (nightly + on release)                  | Yes, but needs canonical answers to evaluate |
 | `ENABLE_CANONICA_SIGNAL_MUTATION`   | Signal emitters + nightly clustering + mutation proposals        | Yes — signals accumulate safely              |
-| `ENABLE_CANONICA_PUBLIC_API`        | Future: External API for Canonica data                           | Not yet — Pillar 5 is not fully implemented  |
+| `ENABLE_CANONICA_PUBLIC_API`        | External Canonica API for answers, entity registry, and signal ingestion | Yes after Pillars 1-4 are live and API keys are issued |
 
 **Recommended activation order:**
 

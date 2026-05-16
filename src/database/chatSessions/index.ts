@@ -10,6 +10,7 @@ import { UserUploadedFileType } from '@type/common';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, startAfter, Timestamp, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
+const USER_CHAT_SESSION_LIMIT = 50;
 
 const getDocRef = async (docId: string) => {
     return doc(canonicaFirebaseClient, `${COLLECTION}`, docId);
@@ -155,11 +156,14 @@ export const deleteChatSession = async (sessionId: string) => {
 export const getUserChatSessions = async (session: any) => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
+            if (!session?.tId || !session?.sId || !session?.uId) return [];
             const q = query(
                 await getCollectionRef(),
                 where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
                 where('uId', '==', session.uId),
-                orderBy('modifiedOn', 'desc')
+                orderBy('modifiedOn', 'desc'),
+                limit(USER_CHAT_SESSION_LIMIT)
             );
             const querySnapshot = await getDocs(q);
             const list: ChatSession[] = [];

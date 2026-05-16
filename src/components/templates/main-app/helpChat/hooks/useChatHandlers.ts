@@ -22,6 +22,7 @@ interface UseChatHandlersProps {
     setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
     dispatchChatState: React.Dispatch<any>;
     loggedInSession: any;
+    productContext?: Record<string, any> | null;
     queryHistory: string[];
     setQueryHistory: React.Dispatch<React.SetStateAction<string[]>>;
     setMessageFeedback: React.Dispatch<React.SetStateAction<Record<string, 'up' | 'down' | null>>>;
@@ -40,6 +41,7 @@ export function useChatHandlers({
     setSearchQuery,
     dispatchChatState,
     loggedInSession,
+    productContext,
     queryHistory,
     setQueryHistory,
     setMessageFeedback,
@@ -104,6 +106,7 @@ export function useChatHandlers({
             mode: searchMode,
             conversationHistory,
             image,
+            productContext,
             sessionFailureCount: sessionFailureCountRef.current,
         });
 

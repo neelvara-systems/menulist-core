@@ -2,8 +2,9 @@ import { Timestamp } from "firebase-admin/firestore";
 import { getFunctions } from "firebase-admin/functions";
 import * as functions from 'firebase-functions';
 import { HttpsError } from "firebase-functions/v2/https";
+import { CANONICA_CACHE_SOURCES, getCanonicaCacheVersionBumpData, getCanonicaCacheVersionDocId } from "../canonica/cacheVersionManifest";
 import { firestoreAdmin } from "../firebaseAdmin";
-import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseCategoriesType } from "../types";
+import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, CANONICA_CACHE_VERSIONS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseCategoriesType } from "../types";
 
 const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     const tenantId = Number(tId);
@@ -97,6 +98,17 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                 logger.warn(`[publishApprovedJobLogic] Publish aborted. Job status is '${job.status}'.`);
                 return;
             }
+
+            const tenantId = Number(job.tId);
+            const storeId = Number(job.sId);
+            const cacheVersionRef = firestoreAdmin
+                .collection(CANONICA_CACHE_VERSIONS_COLLECTION)
+                .doc(getCanonicaCacheVersionDocId(CANONICA_CACHE_SOURCES.KB, tenantId, storeId));
+            transaction.set(cacheVersionRef, getCanonicaCacheVersionBumpData(CANONICA_CACHE_SOURCES.KB, tenantId, storeId, {
+                reason: "publish_approved_job",
+                sourceId: jobId,
+                sourceType: "kb_generation_job",
+            }), { merge: true });
 
             const categoriesDocId = getKnowledgeBaseCategoriesDocId(job.tId, job.sId);
             const categoriesDocRef = firestoreAdmin.collection(KB_CATEGORIES_COLLECTION).doc(categoriesDocId);

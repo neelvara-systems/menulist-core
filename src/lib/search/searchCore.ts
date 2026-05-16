@@ -27,6 +27,9 @@ import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonica
 import { normalizeQuery } from '@lib/string';
 import { EMBEDDING_CACHE_VERSION, callGeminiChat, callGeminiEmbedding, generateSearchQueryFromImage } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
+import { getCanonicaTimestampMillis, isCachedSearchResultFresh } from '@lib/canonica/cacheFreshness';
+import { CANONICA_CACHE_SOURCES, CanonicaCacheSourceVersions } from '@lib/canonica/cacheVersionManifest';
+import { getCanonicaCacheVersionServer } from '@lib/canonica/cacheVersionServer';
 import { hashString } from '@util/hash';
 import { writeLogEntry } from 'logs/utils';
 
@@ -52,19 +55,20 @@ const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
 type KnowledgeBaseCacheState = {
     version: string;
     hasPublishedArticles: boolean;
-};
-
-const getTimestampMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (value instanceof Date) return value.getTime();
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : 0;
+    sourceVersion?: number;
 };
 
 const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<KnowledgeBaseCacheState> => {
     try {
+        const manifestVersion = await getCanonicaCacheVersionServer(CANONICA_CACHE_SOURCES.KB, tId, sId);
+        if (manifestVersion) {
+            return {
+                version: `${SEARCH_CACHE_VERSION}:kbv${manifestVersion}`,
+                hasPublishedArticles: true,
+                sourceVersion: manifestVersion,
+            };
+        }
+
         const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES)
             .where('status', '==', 'published')
             .where('tId', '==', tId)
@@ -77,12 +81,42 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
             return { version: `${SEARCH_CACHE_VERSION}:empty`, hasPublishedArticles: false };
         }
 
-        const latestModified = getTimestampMillis(snapshot.docs[0].data()?.modifiedOn);
-        return { version: `${SEARCH_CACHE_VERSION}:${latestModified || 'unknown'}`, hasPublishedArticles: true };
+        const latestModified = getCanonicaTimestampMillis(snapshot.docs[0].data()?.modifiedOn);
+        return {
+            version: `${SEARCH_CACHE_VERSION}:${latestModified || 'unknown'}`,
+            hasPublishedArticles: true,
+            sourceVersion: latestModified || undefined,
+        };
     } catch {
         // Cache invalidation should improve correctness, not block retrieval if the index is unavailable.
         return { version: SEARCH_CACHE_VERSION, hasPublishedArticles: true };
     }
+};
+
+const getCanonicaEntitySearchIndexServer = async (tId: number, sId: number): Promise<any[]> => {
+    const snapshot = await firestoreAdmin
+        .collection(DB_COLLECTIONS.CANONICA_ENTITY_SEARCH_INDEX)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .limit(500)
+        .get();
+
+    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+};
+
+const getCanonicaLatestReleaseServer = async (tId: number, sId: number): Promise<any | null> => {
+    const snapshot = await firestoreAdmin
+        .collection(DB_COLLECTIONS.CANONICA_RELEASES)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('status', '==', 'active')
+        .orderBy('versionNormalized', 'desc')
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { ...doc.data(), id: doc.id };
 };
 
 const isKnowledgeBaseRefusal = (answer: string): boolean => {
@@ -272,16 +306,16 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     // ===== STAGE 2.5: INSTANT CACHE (Upstash Redis) =====
     // Only for canonical answers — deterministic, versioned, perfect cache objects.
     // Feature-flagged: ENABLE_CANONICA_INSTANT_CACHE
-    let instantCacheSearchIndex: any[] | null = null; // Shared with Stage 4 to avoid re-reading
+    let instantCacheSearchIndex: any[] | undefined;
+    let instantCacheLatestRelease: any | null | undefined;
     if (FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE && FEATURE_FLAGS.ENABLE_CANONICA_CANONICAL_ANSWERS) {
         try {
             const { instantCacheLookup } = await import('@lib/canonica/instantCache');
-            const { getEntitySearchIndex } = await import('@database/canonica/entities');
             const { canonicaTokenize } = await import('@lib/canonica/tokenizer');
 
-            const searchIndex = await getEntitySearchIndex(tId, sId);
+            const searchIndex = await getCanonicaEntitySearchIndexServer(tId, sId);
+            instantCacheSearchIndex = searchIndex;
             if (searchIndex && searchIndex.length > 0) {
-                instantCacheSearchIndex = searchIndex; // Save for Stage 4 reuse
                 const queryTokens = canonicaTokenize(searchQuery);
 
                 // Quick entity match (same logic as canonicalRetrieval Layer 1)
@@ -305,8 +339,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 }
 
                 if (topEntityId && topScore >= 2.0) {
-                    const { getLatestRelease } = await import('@database/canonica/releases');
-                    const release = await getLatestRelease(tId, sId);
+                    const release = await getCanonicaLatestReleaseServer(tId, sId);
+                    instantCacheLatestRelease = release;
                     const version = release?.versionNormalized || 0;
 
                     const effectivePlan = productContext?.plan;
@@ -338,6 +372,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             canonicalAnswerId: cached.canonicalAnswerId,
                             matchedEntityIds: cached.matchedEntityIds,
                             confidence: cached.confidence,
+                            sourceVersions: cached.sourceVersions,
                         });
 
                         await writeLogEntry({
@@ -405,6 +440,30 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     perfMetrics.cacheLookup = Date.now() - cacheStart;
 
     if (cachedResult) {
+        const currentSourceVersions: CanonicaCacheSourceVersions = {};
+        if (kbCacheState.sourceVersion) {
+            currentSourceVersions[CANONICA_CACHE_SOURCES.KB] = kbCacheState.sourceVersion;
+        }
+        const cacheFresh = await isCachedSearchResultFresh(cachedResult, tId, sId, currentSourceVersions);
+        if (!cacheFresh) {
+            await writeLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'CACHE_STALE_BYPASS',
+                data: {
+                    query: searchQuery,
+                    cacheLookupMs: perfMetrics.cacheLookup,
+                    mountContext,
+                    canonical: !!cachedResult.canonical,
+                    canonicalAnswerId: cachedResult.canonicalAnswerId || null,
+                    referenceCount: Array.isArray(cachedResult.references) ? cachedResult.references.length : 0,
+                }
+            });
+            cachedResult = null;
+        }
+    }
+
+    if (cachedResult) {
         perfMetrics.total = Date.now() - perfStart;
 
         await writeLogEntry({
@@ -446,11 +505,21 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         tId,
         sId,
         context: validatedContext,
+        preloadedSearchIndex: instantCacheSearchIndex,
+        preloadedLatestRelease: instantCacheLatestRelease,
     });
     perfMetrics.canonicalRetrieval = Date.now() - canonicalStart;
 
     if (canonicalResult.found && canonicalResult.canonical && canonicalResult.answer) {
         const answer = canonicalResult.answer;
+        const canonicalCacheVersion = await getCanonicaCacheVersionServer(
+            CANONICA_CACHE_SOURCES.CANONICAL,
+            tId,
+            sId,
+        ).catch(() => undefined);
+        const canonicalSourceVersions = canonicalCacheVersion
+            ? { [CANONICA_CACHE_SOURCES.CANONICAL]: canonicalCacheVersion }
+            : undefined;
 
         // Save to search history for analytics
         const savedHistory = await addAiSearchHistoryServer({
@@ -465,6 +534,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             canonicalAnswerId: answer.id,
             matchedEntityIds: canonicalResult.matchedEntityIds,
             confidence: canonicalResult.confidence,
+            sourceVersions: canonicalSourceVersions,
         });
 
         perfMetrics.total = Date.now() - perfStart;
@@ -532,7 +602,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     answer,
                     canonicalResult.matchedEntityIds,
                     productContext?.plan,
-                    productContext?.userRole
+                    productContext?.userRole,
+                    canonicalSourceVersions,
                 );
             } catch {
                 // Silent failure — cache write is best-effort
@@ -813,6 +884,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             imageUrl: imageUrl || undefined,
             craftedAnswer,
             references: resolvedReferences,
+            sourceVersions: kbCacheState.sourceVersion
+                ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
+                : undefined,
         });
 
         perfMetrics.total = Date.now() - perfStart;

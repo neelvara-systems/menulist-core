@@ -1,7 +1,7 @@
 # Feedback System — Firebase Cost & Operations Tracking
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-16
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -49,8 +49,8 @@
 | Step | Reads | Writes |
 |------|:-----:|:------:|
 | `addFeedback(data)` | 0 | 1 |
-| `getLatestFeedbackForUser()` (post-submit) | 1 | 0 |
-| **Total** | **1** | **1** |
+| Use returned `addFeedback()` payload for UI | 0 | 0 |
+| **Total** | **0** | **1** |
 
 ### 2.2 Get Latest Feedback (On Page Load)
 
@@ -90,18 +90,18 @@
 
 | Operation | Reads/mo | Writes/mo |
 |-----------|:--------:|:---------:|
-| Owner feedback submit | 5 | 5 |
+| Owner feedback submit | 0 | 5 |
 | Latest feedback load | 100 | 0 |
 | Article likes/dislikes | 30 | 30 |
 | Changelog likes/dislikes | 30 | 30 |
 | Content comments | 10 | 10 |
-| **Total** | **175** | **75** |
+| **Total** | **170** | **75** |
 
 ### Monthly Cost
 
 | Resource | Usage | Cost |
 |----------|-------|------|
-| Firestore reads | ~175 | $0.00006 |
+| Firestore reads | ~170 | $0.00006 |
 | Firestore writes | ~75 | $0.00008 |
 | **Total** | | **~$0.0001/month** |
 

@@ -10,7 +10,7 @@ export default function CanonicaSupportPage() {
         <Flex vertical gap={16} style={{ width: '100%', maxWidth: 1180, margin: '0 auto' }}>
             <Flex vertical gap={4}>
                 <Title level={3} style={{ margin: 0 }}>Support Tickets</Title>
-                <Text type="secondary">Create or track MenuList support requests.</Text>
+                <Text type="secondary">Create or track support requests.</Text>
             </Flex>
             <TicketView />
         </Flex>

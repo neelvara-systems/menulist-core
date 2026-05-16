@@ -18,9 +18,10 @@ const { Text } = Typography;
 interface HelpChatProps {
     open: boolean;
     onClose: () => void;
+    productContext?: Record<string, any> | null;
 }
 
-function HelpChat({ open, onClose }: HelpChatProps) {
+function HelpChat({ open, onClose, productContext }: HelpChatProps) {
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md === false || (typeof window !== 'undefined' && window.innerWidth < 768);
@@ -66,6 +67,7 @@ function HelpChat({ open, onClose }: HelpChatProps) {
         setSearchQuery,
         dispatchChatState,
         loggedInSession,
+        productContext,
         queryHistory,
         setQueryHistory,
         setMessageFeedback,

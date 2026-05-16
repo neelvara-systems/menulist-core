@@ -1,38 +1,33 @@
 'use client'
 import CategoryIcon from '@atoms/CategoryIcon';
-import { getCategories } from '@database/knowledgeBase/categories';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { KbCategoriesMap, KnowledgeBaseCategory } from '@type/knowledgeBase';
+import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
+import { KnowledgeBaseCategory } from '@type/knowledgeBase';
 import { Button, Card, Col, Empty, Flex, Row, Typography, message } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { LuArrowRight } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
 function BrowseCategories() {
     const t = useTranslations('HelpCenter');
-    const { cachedKBCategories, setCachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { categoriesMap, getCategoriesCached } = useKBCategoriesCache();
 
     useEffect(() => {
         const fetchKbData = async () => {
             try {
-                if (!cachedKBCategories?.kBCategories) {
-                    const res: KbCategoriesMap = await getCategories();
-                    setCachedKBCategories({ cachedOn: Timestamp.now(), kBCategories: res });
-                }
+                await getCategoriesCached();
             } catch (error) {
                 message.error(t('failedToLoadCategories'));
             }
         };
 
         fetchKbData();
-    }, [cachedKBCategories, setCachedKBCategories]);
+    }, [getCategoriesCached, t]);
 
     const categories = useMemo<KnowledgeBaseCategory[]>(
-        () => Object.values(cachedKBCategories?.kBCategories?.categories || {}) as KnowledgeBaseCategory[],
-        [cachedKBCategories?.kBCategories?.categories]
+        () => Object.values(categoriesMap) as KnowledgeBaseCategory[],
+        [categoriesMap]
     );
 
     return (

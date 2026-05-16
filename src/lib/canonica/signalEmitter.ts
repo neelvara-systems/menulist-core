@@ -16,6 +16,8 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { CanonicaSignalType } from '@type/canonica';
 import { TicketMessage } from '@type/supportTicket';
 import { Timestamp } from 'firebase/firestore';
@@ -32,6 +34,52 @@ interface EmitSignalParams {
 // Key format: "{type}_{sessionId}_{messageId}" or "{type}_{ticketId}"
 // Cleared on page reload (in-memory only — no persistence needed).
 const emittedSignals = new Set<string>();
+
+const createTraceId = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return `cn_${crypto.randomUUID()}`;
+    }
+    return `cn_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const sanitizeForFirestore = (value: any): any => {
+    if (value === undefined) return null;
+    if (value === null) return null;
+    if (value instanceof Date) return value;
+    if (Array.isArray(value)) return value.map(sanitizeForFirestore);
+    if (typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForFirestore(nestedValue)])
+        );
+    }
+    return value;
+};
+
+const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; sId: number }) => {
+    const { canonicaFirestoreAdmin } = await import('@lib/firebase/canonicaFirebaseAdmin');
+    if (!canonicaFirestoreAdmin || typeof canonicaFirestoreAdmin.collection !== 'function') {
+        throw new Error('Canonica Firestore Admin is not configured');
+    }
+
+    const now = new Date();
+    const traceId = createTraceId();
+    await canonicaFirestoreAdmin.collection(DB_COLLECTIONS.CANONICA_SIGNAL_EVENTS).add(sanitizeForFirestore({
+        pId: PRODUCT_IDS.CANONICA,
+        tId: params.tId,
+        sId: params.sId,
+        entityId: params.entityId || 'unresolved',
+        type: params.type,
+        timestamp: now,
+        metadata: params.metadata || {},
+        createdOn: now,
+        modifiedOn: now,
+        createdBy: params.metadata?.source || 'system:canonica_signal',
+        modifiedBy: params.metadata?.source || 'system:canonica_signal',
+        uId: params.metadata?.userId || 'system',
+        traceId,
+        requestId: traceId,
+    }));
+};
 
 function getDeduplicationKey(params: EmitSignalParams): string | null {
     const meta = params.metadata;
@@ -128,6 +176,13 @@ export const emitSuggestionSignal = async (params: {
 export const emitCanonicaSignal = async (params: EmitSignalParams): Promise<void> => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) return;
 
+    const tId = Number(params.tId);
+    const sId = Number(params.sId);
+    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+        console.warn('[Canonica Signal] Skipped signal with invalid tenant context:', params.type);
+        return;
+    }
+
     // Deduplication check
     const dedupKey = getDeduplicationKey(params);
     if (dedupKey) {
@@ -138,11 +193,16 @@ export const emitCanonicaSignal = async (params: EmitSignalParams): Promise<void
     }
 
     try {
+        if (typeof window === 'undefined') {
+            await emitServerSignalEvent({ ...params, tId, sId });
+            return;
+        }
+
         const { addSignalEvent } = await import('@database/canonica/signalEvents');
 
         await addSignalEvent({
-            tId: params.tId || 0,
-            sId: params.sId || 0,
+            tId,
+            sId,
             entityId: params.entityId || 'unresolved',
             type: params.type,
             timestamp: Timestamp.now(),

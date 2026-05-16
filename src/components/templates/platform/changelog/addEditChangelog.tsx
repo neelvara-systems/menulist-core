@@ -39,7 +39,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
         const lookup = new Map<string, { categoryId: string, sectionId?: string, articleId?: string }>();
         if (!cachedKBCategories?.kBCategories) return lookup;
 
-        for (const cat of Object.values(cachedKBCategories.kBCategories) as any[]) {
+        for (const cat of Object.values(cachedKBCategories.kBCategories.categories || {}) as any[]) {
             lookup.set(`cat-${cat.id}`, { categoryId: cat.id });
             for (const sec of cat.sections || []) {
                 lookup.set(`sec-${sec.id}`, { categoryId: cat.id, sectionId: sec.id });

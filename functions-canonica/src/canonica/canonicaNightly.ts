@@ -33,6 +33,7 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import { cleanupExpiredIntegrationData } from '../integrations/deliveryLogger';
 import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/eventBus';
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
+import { bumpCanonicaCacheVersion, CANONICA_CACHE_SOURCES } from './cacheVersionManifest';
 import { generateDraftsForNewProposals } from './draftGenerator';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
@@ -303,6 +304,11 @@ async function runDriftDetection(tId: number, sId: number): Promise<DriftResult>
             (newDriftFlag && answer.governance?.driftReason !== newDriftReason);
 
         if (changed) {
+            await bumpCanonicaCacheVersion(db, CANONICA_CACHE_SOURCES.CANONICAL, tId, sId, {
+                reason: newDriftFlag ? 'drift_detected' : 'drift_cleared',
+                sourceId: answer.id,
+                sourceType: 'canonical_answer',
+            });
             await db.collection(DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS).doc(answer.id).update({
                 'governance.driftFlag': newDriftFlag,
                 'governance.driftReason': newDriftFlag ? newDriftReason : null,

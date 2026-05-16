@@ -16,10 +16,11 @@ interface SearchKnowledgeBaseParams {
     mode: ChatMode;
     conversationHistory?: ChatMessage[];
     image?: UserUploadedFileType;
+    productContext?: Record<string, any> | null;
     sessionFailureCount?: number;
 }
 
-export async function searchKnowledgeBase({ query, mode, conversationHistory, image, sessionFailureCount }: SearchKnowledgeBaseParams): Promise<SearchAPIResponseType> {
+export async function searchKnowledgeBase({ query, mode, conversationHistory, image, productContext, sessionFailureCount }: SearchKnowledgeBaseParams): Promise<SearchAPIResponseType> {
     // ✅ Strip unnecessary fields from conversation history before sending to AI
     // Only send essential data: role, content/craftedAnswer, and image
     // This reduces payload size, protects privacy, and saves tokens
@@ -40,6 +41,7 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
             query,
             mode,
             context: cleanContext, // Send cleaned conversation history
+            productContext: productContext || undefined,
             imageUrl: image?.url, // Send uploaded image URL to backend
             sessionFailureCount, // AI Failure Escalation (Item #8) — S3 trigger
         })

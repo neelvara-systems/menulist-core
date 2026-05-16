@@ -4,6 +4,18 @@ import { ChangelogPage } from '@type/changelog';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useContext } from 'react';
 
+let changelogFetchInFlight: Promise<ChangelogPage | null> | null = null;
+
+const fetchLatestChangelogPageOnce = () => {
+    if (!changelogFetchInFlight) {
+        changelogFetchInFlight = fetchLatestChangelogPage().finally(() => {
+            changelogFetchInFlight = null;
+        });
+    }
+
+    return changelogFetchInFlight;
+};
+
 /**
  * Changelog caching hook
  * Uses session-level cache from PlatformGlobalDataContext
@@ -126,7 +138,7 @@ export const useChangelogCache = () => {
         options?.onCacheMiss?.();
 
         try {
-            const changelog = await fetchLatestChangelogPage();
+            const changelog = await fetchLatestChangelogPageOnce();
             
             if (changelog) {
                 setCachedChangelog({

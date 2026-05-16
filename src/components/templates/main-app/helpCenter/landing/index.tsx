@@ -1,4 +1,5 @@
 /* eslint-disable react/jsx-no-undef */
+import { FEATURE_FLAGS } from '@config/features';
 import CanonicaCoverageKPI from '@template/canonica/CanonicaCoverageKPI';
 import EntityCandidateReview from '@template/canonica/EntityCandidateReview';
 import MutationProposalReview from '@template/canonica/MutationProposalReview';
@@ -30,8 +31,8 @@ function LandingPage() {
             <div style={{ marginTop: 32 }}>
                 <BrowseCategories />
             </div>
-            <MutationProposalReview />
-            <EntityCandidateReview />
+            {FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION && <MutationProposalReview />}
+            {FEATURE_FLAGS.ENABLE_CANONICA_ONTOLOGY && <EntityCandidateReview />}
 
             <LandingFooter />
         </div>

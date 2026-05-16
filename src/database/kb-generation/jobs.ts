@@ -2,6 +2,8 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, setDoc, where } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
+import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { triggerStartGeneration } from "@lib/firebase/functions";
 import { INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
@@ -97,6 +99,11 @@ export const deleteIngestionJob = async (jobId: string) => {
             }
 
             const jobData = jobDoc.data() as IngestionJob;
+            await bumpCanonicaCacheVersion(CANONICA_CACHE_SOURCES.KB, Number(jobData.tId), Number(jobData.sId), {
+                reason: 'ingestion_job_delete',
+                sourceId: jobId,
+                sourceType: 'kb_generation_job',
+            });
 
             await runTransaction(db, async (transaction) => {
                 // 1. Delete associated categories from the master document

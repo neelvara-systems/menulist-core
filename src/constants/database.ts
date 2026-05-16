@@ -148,6 +148,7 @@ export const DB_COLLECTIONS = {
     CANONICA_ENTITY_CANDIDATES: "canonica_entityCandidates",     // Staging for AI-extracted entity candidates (pre-approval)
     CANONICA_FRICTION_DAILY_STATS: "canonica_frictionDailyStats", // Daily per-entity friction metrics (Expansion Item #5)
     CANONICA_SCHEDULER_RUN_LOGS: "canonica_schedulerRunLogs",    // Canonica nightly scheduler run logs (separate Firebase project)
+    CANONICA_CACHE_VERSIONS: "canonica_cacheVersions",           // Tiny per-store source-version manifests for cache freshness
 
     // External Workflow Integrations (Expansion Item #7)
     // Append-only event log + delivery attempt logs

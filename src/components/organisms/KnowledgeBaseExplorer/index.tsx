@@ -1,12 +1,10 @@
 'use client';
-import { getCategories } from '@database/knowledgeBase/categories';
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from '@type/knowledgeBase';
 import { Breadcrumb, Empty, Flex, Grid, message, Typography } from 'antd';
-import { Timestamp } from 'firebase/firestore';
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Articles from './Articles';
 import Categories from './Categories';
 import HelpSidebar from './HelpSidebar';
@@ -24,7 +22,7 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
     const [selectedCategory, setSelectedCategory] = useState<KnowledgeBaseCategory | null>(null);
     const [selectedKnowledgeBaseSection, setSelectedKnowledgeBaseSection] = useState<KnowledgeBaseSection | null>(null);
     const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticleMeta | null>(null);
-    const { cachedKBCategories, setCachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { getCategoriesCached, setCategoriesCache } = useKBCategoriesCache();
 
     const isModalView = from == "modal";
 
@@ -53,10 +51,9 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
         const fetchCategories = async () => {
             dispatch(startLoader('Fetching knowledge base categories'));
             try {
-                const categoriesResult = cachedKBCategories?.kBCategories || await getCategories();
+                const categoriesResult = await getCategoriesCached();
                 if (categoriesResult) {
                     setCategoriesData(categoriesResult);
-                    setCachedKBCategories({ cachedOn: Timestamp.now(), kBCategories: categoriesResult });
                 }
             } catch (error) {
                 message.error('Failed to fetch knowledge base categories.');
@@ -66,10 +63,11 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
         };
         if (Boolean(initialCategoryData)) {
             setCategoriesData(initialCategoryData);
+            setCategoriesCache(initialCategoryData);
         } else {
             fetchCategories();
         }
-    }, [dispatch]);
+    }, [dispatch, getCategoriesCached, initialCategoryData, setCategoriesCache]);
 
     useEffect(() => {
         // Use articles already embedded in category/section structure

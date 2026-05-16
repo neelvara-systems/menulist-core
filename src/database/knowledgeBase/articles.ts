@@ -2,11 +2,15 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from "@lib/auth/getActiveSession";
+import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
+import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
 import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
+const KB_ARTICLE_LIST_LIMIT = 500;
 
 const getCollectionRef = async () => {
     return collection(canonicaFirebaseClient, `${COLLECTION}`)
@@ -16,6 +20,40 @@ const getDocRef = async (docId: string) => {
     return doc(canonicaFirebaseClient, `${COLLECTION}`, docId)
 }
 
+const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | null) => {
+    const dataTId = Number(data?.tId);
+    const dataSId = Number(data?.sId);
+    if (Number.isFinite(dataTId) && dataTId > 0 && Number.isFinite(dataSId) && dataSId > 0) {
+        return { tId: dataTId, sId: dataSId };
+    }
+
+    const session = await getActiveSession().catch(() => null);
+    const sessionTId = Number(session?.tId);
+    const sessionSId = Number(session?.sId);
+    if (Number.isFinite(sessionTId) && sessionTId > 0 && Number.isFinite(sessionSId) && sessionSId > 0) {
+        return { tId: sessionTId, sId: sessionSId };
+    }
+
+    return null;
+};
+
+const bumpKnowledgeBaseVersion = async (
+    data: Partial<KnowledgeBaseArticleType> | null,
+    reason: string,
+    sourceId?: string,
+) => {
+    const scope = await resolveArticleScope(data);
+    if (!scope) {
+        throw new Error('Cannot update Canonica KB cache version without tenant and store scope.');
+    }
+
+    await bumpCanonicaCacheVersion(CANONICA_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+        reason,
+        sourceId,
+        sourceType: 'kb_article',
+    });
+};
+
 /**
  * @deprecated Use getArticlesByCategoryId() or getArticlesBySectionId() instead.
  * This fetches ALL articles globally with no tenant filter — risky at scale.
@@ -24,7 +62,7 @@ const getDocRef = async (docId: string) => {
 export const getArticles = async () => {
     return await apiCallComposer(
         async () => {
-            const q = query(await getCollectionRef(), limit(500));
+            const q = query(await getCollectionRef(), limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list = [];
             querySnapshot.forEach((doc) => {
@@ -40,6 +78,7 @@ export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => 
     return await apiCallComposer(
         async () => {
             const submitData = await canonicaRequestBodyComposer(data);
+            await bumpKnowledgeBaseVersion(submitData as Partial<KnowledgeBaseArticleType>, 'article_create');
             const docRef = await addDoc(await getCollectionRef(), submitData);
             const savedArticle = { ...submitData, id: docRef.id };
 
@@ -57,6 +96,7 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
     return await apiCallComposer(
         async () => {
             const composedData = await canonicaRequestBodyComposer(data);
+            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_update', data.id);
             await setDoc(await getDocRef(data.id), composedData, { merge: true });
 
             // E4: Fire-and-forget entity extraction when article content changes
@@ -80,6 +120,9 @@ export const deleteArticle = async (id: string) => {
     return await apiCallComposer(
         async () => {
             const docRef = await getDocRef(id);
+            const docSnap = await getDoc(docRef);
+            const articleData = docSnap.exists() ? docSnap.data() as Partial<KnowledgeBaseArticleType> : null;
+            await bumpKnowledgeBaseVersion(articleData, 'article_delete', id);
             await deleteDoc(docRef);
             return null;
         },
@@ -95,6 +138,7 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
 
             const batch = writeBatch(canonicaFirebaseClient);
             const composedData = await canonicaRequestBodyComposer({ status, active: status === 'published' });
+            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_bulk_status');
             for (const id of ids) {
                 const docRef = await getDocRef(id);
                 batch.update(docRef, composedData);
@@ -113,6 +157,7 @@ export const deleteMultipleArticles = async (ids: string[]) => {
             if (!ids || ids.length === 0) return;
 
             const batch = writeBatch(canonicaFirebaseClient);
+            await bumpKnowledgeBaseVersion(null, 'article_bulk_delete');
             for (const id of ids) {
                 const docRef = await getDocRef(id);
                 batch.delete(docRef);
@@ -128,7 +173,12 @@ export const deleteMultipleArticles = async (ids: string[]) => {
 export const getArticlesByCategoryId = async (categoryId: string) => {
     return await apiCallComposer(
         async () => {
-            const q = query(await getCollectionRef(), where("categoryId", "==", categoryId));
+            const session = await getActiveSession().catch(() => null);
+            const filters: any[] = [where("categoryId", "==", categoryId)];
+            if (session?.tId && session?.sId) {
+                filters.push(where("tId", "==", session.tId), where("sId", "==", session.sId));
+            }
+            const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: KnowledgeBaseArticleType[] = [];
             querySnapshot.forEach((doc) => {
@@ -144,7 +194,12 @@ export const getArticlesByCategoryId = async (categoryId: string) => {
 export const getArticlesBySectionId = async (sectionId: string) => {
     return await apiCallComposer(
         async () => {
-            const q = query(await getCollectionRef(), where("sectionId", "==", sectionId));
+            const session = await getActiveSession().catch(() => null);
+            const filters: any[] = [where("sectionId", "==", sectionId)];
+            if (session?.tId && session?.sId) {
+                filters.push(where("tId", "==", session.tId), where("sId", "==", session.sId));
+            }
+            const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: KnowledgeBaseArticleType[] = [];
             querySnapshot.forEach((doc) => {

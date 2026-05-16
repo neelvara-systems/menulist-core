@@ -1,10 +1,8 @@
 'use client';
 
-import { getCategories } from '@database/knowledgeBase/categories';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { TreeSelect, message } from 'antd';
-import { Timestamp } from 'firebase/firestore';
-import { useContext, useEffect } from 'react';
+import { useEffect } from 'react';
 
 interface KbTreeSelectProps {
     value?: string[];
@@ -12,22 +10,21 @@ interface KbTreeSelectProps {
 }
 
 const KbTreeSelect: React.FC<KbTreeSelectProps> = ({ value, onChange }) => {
-    const { cachedKBCategories, setCachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { categoriesData, getCategoriesCached } = useKBCategoriesCache();
 
     useEffect(() => {
         const fetchKbData = async () => {
             try {
-                const res = await getCategories();
-                setCachedKBCategories({ cachedOn: Timestamp.now(), kBCategories: res });
+                await getCategoriesCached();
             } catch (error) {
                 message.error("Could not load knowledge base articles.");
             }
         };
 
-        if (!cachedKBCategories?.kBCategories) {
+        if (!categoriesData) {
             fetchKbData();
         }
-    }, [cachedKBCategories, setCachedKBCategories]);
+    }, [categoriesData, getCategoriesCached]);
 
     const transformKbToTreeData = (kbData: any) => {
         if (!kbData?.categories) return [];
@@ -60,7 +57,7 @@ const KbTreeSelect: React.FC<KbTreeSelectProps> = ({ value, onChange }) => {
 
     return (
         <TreeSelect
-            treeData={transformKbToTreeData(cachedKBCategories?.kBCategories)}
+            treeData={transformKbToTreeData(categoriesData)}
             placeholder="Select related articles, sections, or categories"
             allowClear
             multiple

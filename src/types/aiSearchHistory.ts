@@ -1,4 +1,5 @@
 import { KnowledgeBaseArticleType } from "./knowledgeBase";
+import type { CanonicaCacheSourceVersions } from '@lib/canonica/cacheVersionManifest';
 
 export interface AiSearchHistory {
     id?: string;
@@ -25,4 +26,5 @@ export interface AiSearchHistory {
     canonicalAnswerId?: string;       // ID of the canonical answer used
     matchedEntityIds?: string[];      // Entity IDs matched during retrieval
     confidence?: string;              // 'high' | 'medium' | 'low' | 'none'
+    sourceVersions?: CanonicaCacheSourceVersions; // Source freshness manifest captured when cached
 }

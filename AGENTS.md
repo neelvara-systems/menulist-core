@@ -64,6 +64,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **Choose the lightest useful loop**: small copy edits, direct shell answers, and isolated mechanical changes do not need a full strategy audit unless they touch product doctrine, public claims, legal/security/cost behavior, or source-of-truth contracts.
 - **Do not fight repeated errors**: if the same command, test, build, runtime, dependency, API, or browser error appears twice, stop guessing. Research current docs and primary sources where available, collect 3-5 plausible fixes, choose the smallest efficient fix that fits this repo's architecture, implement it, and verify.
 - **Record durable learnings**: if the confidence loop or repeated-error research reveals a reusable project rule, update the right rule/doc/memory location instead of leaving it only in chat.
+- **Keep memories current by default across the whole project**: after non-trivial MenuList, Canonica, product, architecture, mobile, security, cache, scheduler, deploy, AI, Firebase, or production-hardening work, update the appropriate project docs/rules and, when the active Codex memory policy allows, write the matching memory note before final handoff without waiting for a separate reminder.
 
 ### IDE Prompt Registry
 
@@ -226,6 +227,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Canonical Retrieval**: Canonical answers take priority over RAG.
 - **Organization**: Canonica docs live under `__docs__/canonica/`; code lives under `/canonica/` subfolders.
 - **Infrastructure Separation**: Separate Firebase project, Cloud Functions, and clients for Canonica.
+- **Canonica Memory Discipline**: After non-trivial Canonica AI, RAG, widget, Firebase, scheduler, runtime, deploy, or production-hardening work, update the dedicated Canonica memory/docs before final handoff when active memory policy allows it.
 
 ### Tech Stack Freeze
 
@@ -262,6 +264,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **10 Laws**: Default Authority, Silence Is Feature, No Explanations, etc.
 - **Infrastructure Mentality**: Upstream positioning, cleanest source
 - **Zero Cognitive Load**: If it makes owners think, don't ship
+- **MenuList Memory Discipline**: After non-trivial MenuList owner, customer-facing, mobile, public-output, Firebase, cache, AI, billing, analytics, deploy, or production-hardening work, preserve durable decisions, commands, blockers, and verification results in the appropriate docs/rules/memory before final handoff when active memory policy allows it.
 
 ### Canonica Identity (if working on Canonica)
 

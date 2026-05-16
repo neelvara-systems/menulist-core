@@ -11,6 +11,7 @@
 export const INGESTION_JOB_COLLECTION = "kb_generation_jobs";
 export const KB_CATEGORIES_COLLECTION = "kb_categories";
 export const KB_ARTICLES_COLLECTION = "kb_articles";
+export const CANONICA_CACHE_VERSIONS_COLLECTION = "canonica_cacheVersions";
 export const MENU_IMAGE_PROCESSING_JOBS_COLLECTION = "menuImageProcessingJobs";
 
 // ═══════════════════════════════════════════════════════════════════════════

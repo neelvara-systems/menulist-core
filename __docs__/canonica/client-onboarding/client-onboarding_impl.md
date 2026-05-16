@@ -23,7 +23,7 @@ src/data/CanonicaPlansList.ts                    # Canonica plans config
 
 **Auth:** `withAuth()` — requires Google OAuth session
 **Method:** POST
-**Body:** `{ companyName, productName?, planId?, interval? }`
+**Body:** `{ companyName, productName?, planId?, interval?, currency? }`
 
 **Flow:**
 1. Verify user doesn't already have tenant/store (prevents re-onboarding)
@@ -31,7 +31,7 @@ src/data/CanonicaPlansList.ts                    # Canonica plans config
 3. Validate input (companyName min 2 chars)
 4. Resolve plan (beta default)
 5. Atomic Firestore transaction: create tenant + store + update user + update platform summary
-6. Create subscription (beta: free, 6-month window; paid: Razorpay)
+6. Create subscription (beta: free, 6-month window; paid: Razorpay recurring subscription)
 7. Generate API key (`cn_` prefix) on store document
 8. Return tenantId, storeId, subscriptionId, apiKey
 
@@ -76,7 +76,8 @@ Request:
   "companyName": "Acme Inc.",
   "productName": "Acme CRM",
   "planId": "canonica_beta",
-  "interval": "MONTH"
+  "interval": "MONTH",
+  "currency": "INR"
 }
 ```
 
@@ -87,9 +88,12 @@ Response (success):
   "storeId": 43,
   "subscriptionId": "canonica_beta_42_43_1709...",
   "apiKey": "cn_a1b2c3d4...",
+  "subscription": null,
   "plan": { "id": "canonica_beta", "name": "Beta", "isBeta": true }
 }
 ```
+
+For paid plans, `subscription` contains the Razorpay subscription id, payment URL, and provider status. The Firestore subscription is created as `pending`; activation still depends on the existing Razorpay webhook/reconciliation flow.
 
 Errors: 400 (already onboarded / invalid input), 401 (not authenticated), 429 (rate limited), 500 (server error)
 
@@ -111,4 +115,5 @@ This allows querying Canonica-specific tenants without a separate collection.
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-16 | 1.1.0 | Added paid Canonica Razorpay subscription path and `currency` input |
 | 2026-03-07 | 1.0.0 | Initial implementation |

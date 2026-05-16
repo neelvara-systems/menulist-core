@@ -50,11 +50,10 @@ const ShareFeedbackView = () => {
 
         dispatch(startLoader('send-feedback'));
         try {
-            await addFeedback(feedbackPayload);
+            const submittedFeedback = await addFeedback(feedbackPayload);
             message.success(t('feedbackSubmitted'));
             form.resetFields();
-            const newFeedback = await getLatestFeedbackForUser();
-            setLatestFeedback(newFeedback);
+            setLatestFeedback(submittedFeedback as Feedback);
         } catch (error) {
             message.error(t('failedToSendFeedback'));
         } finally {
@@ -160,4 +159,3 @@ const ShareFeedbackView = () => {
 };
 
 export default ShareFeedbackView;
-

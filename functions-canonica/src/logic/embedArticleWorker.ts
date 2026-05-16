@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore"; // ← Direct imports
 import * as functions from 'firebase-functions';
+import { bumpCanonicaCacheVersion, CANONICA_CACHE_SOURCES } from "../canonica/cacheVersionManifest";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { ARTICLE_STATUS, EmbedArticleType, INGESTION_JOB_COLLECTION, KB_ARTICLES_COLLECTION, KnowledgeBaseArticleType } from "../types";
 import { genrateEmbedding } from "../utils/aiUtils";
@@ -19,6 +20,16 @@ export const embedArticleWorkerLogic = async (articleData: EmbedArticleType, job
             return;
         }
         const article = articleDoc.data() as KnowledgeBaseArticleType;
+        const tenantId = Number(article.tId);
+        const storeId = Number(article.sId);
+        if (!Number.isFinite(tenantId) || !Number.isFinite(storeId)) {
+            throw new Error(`Article ${articleData.id} is missing tenant/store scope.`);
+        }
+        await bumpCanonicaCacheVersion(firestoreAdmin, CANONICA_CACHE_SOURCES.KB, tenantId, storeId, {
+            reason: "article_embedding_update",
+            sourceId: articleData.id,
+            sourceType: "kb_article",
+        });
 
         //here we used updated category and section titles because this call is trigger due to change in category/section title changes 
         const articleToEmbed = {

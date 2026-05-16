@@ -16,6 +16,8 @@ import { SupportTicketType, TicketMessage } from "@type/supportTicket";
 import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.SUPPORT_TICKETS;
+const STORE_TICKETS_LIMIT = 100;
+const PLATFORM_TICKETS_LIMIT = 500;
 
 const getCollectionRef = () => {
     return collection(canonicaFirebaseClient, `${COLLECTION}`)
@@ -309,7 +311,7 @@ export const getTicketById = async (id: string) => {
     );
 }
 
-export const getStoresTickets = async () => {
+export const getStoresTickets = async (maxResults = STORE_TICKETS_LIMIT) => {
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
@@ -318,7 +320,8 @@ export const getStoresTickets = async () => {
                 where("tId", "==", session.tId),
                 where("sId", "==", session.sId),
                 where("deleted", "==", false), // ✅ Filter at database level
-                orderBy("createdOn", "desc")
+                orderBy("createdOn", "desc"),
+                limit(maxResults)
             );
 
             const querySnapshot = await getDocs(q);
@@ -328,6 +331,7 @@ export const getStoresTickets = async () => {
             });
             return list;
         },
+        { maxResults },
         "getStoresTickets"
     );
 }
@@ -336,12 +340,12 @@ export const getSupportTickets = async (includeDeleted = false) => {
     return await apiCallComposer(
         async () => {
             const q = includeDeleted
-                ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(500))
+                ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(PLATFORM_TICKETS_LIMIT))
                 : query(
                     getCollectionRef(),
                     where("deleted", "==", false), // ✅ Filter at database level
                     orderBy("createdOn", "desc"),
-                    limit(500)
+                    limit(PLATFORM_TICKETS_LIMIT)
                 );
 
             const querySnapshot = await getDocs(q);
@@ -385,12 +389,12 @@ export const subscribeSupportTickets = async (
 ) => {
     try {
         const q = includeDeleted
-            ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(500))
+            ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(PLATFORM_TICKETS_LIMIT))
             : query(
                 getCollectionRef(),
                 where("deleted", "==", false), // ✅ Filter at database level
                 orderBy("createdOn", "desc"),
-                limit(500)
+                limit(PLATFORM_TICKETS_LIMIT)
             );
 
         const unsubscribe = onSnapshot(
@@ -415,7 +419,11 @@ export const subscribeSupportTickets = async (
 }
 
 // Real-time listener for store tickets (client view)
-export const subscribeStoreTickets = async (onUpdate: (tickets: SupportTicketType[]) => void, onError?: (error: Error) => void) => {
+export const subscribeStoreTickets = async (
+    onUpdate: (tickets: SupportTicketType[]) => void,
+    onError?: (error: Error) => void,
+    maxResults = STORE_TICKETS_LIMIT
+) => {
     try {
         const session = await getActiveSession();
         const q = query(
@@ -423,7 +431,8 @@ export const subscribeStoreTickets = async (onUpdate: (tickets: SupportTicketTyp
             where("tId", "==", session.tId),
             where("sId", "==", session.sId),
             where("deleted", "==", false), // ✅ Filter at database level
-            orderBy("createdOn", "desc")
+            orderBy("createdOn", "desc"),
+            limit(maxResults)
         );
 
         const unsubscribe = onSnapshot(
