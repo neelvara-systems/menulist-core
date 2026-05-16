@@ -311,6 +311,33 @@ export const getTicketById = async (id: string) => {
     );
 }
 
+export const subscribeTicketById = async (
+    id: string,
+    onUpdate: (ticket: SupportTicketType | null) => void,
+    onError?: (error: Error) => void
+) => {
+    try {
+        const unsubscribe = onSnapshot(
+            getDocRef(id),
+            (docSnap) => {
+                if (docSnap.exists()) {
+                    onUpdate({ ...docSnap.data(), id: docSnap.id, displayId: getDisplayId(docSnap.id) } as SupportTicketType);
+                    return;
+                }
+                onUpdate(null);
+            },
+            (error) => {
+                onError?.(error);
+            }
+        );
+
+        return unsubscribe;
+    } catch (error) {
+        onError?.(error as Error);
+        return () => { };
+    }
+}
+
 export const getStoresTickets = async (maxResults = STORE_TICKETS_LIMIT) => {
     return await apiCallComposer(
         async () => {

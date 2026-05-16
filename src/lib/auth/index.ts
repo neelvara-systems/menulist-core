@@ -37,6 +37,10 @@ declare module "next-auth/jwt" {
     }
 }
 
+const AUTH_SESSION_USER_CONTEXT_CACHE_TTL_MS = 15 * 1000;
+const AUTH_SESSION_USER_CONTEXT_CACHE_MAX = 500;
+const authSessionUserContextCache = new Map<string, { expiresAt: number; user: any }>();
+
 
 //refer https://www.youtube.com/watch?v=bkUmN9TH_hQ
 export const authOptions: NextAuthOptions = {
@@ -181,31 +185,17 @@ export const authOptions: NextAuthOptions = {
             const email = token?.email || user?.email;
             if (!email) return null;
 
-            if (email) {
-                let dbUser: any = await getUserByEmail(email);
-                dbUser = await applyInheritedBlockState(dbUser);
-                logFetchedUserForDebug('jwt', dbUser);
+            const forceRefresh = trigger === "update";
+            const safeDbUser = await getAuthSessionUserContext(email, forceRefresh);
+            logFetchedUserForDebug(forceRefresh ? 'jwt-update' : 'jwt', safeDbUser);
 
-                // ✅ SECURITY FIX: Filter both user (from OAuth) and dbUser (from database)
-                // OAuth user can contain dangerous keys like __proto__
-                const safeDbUser = getDatabaseUserForSession(dbUser);
+            // ✅ SECURITY FIX: Filter both user (from OAuth) and dbUser (from database)
+            // OAuth user can contain dangerous keys like __proto__
+            // ✅ PERFORMANCE: Do NOT merge the full `user` object into the JWT.
+            // For Credentials provider, `user` can be the full Firestore user record which bloats the JWT cookie.
+            // Keep only the minimal whitelisted dbUser payload.
+            token.dbUser = safeDbUser;
 
-                // ✅ PERFORMANCE: Do NOT merge the full `user` object into the JWT.
-                // For Credentials provider, `user` can be the full Firestore user record which bloats the JWT cookie.
-                // Keep only the minimal whitelisted dbUser payload.
-                token.dbUser = safeDbUser;
-            }
-
-            //when update profile triggers then refetch database user
-            // https://next-auth.js.org/getting-started/client#updating-the-session
-            if (trigger === "update") {
-                let updatedUser: any = await getUserByEmail(email);
-                updatedUser = await applyInheritedBlockState(updatedUser);
-                logFetchedUserForDebug('jwt-update', updatedUser);
-                token.dbUser = getDatabaseUserForSession(updatedUser)
-            }
-
-            const timestamp = new Date().toISOString();
             return token;
         },
         session: async ({ session, token }: any) => {
@@ -471,6 +461,52 @@ const getDatabaseUserForSession = (dbUser: any): any => {
             : [],
     };
 }
+
+const cloneAuthSessionUserContext = (user: any): any => ({
+    ...user,
+    blockDetails: user?.blockDetails ? { ...user.blockDetails } : user?.blockDetails,
+    stores: Array.isArray(user?.stores)
+        ? user.stores.map((store: any) => ({ ...store }))
+        : [],
+});
+
+const pruneAuthSessionUserContextCache = (now: number) => {
+    if (authSessionUserContextCache.size <= AUTH_SESSION_USER_CONTEXT_CACHE_MAX) return;
+
+    Array.from(authSessionUserContextCache.entries()).forEach(([cacheKey, entry]) => {
+        if (entry.expiresAt <= now) {
+            authSessionUserContextCache.delete(cacheKey);
+        }
+    });
+
+    while (authSessionUserContextCache.size > AUTH_SESSION_USER_CONTEXT_CACHE_MAX) {
+        const oldestKey = Array.from(authSessionUserContextCache.keys())[0];
+        if (!oldestKey) break;
+        authSessionUserContextCache.delete(oldestKey);
+    }
+};
+
+const getAuthSessionUserContext = async (email: string, forceRefresh = false): Promise<any> => {
+    const normalizedEmail = String(email || '').toLowerCase().trim();
+    const now = Date.now();
+    const cached = authSessionUserContextCache.get(normalizedEmail);
+
+    if (!forceRefresh && cached && cached.expiresAt > now) {
+        return cloneAuthSessionUserContext(cached.user);
+    }
+
+    let dbUser: any = await getUserByEmail(normalizedEmail);
+    dbUser = await applyInheritedBlockState(dbUser);
+    const sessionUser = getDatabaseUserForSession(dbUser);
+
+    authSessionUserContextCache.set(normalizedEmail, {
+        expiresAt: now + AUTH_SESSION_USER_CONTEXT_CACHE_TTL_MS,
+        user: cloneAuthSessionUserContext(sessionUser),
+    });
+    pruneAuthSessionUserContextCache(now);
+
+    return sessionUser;
+};
 
 const getDebugUserSnapshot = (dbUser: any) => {
     if (!dbUser) return null;

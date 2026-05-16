@@ -15,6 +15,7 @@
 | [cost-self-protection_spec.md](./cost-self-protection_spec.md)                     | CEO/PM       | What it does, why it matters         |
 | [cost-self-protection_impl.md](./cost-self-protection_impl.md)                     | Developers   | Technical blueprint, SAFE_MODE logic |
 | [cost-self-protection_firebase.md](./cost-self-protection_firebase.md)             | Cost Control | Firebase cost estimates              |
+| [firebase-cost-optimization-audit-2026-05-16.md](./firebase-cost-optimization-audit-2026-05-16.md) | Cost Control | Platform Firebase usage audit and optimizations |
 | [cost-self-protection_mobile-support.md](./cost-self-protection_mobile-support.md) | Mobile       | Admission test (BACKEND ONLY)        |
 
 ---
@@ -69,4 +70,6 @@ ENABLE_COST_PROTECTION: false; // in src/config/features.ts
 
 | Version | Date              | Changes                                   |
 | ------- | ----------------- | ----------------------------------------- |
+| 1.2     | May 16, 2026      | Added follow-up Firebase cost hardening for auth refreshes, public analytics, ticket summaries, sitemap outlets, and routing summary verification |
+| 1.1     | May 16, 2026      | Added platform Firebase cost audit        |
 | 1.0     | February 20, 2026 | Initial documentation from ChatGPT review |

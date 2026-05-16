@@ -1,6 +1,6 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
-import { arrayUnion, collection, getDoc, increment, query, setDoc, where } from "@firebase/firestore";
+import { arrayUnion, collection, getDoc, increment, limit, query, setDoc, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -22,7 +22,8 @@ export const getBatchImageJobCollectionRef = (session: any, projectId: string) =
     return query(
         collectionRef,
         where("projectId", "==", projectId),
-        where("status", "in", [BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED, BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING, BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED, BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED])
+        where("status", "in", [BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED, BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING, BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED, BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED]),
+        limit(1)
     );
 }
 
@@ -87,9 +88,6 @@ export const updateImageBatchProcessingJob = async (data: any, projectId: string
 
                 // Add to special fields
                 specialFields.generatedCount = increment(1);
-            } else {
-                //for initial stage
-                specialFields.generatedCount = 0;
             }
 
             // Prepare the update data

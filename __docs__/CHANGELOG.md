@@ -6,6 +6,29 @@
 
 ---
 
+## May 16, 2026 — Firebase Cost Optimization
+
+### Added
+
+- **Firebase cost audit map added** — Cost Self-Protection now includes a platform Firebase usage map covering reads, writes, listeners, queries, public surfaces, owner flows, Cloud Functions, and retained cost risks.
+- **Firebase usage scanner added** — `node scripts/verification/firebase-cost-usage-map.mjs` produces a repeatable file-level map for future cost reviews.
+- **Public routing summary verifier added** — `node scripts/verification/verify-public-routing-summary-backfill.mjs` checks whether `storesSummary` and `projects_{storeId}` are complete enough before legacy OBP/sitemap fallbacks can be removed.
+
+### Changed
+
+- **Batch image job listener bounded** — Owner image-generation status listening now reads at most one active/result job for the selected project instead of an unbounded matching job set.
+- **Digital screen liveness writes reduced** — Screen seen updates now skip the write when the summary already shows the screen was seen today.
+- **Owner dashboard overview reads narrowed** — The legacy overview path now reads only the weekly AI summary it needs instead of running the full weekly dashboard read path.
+- **Auth session refresh reads reduced** — Routine session checks now reuse a short 15-second sanitized user context while explicit session updates still fetch fresh account, tenant, and store block state.
+- **Public analytics write volume reduced** — Public analytics batches wait longer before flushing, skip duplicate same-session item impressions, and ignore one-character search noise.
+- **Help Center summary reads narrowed** — The landing-page ticket preview now uses a bounded one-time read, while an opened ticket conversation listens only to that ticket document and the full ticket inbox keeps realtime updates.
+- **Sitemap outlet discovery narrowed** — Multi-outlet sitemap generation reads `storesSummary` first and only falls back to the stores collection for legacy summary data.
+
+### Fixed
+
+- **Batch image progress count preserved** — Status-only batch image updates no longer rewrite `generatedCount`, while actual progress updates still increment it.
+- **User lookup queries bounded** — Email and phone-login user lookups now limit Firestore results to one matching document and no longer print raw lookup identifiers to the console.
+
 ## May 13, 2026 — AI Usage Accounting
 
 ### Changed

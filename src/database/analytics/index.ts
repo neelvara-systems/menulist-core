@@ -36,8 +36,8 @@ const getAnalyticsDashboardSummaryDocRef = (tId: string | number, sId: string | 
   return doc(firebaseClient, COLLECTION, docId);
 };
 
-const ANALYTICS_FLUSH_DELAY_MS = 15000;
-const ANALYTICS_FLUSH_MAX_EVENTS = 20;
+const ANALYTICS_FLUSH_DELAY_MS = 30000;
+const ANALYTICS_FLUSH_MAX_EVENTS = 40;
 const ANALYTICS_QUEUE_STORAGE_KEY = 'menulist_pending_analytics_queue_v1';
 
 type QueuedAnalyticsWrite = {

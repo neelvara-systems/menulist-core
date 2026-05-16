@@ -30,6 +30,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
+import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
@@ -51,6 +53,15 @@ type OutletSitemapEntry = {
     outletSlug: string;
     storeId: string;
     modifiedOn: Date;
+};
+
+const readModifiedOn = (raw: any): Date => {
+    if (raw?.toDate) return raw.toDate();
+    if (typeof raw === 'string') {
+        const parsed = new Date(raw);
+        if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
 };
 
 const getMasterStoreSeed = unstable_cache(
@@ -75,20 +86,11 @@ const getMasterStoreSeed = unstable_cache(
             if (snapshot.empty) return null;
             const storeDoc = snapshot.docs[0];
             const data = storeDoc.data() as Record<string, any>;
-            const modifiedOn = (() => {
-                const raw = data?.modifiedOn;
-                if (raw?.toDate) return raw.toDate();
-                if (typeof raw === 'string') {
-                    const parsed = new Date(raw);
-                    if (!isNaN(parsed.getTime())) return parsed;
-                }
-                return new Date();
-            })();
             return {
                 storeId: storeDoc.id,
                 isMaster: data?.isMaster !== false, // default true when missing (single-store)
                 tenantId: typeof data?.tenantId === 'number' ? data.tenantId : null,
-                modifiedOn,
+                modifiedOn: readModifiedOn(data?.modifiedOn),
             };
         } catch {
             return null;
@@ -130,6 +132,33 @@ const getProjectsForSitemap = unstable_cache(
 const getOutletsForSitemap = unstable_cache(
     async (tenantId: number, masterStoreId: string): Promise<OutletSitemapEntry[]> => {
         try {
+            const summaryRef = doc(
+                firebaseClient,
+                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+                'storesSummary',
+            );
+            const summarySnap = await getDoc(summaryRef);
+            if (summarySnap.exists()) {
+                const stores = parseSummaryStores(summarySnap.data());
+                const summaryOutlets = Object.entries(stores)
+                    .filter(([storeId, data]: [string, any]) => {
+                        if (String(data?.storeId || storeId) === masterStoreId) return false;
+                        if (data?.tId !== tenantId) return false;
+                        if (data?.active === false) return false;
+                        if (isPlatformEntityBlocked(data)) return false;
+                        const outletSlug = typeof data?.outletSlug === 'string' ? data.outletSlug.trim() : '';
+                        return Boolean(outletSlug);
+                    })
+                    .map(([storeId, data]: [string, any]) => ({
+                        outletSlug: data.outletSlug.trim(),
+                        storeId: String(data.storeId || storeId),
+                        modifiedOn: readModifiedOn(data.modifiedOn),
+                    }))
+                    .sort((a, b) => a.outletSlug.localeCompare(b.outletSlug));
+
+                if (summaryOutlets.length > 0) return summaryOutlets;
+            }
+
             const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
             const q = query(
                 storesRef,
@@ -144,16 +173,7 @@ const getOutletsForSitemap = unstable_cache(
                 const outletSlug = typeof data?.outletSlug === 'string' ? data.outletSlug.trim() : '';
                 // A-08 + G-12: outlets missing a slug are not routable; skip.
                 if (!outletSlug) continue;
-                const modifiedOn = (() => {
-                    const raw = data?.modifiedOn;
-                    if (raw?.toDate) return raw.toDate();
-                    if (typeof raw === 'string') {
-                        const parsed = new Date(raw);
-                        if (!isNaN(parsed.getTime())) return parsed;
-                    }
-                    return new Date();
-                })();
-                outlets.push({ outletSlug, storeId: d.id, modifiedOn });
+                outlets.push({ outletSlug, storeId: d.id, modifiedOn: readModifiedOn(data?.modifiedOn) });
             }
             return outlets;
         } catch {

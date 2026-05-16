@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, getDocs, query, where } from "@firebase/firestore";
+import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -20,20 +20,17 @@ const getDocRef = (docId: any) => {
 }
 
 export const getUserByEmail = (email: string) => {
-    console.log("getUserByEmail", email)
     return new Promise(async (res, rej) => {
-        const q = query(getCollectionRef(), where("email", "==", email));
+        const q = query(getCollectionRef(), where("email", "==", email), limit(1));
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
-            console.log('User not found.');
             res(null);
         } else {
-            querySnapshot.forEach(doc => {
-                const data = doc.data();
-                // ✅ SECURITY: Remove dangerous prototype pollution keys
-                const safeData = removeDangerousKeys(data);
-                res({ ...safeData, id: doc.id });
-            });
+            const userDoc = querySnapshot.docs[0];
+            const data = userDoc.data();
+            // ✅ SECURITY: Remove dangerous prototype pollution keys
+            const safeData = removeDangerousKeys(data);
+            res({ ...safeData, id: userDoc.id });
         }
     })
 }
@@ -41,7 +38,7 @@ export const getUserByEmail = (email: string) => {
 export const normalizePhoneUsername = (value: string) => value.replace(/[^0-9]/g, '');
 
 const getFirstUserByField = async (field: string, value: string) => {
-    const q = query(getCollectionRef(), where(field, "==", value));
+    const q = query(getCollectionRef(), where(field, "==", value), limit(1));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) return null;
 

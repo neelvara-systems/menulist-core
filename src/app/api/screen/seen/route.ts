@@ -22,6 +22,20 @@ import { NextRequest, NextResponse } from "next/server";
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const seenRequests = new Map<string, number>();
 
+const getUtcDateKey = (value: unknown): string | null => {
+    const date =
+        value && typeof (value as any).toDate === 'function'
+            ? (value as any).toDate()
+            : value instanceof Date
+                ? value
+                : typeof value === 'string' || typeof value === 'number'
+                    ? new Date(value)
+                    : null;
+
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+    return date.toISOString().slice(0, 10);
+};
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -51,6 +65,14 @@ export async function POST(request: NextRequest) {
             if (!docSnap.exists || docSnap.data()?.screen?.screenToken !== token) {
                 return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
             }
+
+            const lastSeenDate = getUtcDateKey(docSnap.data()?.screen?.screenLastSeenAt);
+            const todayDate = new Date().toISOString().slice(0, 10);
+            if (lastSeenDate === todayDate) {
+                seenRequests.set(token, Date.now());
+                return NextResponse.json({ ok: true, cached: true });
+            }
+
             docRef = directRef;
         } else {
             // Fallback: query by token (backwards compatibility)
@@ -58,6 +80,14 @@ export async function POST(request: NextRequest) {
             if (snapshot.empty) {
                 return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
             }
+
+            const lastSeenDate = getUtcDateKey(snapshot.docs[0].data()?.screen?.screenLastSeenAt);
+            const todayDate = new Date().toISOString().slice(0, 10);
+            if (lastSeenDate === todayDate) {
+                seenRequests.set(token, Date.now());
+                return NextResponse.json({ ok: true, cached: true });
+            }
+
             docRef = snapshot.docs[0].ref;
         }
 

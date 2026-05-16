@@ -4,7 +4,7 @@
  * 
  * COST OPTIMIZATION:
  * - Client-side debouncing prevents duplicate events
- * - Rate limiting prevents abuse (max 30 events/minute)
+ * - Rate limiting prevents abuse (max 20 events/minute)
  * - Session-based deduplication for menu views
  */
 import { trackAnalyticsEvent } from '@database/analytics';
@@ -24,7 +24,7 @@ import { getSessionId } from './session';
  * Prevents abuse and reduces Firebase costs
  */
 const RATE_LIMIT = {
-  MAX_EVENTS_PER_MINUTE: 30,      // Max events per minute per session
+  MAX_EVENTS_PER_MINUTE: 20,      // Max events per minute per session
   DEBOUNCE_MS: 1000,               // Debounce window for same event type
   MENU_VIEW_COOLDOWN_MS: 30000,    // 30 second cooldown for menu views (same project)
 };
@@ -44,6 +44,7 @@ type SessionMilestoneState = {
   intent?: boolean;
   action?: boolean;
   itemIds?: string[];
+  viewedItemIds?: string[];
   languageSessions?: string[];
   languageAdoptions?: string[];
 };
@@ -184,6 +185,7 @@ const writeSessionMilestoneState = (key: string | null, state: SessionMilestoneS
     window.sessionStorage.setItem(key, JSON.stringify({
       ...state,
       itemIds: Array.from(new Set(state.itemIds || [])).slice(-10),
+      viewedItemIds: Array.from(new Set(state.viewedItemIds || [])).slice(-20),
       languageSessions: Array.from(new Set(state.languageSessions || [])).slice(-8),
       languageAdoptions: Array.from(new Set(state.languageAdoptions || [])).slice(-8),
     }));
@@ -330,6 +332,12 @@ const normalizeMenuLanguageName = (code: string, value?: string | null): string 
   return label || code.toUpperCase();
 };
 
+const normalizeSearchTermForAnalytics = (value?: string | null): string | null => {
+  const searchTerm = String(value || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 64);
+  if (searchTerm.length < 2) return null;
+  return searchTerm;
+};
+
 const addMenuLanguageCounters = (
   updateData: Record<string, any>,
   state: SessionMilestoneState | null,
@@ -418,7 +426,13 @@ const trackSessionItemView = (
   state: SessionMilestoneState | null,
   itemId?: string,
 ) => {
-  if (!state || !itemId) return;
+  if (!state || !itemId) return true;
+
+  const viewedItemIds = new Set(state.viewedItemIds || []);
+  const isNewSessionItemView = !viewedItemIds.has(itemId);
+  viewedItemIds.add(itemId);
+  state.viewedItemIds = Array.from(viewedItemIds).slice(-20);
+
   const itemIds = new Set(state.itemIds || []);
   itemIds.add(itemId);
   state.itemIds = Array.from(itemIds).slice(-10);
@@ -427,6 +441,8 @@ const trackSessionItemView = (
     markSessionMilestone(updateData, state, 'engaged');
     markSessionMilestone(updateData, state, 'intent');
   }
+
+  return isNewSessionItemView;
 };
 
 const markEngagedIntentSession = (updateData: Record<string, any>, state: SessionMilestoneState | null) => {
@@ -640,7 +656,7 @@ export interface TrackingData {
  * 
  * COST OPTIMIZATION:
  * - Debounces rapid-fire events (1 second window)
- * - Rate limits to 30 events/minute per session
+ * - Rate limits to 20 events/minute per session
  * - Special cooldown for menu views (30 seconds per project)
  */
 export const trackEvent = async (eventName: TrackingEvent, data: TrackingData = {}): Promise<void> => {
@@ -779,11 +795,14 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
           return;
         }
 
+        if (!trackSessionItemView(updateData, sessionMilestones, data.itemId)) {
+          return;
+        }
+
         updateData.totalItemViews = 1;
         updateData[`viewsByItem.${data.itemId}`] = 1;  // Per-item impressions
         updateData[`hourlyItemViews.${hour}`] = 1;
         addCategoryInterestCounters(updateData, data, 'viewsByCategory');
-        trackSessionItemView(updateData, sessionMilestones, data.itemId);
 
         // Store item name if provided
         if (data.itemName) {
@@ -823,14 +842,19 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
         return;
 
       case TrackingEvent.SEARCH:
+        const normalizedSearchTerm = normalizeSearchTermForAnalytics(data.searchTerm);
+        if (data.searchTerm && !normalizedSearchTerm) {
+          return;
+        }
+
         updateData.totalSearches = 1;
         updateData[`hourlySearches.${hour}`] = 1;
         markEngagedIntentSession(updateData, sessionMilestones);
-        if (data.searchTerm) {
-          updateData[`searchTerms.${data.searchTerm.toLowerCase()}`] = 1;
+        if (normalizedSearchTerm) {
+          updateData[`searchTerms.${normalizedSearchTerm}`] = 1;
           if ((data.searchResults || 0) === 0) {
             updateData.zeroResultSearches = 1;
-            updateData[`zeroResultSearchTerms.${data.searchTerm.toLowerCase()}`] = 1;
+            updateData[`zeroResultSearchTerms.${normalizedSearchTerm}`] = 1;
           }
         }
         break;

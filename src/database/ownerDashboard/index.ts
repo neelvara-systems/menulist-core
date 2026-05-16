@@ -55,6 +55,7 @@ import {
     SourceQuality,
     TopCategory,
     TopItem,
+    WeeklyAISummary,
     WeeklyViewData,
     WTDViewData,
 } from "@template/main-app/projects/types";
@@ -873,6 +874,18 @@ function parseDateValue(value: any): Date | undefined {
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
+function normalizeWeeklyAiSummary(data: Record<string, any>): WeeklyAISummary | undefined {
+    if (!data?.aiSummary) return undefined;
+    return {
+        ...data.aiSummary,
+        generatedAt: parseDateValue(data.aiSummary.generatedAt) || new Date(),
+        period: data.aiSummary.period || {
+            start: data.weekStart || '',
+            end: data.weekEnd || '',
+        },
+    } as WeeklyAISummary;
+}
+
 function normalizeDailyViewData(data: any): DailyViewData | null {
     if (!data) return null;
     return {
@@ -1074,10 +1087,28 @@ export async function getOwnerDashboardWeekly(
                 topZeroResultSearchTerms: weeklyData.topZeroResultSearchTerms || transformTopSearchTerms(weeklyData, 'zeroResultSearchTerms'),
                 unavailableItems: transformUnavailableItems(weeklyData),
                 sourceQuality: weeklyData.sourceQuality || transformSourceQuality(weeklyData),
+                aiSummary: normalizeWeeklyAiSummary(weeklyData),
             } as WeeklyViewData;
         },
         "getOwnerDashboardWeekly"
     );
+}
+
+async function getOwnerDashboardWeeklyAiSummary(
+    tId: string,
+    sId: string,
+    projectId: string,
+    timeZone?: string,
+    businessDayEndTime?: string,
+): Promise<WeeklyAISummary | undefined> {
+    const currentWeekDocId = getDocId.weekly(tId, sId, projectId, getCurrentWeekId(timeZone, businessDayEndTime));
+    const lastWeekDocId = getDocId.weekly(tId, sId, projectId, getLastWeekId(timeZone, businessDayEndTime));
+    const currentWeekSnap = await getDoc(doc(firebaseClient, COLLECTION, currentWeekDocId));
+    const weeklySnap = currentWeekSnap.exists()
+        ? currentWeekSnap
+        : await getDoc(doc(firebaseClient, COLLECTION, lastWeekDocId));
+
+    return weeklySnap.exists() ? normalizeWeeklyAiSummary(weeklySnap.data()) : undefined;
 }
 
 // ================================================================
@@ -1425,8 +1456,10 @@ export async function getOwnerDashboardOverview(
                 }
             }
 
-            // Step 8: Fetch summary doc for AI summary (1 extra read)
-            const weekly = await getOwnerDashboardWeekly(tId, sId, projectId, timeZone, businessDayEndTime);
+            // Step 8: Fetch only the weekly AI summary. Avoid the full weekly
+            // dashboard path here because the overview already built metrics
+            // from daily docs above.
+            const weeklyAiSummary = await getOwnerDashboardWeeklyAiSummary(tId, sId, projectId, timeZone, businessDayEndTime);
 
             // Step 9: Determine status
             let status: 'working' | 'low_activity' | 'no_data' = 'no_data';
@@ -1452,7 +1485,7 @@ export async function getOwnerDashboardOverview(
                 mtd,
                 yesterday,
                 historicalWeeks,
-                aiSummary: weekly?.aiSummary,
+                aiSummary: weeklyAiSummary,
             } as OverviewData;
         },
         "getOwnerDashboardOverview"
