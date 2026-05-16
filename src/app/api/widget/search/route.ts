@@ -17,8 +17,8 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { recordAiOperation } from '@lib/ai/operationLog';
-import { canonicaStorageAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
-import { hashApiKey, validatePublicApiKey } from '@lib/publicApi/auth';
+import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
+import { hashApiKey, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -44,7 +44,17 @@ const WidgetSearchRequestSchema = z.object({
     })).max(5).optional(),
     imageBase64: z.string().optional(),
     imageMimeType: z.string().optional(),
+}).superRefine((value, ctx) => {
+    if (Boolean(value.imageBase64) !== Boolean(value.imageMimeType)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'imageBase64 and imageMimeType must be provided together',
+            path: ['imageBase64'],
+        });
+    }
 });
+
+const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 
 export async function POST(request: NextRequest) {
     // Feature flag check
@@ -96,11 +106,8 @@ export async function POST(request: NextRequest) {
 
         // ===== ORIGIN ALLOWLIST CHECK =====
         const requestOrigin = request.headers.get('origin');
-        const allowedOrigins: string[] | undefined = storeData.widgetAllowedOrigins;
-        if (allowedOrigins && allowedOrigins.length > 0 && requestOrigin) {
-            if (!allowedOrigins.includes(requestOrigin)) {
-                return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
-            }
+        if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
+            return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
         }
 
         // Parse and validate request body
@@ -122,8 +129,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // ===== IMAGE HANDLING (base64 inline → temp Firebase Storage URL) =====
-        let imageUrl: string | undefined;
+        // ===== IMAGE HANDLING (base64 inline → coreSearch image buffer) =====
+        let imageBuffer: { imageBase64: string; mimeType: string } | undefined;
         if (body.imageBase64 && body.imageMimeType) {
             try {
                 const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
@@ -135,31 +142,19 @@ export async function POST(request: NextRequest) {
                 if (!imageBase64 || imageBase64.length > MAX_WIDGET_IMAGE_BASE64_LENGTH) {
                     throw new Error('Widget image payload is empty or too large');
                 }
-
-                const imageBuffer = Buffer.from(imageBase64, 'base64');
-                if (imageBuffer.byteLength > MAX_WIDGET_IMAGE_BYTES) {
-                    throw new Error(`Widget image exceeds ${MAX_WIDGET_IMAGE_BYTES / 1024 / 1024}MB limit`);
+                if (!isLikelyBase64(imageBase64)) {
+                    throw new Error('Widget image payload is not valid base64');
                 }
 
-                const bucket = canonicaStorageAdmin.bucket();
-                const imageId = `widget-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-                const filePath = `widget-images/${tId}/${sId}/${imageId}`;
-                const file = bucket.file(filePath);
-
-                await file.save(imageBuffer, {
-                    metadata: { contentType: imageMimeType },
-                });
-
-                // Generate signed URL (valid 15 min — enough for coreSearch processing)
-                const [signedUrl] = await file.getSignedUrl({
-                    action: 'read',
-                    expires: Date.now() + 15 * 60 * 1000,
-                });
-                imageUrl = signedUrl;
+                const decodedImage = Buffer.from(imageBase64, 'base64');
+                if (!decodedImage.byteLength || decodedImage.byteLength > MAX_WIDGET_IMAGE_BYTES) {
+                    throw new Error(`Widget image exceeds ${MAX_WIDGET_IMAGE_BYTES / 1024 / 1024}MB limit`);
+                }
+                imageBuffer = { imageBase64, mimeType: imageMimeType };
             } catch (error) {
                 // Graceful degradation — continue without image
                 secureError('[Widget Search] Image upload failed', error as Error, { tId, sId });
-                imageUrl = undefined;
+                imageBuffer = undefined;
             }
         }
 
@@ -179,9 +174,11 @@ export async function POST(request: NextRequest) {
             mountContext: 'widget',
             tId,
             sId,
+            uId: 'widget',
+            mode: conversationHistory && conversationHistory.length > 0 ? 'assistant' : 'qna',
             productContext: validatedContext,
             conversationHistory,
-            imageUrl,
+            imageBuffer,
         });
 
         // ===== FORMAT RESPONSE for Widget frontend =====
@@ -247,6 +244,19 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(response);
 
     } catch (err: any) {
+        if (isAIProviderRateLimitError(err)) {
+            const retryAfter = getAIProviderRetryAfter(err) || 60;
+            return NextResponse.json(
+                {
+                    error: `Search is temporarily busy. Please wait ${retryAfter} seconds before trying again.`,
+                    retryAfter,
+                },
+                {
+                    status: 429,
+                    headers: { 'Retry-After': String(retryAfter) },
+                }
+            );
+        }
         secureError('[Widget Search] Error', err as Error);
         return NextResponse.json(
             { error: 'Something went wrong. Please try again.' },

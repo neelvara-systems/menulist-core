@@ -66,7 +66,6 @@ const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModa
                 }}
             >
                 <DialogHeader className="items-center text-center p-[10%]">
-                    {/* <AnimatedLogo /> */}
                     <DialogTitle></DialogTitle>
                     <motion.div variants={pathVariants}>
                         <LuCheckCircle className="h-20 w-20 text-green-500 mb-4" />

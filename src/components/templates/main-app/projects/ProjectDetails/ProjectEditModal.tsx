@@ -84,6 +84,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         sourceDataUrl?: string;
     } | null>(null);
     const [isProjectImageAdjustOpen, setIsProjectImageAdjustOpen] = useState(false);
+    const panelStyle: React.CSSProperties = {
+        background: token.colorFillQuaternary,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: token.borderRadiusLG,
+        padding: 16,
+    };
+    const secondaryTextStyle: React.CSSProperties = {
+        color: token.colorTextSecondary,
+        lineHeight: 1.5,
+    };
 
     useEffect(() => {
         if (!isOpen) return;
@@ -147,9 +157,17 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             title={editingProject ? `Edit ${offeringName}` : `Create New ${offeringName}`}
             open={isOpen}
             centered
+            width="min(960px, calc(100vw - 32px))"
             onOk={onSubmit}
             onCancel={onCancel}
             maskClosable={false}
+            styles={{
+                body: {
+                    maxHeight: 'calc(100vh - 190px)',
+                    overflowY: 'auto',
+                    paddingRight: 8,
+                },
+            }}
             footer={
                 <Flex justify="space-between" align="center">
                     {/* Reset link - only show when editing */}
@@ -178,142 +196,172 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 onFinish={onSubmit}
                 initialValues={{ active: true, isDefault: false }}
             >
-                <Form.Item
-                    label={`${offeringName} Name`}
+                <Flex
+                    align="flex-start"
+                    gap={24}
+                    wrap="wrap"
+                    style={{ width: '100%' }}
                 >
-                    <Flex gap={12} vertical>
-                        {hasMultipleProjectLanguages ? (
-                            <Flex gap={8} vertical>
-                                <Typography.Text strong>{tBusiness('contentLanguageTitle')}</Typography.Text>
-                                <Select
-                                    onChange={onLanguageChange}
-                                    options={languages.map((languageCode) => ({
-                                        label: getProjectLanguageLabel(languageCode),
-                                        value: languageCode,
-                                    }))}
-                                    value={selectedLanguage}
+                    <Flex flex="1 1 440px" gap={18} style={{ minWidth: 0 }} vertical>
+                        <Form.Item
+                            label={`${offeringName} Name`}
+                            style={{ marginBottom: 0 }}
+                        >
+                            <Flex gap={12} vertical>
+                                {hasMultipleProjectLanguages ? (
+                                    <div style={panelStyle}>
+                                        <Flex gap={8} vertical>
+                                            <Typography.Text strong>{tBusiness('contentLanguageTitle')}</Typography.Text>
+                                            <Select
+                                                onChange={onLanguageChange}
+                                                options={languages.map((languageCode) => ({
+                                                    label: getProjectLanguageLabel(languageCode),
+                                                    value: languageCode,
+                                                }))}
+                                                value={selectedLanguage}
+                                            />
+                                            <Typography.Text type="secondary">
+                                                Edit this {labels.offeringPhrase} label one language at a time.
+                                            </Typography.Text>
+                                            {editingProject && onTranslatePublicContent ? (
+                                                <Button
+                                                    loading={translateActionLoading}
+                                                    onClick={onTranslatePublicContent}
+                                                    size="small"
+                                                    type="default"
+                                                    disabled={translateActionDisabled}
+                                                >
+                                                    Translate missing public content
+                                                </Button>
+                                            ) : null}
+                                        </Flex>
+                                    </div>
+                                ) : null}
+                                <Input
+                                    maxLength={100}
+                                    onChange={(event) => onNameChange(event.target.value)}
+                                    placeholder={`Enter ${labels.offeringPhrase} name`}
+                                    value={nameValue}
                                 />
+                                {selectedLanguage !== referenceLanguage ? (
+                                    <ReferenceCard
+                                        onUseReference={() => onNameChange(referenceName)}
+                                        referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                                        referenceValue={referenceName}
+                                        token={token}
+                                    />
+                                ) : null}
+                            </Flex>
+                        </Form.Item>
+                        <Form.Item
+                            label="Description"
+                            style={{ marginBottom: 0 }}
+                        >
+                            <Flex gap={12} vertical>
+                                <Input.TextArea
+                                    maxLength={200}
+                                    onChange={(event) => onDescriptionChange(event.target.value)}
+                                    placeholder={`Enter ${labels.offeringPhrase} description`}
+                                    rows={4}
+                                    showCount
+                                    value={descriptionValue}
+                                />
+                                {selectedLanguage !== referenceLanguage ? (
+                                    <ReferenceCard
+                                        onUseReference={() => onDescriptionChange(referenceDescription)}
+                                        referenceLabel={getProjectLanguageLabel(referenceLanguage)}
+                                        referenceValue={referenceDescription}
+                                        token={token}
+                                    />
+                                ) : null}
+                            </Flex>
+                        </Form.Item>
+                        <div style={panelStyle}>
+                            <Flex gap={16} vertical>
+                                <Form.Item
+                                    name="active"
+                                    label="Active"
+                                    valuePropName="checked"
+                                    style={{ marginBottom: 0 }}
+                                >
+                                    <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                                </Form.Item>
                                 <Typography.Text type="secondary">
-                                    Edit this {labels.offeringPhrase} label one language at a time.
+                                    Inactive menus stay hidden until you enable them.
                                 </Typography.Text>
-                                {editingProject && onTranslatePublicContent ? (
+                                {!(editingProject as any)?.isSpecialMenu ? (
+                                    <>
+                                        <Form.Item
+                                            name="isDefault"
+                                            label="Default"
+                                            valuePropName="checked"
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <Switch checkedChildren="Default" unCheckedChildren="Regular" />
+                                        </Form.Item>
+                                        <Flex gap={4} vertical>
+                                            <Typography.Text type="secondary">
+                                                Current default {labels.offeringLower}: <strong>{currentDefaultLabel}</strong>
+                                            </Typography.Text>
+                                            <Typography.Text type="secondary">
+                                                {isDefault
+                                                    ? `"${currentProjectName}" will become the default menu used by your main public menu link when you save.`
+                                                    : editingProject?.isDefault
+                                                        ? 'If you turn this off, the default role will move to the next available regular menu automatically.'
+                                                        : 'If this stays off, your main public menu link keeps opening the current default menu.'}
+                                            </Typography.Text>
+                                        </Flex>
+                                    </>
+                                ) : null}
+                            </Flex>
+                        </div>
+                    </Flex>
+                    <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+                        <div style={{ ...panelStyle, position: 'sticky', top: 0 }}>
+                            <Flex gap={12} vertical>
+                                <Flex gap={4} vertical>
+                                    <Typography.Text strong>{`${offeringName} Image`}</Typography.Text>
+                                    <Typography.Text style={secondaryTextStyle}>
+                                        Optional. This image appears on the Official Business Page menu card.
+                                    </Typography.Text>
+                                </Flex>
+                                <Form.Item hidden name="projectImage">
+                                    <Input type="hidden" />
+                                </Form.Item>
+                                <MediaImageCard
+                                    accept={getMediaProfileAcceptAttribute('projectImage')}
+                                    alt={`${offeringName} preview`}
+                                    canAdjust={Boolean(projectImageDraft?.sourceDataUrl)}
+                                    frameMaxWidth="100%"
+                                    helperText={null}
+                                    imageType="projectImage"
+                                    imageUrl={projectImage}
+                                    onAdjust={() => setIsProjectImageAdjustOpen(true)}
+                                    onRemove={projectImage ? () => {
+                                        form.setFieldValue('projectImage', null);
+                                        onProjectImagePrepared?.(null);
+                                        setProjectImageDraft(null);
+                                    } : undefined}
+                                    onSelectFile={(file) => { void handleProjectImageSelect(file); }}
+                                    placeholderDescription="Drop, paste, or choose a menu image."
+                                    placeholderTitle={`${offeringName} image`}
+                                    replaceLabel="Replace"
+                                    size="compact"
+                                />
+                                {onGenerateProjectImage ? (
                                     <Button
-                                        loading={translateActionLoading}
-                                        onClick={onTranslatePublicContent}
-                                        size="small"
-                                        type="default"
-                                        disabled={translateActionDisabled}
+                                        block
+                                        icon={<LuSparkles size={16} />}
+                                        loading={isGeneratingProjectImage}
+                                        onClick={handleGenerateProjectImage}
                                     >
-                                        Translate missing public content
+                                        {projectImage ? 'Regenerate image' : 'Generate image'}
                                     </Button>
                                 ) : null}
                             </Flex>
-                        ) : null}
-                        <Input
-                            maxLength={100}
-                            onChange={(event) => onNameChange(event.target.value)}
-                            placeholder={`Enter ${labels.offeringPhrase} name`}
-                            value={nameValue}
-                        />
-                        {selectedLanguage !== referenceLanguage ? (
-                            <ReferenceCard
-                                onUseReference={() => onNameChange(referenceName)}
-                                referenceLabel={getProjectLanguageLabel(referenceLanguage)}
-                                referenceValue={referenceName}
-                                token={token}
-                            />
-                        ) : null}
-                    </Flex>
-                </Form.Item>
-                <Form.Item
-                    label="Description"
-                >
-                    <Flex gap={12} vertical>
-                        <Input.TextArea
-                            maxLength={200}
-                            onChange={(event) => onDescriptionChange(event.target.value)}
-                            placeholder={`Enter ${labels.offeringPhrase} description`}
-                            rows={3}
-                            showCount
-                            value={descriptionValue}
-                        />
-                        {selectedLanguage !== referenceLanguage ? (
-                            <ReferenceCard
-                                onUseReference={() => onDescriptionChange(referenceDescription)}
-                                referenceLabel={getProjectLanguageLabel(referenceLanguage)}
-                                referenceValue={referenceDescription}
-                                token={token}
-                            />
-                        ) : null}
-                    </Flex>
-                </Form.Item>
-                <Form.Item
-                    name="active"
-                    label="Active"
-                    valuePropName="checked"
-                >
-                    <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-                </Form.Item>
-                {!(editingProject as any)?.isSpecialMenu ? (
-                    <>
-                        <Form.Item
-                            name="isDefault"
-                            label="Default"
-                            valuePropName="checked"
-                        >
-                            <Switch checkedChildren="Default" unCheckedChildren="Regular" />
-                        </Form.Item>
-                        <Form.Item style={{ marginTop: -12 }}>
-                            <Flex gap={4} vertical>
-                                <Typography.Text type="secondary">
-                                    Current default {labels.offeringLower}: <strong>{currentDefaultLabel}</strong>
-                                </Typography.Text>
-                                <Typography.Text type="secondary">
-                                    {isDefault
-                                        ? `"${currentProjectName}" will become the default menu used by your main public menu link when you save.`
-                                        : editingProject?.isDefault
-                                            ? 'If you turn this off, the default role will move to the next available regular menu automatically.'
-                                            : 'If this stays off, your main public menu link keeps opening the current default menu.'}
-                                </Typography.Text>
-                            </Flex>
-                        </Form.Item>
-                    </>
-                ) : null}
-                <Form.Item hidden name="projectImage">
-                    <Input type="hidden" />
-                </Form.Item>
-                <Form.Item label={`${offeringName} Image`}>
-                    <Flex gap={12} vertical>
-                        <MediaImageCard
-                            accept={getMediaProfileAcceptAttribute('projectImage')}
-                            alt={`${offeringName} preview`}
-                            canAdjust={Boolean(projectImageDraft?.sourceDataUrl)}
-                            helperText="Optional. This image appears on the Official Business Page menu card."
-                            imageType="projectImage"
-                            imageUrl={projectImage}
-                            onAdjust={() => setIsProjectImageAdjustOpen(true)}
-                            onRemove={projectImage ? () => {
-                                form.setFieldValue('projectImage', null);
-                                onProjectImagePrepared?.(null);
-                                setProjectImageDraft(null);
-                            } : undefined}
-                            onSelectFile={(file) => { void handleProjectImageSelect(file); }}
-                            placeholderDescription="Drop, paste, or choose a menu image."
-                            placeholderTitle={`${offeringName} image`}
-                            replaceLabel="Replace"
-                            size="compact"
-                        />
-                        {onGenerateProjectImage ? (
-                            <Button
-                                icon={<LuSparkles size={16} />}
-                                loading={isGeneratingProjectImage}
-                                onClick={handleGenerateProjectImage}
-                            >
-                                {projectImage ? 'Regenerate image' : 'Generate image'}
-                            </Button>
-                        ) : null}
-                    </Flex>
-                </Form.Item>
+                        </div>
+                    </div>
+                </Flex>
             </Form>
         </Modal>
         <MediaImageAdjustModal

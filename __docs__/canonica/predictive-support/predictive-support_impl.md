@@ -497,6 +497,8 @@ No body.
 - **Auth method:** API key via `X-API-Key` header (same as `/api/widget/search`)
 - **Validation:** `validatePublicApiKey(apiKey)` — same as widget search route
 - **Tenant isolation:** `tId`/`sId` extracted from auth result, **never** from request body
+- **Origin control:** Reuses `widgetAllowedOrigins`; if configured, missing or unlisted origins return 204
+- **Context normalization:** Request context is parsed through `CanonicaContextSchema` before trigger evaluation, and stored trigger conditions are normalized at read time for backward compatibility
 - **Graceful failure:** All auth/validation failures return 204 (not error JSON) — widget must never show errors
 
 ---

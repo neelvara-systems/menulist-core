@@ -39,6 +39,11 @@ import type {
 // ═══════════════════════════════════════════════════════════════
 
 const PLATFORM_SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
+const normalizeConditionValue = (value: string | undefined): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 100);
+    return normalized || undefined;
+};
 
 /**
  * Load the cached trigger index for a tenant.
@@ -79,11 +84,13 @@ function filterByPage(
     triggers: Record<string, CanonicaPredictiveTrigger>,
     page: string | undefined
 ): CanonicaPredictiveTrigger[] {
-    if (!page) return [];
+    const normalizedPage = normalizeConditionValue(page);
+    if (!normalizedPage) return [];
 
     return Object.values(triggers).filter(t => {
-        if (!t.conditions.page) return false;
-        return t.conditions.page === page;
+        const triggerPage = normalizeConditionValue(t.conditions.page);
+        if (!triggerPage) return false;
+        return triggerPage === normalizedPage;
     });
 }
 
@@ -96,10 +103,15 @@ function evaluateConditions(
     conditions: CanonicaPredictiveTrigger['conditions'],
     context: CanonicaContextPayload
 ): boolean {
-    if (conditions.feature && context.feature !== conditions.feature) return false;
-    if (conditions.workflow && context.workflow !== conditions.workflow) return false;
-    if (conditions.plan && context.plan !== conditions.plan) return false;
-    if (conditions.userRole && context.userRole !== conditions.userRole) return false;
+    const expectedFeature = normalizeConditionValue(conditions.feature);
+    const expectedWorkflow = normalizeConditionValue(conditions.workflow);
+    const expectedPlan = normalizeConditionValue(conditions.plan);
+    const expectedUserRole = normalizeConditionValue(conditions.userRole);
+
+    if (expectedFeature && normalizeConditionValue(context.feature) !== expectedFeature) return false;
+    if (expectedWorkflow && normalizeConditionValue(context.workflow) !== expectedWorkflow) return false;
+    if (expectedPlan && normalizeConditionValue(context.plan) !== expectedPlan) return false;
+    if (expectedUserRole && normalizeConditionValue(context.userRole) !== expectedUserRole) return false;
     return true;
 }
 

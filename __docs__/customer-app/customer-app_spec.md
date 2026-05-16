@@ -546,7 +546,7 @@ Customer App analytics uses the **existing `analytics` collection** and **existi
 | ---- | -------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
 | FR1  | Dynamic manifest per store                               | P0       | Route: `{subdomain}.menulist.ai/manifest.webmanifest` (tenant origin root) |
 | FR2  | Icon generation endpoint                                 | P0       | `/api/app-icons/{storeId}/{size}`                                          |
-| FR3  | Apple touch icon support                                 | P0       | `apple-touch-icon-180x180.png`                                             |
+| FR3  | Apple touch icon support                                 | P0       | `/icons/apple-touch-icon-180x180.png`                                      |
 | FR4  | Install prompt on 3rd visit                              | P0       | 30-day dismissal suppression                                               |
 | FR5  | Minimal service worker                                   | P0       | No caching logic                                                           |
 | FR6  | App shortcuts in manifest                                | P1       | Dynamic per store                                                          |

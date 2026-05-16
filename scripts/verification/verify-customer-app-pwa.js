@@ -130,9 +130,22 @@ function verifyOwnerFaviconsTransparent() {
     const visiblePixels = png.data.reduce((count, value, index) => (
       index % 4 === 3 && value > 8 ? count + 1 : count
     ), 0);
+    let whiteTilePixels = 0;
+    for (let index = 0; index < png.data.length; index += 4) {
+      const alpha = png.data[index + 3];
+      if (
+        alpha > 8
+        && png.data[index] > 235
+        && png.data[index + 1] > 235
+        && png.data[index + 2] > 235
+      ) {
+        whiteTilePixels += 1;
+      }
+    }
 
     assert(cornerAlpha.every((alpha) => alpha === 0), `${file} must have transparent corners`);
     assert(visiblePixels > 0, `${file} must contain visible logo pixels`);
+    assert(whiteTilePixels > visiblePixels * 0.45, `${file} must use the white rounded favicon tile`);
   }
 }
 

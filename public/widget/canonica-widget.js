@@ -81,6 +81,31 @@
     var pendingSuggestion = null;
     var predictiveRequestTimer = null;
 
+    function sanitizeContextString(value, maxLength) {
+        if (typeof value !== 'string') return null;
+        var normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, maxLength || 100);
+        return normalized || null;
+    }
+
+    function sanitizeContextPayload(ctx) {
+        if (!ctx || typeof ctx !== 'object' || Array.isArray(ctx)) return null;
+        var output = {};
+        ['feature', 'page', 'workflow', 'userRole', 'plan'].forEach(function (key) {
+            var value = sanitizeContextString(ctx[key], 100);
+            if (value) output[key] = value;
+        });
+        if (typeof ctx.contextVersion === 'number' && ctx.contextVersion >= 1 && ctx.contextVersion <= 10) {
+            output.contextVersion = Math.floor(ctx.contextVersion);
+        }
+        if (Array.isArray(ctx.entityHints)) {
+            output.entityHints = ctx.entityHints
+                .slice(0, 5)
+                .map(function (hint) { return sanitizeContextString(hint, 64); })
+                .filter(Boolean);
+        }
+        return Object.keys(output).length ? output : null;
+    }
+
     // ===== POSITION HELPERS =====
     function getPositionStyles(elem) {
         var pos = {};
@@ -236,13 +261,13 @@
 
     function sendContextToIframe() {
         if (productContext && iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({ type: 'canonica-context-update', context: productContext }, '*');
+            iframe.contentWindow.postMessage({ type: 'canonica-context-update', context: productContext }, widgetHost);
         }
     }
 
     function sendSuggestionToIframe() {
         if (pendingSuggestion && iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({ type: 'canonica-predictive-suggestion', suggestion: pendingSuggestion }, '*');
+            iframe.contentWindow.postMessage({ type: 'canonica-predictive-suggestion', suggestion: pendingSuggestion }, widgetHost);
         }
     }
 
@@ -257,16 +282,19 @@
 
     // ===== MESSAGE LISTENER =====
     window.addEventListener('message', function (e) {
+        if (e.origin !== widgetHost) return;
         if (e.data && e.data.type === 'canonica-widget-close') { closeWidget(); }
     });
 
     // ===== PUBLIC API =====
     window.CanonicaWidget = {
         setContext: function (ctx) {
-            productContext = ctx;
+            var sanitizedContext = sanitizeContextPayload(ctx);
+            if (!sanitizedContext) return;
+            productContext = sanitizedContext;
             // Forward to iframe if already loaded
             sendContextToIframe();
-            requestPredictiveHelp(ctx);
+            requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
         open: function () { openWidget(); },

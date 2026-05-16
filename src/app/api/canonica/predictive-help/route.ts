@@ -17,7 +17,8 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { evaluateTriggers } from '@lib/canonica/predictiveEngine';
-import { hashApiKey, validatePublicApiKey } from '@lib/publicApi/auth';
+import { CanonicaContextSchema } from '@lib/validation/contextSchema';
+import { hashApiKey, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -77,8 +78,7 @@ export async function POST(request: NextRequest) {
         }
 
         const requestOrigin = request.headers.get('origin');
-        const allowedOrigins: string[] | undefined = storeData.widgetAllowedOrigins;
-        if (allowedOrigins && allowedOrigins.length > 0 && requestOrigin && !allowedOrigins.includes(requestOrigin)) {
+        if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
             return new NextResponse(null, { status: 204 });
         }
 
@@ -88,15 +88,17 @@ export async function POST(request: NextRequest) {
         }
         const { page, feature, workflow, plan, userRole, entityHints, userId } = validation.data;
 
-        // Build context payload (reuses existing CanonicaContextPayload type)
-        const context: CanonicaContextPayload = {
+        const context = CanonicaContextSchema.parse({
             page,
             feature: feature || undefined,
             workflow: workflow || undefined,
             plan: plan || undefined,
             userRole: userRole || undefined,
             entityHints,
-        };
+        }) as CanonicaContextPayload;
+        if (!context.page) {
+            return new NextResponse(null, { status: 204 });
+        }
 
         // Evaluate triggers
         const suggestion = await evaluateTriggers(

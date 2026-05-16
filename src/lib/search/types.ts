@@ -43,8 +43,14 @@ export interface CoreSearchInput {
         craftedAnswer?: string;
     }>;
 
-    /** Image URL (Firebase Storage only) — help center only */
+    /** Image URL (Firebase Storage only) — authenticated help center uploads */
     imageUrl?: string;
+
+    /** Inline image payload — public widget uses this to avoid temporary storage writes */
+    imageBuffer?: {
+        imageBase64: string;
+        mimeType: string;
+    };
 
     /** Validated product context (page, feature, workflow, etc.) */
     productContext?: ValidatedContextPayload;

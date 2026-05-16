@@ -80,8 +80,8 @@ Thin auth wrapper. Responsibilities:
 - Feature flag gate (`ENABLE_CANONICA_WIDGET`)
 - API key rate limiting by hash before Firestore auth lookup
 - API key authentication (`validatePublicApiKey()`), with `ml_`/`cn_` key-shape rejection before Firestore lookup
-- Positive `tId/sId` workspace validation before body parsing, storage upload, or retrieval
-- Origin allowlist check (v2)
+- Positive `tId/sId` workspace validation before body parsing, image handling, or retrieval
+- Origin allowlist check (v2): configured origins are normalized; missing or unlisted `Origin` is rejected
 - Context validation via `CanonicaContextSchema`
 - Call `coreSearch()` with widget-specific params
 - Format response: `craftedAnswer` → `answer`, compact references (id + title only)
@@ -107,9 +107,11 @@ v2 JavaScript API (exposed on `window.CanonicaWidget`):
 - `open()` — programmatically open widget
 - `close()` — programmatically close widget
 
-Context is passed from host page → embed script → iframe via `postMessage` → WidgetClient state → API request body.
+Context is normalized and size-limited before it leaves the host page, then passed from host page → embed script → iframe via `postMessage` → WidgetClient state → API request body.
 
 When `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is enabled, `page()/setContext()` also calls `POST /api/canonica/predictive-help`. A returned suggestion is held in memory, indicated on the launcher, and delivered into the iframe as a proactive assistant message. No raw page events are stored.
+
+Global security headers keep `frame-ancestors 'none'` for the app by default. `/widget/*` is the explicit exception: middleware omits `X-Frame-Options` and allows HTTPS/localhost frame ancestors so the embeddable iframe can render. API calls still enforce API-key auth, rate limits, and the per-store origin allowlist.
 
 ### 3.4 Widget Client (`src/app/widget/[apiKey]/WidgetClient.tsx`)
 
@@ -214,11 +216,12 @@ Errors: 401, 400, 404 (flag OFF or search history not owned by this workspace), 
 
 New optional field on store document: `widgetAllowedOrigins: string[]`
 
-Check in widget search route:
+Check in widget search, widget feedback, and predictive-help routes:
 
 1. Read `Origin` header from request
-2. If store has `widgetAllowedOrigins` configured AND the origin is not in the list → return 403
-3. If `widgetAllowedOrigins` is empty/undefined → allow all origins (backward compatible)
+2. Normalize stored origins and request `Origin` to scheme + host + port
+3. If store has `widgetAllowedOrigins` configured AND the request has no valid `Origin` or the origin is not in the list → return 403
+4. If `widgetAllowedOrigins` is empty/undefined → allow all origins (backward compatible)
 
 This prevents API key scraping abuse without breaking existing deployments.
 
@@ -259,11 +262,11 @@ POST /api/widget/search
   Body: { query, imageBase64, imageMimeType, context }
   ↓
 Widget Route
-  ↓ upload base64 to Firebase Storage (temp path, server-side)
-  ↓ get Firebase Storage URL
+  ↓ validates base64 image payload server-side
+  ↓ passes inline image buffer to coreSearch
   ↓
-coreSearch({ imageUrl: storageUrl })
-  ↓ Stage 2: fetch image → Gemini Pro generates search query
+coreSearch({ imageBuffer })
+  ↓ Stage 2: Gemini generates search query from the inline image
   ↓ Stage 7: Gemini Flash uses image as visual context for answer
   ↓
 Answer returned with imageProcessed: true
@@ -275,7 +278,7 @@ Answer returned with imageProcessed: true
 - **Text query required** — image is context, not the query. Same rule as Help Center (ChatInput.tsx line 59-60).
 - **5MB max** — same limit as Help Center. Validated client-side before sending.
 - **image/\* only** — same restriction as Help Center.
-- **Server-side temp upload** — widget route receives base64, uploads to Firebase Storage at a temp path (`widget-images/{tId}/{sId}/{imageId}`), passes the Storage URL to coreSearch. Image can be cleaned up by a nightly job.
+- **No temporary storage write** — widget route receives base64, validates MIME/size, and passes the inline image buffer directly to `coreSearch()`. The image is not written to Firebase Storage and requires no cleanup job.
 - **Graceful degradation** — if image processing fails at any stage, coreSearch falls back to text-only search silently. User still gets an answer.
 - **No image persistence in chat** — widget is stateless, images are not stored in chat sessions. They exist only for the duration of the query processing.
 
@@ -283,14 +286,14 @@ Answer returned with imageProcessed: true
 
 | Component                        | Source                      | Widget Usage                                                                     |
 | -------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| `coreSearch()` Stage 2           | `searchCore.ts`             | Image security validation, fetch, base64 conversion, Gemini Pro query generation |
+| `coreSearch()` Stage 2           | `searchCore.ts`             | Image security validation, inline image handling, Gemini query generation        |
 | `generateSearchQueryFromImage()` | `vectorEmbeddings/index.ts` | Converts image + text prompt → keyword-rich search query                         |
 | `callGeminiChat()` with image    | `vectorEmbeddings/index.ts` | Passes image as `inlineData` to Gemini Flash for visual context                  |
 | Image size/type validation       | `ChatInput.tsx` pattern     | Same 5MB limit, image/\* only                                                    |
 
 ### Cost Impact
 
-Per image query: 1 additional Gemini Pro call (~$0.002) for image-to-query generation. Same cost as Help Center image queries. See firebase doc for projections.
+Per image query: 1 additional Gemini image-to-query call for query generation. Same AI cost class as Help Center image queries, but without the former widget temp Storage write. See firebase doc for projections.
 
 ---
 
@@ -323,7 +326,7 @@ Per image query: 1 additional Gemini Pro call (~$0.002) for image-to-query gener
 - `coreSearch()` already handles conversation context (assistant mode)
 - Add image upload button to WidgetClient input area (file picker + paste support)
 - Image converted to base64 client-side, sent inline in request body as `imageBase64` + `imageMimeType`
-- Widget search route converts base64 to Firebase Storage URL via temporary upload OR passes directly to coreSearch (see §6.1)
+- Widget search route validates base64 and passes the inline image buffer directly to coreSearch (see §6.1)
 - `coreSearch()` already handles image processing in Stage 2 (Gemini Pro query generation + Gemini Flash answer context)
 
 ### Phase 4 — Feedback Signals

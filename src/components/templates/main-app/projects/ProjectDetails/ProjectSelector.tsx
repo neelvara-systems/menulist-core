@@ -347,6 +347,23 @@ interface ProjectSelectorProps {
     onDeleteProject: (project: SelectorProjectMetadata) => void;
 }
 
+const normalizeSelectorProjects = (projects: unknown): SelectorProjectMetadata[] => {
+    if (Array.isArray(projects)) {
+        return projects.filter(Boolean) as SelectorProjectMetadata[];
+    }
+
+    if (!projects || typeof projects !== 'object') {
+        return [];
+    }
+
+    return Object.entries(projects as Record<string, any>)
+        .filter(([, project]) => project && typeof project === 'object')
+        .map(([projectId, project]) => ({
+            ...project,
+            projectId: project.projectId || projectId,
+        })) as SelectorProjectMetadata[];
+};
+
 export const ProjectSelector = ({
     projects,
     selectedProject,
@@ -359,12 +376,13 @@ export const ProjectSelector = ({
     const [modalOpen, setModalOpen] = useState(false);
     const labels = useOfferingLabels();
     const offeringName = labels.offeringPhrase.charAt(0).toUpperCase() + labels.offeringPhrase.slice(1);
+    const safeProjects = useMemo(() => normalizeSelectorProjects(projects), [projects]);
     const baseProjectNameById = useMemo(
-        () => Object.fromEntries(projects.map((project) => [
+        () => Object.fromEntries(safeProjects.map((project) => [
             project.projectId,
             getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled'),
         ])),
-        [projects]
+        [safeProjects]
     );
     const selectedStatus = getProjectStatus(selectedProject);
     const selectedStatusPresentation = getStatusPresentation(selectedStatus);
@@ -492,7 +510,7 @@ export const ProjectSelector = ({
                             padding: '4px 0',
                         }}
                     >
-                        {projects.filter(Boolean).map((project, index) => (
+                        {safeProjects.map((project, index) => (
                             <CatalogCard
                                 baseProjectName={project.specialMenuBaseProjectId ? baseProjectNameById[project.specialMenuBaseProjectId] : null}
                                 key={project.projectId || index}
@@ -506,7 +524,6 @@ export const ProjectSelector = ({
                                 }}
                                 onEdit={() => {
                                     onOpenModal(project);
-                                    setModalOpen(false);
                                 }}
                                 onDuplicate={() => confirmDuplicate(project)}
                                 onDelete={() => confirmDelete(project)}
@@ -515,7 +532,7 @@ export const ProjectSelector = ({
 
                         <AddCatalogCard
                             token={token}
-                            index={projects.length}
+                            index={safeProjects.length}
                             onClick={() => {
                                 onOpenModal();
                                 setModalOpen(false);

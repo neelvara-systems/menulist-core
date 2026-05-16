@@ -70,6 +70,12 @@ const ACTION_TYPE_LABELS: Record<string, string> = {
     link_article: 'Link Article',
 };
 
+const normalizeTriggerCondition = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 100);
+    return normalized || undefined;
+};
+
 interface PredictiveTriggerManagerProps {
     tId: number;
     sId: number;
@@ -99,18 +105,23 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
     const handleCreate = useCallback(async () => {
         try {
             const values = await createForm.validateFields();
+            const conditions = {
+                page: normalizeTriggerCondition(values.page),
+                feature: normalizeTriggerCondition(values.feature),
+                workflow: normalizeTriggerCondition(values.workflow),
+                plan: normalizeTriggerCondition(values.plan),
+                userRole: normalizeTriggerCondition(values.userRole),
+            };
+            if (!conditions.page) {
+                createForm.setFields([{ name: 'page', errors: ['Use letters, numbers, underscores, or hyphens.'] }]);
+                return;
+            }
             await create({
                 tId,
                 sId,
                 name: values.name,
                 description: values.description,
-                conditions: {
-                    page: values.page || undefined,
-                    feature: values.feature || undefined,
-                    workflow: values.workflow || undefined,
-                    plan: values.plan || undefined,
-                    userRole: values.userRole || undefined,
-                },
+                conditions,
                 action: {
                     type: values.actionType || CANONICA_TRIGGER_ACTION_TYPES.HELP_CARD,
                     entityId: values.entityId || undefined,
@@ -134,17 +145,22 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
         if (!editingTrigger) return;
         try {
             const values = await editForm.validateFields();
+            const conditions = {
+                page: normalizeTriggerCondition(values.page),
+                feature: normalizeTriggerCondition(values.feature),
+                workflow: normalizeTriggerCondition(values.workflow),
+                plan: normalizeTriggerCondition(values.plan),
+                userRole: normalizeTriggerCondition(values.userRole),
+            };
+            if (!conditions.page) {
+                editForm.setFields([{ name: 'page', errors: ['Use letters, numbers, underscores, or hyphens.'] }]);
+                return;
+            }
             await update({
                 id: editingTrigger.id,
                 name: values.name,
                 description: values.description,
-                conditions: {
-                    page: values.page || undefined,
-                    feature: values.feature || undefined,
-                    workflow: values.workflow || undefined,
-                    plan: values.plan || undefined,
-                    userRole: values.userRole || undefined,
-                },
+                conditions,
                 action: {
                     type: values.actionType,
                     entityId: values.entityId || undefined,

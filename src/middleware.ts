@@ -35,6 +35,10 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
     const isProduction = process.env.NODE_ENV === 'production' && !isVercelPreview;
     const isDev = !isProduction;
+    const isCanonicaWidgetRoute = request.nextUrl.pathname === '/widget' || request.nextUrl.pathname.startsWith('/widget/');
+    const frameAncestorsDirective = isCanonicaWidgetRoute
+        ? 'frame-ancestors https: http://localhost:* http://127.0.0.1:*'
+        : "frame-ancestors 'none'";
 
     // A02: Force HTTPS in Production
     if (isProduction && request.headers.get('x-forwarded-proto') !== 'https') {
@@ -45,7 +49,9 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     }
 
     // A05: Security Headers (OWASP Recommendations)
-    response.headers.set('X-Frame-Options', 'DENY');
+    if (!isCanonicaWidgetRoute) {
+        response.headers.set('X-Frame-Options', 'DENY');
+    }
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-XSS-Protection', '1; mode=block');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -72,7 +78,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self' https://accounts.google.com",
-        "frame-ancestors 'none'",
+        frameAncestorsDirective,
         ...(isProduction ? ["upgrade-insecure-requests"] : []),
     ];
 
@@ -97,7 +103,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self' https://accounts.google.com",
-        "frame-ancestors 'none'",
+        frameAncestorsDirective,
     ];
 
     if (!isDev) {

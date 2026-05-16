@@ -31,7 +31,7 @@
 
 Widget v2 reuses ALL existing Canonica collections. Zero new Firestore collections created. The feedback route writes to `aiSearchHistory` (existing) and `canonica_signal_events` (existing).
 
-The `widgetAllowedOrigins` field is stored on the existing `stores` document — no new document or collection.
+The `widgetAllowedOrigins` field is stored on the existing `stores` document — no new document or collection. Stored values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins.
 
 ---
 
@@ -42,10 +42,10 @@ The `widgetAllowedOrigins` field is stored on the existing `stores` document —
 | Canonical hit (best case) | ~8    | 1      | $0.00      | ~$0.0004   |
 | RAG fallback (typical)    | ~18   | 2      | ~$0.001    | ~$0.0017   |
 | Cached embedding hit      | ~12   | 1      | ~$0.001    | ~$0.0013   |
-| With image (RAG + image)  | ~18   | 3      | ~$0.003    | ~$0.0037   |
+| With image (RAG + image)  | ~18   | 2      | ~$0.003    | ~$0.0036   |
 | Feedback submission       | 0     | 1-2    | $0.00      | ~$0.0001   |
 
-Note on image queries: Image queries add ~$0.002 per query for Gemini Pro image-to-query generation. Expected volume: <10% of widget queries will include images (error screenshots). Image is uploaded to temp Firebase Storage path (1 WRITE), cleaned up nightly.
+Note on image queries: Image queries add the image-to-query Gemini call. Expected volume: <10% of widget queries will include images (error screenshots). Widget images are validated and passed inline to `coreSearch()`; they are not written to Firebase Storage.
 
 ## Monthly Cost Projections
 
@@ -68,7 +68,10 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 4. **Shared pipeline** — Same coreSearch() function, no duplicated logic or reads
 5. **Context-aware entity boosting** — Narrows entity match scope, reduces RAG fallback rate
 6. **No session persistence** — Widget session memory is in-memory only, zero Firestore writes for conversation state
-7. **Origin allowlist reuses store document** — No additional read (checked during API key validation which already reads store)
+7. **Inline widget images** — Screenshot questions are validated and passed to the shared search pipeline without temporary Storage writes
+8. **Bounded context payloads** — Widget context is normalized before postMessage/API use, keeping prompt and trigger matching payloads small
+9. **Origin allowlist reuses store document** — No additional read (checked during API key validation which already reads store)
+10. **No temp image storage for widget** — Image queries avoid Firebase Storage writes and cleanup work by passing validated inline payloads into the shared pipeline
 
 ## Long-Term Cost Strategy
 

@@ -36,7 +36,9 @@ import type { CoreSearchInput, CoreSearchResult, SearchPerfMetrics } from './typ
 const TRUSTED_STORAGE_HOST = 'firebasestorage.googleapis.com';
 const TRUSTED_BUCKET_PATH = '/v0/b/ecomsai.appspot.com/o';
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGE_BASE64_LENGTH = Math.ceil((MAX_IMAGE_SIZE_BYTES * 4) / 3) + 100;
 const FETCH_TIMEOUT_MS = 10000; // 10 seconds
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 const SIMILARITY_THRESHOLD = 0.6;
 const SIMILARITY_THRESHOLD_LOW = 0.4;
@@ -47,17 +49,55 @@ const SEARCH_CACHE_VERSION = 'rag-v3';
 const LOG_FILE = LOG_FILES.KB_SEARCH;
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
 
+type KnowledgeBaseCacheState = {
+    version: string;
+    hasPublishedArticles: boolean;
+};
+
+const getTimestampMillis = (value: any): number => {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (value instanceof Date) return value.getTime();
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<KnowledgeBaseCacheState> => {
+    try {
+        const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES)
+            .where('status', '==', 'published')
+            .where('tId', '==', tId)
+            .where('sId', '==', sId)
+            .orderBy('modifiedOn', 'desc')
+            .limit(1)
+            .get();
+
+        if (snapshot.empty) {
+            return { version: `${SEARCH_CACHE_VERSION}:empty`, hasPublishedArticles: false };
+        }
+
+        const latestModified = getTimestampMillis(snapshot.docs[0].data()?.modifiedOn);
+        return { version: `${SEARCH_CACHE_VERSION}:${latestModified || 'unknown'}`, hasPublishedArticles: true };
+    } catch {
+        // Cache invalidation should improve correctness, not block retrieval if the index is unavailable.
+        return { version: SEARCH_CACHE_VERSION, hasPublishedArticles: true };
+    }
+};
+
+const isKnowledgeBaseRefusal = (answer: string): boolean => {
+    const normalized = answer.toLowerCase();
+    return normalized.includes('not available in the current knowledge base') ||
+        normalized.includes("couldn't find") ||
+        normalized.includes('could not find') ||
+        normalized.includes('not documented') ||
+        normalized.includes('no relevant articles');
+};
+
 const EMPTY_RESULT: CoreSearchResult = {
     craftedAnswer: `I couldn't find any relevant articles in our knowledge base for that specific question.
 
-However, I'm here to help! Here are some things I can assist you with:
-
-- **Getting Started**: Setup guides and first steps
-- **Account Settings**: Profile, billing, and preferences
-- **Integrations**: API keys, webhooks, and connected tools
-- **Troubleshooting**: Common errors and recovery steps
-
-Try asking about one of these topics, or contact support for personalized assistance.`,
+Try asking about another documented topic, or contact support if you need a confirmed answer.`,
     references: [],
     suggestedQuestions: [],
     canonical: false,
@@ -69,7 +109,7 @@ Try asking about one of these topics, or contact support for personalized assist
  *
  * Pipeline stages:
  * 1. SAFE_MODE check
- * 2. Image processing (if imageUrl provided)
+ * 2. Image processing (if imageUrl or inline image buffer provided)
  * 2.5. Instant cache lookup (Upstash Redis — canonical answers only)
  * 3. Cache lookup (Firestore aiSearchHistory)
  * 4. Canonical-first retrieval (deterministic, zero LLM cost)
@@ -85,7 +125,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     let imageProcessed = false;
     let generatedQueryFromImage: string | undefined;
-    let imageBuffer: { imageBase64: string; mimeType: string } | undefined;
+    let imageBufferForAi: { imageBase64: string; mimeType: string } | undefined;
+    let imageCacheToken: string | undefined;
 
     const {
         query: searchQuery,
@@ -96,6 +137,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         mode,
         conversationHistory,
         imageUrl,
+        imageBuffer: inlineImageBuffer,
         productContext,
     } = input;
 
@@ -142,47 +184,71 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     // ===== STAGE 2: IMAGE PROCESSING =====
-    if (imageUrl) {
+    if (inlineImageBuffer || imageUrl) {
         const imageStart = Date.now();
 
         try {
-            // Security validation
-            const url = new URL(imageUrl);
-            if (
-                url.protocol !== 'https:' ||
-                url.hostname !== TRUSTED_STORAGE_HOST ||
-                !url.pathname.includes(TRUSTED_BUCKET_PATH)
-            ) {
-                throw new Error('Untrusted or invalid image URL');
+            if (inlineImageBuffer) {
+                const mimeType = String(inlineImageBuffer.mimeType || '').toLowerCase();
+                const imageBase64 = String(inlineImageBuffer.imageBase64 || '');
+                if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+                    throw new Error(`Unsupported image MIME type: ${mimeType || 'missing'}`);
+                }
+                if (!imageBase64 || imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
+                    throw new Error('Inline image payload is empty or too large');
+                }
+
+                const buffer = Buffer.from(imageBase64, 'base64');
+                if (!buffer.byteLength || buffer.byteLength > MAX_IMAGE_SIZE_BYTES) {
+                    throw new Error(`Inline image size exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`);
+                }
+
+                imageBufferForAi = { imageBase64, mimeType };
+                imageCacheToken = hashString(imageBase64);
+            } else if (imageUrl) {
+                // Security validation
+                const url = new URL(imageUrl);
+                if (
+                    url.protocol !== 'https:' ||
+                    url.hostname !== TRUSTED_STORAGE_HOST ||
+                    !url.pathname.includes(TRUSTED_BUCKET_PATH)
+                ) {
+                    throw new Error('Untrusted or invalid image URL');
+                }
+
+                // Fetch image with timeout and size check
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+                const response = await fetch(imageUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch image: ${response.statusText}`);
+                }
+
+                const buffer = await response.arrayBuffer();
+
+                if (buffer.byteLength > MAX_IMAGE_SIZE_BYTES) {
+                    throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`);
+                }
+
+                const base64 = Buffer.from(buffer).toString('base64');
+                const mimeType = response.headers.get('content-type') || 'image/png';
+                imageBufferForAi = { imageBase64: base64, mimeType };
+                imageCacheToken = hashString(imageUrl);
             }
 
-            // Fetch image with timeout and size check
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-            const response = await fetch(imageUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image: ${response.statusText}`);
+            if (!imageBufferForAi) {
+                throw new Error('No image payload available for processing');
             }
-
-            const buffer = await response.arrayBuffer();
-
-            if (buffer.byteLength > MAX_IMAGE_SIZE_BYTES) {
-                throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`);
-            }
-
-            const base64 = Buffer.from(buffer).toString('base64');
-            const mimeType = response.headers.get('content-type') || 'image/png';
-            imageBuffer = { imageBase64: base64, mimeType };
             imageProcessed = true;
 
             // Generate search query from image
             generatedQueryFromImage = await generateSearchQueryFromImage(
                 searchQuery,
-                imageBuffer.imageBase64,
-                imageBuffer.mimeType
+                imageBufferForAi.imageBase64,
+                imageBufferForAi.mimeType
             );
             aiProviderOperations.add('image_query_generation');
 
@@ -194,6 +260,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 data: { error: imageError.message, query: searchQuery, mountContext }
             });
             imageProcessed = false;
+            imageBufferForAi = undefined;
+            imageCacheToken = undefined;
         }
 
         perfMetrics.imageProcessing = Date.now() - imageStart;
@@ -253,8 +321,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
                         // Still save to aiSearchHistory for analytics (INV-4)
                         const normalizedTextQueryForKey = normalizeQuery(searchQuery);
-                        const instantCacheKeyBase = imageUrl
-                            ? `${normalizedTextQueryForKey}::IMAGE::${hashString(imageUrl)}`
+                        const instantCacheKeyBase = imageCacheToken
+                            ? `${normalizedTextQueryForKey}::IMAGE::${imageCacheToken}`
                             : normalizedTextQueryForKey;
                         const instantCacheKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${instantCacheKeyBase}`;
 
@@ -315,10 +383,11 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     // ===== STAGE 3: CACHE LOOKUP =====
     const normalizedTextQuery = normalizeQuery(searchQuery);
-    const cacheLookupKeyBase = imageUrl
-        ? `${normalizedTextQuery}::IMAGE::${hashString(imageUrl)}`
+    const cacheLookupKeyBase = imageCacheToken
+        ? `${normalizedTextQuery}::IMAGE::${imageCacheToken}`
         : normalizedTextQuery;
-    const cacheLookupKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${cacheLookupKeyBase}`;
+    const kbCacheState = await getKnowledgeBaseCacheState(tId, sId);
+    const cacheLookupKey = `${tId}:${sId}:${kbCacheState.version}:${cacheLookupKeyBase}`;
 
     const cacheStart = Date.now();
     // Widget searches use a prefixed cache key to avoid collision, but hit same pipeline
@@ -489,18 +558,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         });
     }
 
-    // ===== STAGE 5: RAG FALLBACK (Vector Search) =====
-    const embeddingStart = Date.now();
-    let queryVector = await getCachedEmbedding(effectiveCacheKey);
-
-    if (!queryVector) {
-        queryVector = await callGeminiEmbedding(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
-        aiProviderOperations.add('embedding_generation');
-        await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector);
-    }
-
-    perfMetrics.embeddingGeneration = Date.now() - embeddingStart;
-
     // Helper: evaluate escalation for empty/no-result paths (avoids code duplication)
     const buildEmptyEscalation = async () => {
         if (!FEATURE_FLAGS.ENABLE_CANONICA_AI_ESCALATION) return undefined;
@@ -517,6 +574,34 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             });
         } catch { return undefined; }
     };
+
+    if (!kbCacheState.hasPublishedArticles) {
+        perfMetrics.total = Date.now() - perfStart;
+        await writeLogEntry({
+            logFileName: PERF_LOG,
+            userId: uId,
+            logType: 'KB_EMPTY_SKIP_RAG',
+            data: {
+                query: searchQuery,
+                totalMs: perfMetrics.total,
+                mountContext,
+            }
+        });
+
+        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+    }
+
+    // ===== STAGE 5: RAG FALLBACK (Vector Search) =====
+    const embeddingStart = Date.now();
+    let queryVector = await getCachedEmbedding(effectiveCacheKey);
+
+    if (!queryVector) {
+        queryVector = await callGeminiEmbedding(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
+        aiProviderOperations.add('embedding_generation');
+        await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector);
+    }
+
+    perfMetrics.embeddingGeneration = Date.now() - embeddingStart;
 
     const vectorSearchStart = Date.now();
     const articlesRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
@@ -642,7 +727,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const geminiAnswer = await callGeminiChat(
         searchQuery,
         payloadToGemini,
-        imageBuffer,
+        imageBufferForAi,
         conversationHistory
     );
     aiProviderOperations.add('answer_generation');
@@ -702,6 +787,21 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             });
         }
 
+        if (!resolvedReferences.length && !isKnowledgeBaseRefusal(craftedAnswer)) {
+            await writeLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'ANSWER_WITHOUT_VALID_REFERENCES_BLOCKED',
+                data: {
+                    query: searchQuery,
+                    referenceIds: generatedReferenceIds.slice(0, 10),
+                    promptDocumentCount: documentsForPrompt.length,
+                    mountContext,
+                }
+            });
+            return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        }
+
         // Save search history
         const savedHistory = await addAiSearchHistoryServer({
             query: searchQuery,
@@ -725,7 +825,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             data: {
                 query: searchQuery,
                 cached: false,
-                hasImage: !!imageUrl,
+                hasImage: imageProcessed,
                 assistantMode: mode === 'assistant',
                 totalMs: perfMetrics.total,
                 imageProcessingMs: perfMetrics.imageProcessing || 0,

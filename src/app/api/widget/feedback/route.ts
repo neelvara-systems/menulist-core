@@ -17,7 +17,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { hashApiKey, validatePublicApiKey } from '@lib/publicApi/auth';
+import { hashApiKey, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -74,6 +74,11 @@ export async function POST(request: NextRequest) {
                 { storeId }
             );
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+        }
+
+        const requestOrigin = request.headers.get('origin');
+        if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
+            return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
         }
 
         // Parse request body

@@ -669,14 +669,13 @@ export default function DecisionBlocks({
     }
 
     const allBlocksHaveFeaturedImages = blocks.every((rec) => Boolean(getPrimaryPublicMenuImage(rec.item)));
-    const shouldUseFeaturedCardLayout = menuLayout === MenuLayout.CARD
-        && blocks.length === 3
-        && allBlocksHaveFeaturedImages;
+    const canUseFeaturedVisualLayout = allBlocksHaveFeaturedImages
+        && (menuLayout === MenuLayout.CARD || menuLayout === MenuLayout.GRID);
     const allBlocksOwnerPinned = blocks.every((block) => block.reason === DECISION_REASON_KEYS.pinned.ownerPick);
     const isSingleBlock = blocks.length === 1;
-    const useHorizontalScroller = shouldUseFeaturedCardLayout && !isDesktopLayout && !isSingleBlock;
-    const featuredItemGap = shouldUseFeaturedCardLayout ? 10 : 8;
-    const featuredListMode = !shouldUseFeaturedCardLayout;
+    const useHorizontalScroller = !isDesktopLayout && !isSingleBlock;
+    const featuredItemGap = canUseFeaturedVisualLayout ? 10 : 8;
+    const featuredListMode = !canUseFeaturedVisualLayout;
 
     return (
         <section
@@ -749,22 +748,22 @@ export default function DecisionBlocks({
                 <div
                     className="flex"
                     style={{
-                        display: shouldUseFeaturedCardLayout
+                        display: canUseFeaturedVisualLayout
                             ? isDesktopLayout
                                 ? 'grid'
                                 : 'flex'
                             : 'flex',
-                        flexDirection: featuredListMode ? 'column' : undefined,
+                        flexDirection: undefined,
                         gap: featuredItemGap,
-                        gridTemplateColumns: shouldUseFeaturedCardLayout && isDesktopLayout
+                        gridTemplateColumns: canUseFeaturedVisualLayout && isDesktopLayout
                             ? `repeat(${blocks.length}, minmax(0, 1fr))`
                             : undefined,
                         maxWidth: 'none',
                         minWidth: 0,
                         paddingRight: useHorizontalScroller ? 14 : 0,
-                        width: shouldUseFeaturedCardLayout && (isDesktopLayout || isSingleBlock)
+                        width: canUseFeaturedVisualLayout && (isDesktopLayout || isSingleBlock)
                             ? '100%'
-                            : shouldUseFeaturedCardLayout
+                            : useHorizontalScroller
                                 ? 'fit-content'
                                 : '100%',
                     }}
@@ -839,7 +838,11 @@ export default function DecisionBlocks({
                                     userSelect: 'none',
                                     WebkitUserSelect: 'none',
                                     width: featuredListMode
-                                        ? '100%'
+                                        ? isSingleBlock
+                                            ? '100%'
+                                            : isDesktopLayout
+                                                ? '100%'
+                                                : 'min(calc(100vw - 48px), 292px)'
                                         : isSingleBlock
                                             ? '100%'
                                             : isDesktopLayout

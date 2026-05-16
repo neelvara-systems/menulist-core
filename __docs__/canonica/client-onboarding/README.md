@@ -71,7 +71,7 @@ canonica.app/get-started
 | Subscription model | Same `FirestoreSubscriptionDoc` type |
 | Rate limiting | Same Upstash rate limiter |
 | Default roles | Same `createDefaultRoles()` |
-| API key pattern | Same `publicApi.apiKey` on store |
+| API key pattern | Same `store.publicApi` object; current keys are stored as `apiKeyHash` + display-only `keyPrefix` |
 
 ---
 

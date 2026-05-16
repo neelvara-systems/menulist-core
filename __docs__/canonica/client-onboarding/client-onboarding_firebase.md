@@ -13,7 +13,7 @@
 | `platformSummary` | READ | 1 | Get current tenant/store counters |
 | `tenants` | WRITE | 1 | Create new tenant |
 | `stores` | WRITE | 1 | Create new store |
-| `stores` | WRITE | 1 | Set publicApi.apiKey |
+| `stores` | WRITE | 1 | Set publicApi.apiKeyHash + keyPrefix |
 | `platformSummary` | WRITE | 2 | Update summary + storesSummary |
 | `users` | WRITE | 1 | Link tenantId + storeId |
 | `subscriptions` | WRITE | 1 | Create subscription record |

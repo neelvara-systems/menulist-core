@@ -2,34 +2,28 @@ export const dynamic = 'force-dynamic';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { canonicaFirestoreAdmin as firestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { EMBED_MODEL, callGeminiEmbedding } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
-import { KnowledgeBaseArticleEmbeddingPayload } from '@type/knowledgeBase';
 import { writeLogEntry } from 'logs/utils';
 import { NextRequest, NextResponse } from 'next/server';
+import { z, ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const LOG_FILE = "kb.log";
-
-const getProviderRetryAfter = (error: any): number | null => {
-    const message = String(error?.message || error || '');
-    const retryMatch = message.match(/retry in\s+([\d.]+)s/i);
-    if (retryMatch?.[1]) {
-        return Math.max(1, Math.ceil(Number(retryMatch[1])));
-    }
-    return null;
-};
-
-const isProviderRateLimitError = (error: any): boolean => {
-    const message = String(error?.message || error || '').toLowerCase();
-    return error?.status === 429 ||
-        error?.httpStatusCode === 429 ||
-        message.includes('429 too many requests') ||
-        message.includes('resource_exhausted') ||
-        message.includes('quota exceeded');
-};
+const ArticleEmbeddingRequestSchema = z.object({
+    embeddingPayload: z.object({
+        articleId: z.string().trim().min(1).max(160),
+        content: z.unknown().optional(),
+        categoryId: z.string().trim().min(1).max(160),
+        sectionId: z.string().trim().max(160).optional().default(''),
+        articleTitle: z.string().trim().min(1).max(300),
+        categoryTitle: z.string().trim().max(300).optional().default(''),
+        sectionTitle: z.string().trim().max(300).optional().default(''),
+    }),
+});
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
@@ -44,15 +38,35 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const rateLimitResponse = await checkAIOperationLimit();
         if (rateLimitResponse) return rateLimitResponse;
 
-        const body = await request.json();
-        const { embeddingPayload }: { embeddingPayload: KnowledgeBaseArticleEmbeddingPayload } = body;
-
-        if (!embeddingPayload) {
-            await writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_GENERATION_ERROR', data: 'Article is required' });
-            return NextResponse.json({ error: 'Article ID is required' }, { status: 400 });
+        const { embeddingPayload } = ArticleEmbeddingRequestSchema.parse(await request.json());
+        const articleRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(embeddingPayload.articleId);
+        const articleDoc = await articleRef.get();
+        if (!articleDoc.exists) {
+            return NextResponse.json({ error: 'Article not found' }, { status: 404 });
         }
 
-        const text = extractPlainTextFromEditorContent(embeddingPayload.content);
+        const article = articleDoc.data() || {};
+        const articleTenantId = Number(article.tId ?? article.tenantId);
+        const articleStoreId = Number(article.sId ?? article.storeId);
+        if (
+            !Number.isFinite(articleTenantId) ||
+            !Number.isFinite(articleStoreId) ||
+            articleTenantId !== Number(session.tId) ||
+            articleStoreId !== Number(session.sId)
+        ) {
+            return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+        }
+
+        const articleTitle = typeof article.title === 'string' && article.title.trim()
+            ? article.title.trim()
+            : embeddingPayload.articleTitle;
+        const categoryTitle = typeof article.categoryTitle === 'string'
+            ? article.categoryTitle
+            : embeddingPayload.categoryTitle;
+        const sectionTitle = typeof article.sectionTitle === 'string'
+            ? article.sectionTitle
+            : embeddingPayload.sectionTitle;
+        const text = extractPlainTextFromEditorContent(article.content);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'EMBEDDING_GENERATION_STARTED',
@@ -66,11 +80,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             await writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_GENERATION_ERROR', data: 'Article content is required' });
             return NextResponse.json({ error: 'Article content is required' }, { status: 400 });
         }
-        const embeddingInput = `Category: ${embeddingPayload.categoryTitle}\nSection: ${embeddingPayload.sectionTitle}\nTitle: ${embeddingPayload.articleTitle}\nContent: ${text}`;
+        const embeddingInput = `Category: ${categoryTitle}\nSection: ${sectionTitle}\nTitle: ${articleTitle}\nContent: ${text}`;
         const operationStart = Date.now();
         const vector = await callGeminiEmbedding(embeddingInput, {
             taskType: 'RETRIEVAL_DOCUMENT',
-            title: embeddingPayload.articleTitle,
+            title: articleTitle,
         });
 
         if (!vector) {
@@ -89,15 +103,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         });
 
-        let collectionRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES);
-        await collectionRef.doc(embeddingPayload.articleId).update({ embedding: vector });
+        await articleRef.update({ embedding: vector });
         recordAiOperationForSession(session, {
             action: AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING,
             articleId: embeddingPayload.articleId,
             billingMode: 'internal',
             clientResponse: {
-                categoryTitle: embeddingPayload.categoryTitle,
-                sectionTitle: embeddingPayload.sectionTitle,
+                categoryTitle,
+                sectionTitle,
                 textLength: text.length,
                 vectorDimensions: values.length,
             },
@@ -110,13 +123,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ ok: true, status: 200 });
 
     } catch (err: any) {
+        if (err instanceof ZodError) {
+            return NextResponse.json({ error: 'Invalid article embedding request' }, { status: 400 });
+        }
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'EMBEDDING_GENERATION_ERROR',
             data: { error: err?.message || String(err) }
         });
-        if (isProviderRateLimitError(err)) {
-            const retryAfter = getProviderRetryAfter(err) || 60;
+        if (isAIProviderRateLimitError(err)) {
+            const retryAfter = getAIProviderRetryAfter(err) || 60;
             return NextResponse.json(
                 {
                     error: `Embedding generation is temporarily busy. Please wait ${retryAfter} seconds before trying again.`,

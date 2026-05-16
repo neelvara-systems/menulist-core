@@ -75,6 +75,26 @@ const DEFAULT_CONFIG: WidgetConfig = {
     offsetY: 20,
 };
 
+const normalizeAllowedOrigin = (value: string): string | null => {
+    try {
+        const parsed = new URL(value.trim());
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        return parsed.origin;
+    } catch {
+        return null;
+    }
+};
+
+const normalizeAllowedOrigins = (values: unknown): string[] => {
+    if (!Array.isArray(values)) return [];
+    return Array.from(new Set(
+        values
+            .filter((value): value is string => typeof value === 'string')
+            .map(normalizeAllowedOrigin)
+            .filter((value): value is string => Boolean(value))
+    ));
+};
+
 // ═══════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════
@@ -109,7 +129,7 @@ export default function CanonicaSettings() {
                         setConfig({ ...DEFAULT_CONFIG, ...store.widgetConfig });
                     }
                     if (store.widgetAllowedOrigins) {
-                        setOrigins(store.widgetAllowedOrigins);
+                        setOrigins(normalizeAllowedOrigins(store.widgetAllowedOrigins));
                     }
                     if (store.publicApi?.apiKey) {
                         setApiKey(store.publicApi.apiKey);
@@ -186,19 +206,16 @@ export default function CanonicaSettings() {
 
     // Add origin
     const handleAddOrigin = () => {
-        const trimmed = newOrigin.trim();
-        if (!trimmed) return;
-        try {
-            new URL(trimmed); // validate URL format
-        } catch {
+        const normalized = normalizeAllowedOrigin(newOrigin);
+        if (!normalized) {
             message.error('Enter a valid URL (e.g., https://app.example.com)');
             return;
         }
-        if (origins.includes(trimmed)) {
+        if (origins.includes(normalized)) {
             message.warning('Origin already added');
             return;
         }
-        setOrigins(prev => [...prev, trimmed]);
+        setOrigins(prev => [...prev, normalized]);
         setNewOrigin('');
     };
 
@@ -576,23 +593,31 @@ export default function CanonicaSettings() {
 }
 
 /** Build the widget embed code string based on current config */
+function escapeHtmlAttribute(value: string | number): string {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 function buildEmbedCode(
     apiKey: string | null,
     config: WidgetConfig,
 ): string {
     const attrs: string[] = [
         `  src="https://canonica.app/widget/canonica-widget.js"`,
-        `  data-api-key="${apiKey || 'YOUR_API_KEY'}"`,
+        `  data-api-key="${escapeHtmlAttribute(apiKey || 'YOUR_API_KEY')}"`,
     ];
 
-    if (config.position !== 'bottom-right') attrs.push(`  data-position="${config.position}"`);
-    if (config.accentColor !== '#6366f1') attrs.push(`  data-accent-color="${config.accentColor}"`);
-    if (config.shape !== 'rounded') attrs.push(`  data-shape="${config.shape}"`);
-    if (config.display !== 'icon') attrs.push(`  data-display="${config.display}"`);
-    if (config.label !== '?') attrs.push(`  data-label="${config.label}"`);
-    if (config.size !== 'medium') attrs.push(`  data-size="${config.size}"`);
-    if (config.offsetX !== 20) attrs.push(`  data-offset-x="${config.offsetX}"`);
-    if (config.offsetY !== 20) attrs.push(`  data-offset-y="${config.offsetY}"`);
+    if (config.position !== 'bottom-right') attrs.push(`  data-position="${escapeHtmlAttribute(config.position)}"`);
+    if (config.accentColor !== '#6366f1') attrs.push(`  data-accent-color="${escapeHtmlAttribute(config.accentColor)}"`);
+    if (config.shape !== 'rounded') attrs.push(`  data-shape="${escapeHtmlAttribute(config.shape)}"`);
+    if (config.display !== 'icon') attrs.push(`  data-display="${escapeHtmlAttribute(config.display)}"`);
+    if (config.label !== '?') attrs.push(`  data-label="${escapeHtmlAttribute(config.label)}"`);
+    if (config.size !== 'medium') attrs.push(`  data-size="${escapeHtmlAttribute(config.size)}"`);
+    if (config.offsetX !== 20) attrs.push(`  data-offset-x="${escapeHtmlAttribute(config.offsetX)}"`);
+    if (config.offsetY !== 20) attrs.push(`  data-offset-y="${escapeHtmlAttribute(config.offsetY)}"`);
 
     return `<script\n${attrs.join('\n')}\n></script>`;
 }

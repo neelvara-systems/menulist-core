@@ -87,6 +87,29 @@ type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     languages?: string[];
 };
 
+const normalizeProjectsList = (projects: unknown): ProjectMetadata[] => {
+    if (Array.isArray(projects)) {
+        return projects.filter(Boolean) as ProjectMetadata[];
+    }
+
+    if (!projects || typeof projects !== 'object') {
+        return [];
+    }
+
+    return Object.entries(projects as Record<string, any>)
+        .filter(([, project]) => project && typeof project === 'object')
+        .map(([projectId, project]) => ({
+            ...project,
+            projectId: project.projectId || projectId,
+        })) as ProjectMetadata[];
+};
+
+const normalizeProjectsData = (data: any) => ({
+    ...(data || {}),
+    projects: normalizeProjectsList(data?.projects),
+    lastDoc: data?.lastDoc ?? null,
+});
+
 function BusinessIdentitySuggestionList({
     onSelectionChange,
     suggestions,
@@ -325,7 +348,7 @@ function ProjectsPage() {
         async () => {
             if (!loggedInSession) return { projects: [], lastDoc: null };
             const result = await getMetadataProjectsList();
-            return result || { projects: [] };
+            return normalizeProjectsData(result);
         },
         {
             dedupingInterval: REFRESH_INTERVALS.SWR_DEDUPE, // 60 seconds
@@ -445,7 +468,7 @@ function ProjectsPage() {
         mutateProjects(
             (current) => current ? {
                 ...current,
-                projects: current.projects.map((project) => (
+                projects: normalizeProjectsList(current.projects).map((project) => (
                     project.projectId === projectId ? { ...project, projectImage } : project
                 )),
             } : current,
@@ -714,7 +737,7 @@ function ProjectsPage() {
     const handleWelcomeStart = () => {
         setIsFirstTime(false);
         localStorage.setItem('projects_visited', 'true');
-        if ((projectsData?.projects?.length || 0) === 0) {
+        if (normalizeProjectsList(projectsData?.projects).length === 0) {
             openModal();
         }
     };
@@ -766,11 +789,19 @@ function ProjectsPage() {
             // behaviors are legitimate (stable-URL + rotating feature pattern)
             // but owners usually only want that intentionally, so we ask.
             const proposedSlug = slugify(sanitizedName);
-            const existingProjects = projectsData?.projects || [];
+            const existingProjects = normalizeProjectsList(projectsData?.projects);
             const editingProjectId = editingProject?.projectId;
             const otherDefault = existingProjects.find(
                 (p: any) => p?.isDefault === true && p?.projectId !== editingProjectId,
             );
+            const otherDefaultName = otherDefault
+                ? getLocalizedText(
+                    otherDefault.name,
+                    undefined,
+                    getPrimaryLocalizedLanguage(otherDefault.name, 'en'),
+                    'Untitled',
+                )
+                : '';
             const thisIsDefault = editingProject?.isDefault === true;
             const nextIsDefault = values.isDefault === true;
             let promoteThisAsDefault = false;
@@ -792,7 +823,7 @@ function ProjectsPage() {
                                     {tDivergence('defaultLineBefore', {
                                         offeringLower: labels.offeringLower,
                                     })}
-                                    <strong>&ldquo;{otherDefault.name}&rdquo;</strong>
+                                    <strong>&ldquo;{otherDefaultName}&rdquo;</strong>
                                     {tDivergence('defaultLineAfter')}
                                 </Typography.Paragraph>
                                 <ul style={{ paddingLeft: 20, margin: 0 }}>
@@ -805,7 +836,7 @@ function ProjectsPage() {
                                     <li>
                                         {tDivergence('bulletTappingBefore')}
                                         {tDivergence('bulletArrow')}
-                                        <strong>{otherDefault.name}</strong>
+                                        <strong>{otherDefaultName}</strong>
                                     </li>
                                 </ul>
                                 <Typography.Paragraph style={{ margin: 0 }}>
@@ -896,7 +927,7 @@ function ProjectsPage() {
                 mutateProjects(
                     (current) => current ? {
                         ...current,
-                        projects: current.projects.map((p) => {
+                        projects: normalizeProjectsList(current.projects).map((p) => {
                             if (p.projectId === editingProject.projectId) return updatedProject;
                             if (shouldBeDefault && p.projectId === otherDefault?.projectId) {
                                 return { ...p, isDefault: false };
@@ -937,7 +968,7 @@ function ProjectsPage() {
                         (current) => current ? {
                             ...current,
                             projects: [
-                                ...current.projects.map((p) => shouldBeDefault && p.projectId === otherDefault?.projectId
+                                ...normalizeProjectsList(current.projects).map((p) => shouldBeDefault && p.projectId === otherDefault?.projectId
                                     ? { ...p, isDefault: false }
                                     : p),
                                 newProject.summaryData,
@@ -976,7 +1007,7 @@ function ProjectsPage() {
                 mutateProjects(
                     (current) => current ? {
                         ...current,
-                        projects: current.projects.filter(p => p.projectId !== editingProject.projectId)
+                        projects: normalizeProjectsList(current.projects).filter(p => p.projectId !== editingProject.projectId)
                     } : current,
                     { revalidate: false }
                 );
@@ -1101,7 +1132,7 @@ function ProjectsPage() {
             mutateProjects(
                 (current) => current ? {
                     ...current,
-                    projects: current.projects.filter(p => p.projectId !== project.projectId)
+                    projects: normalizeProjectsList(current.projects).filter(p => p.projectId !== project.projectId)
                 } : current,
                 { revalidate: false }
             );
@@ -1173,7 +1204,7 @@ function ProjectsPage() {
             form.resetFields();
             form.setFieldsValue({
                 active: true,
-                isDefault: !(projectsData?.projects || []).some((project: any) => project?.isDefault === true),
+                isDefault: !normalizeProjectsList(projectsData?.projects).some((project: any) => project?.isDefault === true),
                 projectImage: null,
             });
         }
@@ -1250,7 +1281,7 @@ function ProjectsPage() {
             mutateProjects(
                 (current) => current ? {
                     ...current,
-                    projects: current.projects.map((project) => (
+                    projects: normalizeProjectsList(current.projects).map((project) => (
                         project.projectId === editingProject.projectId
                             ? {
                                 ...project,
@@ -1307,7 +1338,7 @@ function ProjectsPage() {
     };
 
     // Derived projects list from SWR (single source of truth)
-    const projectsList = projectsData?.projects || [];
+    const projectsList = useMemo(() => normalizeProjectsList(projectsData?.projects), [projectsData?.projects]);
 
     // Auto-select first project + handle SWR errors
     useEffect(() => {
@@ -1514,9 +1545,9 @@ function ProjectsPage() {
                             mutateProjects(
                                 (current) => current ? {
                                     ...current,
-                                    projects: current.projects.some((project) => project.projectId === projectMetadata.projectId)
-                                        ? current.projects
-                                        : [...current.projects, projectMetadata],
+                                    projects: normalizeProjectsList(current.projects).some((project) => project.projectId === projectMetadata.projectId)
+                                        ? normalizeProjectsList(current.projects)
+                                        : [...normalizeProjectsList(current.projects), projectMetadata],
                                 } : { projects: [projectMetadata], lastDoc: null },
                                 { revalidate: false },
                             );
@@ -2436,7 +2467,7 @@ function ProjectsPage() {
                 </ProjectsDataProvider>
                 <ProjectEditModal
                     currentDefaultProjectName={(() => {
-                        const currentDefaultProject = (projectsData?.projects || []).find((project: any) => project?.isDefault === true);
+                        const currentDefaultProject = normalizeProjectsList(projectsData?.projects).find((project: any) => project?.isDefault === true);
                         if (!currentDefaultProject) return null;
                         return getLocalizedText(
                             currentDefaultProject.name,

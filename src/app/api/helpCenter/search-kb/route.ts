@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 import { LOG_FILES } from '@constant/logging';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { coreSearch } from '@lib/search/searchCore';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
@@ -25,24 +26,6 @@ import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
-
-const getProviderRetryAfter = (error: any): number | null => {
-    const message = String(error?.message || error || '');
-    const retryMatch = message.match(/retry in\s+([\d.]+)s/i);
-    if (retryMatch?.[1]) {
-        return Math.max(1, Math.ceil(Number(retryMatch[1])));
-    }
-    return null;
-};
-
-const isProviderRateLimitError = (error: any): boolean => {
-    const message = String(error?.message || error || '').toLowerCase();
-    return error?.status === 429 ||
-        error?.httpStatusCode === 429 ||
-        message.includes('429 too many requests') ||
-        message.includes('resource_exhausted') ||
-        message.includes('quota exceeded');
-};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
@@ -192,8 +175,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         });
 
-        if (isProviderRateLimitError(err)) {
-            const retryAfter = getProviderRetryAfter(err) || 60;
+        if (isAIProviderRateLimitError(err)) {
+            const retryAfter = getAIProviderRetryAfter(err) || 60;
             return NextResponse.json(
                 {
                     error: `Search is temporarily busy. Please wait ${retryAfter} seconds before trying again.`,

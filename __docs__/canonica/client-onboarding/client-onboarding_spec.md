@@ -44,7 +44,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 | Store | `stores` | Product workspace, roles, API key auto-generated |
 | User update | `users` | Link tenantId + storeId to user |
 | Subscription | `subscriptions` | Beta: active immediately, 6-month window. Paid: Razorpay flow |
-| API key | store.publicApi | `cn_*` prefix, for widget authentication |
+| API key | store.publicApi | `cn_*` key returned once; `apiKeyHash` + `keyPrefix` persisted for widget authentication |
 | Platform summary | `platformSummary` | Counts incremented atomically |
 
 ---

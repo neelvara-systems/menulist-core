@@ -17,7 +17,7 @@ import {
 } from 'react-icons/lu';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_SESSION_MESSAGES = 10; // Keep last 10 messages (5 Q&A pairs)
+const MAX_SESSION_MESSAGES = 5;
 
 interface WidgetProcedureStep {
     stepOrder: number;
@@ -53,6 +53,32 @@ interface WidgetClientProps {
     apiKey: string;
 }
 
+const sanitizeContextString = (value: unknown, maxLength = 100): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, maxLength);
+    return normalized || null;
+};
+
+const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const input = value as Record<string, unknown>;
+    const output: Record<string, any> = {};
+    ['feature', 'page', 'workflow', 'userRole', 'plan'].forEach((key) => {
+        const current = sanitizeContextString(input[key]);
+        if (current) output[key] = current;
+    });
+    if (typeof input.contextVersion === 'number') {
+        output.contextVersion = input.contextVersion;
+    }
+    if (Array.isArray(input.entityHints)) {
+        output.entityHints = input.entityHints
+            .slice(0, 5)
+            .map((hint) => sanitizeContextString(hint, 64))
+            .filter((hint): hint is string => Boolean(hint));
+    }
+    return Object.keys(output).length > 0 ? output : null;
+};
+
 export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [messages, setMessages] = useState<WidgetMessage[]>([]);
     const [query, setQuery] = useState('');
@@ -73,23 +99,31 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     // Listen for context updates from embed script via postMessage
     useEffect(() => {
         const handler = (e: MessageEvent) => {
+            if (e.source !== window.parent) return;
             if (e.data?.type === 'canonica-context-update' && e.data.context) {
-                setProductContext(e.data.context);
+                const nextContext = sanitizeContextPayload(e.data.context);
+                if (nextContext) setProductContext(nextContext);
             }
             if (e.data?.type === 'canonica-predictive-suggestion' && e.data.suggestion) {
                 const suggestion = e.data.suggestion;
-                const content = [suggestion.title, suggestion.summary].filter(Boolean).join('\n\n');
+                const title = typeof suggestion.title === 'string' ? suggestion.title.slice(0, 160) : '';
+                const summary = typeof suggestion.summary === 'string' ? suggestion.summary.slice(0, 600) : '';
+                const content = [title, summary].filter(Boolean).join('\n\n');
                 if (!content) return;
 
                 setMessages(prev => {
-                    const id = `p-${suggestion.triggerId || Date.now()}`;
+                    const triggerId = typeof suggestion.triggerId === 'string' ? suggestion.triggerId.slice(0, 120) : String(Date.now());
+                    const id = `p-${triggerId}`;
                     if (prev.some(m => m.id === id)) return prev;
                     return [...prev, {
                         id,
                         role: 'assistant',
                         content,
                         suggestedQuestions: Array.isArray(suggestion.articles)
-                            ? suggestion.articles.map((article: any) => article.title).filter(Boolean)
+                            ? suggestion.articles
+                                .map((article: any) => typeof article?.title === 'string' ? article.title.slice(0, 160) : '')
+                                .filter(Boolean)
+                                .slice(0, 3)
                             : [],
                         procedure: suggestion.procedure,
                     }];

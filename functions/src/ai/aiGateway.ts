@@ -60,6 +60,25 @@ function isRateLimitError(error: any): boolean {
     return false;
 }
 
+function getErrorText(error: any): string {
+    return [
+        error?.message,
+        error?.error?.message,
+        JSON.stringify(error?.errorDetails || ''),
+    ].filter(Boolean).join(' ').toLowerCase();
+}
+
+/**
+ * Hard quota errors are not transient. Retrying a single key wastes time and
+ * quota attempts; only key rotation can recover if another key exists.
+ */
+function isHardQuotaError(error: any): boolean {
+    const message = getErrorText(error);
+    return message.includes('limit: 0') ||
+        message.includes('generaterequestsperday') ||
+        message.includes('perdayperprojectpermodel');
+}
+
 /**
  * Detect if an error is a retryable server error (5xx or network).
  */
@@ -151,6 +170,7 @@ export class AIGateway {
 
                 // ── Rate Limit (429) → Rotate key, retry immediately ──
                 if (isRateLimitError(error)) {
+                    const hardQuota = isHardQuotaError(error);
                     this.keyManager.markCurrentKeyRateLimited();
 
                     if (this.keyManager.totalKeys > 1) {
@@ -159,6 +179,12 @@ export class AIGateway {
                             `Rotating to next key. Keys available: ${this.keyManager.totalKeys}`
                         );
                         continue;
+                    } else if (hardQuota) {
+                        this.logger.warn(
+                            `[AIGateway] Hard quota hit in single key mode for ${method}. ` +
+                            `Failing fast without retry.`
+                        );
+                        throw error;
                     } else {
                         backoffRetries++;
                         const delay = Math.min(
