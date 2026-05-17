@@ -6,6 +6,17 @@
 
 ---
 
+## May 17, 2026 — Messaging Onboarding Monitoring
+
+### Added
+
+- **Messaging onboarding monitor added** — Platform admins now have `/ops/messaging-onboarding` for WhatsApp Cloud API onboarding health, webhook HMAC failures, inbound queue backlog, recent sessions, recent events, and messaging-specific alerts.
+- **Messaging onboarding runbook added** — Provider credentials, safe actions, triage signals, and the no-WhatsApp-Web policy are now documented in `__docs__/messaging-onboarding/messaging-onboarding_runbook.md`.
+
+### Changed
+
+- **OpenWA review converted into bounded ops improvements** — MenuList kept the official WhatsApp Cloud API path and adopted only the useful monitoring, HMAC visibility, access-gate, and runbook ideas.
+
 ## May 16, 2026 — Firebase Cost Optimization
 
 ### Added

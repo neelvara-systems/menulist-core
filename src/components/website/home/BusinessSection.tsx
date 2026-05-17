@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
@@ -19,6 +20,21 @@ export default function BusinessSection() {
           title={t('Business.title')}
           highlightedText={t('Business.highlight')}
         />
+      </AnimateOnScroll>
+
+      <AnimateOnScroll delay={0.1}>
+        <div className="ws-draft-visual-frame ws-draft-visual-frame--wide">
+          <Image
+            src="/images/website/menulist-obp-browser.webp"
+            alt={t('Business.title')}
+            width={1400}
+            height={900}
+            loading="eager"
+            unoptimized
+            sizes="(min-width: 1024px) 880px, 100vw"
+            className="ws-draft-product-image"
+          />
+        </div>
       </AnimateOnScroll>
 
       <div

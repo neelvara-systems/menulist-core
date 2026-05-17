@@ -12,21 +12,25 @@ import { PLATFORM_URL } from '@constant/urls';
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || PLATFORM_URL;
 
+const siteTitle = 'MenuList - Upload Your Menu Online';
+const siteDescription = 'Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.';
+const siteImage = '/images/website/menulist-og-official-source.png';
+
 export const metadata: Metadata = {
-    title: 'MenuList — Upload Your Menu. Your Business is Online.',
-    description: 'Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look.',
+    title: siteTitle,
+    description: siteDescription,
     metadataBase: new URL(siteUrl),
     openGraph: {
-        title: 'MenuList — Upload Your Menu. Your Business is Online.',
-        description: 'Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look.',
+        title: siteTitle,
+        description: siteDescription,
         url: siteUrl,
         siteName: 'MenuList',
         images: [
             {
-                url: '/og-image.png',
+                url: siteImage,
                 width: 1200,
                 height: 630,
-                alt: 'MenuList — Where your menu lives',
+                alt: 'MenuList - upload your menu online preview',
             },
         ],
         locale: 'en_US',
@@ -34,9 +38,9 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'MenuList — Upload Your Menu. Your Business is Online.',
-        description: 'Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look.',
-        images: ['/og-image.png'],
+        title: siteTitle,
+        description: siteDescription,
+        images: [siteImage],
     },
     robots: {
         index: true,

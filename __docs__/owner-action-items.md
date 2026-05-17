@@ -97,6 +97,61 @@ cd functions && npm run deploy
 
 > **Full guide:** `__docs__/production-readiness/dev-prod-environment-guide.md`
 
+### WhatsApp Cloud API / Messaging Onboarding Activation
+
+| #   | Task                                                                                     | Why                                                                                                             | Priority                         | Status |
+| --- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------ |
+| 1   | Create a founder-controlled Meta login for development/staging with 2FA enabled          | Required to use Meta for Developers without tying the setup to a random personal or employee-controlled account | P0 (before WhatsApp testing)     | ⬜     |
+| 2   | Create a non-production Meta Developer app and add the WhatsApp product                  | Keeps MenuList dev/staging Cloud API testing separate from future production Meta assets                        | P0 (before WhatsApp testing)     | ⬜     |
+| 3   | Use Meta's test WhatsApp phone number and approved test recipient first                  | Allows end-to-end webhook, media, and message testing before a real business number is connected                | P0 (before WhatsApp testing)     | ⬜     |
+| 4   | Generate test credentials for the non-production app only                                | Provides the real provider values needed by Firebase Functions without using production tokens                  | P0 (before enabling the feature) | ⬜     |
+| 5   | Set non-production Firebase secrets for the intended Firebase target                     | The messaging function needs real secrets; dummy WhatsApp secrets are not allowed                               | P0 (before enabling the feature) | ⬜     |
+| 6   | Register the Meta webhook URL for the non-production function                            | Required for inbound WhatsApp messages and media uploads to reach MenuList                                      | P0 (before live testing)         | ⬜     |
+| 7   | Enable `ENABLE_MESSAGING_ONBOARDING=true` only after real non-production secrets exist   | Prevents a half-enabled webhook from accepting traffic without valid provider access                            | P0 (before live testing)         | ⬜     |
+| 8   | Run the full test flow: text message, image/PDF upload, preview, approve, publish, reply | Proves the Cloud API path works before any owner-facing or customer-facing launch                               | P0 (before beta)                 | ⬜     |
+| 9   | Decide and register the production business entity path                                  | Meta production readiness needs a real business identity before serious launch                                  | P0 (before production launch)    | ⬜     |
+| 10  | Prepare India business verification documents                                            | Likely required/supporting documents include PAN, GST/Udyam/shop registration, address proof, or bank proof     | P0 (before production launch)    | ⬜     |
+| 11  | Map the live MenuList domain and create domain email                                     | Production Meta verification and trust should use the real website/domain identity                              | P0 (before production launch)    | ⬜     |
+| 12  | Publish production privacy policy and terms pages                                        | Required for production trust, opt-in clarity, and Meta review readiness                                        | P0 (before production launch)    | ⬜     |
+| 13  | Get a dedicated unused production WhatsApp number                                        | A Cloud API number cannot remain active in the normal WhatsApp app; never use a founder personal number         | P0 (before production launch)    | ⬜     |
+| 14  | Create separate production Meta Business Portfolio, app, WABA, and payment setup         | Keeps production billing, limits, templates, and ownership separate from dev/staging                            | P0 (before production launch)    | ⬜     |
+| 15  | Create and approve utility templates for onboarding messages                             | Required for production-initiated WhatsApp messages outside the customer service window                         | P0 (before production launch)    | ⬜     |
+| 16  | Store production WhatsApp secrets separately from dev/staging secrets                    | Prevents test tokens, test phone IDs, or staging webhooks from leaking into production                          | P0 (before production launch)    | ⬜     |
+| 17  | Review current Meta WhatsApp pricing and convert the expected launch cost to INR         | Vendor pricing can change; launch cost planning must be based on current Meta pricing                           | P1 (before paid traffic)         | ⬜     |
+
+**How to do the development/staging setup:**
+
+```bash
+# Set these only with real values from the non-production Meta app.
+firebase functions:secrets:set WHATSAPP_PHONE_NUMBER_ID --project <non-production-firebase-project>
+firebase functions:secrets:set WHATSAPP_ACCESS_TOKEN --project <non-production-firebase-project>
+firebase functions:secrets:set WHATSAPP_APP_SECRET --project <non-production-firebase-project>
+firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN --project <non-production-firebase-project>
+
+# Enable only after the real non-production secrets exist.
+# Runtime env:
+# ENABLE_MESSAGING_ONBOARDING=true
+# MESSAGING_ONBOARDING_PROVIDERS=whatsapp
+```
+
+**Webhook URL format:**
+
+```text
+https://us-central1-{firebaseProject}.cloudfunctions.net/messagingOnboarding/whatsapp
+```
+
+**Separation rules:**
+
+- Dev/staging uses a non-production Meta app, Meta test phone number, test recipient, and non-production Firebase secrets.
+- Production uses a separate Meta Business Portfolio, app, WABA, dedicated phone number, billing setup, templates, and Firebase secrets.
+- Official Meta WhatsApp Cloud API only. Do not use OpenWA, `whatsapp-web.js`, Baileys, QR-scanned WhatsApp Web sessions, or browser automation for MenuList onboarding.
+- Do not create dummy WhatsApp secrets. Missing real secrets mean the feature stays disabled.
+- Do not enable owner-facing launch until webhook, media download, preview, approve/publish, outbound confirmation, `/ops/messaging-onboarding`, indexes, rules, and TTL are verified.
+
+> **Detailed runbook:** `__docs__/messaging-onboarding/messaging-onboarding_runbook.md`  
+> **Enable/test checklist:** `__docs__/messaging-onboarding/messaging-onboarding_validation.md#to-enable--test`  
+> **Meta docs:** [Cloud API Get Started](https://developers.facebook.com/docs/whatsapp/cloud-api/get-started), [Webhooks](https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks), [Messaging Limits](https://developers.facebook.com/docs/whatsapp/messaging-limits), [Pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing)
+
 ### Canonica (Multi-Product Setup)
 
 | #   | Task                                               | Why                                         | Priority                        | Status |
@@ -130,8 +185,10 @@ _Move items here when done. Keep as history._
 | -------------------------------------------------------------- | ------------------------------------------- |
 | `__docs__/production-readiness/launch-prerequisites.md`        | Detailed monitoring setup guide (Steps 1-9) |
 | `__docs__/canonica/doctrine/10-implementation-action-items.md` | Detailed Canonica manual setup steps        |
+| `__docs__/messaging-onboarding/messaging-onboarding_runbook.md` | WhatsApp Cloud API provider stance, secrets, monitoring, and non-actions |
+| `__docs__/messaging-onboarding/messaging-onboarding_validation.md` | Messaging onboarding enable/test checklist |
 
 ---
 
-_Last Updated: March 22, 2026_
-_Updated By: Cascade (Dev/Prod Environment Separation + Production Readiness Audit)_
+_Last Updated: May 17, 2026_
+_Updated By: Codex (WhatsApp Cloud API / Messaging Onboarding Action Items)_

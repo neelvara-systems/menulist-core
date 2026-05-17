@@ -10,20 +10,21 @@
 
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
+import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
 import { FEATURE_FLAGS } from '@config/features';
 import { Metadata } from 'next';
 import CreateMenuClient from './CreateMenuClient';
 
 export const metadata: Metadata = {
-    title: 'Create Your Menu — MenuList | Free Digital Menu Creator',
-    description: 'Create a professional digital menu for your restaurant in minutes. Upload a photo or PDF and let MenuList extract items, categories, and prices automatically.',
+    title: 'Upload Your Menu — MenuList',
+    description: 'Start with your current menu and prepare the owner-approved version for your public menu, official page, QR assets, customer app, and share links.',
     alternates: {
         canonical: '/create-menu',
     },
     openGraph: {
-        title: 'Create Your Menu — MenuList | Free Digital Menu Creator',
-        description: 'Create a professional digital menu for your restaurant in minutes. Upload a photo or PDF and let MenuList extract items, categories, and prices automatically.',
+        title: 'Upload Your Menu — MenuList',
+        description: 'Start with your current menu and prepare the owner-approved version for your public menu, official page, QR assets, customer app, and share links.',
         url: '/create-menu',
     },
 };
@@ -42,11 +43,15 @@ export default function CreateMenuPage() {
                     padding: '40px 20px',
                     textAlign: 'center',
                 }}>
-                    <h1 style={{ fontSize: '24px', marginBottom: '16px', color: '#1a1a2e' }}>
-                        Coming Soon
-                    </h1>
-                    <p style={{ fontSize: '16px', color: '#64748b', maxWidth: '400px' }}>
-                        This feature is not yet available. Check back soon.
+                    <WebsiteHeadline
+                        as="h1"
+                        size="compact"
+                        text="Upload your menu"
+                        highlightedText="Upload"
+                        style={{ marginBottom: '16px' }}
+                    />
+                    <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', maxWidth: '400px' }}>
+                        This upload path is being prepared. Start from the guided setup for now.
                     </p>
                 </div>
                 <Footer />

@@ -7,13 +7,13 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'Multi-Location Menu Management — MenuList | One Menu, Every Outlet',
-    description: 'Manage menus across all your locations from one place. One master menu, every outlet inherits it. Update once — every location reflects the change instantly.',
+    description: 'Manage menus across locations from one approved source. One master menu can keep every outlet aligned without manual coordination.',
     alternates: {
         canonical: '/multi-location',
     },
     openGraph: {
         title: 'Multi-Location Menu Management — MenuList | One Menu, Every Outlet',
-        description: 'Manage menus across all your locations from one place. One master menu, every outlet inherits it. Update once — every location reflects the change instantly.',
+        description: 'Manage menus across locations from one approved source. One master menu can keep every outlet aligned without manual coordination.',
         url: '/multi-location',
     },
 };

@@ -98,6 +98,7 @@ export async function processMenuImagesJobLogic(
     const jobRef = firestoreAdmin
         .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
         .doc(jobId);
+    const skipProjectSave = job.skipProjectSave === true || job.projectId?.startsWith("msg-onboarding-");
 
     logger.info(`[processMenuProcessingJob] === JOB PROCESSING START ===`, {
         jobId,
@@ -304,23 +305,26 @@ export async function processMenuImagesJobLogic(
         // Spec Reference: ai-extraction-integration.md Section 5.2
         // ─────────────────────────────────────────────────────────────
 
-        logger.info(`[processMenuImagesJob] === STEP 5 START - Fetching project ===`, {
+        logger.info(`[processMenuImagesJob] === STEP 5 START - Resolving project context ===`, {
             jobId,
             projectId: job.projectId,
             step: 'FETCH_PROJECT',
+            skipProjectSave,
             timestamp: Date.now()
         });
 
-        // Fetch existing project to get existing categories (Section 8.12)
-        // This is also passed to saveFilesToProject to avoid duplicate read
-        const existingProject = await getProject(job.projectId);
+        // Fetch existing project to get existing categories (Section 8.12).
+        // Messaging onboarding only needs extraction output for its session,
+        // so it skips the temp project read/write/delete cycle.
+        const existingProject = skipProjectSave ? null : await getProject(job.projectId);
 
-        logger.info(`[processMenuImagesJob] === STEP 5 PROJECT FETCHED ===`, {
+        logger.info(`[processMenuImagesJob] === STEP 5 PROJECT CONTEXT RESOLVED ===`, {
             jobId,
             projectId: job.projectId,
             step: 'PROJECT_FETCHED',
             hasExistingProject: !!existingProject,
             existingFilesCount: existingProject?.files?.length || 0,
+            skipProjectSave,
             timestamp: Date.now()
         });
         const primaryLang = job.targetLanguages[0]?.code || 'en';
@@ -358,7 +362,7 @@ export async function processMenuImagesJobLogic(
         const isLinkedOutlet = !!existingProject?.masterProjectId;
 
         // Linked outlets always require review for safety
-        const requiresReview = hasExistingItems || isLinkedOutlet;
+        const requiresReview = skipProjectSave ? false : (hasExistingItems || isLinkedOutlet);
         const isFirstExtraction = !requiresReview;
 
         logger.info(`[processMenuImagesJob] Extraction type detected`, {
@@ -425,63 +429,72 @@ export async function processMenuImagesJobLogic(
                     } : {})
                 };
             });
+            const redistributedFiles = Object.fromEntries([...redistributedData.entries()]);
 
-            // Save files to project directly
-            logger.info(`[processMenuImagesJob] === STEP 6 SAVING TO PROJECT ===`, {
-                jobId,
-                projectId: job.projectId,
-                step: 'SAVE_TO_PROJECT_START',
-                filesCount: job.files.length,
-                redistributedDataSize: redistributedData?.size,
-                timestamp: Date.now(),
-                fullRedistributedData: JSON.stringify([...redistributedData.entries()])
-            });
-
-            await saveFilesToProject(
-                job.projectId,
-                redistributedData,
-                job.files,
-                result.data.data.languages || [],
-                true, // enableAutoMerge
-                existingProject
-            );
-
-            let businessAttributeDefaultsApplied = false;
-            try {
-                businessAttributeDefaultsApplied = await applyMenuDerivedBusinessAttributeDefaultsForStore({
-                    storeId: job.sId,
-                    menuData: result.data.data,
-                    context: 'processMenuImagesJob:firstExtraction',
-                });
-            } catch (attributeError: any) {
-                logger.warn(`[processMenuImagesJob] Business attribute defaults failed (non-blocking)`, {
+            if (!skipProjectSave) {
+                // Save files to project directly
+                logger.info(`[processMenuImagesJob] === STEP 6 SAVING TO PROJECT ===`, {
                     jobId,
-                    storeId: job.sId,
-                    error: attributeError?.message || String(attributeError),
+                    projectId: job.projectId,
+                    step: 'SAVE_TO_PROJECT_START',
+                    filesCount: job.files.length,
+                    redistributedDataSize: redistributedData?.size,
+                    timestamp: Date.now(),
+                    fullRedistributedData: JSON.stringify([...redistributedData.entries()])
+                });
+
+                await saveFilesToProject(
+                    job.projectId,
+                    redistributedData,
+                    job.files,
+                    result.data.data.languages || [],
+                    true, // enableAutoMerge
+                    existingProject
+                );
+
+                let businessAttributeDefaultsApplied = false;
+                try {
+                    businessAttributeDefaultsApplied = await applyMenuDerivedBusinessAttributeDefaultsForStore({
+                        storeId: job.sId,
+                        menuData: result.data.data,
+                        context: 'processMenuImagesJob:firstExtraction',
+                    });
+                } catch (attributeError: any) {
+                    logger.warn(`[processMenuImagesJob] Business attribute defaults failed (non-blocking)`, {
+                        jobId,
+                        storeId: job.sId,
+                        error: attributeError?.message || String(attributeError),
+                    });
+                }
+                if (!businessAttributeDefaultsApplied) {
+                    await revalidatePublicClientCacheForStore(job.sId, 'processMenuImagesJob:firstExtractionProjectSave');
+                }
+
+                logger.info(`[processMenuImagesJob] === STEP 6 SAVE TO PROJECT COMPLETE ===`, {
+                    jobId,
+                    projectId: job.projectId,
+                    step: 'SAVE_TO_PROJECT_COMPLETE',
+                    timestamp: Date.now()
+                });
+
+                // Verify the project was actually updated
+                const projectVerifyRef = firestoreAdmin.collection('projects').doc(String(job.tId)).collection(String(job.sId)).doc(job.projectId);
+                const verifyDoc = await projectVerifyRef.get();
+                logger.info(`[processMenuImagesJob] === VERIFY PROJECT UPDATE ===`, {
+                    jobId,
+                    projectId: job.projectId,
+                    projectExists: verifyDoc.exists,
+                    projectFilesCount: verifyDoc.data()?.files?.length || 0,
+                    projectLanguages: verifyDoc.data()?.languages || [],
+                    projectPath: projectVerifyRef.path,
+                });
+            } else {
+                logger.info(`[processMenuImagesJob] Project save skipped for extraction-only job`, {
+                    jobId,
+                    projectId: job.projectId,
+                    source: job.source || null,
                 });
             }
-            if (!businessAttributeDefaultsApplied) {
-                await revalidatePublicClientCacheForStore(job.sId, 'processMenuImagesJob:firstExtractionProjectSave');
-            }
-
-            logger.info(`[processMenuImagesJob] === STEP 6 SAVE TO PROJECT COMPLETE ===`, {
-                jobId,
-                projectId: job.projectId,
-                step: 'SAVE_TO_PROJECT_COMPLETE',
-                timestamp: Date.now()
-            });
-
-            // Verify the project was actually updated
-            const projectVerifyRef = firestoreAdmin.collection('projects').doc(String(job.tId)).collection(String(job.sId)).doc(job.projectId);
-            const verifyDoc = await projectVerifyRef.get();
-            logger.info(`[processMenuImagesJob] === VERIFY PROJECT UPDATE ===`, {
-                jobId,
-                projectId: job.projectId,
-                projectExists: verifyDoc.exists,
-                projectFilesCount: verifyDoc.data()?.files?.length || 0,
-                projectLanguages: verifyDoc.data()?.languages || [],
-                projectPath: projectVerifyRef.path,
-            });
 
             // Compute confidence summary (Infrastructure Compounding 10.1)
             const confidenceSummary = computeConfidenceSummary(
@@ -505,6 +518,7 @@ export async function processMenuImagesJobLogic(
                     batchResults: (result as any).batchResults,
                     // Infrastructure Compounding 10.1 — piggybacked on existing write
                     ...(confidenceSummary ? { confidenceSummary } : {}),
+                    ...(skipProjectSave ? { redistributedFiles } : {}),
                     // Extraction provenance (P0 hardening — Mar 2026)
                     ...(result.provenance ? {
                         rawBatchResponses: result.provenance.rawBatchResponses,

@@ -15,7 +15,7 @@ import {
   MsgOnboardingEvent,
   MsgOnboardingEventType,
 } from "../types/messagingOnboarding.types";
-import { FEATURE_FLAGS } from "./constants";
+import { FEATURE_FLAGS, RETENTION } from "./constants";
 
 const logger = functions.logger;
 const db = firestoreAdmin;
@@ -54,6 +54,7 @@ export async function logOnboardingEvent(params: {
       userIdMasked: params.userIdMasked,
       metadata: params.metadata || {},
       timestamp: now,
+      expiresAt: Timestamp.fromMillis(now.toMillis() + RETENTION.EVENT_TTL_MS),
       sessionAgeMs,
       ...(params.error && { error: params.error }),
     };

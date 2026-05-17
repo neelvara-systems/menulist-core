@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { LuBriefcase, LuCake, LuChefHat, LuCoffee, LuDumbbell, LuHeart, LuHotel, LuScissors, LuShoppingBag, LuTruck, LuUtensilsCrossed, LuWine } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
+import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
 const industryMeta = [
@@ -21,20 +22,13 @@ const industryMeta = [
 export default function IndustrySection() {
   const t = useTranslations('Website');
   return (
-    <SectionWrapper variant="subtle">
+    <SectionWrapper id="industries" variant="subtle">
       <AnimateOnScroll>
-        <p
-          className="ws-body"
-          style={{
-            textAlign: 'center',
-            maxWidth: 'var(--ws-max-w-text)',
-            margin: '0 auto',
-            fontWeight: 500,
-            color: 'var(--ws-text-primary)',
-          }}
-        >
-          {t('Industry.heading')}
-        </p>
+        <SectionHeading
+          title={t('Industry.title')}
+          highlightedText={t('Industry.highlight')}
+          subtitle={t('Industry.subtitle')}
+        />
       </AnimateOnScroll>
 
       <AnimateOnScroll delay={0.1}>

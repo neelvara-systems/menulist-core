@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { LuBarChart3, LuMousePointerClick, LuPhoneCall, LuShieldCheck, LuTags } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
@@ -38,6 +39,21 @@ export default function AnalyticsInsightsSection() {
           highlightedText={t('AnalyticsInsights.highlight')}
           subtitle={t('AnalyticsInsights.subtitle')}
         />
+      </AnimateOnScroll>
+
+      <AnimateOnScroll delay={0.1}>
+        <div className="ws-draft-visual-frame ws-draft-visual-frame--wide">
+          <Image
+            src="/images/website/menulist-analytics-proof.webp"
+            alt={t('AnalyticsInsights.title')}
+            width={1500}
+            height={900}
+            loading="eager"
+            unoptimized
+            sizes="(min-width: 1024px) 920px, 100vw"
+            className="ws-draft-product-image"
+          />
+        </div>
       </AnimateOnScroll>
 
       <div

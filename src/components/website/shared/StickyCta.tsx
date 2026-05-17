@@ -1,16 +1,12 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import WebsiteButton from './WebsiteButton';
 
 export default function StickyCta() {
   const t = useTranslations('Website');
-  const { data: session, status } = useSession();
   const [visible, setVisible] = useState(false);
-
-  const ctaHref = status === 'authenticated' && session ? '/pricing' : '/get-started';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,7 +55,7 @@ export default function StickyCta() {
         >
           {t('FinalCta.subtitle')}
         </span>
-        <WebsiteButton href={ctaHref}>
+        <WebsiteButton href="/create-menu">
           {t('Hero.cta')}
         </WebsiteButton>
       </div>

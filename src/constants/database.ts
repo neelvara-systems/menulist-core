@@ -97,6 +97,7 @@ export const DB_COLLECTIONS = {
     // Messaging Onboarding (Zero-Friction SMB Acquisition Engine)
     // @see __docs__/messaging-onboarding/
     MESSAGING_ONBOARDING_SESSIONS: "messagingOnboardingSessions",
+    MESSAGING_ONBOARDING_INBOUND_MESSAGES: "messagingOnboardingInboundMessages",
     MESSAGING_ONBOARDING_RATE_LIMITS: "messagingOnboardingRateLimits",
     MESSAGING_ONBOARDING_EVENTS: "messagingOnboardingEvents",
 
@@ -117,6 +118,7 @@ export const DB_COLLECTIONS = {
     // @see __docs__/ops-alerting-delivery/
     OPS_CONFIG: "ops_config",              // System config (SAFE_MODE, deploy mute)
     SYSTEM_ALERTS: "systemAlerts",         // Alert notifications
+    SYSTEM_HEALTH: "systemHealth",         // Hourly subsystem health snapshots
 
     // Lifecycle Messaging (Operational Messaging Infrastructure)
     // @see __docs__/lifecycle-messaging/

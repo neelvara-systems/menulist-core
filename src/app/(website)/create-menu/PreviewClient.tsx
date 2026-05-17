@@ -168,8 +168,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     if (loading) {
         return (
             <div style={containerStyle}>
-                <LuLoader size={40} color="#6366f1" style={{ animation: 'spin 1s linear infinite' }} />
-                <p style={{ fontSize: '16px', color: '#475569', marginTop: '16px' }}>Loading your menu...</p>
+                <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>Loading your menu...</p>
                 <style>{spinCSS}</style>
             </div>
         );
@@ -179,17 +179,17 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     if (draft?.status === 'pending' || draft?.status === 'processing') {
         return (
             <div style={containerStyle}>
-                <LuLoader size={48} color="#6366f1" style={{ animation: 'spin 1s linear infinite' }} />
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1a1a2e', marginTop: '20px' }}>
+                <LuLoader size={48} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '20px' }}>
                     Reading your menu...
                 </h2>
-                <p style={{ fontSize: '14px', color: '#64748b', marginTop: '8px' }}>
-                    This usually takes about 30-60 seconds
+                <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)', marginTop: '8px' }}>
+                    This can take a short moment.
                 </p>
                 <div style={{
                     width: '200px',
                     height: '4px',
-                    backgroundColor: '#e2e8f0',
+                    backgroundColor: 'var(--ws-border-default)',
                     borderRadius: '2px',
                     marginTop: '20px',
                     overflow: 'hidden',
@@ -197,7 +197,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     <div style={{
                         width: `${Math.min(pollCount * 7, 90)}%`,
                         height: '100%',
-                        backgroundColor: '#6366f1',
+                        backgroundColor: 'var(--ws-brand-secondary)',
                         borderRadius: '2px',
                         transition: 'width 0.5s ease',
                     }} />
@@ -211,15 +211,15 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     if (draft?.status === 'expired') {
         return (
             <div style={containerStyle}>
-                <LuAlertCircle size={48} color="#f59e0b" />
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1a1a2e', marginTop: '16px' }}>
+                <LuAlertCircle size={48} color="var(--ws-warning)" />
+                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
                     Draft expired
                 </h2>
-                <p style={{ fontSize: '15px', color: '#64748b', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
-                    This draft has expired. Upload your menu again — it takes less than 60 seconds.
+                <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
+                    This draft has expired. Upload your current menu again to create a fresh review.
                 </p>
                 <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
-                    <LuUpload size={16} /> Upload Menu
+                    <LuUpload size={16} /> Upload menu
                 </button>
             </div>
         );
@@ -229,11 +229,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     if (draft?.status === 'failed') {
         return (
             <div style={containerStyle}>
-                <LuAlertCircle size={48} color="#ef4444" />
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1a1a2e', marginTop: '16px' }}>
+                <LuAlertCircle size={48} color="var(--ws-error)" />
+                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
                     Could not read your menu
                 </h2>
-                <p style={{ fontSize: '15px', color: '#64748b', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
+                <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
                     {draft.error || 'Please try again with a clearer photo.'}
                 </p>
                 <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
@@ -262,28 +262,28 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     alignItems: 'center',
                     gap: '8px',
                     backgroundColor: '#f0fdf4',
-                    color: '#16a34a',
+                    color: 'var(--ws-success)',
                     padding: '8px 16px',
                     borderRadius: '20px',
                     fontSize: '14px',
                     fontWeight: 600,
                     marginBottom: '16px',
                 }}>
-                    <LuCheck size={16} /> Your menu is ready
+                    <LuCheck size={16} /> Ready for review
                 </div>
-                <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#1a1a2e', marginBottom: '4px' }}>
-                    {detectedBusinessName || 'Your Menu'}
+                <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
+                    {detectedBusinessName || 'Your menu source'}
                 </h1>
                 {detectedBusinessType && (
-                    <p style={{ fontSize: '14px', color: '#64748b' }}>{detectedBusinessType}</p>
+                    <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
                 )}
             </div>
 
             {/* Menu preview */}
             <div style={{
-                backgroundColor: '#fff',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'var(--ws-bg-primary)',
+                borderRadius: 'var(--ws-radius-xl)',
+                border: '1px solid var(--ws-border-default)',
                 overflow: 'hidden',
                 marginBottom: '24px',
             }}>
@@ -295,11 +295,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         <div key={cat.id}>
                             {/* Category header */}
                             <div style={{
-                                backgroundColor: '#f8fafc',
+                                backgroundColor: 'var(--ws-bg-subtle)',
                                 padding: '12px 16px',
-                                borderBottom: '1px solid #e2e8f0',
+                                borderBottom: '1px solid var(--ws-border-default)',
                             }}>
-                                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>
                                     {cat.name?.[lang] || cat.name?.en || cat.id}
                                 </h3>
                             </div>
@@ -310,7 +310,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                     key={item.id}
                                     style={{
                                         padding: '12px 16px',
-                                        borderBottom: idx < catItems.length - 1 ? '1px solid #f1f5f9' : undefined,
+                                        borderBottom: idx < catItems.length - 1 ? '1px solid var(--ws-border-subtle)' : undefined,
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'flex-start',
@@ -318,11 +318,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                     }}
                                 >
                                     <div style={{ flex: 1 }}>
-                                        <p style={{ fontSize: '14px', fontWeight: 500, color: '#1e293b', margin: 0 }}>
+                                        <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
                                             {item.name?.[lang] || item.name?.en || item.id}
                                         </p>
                                         {item.description?.[lang] && (
-                                            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0', lineHeight: 1.4 }}>
+                                            <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
                                                 {item.description[lang]}
                                             </p>
                                         )}
@@ -332,8 +332,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                                 {item.attributes.map((attr) => (
                                                     <span key={attr.id} style={{
                                                         fontSize: '11px',
-                                                        color: '#64748b',
-                                                        backgroundColor: '#f1f5f9',
+                                                        color: 'var(--ws-text-secondary)',
+                                                        backgroundColor: 'var(--ws-border-subtle)',
                                                         padding: '2px 8px',
                                                         borderRadius: '4px',
                                                     }}>
@@ -348,7 +348,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                         <span style={{
                                             fontSize: '14px',
                                             fontWeight: 600,
-                                            color: '#1e293b',
+                                            color: 'var(--ws-text-primary)',
                                             whiteSpace: 'nowrap',
                                         }}>
                                             {item.price}
@@ -368,13 +368,13 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 padding: '8px 0',
-                                borderBottom: '1px solid #f1f5f9',
+                                borderBottom: '1px solid var(--ws-border-subtle)',
                             }}>
-                                <span style={{ fontSize: '14px', color: '#1e293b' }}>
+                                <span style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
                                     {item.name?.[lang] || item.name?.en || item.id}
                                 </span>
                                 {item.price && (
-                                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{item.price}</span>
+                                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.price}</span>
                                 )}
                             </div>
                         ))}
@@ -383,7 +383,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
                 {categories.length === 0 && items.length === 0 && (
                     <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                        <p style={{ color: '#94a3b8', fontSize: '14px' }}>No items extracted. Try uploading a clearer photo.</p>
+                        <p style={{ color: 'var(--ws-text-muted)', fontSize: '14px' }}>No items extracted. Try uploading a clearer photo.</p>
                     </div>
                 )}
             </div>
@@ -410,8 +410,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                backgroundColor: '#fff',
-                borderTop: '1px solid #e2e8f0',
+                backgroundColor: 'var(--ws-bg-primary)',
+                borderTop: '1px solid var(--ws-border-default)',
                 padding: '16px 20px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -431,15 +431,15 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 width: '100%',
                                 padding: '12px 16px',
                                 fontSize: '15px',
-                                border: `1px solid ${claimError ? '#ef4444' : '#d1d5db'}`,
-                                borderRadius: '10px',
+                                border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
+                                borderRadius: 'var(--ws-radius-xl)',
                                 marginBottom: '8px',
                                 outline: 'none',
                                 boxSizing: 'border-box',
                             }}
                         />
                         {claimError && (
-                            <p style={{ fontSize: '13px', color: '#ef4444', margin: '0 0 8px', textAlign: 'center' }}>{claimError}</p>
+                            <p style={{ fontSize: '13px', color: 'var(--ws-error)', margin: '0 0 8px', textAlign: 'center' }}>{claimError}</p>
                         )}
                         <button
                             onClick={handleClaim}
@@ -452,7 +452,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 cursor: claiming ? 'default' : 'pointer',
                             }}
                         >
-                            {claiming ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Publishing...</> : <><LuSend size={18} /> Publish your menu page</>}
+                            {claiming ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Publishing...</> : <><LuSend size={18} /> Publish official menu page</>}
                         </button>
                     </div>
                 ) : (
@@ -466,7 +466,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         }}>
                             <LuLogIn size={18} /> Publish as your official menu page
                         </button>
-                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+                        <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: 0 }}>
                             Create a free account to publish
                         </p>
                     </>
@@ -494,10 +494,10 @@ const primaryBtnStyle: React.CSSProperties = {
     justifyContent: 'center',
     gap: '8px',
     padding: '14px 28px',
-    backgroundColor: '#6366f1',
+    backgroundColor: 'var(--ws-cta-default)',
     color: '#fff',
     border: 'none',
-    borderRadius: '10px',
+    borderRadius: 'var(--ws-radius-xl)',
     fontSize: '15px',
     fontWeight: 600,
     cursor: 'pointer',
@@ -506,8 +506,8 @@ const primaryBtnStyle: React.CSSProperties = {
 
 const statBoxStyle: React.CSSProperties = {
     flex: 1,
-    backgroundColor: '#f8fafc',
-    borderRadius: '10px',
+    backgroundColor: 'var(--ws-bg-subtle)',
+    borderRadius: 'var(--ws-radius-xl)',
     padding: '14px 16px',
     textAlign: 'center',
     display: 'flex',
@@ -518,12 +518,12 @@ const statBoxStyle: React.CSSProperties = {
 const statNumberStyle: React.CSSProperties = {
     fontSize: '22px',
     fontWeight: 700,
-    color: '#1a1a2e',
+    color: 'var(--ws-text-primary)',
 };
 
 const statLabelStyle: React.CSSProperties = {
     fontSize: '12px',
-    color: '#64748b',
+    color: 'var(--ws-text-secondary)',
 };
 
 const spinCSS = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;

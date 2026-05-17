@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v2 Hype/Domination  
-**Last Updated:** March 2026  
+**Status:** IMPLEMENTED — v3.4.1 Canonical Website Default
+**Last Updated:** May 17, 2026
 **Audience:** Developers
 
 ---
@@ -46,6 +46,7 @@ Styles:      @styles/app.scss (layout) + @/styles/website.css (per-page)
 - Homepage (`/`) is `'use client'` — includes `SchemaMarkup` (JSON-LD), all other pages are server components with `export const metadata`.
 - `/product` is a permanent redirect to `/how-it-works` (legacy URL preservation).
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows "Coming Soon" when OFF.
+- Public website CTAs route to `/create-menu` for upload-first conversion. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
 
 ---
 
@@ -63,35 +64,49 @@ LocalisationProvider (locale from next-intl/server)
 ```
 
 **Default metadata (from layout):**
-- Title: `MenuList — Upload Your Menu. Your Business is Online.`
-- Description: `Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look.`
-- OG image: `/og-image.png`
+- Title: `MenuList - Upload Your Menu Online`
+- Description: `Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.`
+- OG image: `/images/website/menulist-og-official-source.png`
+- Backward-compatible OG copy: `/og-image.png`
 - Robots: index, follow (full crawling enabled)
 - Viewport: device-width, initialScale 1, maximumScale 1
 
 ---
 
-## 4. Homepage Sections (13 sections, in order)
+## 4. Homepage Sections (16 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
 | # | Section | Component File |
 |---|---------|---------------|
 | 1 | Hero | `HeroSection.tsx` |
-| 2 | Problem | `ProblemSection.tsx` |
-| 3 | Solution | `SolutionSection.tsx` |
-| 4 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
-| 5 | Prepared For You | `PreparedForYouSection.tsx` |
-| 6 | Surfaces | `SurfacesSection.tsx` |
-| 7 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 8 | Smart Features | `SmartFeaturesSection.tsx` |
-| 9 | Stats | `StatsSection.tsx` |
-| 10 | Business | `BusinessSection.tsx` |
-| 11 | Industry | `IndustrySection.tsx` |
-| 12 | FAQ | `FaqSection.tsx` |
-| 13 | Final CTA | `FinalCtaSection.tsx` |
+| 2 | Revenue Path | `RevenuePathSection.tsx` |
+| 3 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
+| 4 | Problem | `ProblemSection.tsx` |
+| 5 | Solution | `SolutionSection.tsx` |
+| 6 | Stats | `StatsSection.tsx` |
+| 7 | Setup Relief | `SetupReliefSection.tsx` |
+| 8 | Surfaces | `SurfacesSection.tsx` |
+| 9 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 10 | Analytics Insights | `AnalyticsInsightsSection.tsx` |
+| 11 | Smart Features | `SmartFeaturesSection.tsx` |
+| 12 | Prepared For You | `PreparedForYouSection.tsx` |
+| 13 | Business | `BusinessSection.tsx` |
+| 14 | Industry | `IndustrySection.tsx` |
+| 15 | FAQ | `FaqSection.tsx` |
+| 16 | Final CTA | `FinalCtaSection.tsx` |
 
-**Dead code:** `HowItWorksSection.tsx` exists in `home/` but is NOT imported by `HomePage.tsx`. It was replaced by `InteractiveWorkflowSection.tsx` in v2.
+**Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, `CustomerBrowseSection.tsx`, `AnalyticsInsightsSection.tsx`, and `BusinessSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
+
+**Footer revenue pass:** Stage 7.2 reviewed Paper, Kestra, Stripe, Lenis, Upscayl, Linear, Vercel, and Notion reference patterns, then upgraded `Footer.tsx` into a conversion/resource layer. It deliberately borrows structure, not unsupported claims or trend-heavy visuals.
+
+**Whole-page reference pass:** Stage 7.3 corrected the footer-only scope by adding `RevenuePathSection.tsx`, reshaping `ProblemSection.tsx`, and upgrading `StatsSection.tsx` into a stronger proof band. The page now moves from official source -> revenue path -> public drift pain -> one-source proof -> workflow and visual evidence.
+
+**Copy, motion, and heading polish:** Stage 7.4 normalized homepage wording, casing, and grammar in the `Website` locale namespace, removed viewport-scaled website typography, added subtle hover polish to proof/path/problem elements, updated shared scroll animations to respect reduced-motion preferences, and routed static website hero/section headings through `WebsiteHeadline` for consistent highlight treatment.
+
+**Supporting-page revenue polish:** Stage 7.5 extended the official-source system across supporting pages. `AboutPage`, `ContactPage`, `GetStartedPage`, `TrustSecurityPage`, and `pricing-pages/index.tsx` now use shared hero/proof patterns where appropriate; pricing visual copy was hardened without changing payment, subscription, Razorpay, auth, or onboarding logic; `/how-it-works` and `/multi-location` now avoid overclaiming instant propagation in public copy.
+
+**Canonical cleanup:** v3.3.0 made this implementation the only website source-code version. Old source-code backups, backup restore docs, the dead `HowItWorksSection.tsx`, and unused legacy landing-template visuals were removed. Historical strategy docs may remain for context, but they are not restoration sources.
 
 ---
 
@@ -100,11 +115,11 @@ LocalisationProvider (locale from next-intl/server)
 ```
 src/components/website/
 ├── Header.tsx                  — Shared header (all pages)
-├── Footer.tsx                  — Shared footer (all pages)
+├── Footer.tsx                  — Shared revenue footer with CTA, proof cards, and product/source/resource/legal navigation
 ├── SchemaMarkup.tsx            — Homepage JSON-LD schema
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
-├── home/                       — 13 homepage sections + 1 dead file
+├── home/                       — 16 homepage sections + StickyCta
 ├── about/AboutPage.tsx         — About page
 ├── contact/ContactPage.tsx     — Contact page
 ├── features/FeaturesPage.tsx   — Features page
@@ -119,7 +134,7 @@ src/components/website/
 │   │                             CurrencySwitcher, PricingFaq, WelcomeBackBanner, etc.)
 │   └── shared/                 — CreditPacksCtaSection, EnterpriseCtaSection, Loader, SVGBg
 ├── shared/                     — Reusable components (see below)
-└── shadcn/                     — shadcn/ui components (ThemeProvider, hooks, lib, ui)
+└── shadcn/                     — shadcn/ui primitives still required by website layout and pricing
 ```
 
 ### Shared Components (`src/components/website/shared/`)
@@ -129,9 +144,12 @@ src/components/website/
 | `AnimateOnScroll.tsx` | Scroll-triggered animations (Framer Motion) |
 | `LogoMark.tsx` | Animated logo mark SVG |
 | `ScrollToTopButton.tsx` | Floating scroll-to-top button |
-| `SectionHeading.tsx` | Consistent section heading component |
+| `SectionHeading.tsx` | Section heading wrapper backed by `WebsiteHeadline` |
 | `SectionWrapper.tsx` | Section layout wrapper with consistent spacing |
 | `WebsiteButton.tsx` | Styled CTA button |
+| `WebsiteHeadline.tsx` | Shared hero/section headline renderer with consistent highlight styling |
+| `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |
+| `WebsiteProofStrip.tsx` | Shared proof strip used by supporting pages |
 | `WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages) |
 
 ---
@@ -153,7 +171,7 @@ src/components/website/
 |------|------|---------|---------|
 | `ENABLE_PUBLIC_MENU_ENTRY` | `src/config/features.ts` | `false` | Gates `/create-menu` public entry page |
 
-**Note:** `ENABLE_NEW_WEBSITE` no longer exists — was removed after website v2 was fully implemented and became the default.
+**Note:** `ENABLE_NEW_WEBSITE` no longer exists. The current website is the canonical default.
 
 ---
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { signOut, useSession } from 'next-auth/react';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -47,7 +47,7 @@ export default function Header() {
         <nav className="ws-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem', padding: '0 var(--ws-space-6)' }}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', textDecoration: 'none', color: 'var(--ws-text-primary)' }}>
             <LogoMark height={26} />
-            <span style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.02em' }}>MenuList</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: 0 }}>MenuList</span>
           </Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-8)' }} className="ws-desktop-nav">
@@ -70,7 +70,7 @@ export default function Header() {
                   style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}
                 >
                   <LuUser size={16} />
-                  {session.user.name || session.user.email || 'Dashboard'}
+                  {session.user.name || session.user.email || t('Header.dashboard')}
                 </Link>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
@@ -78,17 +78,17 @@ export default function Header() {
                   style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', background: 'transparent', border: '1px solid var(--ws-border-default)', cursor: 'pointer' }}
                 >
                   <LuLogOut size={16} />
-                  Logout
+                  {t('Header.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link href="/pricing" style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ws-text-secondary)', textDecoration: 'none', padding: '0.5rem 0.75rem', transition: 'color var(--ws-transition-fast)' }}
+                <button type="button" onClick={() => signIn('google', { callbackUrl: '/dashboard' })} style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ws-text-secondary)', background: 'transparent', border: 0, cursor: 'pointer', textDecoration: 'none', padding: '0.5rem 0.75rem', transition: 'color var(--ws-transition-fast)' }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ws-text-primary)')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ws-text-secondary)')}>
                   {t('Header.login')}
-                </Link>
-                <Link href="/get-started" className="ws-btn ws-btn--primary" style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem' }}>
+                </button>
+                <Link href="/create-menu" className="ws-btn ws-btn--primary" style={{ padding: '0.625rem 1.25rem', fontSize: '0.9375rem' }}>
                   {t('Header.cta')}
                 </Link>
               </>
@@ -189,7 +189,7 @@ export default function Header() {
                     }}
                   >
                     <LuUser size={18} color="#2563eb" />
-                    {session.user.name || session.user.email || 'Dashboard'}
+                    {session.user.name || session.user.email || t('Header.dashboard')}
                   </Link>
                   <button
                     onClick={() => {
@@ -213,19 +213,27 @@ export default function Header() {
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <LuLogOut size={18} color="#dc2626" />
-                    Logout
+                    {t('Header.logout')}
                   </button>
                 </>
               ) : (
-                <Link
-                  href="/pricing"
-                  onClick={closeDrawer}
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeDrawer();
+                    signIn('google', { callbackUrl: '/dashboard' });
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '14px 12px',
                     fontSize: '0.9375rem', fontWeight: 500,
                     color: '#64748b', textDecoration: 'none',
                     borderRadius: '10px',
+                    background: 'transparent',
+                    border: 0,
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left',
                     transition: 'background-color 0.15s',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
@@ -233,7 +241,7 @@ export default function Header() {
                 >
                   <LuArrowRight size={18} color="#94a3b8" />
                   {t('Header.login')}
-                </Link>
+                </button>
               )}
             </nav>
 
@@ -244,7 +252,7 @@ export default function Header() {
               </div>
               {status !== 'authenticated' && (
                 <Link
-                  href="/get-started"
+                  href="/create-menu"
                   onClick={closeDrawer}
                   className="ws-btn ws-btn--primary"
                   style={{ display: 'flex', justifyContent: 'center', width: '100%', fontSize: '0.9375rem', padding: '0.875rem', borderRadius: '10px' }}

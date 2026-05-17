@@ -91,7 +91,7 @@ export default function MsgPreviewPage() {
         if (res.status === 410) setError("This preview has expired.");
         else if (res.status === 403) setError("Invalid preview link.");
         else if (res.status === 404) setError("Preview not found.");
-        else setError("Something went wrong.");
+        else setError("Preview unavailable.");
         setLoading(false);
         return;
       }
@@ -132,7 +132,7 @@ export default function MsgPreviewPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        setError(err.error || "Publishing failed. Please try again.");
+        setError(err.error || "Publishing failed. Try again.");
         setApproving(false);
         return;
       }
@@ -141,7 +141,7 @@ export default function MsgPreviewPage() {
       setApproved(true);
       setPublishResult(result.publishedResult);
     } catch {
-      setError("Publishing failed. Please try again.");
+      setError("Publishing failed. Try again.");
     } finally {
       setApproving(false);
     }
@@ -165,7 +165,7 @@ export default function MsgPreviewPage() {
       if (!res.ok) {
         const err = await res.json();
         if (err.maxReached) {
-          setError("Maximum corrections reached. Please send new menu photos on WhatsApp.");
+          setError("Maximum corrections reached. Send new menu photos on WhatsApp.");
         } else {
           setError(err.error || "Failed to submit fix request.");
         }
@@ -219,12 +219,12 @@ export default function MsgPreviewPage() {
       <div style={styles.container}>
         <div style={styles.card}>
           <div style={styles.successIcon}>✓</div>
-          <h1 style={styles.successTitle}>Your Menu is Live!</h1>
+          <h1 style={styles.successTitle}>Your menu is live.</h1>
           <p style={styles.successText}>
             Your official menu link is ready.
           </p>
           <p style={{ ...styles.successText, fontSize: 14, color: '#666', marginTop: 4 }}>
-            Send this whenever customers ask for your menu. Customers will always see your latest items and prices.
+            Send this link when customers ask for your menu. It stays updated.
           </p>
           <a
             href={publishResult.publicUrl}
@@ -268,12 +268,8 @@ export default function MsgPreviewPage() {
             </button>
           </div>
           <div style={{ marginTop: 20, textAlign: 'left', padding: '16px', background: '#f9fafb', borderRadius: 8 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '0 0 8px 0' }}>Tips:</p>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#555', lineHeight: 1.8 }}>
-              <li>Save this link in WhatsApp for quick sharing</li>
-              <li>Add this link to your Instagram bio</li>
-              <li>Share with your staff so everyone sends the same menu</li>
-            </ul>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#333', margin: '0 0 6px 0' }}>This link is ready for WhatsApp, Instagram, and staff.</p>
+            <p style={{ margin: 0, fontSize: 13, color: '#555', lineHeight: 1.6 }}>Customers will see the current menu from the same link.</p>
           </div>
           <div style={styles.divider} />
           <p style={styles.dashboardText}>
@@ -296,10 +292,10 @@ export default function MsgPreviewPage() {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <h2 style={styles.fixTitle}>Fix Request Submitted</h2>
+          <h2 style={styles.fixTitle}>Correction request sent.</h2>
           <p style={styles.fixText}>
-            Please send clearer photos of the affected pages on WhatsApp.
-            We will update your preview.
+            Send clearer photos of the affected pages on WhatsApp.
+            A new preview will be sent.
           </p>
         </div>
       </div>
@@ -319,7 +315,7 @@ export default function MsgPreviewPage() {
         <div style={styles.previewBadge}>Preview — Not Live Yet</div>
         <h1 style={styles.headerTitle}>Menu Preview</h1>
         <p style={styles.headerSubtitle}>
-          Review your menu before publishing
+          Confirm your menu before publishing
         </p>
       </div>
 
@@ -509,7 +505,7 @@ export default function MsgPreviewPage() {
                   : {}),
               }}
             >
-              {submittingFix ? "Submitting..." : "Submit Fix Request"}
+              {submittingFix ? "Sending..." : "Send Request"}
             </button>
           </div>
         </div>
@@ -628,10 +624,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     border: "1px solid #ddd",
     fontSize: 15,
+    minHeight: 44,
     outline: "none",
   },
   editBtn: {
-    padding: "4px 12px",
+    minHeight: 44,
+    padding: "8px 14px",
     borderRadius: 6,
     border: "1px solid #ddd",
     background: "#fff",
@@ -640,7 +638,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#666",
   },
   saveBtn: {
-    padding: "6px 16px",
+    minHeight: 44,
+    padding: "8px 16px",
     borderRadius: 6,
     border: "none",
     background: "#111",
@@ -730,7 +729,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 12,
   },
   issueBtn: {
-    padding: "8px 14px",
+    minHeight: 44,
+    padding: "10px 14px",
     borderRadius: 20,
     border: "1px solid #ddd",
     background: "#fff",
@@ -761,6 +761,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "flex-end",
   },
   cancelBtn: {
+    minHeight: 44,
     padding: "10px 20px",
     borderRadius: 8,
     border: "1px solid #ddd",
@@ -770,6 +771,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#666",
   },
   submitFixBtn: {
+    minHeight: 44,
     padding: "10px 20px",
     borderRadius: 8,
     border: "none",

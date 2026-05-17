@@ -1,8 +1,8 @@
 # Messaging Onboarding Dashboard — Firebase Cost Tracking
 
 **Feature:** Internal Monitoring Dashboard
-**Status:** DOCUMENTED
-**Last Updated:** March 12, 2026
+**Status:** IMPLEMENTED — Lean v1
+**Last Updated:** May 17, 2026
 
 ---
 
@@ -10,61 +10,73 @@
 
 | Collection | Operation | Frequency | Cost Impact |
 |---|---|---|---|
-| `messagingOnboardingMetrics` | Write (increment) | Per event (~20/session) | ₹3.00/month at 1K sessions |
-| `messagingOnboardingMetrics` | Read | Per dashboard load | Negligible |
-| `messagingOnboardingSessions` | Read | checkStuckSessions (every 10 min) | ₹0.22/month |
-| `messagingOnboardingMetrics` | Read | monitorOnboardingHealth (every 15 min) | ₹0.14/month |
-| `messagingOnboardingEvents` | Read | Session debug tool (on-demand) | Negligible |
-| `systemAlerts` | Write | On alert trigger (rare) | Negligible |
+| `systemHealth` | Query latest hourly messaging snapshot by document ID prefix | Per dashboard load | 1 read max; platform-only |
+| `systemAlerts` | Read recent alerts, filter subsystem in memory | Per dashboard load | 30 reads max |
+| `messagingOnboardingEvents` | Count 24h webhook event types and read recent event sample | Per dashboard load | 7 count queries + 12 reads max |
+| `messagingOnboardingInboundMessages` | Count by status | Per dashboard load | 3 count queries |
+| `messagingOnboardingSessions` | Count by active/problem state | Per dashboard load | 8 count queries |
+| `messagingOnboardingSessions` | Read recent sessions | Per dashboard load | 8 reads max |
+
+No new write path is introduced.
 
 ---
 
-## Cloud Function Costs
+## Monthly Cost Estimate
 
-| Function | Trigger | Invocations/month | Avg Duration | Memory | Monthly Cost |
-|---|---|---|---|---|---|
-| `aggregateOnboardingMetrics` | onDocumentCreated | 20,000 | 1s | 256MB | ~₹2 |
-| `checkStuckSessions` | every 10 min | 4,320 | 5s | 256MB | ~₹1 |
-| `monitorOnboardingHealth` | every 15 min | 2,880 | 3s | 256MB | ~₹0.50 |
+Assumption: founder opens dashboard 3 times/day.
 
----
+| Component | Reads / count queries per load | Monthly usage | Estimated cost |
+|---|---:|---:|---:|
+| Health snapshots | 1 read max | 90 reads | Low |
+| Alerts | 30 reads max | 2,700 reads | Low |
+| Webhook event counts + sample | 12 reads + 7 count queries | 1,080 reads + 630 count queries | Low; platform-only |
+| Sessions | 8 reads + 8 count queries | 720 reads + 720 count queries | Low |
+| Inbound queue | 3 count queries | 270 count queries | Low |
 
-## Total Monthly Cost
-
-| Component | Cost (₹) |
-|---|---|
-| Firestore reads | 0.41 |
-| Firestore writes | 3.00 |
-| Cloud Functions | 3.50 |
-| **Total** | **~₹6.91/month** |
-
-At 1,000 sessions/month. Scales linearly — 10K sessions ≈ ₹35/month.
+This route is intentionally manual-refresh and platform-only. Do not add auto-refresh without rechecking cumulative Firebase cost across all ops dashboards.
 
 ---
 
 ## Firestore Rules
 
+Messaging onboarding collections remain server-only:
+
 ```javascript
-// messagingOnboardingMetrics — Admin SDK only (Cloud Functions write, Dashboard reads via admin)
-match /messagingOnboardingMetrics/{date} {
+match /messagingOnboardingSessions/{sessionId} {
+  allow read, write: if false;
+}
+
+match /messagingOnboardingInboundMessages/{messageId} {
+  allow read, write: if false;
+}
+
+match /messagingOnboardingRateLimits/{userHash} {
+  allow read, write: if false;
+}
+
+match /messagingOnboardingEvents/{eventId} {
+  allow read, write: if false;
+}
+
+match /systemHealth/{docId} {
   allow read, write: if false;
 }
 ```
 
-Dashboard reads via server component or admin SDK API route.
+The dashboard reads these collections only through `/api/ops/messaging-onboarding`, which uses the Admin SDK and requires platform access.
 
 ---
 
-## DAL Functions
+## Deferred Aggregation
 
-| Function | Collection | Operation | Reads | Writes |
-|---|---|---|---|---|
-| `getOnboardingMetricsToday` | messagingOnboardingMetrics | 1 doc read | 1R | 0W |
-| `getOnboardingMetricsRange` | messagingOnboardingMetrics | N doc reads | 7R (7 days) | 0W |
-| `getActiveSessions` | messagingOnboardingSessions | Query | 1-50R | 0W |
-| `getSessionTimeline` | messagingOnboardingEvents | Query | 1-20R | 0W |
-| `incrementMetric` (CF) | messagingOnboardingMetrics | Atomic increment | 0R | 1W |
+The earlier design proposed:
+
+- `messagingOnboardingMetrics/{YYYY-MM-DD}`
+- `aggregateOnboardingMetrics`
+- dedicated dashboard DAL reads
+
+Lean v1 does not need that yet. Existing hourly health snapshots, count aggregations, and a small recent-event sample provide enough operator visibility without adding a second telemetry pipeline.
 
 ---
 
-_Document Status: DOCUMENTED. March 12, 2026._
+_Document Status: IMPLEMENTED. May 17, 2026._

@@ -179,7 +179,7 @@ export default function InteractiveWorkflowSection() {
                   opacity: 0.055,
                   userSelect: 'none',
                   pointerEvents: 'none',
-                  letterSpacing: '-0.02em',
+                  letterSpacing: 0,
                 }}
               >
                 {step.number}
@@ -224,7 +224,7 @@ export default function InteractiveWorkflowSection() {
           >
             {t('Workflow.noTechnicalKnowledge')}
           </p>
-          <WebsiteButton href="/get-started">{t('Workflow.cta')}</WebsiteButton>
+          <WebsiteButton href="/create-menu">{t('Workflow.cta')}</WebsiteButton>
         </div>
       </AnimateOnScroll>
     </SectionWrapper>

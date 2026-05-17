@@ -12,6 +12,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
+import { processParallelResponse } from "../logic/redistributeUtils";
 import { MessagingOnboardingSession } from "../types/messagingOnboarding.types";
 import { MESSAGES } from "./constants";
 import { logOnboardingEvent, maskUserId } from "./eventLogger";
@@ -72,7 +73,7 @@ async function handleExtractionComplete(
       sessionId,
       currentState: session.state,
     });
-    await cleanupTempProject(sessionId);
+    if (!jobData.skipProjectSave) await cleanupTempProject(sessionId);
     return;
   }
 
@@ -133,9 +134,75 @@ async function handleExtractionComplete(
     }
 
     // Cleanup temp project
-    await cleanupTempProject(sessionId);
+    if (!jobData.skipProjectSave) await cleanupTempProject(sessionId);
     return;
   }
+
+  const validUploads = session.uploads.filter((upload) =>
+    (session.validMenuFiles || []).includes(upload.id),
+  );
+  const redistributedFiles: Record<string, any> = jobData.result?.redistributedFiles
+    && typeof jobData.result.redistributedFiles === "object"
+    ? jobData.result.redistributedFiles
+    : Object.fromEntries(
+      processParallelResponse(
+        {
+          data: combinedData,
+          qualityScore,
+          qualityDetails: jobData.result?.qualityDetails,
+        },
+        validUploads.map((upload) => ({
+          uid: upload.id,
+          name: upload.fileName || upload.id,
+          size: upload.fileSize,
+          type: upload.mimeType,
+          url: upload.storageUrl,
+        })),
+      ).entries(),
+    );
+
+  const extractedAt = Timestamp.now();
+  const extractedProjectFiles = validUploads.map((upload, index) => {
+    const extractedData = redistributedFiles[upload.id] || null;
+    if (Array.isArray(extractedData?.data?.items)) {
+      extractedData.data.items = extractedData.data.items.map((item: any) => ({
+        ...item,
+        _extractedAt: item._extractedAt || extractedAt,
+      }));
+    }
+
+    return {
+      uid: upload.id,
+      name: upload.fileName || upload.id,
+      size: upload.fileSize,
+      type: upload.mimeType,
+      url: upload.storageUrl,
+      active: true,
+      deleted: false,
+      index,
+      extractedData: extractedData
+        ? {
+          message: extractedData.message || "",
+          ...(Array.isArray(extractedData.processingMessages) && extractedData.processingMessages.length
+            ? { processingMessages: extractedData.processingMessages }
+            : {}),
+          data: extractedData.data,
+        }
+        : null,
+      ...(extractedData?.qualityScore != null ? { qualityScore: extractedData.qualityScore } : {}),
+    };
+  });
+  const extractedFileData = extractedProjectFiles
+    .map((file) => file.extractedData?.data)
+    .filter(Boolean);
+  const previewMenuData = extractedFileData.length
+    ? {
+      ...combinedData,
+      languages: combinedData.languages || [],
+      categories: extractedFileData.flatMap((data: any) => data.categories || []),
+      items: extractedFileData.flatMap((data: any) => data.items || []),
+    }
+    : combinedData;
 
   // Generate preview token (cryptographically random, 32 chars)
   const previewToken = crypto.randomBytes(24).toString("base64url");
@@ -145,10 +212,12 @@ async function handleExtractionComplete(
 
   // Store extraction result in session
   await sessionRef.update({
-    extractedMenuData: combinedData,
+    extractedMenuData: previewMenuData,
+    extractedProjectFiles,
     qualityScore,
     previewToken,
     previewUrl,
+    previewMessagePending: true,
     updatedAt: Timestamp.now(),
   });
 
@@ -204,6 +273,11 @@ async function handleExtractionComplete(
       metadata: { trigger: "preview_ready" },
       sessionCreatedAt: session.createdAt,
     });
+
+    await sessionRef.update({
+      previewMessagePending: false,
+      updatedAt: Timestamp.now(),
+    });
   } catch (err) {
     logger.error("[ExtractionWatcher] Failed to send preview link", {
       sessionId,
@@ -235,7 +309,7 @@ async function handleExtractionComplete(
   }
 
   // Cleanup temp project (§8.1.1)
-  await cleanupTempProject(sessionId);
+  if (!jobData.skipProjectSave) await cleanupTempProject(sessionId);
 }
 
 /**
@@ -287,7 +361,7 @@ async function handleExtractionFailed(
   }
 
   // Cleanup temp project
-  await cleanupTempProject(sessionId);
+  if (!jobData.skipProjectSave) await cleanupTempProject(sessionId);
 }
 
 /**

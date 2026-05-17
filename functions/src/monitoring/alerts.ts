@@ -271,10 +271,10 @@ export async function evaluateAlertRules(
 async function checkCooldown(alert: Omit<Alert, 'id' | 'timestamp' | 'acknowledged'>): Promise<boolean> {
   try {
     const rule = ALERT_RULES.find(r => r.title === alert.title);
-    if (!rule) return true; // No cooldown if rule not found
+    const cooldownMinutes = rule?.cooldownMinutes ?? ALERT_COOLDOWNS.DEFAULT;
 
     const cooldownDate = new Date();
-    cooldownDate.setMinutes(cooldownDate.getMinutes() - rule.cooldownMinutes);
+    cooldownDate.setMinutes(cooldownDate.getMinutes() - cooldownMinutes);
 
     const recentAlertsSnapshot = await db
       .collection(DB_COLLECTIONS.SYSTEM_ALERTS)

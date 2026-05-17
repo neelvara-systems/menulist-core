@@ -5,6 +5,8 @@
  * @see __docs__/messaging-onboarding/messaging-onboarding_spec.md §Abuse Prevention
  */
 
+import { MessagingOnboardingState } from "../types/messagingOnboarding.types";
+
 // ═══════════════════════════════════════════════════════════════
 // RATE LIMITS & SAFETY
 // ═══════════════════════════════════════════════════════════════
@@ -71,23 +73,56 @@ export const COST_MONITORING = {
   ALERT_COST_PER_PUBLISH: 15, // ₹ — alert threshold
   TARGET_PUBLISH_RATE: 0.6, // 60% of started sessions should publish
   MAX_SESSIONS_PER_DAY_ALERT: 100, // Alert if >100 sessions/day
+  MIN_SESSIONS_FOR_PUBLISH_RATE_ALERT: 10,
+  FAILED_EVENT_ALERT_THRESHOLD: 3,
+  ESTIMATED_AI_COST_PER_PROCESSING_RUN_INR: 4,
+  HEALTH_SNAPSHOT_INTERVAL_MS: 60 * 60 * 1000, // 1 hour
+  HEALTH_WINDOW_MS: 24 * 60 * 60 * 1000, // 24 hours
+  HEALTH_SESSION_SAMPLE_LIMIT: 200,
+  HEALTH_EVENT_SAMPLE_LIMIT: 1000,
+  PUBLISHED_SOURCE_SAMPLE_LIMIT: 250,
+  SOURCE_FILE_RETENTION_REVIEW_DAYS: 90,
+  PUBLISHED_SOURCE_STORAGE_WARN_BYTES: 1024 * 1024 * 1024, // 1 GB sampled retained sources
+  PUBLISHED_SOURCE_STORAGE_CRITICAL_BYTES: 5 * 1024 * 1024 * 1024, // 5 GB sampled retained sources
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
-// FEATURE FLAGS (mirrored from dashboard config for CF use)
+// RETENTION
 // ═══════════════════════════════════════════════════════════════
 
+export const RETENTION = {
+  INBOUND_MESSAGE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
+  EVENT_TTL_MS: 30 * 24 * 60 * 60 * 1000,
+} as const;
+
+// ═══════════════════════════════════════════════════════════════
+// RUNTIME FEATURE FLAGS
+// ═══════════════════════════════════════════════════════════════
+
+function readBooleanEnv(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) return fallback;
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+
+function readProvidersEnv(): string[] {
+  const raw = process.env.MESSAGING_ONBOARDING_PROVIDERS;
+  if (!raw) return ["whatsapp"];
+  return raw
+    .split(",")
+    .map((provider) => provider.trim())
+    .filter(Boolean);
+}
+
 export const FEATURE_FLAGS = {
-  ENABLE_MESSAGING_ONBOARDING: false,
-  MESSAGING_ONBOARDING_PROVIDERS: ["whatsapp"] as string[],
-  ENABLE_MESSAGING_ONBOARDING_TRACKING: true,
+  ENABLE_MESSAGING_ONBOARDING: readBooleanEnv("ENABLE_MESSAGING_ONBOARDING", false),
+  MESSAGING_ONBOARDING_PROVIDERS: readProvidersEnv(),
+  ENABLE_MESSAGING_ONBOARDING_TRACKING: readBooleanEnv("ENABLE_MESSAGING_ONBOARDING_TRACKING", true),
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
 // FORBIDDEN STATE TRANSITIONS (Safety Guard)
 // ═══════════════════════════════════════════════════════════════
-
-import { MessagingOnboardingState } from "../types/messagingOnboarding.types";
 
 /** Forbidden transitions — spec §State Machine §Forbidden State Transitions (Safety Guard)
  * "Enforce strictly in the state machine transition function.
@@ -230,10 +265,10 @@ export const MESSAGES = {
     "Your menu is being prepared...",
 
   ASK_MORE_UPLOADS:
-    "Please share full menu for best result.",
+    "Send the full menu for best result.",
 
   ASK_CLEARER_PHOTOS:
-    "Please send clearer menu photos or a menu PDF.",
+    "Send clearer menu photos or a menu PDF.",
 
   PREVIEW_READY: (link: string) =>
     `Your menu preview is ready: ${link}`,
@@ -248,28 +283,28 @@ export const MESSAGES = {
     `Your menu is already live. Manage here: ${dashboardLink}`,
 
   RATE_LIMITED:
-    "Please try again later.",
+    "Try again later.",
 
   POST_PUBLISH: (dashboardLink: string) =>
-    `Your menu is live! Manage it here: ${dashboardLink}`,
+    `Your menu is live. Manage it here: ${dashboardLink}`,
 
   NON_MENU_FILE:
-    "Please send menu photos or a menu PDF.",
+    "Send menu photos or a menu PDF.",
 
   UPLOAD_LIMIT_REACHED:
-    "Please combine remaining pages into a PDF or send fewer clearer photos.",
+    "Combine remaining pages into a PDF or send fewer clearer photos.",
 
   EXTRACTION_CAP_REACHED:
-    "To update your menu, please send all menu photos again in a new message.",
+    "Send all menu photos again in a new message to update your menu.",
 
   PUBLISH_FAILED:
-    "Something went wrong. Please try again.",
+    "Publishing is temporarily unavailable. Try again.",
 
   PARTIAL_UPLOAD_AFTER_PREVIEW: (link: string) =>
     `Your preview is ready. Send full menu photos again to update.\n${link}`,
 
   PASSWORD_PROTECTED_PDF:
-    "This PDF is locked. Please send an unlocked PDF or photos.",
+    "This PDF is locked. Send an unlocked PDF or photos.",
 
   FIX_REQUEST_ACKNOWLEDGED:
     "Send updated menu photos for best results.",

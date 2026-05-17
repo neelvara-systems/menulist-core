@@ -3,6 +3,7 @@ import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, 
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const surfaceIcons = [LuQrCode, LuLink, LuMonitor, LuFileText, LuGlobe, LuSmartphone];
 const aiIcons = [LuImage, LuFileText, LuLanguages];
@@ -27,6 +28,20 @@ export default function ProductPage() {
   const step1Points = Array.from({ length: 4 }, (_, i) => t(`HowItWorks.step1P${i}`));
   const step3Points = Array.from({ length: 3 }, (_, i) => t(`HowItWorks.step3P${i}`));
   const step4Points = Array.from({ length: 4 }, (_, i) => t(`HowItWorks.step4P${i}`));
+  const flowInputs = [
+    { label: t('HowItWorks.flowPhoto'), x: 150 },
+    { label: t('HowItWorks.flowPdf'), x: 430 },
+    { label: t('HowItWorks.flowTypedText'), x: 710 },
+  ];
+  const flowOutputs = [
+    { label: t('HowItWorks.flowQr'), x: 70 },
+    { label: t('HowItWorks.flowWebPage'), x: 214 },
+    { label: t('HowItWorks.flowScreens'), x: 358 },
+    { label: t('HowItWorks.flowPdfOut'), x: 502 },
+    { label: t('HowItWorks.flowOfficial'), x: 646 },
+    { label: t('HowItWorks.flowApp'), x: 790 },
+  ];
+  const publishedSurfaces = Array.from({ length: 6 }, (_, i) => t(`HowItWorks.step3Surface${i}`));
   const aiFeatures = aiIcons.map((icon, i) => ({
     icon,
     label: t(`HowItWorks.${aiKeys[i]}`),
@@ -38,14 +53,18 @@ export default function ProductPage() {
       <SectionWrapper>
         <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
           <AnimateOnScroll>
-            <h1 className="ws-h1">
-              {t('HowItWorks.heroTitle')}<span className="ws-highlight">{t('HowItWorks.heroHighlight')}</span>
-            </h1>
+            <WebsiteHeadline
+              as="h1"
+              parts={[
+                { text: t('HowItWorks.heroTitle') },
+                { text: t('HowItWorks.heroHighlight'), highlight: true },
+              ]}
+            />
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', color: 'var(--ws-text-secondary)' }}>
               {t('HowItWorks.heroSubtitle')}
             </p>
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/get-started">{t('HowItWorks.heroCta')}</WebsiteButton>
+              <WebsiteButton href="/create-menu">{t('HowItWorks.heroCta')}</WebsiteButton>
             </div>
           </AnimateOnScroll>
         </div>
@@ -54,7 +73,7 @@ export default function ProductPage() {
       {/* ── Animated System Flow Diagram ────── */}
       <section style={{ background: '#0f172a', padding: '5rem var(--ws-space-6)', overflow: 'hidden' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem', letterSpacing: '-0.01em' }}>
+          <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem', letterSpacing: 0 }}>
             {t('HowItWorks.flowTitle')}
           </p>
           <p style={{ fontSize: '0.9375rem', color: '#64748b', marginBottom: '2.5rem' }}>
@@ -77,7 +96,7 @@ export default function ProductPage() {
             </defs>
 
             {/* Input nodes */}
-            {[{ label: 'Photo', x: 150 }, { label: 'PDF', x: 430 }, { label: 'Typed text', x: 710 }].map(({ label, x }, i) => (
+            {flowInputs.map(({ label, x }) => (
               <g key={label}>
                 <rect x={x - 52} y="10" width="104" height="38" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
                 <text x={x} y="33" textAnchor="middle" fill="#94a3b8" fontSize="13" fontWeight="500" fontFamily="Inter, sans-serif">{label}</text>
@@ -99,9 +118,7 @@ export default function ProductPage() {
             ))}
 
             {/* Output nodes */}
-            {[
-              { label: 'QR', x: 70 }, { label: 'Web Link', x: 214 }, { label: 'Screens', x: 358 }, { label: 'PDF', x: 502 }, { label: 'Official', x: 646 }, { label: 'App', x: 790 },
-            ].map(({ label, x }) => (
+            {flowOutputs.map(({ label, x }) => (
               <g key={label}>
                 <rect x={x - 52} y="240" width="104" height="42" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
                 <text x={x} y="266" textAnchor="middle" fill="#94a3b8" fontSize="13" fontWeight="500" fontFamily="Inter, sans-serif">{label}</text>
@@ -126,7 +143,7 @@ export default function ProductPage() {
           <AnimateOnScroll>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>01</span>
-              <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('HowItWorks.step1Title')}</h2>
+              <WebsiteHeadline as="h2" text={t('HowItWorks.step1Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
                 {t('HowItWorks.step1Subtitle')}
               </p>
@@ -199,7 +216,7 @@ export default function ProductPage() {
           <AnimateOnScroll delay={0.15}>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>02</span>
-              <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('HowItWorks.step2Title')}</h2>
+              <WebsiteHeadline as="h2" text={t('HowItWorks.step2Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-4)' }}>
                 {t('HowItWorks.step2Subtitle')}
               </p>
@@ -226,7 +243,7 @@ export default function ProductPage() {
           <AnimateOnScroll>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>03</span>
-              <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('HowItWorks.step3Title')}</h2>
+              <WebsiteHeadline as="h2" text={t('HowItWorks.step3Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
                 {t('HowItWorks.step3Subtitle')}
               </p>
@@ -251,7 +268,7 @@ export default function ProductPage() {
                 <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ws-text-primary)' }}>{t('HowItWorks.step3Published')}</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)' }}>
-                {['QR Menu', 'Official Page', 'Digital Screens', 'PDF Export', 'Shareable Link', 'Customer App'].map((s) => (
+                {publishedSurfaces.map((s) => (
                   <div key={s} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--ws-space-2) var(--ws-space-3)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-md)', border: '1px solid var(--ws-border-subtle)' }}>
                     <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{s}</span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>{t('HowItWorks.step3Live')}</span>
@@ -267,7 +284,7 @@ export default function ProductPage() {
       <SectionWrapper variant="subtle">
         <AnimateOnScroll>
           <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
-            <h2 className="ws-h2">{t('HowItWorks.surfacesTitle')}</h2>
+            <WebsiteHeadline as="h2" text={t('HowItWorks.surfacesTitle')} />
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)', color: 'var(--ws-text-secondary)' }}>
               {t('HowItWorks.surfacesSubtitle')}
             </p>
@@ -309,7 +326,7 @@ export default function ProductPage() {
         <AnimateOnScroll>
           <div style={{ maxWidth: '760px', margin: '0 auto' }}>
             <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>04</span>
-            <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('HowItWorks.step4Title')}</h2>
+            <WebsiteHeadline as="h2" text={t('HowItWorks.step4Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
             <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-8)' }}>
               {t('HowItWorks.step4Subtitle')}
             </p>
@@ -340,7 +357,7 @@ export default function ProductPage() {
             <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-6)' }}>
               <LuGlobe size={28} color="var(--ws-brand-secondary)" />
             </div>
-            <h2 className="ws-h2">{t('HowItWorks.obpTitle')}</h2>
+            <WebsiteHeadline as="h2" text={t('HowItWorks.obpTitle')} />
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)', color: 'var(--ws-text-secondary)' }}>
               {t('HowItWorks.obpSubtitle')}
             </p>
@@ -385,9 +402,9 @@ export default function ProductPage() {
       <SectionWrapper variant="subtle">
         <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-narrow)', margin: '0 auto' }}>
           <AnimateOnScroll>
-            <h2 className="ws-h2">{t('HowItWorks.ctaTitle')}</h2>
+            <WebsiteHeadline as="h2" text={t('HowItWorks.ctaTitle')} />
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/get-started">{t('HowItWorks.ctaCta')}</WebsiteButton>
+              <WebsiteButton href="/create-menu">{t('HowItWorks.ctaCta')}</WebsiteButton>
             </div>
             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
               {t('HowItWorks.ctaCaption')}

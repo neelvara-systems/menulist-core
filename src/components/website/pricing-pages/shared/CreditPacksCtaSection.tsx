@@ -6,6 +6,7 @@ import { aiEnhancementPacksList } from '@data/PlatformPlansList';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import SectionHeading from '../../shared/SectionHeading';
 import CreditPackCard from '../CreditPackCard';
@@ -19,6 +20,7 @@ interface CreditPacksCtaSectionProps {
 
 const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency, refetchActiveSubscription, activeSubscription }) => {
 
+    const t = useTranslations('Website');
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
@@ -57,13 +59,13 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
         <>
             <div style={{ textAlign: 'center' }}>
                 <SectionHeading
-                    title="Descriptions, photos, and translations are built in"
+                    title={t('Pricing.creditTitle')}
                     highlightedText="your menu"
-                    subtitle="Write descriptions, generate photos, and translate menus in seconds. Included in all plans. Use credits only when needed."
+                    subtitle={t('Pricing.creditSubtitle')}
                     centered
                 />
                 <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-2)' }}>
-                    Credit-based usage. Top up anytime.
+                    {t('Pricing.creditNote')}
                 </p>
                 <div id="credit-packs" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap', maxWidth: '800px', margin: 'var(--ws-space-10) auto 0' }}>
                     {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (

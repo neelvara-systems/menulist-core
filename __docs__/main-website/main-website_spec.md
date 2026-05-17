@@ -1,13 +1,14 @@
-# Website V2 — Hype & Domination Strategy
+# Main Website Strategy Spec
 
-**Version:** v2.0 — Hype/Domination
-**Status:** ACTIVE (March 2026)
+**Version:** 3.3.0 — Canonical Website Default
+**Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
-**Previous:** v1 Infrastructure Calm (backed up in `main-website_v1-infrastructure-backup.md`)
+
+> This file keeps useful strategy context and validation notes. It is not a separate website version and must not be used to restore old website source code.
 
 ---
 
-## Strategic Shift
+## Historical Strategy Context
 
 | Aspect             | V1 (Infrastructure)                      | V2 (Hype/Domination)                          |
 | ------------------ | ---------------------------------------- | --------------------------------------------- |
@@ -244,10 +245,6 @@ Full review: `_archive/chatgpt-review-marketing-positioning.md`
 
 ---
 
-## Version Tracking
+## Canonical Status
 
-| Version | Name                     | Period                           | File                                       |
-| ------- | ------------------------ | -------------------------------- | ------------------------------------------ |
-| v1      | Infrastructure Calm      | Launch – Mar 2026                | `main-website_v1-infrastructure-backup.md` |
-| v2      | Hype/Domination          | Mar 2026 – until 10K+ businesses | This file + `main-website_content.md`      |
-| v3      | Infrastructure Authority | Future (1-2 years)               | Restore from v1 backup                     |
+The current website implementation is the only source-code version. Use `README.md`, `main-website_impl.md`, and `main-website_content.md` for the active implementation contract.

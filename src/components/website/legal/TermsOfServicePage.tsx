@@ -5,6 +5,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const whatIsMenuList = [
     { label: 'Upload your content', value: 'Menus, price lists, images, and business documents' },
@@ -21,7 +22,7 @@ const accountCards = [
         points: [
             'Use a strong, unique password',
             'Never share your password with anyone',
-            'Notify us immediately of any unauthorised access',
+            'Notify us immediately of any unauthorized access',
         ],
     },
     {
@@ -29,7 +30,7 @@ const accountCards = [
         title: 'Acceptable use',
         desc: 'You agree to use MenuList responsibly and in accordance with all applicable laws.',
         points: [
-            'Business catalogues, menus, product images, and descriptions',
+            'Business catalogs, menus, product images, and descriptions',
             'Restaurant, retail, or service business use',
             'Violation of these policies may result in immediate account suspension',
         ],
@@ -103,10 +104,13 @@ export default function TermsOfServicePage() {
                         <p style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
                             Terms of Service
                         </p>
-                        <h1 className="ws-h1">
-                            Terms governing your use of{' '}
-                            <span className="ws-highlight">MenuList.</span>
-                        </h1>
+                        <WebsiteHeadline
+                            as="h1"
+                            parts={[
+                                { text: 'Terms governing your use of ' },
+                                { text: 'MenuList.', highlight: true },
+                            ]}
+                        />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '580px', marginLeft: 'auto', marginRight: 'auto' }}>
                             By accessing or using our services, you agree to be bound by these Terms of Service.
                         </p>
@@ -276,12 +280,12 @@ export default function TermsOfServicePage() {
             <SectionWrapper variant="default">
                 <AnimateOnScroll>
                     <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
-                        <h2 className="ws-h2">Governed by Indian law.</h2>
+                        <WebsiteHeadline as="h2" text="Governed by Indian law." />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)' }}>
                             These Terms shall be governed by and construed in accordance with the laws of India. Any disputes will be subject to the exclusive jurisdiction of courts in India. We reserve the right to modify these Terms at any time.
                         </p>
                         <div style={{ marginTop: 'var(--ws-space-8)' }}>
-                            <WebsiteButton href="/get-started">Create your MenuList →</WebsiteButton>
+                            <WebsiteButton href="/create-menu">Upload your menu →</WebsiteButton>
                         </div>
                     </div>
                 </AnimateOnScroll>

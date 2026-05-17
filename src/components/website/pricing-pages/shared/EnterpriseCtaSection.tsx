@@ -13,7 +13,7 @@ const EnterpriseCtaSection = () => {
                         fontWeight: 700,
                         color: 'var(--ws-text-primary)',
                         lineHeight: 1.3,
-                        letterSpacing: '-0.01em',
+                        letterSpacing: 0,
                     }}
                 >
                     Control your entire brand from one place

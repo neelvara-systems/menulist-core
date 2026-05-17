@@ -86,15 +86,16 @@ export interface PublishParams {
  * Execute the publish pipeline (Cloud Functions version).
  *
  * ⚠️ DEAD CODE — NOT CURRENTLY CALLED.
- * Per ADR-10, publish executes in the Next.js API route directly:
- *   src/app/api/msg-preview/[sessionId]/approve/route.ts → executePublishFromApiRoute()
+ * Per ADR-10, active publish execution is centralized in the server-only
+ * Next.js publish library:
+ *   src/lib/messaging-onboarding/publish.ts → executeMessagingOnboardingPublish()
  *
  * This CF version exists as a reference/backup but is MISSING:
  *   - timeSlotPresets (approve route has it)
  *   - getDefaultTimeSlotPresets import (approve route has it)
  *
- * If you need to call publish from a Cloud Function context in the future,
- * sync this function with executePublishFromApiRoute() first.
+ * If publish must run from a Cloud Function context in the future, extract a
+ * shared package first. Do not wire this legacy copy back into production.
  *
  * @returns Published result with tenant/store/project IDs
  */
@@ -221,7 +222,7 @@ export async function executePublish(
       storeKey,
       roles: defaultRoles,
       isMaster: true,
-      onboardingSource: "messaging",
+      onboardingSource: "MESSAGING_ONBOARDING",
       activationDeadline: Timestamp.fromMillis(
         Date.now() + TIMING.ACTIVATION_DEADLINE_MS,
       ),
@@ -284,7 +285,7 @@ export async function executePublish(
       provider: session.provider,
       providerUserId: session.providerUserId,
       createdVia: "messaging-onboarding",
-      onboardingSource: "messaging",
+      onboardingSource: "MESSAGING_ONBOARDING",
       createdOn: now,
       modifiedOn: now,
     });

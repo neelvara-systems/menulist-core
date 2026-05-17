@@ -6,6 +6,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const groupIds = ['setup', 'surfaces', 'brand', 'smart', 'operations', 'integrity'];
 const groupIcons = [
@@ -30,6 +31,10 @@ export default function FeaturesPage() {
       desc: t(`Features.group${gi}F${fi}Desc`),
     })),
   }));
+  const analyticsCards = Array.from({ length: 4 }, (_, i) => ({
+    title: t(`Features.analytics${i}Title`),
+    desc: t(`Features.analytics${i}Desc`),
+  }));
 
   return (
     <div className="ws-page">
@@ -40,15 +45,15 @@ export default function FeaturesPage() {
             <p style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
               {t('Features.heroEyebrow')}
             </p>
-            <h1 className="ws-h1">
+            <WebsiteHeadline as="h1">
               {t('Features.heroTitle1')}<br />
-              <span className="ws-highlight">{t('Features.heroTitle2')}</span>
-            </h1>
+              <span className="ws-headline__highlight">{t('Features.heroTitle2')}</span>
+            </WebsiteHeadline>
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '560px', marginLeft: 'auto', marginRight: 'auto' }}>
               {t('Features.heroSubtitle')}
             </p>
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/get-started">{t('Features.heroCta')}</WebsiteButton>
+              <WebsiteButton href="/create-menu">{t('Features.heroCta')}</WebsiteButton>
             </div>
           </AnimateOnScroll>
         </div>
@@ -141,8 +146,8 @@ export default function FeaturesPage() {
       <SectionWrapper variant="subtle">
         <AnimateOnScroll>
           <SectionHeading
-            title="Your menu, understood after it goes live"
-            subtitle="MenuList records decision-ready customer signals from the public menu and official business page, then shows them as clear owner metrics."
+            title={t('Features.analyticsTitle')}
+            subtitle={t('Features.analyticsSubtitle')}
           />
         </AnimateOnScroll>
 
@@ -158,24 +163,7 @@ export default function FeaturesPage() {
             gridAutoRows: '1fr',
           }}
         >
-          {[
-            {
-              title: 'Session quality is measured',
-              desc: 'Menu sessions, engaged sessions, intent sessions, and action sessions are counted anonymously.',
-            },
-            {
-              title: 'Interest stays attached to items and categories',
-              desc: 'Item views, item taps, top categories, searches, no-result searches, and unavailable-item taps stay visible.',
-            },
-            {
-              title: 'Final actions show what worked',
-              desc: 'Calls, WhatsApp, directions, reservations, order clicks, shares, and official-page CTA taps feed Action Rate.',
-            },
-            {
-              title: 'Pro turns metrics into next actions',
-              desc: 'Eligible Pro plans can show a short action list and plain-language summaries from settled dashboard data.',
-            },
-          ].map((item, index) => (
+          {analyticsCards.map((item, index) => (
             <AnimateStaggerChild key={item.title} index={index}>
               <div className="ws-card" style={{ height: '100%' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
@@ -196,7 +184,7 @@ export default function FeaturesPage() {
               marginRight: 'auto',
             }}
           >
-            No vanity analytics. No invasive tracking. MenuList focuses on decision-ready signals and privacy-conscious reporting: no customer names, no emails, no payment details, no scroll heatmaps, no hover tracking, and no exact GPS coordinates in this analytics flow.
+            {t('Features.analyticsFooter')}
           </p>
         </AnimateOnScroll>
       </SectionWrapper>
@@ -205,14 +193,12 @@ export default function FeaturesPage() {
       <SectionWrapper variant="default">
         <AnimateOnScroll>
           <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
-            <h2 className="ws-h2">
-              {t('Features.ctaTitle')}
-            </h2>
+            <WebsiteHeadline as="h2" text={t('Features.ctaTitle')} />
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)' }}>
               {t('Features.ctaSubtitle')}
             </p>
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/get-started">{t('Features.ctaCta')}</WebsiteButton>
+              <WebsiteButton href="/create-menu">{t('Features.ctaCta')}</WebsiteButton>
             </div>
           </div>
         </AnimateOnScroll>

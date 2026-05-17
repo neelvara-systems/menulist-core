@@ -5,6 +5,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const dataCollected = [
     {
@@ -90,10 +91,13 @@ export default function PrivacyPolicyPage() {
                         <p style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
                             Privacy Policy
                         </p>
-                        <h1 className="ws-h1">
-                            How we handle{' '}
-                            <span className="ws-highlight">your data.</span>
-                        </h1>
+                        <WebsiteHeadline
+                            as="h1"
+                            parts={[
+                                { text: 'How we handle ' },
+                                { text: 'your data.', highlight: true },
+                            ]}
+                        />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '580px', marginLeft: 'auto', marginRight: 'auto' }}>
                             Your privacy matters. This policy explains what we collect, why, and how we protect it.
                         </p>
@@ -285,12 +289,12 @@ export default function PrivacyPolicyPage() {
             <SectionWrapper variant="default">
                 <AnimateOnScroll>
                     <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
-                        <h2 className="ws-h2">Your privacy is built in.</h2>
+                        <WebsiteHeadline as="h2" text="Your privacy is built in." />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)' }}>
                             Privacy is not a feature we added — it is how the system was designed.
                         </p>
                         <div style={{ marginTop: 'var(--ws-space-8)' }}>
-                            <WebsiteButton href="/get-started">Create your MenuList →</WebsiteButton>
+                            <WebsiteButton href="/create-menu">Upload your menu →</WebsiteButton>
                         </div>
                     </div>
                 </AnimateOnScroll>

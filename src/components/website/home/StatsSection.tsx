@@ -15,77 +15,34 @@ export default function StatsSection() {
     accent: 'var(--ws-brand-primary)',
   }));
   return (
-    <SectionWrapper>
+    <SectionWrapper className="ws-source-proof-section">
       <AnimateOnScroll>
-        <p
-          style={{
-            textAlign: 'center',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: 'var(--ws-text-muted)',
-            marginBottom: 'var(--ws-space-4)',
-          }}
-        >
-          {t('Stats.byTheNumbers')}
-        </p>
-        <SectionHeading
-          title={t('Stats.title')}
-          highlightedText={t('Stats.highlight')}
-          centered
-        />
-      </AnimateOnScroll>
+        <div className="ws-source-proof-band">
+          <div className="ws-source-proof-band__intro">
+            <p>{t('Stats.byTheNumbers')}</p>
+            <SectionHeading
+              title={t('Stats.title')}
+              highlightedText={t('Stats.highlight')}
+              centered={false}
+            />
+          </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 'var(--ws-space-4)',
-          maxWidth: '960px',
-          marginLeft: 'auto',
-          marginRight: 'auto',
-          marginTop: 'var(--ws-space-12)',
-        }}
-      >
-        {stats.map((stat, i) => (
-          <AnimateStaggerChild key={stat.label} index={i}>
-            <div
-              style={{
-                padding: 'var(--ws-space-6)',
-                borderRadius: 'var(--ws-radius-lg)',
-                backgroundColor: 'var(--ws-bg-subtle)',
-                border: '1px solid var(--ws-border-default)',
-                height: '100%',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 'clamp(2rem, 4vw, 2.75rem)',
-                  fontWeight: 800,
-                  color: stat.accent,
-                  lineHeight: 1,
-                  marginBottom: '4px',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {stat.number}
-                {stat.suffix && (
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, marginLeft: '2px' }}>
-                    {stat.suffix}
-                  </span>
-                )}
-              </p>
-              <p className="ws-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--ws-space-2)' }}>
-                {stat.label}
-              </p>
-              <p className="ws-caption" style={{ lineHeight: 1.5 }}>
-                {stat.desc}
-              </p>
-            </div>
-          </AnimateStaggerChild>
-        ))}
-      </div>
+          <div className="ws-source-proof-grid">
+            {stats.map((stat, i) => (
+              <AnimateStaggerChild key={stat.label} index={i}>
+                <div className="ws-source-proof-item">
+                  <p>
+                    {stat.number}
+                    {stat.suffix && <span>{stat.suffix}</span>}
+                  </p>
+                  <h3>{stat.label}</h3>
+                  <span>{stat.desc}</span>
+                </div>
+              </AnimateStaggerChild>
+            ))}
+          </div>
+        </div>
+      </AnimateOnScroll>
     </SectionWrapper>
   );
 }

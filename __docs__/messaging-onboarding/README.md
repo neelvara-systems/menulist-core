@@ -1,10 +1,10 @@
 # Messaging Onboarding — Documentation Hub
 
-> **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine  
-> **Architecture:** Provider-Agnostic (WhatsApp v1 — Telegram/LINE/Viber future-ready)  
-> **Status:** Implementation-Ready — All cross-checks complete  
-> **Last Updated:** February 17, 2026  
-> **Version:** 1.7
+> **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
+> **Architecture:** Provider-Agnostic (WhatsApp v1 — Telegram/LINE/Viber future-ready)
+> **Status:** Implemented — WhatsApp runtime remains gated until real provider credentials are configured
+> **Last Updated:** May 17, 2026
+> **Version:** 3.8
 
 ---
 
@@ -19,7 +19,8 @@
 | **Help Center**  | [\_helpdoc.md](./messaging-onboarding_helpdoc.md)               | Customer help documentation                                                                     |
 | **Cost Control** | [\_firebase.md](./messaging-onboarding_firebase.md)             | Firebase reads/writes/deletes, cost estimates                                                   |
 | **Mobile**       | [\_mobile-support.md](./messaging-onboarding_mobile-support.md) | Mobile admission test results                                                                   |
-| **QA**           | [\_test-cases.md](./messaging-onboarding_test-cases.md)         | 136 test cases across 14 categories (incl. multi-provider, publish identity, internal tracking) |
+| **QA**           | [\_test-cases.md](./messaging-onboarding_test-cases.md)         | 166 test cases across 21 categories (incl. multi-provider, publish identity, internal tracking, failure recovery, production hardening) |
+| **Ops**          | [\_runbook.md](./messaging-onboarding_runbook.md)               | Provider credentials, dashboard usage, triage, and safe operational actions                     |
 
 ---
 
@@ -29,7 +30,7 @@
 
 **Problem Solved:** Most SMB owners globally hate dashboards, avoid signups, and ignore SaaS onboarding flows. They trust messaging apps more than websites. Current onboarding requires learning software, which kills adoption. MenuList needs a zero-friction intake channel that converts raw intent into a live digital presence — via whatever messaging platform dominates in each market.
 
-**Solution:** A provider-agnostic messaging onboarding system (launching with WhatsApp) that accepts menu photos/PDFs, automatically extracts and structures the menu using existing Gemini AI pipeline, generates a preview for owner approval, and atomically publishes a complete MenuList presence (store, menu, OBP, QR) — all without the owner ever touching a dashboard. Adding a new messaging provider (Telegram, LINE, Viber) requires only a thin adapter (~200 lines) — zero changes to core logic.
+**Solution:** A provider-agnostic messaging onboarding system (launching with WhatsApp) that accepts menu photos/PDFs, automatically extracts and structures the menu using the existing Gemini AI pipeline, generates a preview for owner approval, and atomically publishes a live MenuList presence (tenant, store, menu project, public URL, and claimable owner account) — all without the owner touching a dashboard. Existing public/share surfaces provide Official Business Page and QR access after publish. Adding a new messaging provider (Telegram, LINE, Viber) requires only a thin adapter (~200 lines) — zero changes to core logic.
 
 ---
 
@@ -39,7 +40,9 @@
 Messaging Provider (WhatsApp / Telegram / LINE / future...)
     ↓ webhook POST
 Provider Adapter Layer (IMessagingProvider interface)
-    ↓ NormalizedMessage (provider-agnostic)
+    ↓ NormalizedMessage (provider-agnostic, sanitized)
+Durable Inbound Queue (dedup by provider message ID, ack fast, retry safely)
+    ↓
 Core Session Engine (Firestore state machine)
     ↓
 Asset Intelligence Layer (Gemini: validate files + extract business info)
@@ -50,7 +53,7 @@ Preview Page (public URL, shows menu + editable business info)
     ↓
 Owner Approves → Atomic Publish Pipeline
     ↓
-Creates: Tenant + Store + Project + OBP + QR + User Account
+Creates: Tenant + Store + Project + public menu URL + claimable owner account
     ↓
 Provider Adapter sends: "Your menu is live: [link]"
     ↓
@@ -59,24 +62,28 @@ Messaging tunnel CLOSED permanently
 
 ---
 
-## Key Files in Codebase (Planned)
+## Key Files in Codebase (Implemented)
 
-| Purpose            | File Path                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------- |
-| Feature flags      | `src/config/features.ts` → `ENABLE_MESSAGING_ONBOARDING` + `MESSAGING_ONBOARDING_PROVIDERS` |
-| Provider interface | `functions/src/messagingOnboarding/providers/IMessagingProvider.ts`                         |
-| Provider registry  | `functions/src/messagingOnboarding/providers/providerRegistry.ts`                           |
-| WhatsApp adapter   | `functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts`                   |
-| Webhook handler    | `functions/src/messagingOnboarding/webhookHandler.ts`                                       |
-| Session engine     | `functions/src/messagingOnboarding/sessionEngine.ts`                                        |
-| Asset intelligence | `functions/src/messagingOnboarding/assetIntelligence.ts`                                    |
-| Publish pipeline   | `functions/src/messagingOnboarding/publishPipeline.ts`                                      |
-| Session types      | `functions/src/types/messagingOnboarding.types.ts`                                          |
-| Preview page       | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx`                                   |
-| Extraction watcher | `functions/src/messagingOnboarding/extractionWatcher.ts`                                    |
-| Event logger       | `functions/src/messagingOnboarding/eventLogger.ts`                                          |
-| Cleanup scheduler  | `functions/src/schedulers/messagingSessionCleanup.ts`                                       |
-| Constants          | `functions/src/messagingOnboarding/constants.ts`                                            |
+| Purpose                | File Path                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| Feature flags          | `src/config/features.ts` + runtime env read in `functions/src/messagingOnboarding/constants.ts` |
+| Provider interface     | `functions/src/messagingOnboarding/providers/IMessagingProvider.ts`                         |
+| Provider registry      | `functions/src/messagingOnboarding/providers/providerRegistry.ts`                           |
+| WhatsApp adapter       | `functions/src/messagingOnboarding/providers/whatsapp/WhatsAppAdapter.ts`                   |
+| Webhook handler        | `functions/src/messagingOnboarding/webhookHandler.ts`                                       |
+| Durable inbound queue  | `functions/src/messagingOnboarding/inboundQueue.ts`                                         |
+| Session engine         | `functions/src/messagingOnboarding/sessionEngine.ts`                                        |
+| Asset intelligence     | `functions/src/messagingOnboarding/assetIntelligence.ts`                                    |
+| Publish executor       | `src/lib/messaging-onboarding/publish.ts`                                                   |
+| Legacy publish copy    | `functions/src/messagingOnboarding/publishPipeline.ts`                                      |
+| Health/cost monitor    | `functions/src/messagingOnboarding/healthMonitor.ts`                                        |
+| Ops monitor            | `src/app/(main)/ops/messaging-onboarding/page.tsx` + `src/app/api/ops/messaging-onboarding/route.ts` |
+| Session types          | `functions/src/types/messagingOnboarding.types.ts`                                          |
+| Preview page           | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx`                                   |
+| Extraction watcher     | `functions/src/messagingOnboarding/extractionWatcher.ts`                                    |
+| Event logger           | `functions/src/messagingOnboarding/eventLogger.ts`                                          |
+| Cleanup scheduler      | `functions/src/schedulers/messagingSessionCleanup.ts`                                       |
+| Constants              | `functions/src/messagingOnboarding/constants.ts`                                            |
 
 ---
 
@@ -84,13 +91,20 @@ Messaging tunnel CLOSED permanently
 
 ```typescript
 // src/config/features.ts
-ENABLE_MESSAGING_ONBOARDING: false,              // Master kill switch
+ENABLE_MESSAGING_ONBOARDING: true,               // App/preview surfaces
 MESSAGING_ONBOARDING_PROVIDERS: ['whatsapp'],    // Enabled providers
 ENABLE_MESSAGING_ONBOARDING_TRACKING: true,      // Internal tracking (ON by default)
+ENABLE_MESSAGING_ONBOARDING_DASHBOARD: true,     // Platform-only ops monitor
+
+// functions/src/messagingOnboarding/constants.ts reads runtime env
+process.env.ENABLE_MESSAGING_ONBOARDING          // Cloud Function webhook/scheduler hard stop until WhatsApp secrets are real
+process.env.MESSAGING_ONBOARDING_PROVIDERS       // comma-separated providers, default: whatsapp
+process.env.ENABLE_MESSAGING_ONBOARDING_TRACKING // defaults true
 ```
 
-**Master flag OFF** = zero code execution, zero cost, zero impact.  
+**Cloud Function master flag OFF** = webhooks and messaging schedulers acknowledge and exit without processing.
 **Provider not in list** = that provider's webhooks ignored silently.
+**Do not enable the Cloud Function flag until real WhatsApp Secret Manager values exist.** Dummy secrets hide the real operational blocker.
 
 ---
 
@@ -136,3 +150,8 @@ ENABLE_MESSAGING_ONBOARDING_TRACKING: true,      // Internal tracking (ON by def
 | 3.1     | Feb 17, 2026 | **POST-IMPLEMENTATION REVIEW.** Line-by-line code review + spec↔codebase cross-check (15/15 message templates, 8/8 rate limits, 12/12 failure handlers, all state machine transitions verified). **4 bugs found and fixed:** (1) Fast Start logic missing — added PDF 60s + ≥4 uploads 90s idle timers per spec §Smart Intake Logic. (2) File size limit was 20MB, spec says 10MB — fixed. (3) Preview page missing noindex/nofollow — added layout.tsx. (4) Preview page missing "Not Live Yet" badge + editable business type/address — fixed. Type check: PASS after all fixes.                                                                                                                                                                                                                                           |
 | 3.2     | Mar 12, 2026 | **CHATGPT SYSTEM HARDENING REVIEW.** 14 ChatGPT suggestions validated against codebase. Accuracy: ~72%. **3 code fixes:** (1) State guard in extractionWatcher — prevents preview generation for expired sessions where extraction finished late. (2) Structural validation in blank prevention gate — validates combinedData exists and categories/items are arrays (not null/undefined). (3) `acquisitionSource` field added to session for OOR growth metric. **4 new docs:** `__docs__/messaging-onboarding-dashboard/` (README, spec, impl, firebase) for internal monitoring dashboard. **REJECTED:** Remove polling (₹1/month), remove multi-provider (already paid for), remove tracking (₹3/month), separate dedup collection (already exists). Type check: PASS (zero errors in both functions/ and main project). |
 | 3.3     | Mar 20, 2026 | **CHATGPT WHATSAPP OPERATIONAL REVIEW.** ~16,000-word ChatGPT conversation on WhatsApp deployment, scaling, and growth strategy. Accuracy: ~20% actionable. **0 code changes** — system already more comprehensive than all 40 suggestions across every dimension (11-state machine vs ChatGPT's 5, 15 templates vs 4, all 12 edge cases handled + 8 more). **0 doc changes** — specs already cover everything suggested. Useful content: WhatsApp API operational deployment checklist (Meta Business Manager setup, template approval, tier limits reference) preserved in review archive. **REJECTED:** Multi-number routing, geo-locality tracking, A/B testing, global ingress throttling, website redesign — all premature with zero users. Review: `_archive/chatgpt-review-whatsapp-operational.md`.                 |
+| 3.4     | May 17, 2026 | **CODE AUDIT + COST HARDENING.** Fixed stale business-type propagation into extraction jobs, weekly rate-limit rollover bypass, non-atomic publish finalization, missing public cache invalidation after publish, unstable signed source-file URLs, and live-session storage cleanup that broke dashboard source previews. Docs updated to reflect the real Cloud Function gating and publish outputs. WhatsApp live testing still blocked by missing real provider credentials. |
+| 3.5     | May 17, 2026 | **MANUAL ONBOARDING + EXTRACTION PARITY AUDIT.** Compared messaging onboarding against dashboard/mobile manual extraction and account/project creation. Fixed drift by making messaging extraction skip temporary project writes while preserving shared Gemini processing, carrying per-file extracted data into publish, persisting the approved address to `store.addressLine`, and creating the final project with manual-compatible ownership, default project, design config, language, and file-entry fields. WhatsApp live testing still blocked by missing real provider credentials. |
+| 3.6     | May 17, 2026 | **PRODUCTION HARDENING PASS.** Added durable inbound message queue/dedup and retry drain, outer approve-route idempotency for already-live sessions, runtime env-backed Cloud Function feature flags, hourly health/cost/source-retention snapshots with system alerts, provider-reported file-size pre-download rejection, and centralized the active publish executor in `src/lib/messaging-onboarding/publish.ts`. WhatsApp live testing still blocked by missing real provider credentials. |
+| 3.7     | May 17, 2026 | **FIREBASE COST AUDIT.** Removed redundant active-session message-ID writes now that durable inbound queue owns provider-message dedup, changed inbound queue persistence to atomic `create()` so normal webhooks avoid a pre-create Firestore read, added `expiresAt` TTL fields to inbound queue and shared lifecycle events, aligned source-retention health query with the existing Firestore index direction, and corrected health control status persistence. |
+| 3.8     | May 17, 2026 | **OPENWA FIT PASS.** Adopted useful OpenWA-style operational ideas without changing provider architecture: added platform-only `/ops/messaging-onboarding` monitor, protected Admin SDK snapshot API, webhook/HMAC/queue/session visibility, explicit `systemHealth` client deny rule, and operational runbook. Rejected `whatsapp-web.js`, QR-scanned sessions, owner API keys, and bulk messaging for MenuList production. |

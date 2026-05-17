@@ -19,6 +19,8 @@ import {
 import { validateAssets } from "./assetIntelligence";
 import { FEATURE_FLAGS, MESSAGES, PROCESSING, RATE_LIMITS } from "./constants";
 import { logOnboardingEvent, maskUserId } from "./eventLogger";
+import { recordMessagingOnboardingHealth } from "./healthMonitor";
+import { drainPendingInboundMessages } from "./inboundQueue";
 import { getProviderAdapter } from "./providers/providerRegistry";
 import { transitionState } from "./sessionEngine";
 
@@ -31,16 +33,32 @@ const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
  * Called by onSchedule every 2 minutes.
  */
 export async function intakeProcessorLogic(): Promise<{
+  inboundProcessed: number;
   processed: number;
   errors: number;
 }> {
   if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {
-    return { processed: 0, errors: 0 };
+    return { inboundProcessed: 0, processed: 0, errors: 0 };
   }
 
   const now = Timestamp.now();
+  let inboundProcessed = 0;
   let processed = 0;
   let errors = 0;
+
+  try {
+    const inbound = await drainPendingInboundMessages(20);
+    inboundProcessed = inbound.processed;
+    errors += inbound.failed;
+    if (inbound.processed > 0 || inbound.retryScheduled > 0 || inbound.failed > 0) {
+      logger.info("[IntakeProcessor] Inbound queue drained", inbound);
+    }
+  } catch (err) {
+    logger.error("[IntakeProcessor] Failed to drain inbound queue", {
+      error: (err as Error).message,
+    });
+    errors++;
+  }
 
   // Find sessions in COLLECTING_INPUT or AWAITING_MORE_UPLOADS
   // whose intake window has expired
@@ -69,16 +87,78 @@ export async function intakeProcessorLogic(): Promise<{
   }
 
   // Send pending publish confirmations (M-5: WhatsApp message after publish)
+  await sendPendingPreviewMessages();
   await sendPendingPublishConfirmations();
 
   // Send pending fix request WhatsApp messages (spec §Story 5)
   await sendPendingFixMessages();
 
+  await recordMessagingOnboardingHealth({ inboundProcessed, processed, errors });
+
   if (processed > 0 || errors > 0) {
     logger.info("[IntakeProcessor] Run complete", { processed, errors });
   }
 
-  return { processed, errors };
+  return { inboundProcessed, processed, errors };
+}
+
+/**
+ * Retry preview links that were generated but not successfully delivered.
+ * This protects the first owner touchpoint: once the preview exists, the owner
+ * must receive the next WhatsApp response even if the first send attempt fails.
+ */
+async function sendPendingPreviewMessages(): Promise<void> {
+  try {
+    const pendingSnapshot = await db
+      .collection(sessionsCol)
+      .where("state", "==", "AWAITING_APPROVAL")
+      .where("previewMessagePending", "==", true)
+      .limit(10)
+      .get();
+
+    for (const doc of pendingSnapshot.docs) {
+      try {
+        const session = doc.data() as MessagingOnboardingSession;
+        if (!session.previewUrl) continue;
+
+        const adapter = getProviderAdapter(session.provider);
+        await adapter.sendLinkMessage(
+          session.providerUserId,
+          MESSAGES.PREVIEW_READY(session.previewUrl),
+          session.previewUrl,
+          "View Preview",
+        );
+
+        await db.collection(sessionsCol).doc(session.sessionId).update({
+          previewMessagePending: false,
+          updatedAt: Timestamp.now(),
+        });
+
+        logOnboardingEvent({
+          sessionId: session.sessionId,
+          provider: session.provider,
+          eventType: "MESSAGE_SENT",
+          sessionState: "AWAITING_APPROVAL",
+          userIdMasked: maskUserId(session.providerUserId),
+          metadata: { trigger: "preview_ready_retry" },
+          sessionCreatedAt: session.createdAt,
+        });
+
+        logger.info("[IntakeProcessor] Sent pending preview link", {
+          sessionId: session.sessionId,
+        });
+      } catch (err) {
+        logger.error("[IntakeProcessor] Failed to send pending preview link", {
+          sessionId: doc.id,
+          error: (err as Error).message,
+        });
+      }
+    }
+  } catch (err) {
+    logger.error("[IntakeProcessor] Failed to query pending preview links", {
+      error: (err as Error).message,
+    });
+  }
 }
 
 /**
@@ -386,6 +466,18 @@ async function processSession(
   // Store validation results
   const bizType = validationResult.detected_business_type;
   const typeConfidence = bizType.type_confidence;
+  const detectedBusinessType =
+    typeConfidence === "high" || typeConfidence === "medium"
+      ? bizType.business_type
+      : "Restaurant";
+  const detectedBusinessCategory =
+    typeConfidence === "high" || typeConfidence === "medium"
+      ? bizType.business_category
+      : "food";
+  const typeSource =
+    typeConfidence === "high" || typeConfidence === "medium"
+      ? "ai"
+      : "fallback";
 
   await sessionRef.update({
     validMenuFiles: validUploadIds,
@@ -402,19 +494,10 @@ async function processSession(
         confidence: validationResult.extracted_business_info.confidence,
       }
       : null,
-    detectedBusinessType:
-      typeConfidence === "high" || typeConfidence === "medium"
-        ? bizType.business_type
-        : "Restaurant",
-    detectedBusinessCategory:
-      typeConfidence === "high" || typeConfidence === "medium"
-        ? bizType.business_category
-        : "food",
+    detectedBusinessType,
+    detectedBusinessCategory,
     typeConfidence: typeConfidence || "low",
-    typeSource:
-      typeConfidence === "high" || typeConfidence === "medium"
-        ? "ai"
-        : "fallback",
+    typeSource,
     updatedAt: Timestamp.now(),
   });
 
@@ -478,7 +561,10 @@ async function processSession(
   }
 
   // Trigger extraction
-  await triggerExtraction(session, validUploadIds);
+  await triggerExtraction(session, validUploadIds, {
+    businessType: detectedBusinessType,
+    businessCategory: detectedBusinessCategory,
+  });
 }
 
 /**
@@ -488,6 +574,7 @@ async function processSession(
 async function triggerExtraction(
   session: MessagingOnboardingSession,
   validUploadIds: string[],
+  detected: { businessType: string; businessCategory: string },
 ): Promise<void> {
   const sessionRef = db.collection(sessionsCol).doc(session.sessionId);
   const userMasked = maskUserId(session.providerUserId);
@@ -526,14 +613,17 @@ async function triggerExtraction(
     projectId: `msg-onboarding-${session.sessionId}`,
     files: validUploads.map((f) => ({
       uid: f.id,
-      name: f.id,
+      name: f.fileName || f.id,
       size: f.fileSize,
       type: f.mimeType,
       url: f.storageUrl,
     })),
     targetLanguages: [{ code: "en", name: "English" }],
     action: "IMAGE_PROCESSING",
-    businessType: session.detectedBusinessType || "Restaurant",
+    businessType: detected.businessType || session.detectedBusinessType || "Restaurant",
+    businessCategory: detected.businessCategory || session.detectedBusinessCategory || "food",
+    source: "MESSAGING_ONBOARDING",
+    skipProjectSave: true,
     status: "pending",
     progress: 0,
     currentStep: "Queued",

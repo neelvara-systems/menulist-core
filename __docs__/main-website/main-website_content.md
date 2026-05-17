@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
-**Status:** ✅ FINAL — Approved after ChatGPT Session 3 review + Discovery Infrastructure review (Mar 2026) + public menu/OBP hardening alignment (May 2026)
-**Last Updated:** May 10, 2026
+**Status:** ✅ CURRENT — Canonical website copy and section map
+**Last Updated:** May 17, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -19,57 +19,132 @@
 
 ## Page 1: Homepage
 
+### Canonical Implementation Scope
+
+The current homepage is the only default MenuList marketing website. It keeps the strongest conversion jobs from prior review work in safer official-source language: setup effort removal, numbers proof, analytics proof, industry breadth, public-surface clarity, and final CTA confidence. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
+
+Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, and safer pricing/setup claims. Pricing visual copy can be improved, but payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
+
+**Current route/component order:**
+
+1. `HeroSection`
+2. `RevenuePathSection`
+3. `InteractiveWorkflowSection`
+4. `ProblemSection`
+5. `SolutionSection`
+6. `StatsSection`
+7. `SetupReliefSection`
+8. `SurfacesSection`
+9. `CustomerBrowseSection`
+10. `AnalyticsInsightsSection`
+11. `SmartFeaturesSection`
+12. `PreparedForYouSection`
+13. `BusinessSection`
+14. `IndustrySection`
+15. `FaqSection`
+16. `FinalCtaSection`
+17. `StickyCta`
+
+**Canonical section policy:** `StatsSection`, `AnalyticsInsightsSection`, `IndustrySection`, and `SetupReliefSection` are part of the current homepage. They are not alternate-version carryovers; they are the active source-of-truth page flow.
+
+**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
+
+---
+
 ### Section 1 — Hero
 
 **Headline:**
 
-> Manage your official menu and business information from one place.
+> Upload your menu. Get your official menu online.
 
 **Subline:**
 
-> Upload your menu once. We prepare and publish everything for you.
+> Start with the menu you already use. MenuList prepares your live menu, official page, QR menu, customer app, web link, and PDF from one place you control.
 
-**Primary CTA:** Create your MenuList →
+**Primary CTA:** Upload your menu →
+**Secondary CTA:** See what customers see (`#public-proof`)
+**Micro-trust line:** Free to start. You review before publishing.
 
-**Micro-trust line:**
-
-> Takes minutes. No technical setup.
-
-**Visual:** Multi-surface preview with mobile menu as dominant element
+**Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and Customer App.
 
 **Notes:**
 
-- Headline = atomic truth + outcome (Law 2, Law 1)
-- Subline = owner-relief language ("for you" > "automatically" — Session 3 correction)
-- No AI mention. No feature list. Just outcome + ease.
-- "For you" = personal relief. "Automatically" = system capability. Always choose relief.
+- Direction A: No-tech owner action first, official-source proof second.
+- Hero must communicate upload → review → official online menu in under 5 seconds.
+- Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
 
 ---
 
-### Section 2 — The Problem
+### Section 2 — Revenue Path
 
-**Section heading:**
+**Purpose:**
 
-> Most businesses don't have a single official version of their menu.
+This section shows the practical path from the menu a business already has to the customer actions that matter. It keeps the source-of-truth idea, but explains it in plain owner language.
+
+**Eyebrow:**
+
+> From menu to customer action
+
+**Headline:**
+
+> Your menu should help customers choose faster.
 
 **Supporting text:**
 
-> Your Google listing shows old prices. The QR menu has items you removed last month. The PDF floating on WhatsApp is from six months ago. Customers see different information depending on where they look.
+> MenuList turns the menu you already use into a live menu, official page, QR, link, screen, and PDF that customers can trust before they call, visit, order, or share.
+
+**Path steps:**
+
+| Step | Label | Title | Description |
+| --- | --- | --- | --- |
+| 1 | Start | Use your current menu | Photo, PDF, link, or typed items. The owner-approved version is the starting point. |
+| 2 | Publish | Customers see one clear page | The live menu and official page replace old files, screenshots, and broken links. |
+| 3 | Share | Put the same menu everywhere | QR, web link, screen, and PDF all point back to the current menu. |
+| 4 | Action | Customers can act quickly | Call, WhatsApp, directions, order, and share stay close to the menu. |
+
+**Trust panel:**
+
+- Find items fast.
+- Know it is current.
+- Know it is official.
+- Take the next step.
+
+**Link row:**
+
+- See customer surfaces
+- See setup steps
+- See business types
+- See plans
+
+---
+
+### Section 3 — The Problem
+
+**Section heading:**
+
+> Business menus on the internet are broken.
+
+**Supporting text:**
+
+> Your Google listing shows old prices. The QR menu has items you removed. The PDF on WhatsApp is from months ago. Customers see different versions everywhere they look — and none of them are correct.
+
+**Visual stack:**
+
+The section now uses a split layout: left-side narrative, right-side public-drift stack. This is more direct and self-selling than a generic card grid.
 
 **Visual tiles (4):**
 
-| Tile | Short Label             | Description                                  |
-| ---- | ----------------------- | -------------------------------------------- |
-| 1    | Outdated Google listing | Old prices and hours showing on Google       |
-| 2    | Wrong QR menu           | Items you removed still visible to customers |
-| 3    | Old PDF on WhatsApp     | Last year's menu still being shared          |
-| 4    | Inconsistent pricing    | Different prices on different platforms      |
+| Tile | Short Label | Description |
+| --- | --- | --- |
+| 1 | Outdated Google listing | Old prices and hours still showing to customers searching for you |
+| 2 | Wrong QR menu | Items you removed months ago still visible when customers scan |
+| 3 | Old PDF on WhatsApp | Last year's menu still circulating in customer group chats |
+| 4 | Inconsistent pricing | Different prices on different platforms — customers notice |
 
 **Notes:**
 
-- Enters their world (Law 2) — these are problems they already feel
-- Creates cognitive dissonance (Law 8) — "I update my menu, but customers still see the wrong version"
-- Source material: `pricing-integrity-system_website.md` (price inconsistency angle)
+- Keeps the owner pain obvious before introducing product mechanics.
+- Tile count is intentionally 4, not 6, to reduce visual noise.
 
 ---
 
@@ -77,66 +152,127 @@
 
 **Section heading:**
 
-> Create one official version. Everything else stays aligned. You don't touch it again.
+> One source. Public surfaces stay aligned.
 
 **Supporting text:**
 
-> MenuList is the single place where your menu, hours, and business information live. Update once — QR menu, Google, screens, web, and print all reflect the change.
+> MenuList gives your menu and business information one official home. From there, the public menu, official page, QR assets, customer app, screens, and share links all reflect the same owner-approved truth.
 
-**Visual:** System diagram (SVG) — One central menu node → branches to QR, Google, Screens, Web, Print, Official Page
+**Bullet points (6):**
 
-**Bullet points (4):**
-
-- Central control — One place for all your business information
-- Instant updates — Changes reach customers within seconds
-- Every surface aligned — QR, Google, screens, web, and print stay consistent
-- No manual syncing — It's handled for you
+- Start from what you already have.
+- Owner approval stays in the loop.
+- Public output comes first.
+- Updates have one place to begin.
+- Real-world placement is included.
+- Infrastructure stays quiet.
 
 **Notes:**
 
-- Introduces the new standard (Law 3) — "one place" is the new world
-- Source material: `official-business-page_website.md` + `pricing-integrity-system_website.md`
-- No feature list. Behavior description only.
+- This is the category bridge from "menu" to "public business truth infrastructure".
+- Public output and owner approval must remain explicit.
 
 ---
 
-### Section 4 — Where It Shows Up
+### Section 4 — Source Proof Numbers
 
 **Section heading:**
 
-> See where your menu appears.
+> One source. Many places. Less repeated work.
 
-**Supporting text:**
+**Metric cards (4):**
 
-> Your menu reaches customers through every surface they already use.
-
-**Surface tiles (7):**
-
-| #   | Surface         | Title                                           | Description                                            |
-| --- | --------------- | ----------------------------------------------- | ------------------------------------------------------ |
-| 1   | QR Menu         | Customers scan and see your current menu        | Items, prices, photos — always up to date on any phone |
-| 2   | Public Link     | One link for WhatsApp, Instagram, and packaging | Share everywhere. It stays accurate automatically.     |
-| 3   | Digital Screens | Your full menu on your shop TV                  | Categories, items, prices — updated automatically      |
-| 4   | PDF Export      | A clean PDF when you need one                   | For print, packaging, or internal use                  |
-| 5   | Official Page   | One official link for menu, hours, reviews, directions, and contact | Customers can view menus, see current status, call, WhatsApp, get directions, check photos, and switch language when available. |
-| 6   | Customer App    | Stay one tap away from repeat customers         | Customers can save your menu to their phone with your name and logo |
-| 7   | Google Business | Sync your menu to your Google listing           | Your menu data keeps your Google profile accurate automatically |
-
-**Discovery credibility note (below grid):**
-
-> Your menu pages are built to be found — by customers, Google, and the tools people use to discover businesses.
+| # | Metric | Meaning |
+| --- | --- | --- |
+| 1 | 1 owner-approved source | Menu, prices, hours, and public business details begin from one controlled source. |
+| 2 | 6 customer places | Live menu, official page, QR assets, customer app, screens, and PDF outputs can show the same current menu. |
+| 3 | 3 clear steps | Start with the current menu, review the prepared version, then publish what customers see. |
+| 4 | 0 technical setup | No website build, design tool, or separate QR-menu system is needed before publishing. |
 
 **Notes:**
 
-- Concrete proof (Law 7) — shows exactly where it appears
-- Discovery note added Mar 2026: surfaces the benefit of search/AI infrastructure without exposing technical complexity (schema.org, JSON-LD, etc.)
-- Public menu/OBP hardening alignment added May 2026: homepage copy should sell visible proof customers actually see — open/closed state, recent update, search/sections, photos, and call/WhatsApp/directions actions.
-- Source material: `client-menu_website.md`, `digital-screens_website.md`, `official-business-page_website.md`, `gbp-sync_website.md`, `discovery-infrastructure/`
-- Each tile: icon (32px, brand color) + title + 1-line description
+- Included because it sells the reduction in repeated work quickly.
+- Copy avoids broad "every surface / always in sync" overclaims.
 
 ---
 
-### Section 4A — Customer Browse Proof
+### Section 5 — Source-To-Public Workflow
+
+**Section heading:**
+
+> From current menu to public truth.
+
+**Steps (4):**
+
+| Step | Title | Description |
+| --- | --- | --- |
+| 1 | Start with the menu you already use | Photo, PDF, or typed menu. The setup starts from the current source your business already trusts. |
+| 2 | Review the prepared source | Items, categories, prices, language, images, and business details become structured before they go public. |
+| 3 | Publish the official version | The official page and live menu become the customer-facing source for your menu and business information. |
+| 4 | Deploy it where customers look | QR assets, customer app, screens, print, and share links point back to the same current source. |
+
+**Micro-copy below steps:**
+
+> Simple on the surface. Serious underneath.
+
+---
+
+### Section 6 — Setup Effort Removed
+
+**Section heading:**
+
+> Most setup work is prepared before you publish.
+
+**Supporting text:**
+
+> MenuList starts from the menu you already have, then prepares the pieces owners usually chase across separate tools.
+
+**Prepared cards (6):**
+
+- Upload the current menu.
+- Item images prepared.
+- Descriptions and details.
+- Language support.
+- Brand and layout.
+- Launch materials.
+
+**Notes:**
+
+- Included because setup-effort removal is one of the strongest buying triggers.
+- New copy keeps owner approval in the center and avoids pretending AI publishes unchecked.
+
+---
+
+### Section 7 — Public Proof Surfaces
+
+**Section heading:**
+
+> One source for the places customers check.
+
+**Supporting text:**
+
+> The public output is the proof. MenuList connects the official page, live menu, QR assets, customer app, screens, and share links around the same source.
+
+**Surface tiles (7):**
+
+| # | Surface | Purpose |
+| --- | --- | --- |
+| 1 | QR Menu | Customers scan and see the current published menu. |
+| 2 | Public Link | One official link for WhatsApp, Instagram, and packaging. |
+| 3 | Digital Screens | Store screens can reflect the same published source. |
+| 4 | PDF Export | Clean export when print or internal use is needed. |
+| 5 | Official Page | Menu, hours, photos, directions, contact, and language choice. |
+| 6 | Customer App | Repeat customers keep the business close on their phone. |
+| 7 | Google, Instagram, WhatsApp | Presence Monitor tracks manual placement without claiming automatic external sync. |
+
+**Notes:**
+
+- Section carries `id="public-proof"` for hero secondary CTA.
+- Do not claim automatic Google/Instagram/WhatsApp sync unless the runtime path proves it.
+
+---
+
+### Section 8 — Customer Browse Proof
 
 **Section heading:**
 
@@ -148,172 +284,186 @@
 
 **Proof points (4):**
 
-| #   | Title                             | Description                                                                                                 |
-| --- | --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| 1   | Search is always within reach     | Customers can search large menus without losing their place. The search bar expands when needed and stays quiet when it is not in use. |
-| 2   | Sections keep big menus easy      | Categories behave like a clear table of contents. Customers can jump to drinks, services, lunch, desserts, or any section smoothly. |
-| 3   | Language is part of the menu      | If you publish more than one language, customers can choose the one they read best on the same public menu. |
-| 4   | Trust signals stay visible        | Business identity, open status, recent update, prices, item details, and actions all sit inside the customer-facing menu experience. |
+- Search is always within reach.
+- Sections keep big menus easy.
+- Language is part of the menu.
+- Trust signals stay visible.
 
 **Visual:** Customer-facing menu preview showing business identity, open/update state, search, section chips, item cards, and prices.
 
-**Notes:**
-
-- This section sells the public menu outcome, not implementation details.
-- Do not mention "smooth scroll", "modal overlay", "sticky command layer", or animation mechanics in visible website copy.
-- Source material: May 2026 public menu hardening — search expansion, section popover, smooth category navigation, clean item details, language switching, and trust metadata placement.
-
 ---
 
-### Section 5 — For Serious Businesses
+### Section 9 — Analytics And Intent Proof
 
 **Section heading:**
 
-> For growing businesses that care about consistency.
-
-**Points (4):**
-
-- Consistent pricing everywhere — Same prices on QR, Google, screens, and print
-- Central brand control — Your menu looks professional across every surface
-- Multi-location support — One master menu, every outlet aligned
-- Built to handle growth — From one location to twenty, the system scales with you
-
-**Link text:** Learn about multi-location →  
-**Link destination:** `/multi-location`
-
-**Visual:** Clean multi-location preview or chain consistency illustration
-
-**Notes:**
-
-- Identity mirroring (Law 4) — "serious businesses" / "growing businesses"
-- Source material: `multi-outlet-consistency_website.md`
-- Multi-chain depth expressed as "Built to handle multi-location businesses reliably" — not "150+ edge cases"
-
----
-
-### Section 6 — Who It's For
-
-**Section text:**
-
-> Designed for restaurants, cafés, bakeries, cloud kitchens, and growing businesses that publish public offers.
-
-**Industry icons (5):**
-
-1. Restaurant
-2. Café
-3. Bakery
-4. Cloud Kitchen
-5. Service Business
-
-**Notes:**
-
-- Short section — text + icons only. No cards.
-- Widens beyond restaurants without losing clarity
-- Background: `--bg-accent` (#EFF6FF) — only section with color tint
-
----
-
-### Section 7 — How It Works
-
-**Section heading:**
-
-> How it works
-
-**Steps (4):**
-
-| Step | Title                         | Description                                                                                                   |
-| ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| 1    | Create your menu              | Upload a photo, PDF, or type it in. Takes a few minutes — the system reads and structures everything for you. |
-| 2    | We prepare everything for you | Images, descriptions, and structure — done. No design work, no writing, no formatting.                        |
-| 3    | Publish                       | One click. Your menu goes live across all surfaces.                                                           |
-| 4    | It stays updated everywhere   | Change a price, add an item, mark something sold out — every surface reflects it.                             |
-
-**Micro-copy below steps:**
-
-> No technical knowledge required.
-
-**CTA:** Create your MenuList →
-
-**Notes:**
-
-- Step 2 is the effort-removal power step (Session 2 + 3 direction)
-- "done. No design work, no writing, no formatting" — maximum relief density
-- Step 1 adds "takes a few minutes" — addresses abstraction gap (ChatGPT Session 3)
-- Source material: `ai-data-extraction_website.md` (upload step), `ai-image-generation_website.md` + `description-generation_website.md` (prepare step)
-- Visual: Horizontal step flow connected by line. Vertical on mobile.
-
----
-
-### Section 8 — Analytics Signals
-
-**Section heading:**
-
-> Your menu, understood after it goes live
+> See what customers do after publishing.
 
 **Supporting text:**
 
-> MenuList records the small set of customer signals that help an owner decide what to fix, promote, or share next — without heavy passive tracking.
+> MenuList connects your public menu and Official Business Page into one owner dashboard, so you can see what customers opened, searched, and acted on.
 
-**Signal cards (4):**
+**Proof cards:**
 
-| Card | Title                              | Description                                                                                                     |
-| ---- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 1    | Menu sessions and intent           | Counts anonymous menu sessions, engaged sessions, intent sessions, and action sessions without customer profiles |
-| 2    | Category and item interest         | Shows item views, item taps, category interest, searches, no-result searches, and unavailable-item taps          |
-| 3    | Actions that show real intent      | Records calls, WhatsApp, directions, reservations, order clicks, shares, and official-page CTA taps              |
-| 4    | Source quality, not vanity traffic | Shows which source creates action: QR, WhatsApp, Instagram, Google, official page, shortcut, or direct visits    |
-
-**Owner visibility card:**
-
-- Today so far, plus settled daily, weekly, monthly, and lifetime views
-- Engaged Sessions %, Intent Rate %, Action Rate %, and action rate by source
-- Top items, top categories, searches, no-result searches, and unavailable interest
-- Pro action summaries that turn the same metrics into a short owner action list
-
-**Transparency card:**
-
-- Cost-safe batching for passive events; final customer actions are recorded immediately
-- Clear owner settings explain what is recorded by default
-- No customer names, emails, payment details, scroll heatmaps, hover activity, or per-keystroke tracking
-- Approximate location is optional and never stored as exact GPS coordinates in this analytics flow
+- Menu and page journeys together.
+- Demand stays attached to the menu.
+- Final actions show real intent.
+- Where calls came from.
+- Private and cost-safe by default.
 
 **Notes:**
 
-- This is not positioned as a heavy analytics product. It is owner decision support.
-- Pro action summaries are plan-gated and only generated when the server feature flag is enabled.
-- Language must stay factual: "Action Rate", not "Conversion Rate", unless actual order/booking/payment completion is observable.
+- Included because it explains why MenuList matters after publish.
+- Keep this proof as owner insight, not hype or surveillance language.
 
 ---
 
-### Section 9 — Final CTA
+### Section 10 — Quiet Reliability
 
-**Heading:**
+**Section heading:**
 
-> Upload your menu. **Your business is online.**
+> Quiet reliability underneath.
 
-**Subtitle (PONR commitment language — updated March 20, 2026):**
+**Supporting text:**
 
-> This becomes your official menu link. Share it everywhere — it stays correct.
+> Customers see a simple public page. Under it, MenuList keeps your menu controlled, current, and ready for the places customers already check.
 
-**Button:** Upload Your Menu →
+**Reliability proof points:**
 
-**Caption:**
-
-> Go live in minutes. Free to start.
-
-**Effort-removal micro-copy:**
-
-> No design work. No manual updates. No separate uploads.
+- Owner-approved publishing.
+- Freshness signals.
+- Change memory.
+- Temporary status reaches customers.
+- Presence visibility.
+- Ready for serious operations.
 
 **Notes:**
 
-- PONR (Point of No Return) commitment framing — shifts perception from "I created a digital menu" to "I committed to one official source"
-- Mirrors hero headline for consistent messaging
-- CTA matches hero CTA: "Upload Your Menu →"
+- This is proof language, not hype language.
+- Keep all claims tied to implemented surfaces and repo evidence.
+
+---
+
+### Section 11 — Real-World Deployment
+
+**Section heading:**
+
+> The official menu leaves the screen.
+
+**Supporting text:**
+
+> A correct public link matters only when customers can find it. MenuList helps place the official menu where your business already speaks to customers.
+
+**Deployment cards:**
+
+- Table and counter QR.
+- Packaging and takeaway.
+- WhatsApp and Instagram.
+- Customer app access.
+- Digital screens.
+- Placement checklist.
+
+**Notes:**
+
+- This section borrows Stage 3 Direction B's limited deployment strength without changing the overall Direction A system.
+- The value is placement confidence, not decoration.
+
+---
+
+### Section 12 — Business Fit
+
+**Section heading:**
+
+> For businesses that want things to stay correct.
+
+**Points:**
+
+- Pricing stays consistent.
+- Brand stays controlled.
+- Locations stay aligned.
+- Festival menus can be handled.
+- Temporary status updates can reach customers.
+- Presentation stays professional.
+
+**Link text:** Learn about multi-location →
+**Link destination:** `/multi-location`
+
+---
+
+### Section 13 — Industry Breadth
+
+**Section heading:**
+
+> Not only restaurants.
+
+**Supporting text:**
+
+> MenuList works for any business with a public menu, price list, catalogue, or service list that customers need to trust.
+
+**Industry chips:**
+
+- Restaurant
+- Cafe
+- Bakery
+- Cloud Kitchen
+- Bar & Lounge
+- Food Truck
+- Salon
+- Spa & Wellness
+- Retail Shop
+- Gym & Fitness
+- Hotel
+- Service Business
+
+**Notes:**
+
+- Included because `IndustrySection` prevents category narrowing.
+- This should widen the buyer's mental model without turning the homepage into scattered industry SEO pages.
+
+---
+
+### Section 14 — FAQ
+
+FAQ language should reinforce MenuList as the official customer-facing source. Avoid reducing the product to a "digital menu", "restaurant website", "AI tool", or "QR generator". Do not overclaim automatic external distribution; use owner-approved source and MenuList public-surface language.
+
+Key FAQ topics:
+
+- What MenuList is.
+- Whether technical setup is needed.
+- What happens after a price/item update.
+- Branding control.
+- Supported business types.
+- Business data safety.
+- Multi-location support.
+- Pricing entry point.
+
+---
+
+### Section 15 — Final CTA
+
+**Heading:**
+
+> Make one public menu customers can trust.
+
+**Subtitle:**
+
+> Start from the menu you already have. MenuList turns it into the official customer-facing version of your business.
+
+**Button:** Upload your menu →
+
+**Caption:**
+
+> No technical setup. Owner approval before publishing.
+
+**Bottom text:**
+
+> Public page, live menu, QR assets, customer app, and deployment surfaces from one source.
 
 ---
 
 ## Page 2: Product (/product)
+
+**Canonical note:** Supporting website pages must follow the current official-source strategy. Revalidate claims against the current codebase before promoting them. Do not use automatic Google/external-surface language unless the runtime path proves it.
 
 ### Hero
 
@@ -323,9 +473,9 @@
 
 **Subline:**
 
-> Upload your menu. We handle the rest. Your customers see a professional, up-to-date menu everywhere — without you doing the work.
+> Start with your current menu. MenuList prepares the owner-approved source for the customer-facing surfaces your business uses.
 
-**CTA:** Create your MenuList →
+**CTA:** Upload your menu →
 
 ---
 
@@ -375,7 +525,7 @@
 
 **Heading:**
 
-> Images, descriptions, and translations — prepared for you instantly.
+> Images, descriptions, and translations — prepared before you publish.
 
 **Body:**
 
@@ -398,20 +548,20 @@
 
 **Heading:**
 
-> One click. Live everywhere.
+> Publish from one owner-approved source.
 
 **Body:**
 
-> When you publish, your menu goes live across every surface simultaneously. QR menu, official page, Google presence, digital screens — all updated at the same moment. No partial updates. No surface left behind.
+> When you publish, your MenuList-controlled public surfaces can point customers to the same approved source: QR menu, official page, digital screens, PDF, and share links. External placements such as Google, Instagram, and WhatsApp still require owner placement or checklist confirmation.
 
 **Key points:**
 
 - Atomic publishing — all surfaces update together
-- No manual syncing between platforms
-- Changes reach customers within seconds
+- No duplicate updates across MenuList-controlled surfaces
+- MenuList-controlled public surfaces can stay aligned from the approved source
 - Publish history lets you see what changed and when
 
-**Source:** `client-menu_website.md` ("live instantly" framing)
+**Source:** `client-menu_website.md` (controlled MenuList surface publishing)
 
 ---
 
@@ -427,10 +577,10 @@
 
 **Surfaces (detailed):**
 
-1. **QR Menu** — Customers scan and see your current menu on any phone, any browser. Items, prices, photos — always accurate. No app download needed.
-2. **Official Business Page** — One official link with your menu, hours, location, Google rating, photos, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR. Always up to date.
-3. **Google Presence** — Your Google Business Profile stays aligned. Correct menu link, accurate hours. Connect once and forget about it.
-4. **Digital Screens** — Your full menu on your shop TV. Categories, items, prices. Sold-out items disappear. New items appear. Zero effort after setup.
+1. **QR Menu** — Customers scan and see your current published menu on any phone or browser. No app download needed.
+2. **Official Business Page** — One official link with your menu, hours, location, photos, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR.
+3. **Google Presence** — Your Google Business Profile can point customers toward the current MenuList public menu where configured.
+4. **Digital Screens** — Your full menu on your shop TV. Categories, items, prices, and visibility can follow the published MenuList source.
 5. **PDF Export** — A clean, formatted PDF of your current menu. For print, packaging, or internal use.
 6. **Shareable Link** — Direct link to your live menu. Works in any message, email, or social post.
 
@@ -446,14 +596,14 @@
 
 **Body:**
 
-> Change a price — every surface shows the new price within seconds. Mark an item sold out — it disappears from the QR menu and screens. Update your hours — Google reflects it. You update once. Everything else stays aligned.
+> Change a price, mark an item unavailable, or update business details from the owner-approved menu. Customer-facing pages can reflect the current published version without separate manual copies.
 
 **Key points:**
 
-- Price changes propagate across all surfaces in seconds
-- Sold-out items removed automatically from customer-facing menus
+- Price changes start from one owner-approved menu
+- Unavailable items can be hidden from controlled customer-facing menus
 - Hours displayed accurately — customers see "Open" or "Closed" in real time
-- No manual syncing, no checking, no worrying — it's handled for you
+- One current menu reduces duplicate updates across controlled public pages
 
 **Source:** `pricing-integrity-system_website.md`, `hours-holiday-accuracy_website.md`
 
@@ -465,11 +615,11 @@
 
 > Your menu deserves one official home.
 
-**CTA:** Create your MenuList →
+**CTA:** Upload your menu →
 
 **Sub-text:**
 
-> Start in minutes. No technical setup. No ongoing work.
+> No technical setup. Owner review before publishing.
 
 ---
 
@@ -485,7 +635,7 @@
 
 **Subline:**
 
-> Update your master menu once. Every outlet gets it instantly. No calling stores, no emailing spreadsheets, no chasing consistency.
+> Manage pricing, availability, and presentation across all your outlets from one place. Approved updates can reach every location without manual coordination between branches.
 
 **CTA:** Set up your first location →
 
@@ -511,7 +661,7 @@
 
 **Body:**
 
-> Build your core menu once at HQ. When you update the master, every linked outlet gets the changes instantly. That work you used to do five times? Done once.
+> Build your core menu once at HQ. When you update the master and publish the approved version, linked outlets can reflect the change from the same source.
 
 **Visual:** Master menu → propagation arrows → 5 outlet menus updating simultaneously
 
@@ -548,7 +698,7 @@
 
 **Key points:**
 
-- Add a new outlet in seconds — it inherits all master menus automatically
+- Add a new outlet and let it inherit the master menu structure
 - Billing adjusts automatically — per-outlet pricing, no plan changes needed
 - Switch between any location from one screen
 - See status and activity across all outlets at a glance
@@ -586,11 +736,17 @@
 
 **Headline:**
 
-> Simple, transparent pricing.
+> Everything your customers see. One system.
 
 **Subline:**
 
-> Start managing your official menu. No hidden fees. No surprises.
+> Menu, pricing, availability, and presentation stay connected to one owner-approved source. No design or technical setup required.
+
+**Proof row:**
+
+- Look professional from one source
+- No scattered menu files
+- No outdated public PDFs
 
 ---
 
@@ -605,9 +761,9 @@
 
 ### CTA on Plan Cards
 
-> Create your MenuList →
+> Upload your menu →
 
-### Below Plans: AI Enhancement Packs
+### Below Plans: Credit / Enhancement Packs
 
 **Heading:**
 
@@ -647,25 +803,45 @@
 
 > Each outlet has its own billing. Add or remove outlets anytime.
 
-**Q: What are AI Enhancement Packs?**
+**Q: What are Content Credit Packs?**
 
-> Every plan includes menu preparation features — images, descriptions, and translations. Enhancement Packs give you additional capacity for larger menus. One-time purchase, never expires.
+> Every plan includes menu preparation features — images, descriptions, and translations. Content Credit Packs give you additional capacity for larger menus. One-time purchase, never expires.
 
 ---
 
 ## Page 5: About (/about)
 
+### Hero
+
+**Eyebrow:**
+
+> Built for public menu truth
+
+**Headline:**
+
+> About MenuList
+
+**Subline:**
+
+> MenuList exists so a business can approve one current source, then use it wherever customers look.
+
+**Proof strip:**
+
+- Official source, not QR-only utility
+- Simple for owners, serious underneath
+- Built in India for growing businesses
+
 ### Mission
 
 **Heading:**
 
-> About MenuList
+> Why MenuList exists
 
 **Body:**
 
 > MenuList is a system that manages official menus and public business information from a single source of truth. It keeps menu content accurate and aligned across customer-facing surfaces including QR, web, screens, and print.
 
-> We built MenuList because every business deserves one place where their menu is always correct. Not a tool to manage. Not a platform to learn. A system that handles your menu so you don't have to.
+> We built MenuList because every business deserves one trusted place where the current menu starts. Not a tool to manage. Not a platform to learn. A system that keeps the owner-approved menu at the center.
 
 ---
 
@@ -680,23 +856,36 @@
 
 ---
 
-### Trust Line
+### CTA
 
-> Built in India. Used by growing businesses.
+> Make your menu source official.
+
+**CTA:** Upload your menu →
 
 ---
 
 ## Page 6: Get Started (/get-started)
 
+**Eyebrow:**
+
+> Start with control
+
 **Heading:**
 
-> Create your MenuList
+> Start with the menu you already use
 
 **Subline:**
 
-> Your official menu starts here. Takes minutes. We handle the rest.
+> Start with your current menu, review the prepared source, and choose a plan only when the setup path is clear.
 
-**Primary action:** Continue with Google (Google OAuth button)
+**Proof strip:**
+
+- Google sign-in only
+- Owner review before publishing
+- Dashboard setup comes next
+
+**Primary action:** Upload your menu → (`/create-menu`)
+**Secondary action:** Continue with Google / Sign in (`#sign-in`, redirects to dashboard)
 
 **Below button:**
 
@@ -706,7 +895,8 @@
 
 - Extremely clean, centered page
 - No form fields (Google OAuth handles everything)
-- After auth → onboarding flow begins (business name + industry → payment)
+- Primary upload path → `/create-menu`; returning-owner sign-in goes to `/dashboard`, while pricing remains available from nav and publish/setup decisions.
+- Supporting cards explain current-menu start, owner approval, and pricing as the next decision without changing auth/payment behavior.
 
 ---
 
@@ -714,24 +904,49 @@
 
 **Heading:**
 
-> Contact MenuList
+> Ask us about your menu source.
 
 **Body:**
 
-> Have a question? Need help getting started? Reach out and we'll get back to you.
+> Use this for setup questions, pricing clarity, multi-location planning, or anything that affects what customers see.
 
 **Contact methods:**
 
 - Email: hello@menulist.ai
+- Website enquiry form persists through `addEnquiry()`.
 
 **Notes:**
 
-- Minimal page. Email contact only for now.
-- No chat widget, no phone number, no form.
+- Contact page keeps the existing form logic.
+- New proof strip reinforces real product team, setup/pricing help, and multi-location planning.
 
 ---
 
-## Page 8: Legal Pages
+## Page 8: Trust & Security (/trust-security)
+
+**Heading:**
+
+> Your business data is safe here.
+
+**Body:**
+
+> MenuList is built so your menu, business information, owner account, and public customer-facing source stay protected.
+
+**Proof strip:**
+
+- No stored passwords
+- Business data stays isolated
+- Privacy-conscious analytics
+
+**Copy policy:**
+
+- Owner-first language is preferred over raw implementation jargon.
+- Technical facts are allowed when they are factual and useful, but avoid public overclaims such as "impossible by design".
+- Security copy must not claim more than the implemented auth, tenant isolation, analytics, HTTPS, and integration behavior supports.
+
+---
+
+## Page 9: Legal Pages
 
 ### Privacy Policy, Terms of Service, Refund Policy
 
@@ -747,33 +962,81 @@
 
 **Nav items:**
 
-- How It Works → `/product`
+- How It Works → `/how-it-works`
 - Multi-Location → `/multi-location`
 - Pricing → `/pricing`
-- Login (subtle text link)
-- Create your MenuList → `/get-started` (primary button)
+- Login (subtle sign-in button; no pricing detour)
+- Upload your menu → `/create-menu` (primary button)
 
 ---
 
 ## Footer Copy
 
+**Footer strategy:**
+
+The footer is now a revenue and trust layer, not only a legal/navigation block. It should give high-intent visitors a final conversion path and help skeptical visitors understand that MenuList is a public-source system, not a QR-menu utility.
+
+**Closing CTA:**
+
+Eyebrow:
+
+> Ready when the menu is
+
+Headline:
+
+> Put your menu online from the version you trust.
+
+Body:
+
+> Start from the menu you already have. MenuList prepares the customer-facing version, then keeps your public page, QR, screen, PDF, and links aligned.
+
+Primary CTA:
+
+> Upload your menu →
+
+Secondary CTA:
+
+> See plans
+
+**Proof cards:**
+
+- Owner approval before publishing
+- One source for public surfaces
+- Single-location simple. Chain-capable.
+
 **Logo + tagline:**
 
-> MenuList — Where your menu lives.
+> MenuList — One official source for your menu and business details.
+
+**Source line:**
+
+> MenuList is not a QR menu maker. It is the source behind your menu, page, QR assets, screens, PDFs, and links.
 
 **Column 1: Product**
 
 - How It Works
+- Features
 - Multi-Location
 - Pricing
-- About
 
-**Column 2: Legal**
+**Column 2: Source**
+
+- Public proof
+- Official Business Page
+- Trust & Security
+- Get Started
+
+**Column 3: Resources**
+
+- About
+- Contact
+- Trust & Security
+
+**Column 4: Legal**
 
 - Privacy Policy
 - Terms of Service
 - Refund Policy
-- Contact
 
 **Bottom line:**
 
@@ -781,15 +1044,15 @@
 
 **Trust badge (right side):**
 
-> Official menu pages. Built to be found.
+> One public source. Built to be found.
 
 **NOT included:**
 
-- No social media icons (until accounts are active)
 - No newsletter signup
 - No "Powered by EcomsAi"
 - No phone number
 - No chat widget
+- No fake customer logos, fake metrics, or unsupported testimonials
 
 ---
 
@@ -797,12 +1060,12 @@
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Homepage       | MenuList — Official Menu & Business Information System | Manage your official menu and business information from one place. Update once — stays correct across QR, Google, screens, web, and print. |
-| Product        | How MenuList Works — One Menu, Everywhere              | See how MenuList keeps your menu correct across QR, Google, screens, web, and print. Upload once, publish everywhere.                      |
+| Homepage       | MenuList - Upload Your Menu Online | Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source. |
+| Product        | How MenuList Works — One Menu, Everywhere              | See how MenuList keeps your menu correct across QR, official pages, screens, web links, and print outputs from one approved source.         |
 | Multi-Location | MenuList for Chains & Multi-Location Businesses        | Manage menus across all your locations from one place. Master menu, per-location control, instant sync.                                    |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |
-| About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for restaurants, cafés, and growing businesses.                             |
-| Get Started    | Get Started with MenuList                              | Create your official MenuList in minutes. No technical setup required.                                                                     |
+| About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for cafes, service businesses, and growing teams that publish customer-facing offers. |
+| Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links. |
 | Contact        | Contact MenuList                                       | Have a question about MenuList? Reach out to our team.                                                                                     |
 | Privacy        | Privacy Policy — MenuList                              | MenuList privacy policy. How we handle and protect your data.                                                                              |
 | Terms          | Terms of Service — MenuList                            | MenuList terms of service for all users and businesses.                                                                                    |
@@ -811,6 +1074,8 @@
 ---
 
 ## Language Governance Compliance Checklist
+
+Stage 7.4 reviewed the homepage copy after the reference-informed layout pass. It corrected internal phrasing, grammar, capitalization, public-surface casing, and spelling drift while preserving the official-source positioning and avoiding unsupported claims.
 
 | Rule                                            | Status                                              |
 | ----------------------------------------------- | --------------------------------------------------- |

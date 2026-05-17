@@ -177,6 +177,7 @@ function OpsControlRoom() {
                     <Button onClick={loadData} loading={loading}>Refresh</Button>
                     <Button type="default" href="/ops/scheduler">Scheduler Monitor</Button>
                     <Button type="default" href="/ops/extraction">Extraction Monitor</Button>
+                    <Button type="default" href="/ops/messaging-onboarding">Messaging Onboarding</Button>
                 </div>
             </div>
 

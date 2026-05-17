@@ -1,17 +1,17 @@
 # Messaging Onboarding — Product Specification
 
-**Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine  
-**Status:** Implementation-Ready — All cross-checks complete  
-**Last Updated:** February 17, 2026  
-**Source:** ChatGPT Brainstorm (Feb 16, 2026) + Cascade Architecture Validation + Deep Codebase Cross-Check (Feb 17) + Review #5 Final Spec Walkthrough + Review #6 Blocks/Stress-Test Cross-Check
+**Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
+**Status:** Implementation-Complete — WhatsApp runtime gated until real provider credentials are configured
+**Last Updated:** May 17, 2026
+**Source:** ChatGPT Brainstorm (Feb 16, 2026) + Cascade Architecture Validation + Deep Codebase Cross-Check (Feb 17) + Review #5 Final Spec Walkthrough + Review #6 Blocks/Stress-Test Cross-Check + Runtime Code Audit (May 17, 2026)
 
 ---
 
 ## Executive Summary
 
-Messaging Onboarding is MenuList's primary global acquisition engine. It allows any SMB owner to go from **no digital presence** to a **fully live MenuList presence** in under 5 minutes of perceived effort — using any supported messaging app (WhatsApp is the v1 launch provider).
+Messaging Onboarding is MenuList's primary global acquisition engine. It allows any SMB owner to go from **no digital presence** to a **fully live MenuList presence** in minutes of perceived effort — using any supported messaging app (WhatsApp is the v1 launch provider).
 
-The owner sends menu photos or a PDF via their messaging app. The system automatically extracts the menu, generates a preview, and on approval publishes a complete digital presence: store, menu, official business page, QR code, and dashboard account.
+The owner sends menu photos or a PDF via their messaging app. The system automatically extracts the menu, generates a preview, and on approval publishes a live MenuList presence: store, menu project, public menu URL, and claimable dashboard account. Official Business Page and QR surfaces use the existing store/public-link infrastructure after publish; they are not separately generated inside the approval transaction.
 
 The messaging channel is the **intake pipe only**. After publish, all management happens in the MenuList dashboard. The messaging tunnel is permanently closed — never used for editing, support, or ongoing communication.
 
@@ -24,7 +24,7 @@ The messaging channel is the **intake pipe only**. After publish, all management
 - Extracts business info (name, phone, address) from menu images
 - Structures menu using existing Gemini AI extraction pipeline
 - Generates a preview page for owner review
-- On approval, atomically creates: tenant, store, project, OBP, QR, user account
+- On approval, atomically creates: tenant, store, project, project summary, user account, and public URL routing
 - Sends live link + dashboard login via WhatsApp
 - Permanently closes WhatsApp tunnel
 
@@ -45,7 +45,7 @@ The messaging channel is the **intake pipe only**. After publish, all management
 | Goal                         | Success Metric                                          |
 | ---------------------------- | ------------------------------------------------------- |
 | **Zero-friction onboarding** | Owner effort ≤ 5 actions (send menu → approve → live)   |
-| **Fast activation**          | Median time to publish < 5 minutes perceived            |
+| **Fast activation**          | Median publish path feels short and predictable          |
 | **High completion rate**     | ≥ 60% of sessions reach successful publish              |
 | **Low fix loop count**       | Average corrections before publish < 2                  |
 | **Fully automated**          | 0% manual intervention rate                             |
@@ -80,7 +80,7 @@ The messaging channel is the **intake pipe only**. After publish, all management
 | S-03 | Asset Intelligence Layer (validate menu files, extract business info) | P0       |
 | S-04 | Menu extraction using existing Gemini pipeline                        | P0       |
 | S-05 | Preview page with approve/request-fix actions                         | P0       |
-| S-06 | Atomic publish (tenant + store + project + OBP + QR + user)           | P0       |
+| S-06 | Atomic publish (tenant + store + project + project summary + user + session finalization) | P0       |
 | S-07 | WhatsApp confirmation with live link + dashboard login                | P0       |
 | S-08 | Session state machine with expiry                                     | P0       |
 | S-09 | Rate limiting and abuse prevention                                    | P0       |
@@ -205,7 +205,7 @@ When expanding to a new country:
    → Clicks "Approve & Publish"
 
 7. System creates everything atomically
-   → Tenant, store, project, OBP, QR, user account
+   → Tenant, store, project, project summary, public URL, user account
 
 8. System sends final message
    → "Your menu is live: spice-garden.menulist.ai"
@@ -225,7 +225,7 @@ When expanding to a new country:
    → System: "Got it. Preparing your menu."
 
 2. Asset Intelligence Layer finds no valid menu content
-   → System: "Please send clearer menu photos or a menu PDF."
+   → System: "Send clearer menu photos or a menu PDF."
 
 3. Owner sends 3 clearer photos
    → Processing succeeds
@@ -309,7 +309,7 @@ The following do NOT create a session:
 | ------------------------------------- | ------------------------------------------------- |
 | Text message ("hi", "hello", "start") | Ignored — no session created                      |
 | Emoji / sticker                       | Ignored — no session created                      |
-| Voice note / video                    | Ignored — reply: "Please send menu photos or PDF" |
+| Voice note / video                    | Ignored — reply: "Send menu photos or PDF"        |
 | Contact card / location               | Ignored — no session created                      |
 | First valid image or PDF              | **Session created** → state: `COLLECTING_INPUT`   |
 
@@ -430,7 +430,7 @@ When publish fails (Firestore transaction error, network issue, etc.):
 2. **Retry succeeds** → proceed to `LIVE` normally
 3. **Retry also fails** → session transitions to `AWAITING_APPROVAL` (NOT `FAILED`)
 4. Owner's preview and extraction data are preserved
-5. System sends: "Something went wrong. Please try again."
+5. System sends: "Publishing is temporarily unavailable. Try again."
 6. Owner can re-open preview and click "Approve & Publish" again
 
 **Why not FAILED?** Publish failure is a system error, not a menu quality issue. The extraction data is still valid. Forcing the owner to re-upload photos after a system error destroys trust. Recovery to `AWAITING_APPROVAL` allows simple retry.
@@ -474,8 +474,8 @@ A single Gemini AI call validates ALL uploaded files before extraction.
 
 | AI Result                     | System Action                                                        |
 | ----------------------------- | -------------------------------------------------------------------- |
-| No valid menu files           | Reply: "Please send clear menu photos or menu PDF." Stay in session. |
-| Valid but very partial (<50%) | Reply: "Please share full menu for best result." Wait for more.      |
+| No valid menu files           | Reply: "Send clearer menu photos or a menu PDF." Stay in session. |
+| Valid but very partial (<50%) | Reply: "Send the full menu for best result." Wait for more.       |
 | Usable menu (≥60%)            | Proceed to extraction immediately.                                   |
 | Complete menu                 | Proceed to extraction immediately.                                   |
 
@@ -488,7 +488,7 @@ For PDF uploads, Gemini also identifies which pages are actual menu content vs n
 After extraction, if the result contains **0 categories or 0 items**, the preview is NOT generated. Instead:
 
 - Session returns to `FAILED` state
-- System replies: "Please send clearer menu photos or a menu PDF."
+- System replies: "Send clearer menu photos or a menu PDF."
 - Owner can retry with new uploads
 
 This prevents blank or nearly-empty previews from being shown — a blank preview destroys trust.
@@ -558,21 +558,19 @@ When owner clicks "Approve & Publish", system creates everything atomically:
 
 ### What Gets Created (Single Firestore Transaction)
 
-1. **Tenant** — New tenant with business name, detected businessType (actual type like "Restaurant", not "B2C"), email
-2. **Store** — New store with: business info, default roles, time slot presets, businessCategory, detected businessType, phoneNumber (from WhatsApp), defaultLanguage (from extraction), country/currency (inferred from phone country code), `onboardingSource: 'messaging'`, `activationDeadline` (24h from publish)
+1. **Tenant** — New tenant with business name, detected businessType (actual type like "Restaurant", not "B2C"), email, and tenant subdomain
+2. **Store** — New store with: business info, default roles, time slot presets, businessCategory, detected businessType, phoneNumber (from WhatsApp), defaultLanguage (from extraction), country/currency (inferred from phone country code), `onboardingSource: 'MESSAGING_ONBOARDING'`, `activationDeadline` (24h from publish), and public subdomain
 3. **User account** — Created or linked (using WhatsApp phone as identifier)
 4. **platformSummary** — Tenant/store counters incremented
 5. **storesSummary** — Store synced for Cloud Function optimization
-
-### What Gets Created (After Transaction)
-
 6. **Project** — Menu project with extracted data from session
-7. **OBP** — Official Business Page (if `ENABLE_OBP` flag is on)
-8. **QR code** — Generated for the digital menu
+7. **projectsSummary** — Default menu slug for public URL resolution
+8. **Session LIVE finalization** — `publishedResult`, `confirmationPending`, and publish timestamps are written in the same transaction
 
 ### What Gets Sent
 
 9. **WhatsApp message**: "Your menu is live: {link}. Manage anytime: {dashboard login link}"
+10. **Public cache invalidation**: `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`
 
 ---
 
@@ -599,19 +597,19 @@ All messages follow Language Governance — no hype, no AI language, calm profes
 | ---------------------------------------- | -------------------------------------------------------------------------- |
 | First upload received                    | "Got it. Preparing your menu."                                             |
 | Extraction starts (progress signal)      | "Your menu is being prepared..."                                           |
-| Ask for more uploads (partial menu)      | "Please share full menu for best result."                                  |
-| Ask for clearer photos (validation fail) | "Please send clearer menu photos or a menu PDF."                           |
+| Ask for more uploads (partial menu)      | "Send the full menu for best result."                                      |
+| Ask for clearer photos (validation fail) | "Send clearer menu photos or a menu PDF."                                  |
 | Preview ready                            | "Your menu preview is ready: {link}"                                       |
 | Reminder (12h after preview)             | "Your menu preview is ready: {link}"                                       |
 | Published successfully                   | "Your menu is live: {link}\nManage anytime: {dashboard}"                   |
 | Existing store detected                  | "Your menu is already live. Manage here: {dashboard}"                      |
 | Session expired                          | (No message — silent expiry)                                               |
-| Rate limit / cooldown                    | "Please try again later."                                                  |
+| Rate limit / cooldown                    | "Try again later."                                                         |
 | Post-publish message attempt             | "Your menu is live! Manage it here: {dashboard}"                           |
-| Non-menu file detected                   | "Please send menu photos or a menu PDF."                                   |
-| Upload limit reached (>15 images)        | "Please combine remaining pages into a PDF or send fewer clearer photos."  |
-| Extraction cap reached (INV-3)           | "To update your menu, please send all menu photos again in a new message." |
-| Publish failed (after retry)             | "Something went wrong. Please try again."                                  |
+| Non-menu file detected                   | "Send menu photos or a menu PDF."                                          |
+| Upload limit reached (>15 images)        | "Combine remaining pages into a PDF or send fewer clearer photos."         |
+| Extraction cap reached (INV-3)           | "Send all menu photos again in a new message to update your menu."         |
+| Publish failed (after retry)             | "Publishing is temporarily unavailable. Try again."                        |
 
 ---
 
@@ -619,22 +617,23 @@ All messages follow Language Governance — no hype, no AI language, calm profes
 
 | Scenario                                     | System Response                                                                                                                                                                                                         |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI validation fails (API error)              | Retry once. If still fails: "Please resend your menu photos."                                                                                                                                                           |
-| Extraction fails                             | "Please send clearer menu photos or a menu PDF." Return to collecting.                                                                                                                                                  |
-| Publish fails mid-transaction                | Rollback. Retry once. If still fails: session returns to `AWAITING_APPROVAL` (not `FAILED`). Reply: "Something went wrong. Please try again." Owner can retry approve from preview page. See §Publish Failure Recovery. |
-| Owner sends video                            | "Please send menu photos or a menu PDF."                                                                                                                                                                                |
-| Owner sends text commands                    | If preview ready: "Your preview is ready: {link}." Otherwise: "Please send menu photos."                                                                                                                                |
+| AI validation fails (API error)              | Retry once. If still fails: "Send your menu photos again."                                                                                                                                                              |
+| Extraction fails                             | "Send clearer menu photos or a menu PDF." Return to collecting.                                                                                                                                                         |
+| Preview link send fails                      | Session stays `AWAITING_APPROVAL` with `previewMessagePending=true`. The 2-minute intake processor retries the preview link until provider delivery succeeds.                                                           |
+| Publish fails mid-transaction                | Rollback. Retry once. If still fails: session returns to `AWAITING_APPROVAL` (not `FAILED`). Reply: "Publishing is temporarily unavailable. Try again." Owner can retry approve from preview page. See §Publish Failure Recovery. |
+| Owner sends video                            | "Send menu photos or a menu PDF."                                                                                                                                                                                       |
+| Owner sends text commands                    | If preview ready: "Your preview is ready: {link}." Otherwise: "Send menu photos."                                                                                                                                       |
 | Owner sends new images after preview         | "Your preview is ready. Send full menu photos again to update."                                                                                                                                                         |
-| Password-protected PDF                       | "This PDF is locked. Please send an unlocked PDF or photos."                                                                                                                                                            |
-| Owner sends video                            | "Please send menu photos or a menu PDF." (video not supported)                                                                                                                                                          |
-| Owner sends audio/voice note                 | "Please send menu photos or a menu PDF."                                                                                                                                                                                |
+| Password-protected PDF                       | "This PDF is locked. Send an unlocked PDF or photos."                                                                                                                                                                   |
+| Owner sends video                            | "Send menu photos or a menu PDF." (video not supported)                                                                                                                                                                 |
+| Owner sends audio/voice note                 | "Send menu photos or a menu PDF."                                                                                                                                                                                       |
 | Owner sends location/contact/sticker         | Ignored silently. No reply.                                                                                                                                                                                             |
 | Owner sends new menu WHILE processing        | Queue uploads. When current processing finishes, if new uploads exist, restart validation with full set. **Max 2 extraction runs per session (INV-3).**                                                                 |
-| Extraction cap reached (2 runs used)         | New uploads accepted but no new extraction. Reply: "To update your menu, please send all menu photos again in a new message."                                                                                           |
-| Extraction produces 0 items (blank)          | Never show blank preview. Reply: "Please send clearer menu photos." Return to COLLECTING_INPUT.                                                                                                                         |
+| Extraction cap reached (2 runs used)         | New uploads accepted but no new extraction. Reply: "Send all menu photos again in a new message to update your menu."                                                                                                   |
+| Extraction produces 0 items (blank)          | Never show blank preview. Reply: "Send clearer menu photos." Return to COLLECTING_INPUT.                                                                                                                                |
 | Publish attempted with missing critical data | Block publish. Show inline validation: "Menu must have at least 1 category and 1 item with a price."                                                                                                                    |
 | Personal/sensitive document uploaded         | Asset Intelligence flags as non-menu. Auto-delete from storage after session expiry. Never stored permanently.                                                                                                          |
-| Duplicate webhook from provider              | Deduplicate by provider message ID (`providerMessageIds` array). Skip already-processed messages.                                                                                                                       |
+| Duplicate webhook from provider              | Deduplicate by provider message ID in `messagingOnboardingInboundMessages` using atomic create by hash ID. Skip duplicate messages without touching the session doc again.                                                |
 
 ---
 
@@ -644,8 +643,8 @@ All messages follow Language Governance — no hype, no AI language, calm profes
 
 | Flag                             | Type     | Default        | Purpose                                                                                                   |
 | -------------------------------- | -------- | -------------- | --------------------------------------------------------------------------------------------------------- |
-| `ENABLE_MESSAGING_ONBOARDING`    | boolean  | `false`        | **Master kill switch.** Disables entire messaging onboarding system. Webhooks return 200 (no processing). |
-| `MESSAGING_ONBOARDING_PROVIDERS` | string[] | `['whatsapp']` | List of enabled providers. Only enabled providers accept and process webhooks.                            |
+| `ENABLE_MESSAGING_ONBOARDING`    | boolean  | App config currently `true`; Cloud Function runtime env currently `false` | App/preview surfaces are available; Cloud Function webhooks and schedulers remain hard-stopped until real WhatsApp secrets exist. |
+| `MESSAGING_ONBOARDING_PROVIDERS` | string[] | `['whatsapp']` | Runtime env comma-separated provider list. Only enabled providers accept and process webhooks.             |
 
 ### Zero-Impact Guarantees
 
@@ -654,7 +653,7 @@ This feature is designed for **absolute zero impact** on existing MenuList syste
 | Guarantee                          | How                                                                                                                         |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | **No existing file modifications** | All code in new, isolated directories (`functions/src/messagingOnboarding/`, `src/app/(global-pages)/msg-preview/`)         |
-| **No existing collection changes** | New Firestore collections only: `messagingOnboardingSessions`, `messagingOnboardingRateLimits`, `messagingOnboardingEvents` |
+| **No existing collection changes** | New Firestore collections only: `messagingOnboardingSessions`, `messagingOnboardingInboundMessages`, `messagingOnboardingRateLimits`, `messagingOnboardingEvents`; operational health uses existing `systemHealth`/`systemAlerts` |
 | **No existing API route changes**  | New API routes only: `/api/msg-preview/[sessionId]/*`                                                                       |
 | **No shared state mutation**       | Only writes to existing collections during publish (same pattern as existing onboarding)                                    |
 | **No auth dependency**             | Webhook uses signature verification, preview uses tokens — no NextAuth interaction                                          |
@@ -667,10 +666,10 @@ This feature is designed for **absolute zero impact** on existing MenuList syste
 | -------------------------------- | ------- | ---------------------------------------------------------------------------- |
 | Dashboard onboarding (PONR flow) | ❌ None | No shared code, no shared state                                              |
 | AI data extraction               | ❌ None | Reuses `processMenuImagesJobLogic` (read-only dependency, same as dashboard) |
-| Store creation                   | ❌ None | Publish pipeline uses same pattern but in isolated Cloud Function            |
+| Store creation                   | ❌ None | Publish executor uses the shared onboarding transaction helper from a token-gated Next API route |
 | User authentication              | ❌ None | No NextAuth dependency                                                       |
 | Billing (Razorpay)               | ❌ None | Billing happens post-onboarding on dashboard login                           |
-| OBP creation                     | ❌ None | Calls existing OBP creation if `ENABLE_OBP` flag is on                       |
+| OBP / QR surfaces                | ❌ None | Store + public URL are created; existing public/share surfaces handle OBP and QR availability after publish |
 | Digital menu rendering           | ❌ None | Preview page reuses components (read-only)                                   |
 
 ### Clean Teardown
@@ -680,7 +679,7 @@ If the feature needs to be removed entirely:
 **Step 1: Disable** (Instant — 1 line change)
 
 ```
-ENABLE_MESSAGING_ONBOARDING: false
+ENABLE_MESSAGING_ONBOARDING=false
 ```
 
 All webhooks return 200 (no processing). No new sessions created. Existing sessions expire naturally (24h).
@@ -688,6 +687,7 @@ All webhooks return 200 (no processing). No new sessions created. Existing sessi
 **Step 2: Cleanup Data** (Scheduled task — ~10 min)
 
 - Delete all docs in `messagingOnboardingSessions`
+- Delete all docs in `messagingOnboardingInboundMessages`
 - Delete all docs in `messagingOnboardingRateLimits`
 - Delete all docs in `messagingOnboardingEvents` (tracking data)
 - Delete all files in `messagingOnboarding/` Storage bucket
@@ -747,12 +747,13 @@ Not spam. Just presence. Owner should never wonder "did it break?"
 
 This feature is successful when:
 
-1. An owner can go from zero to live digital presence in under 5 minutes via WhatsApp
+1. An owner can go from zero to live digital presence in minutes via WhatsApp
 2. No manual intervention needed for standard menus
 3. ≥ 60% of started sessions reach successful publish
 4. Owners share their live link immediately after publish
 5. Referral onboarding begins naturally (owner tells other owners)
 6. System runs at < ₹25 cost per successful onboarding
+7. Health snapshots show normal publish rate, failure rate, and retained-source storage growth
 
 ---
 
@@ -767,6 +768,8 @@ This feature is successful when:
 | WhatsApp API changes / pricing     | Medium — breaks feature          | Provider-agnostic adapter layer. Swap provider by implementing new `IMessagingProvider` — zero session engine changes. |
 | Single-provider dependency         | Medium — blocks global expansion | Multi-provider architecture from day one. Adding Telegram/LINE requires only adapter code (~200 lines).                |
 | Spam/abuse                         | Medium — resource waste          | Rate limits, cooldown, invalid attempt tracking                                                                        |
+| Webhook interruption after ACK      | High — lost onboarding message   | Durable inbound queue writes before provider ACK and retries from scheduler                                             |
+| Published source storage growth     | Medium — cumulative Firebase cost | Retain files while referenced by projects; monitor sampled LIVE source bytes and alert before deletion policy is needed |
 
 ---
 

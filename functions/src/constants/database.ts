@@ -76,6 +76,7 @@ export const DB_COLLECTIONS = {
     // Messaging Onboarding (Zero-Friction SMB Acquisition Engine)
     // @see __docs__/messaging-onboarding/
     MESSAGING_ONBOARDING_SESSIONS: 'messagingOnboardingSessions',
+    MESSAGING_ONBOARDING_INBOUND_MESSAGES: 'messagingOnboardingInboundMessages',
     MESSAGING_ONBOARDING_RATE_LIMITS: 'messagingOnboardingRateLimits',
     MESSAGING_ONBOARDING_EVENTS: 'messagingOnboardingEvents',
 

@@ -1,9 +1,9 @@
 # Messaging Onboarding — Implementation Plan
 
-**Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine  
-**Status:** Implementation-Ready — All cross-checks complete  
-**Architecture:** Firebase Cloud Functions + Firestore State Machine + Provider-Agnostic Adapter Layer  
-**Last Updated:** February 17, 2026
+**Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
+**Status:** Implementation-Complete — WhatsApp runtime gated until real provider credentials are configured
+**Architecture:** Firebase Cloud Functions + Firestore State Machine + Provider-Agnostic Adapter Layer
+**Last Updated:** May 17, 2026
 
 ---
 
@@ -28,9 +28,20 @@
 │    ├─ downloadMedia()           │    ├─ downloadMedia()               │
 │    └─ sendMessage()             │    └─ sendMessage()                 │
 │                                                                        │
-│  Output: NormalizedMessage { provider, userId, mediaFiles[], text }   │
+│  Output: NormalizedMessage { provider, userId, media, text }          │
 └──────────────────────┬─────────────────────────────────────────────────┘
                        │ NormalizedMessage
+                       ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ DURABLE INBOUND QUEUE                                                  │
+│                                                                        │
+│  inboundQueue                                                          │
+│    ├─ Dedup key: SHA-256(provider + providerMessageId)                │
+│    ├─ Persist sanitized NormalizedMessage before webhook ACK          │
+│    ├─ Process immediately when possible                               │
+│    └─ Retry from msgIntakeProcessor if webhook process is interrupted │
+└──────────────────────┬─────────────────────────────────────────────────┘
+                       │ queued NormalizedMessage
                        ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │ CORE SESSION ENGINE (provider-agnostic)                               │
@@ -38,27 +49,30 @@
 │  webhookHandler (onRequest — per-provider routes)                     │
 │    ├─ providerAdapter.verifyWebhook()                                 │
 │    ├─ providerAdapter.parseIncomingMessage() → NormalizedMessage      │
+│    ├─ inboundQueue.enqueueInboundMessage()                            │
+│    └─ ACK provider only after queue write succeeds                    │
+│                                                                        │
+│  inboundQueue/processQueuedInboundMessage                              │
 │    ├─ sessionEngine.handleMessage(normalizedMsg)                      │
-│    │    ├─ findOrCreateSession()                                      │
-│    │    ├─ handleMediaUpload()                                        │
-│    │    └─ handleTextMessage()                                        │
 │    └─ providerAdapter.sendMessage()                                   │
 │                                                                        │
 │  intakeProcessor (onSchedule — every 2 min)                           │
+│    ├─ drainPendingInboundMessages()                                   │
 │    ├─ findSessionsReadyForProcessing()                                │
 │    ├─ assetIntelligence.validate() ← Gemini AI                       │
-│    └─ triggerExtraction() → reuses processMenuImagesJobLogic          │
+│    ├─ triggerExtraction() → reuses processMenuImagesJobLogic          │
+│    └─ recordMessagingOnboardingHealth() hourly                        │
 │                                                                        │
 │  sessionCleanup (onSchedule — daily)                                  │
 │    ├─ expireOldSessions()                                             │
 │    ├─ sendReminders() → resolves provider adapter per session         │
-│    └─ cleanupStorage()                                                │
+│    └─ cleanupExpiredStorage()                                         │
 │                                                                        │
-│  publishPipeline (callable — triggered from preview page)             │
-│    ├─ Firestore transaction: tenant + store + user + summaries        │
-│    ├─ createProject() with extracted data                             │
-│    ├─ createOBP() if flag enabled                                     │
-│    └─ providerAdapter.sendMessage(publishConfirmation)                │
+│  publish executor (Next API route → src/lib/messaging-onboarding)     │
+│    ├─ Firestore transaction: tenant + store + user + project          │
+│    ├─ projectsSummary + session LIVE finalization                     │
+│    ├─ public cache revalidation after commit                          │
+│    └─ providerAdapter.sendMessage(publishConfirmation) via scheduler  │
 │                                                                        │
 └──────────────────────────────────────────────────────────────────────┘
                        │
@@ -68,7 +82,10 @@
 │                                                                        │
 │  messagingOnboardingSessions/{sessionId}  ← State machine (provider   │
 │                                              field identifies source)  │
+│  messagingOnboardingInboundMessages/{id}   ← Durable webhook queue     │
 │  messagingOnboardingRateLimits/{userHash} ← Per-user rate limits      │
+│  messagingOnboardingEvents/{eventId}       ← Lifecycle/cost events     │
+│  systemHealth/messaging_onboarding_*       ← Hourly health snapshots   │
 │  menuImageProcessingJobs/{jobId}         ← Reused extraction jobs     │
 │  tenants/{tId}                           ← Created on publish         │
 │  stores/{sId}                            ← Created on publish         │
@@ -86,7 +103,7 @@
 │    ├─ Reads session + extracted data                                  │
 │    ├─ Renders menu (reuses existing menu components)                  │
 │    ├─ Shows editable business info (pre-filled from AI)               │
-│    ├─ "Approve & Publish" → calls publishPipeline Cloud Function      │
+│    ├─ "Approve & Publish" → calls approve API route                   │
 │    └─ "Request Fix" → structured form → updates session               │
 │                                                                        │
 └──────────────────────────────────────────────────────────────────────┘
@@ -151,7 +168,7 @@ After 2 extraction runs in a single session:
 
 ```
 Upload → Extract (run 1) → Preview → Owner sends new photos → Extract (run 2) → Preview
-→ Owner sends AGAIN → "Please send all photos in a new message" (no extraction)
+→ Owner sends AGAIN → "Send all menu photos again in a new message to update your menu." (no extraction)
 ```
 
 ### INV-4: BusinessType Is Non-Blocking (Soft Intelligence Only)
@@ -228,16 +245,21 @@ const COST_MONITORING = {
   ALERT_COST_PER_PUBLISH: 15, // ₹ — alert threshold (investigate if exceeded)
   TARGET_PUBLISH_RATE: 0.6, // 60% of started sessions should publish
   MAX_SESSIONS_PER_DAY_ALERT: 100, // Alert if >100 sessions/day (capacity planning)
+  HEALTH_SNAPSHOT_INTERVAL_MS: 60 * 60 * 1000, // hourly health/cost snapshot
+  SOURCE_FILE_RETENTION_REVIEW_DAYS: 90,
+  PUBLISHED_SOURCE_STORAGE_WARN_BYTES: 1024 * 1024 * 1024,
 };
 ```
 
-**Tracked via §16 Onboarding Observation Layer:**
+**Tracked via §16 Onboarding Observation Layer and `healthMonitor.ts`:**
 
-- Cost per session (Gemini API + WhatsApp API + storage)
+- Estimated AI cost per publish (INR)
 - Sessions per day
 - Publish rate (published / started)
 - Avg extractions per session
 - Avg time to publish
+- Failure events
+- Published source-file storage sample
 
 If cost per publish exceeds `ALERT_COST_PER_PUBLISH` → investigate immediately. Do NOT wait for scale.
 
@@ -362,7 +384,7 @@ function getProviderFromWebhookPath(path: string): MessagingProvider | null {
 | Generic webhook endpoint      | Firebase Cloud Functions support `onRequest` for HTTP endpoints                        | **USE `onRequest`** — isolated from dashboard, no NextAuth overhead.                             |
 | Preview page as new system    | We have existing digital menu rendering components                                     | **REUSE existing menu renderer** for preview display.                                            |
 | Create account for owner      | We have existing user creation in onboarding route                                     | **REUSE pattern** but adapted for phone-based identity.                                          |
-| No knowledge of OBP           | OBP is fully built (`ENABLE_OBP` flag)                                                 | **CREATE OBP on publish** — ChatGPT missed this entirely.                                        |
+| No knowledge of OBP           | OBP is built from store/public URL truth and existing public surfaces                   | **DO NOT BLOCK PUBLISH ON OBP/QR GENERATION.** Publish store/project URL truth; existing share/public surfaces handle OBP and QR access. |
 | No knowledge of storesSummary | Cost optimization pattern exists                                                       | **SYNC to storesSummary** on publish per `__docs__/patterns/SUMMARY-DOCUMENT-PATTERN.md`.        |
 | 10-min intake window          | No existing equivalent                                                                 | **IMPLEMENT as described** — good UX pattern.                                                    |
 | Asset Intelligence Layer      | No existing equivalent (extraction processes ALL files)                                | **IMPLEMENT as NEW layer** before extraction. Single Gemini call for validation + business info. |
@@ -384,7 +406,7 @@ interface MessagingOnboardingSession {
   provider: MessagingProvider; // 'whatsapp' | 'telegram' — which provider originated this session
   providerUserId: string; // Provider-specific user ID (phone for WA, chatId for Telegram)
   providerDisplayId: string; // Human-readable (E.164 phone for WA, @username for Telegram)
-  providerMessageIds: string[]; // Provider message IDs for dedup (prevents duplicate webhook processing)
+  providerMessageIds: string[]; // Legacy first-message trace only. Durable dedup lives in messagingOnboardingInboundMessages.
 
   // State
   state: MessagingOnboardingState; // State machine enum
@@ -466,6 +488,9 @@ interface MessagingOnboardingSession {
   correctionCount: number; // Tracks fix requests
   reminderSentAt: Timestamp | null;
   pendingUploadsWhileProcessing: boolean; // True if new uploads arrived during PROCESSING_MENU
+  previewMessagePending?: boolean; // True until preview link is delivered by provider
+  confirmationPending?: boolean; // True until publish confirmation is delivered
+  fixMessagePending?: boolean; // True until fix acknowledgement is delivered
 
   // Timing
   lastUploadAt: Timestamp | null;
@@ -509,7 +534,42 @@ interface MessagingOnboardingRateLimit {
 }
 ```
 
-### 3.3 Firestore Indexes Required
+### 3.3 Durable Inbound Message
+
+**Collection:** `messagingOnboardingInboundMessages/{messageId}`
+
+`messageId = SHA-256(provider + providerMessageId)`. This collection owns provider webhook dedup so the session document does not grow with one message ID per active-session message.
+
+```typescript
+interface MessagingOnboardingInboundMessage {
+  messageId: string;
+  provider: MessagingProvider;
+  providerMessageId: string;
+  providerUserId: string;
+  providerDisplayId: string;
+  messageType: "image" | "document" | "text" | "unsupported";
+  text?: string; // truncated before storage
+  media?: {
+    providerMediaId: string;
+    mimeType: string;
+    fileSize?: number;
+    fileName?: string;
+  };
+  providerTimestamp: Timestamp;
+  status: "PENDING" | "PROCESSING" | "PROCESSED" | "FAILED";
+  attempts: number;
+  maxAttempts: number;
+  nextAttemptAt: Timestamp;
+  processingStartedAt?: Timestamp | null;
+  processedAt?: Timestamp | null;
+  lastError?: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  expiresAt: Timestamp; // 30-day TTL field
+}
+```
+
+### 3.4 Firestore Indexes Required
 
 ```
 // messagingOnboardingSessions
@@ -517,7 +577,18 @@ interface MessagingOnboardingRateLimit {
 - state ASC, intakeExpiresAt ASC                (find sessions ready for processing)
 - state ASC, expiresAt ASC                      (find expired sessions)
 - state ASC, reminderSentAt ASC, expiresAt ASC  (find sessions needing reminder)
-- provider ASC, state ASC                       (find sessions by provider — analytics)
+- state ASC, previewMessagePending ASC          (retry generated preview links)
+- state ASC, confirmationPending ASC            (find pending publish confirmations)
+- state ASC, fixMessagePending ASC              (find pending fix acknowledgements)
+- state ASC, publishedAt ASC                    (source-retention health sample; uses existing ASC index)
+
+// messagingOnboardingInboundMessages
+- status ASC, nextAttemptAt ASC                 (drain pending queue)
+- status ASC, processingStartedAt ASC           (reset stale PROCESSING messages)
+
+// messagingOnboardingEvents
+- sessionId ASC, timestamp ASC                  (all events for a session)
+- eventType ASC, timestamp DESC                 (recent events by type)
 ```
 
 ---
@@ -547,23 +618,30 @@ Each provider gets its own webhook endpoint. The webhook handler resolves the pr
 // 1. Resolve provider from URL path
 // 2. providerAdapter.verifyWebhook(req) — reject if invalid
 // 3. providerAdapter.parseIncomingMessage(req) → NormalizedMessage
-// 4. sessionEngine.handleMessage(normalizedMessage) — provider-agnostic
-// 5. providerAdapter.sendMessage() for any replies
-// Must respond with 200 within 5 seconds (process async)
+// 4. inboundQueue.enqueueInboundMessage(normalizedMessage) — durable dedup write
+// 5. Send provider ACK only after queue write succeeds
+// 6. Best-effort immediate drain via processQueuedInboundMessage(messageId)
+// 7. msgIntakeProcessor retries pending queue items if webhook processing was interrupted
+// Must ACK provider quickly after durable queue write
 ```
 
 **Webhook Handler Check Order (CRITICAL — must follow this exact sequence):**
 
 ```typescript
-// sessionEngine.handleMessage(msg) ordered checks:
-// 1. Feature flag check → if OFF, return 200 (no processing)
+// webhookHandler ordered checks:
+// 1. Runtime feature flag check → if OFF, return 200 (no processing)
 // 2. Provider enabled check → if provider not in MESSAGING_ONBOARDING_PROVIDERS, return 200
-// 3. Dedup check → if msg.providerMessageId already in processedIds, skip
-// 4. Existing LIVE session check → if phone has session with state=LIVE, reply with dashboard link
-// 5. Existing store check → if phone linked to existing store (any source), reply with dashboard link
-// 6. Active session check → if phone has active session (non-terminal state), handle per state rules
-// 7. Rate limit check → if phone in cooldown or daily/weekly limit exceeded, reply "try again later"
-// 8. Session creation → only if first valid media (image/PDF). Text/sticker/emoji → generic reply, no session
+// 3. Signature verification → reject invalid provider signatures
+// 4. Parse to NormalizedMessage → if unsupported/no message, ACK and stop
+// 5. Durable queue dedup → if same providerMessageId already exists, ACK and stop
+// 6. Immediate best-effort processing → queue remains retryable if interrupted
+
+// sessionEngine.handleMessage(msg) still owns product-state checks after queue claim:
+// 1. Existing LIVE session check → reply with dashboard link
+// 2. Existing store check → reply with dashboard link
+// 3. Active session check → handle per state rules
+// 4. Rate limit check → if phone in cooldown or daily/weekly limit exceeded, reply "try again later"
+// 5. Session creation → only if first valid media (image/PDF). Text/sticker/emoji → generic reply, no session
 ```
 
 **State-specific media handling** (when active session exists):
@@ -643,11 +721,13 @@ const FixRequestSchema = z.object({
 functions/src/
 ├── messagingOnboarding/
 │   ├── index.ts                    # Exports all messaging onboarding functions
-│   ├── webhookHandler.ts           # onRequest: receives webhooks, routes to provider adapter
+│   ├── webhookHandler.ts           # onRequest: verifies provider webhook and enqueues message
+│   ├── inboundQueue.ts             # Durable dedup/retry queue for sanitized provider messages
 │   ├── sessionEngine.ts            # Core state machine logic (provider-agnostic)
 │   ├── assetIntelligence.ts        # Gemini validation + business info extraction
 │   ├── intakeProcessor.ts          # Scheduled: checks intake windows, triggers processing
-│   ├── publishPipeline.ts          # Atomic store/tenant/project creation
+│   ├── healthMonitor.ts            # Hourly cost/health/source-retention snapshots + alerts
+│   ├── publishPipeline.ts          # Legacy CF copy; not active runtime publish path
 │   ├── extractionWatcher.ts        # onDocumentUpdated: detects extraction completion for msg sessions
 │   ├── eventLogger.ts              # Fire-and-forget tracking (MOL-inspired, §16)
 │   ├── constants.ts                # Limits, timeouts, message templates
@@ -681,6 +761,9 @@ src/
 │           │   └── route.ts        # POST: trigger publish
 │           └── fix/
 │               └── route.ts        # POST: submit fix request
+├── lib/
+│   └── messaging-onboarding/
+│       └── publish.ts              # Active publish executor used by approve route
 └── config/
     └── features.ts                 # ENABLE_MESSAGING_ONBOARDING + MESSAGING_ONBOARDING_PROVIDERS flags
 ```
@@ -708,9 +791,10 @@ functions/package.json              # May need axios for provider API calls
 | 7   | Storage isolation              | Session-scoped paths: `messagingOnboarding/{sessionId}/{fileId}`                                               |
 | 8   | PII protection                 | User ID stored in session, hashed as `{provider}:{userId}` in rate limit collection                            |
 | 9   | Session expiry                 | 24h hard expiry, media cleaned up on expiry                                                                    |
-| 10  | Publish idempotency            | Check session state before publish, reject if already LIVE                                                     |
-| 11  | No sensitive data in logs      | Use `secureLog` for Cloud Functions logging                                                                    |
-| 12  | Firestore rules                | `messagingOnboardingSessions` — admin-only access (Cloud Functions use admin SDK)                              |
+| 10  | Publish idempotency            | Approve route returns existing `publishedResult` for already-live sessions, rejects active `PUBLISHING`, and finalizes `LIVE` inside the publish transaction |
+| 11  | Webhook durability             | `messagingOnboardingInboundMessages` queue stores sanitized messages before ACK; raw provider payload is not persisted |
+| 12  | No sensitive data in logs      | User IDs are masked in onboarding events and logs; provider payloads are not stored in the queue |
+| 13  | Firestore rules                | `messagingOnboardingSessions`, inbound queue, rate limits, and events are admin-only access                    |
 
 ---
 
@@ -748,7 +832,7 @@ functions/package.json              # May need axios for provider API calls
 | 3.2 | Create preview API route (GET session data)      | `src/app/api/msg-preview/[sessionId]/route.ts`                 | ☐      |
 | 3.3 | Create approve API route                         | `src/app/api/msg-preview/[sessionId]/approve/route.ts`         | ☐      |
 | 3.4 | Create fix request API route                     | `src/app/api/msg-preview/[sessionId]/fix/route.ts`             | ☐      |
-| 3.5 | Create publish pipeline (atomic store creation)  | `functions/src/messagingOnboarding/publishPipeline.ts`         | ☐      |
+| 3.5 | Create active publish executor (atomic store creation) | `src/lib/messaging-onboarding/publish.ts`                 | ✅      |
 | 3.6 | Send publish confirmation via provider adapter   | Resolved at runtime via `getProviderAdapter(session.provider)` | ☐      |
 
 ### Phase 4: Cleanup & Hardening
@@ -761,9 +845,9 @@ functions/package.json              # May need axios for provider API calls
 | 4.4  | Handle post-publish messages (redirect to dashboard)                               | `functions/src/messagingOnboarding/webhookHandler.ts`  | ☐      |
 | 4.5a | Handle unsupported message types (video, audio, sticker, location, contact)        | `functions/src/messagingOnboarding/webhookHandler.ts`  | ☐      |
 | 4.5b | Handle uploads-during-processing (queue + restart after completion)                | `functions/src/messagingOnboarding/sessionEngine.ts`   | ☐      |
-| 4.5c | Message deduplication by providerMessageId                                         | `functions/src/messagingOnboarding/webhookHandler.ts`  | ☐      |
+| 4.5c | Message deduplication by providerMessageId                                         | `functions/src/messagingOnboarding/inboundQueue.ts`    | ✅      |
 | 4.5d | Blank prevention gate (0 items → FAILED, not preview)                              | `functions/src/messagingOnboarding/intakeProcessor.ts` | ☐      |
-| 4.5e | Publish validation gate (min 1 category + 1 priced item)                           | `functions/src/messagingOnboarding/publishPipeline.ts` | ☐      |
+| 4.5e | Publish validation gate (min 1 category + 1 priced item)                           | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | ✅      |
 | 4.5f | Extraction cost cap: `processingRuns >= MAX (2)` → reject, ask new session (INV-3) | `functions/src/messagingOnboarding/intakeProcessor.ts` | ☐      |
 | 4.5g | Progress message: send "Your menu is being prepared..." when extraction starts     | `functions/src/messagingOnboarding/intakeProcessor.ts` | ☐      |
 | 4.5  | Storage cleanup for expired sessions                                               | `functions/src/schedulers/messagingSessionCleanup.ts`  | ☐      |
@@ -784,19 +868,23 @@ The extraction step MUST reuse `processMenuImagesJobLogic` from `functions/src/l
 ```typescript
 // In intakeProcessor.ts — after asset validation
 const jobData: MenuImageProcessingJob = {
-  projectId: `msg-onboarding-${sessionId}`, // Temporary project ID
-  sId: "msg-onboarding", // Temporary store ID
-  tId: "msg-onboarding", // Temporary tenant ID
+  projectId: `msg-onboarding-${sessionId}`, // Extraction-only project ID; never saved as a real project
+  sId: "msg-onboarding", // Extraction-only store ID
+  tId: "msg-onboarding", // Extraction-only tenant ID
   uId: "msg-system", // System user
   files: validMenuFiles.map((f) => ({
     uid: f.id,
-    name: f.id,
+    name: f.fileName || f.id,
     size: f.fileSize,
     type: f.mimeType,
     url: f.storageUrl,
   })),
   targetLanguages: [{ code: "en", name: "English" }],
   action: "IMAGE_PROCESSING",
+  businessType: detectedBusinessType || "Restaurant",
+  businessCategory: detectedBusinessCategory || "food",
+  source: "MESSAGING_ONBOARDING",
+  skipProjectSave: true,
   status: "pending",
   // ... standard fields
 };
@@ -807,45 +895,30 @@ const jobRef = await db.collection("menuImageProcessingJobs").add(jobData);
 await sessionRef.update({ extractionJobId: jobRef.id });
 ```
 
-#### 8.1.1 Temporary Project Cleanup (CRITICAL — Verified Against Codebase)
+#### 8.1.1 Extraction-Only Job Save Skip (CRITICAL — Verified Against Codebase)
 
-**Problem discovered during codebase review:** The existing `processMenuImagesJobLogic` (`functions/src/logic/processMenuImagesJob.ts:196-223`) auto-saves extracted data to a project document via `saveFilesToProject()`. For messaging onboarding, this creates a **temporary orphan project** at `projects/msg-onboarding-{sessionId}` that has no real tenant or store.
+**Problem discovered during codebase review:** The existing `processMenuImagesJobLogic` is shared with dashboard and mobile uploads. First-time manual extraction normally reads the project, redistributes extracted items per uploaded file, saves the file array to `projects/{tId}/{sId}/{projectId}`, verifies the write, and invalidates public cache. Messaging onboarding only needs the extraction result in the session until the owner approves the preview.
 
-**Reference:** `processMenuImagesJob.ts:216` — `await saveFilesToProject(job.projectId, ...)` runs for first extraction (which messaging onboarding always is, since no existing project exists).
+**Current solution:** Messaging onboarding creates the same `menuImageProcessingJobs` document but sets `source: "MESSAGING_ONBOARDING"` and `skipProjectSave: true`. The shared extraction function still performs Gemini extraction, validation, category hardening, per-file redistribution, job result writing, and confidence summary generation. It skips only the manual-dashboard project read/write/verify/cache side effects.
 
-**Solution:** The `extractionWatcher.ts` handles this:
-
-1. Reads `result.combinedData` from the **job document** (not the temp project) — `processMenuImagesJob.ts:233-239` stores combined data in the job doc
-2. Stores `extractedMenuData` in the **session document** for preview rendering
-3. **Deletes the temporary project** `projects/msg-onboarding-{sessionId}` after reading data
-4. The real project is created later in the publish pipeline with the correct `{tId}-default-{sId}` format
+1. `intakeProcessor.ts` creates an extraction-only job with the `msg-onboarding-{sessionId}` project ID and `skipProjectSave: true`
+2. `processMenuImagesJob.ts` skips `getProject()`, `saveFilesToProject()`, project verification, and public cache revalidation for that job
+3. The completed job stores `result.combinedData` plus `result.redistributedFiles`
+4. `extractionWatcher.ts` copies the preview-shaped menu data to `session.extractedMenuData` and the manual-project file shape to `session.extractedProjectFiles`
+5. The real project is created later in the approval transaction with the correct `{tId}-default-{sId}` format and manual-compatible file entries
 
 ```typescript
-// In extractionWatcher.ts — after reading job result
-const jobData = change.after.data();
-const combinedData = jobData.result?.combinedData;
-const qualityScore = jobData.result?.qualityScore;
-
-// Store in session for preview
+// In extractionWatcher.ts — after reading the completed extraction job
 await sessionRef.update({
-  extractedMenuData: combinedData,
+  extractedMenuData: previewMenuData,
+  extractedProjectFiles, // mirrors projects.files[] from saveFilesToProject()
   qualityScore: qualityScore,
   state: "PREVIEW_READY",
   // ... generate preview token, etc.
 });
-
-// Cleanup: delete temporary project created by saveFilesToProject
-const tempProjectId = `msg-onboarding-${sessionId}`;
-await db
-  .collection("projects")
-  .doc(tempProjectId)
-  .delete()
-  .catch(() => {
-    // Silent failure — temp project may not exist if extraction failed before save
-  });
 ```
 
-**Why not modify existing extraction code:** The extraction pipeline is shared with dashboard users. Adding a "skip save" flag would violate the isolation principle. Instead, we let it create the temp project and clean up after — same cost (1 write + 1 delete), zero modification to existing code.
+**Cost impact:** This removes the temporary project read/write/verify/delete cycle for messaging sessions while preserving the shared extraction engine. Cleanup of old temp projects remains guarded for legacy jobs that were created before `skipProjectSave` existed.
 
 #### 8.1.2 AI Rate Limiting Note
 
@@ -853,7 +926,7 @@ The extraction pipeline has its own rate limiting via `checkExpensiveAIRateLimit
 
 - Rate limit key = `msg-onboarding-{sessionId}` (per-session, not per-user)
 - This is **separate from** the messaging session rate limits (`messagingOnboardingRateLimits`)
-- No conflict with dashboard users since temp projectIds never collide with real project IDs
+- No conflict with dashboard users since extraction-only `msg-onboarding-*` project IDs never collide with real project IDs
 
 ### 8.2 Reusing Existing Store Creation Pattern
 
@@ -911,12 +984,13 @@ Key functions reused:
   timeSlotPresets: getDefaultTimeSlotPresets(session.detectedBusinessType || 'Restaurant', newTenantId, newStoreId),
   roles: createDefaultRoles(newStoreId, generatedEmail),
   isMaster: true, // First store is always master
-  onboardingSource: 'messaging', // NEW: Identifies messaging-onboarded stores (§17)
+  onboardingSource: 'MESSAGING_ONBOARDING', // Identifies messaging-onboarded stores (§17)
   activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000), // 24h grace (§17.5)
 
   // Fields NOT in existing dashboard onboarding (create-subscription/route.ts) but
   // messaging onboarding can infer from available data (§18 Gap Analysis):
   phoneNumber: session.providerDisplayId || '', // WhatsApp phone number — BETTER than dashboard (which sets this later)
+  addressLine: approvedAddress || extractedBusinessInfo.address || '', // Same store field used by manual intake identity acceptance
   defaultLanguage: extractedLanguage || 'en', // From Gemini extraction primary language
   country: inferredCountry || '', // From phone number country code (e.g., +91 → 'IN')
   currencyCode: inferredCurrency || 'INR', // From country (e.g., 'IN' → 'INR')
@@ -1082,10 +1156,12 @@ exports.msgExtractionWatcher = onDocumentUpdated(
 The preview page `/msg-preview/[sessionId]` calls the Next.js API route `/api/msg-preview/[sessionId]/approve`, which:
 
 1. Validates token and session state
-2. **Double-publish protection (CRITICAL):** Uses a Firestore transaction to atomically read session state AND update it to `PUBLISHING`. If state is not `AWAITING_APPROVAL`, the transaction rejects. This prevents race conditions from double-clicks or concurrent requests.
-3. Calls the publish pipeline **directly** (not via a separate Cloud Function)
-4. The API route uses Firebase Admin SDK (server-side) to run the Firestore transaction
-5. After transaction, sends confirmation via provider adapter (calls Cloud Function for messaging)
+2. If the session is already `LIVE` with `publishedResult`, returns that result idempotently
+3. If the session is `PUBLISHING`, returns a 409 "already in progress" response
+4. **Double-publish protection (CRITICAL):** Uses a Firestore transaction to atomically read session state AND update it to `PUBLISHING`. If state is not `AWAITING_APPROVAL`, the transaction rejects.
+5. Calls `executeMessagingOnboardingPublish()` from `src/lib/messaging-onboarding/publish.ts`
+6. The publish executor runs one Firestore transaction for tenant + store + user + project + summary + session `LIVE` finalization
+7. After transaction, the API revalidates public cache tags; the intake scheduler sends the provider confirmation from `confirmationPending=true`
 
 ```typescript
 // Double-publish protection pattern (inside approve API route)
@@ -1100,17 +1176,17 @@ const session = await db.runTransaction(async (tx) => {
   tx.update(sessionRef, { state: "PUBLISHING", updatedAt: Timestamp.now() });
   return data;
 });
-// Only THEN proceed with the actual publish transaction
+// Only THEN proceed with executeMessagingOnboardingPublish(sessionId, params)
 
 // PUBLISH FAILURE RECOVERY (spec §Publish Failure Recovery):
 // If publish transaction fails after retry:
 try {
-  await executePublishTransaction(session);
+  await executeMessagingOnboardingPublish(sessionId, params);
   // Success → state = LIVE
 } catch (publishError) {
   // Retry once
   try {
-    await executePublishTransaction(session);
+    await executeMessagingOnboardingPublish(sessionId, params);
   } catch (retryError) {
     // Recovery: return to AWAITING_APPROVAL (not FAILED)
     // Owner can retry approve from preview page
@@ -1123,7 +1199,7 @@ try {
       }),
     });
     // Send error message via provider
-    await sendMessage("Something went wrong. Please try again.");
+    await sendMessage("Publishing is temporarily unavailable. Try again.");
     // Log PUBLISH_FAILED event
   }
 }
@@ -1274,6 +1350,16 @@ match /messagingOnboardingEvents/{eventId} {
 ---
 
 ## 10. Environment Variables
+
+### Runtime Feature Gates
+
+| File | Current Value | Purpose |
+| ---- | ------------- | ------- |
+| `src/config/features.ts` → `ENABLE_MESSAGING_ONBOARDING` | `true` | Keeps app/preview surfaces available. |
+| Runtime env `ENABLE_MESSAGING_ONBOARDING` read by `functions/src/messagingOnboarding/constants.ts` | `false` until real provider credentials are configured | Hard-stops Cloud Function webhook/scheduler processing without a code change. |
+| Runtime env `MESSAGING_ONBOARDING_PROVIDERS` read by `functions/src/messagingOnboarding/constants.ts` | `whatsapp` | Enables only configured providers. |
+
+Do not enable the Cloud Function runtime flag with dummy WhatsApp secrets. Missing real provider credentials are an operational blocker, not an application fallback case.
 
 ### Shared Secrets (All Providers)
 
@@ -1525,12 +1611,12 @@ Nothing depends on messagingOnboarding/ ─── safe to delete entirely
 
 | Step | Action                                                             | Time    | Impact                                    |
 | ---- | ------------------------------------------------------------------ | ------- | ----------------------------------------- |
-| 1    | Set `ENABLE_MESSAGING_ONBOARDING: false`                           | Instant | All webhooks return 200. No new sessions. |
+| 1    | Set runtime env `ENABLE_MESSAGING_ONBOARDING=false`                 | Instant | All webhooks return 200. No new sessions. |
 | 2    | Wait 24h for active sessions to expire                             | 24h     | Sessions expire naturally.                |
 | 3    | Run cleanup: delete `messagingOnboardingSessions` collection       | ~5 min  | Admin script.                             |
 | 4    | Run cleanup: delete `messagingOnboardingRateLimits` collection     | ~1 min  | Admin script.                             |
 | 5    | Run cleanup: delete `messagingOnboardingEvents` collection         | ~5 min  | Admin script. Tracking data.              |
-| 6    | Run cleanup: delete `messagingOnboarding/` Storage folder          | ~10 min | Admin script.                             |
+| 6    | Run cleanup: delete only unpublished/expired `messagingOnboarding/` Storage folders | ~10 min | Admin script. Do not delete files referenced by published projects unless those project file URLs are migrated first. |
 | 7    | Remove `messagingOnboarding` exports from `functions/src/index.ts` | ~1 min  | Code change.                              |
 | 8    | Delete `functions/src/messagingOnboarding/` directory              | Instant | Code deletion.                            |
 | 9    | Delete `src/app/(global-pages)/msg-preview/` directory             | Instant | Code deletion.                            |
@@ -1662,6 +1748,7 @@ interface MsgOnboardingEvent {
 
   /** Timing */
   timestamp: Timestamp;
+  expiresAt?: Timestamp; // 30-day Firestore TTL field
   sessionAgeMs: number; // Milliseconds since session creation (for timing analysis)
 
   /** Error details (only for failure events) */
@@ -1681,6 +1768,7 @@ interface MsgOnboardingEvent {
 
 import * as functions from "firebase-functions";
 import { admin } from "../firebaseAdmin";
+import { FEATURE_FLAGS, RETENTION } from "./constants";
 
 const db = admin.firestore();
 
@@ -1704,7 +1792,7 @@ export async function logOnboardingEvent(params: {
 }): Promise<void> {
   // Feature flag check — skip if tracking disabled
   // Uses same pattern as ENABLE_MENU_OBSERVATION in MOL
-  if (!config.ENABLE_MESSAGING_ONBOARDING_TRACKING) return;
+  if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING_TRACKING) return;
 
   try {
     const now = admin.firestore.Timestamp.now();
@@ -1721,6 +1809,7 @@ export async function logOnboardingEvent(params: {
       userIdMasked: params.userIdMasked,
       metadata: params.metadata || {},
       timestamp: now,
+      expiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + RETENTION.EVENT_TTL_MS),
       sessionAgeMs,
       ...(params.error && { error: params.error }),
     };
@@ -1756,11 +1845,13 @@ export function maskUserId(providerUserId: string): string {
 | File                         | Events Logged                                                                                                                                                                         | When                                            |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | `webhookHandler.ts`          | `SESSION_CREATED`, `UPLOAD_RECEIVED`, `UPLOAD_REJECTED`, `WEBHOOK_SIGNATURE_INVALID`, `POST_PUBLISH_MESSAGE`, `EXISTING_STORE_DETECTED`                                               | On each incoming webhook                        |
+| `inboundQueue.ts`            | `INBOUND_MESSAGE_QUEUED`, `INBOUND_MESSAGE_PROCESSED`, `INBOUND_MESSAGE_FAILED`, `MESSAGE_SENT`                                                                                         | Durable webhook queue claim/process/retry       |
 | `sessionEngine.ts`           | `SESSION_STATE_CHANGED`, `RATE_LIMIT_HIT`, `COOLDOWN_APPLIED`, `INVALID_ATTEMPT_RECORDED`, `FULL_RESEND_DETECTED`, `SESSION_RESTARTED`, `UPLOAD_DEDUPLICATED`, `UPLOAD_LIMIT_REACHED` | On state transitions and session operations     |
 | `assetIntelligence.ts`       | `ASSET_VALIDATION_STARTED`, `ASSET_VALIDATION_COMPLETED`, `ASSET_VALIDATION_FAILED`                                                                                                   | Before/after Gemini API call                    |
 | `intakeProcessor.ts`         | `INTAKE_WINDOW_CLOSED`, `EXTRACTION_STARTED`                                                                                                                                          | When intake timer expires and extraction begins |
 | `extractionWatcher.ts`       | `EXTRACTION_COMPLETED`, `EXTRACTION_FAILED`, `BLANK_PREVENTION_TRIGGERED`, `PREVIEW_GENERATED`                                                                                        | On extraction job completion                    |
-| `publishPipeline.ts`         | `PUBLISH_STARTED`, `PUBLISH_COMPLETED`, `PUBLISH_FAILED`, `PUBLISH_ROLLBACK`                                                                                                          | During atomic publish                           |
+| `src/lib/messaging-onboarding/publish.ts` | `PUBLISH_STARTED`, `PUBLISH_COMPLETED`                                                                                                                                     | During active atomic publish                    |
+| `approve/route.ts`           | `PREVIEW_APPROVED`, `PUBLISH_FAILED`                                                                                                                                                    | Before publish and on failure recovery          |
 | `messagingSessionCleanup.ts` | `REMINDER_SENT`, `SESSION_EXPIRED`                                                                                                                                                    | Scheduler runs                                  |
 | Preview API routes           | `PREVIEW_VIEWED`, `PREVIEW_APPROVED`, `PREVIEW_FIX_REQUESTED`                                                                                                                         | On preview page interactions                    |
 | Provider adapters            | `MESSAGE_SENT`, `MESSAGE_SEND_FAILED`, `PROVIDER_MEDIA_DOWNLOAD_FAILED`                                                                                                               | On provider API calls                           |
@@ -1768,8 +1859,8 @@ export function maskUserId(providerUserId: string): string {
 ### 16.6 Feature Flag
 
 ```typescript
-// src/config/features.ts
-ENABLE_MESSAGING_ONBOARDING_TRACKING: true, // ON by default (lightweight, non-blocking)
+// functions/src/messagingOnboarding/constants.ts
+ENABLE_MESSAGING_ONBOARDING_TRACKING = process.env.ENABLE_MESSAGING_ONBOARDING_TRACKING ?? true;
 ```
 
 **Why ON by default:** Unlike the main feature flag (`ENABLE_MESSAGING_ONBOARDING`), tracking should be on whenever onboarding is on. The overhead is minimal (1 extra Firestore write per event, fire-and-forget). The value of having data from day one far outweighs the tiny cost.
@@ -1785,8 +1876,8 @@ ENABLE_MESSAGING_ONBOARDING_TRACKING: true, // ON by default (lightweight, non-b
 ```
 - sessionId ASC, timestamp ASC          (all events for a session, in order)
 - eventType ASC, timestamp DESC         (find all events of a type, most recent first)
-- provider ASC, eventType ASC, timestamp DESC  (provider-specific event analysis)
-- error.code ASC, timestamp DESC        (find error patterns)
+- inbound queue: status ASC, nextAttemptAt ASC
+- inbound queue stale recovery: status ASC, processingStartedAt ASC
 ```
 
 ### 16.8 Key Metrics Derivable from Events
@@ -1808,13 +1899,12 @@ ENABLE_MESSAGING_ONBOARDING_TRACKING: true, // ON by default (lightweight, non-b
 
 ### 16.9 Data Retention & Cleanup
 
-| Age         | Action                                                                                             |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| 0-90 days   | Full event data retained                                                                           |
-| 90-365 days | Events retained (for long-term trend analysis)                                                     |
-| 365+ days   | Purge events for expired/failed sessions. Keep events for LIVE sessions permanently (audit trail). |
+| Age       | Action                                                                 |
+| --------- | ---------------------------------------------------------------------- |
+| 0-30 days | Full event data retained for funnel, failure, abuse, and cost analysis |
+| 30+ days  | Firestore TTL deletes `messagingOnboardingEvents.expiresAt` documents  |
 
-Cleanup runs as part of `msgSessionCleanup` scheduler — same daily job, separate logic path.
+Event cleanup uses Firestore TTL, not the `msgSessionCleanup` scheduler. This avoids a scheduled collection scan and keeps tracking storage bounded.
 
 ### 16.10 Security Rules
 
@@ -1833,9 +1923,9 @@ match /messagingOnboardingEvents/{eventId} {
 | Events per failed session           | ~5-8           | Shorter lifecycle              |
 | Firestore writes per 1,000 sessions | ~15,000-20,000 | At ₹15/100K = ₹2.25-3.00       |
 | Storage per event                   | ~0.5-1 KB      | Minimal                        |
-| **Monthly cost at 1,000 sessions**  | **~₹3**        | **Negligible vs ₹4,276 total** |
+| **Monthly cost at 1,000 sessions**  | **~₹3**        | **Negligible vs ₹4,283 total** |
 
-> **ROI:** ₹3/month for complete observability of a ₹4,276/month system. The tracking data is 100x more valuable than its cost — one insight that prevents a 5% drop in conversion pays for years of tracking.
+> **ROI:** ₹3/month for complete short-window observability of a ₹4,283/month system. The tracking data is more valuable than its cost because it catches abuse, extraction failures, and conversion drops early without permanently retaining event documents.
 
 ### 16.12 ADR-11: Why Separate Collection (Not Reuse MOL)
 
@@ -1884,10 +1974,10 @@ PUBLISH → Menu live (24h) → Dashboard restricted → Owner pays → Full acc
 Messaging-onboarded stores are identified by a new field:
 
 ```typescript
-// In publishPipeline.ts — store creation
+// In src/app/api/msg-preview/[sessionId]/approve/route.ts — store creation
 transaction.set(storeRef, {
   // ... existing fields (§8.2.1) ...
-  onboardingSource: "messaging", // NEW: Identifies messaging-onboarded stores
+  onboardingSource: "MESSAGING_ONBOARDING", // Identifies messaging-onboarded stores
   activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000), // 24h from publish
 });
 ```
@@ -1900,7 +1990,7 @@ The existing `hasValidSubscriptionAccess()` in `src/utils/razorpay.ts:34` return
 
 ```typescript
 // Conceptual — in dashboard access gate component
-if (!subscription && store.onboardingSource === 'messaging') {
+if (!subscription && store.onboardingSource === 'MESSAGING_ONBOARDING') {
   // Show restricted mode: menu preview + "Activate Plan" CTA
   // Owner can see their menu but not edit
   return <RestrictedDashboard store={store} />;
@@ -2023,7 +2113,7 @@ if (type_confidence === "high" || type_confidence === "medium") {
 ### 18.3 Phone Number → Country → Currency Inference
 
 ```typescript
-// In publishPipeline.ts — country/currency inference
+// In src/lib/messaging-onboarding/publish.ts — country/currency inference
 import { parsePhoneNumber } from "libphonenumber-js"; // Already in project or use lightweight equivalent
 
 const phoneInfo = parsePhoneNumber(session.providerDisplayId);
@@ -2057,17 +2147,23 @@ const currency = COUNTRY_CURRENCY_MAP[inferredCountry] || {
 
 ### 18.5 Project Creation on Publish
 
-**Verified:** Our docs (§8.2.1 and publish pipeline description) mention creating a project. The project ID format follows the existing pattern: `{tId}-{timestamp}-{sId}`.
+**Verified:** Messaging publish now aligns with the manual project/extraction contract. The project ID format is `{tId}-default-{sId}` so the messaging-created store has one predictable default menu project.
 
 **Gap check:** The project document needs:
 
 - `projectId` — generated
-- `files` — from extraction result (categories, items, languages)
+- `name: "Menu"` and `description`
+- ownership fields: `tenantId`, `storeId`, `tId`, `sId`, `uId`, `pId`, `role`
+- `onboardingSource: "MESSAGING_ONBOARDING"`
+- `businessType` and `businessCategory` when available
+- `isDefault: true`
+- `config.design.menu` — same design preset/default structure as manually created projects
+- `files` — from `session.extractedProjectFiles`, matching the `saveFilesToProject()` file-entry shape
+- `languages` and `defaultLanguage` — normalized from extraction output
 - `active: true`
 - `deleted: false`
-- `config` — default config
 
-The extraction data (from `extractionWatcher.ts` via `session.extractedMenuData`) provides the file data. This is documented but the exact project document structure was implicit. Now explicit: project creation reuses `saveFilesToProject()` pattern with the REAL project ID (not the temp one).
+The extraction data handoff has two fields by design: `session.extractedMenuData` renders the preview, while `session.extractedProjectFiles` preserves per-upload extracted data for the final project. Approval writes the real project with those file entries, then deletes `extractedProjectFiles` from the live session to reduce long-term session size.
 
 ### 18.6 Remaining Verified Items (No Gaps)
 
@@ -2176,7 +2272,7 @@ When creating a new user for a phone-only owner (no prior NextAuth account), the
   active: true,
   createdOn: Timestamp.now(),
   modifiedOn: Timestamp.now(),
-  onboardingSource: 'messaging',
+  onboardingSource: 'MESSAGING_ONBOARDING',
 }
 ```
 
@@ -2282,10 +2378,13 @@ The preview page lives at `src/app/(global-pages)/msg-preview/[sessionId]/page.t
 
 | Area                                        | Current Design                                                            | Why It's Fine for v1                                                                                                |
 | ------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Intake processor polling (every 2 min)      | 720 runs/day, 1 read each                                                 | Cost: ₹1.08/month. Cloud Tasks alternative adds complexity for negligible savings.                                  |
+| Intake processor polling (every 2 min)      | 720 runs/day, bounded queue/session/outbox checks plus one health-control read | Baseline Firestore reads are still <₹10/month at 1K sessions. Cloud Tasks alternative adds complexity for negligible savings. |
+| Inbound queue dedup                         | Atomic `create()` on SHA-256(provider + providerMessageId) document ID         | Avoids a pre-create transaction read and skips duplicate post-ACK processing reads.                                         |
 | Separate validation + extraction calls      | 2 Gemini API calls per session                                            | Combined call would be riskier and harder to debug. Validation is cheap (~₹0.50/session).                           |
 | Extraction watcher fires on all job updates | `msgExtractionWatcher` triggers on every `menuImageProcessingJobs` update | Early return check (`projectId.startsWith('msg-onboarding-')`) makes cost negligible (~0 writes per false trigger). |
 | Session query at webhook time               | Composite index query per incoming message                                | Sub-100ms even at 10K active sessions. Firestore handles this natively.                                             |
+| Extraction-only save skip                   | Messaging jobs set `skipProjectSave: true`                                | Reuses the shared extraction engine without temporary project read/write/delete side effects.                       |
+| Published source-file retention             | Uploaded menu files remain in Storage after publish                        | Required because project `files[].url` points to these files for dashboard source preview and extraction retry workflows. |
 
 ### 20.2 Future Optimizations (Post-v1, If Scale Demands)
 
@@ -2296,6 +2395,7 @@ The preview page lives at `src/app/(global-pages)/msg-preview/[sessionId]/page.t
 | **Delta extraction for fix requests**   | >50% of sessions use "Request Fix"   | ~50% extraction cost on fix requests | Very High — requires diff logic in extraction pipeline |
 | **Cleanup scheduler frequency**         | First 3 months (<100 sessions/month) | Minimal                              | Low — change cron from daily to weekly                 |
 | **Session archival to cold collection** | >50K total sessions                  | Faster queries on active sessions    | Low — move LIVE/EXPIRED to archive collection          |
+| **Source-file retention policy**       | >50 GB published upload storage      | Storage cost control                 | Medium — requires copying project source files to a stable archive path or removing dashboard source-preview dependency |
 
 ### 20.3 Cost Monitoring Thresholds (INV-8)
 
@@ -2303,10 +2403,11 @@ The preview page lives at `src/app/(global-pages)/msg-preview/[sessionId]/page.t
 | ------------------------ | ------------ | --------- | -------------------------------------------------- |
 | Gemini API cost/month    | >₹5,000      | >₹10,000  | Review extraction efficiency, check for abuse      |
 | Firestore reads/month    | >100K        | >500K     | Check intake processor query efficiency            |
-| Storage usage            | >10 GB       | >50 GB    | Verify cleanup scheduler is running                |
+| Expired-session storage  | >10 GB       | >50 GB    | Verify cleanup scheduler is running                |
+| Published source storage | >50 GB       | >100 GB   | Review source-file retention policy; do not delete files still referenced by projects |
 | Average cost per session | >₹10         | >₹25      | Audit: extraction failures, retry rates, abuse     |
 | WhatsApp API cost/month  | >₹500        | >₹2,000   | Check for message loops, unnecessary notifications |
 
 ---
 
-_Document Status: Implementation-Ready (v2.2 — Pre-Implementation Audit: Added §19 Third-Party Implementation Notes (8 sections: onRequest pattern, DB_COLLECTIONS centralization, job creation without NextAuth, user doc completeness, secrets config, NextAuth phone login, Firestore indexes, route group). Added §20 Optimization Opportunities (cost thresholds, future optimizations, v1 accepted trade-offs). Full codebase mapping verified against `create-subscription/route.ts`, `processMenuImagesJobLogic`, `functions/src/index.ts`, `constants/database.ts`.)_
+_Document Status: Implementation-Complete (v3.7 — May 17, 2026 Firebase cost audit removed redundant active-session dedup writes, replaced inbound queue pre-create reads with atomic create, added TTL fields for inbound queue and shared lifecycle events, aligned source-retention health sampling with existing Firestore indexes, and preserved the production hardening from v3.6.)_

@@ -81,7 +81,7 @@ export async function findExistingStoreByPhone(
 ): Promise<{ storeId: number; tenantId: number } | null> {
   // Check users collection for phone match
   const snapshot = await db
-    .collection("users")
+    .collection(DB_COLLECTIONS.USERS)
     .where("phone", "==", phoneDisplay)
     .limit(1)
     .get();
@@ -259,6 +259,26 @@ export async function processAndStoreUpload(
     return null; // Silently reject unsupported types
   }
 
+  if (
+    msg.media.fileSize &&
+    msg.media.fileSize > UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES
+  ) {
+    logOnboardingEvent({
+      sessionId,
+      provider: msg.provider,
+      eventType: "UPLOAD_REJECTED",
+      sessionState: "COLLECTING_INPUT",
+      userIdMasked: maskUserId(msg.userId),
+      metadata: {
+        reason: "file_size_precheck",
+        reportedSize: msg.media.fileSize,
+        maxSize: UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES,
+        mimeType: msg.media.mimeType,
+      },
+    });
+    return null;
+  }
+
   try {
     // Download from provider
     const buffer = await adapter.downloadMedia(msg.media.providerMediaId);
@@ -276,8 +296,11 @@ export async function processAndStoreUpload(
     // Generate SHA-256 for dedup
     const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
 
-    // Upload to Firebase Storage
+    // Upload to Firebase Storage with a stable Firebase download token.
+    // Project files keep this URL after publish; a short-lived signed URL would
+    // break source-file preview/retry flows once the owner claims the dashboard.
     const uploadId = crypto.randomUUID();
+    const downloadToken = crypto.randomUUID();
     const ext = getExtensionFromMime(msg.media.mimeType);
     const storagePath = `messagingOnboarding/${sessionId}/${uploadId}.${ext}`;
     const bucket = storageAdmin.bucket();
@@ -287,6 +310,7 @@ export async function processAndStoreUpload(
       metadata: {
         contentType: msg.media.mimeType,
         metadata: {
+          firebaseStorageDownloadTokens: downloadToken,
           sessionId,
           uploadId,
           providerMediaId: msg.media.providerMediaId,
@@ -294,17 +318,14 @@ export async function processAndStoreUpload(
       },
     });
 
-    // Get download URL
-    const [signedUrl] = await file.getSignedUrl({
-      action: "read",
-      expires: Date.now() + TIMING.SESSION_EXPIRY_MS + 60 * 60 * 1000, // Session expiry + 1h buffer
-    });
+    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
 
     const upload: SessionUpload = {
       id: uploadId,
+      fileName: msg.media.fileName || uploadId,
       providerMediaId: msg.media.providerMediaId,
       storagePath,
-      storageUrl: signedUrl,
+      storageUrl: downloadUrl,
       mimeType: msg.media.mimeType,
       fileSize: buffer.length,
       sha256,
@@ -427,33 +448,36 @@ export async function checkRateLimit(
     return "cooldown";
   }
 
-  // Check day reset
+  let sessionsToday = rateLimit.sessionsToday || 0;
+  let sessionsThisWeek = rateLimit.sessionsThisWeek || 0;
+  const resetUpdates: Record<string, unknown> = {};
+
+  // Reset counters first, then still evaluate the other active windows.
+  // Returning early here allowed a weekly-capped user through on day rollover.
   if (rateLimit.dayResetAt.toMillis() <= now) {
-    // Day has reset — update counters
-    await rateLimitRef.update({
-      sessionsToday: 0,
-      dayResetAt: getNextMidnightUTC(),
-    });
-    return null;
+    sessionsToday = 0;
+    resetUpdates.sessionsToday = 0;
+    resetUpdates.dayResetAt = getNextMidnightUTC();
   }
 
-  // Check week reset
   if (rateLimit.weekResetAt.toMillis() <= now) {
-    await rateLimitRef.update({
-      sessionsThisWeek: 0,
-      processingRunsThisWeek: 0,
-      weekResetAt: getNextMondayUTC(),
-    });
-    return null;
+    sessionsThisWeek = 0;
+    resetUpdates.sessionsThisWeek = 0;
+    resetUpdates.processingRunsThisWeek = 0;
+    resetUpdates.weekResetAt = getNextMondayUTC();
+  }
+
+  if (Object.keys(resetUpdates).length > 0) {
+    await rateLimitRef.update(resetUpdates);
   }
 
   // Check daily limit
-  if (rateLimit.sessionsToday >= RATE_LIMITS.SESSIONS_PER_DAY) {
+  if (sessionsToday >= RATE_LIMITS.SESSIONS_PER_DAY) {
     return "daily_limit";
   }
 
   // Check weekly limit
-  if (rateLimit.sessionsThisWeek >= RATE_LIMITS.SESSIONS_PER_WEEK) {
+  if (sessionsThisWeek >= RATE_LIMITS.SESSIONS_PER_WEEK) {
     return "weekly_limit";
   }
 
@@ -521,7 +545,7 @@ export async function handleMessage(
 ): Promise<string | null> {
   // Step 1-2: Feature flag checks are done in webhookHandler before calling this
 
-  // Step 3: Dedup check (handled later per-session with providerMessageIds)
+  // Step 3: Provider message dedup is handled by the durable inbound queue.
 
   // Step 4: Check for LIVE session (tunnel closed — INV-7)
   const liveSession = await findLiveSession(msg.provider, msg.userId);
@@ -555,18 +579,12 @@ export async function handleMessage(
   const activeSession = await findActiveSession(msg.provider, msg.userId);
 
   if (activeSession) {
-    // Dedup: check if message already processed
-    if (activeSession.providerMessageIds.includes(msg.providerMessageId)) {
+    // Legacy safety for sessions created before the durable inbound queue.
+    // New messages are not appended here; the queue owns dedup so every active
+    // session message does not pay an extra Firestore write.
+    if (activeSession.providerMessageIds?.includes(msg.providerMessageId)) {
       return null; // Already processed
     }
-
-    // Record message ID for dedup
-    await db
-      .collection(sessionsCol)
-      .doc(activeSession.sessionId)
-      .update({
-        providerMessageIds: FieldValue.arrayUnion(msg.providerMessageId),
-      });
 
     return await handleMessageForExistingSession(msg, activeSession, adapter);
   }

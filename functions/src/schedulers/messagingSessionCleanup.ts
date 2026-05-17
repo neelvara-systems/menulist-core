@@ -203,53 +203,9 @@ export async function messagingSessionCleanupLogic(): Promise<{
     });
   }
 
-  // 4. Clean up storage for LIVE sessions (uploads no longer needed after publish)
-  try {
-    const liveCleanupSnapshot = await db
-      .collection(sessionsCol)
-      .where("state", "==", "LIVE")
-      .where("publishedAt", "<=", now)
-      .limit(20)
-      .get();
-
-    const liveBucket = storageAdmin.bucket();
-
-    for (const doc of liveCleanupSnapshot.docs) {
-      try {
-        const session = doc.data() as MessagingOnboardingSession;
-
-        // Skip if uploads already cleaned (empty array)
-        if (!session.uploads || session.uploads.length === 0) continue;
-
-        // Delete all uploaded files from staging storage
-        for (const upload of session.uploads) {
-          try {
-            await liveBucket.file(upload.storagePath).delete();
-          } catch {
-            // File may already be deleted
-          }
-        }
-
-        // Clear uploads array to mark as cleaned (keep session doc for audit)
-        await db.collection(sessionsCol).doc(session.sessionId).update({
-          uploads: [],
-          updatedAt: Timestamp.now(),
-        });
-
-        cleaned++;
-      } catch (err) {
-        logger.error("[Cleanup] Failed to clean LIVE session storage", {
-          sessionId: doc.id,
-          error: (err as Error).message,
-        });
-        errors++;
-      }
-    }
-  } catch (err) {
-    logger.error("[Cleanup] Failed to query LIVE sessions for storage cleanup", {
-      error: (err as Error).message,
-    });
-  }
+  // Published uploads are intentionally retained because the created project
+  // stores those file URLs for owner dashboard source preview and extraction
+  // retry workflows. Expired/non-published sessions are still cleaned above.
 
   if (expired > 0 || reminders > 0 || cleaned > 0) {
     logger.info("[Cleanup] Run complete", {

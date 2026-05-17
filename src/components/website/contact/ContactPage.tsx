@@ -8,6 +8,8 @@ import { LuCheck, LuCheckCircle, LuLoader, LuSend } from 'react-icons/lu';
 import * as z from 'zod';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsitePageHero from '../shared/WebsitePageHero';
+import WebsiteProofStrip from '../shared/WebsiteProofStrip';
 
 const schema = z.object({
   name: z.string().min(2, 'Full name is required'),
@@ -54,6 +56,7 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const whyPoints = Array.from({ length: WHY_COUNT }, (_, i) => t(`Contact.why${i}`));
+  const proofItems = Array.from({ length: 3 }, (_, i) => t(`Contact.proof${i}`));
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -76,20 +79,16 @@ export default function ContactPage() {
 
   return (
     <main>
-      {/* Hero */}
-      <section style={{ padding: 'var(--ws-space-20) var(--ws-space-6) var(--ws-space-12)', backgroundColor: 'var(--ws-bg-primary)', textAlign: 'center' }}>
-        <AnimateOnScroll>
-          <p style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
-            {t('Contact.heroEyebrow')}
-          </p>
-          <h1 className="ws-h1">
-            {t('Contact.heroTitle')}<span className="ws-highlight">{t('Contact.heroHighlight')}</span>
-          </h1>
-          <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
-            {t('Contact.heroSubtitle')}
-          </p>
-        </AnimateOnScroll>
-      </section>
+      <WebsitePageHero
+        eyebrow={t('Contact.heroEyebrow')}
+        parts={[
+          { text: t('Contact.heroTitle') },
+          { text: t('Contact.heroHighlight'), highlight: true },
+        ]}
+        subtitle={t('Contact.heroSubtitle')}
+      >
+        <WebsiteProofStrip items={proofItems} />
+      </WebsitePageHero>
 
       {/* Two-column layout */}
       <SectionWrapper variant="subtle">

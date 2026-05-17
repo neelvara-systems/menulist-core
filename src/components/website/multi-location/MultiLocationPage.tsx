@@ -3,6 +3,7 @@ import { LuCheck, LuMapPin } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const outlets = ['Mumbai Central', 'Bandra', 'Andheri', 'Juhu', 'Pune'];
 
@@ -24,15 +25,18 @@ export default function MultiLocationPage() {
       <SectionWrapper>
         <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
           <AnimateOnScroll>
-            <h1 className="ws-h1">
-              {t('MultiLocation.heroTitle1')}
-              <span className="ws-highlight">{t('MultiLocation.heroHighlight')}</span>
-            </h1>
+            <WebsiteHeadline
+              as="h1"
+              parts={[
+                { text: t('MultiLocation.heroTitle1') },
+                { text: t('MultiLocation.heroHighlight'), highlight: true },
+              ]}
+            />
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', color: 'var(--ws-text-secondary)' }}>
               {t('MultiLocation.heroSubtitle')}
             </p>
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/get-started">{t('MultiLocation.heroCta')}</WebsiteButton>
+              <WebsiteButton href="/create-menu">{t('MultiLocation.heroCta')}</WebsiteButton>
             </div>
           </AnimateOnScroll>
         </div>
@@ -41,7 +45,7 @@ export default function MultiLocationPage() {
       {/* ── Dark animated flow diagram ──────── */}
       <section style={{ background: '#0f172a', padding: '5rem var(--ws-space-6)', overflow: 'hidden' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>
+          <p style={{ fontSize: '1.125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.5rem', letterSpacing: 0 }}>
             {t('MultiLocation.flowTitle')}
           </p>
           <p style={{ fontSize: '0.9375rem', color: '#64748b', marginBottom: '2.5rem' }}>
@@ -61,8 +65,8 @@ export default function MultiLocationPage() {
 
             {/* Master Menu (HQ) — top central */}
             <rect x="295" y="14" width="270" height="58" rx="14" fill="#1d4ed8" />
-            <text x="430" y="43" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">Master Menu (HQ)</text>
-            <text x="430" y="62" textAnchor="middle" fill="#93c5fd" fontSize="11" fontFamily="Inter, sans-serif">Single source of truth</text>
+            <text x="430" y="43" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">{t('MultiLocation.flowMaster')}</text>
+            <text x="430" y="62" textAnchor="middle" fill="#93c5fd" fontSize="11" fontFamily="Inter, sans-serif">{t('MultiLocation.flowSsot')}</text>
 
             {/* Master → outlet lines (animated electricity) */}
             {[76, 206, 430, 654, 784].map((x, i) => (
@@ -82,8 +86,8 @@ export default function MultiLocationPage() {
             {[76, 206, 430, 654, 784].map((x, i) => (
               <g key={x}>
                 <rect x={x - 56} y="190" width="112" height="62" rx="10" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
-                <text x={x} y="218" textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">Outlet {i + 1}</text>
-                <text x={x} y="238" textAnchor="middle" fill="#475569" fontSize="10" fontFamily="Inter, sans-serif">inherits all</text>
+                <text x={x} y="218" textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{t('MultiLocation.flowOutlet')} {i + 1}</text>
+                <text x={x} y="238" textAnchor="middle" fill="#475569" fontSize="10" fontFamily="Inter, sans-serif">{t('MultiLocation.flowInherits')}</text>
               </g>
             ))}
           </svg>
@@ -94,9 +98,7 @@ export default function MultiLocationPage() {
       <SectionWrapper variant="subtle">
         <AnimateOnScroll>
           <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-            <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>
-              {t('MultiLocation.problemTitle')}
-            </h2>
+            <WebsiteHeadline as="h2" text={t('MultiLocation.problemTitle')} style={{ marginBottom: 'var(--ws-space-4)' }} />
             <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-4)' }}>
               {t('MultiLocation.problemBody')}
             </p>
@@ -113,7 +115,7 @@ export default function MultiLocationPage() {
           <AnimateOnScroll>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>01</span>
-              <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('MultiLocation.step1Title')}</h2>
+              <WebsiteHeadline as="h2" text={t('MultiLocation.step1Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
                 {t('MultiLocation.step1Subtitle')}
               </p>
@@ -162,24 +164,24 @@ export default function MultiLocationPage() {
             <div style={{ backgroundColor: 'var(--ws-bg-primary)', border: '1px solid var(--ws-border-default)', borderRadius: 'var(--ws-radius-lg)', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <div style={{ padding: 'var(--ws-space-3) var(--ws-space-4)', borderBottom: '1px solid var(--ws-border-default)', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}>
                 <LuMapPin size={14} color="var(--ws-text-muted)" />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Outlet 3 — Bandra</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{t('MultiLocation.step2MockupOutlet')}</span>
               </div>
               <div style={{ padding: 'var(--ws-space-4)' }}>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-muted)', marginBottom: 'var(--ws-space-3)' }}>Butter Chicken</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--ws-space-3)' }}>
                   <div style={{ padding: 'var(--ws-space-3)', backgroundColor: 'var(--ws-bg-subtle)', borderRadius: 'var(--ws-radius-md)', border: '1px solid var(--ws-border-subtle)' }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginBottom: '4px' }}>Master price</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginBottom: '4px' }}>{t('MultiLocation.step2MockupMasterPrice')}</p>
                     <p style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--ws-text-secondary)', textDecoration: 'line-through' }}>₹320</p>
                   </div>
                   <div style={{ padding: 'var(--ws-space-3)', backgroundColor: '#eff6ff', borderRadius: 'var(--ws-radius-md)', border: '1px solid #bfdbfe' }}>
-                    <p style={{ fontSize: '0.75rem', color: '#2563eb', marginBottom: '4px' }}>This outlet</p>
+                    <p style={{ fontSize: '0.75rem', color: '#2563eb', marginBottom: '4px' }}>{t('MultiLocation.step2MockupThisOutlet')}</p>
                     <p style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1d4ed8' }}>₹360</p>
                   </div>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginTop: 'var(--ws-space-3)' }}>Other outlets unaffected. Master menu unchanged.</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginTop: 'var(--ws-space-3)' }}>{t('MultiLocation.step2MockupNote')}</p>
               </div>
               <div style={{ padding: 'var(--ws-space-3) var(--ws-space-4)', borderTop: '1px solid var(--ws-border-subtle)', backgroundColor: 'var(--ws-bg-subtle)' }}>
-                <p style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>✓ Core name &amp; description locked by HQ</p>
+                <p style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>{t('MultiLocation.step2MockupLocked')}</p>
               </div>
             </div>
           </AnimateOnScroll>
@@ -187,7 +189,7 @@ export default function MultiLocationPage() {
           <AnimateOnScroll delay={0.15}>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>02</span>
-              <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('MultiLocation.step2Title')}</h2>
+              <WebsiteHeadline as="h2" text={t('MultiLocation.step2Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
                 {t('MultiLocation.step2Subtitle')}
               </p>
@@ -210,7 +212,7 @@ export default function MultiLocationPage() {
           <AnimateOnScroll>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>03</span>
-              <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('MultiLocation.step3Title')}</h2>
+              <WebsiteHeadline as="h2" text={t('MultiLocation.step3Title')} style={{ marginBottom: 'var(--ws-space-4)' }} />
               <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
                 {t('MultiLocation.step3Subtitle')}
               </p>
@@ -229,8 +231,8 @@ export default function MultiLocationPage() {
             {/* Dashboard locations mockup */}
             <div style={{ backgroundColor: 'var(--ws-bg-subtle)', border: '1px solid var(--ws-border-default)', borderRadius: 'var(--ws-radius-lg)', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <div style={{ padding: 'var(--ws-space-3) var(--ws-space-4)', borderBottom: '1px solid var(--ws-border-default)', backgroundColor: 'var(--ws-bg-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>All Locations (5)</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--ws-brand-secondary)', fontWeight: 600 }}>Manage all</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{t('MultiLocation.step3MockupTitle')}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--ws-brand-secondary)', fontWeight: 600 }}>{t('MultiLocation.step3MockupManage')}</span>
               </div>
               {outlets.map((outlet, i) => (
                 <AnimateStaggerChild key={outlet} index={i}>
@@ -239,12 +241,12 @@ export default function MultiLocationPage() {
                       <LuMapPin size={13} color="var(--ws-text-muted)" />
                       <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-primary)' }}>{outlet}</span>
                     </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>✓ Active</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>{t('MultiLocation.step3MockupActive')}</span>
                   </div>
                 </AnimateStaggerChild>
               ))}
               <div style={{ padding: 'var(--ws-space-3) var(--ws-space-4)' }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--ws-brand-secondary)', fontWeight: 600, cursor: 'pointer' }}>+ Add location</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--ws-brand-secondary)', fontWeight: 600, cursor: 'pointer' }}>{t('MultiLocation.step3MockupAdd')}</span>
               </div>
             </div>
           </AnimateOnScroll>
@@ -255,7 +257,7 @@ export default function MultiLocationPage() {
       <SectionWrapper variant="subtle">
         <AnimateOnScroll>
           <div style={{ maxWidth: '700px', margin: '0 auto', textAlign: 'center' }}>
-            <h2 className="ws-h2" style={{ marginBottom: 'var(--ws-space-4)' }}>{t('MultiLocation.pricingTitle')}</h2>
+            <WebsiteHeadline as="h2" text={t('MultiLocation.pricingTitle')} style={{ marginBottom: 'var(--ws-space-4)' }} />
             <p className="ws-body" style={{ color: 'var(--ws-text-secondary)', marginBottom: 'var(--ws-space-6)' }}>
               {t('MultiLocation.pricingSubtitle')}
             </p>
@@ -268,9 +270,9 @@ export default function MultiLocationPage() {
       <SectionWrapper>
         <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-narrow)', margin: '0 auto' }}>
           <AnimateOnScroll>
-            <h2 className="ws-h2">{t('MultiLocation.ctaTitle')}</h2>
+            <WebsiteHeadline as="h2" text={t('MultiLocation.ctaTitle')} />
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/get-started">{t('MultiLocation.ctaCta')}</WebsiteButton>
+              <WebsiteButton href="/create-menu">{t('MultiLocation.ctaCta')}</WebsiteButton>
             </div>
             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
               {t('MultiLocation.ctaCaption')}

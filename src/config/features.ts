@@ -1087,6 +1087,15 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_MESSAGING_ONBOARDING_TRACKING: true,
 
+    /**
+     * Platform-only monitoring surface for messaging onboarding.
+     * Reads existing health snapshots, webhook events, inbound queue state,
+     * and alerts through a protected admin API route.
+     *
+     * @see __docs__/messaging-onboarding-dashboard/
+     */
+    ENABLE_MESSAGING_ONBOARDING_DASHBOARD: true,
+
     // ─────────────────────────────────────────────────────────────
     // MENU INTAKE IDENTITY (Shared upload preflight)
     // @see __docs__/menu-intake-identity/

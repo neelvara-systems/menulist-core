@@ -10,8 +10,10 @@
  */
 
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuAlertCircle, LuCamera, LuCheck, LuLoader, LuUpload } from 'react-icons/lu';
+import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 
@@ -19,6 +21,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export default function CreateMenuClient() {
+    const t = useTranslations('Website');
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [state, setState] = useState<UploadState>('idle');
@@ -37,13 +40,13 @@ export default function CreateMenuClient() {
 
         // Validate type
         if (!ALLOWED_TYPES.includes(file.type)) {
-            setError('Please upload a JPEG, PNG, or WebP image.');
+            setError(t('CreateMenu.invalidType'));
             return;
         }
 
         // Validate size
         if (file.size > MAX_FILE_SIZE) {
-            setError('Image is too large. Maximum size is 10MB.');
+            setError(t('CreateMenu.fileTooLarge'));
             return;
         }
 
@@ -67,14 +70,14 @@ export default function CreateMenuClient() {
             });
 
             if (response.status === 429) {
-                setError('You\'ve reached the upload limit. Please try again in 24 hours.');
+                setError(t('CreateMenu.uploadLimit'));
                 setState('error');
                 return;
             }
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
-                setError(data.error || 'Upload failed. Please try again.');
+                setError(data.error || t('CreateMenu.uploadFailed'));
                 setState('error');
                 return;
             }
@@ -86,10 +89,10 @@ export default function CreateMenuClient() {
             router.push(`/create-menu/preview/${data.draftId}`);
 
         } catch (err) {
-            setError('Something went wrong. Please try again.');
+            setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [router]);
+    }, [router, t]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -123,25 +126,26 @@ export default function CreateMenuClient() {
             margin: '0 auto',
         }}>
             {/* Hero */}
-            <h1 style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                color: '#1a1a2e',
-                textAlign: 'center',
-                marginBottom: '12px',
-                lineHeight: 1.3,
-            }}>
-                Your menu, live in 60 seconds
-            </h1>
+            <WebsiteHeadline
+                as="h1"
+                size="compact"
+                text={t('CreateMenu.title')}
+                highlightedText={t('CreateMenu.titleHighlight')}
+                style={{
+                    textAlign: 'center',
+                    marginBottom: '12px',
+                    lineHeight: 1.2,
+                }}
+            />
             <p style={{
                 fontSize: '16px',
-                color: '#64748b',
+                color: 'var(--ws-text-secondary)',
                 textAlign: 'center',
                 marginBottom: '32px',
                 maxWidth: '420px',
                 lineHeight: 1.5,
             }}>
-                Upload a photo of your menu. We turn it into a page your customers can use.
+                {t('CreateMenu.subtitle')}
             </p>
 
             {/* Upload Area */}
@@ -152,8 +156,8 @@ export default function CreateMenuClient() {
                 style={{
                     width: '100%',
                     minHeight: '240px',
-                    border: `2px dashed ${error ? '#ef4444' : state === 'success' ? '#22c55e' : '#d1d5db'}`,
-                    borderRadius: '16px',
+                    border: `2px dashed ${error ? 'var(--ws-error)' : state === 'success' ? 'var(--ws-success)' : 'var(--ws-border-default)'}`,
+                    borderRadius: 'var(--ws-radius-xl)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -161,8 +165,8 @@ export default function CreateMenuClient() {
                     gap: '16px',
                     padding: '32px 24px',
                     cursor: isProcessing ? 'default' : 'pointer',
-                    backgroundColor: isProcessing ? '#f8fafc' : '#ffffff',
-                    transition: 'all 0.2s ease',
+                    backgroundColor: isProcessing ? 'var(--ws-bg-subtle)' : 'var(--ws-bg-primary)',
+                    transition: 'all var(--ws-transition-normal)',
                     position: 'relative',
                     overflow: 'hidden',
                 }}
@@ -193,41 +197,41 @@ export default function CreateMenuClient() {
                 <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
                     {state === 'idle' && (
                         <>
-                            <LuCamera size={48} color="#6366f1" style={{ marginBottom: '12px' }} />
-                            <p style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a2e', marginBottom: '4px' }}>
-                                Upload menu photo
+                            <LuCamera size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                            <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
+                                {t('CreateMenu.uploadTitle')}
                             </p>
-                            <p style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                Tap to take a photo or choose a file
+                            <p style={{ fontSize: '14px', color: 'var(--ws-text-muted)' }}>
+                                {t('CreateMenu.uploadHint')}
                             </p>
                         </>
                     )}
 
                     {state === 'optimizing' && (
                         <>
-                            <LuLoader size={40} color="#6366f1" style={{ animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
-                            <p style={{ fontSize: '15px', color: '#475569' }}>Preparing your image...</p>
+                            <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite', marginBottom: '12px' }} />
+                            <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>{t('CreateMenu.preparing')}</p>
                         </>
                     )}
 
                     {state === 'uploading' && (
                         <>
-                            <LuUpload size={40} color="#6366f1" style={{ marginBottom: '12px' }} />
-                            <p style={{ fontSize: '15px', color: '#475569' }}>Uploading...</p>
+                            <LuUpload size={40} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                            <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)' }}>{t('CreateMenu.uploading')}</p>
                         </>
                     )}
 
                     {state === 'success' && (
                         <>
-                            <LuCheck size={40} color="#22c55e" style={{ marginBottom: '12px' }} />
-                            <p style={{ fontSize: '15px', color: '#16a34a' }}>Redirecting to preview...</p>
+                            <LuCheck size={40} color="var(--ws-success)" style={{ marginBottom: '12px' }} />
+                            <p style={{ fontSize: '15px', color: 'var(--ws-success)' }}>{t('CreateMenu.redirecting')}</p>
                         </>
                     )}
 
                     {state === 'error' && (
                         <>
-                            <LuAlertCircle size={40} color="#ef4444" style={{ marginBottom: '12px' }} />
-                            <p style={{ fontSize: '15px', color: '#dc2626', marginBottom: '12px' }}>{error}</p>
+                            <LuAlertCircle size={40} color="var(--ws-error)" style={{ marginBottom: '12px' }} />
+                            <p style={{ fontSize: '15px', color: 'var(--ws-error)', marginBottom: '12px' }}>{error}</p>
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -237,16 +241,16 @@ export default function CreateMenuClient() {
                                 }}
                                 style={{
                                     padding: '10px 24px',
-                                    backgroundColor: '#6366f1',
+                                    backgroundColor: 'var(--ws-cta-default)',
                                     color: '#fff',
                                     border: 'none',
-                                    borderRadius: '8px',
+                                    borderRadius: 'var(--ws-radius-lg)',
                                     fontSize: '14px',
                                     fontWeight: 600,
                                     cursor: 'pointer',
                                 }}
                             >
-                                Try Again
+                                {t('CreateMenu.tryAgain')}
                             </button>
                         </>
                     )}
@@ -262,18 +266,18 @@ export default function CreateMenuClient() {
                 width: '100%',
             }}>
                 {[
-                    { icon: '✓', text: 'No account needed' },
-                    { icon: '✓', text: 'Ready in 60 seconds' },
-                    { icon: '✓', text: 'Works for any business' },
+                    { icon: '✓', text: t('CreateMenu.proof0') },
+                    { icon: '✓', text: t('CreateMenu.proof1') },
+                    { icon: '✓', text: t('CreateMenu.proof2') },
                 ].map((item, i) => (
                     <div key={i} style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '10px',
                         fontSize: '14px',
-                        color: '#475569',
+                        color: 'var(--ws-text-secondary)',
                     }}>
-                        <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '16px' }}>{item.icon}</span>
+                        <span style={{ color: 'var(--ws-success)', fontWeight: 700, fontSize: '16px' }}>{item.icon}</span>
                         {item.text}
                     </div>
                 ))}
@@ -284,16 +288,16 @@ export default function CreateMenuClient() {
                 marginTop: '40px',
                 width: '100%',
                 padding: '24px',
-                backgroundColor: '#f8fafc',
-                borderRadius: '12px',
+                backgroundColor: 'var(--ws-bg-subtle)',
+                borderRadius: 'var(--ws-radius-xl)',
             }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#1a1a2e', marginBottom: '16px' }}>
-                    How it works
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '16px' }}>
+                    {t('CreateMenu.howTitle')}
                 </h2>
                 {[
-                    { step: '1', title: 'Take a photo', desc: 'Upload from your phone camera or choose a file' },
-                    { step: '2', title: 'See your menu page', desc: 'Your menu appears as a clean, structured page' },
-                    { step: '3', title: 'Publish and share', desc: 'Create a free account to get your QR code and shareable link' },
+                    { step: '1', title: t('CreateMenu.step0Title'), desc: t('CreateMenu.step0Desc') },
+                    { step: '2', title: t('CreateMenu.step1Title'), desc: t('CreateMenu.step1Desc') },
+                    { step: '3', title: t('CreateMenu.step2Title'), desc: t('CreateMenu.step2Desc') },
                 ].map((item, i) => (
                     <div key={i} style={{
                         display: 'flex',
@@ -304,7 +308,7 @@ export default function CreateMenuClient() {
                             width: '28px',
                             height: '28px',
                             borderRadius: '50%',
-                            backgroundColor: '#6366f1',
+                            backgroundColor: 'var(--ws-brand-secondary)',
                             color: '#fff',
                             display: 'flex',
                             alignItems: 'center',
@@ -316,10 +320,10 @@ export default function CreateMenuClient() {
                             {item.step}
                         </div>
                         <div>
-                            <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b', marginBottom: '2px' }}>
+                            <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '2px' }}>
                                 {item.title}
                             </p>
-                            <p style={{ fontSize: '13px', color: '#64748b' }}>{item.desc}</p>
+                            <p style={{ fontSize: '13px', color: 'var(--ws-text-secondary)' }}>{item.desc}</p>
                         </div>
                     </div>
                 ))}

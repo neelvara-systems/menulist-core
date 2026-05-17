@@ -1,22 +1,23 @@
 # Messaging Onboarding Dashboard — Internal Monitoring
 
 **Feature:** Internal founder-facing dashboard for monitoring the messaging onboarding pipeline
-**Status:** DOCUMENTED — Ready for Implementation
-**Route:** `/ops/messaging-onboarding` (platform-only access)
-**Feature Flag:** `ENABLE_MESSAGING_ONBOARDING_DASHBOARD` (new, default: false)
-**Last Updated:** March 12, 2026
-**Source:** ChatGPT strategic analysis + Cascade codebase validation + hardening review
+**Status:** IMPLEMENTED — Lean v1 using existing runtime telemetry
+**Route:** `/ops/messaging-onboarding`
+**Access:** `platformRole === "PLATFORM"` through protected API route
+**Feature Flag:** `ENABLE_MESSAGING_ONBOARDING_DASHBOARD`
+**Last Updated:** May 17, 2026
 
 ---
 
 ## Purpose
 
-Founder-facing dashboard to answer three questions in 10 seconds:
-1. **Is onboarding working right now?**
-2. **Are failures increasing?**
-3. **Is cost drifting?**
+Founder-facing dashboard to answer three questions quickly:
 
-This dashboard does NOT provide analytics for customers. It is an **ops monitoring surface** for the solo founder to ensure the messaging onboarding pipeline runs reliably.
+1. Is messaging onboarding working right now?
+2. Are webhook, queue, or provider failures increasing?
+3. Is AI cost or retained source-file storage drifting?
+
+This is not a customer analytics surface and not an owner-facing setting. It is an internal ops monitor for the official WhatsApp Cloud API onboarding path.
 
 ---
 
@@ -24,93 +25,90 @@ This dashboard does NOT provide analytics for customers. It is an **ops monitori
 
 | Document | Purpose |
 |---|---|
-| `README.md` | This file — index + architecture |
-| `messaging-onboarding-dashboard_spec.md` | Full dashboard specification |
+| `README.md` | This file — current dashboard contract |
+| `messaging-onboarding-dashboard_spec.md` | Product specification |
 | `messaging-onboarding-dashboard_impl.md` | Technical implementation blueprint |
 | `messaging-onboarding-dashboard_firebase.md` | Firebase cost tracking |
 
+Related runbook: [`../messaging-onboarding/messaging-onboarding_runbook.md`](../messaging-onboarding/messaging-onboarding_runbook.md)
+
 ---
 
-## Architecture Overview
+## Current Architecture
 
 ```
-Event Sources                    Aggregation              Dashboard
-─────────────                    ───────────              ─────────
-messagingOnboardingEvents  ──►  onDocumentCreated CF  ──►  messagingOnboardingMetrics/{date}
-  (already exists, ~20/session)     (NEW: aggregateOnboardingMetrics)       │
-                                                                             ▼
-messagingOnboardingSessions ──►  checkStuckSessions  ──►  systemAlerts collection
-  (active session queries)          (NEW: every 10 min)        │
-                                                                ▼
-                                 monitorOnboardingHealth  ──►  Dashboard UI
-                                    (NEW: every 15 min)        /ops/messaging-onboarding
+Meta WhatsApp Cloud API
+        │
+        ▼
+messagingOnboarding/whatsapp webhook
+        │ HMAC verification
+        ▼
+messagingOnboardingInboundMessages
+        │ durable queue + dedup
+        ▼
+messagingOnboardingSessions + messagingOnboardingEvents
+        │ hourly health snapshot
+        ▼
+systemHealth/messaging_onboarding_{YYYYMMDDHH}
+systemAlerts
+        │ protected Admin SDK API
+        ▼
+/ops/messaging-onboarding
 ```
+
+The dashboard intentionally does not add OpenWA, `whatsapp-web.js`, QR-scanned sessions, or owner-managed API keys.
 
 ---
 
 ## Key Design Decisions
 
-1. **Zero external analytics** — Uses Firestore event logs → daily aggregation → dashboard reads. No Mixpanel/Amplitude/BigQuery.
-2. **Aggregation via Cloud Function trigger** — `onDocumentCreated` on existing `messagingOnboardingEvents` collection. No polling.
-3. **One metrics doc per day** — `messagingOnboardingMetrics/{YYYY-MM-DD}`. Atomic increments via `FieldValue.increment(1)`.
-4. **5 alerts only** — Minimal alerting: sessions=0/1h, preview_rate<40%, publish_failures>5/h, processing_time>5min, cost/publish>₹20.
-5. **Existing data only** — All metrics derived from existing `messagingOnboardingEvents` collection. No new event logging needed.
-6. **Platform-only access** — Same pattern as Scheduler Monitor (`/ops/scheduler`). Requires `platformRole === 'PLATFORM'`.
+1. **Official provider only** — WhatsApp Cloud API remains the provider. WhatsApp Web automation is not adopted.
+2. **No new aggregation collection** — Lean v1 reuses `systemHealth`, `systemAlerts`, `messagingOnboardingEvents`, `messagingOnboardingInboundMessages`, and `messagingOnboardingSessions`.
+3. **Server-only reads** — The dashboard calls `/api/ops/messaging-onboarding`, protected with `withAuth({ requiredPlatformRole: "PLATFORM" })`.
+4. **No owner API-key model** — OpenWA's API-key idea maps to our existing platform role gate. Messaging provider credentials stay in Firebase Secret Manager.
+5. **Webhook observability from existing events** — Invalid HMAC, queue, processing, provider media, and send failures are surfaced from the existing event log.
+6. **Manual refresh only** — No realtime listeners and no polling loop.
 
 ---
 
-## Dashboard Sections (5)
+## Dashboard Sections
 
 | Section | Purpose | Data Source |
 |---|---|---|
-| **System Health** | Is the pipeline alive? | `messagingOnboardingMetrics/{today}` |
-| **Onboarding Funnel** | Where users drop off | Same metrics doc (derived rates) |
-| **Reliability** | Failures & stuck sessions | Metrics + active session query |
-| **Cost & AI Usage** | Gemini cost control | Metrics (gemini calls, images) |
-| **Growth Signals** | Is system self-propagating? | Metrics (acquisitionSource breakdown) |
-
-Plus: **Alert Panel** (top), **Session Debug Tool** (bottom), **Cleanup Status** (footer).
-
----
-
-## New Cloud Functions (3)
-
-| Function | Trigger | Purpose |
-|---|---|---|
-| `aggregateOnboardingMetrics` | `onDocumentCreated(messagingOnboardingEvents)` | Increment daily metrics counters |
-| `checkStuckSessions` | `onSchedule(every 10 minutes)` | Detect & recover stuck sessions |
-| `monitorOnboardingHealth` | `onSchedule(every 15 minutes)` | Check thresholds, create alerts |
+| Provider & Access | Confirms Cloud API path and platform-only access | Static contract + API route auth |
+| Pipeline Health | Sessions, publish rate, failures, AI cost, storage sample | `systemHealth` snapshot |
+| Webhook Delivery | HMAC failures, queue events, replies, media/send failures | `messagingOnboardingEvents` |
+| Inbound Queue | Pending, processing, failed queue backlog | `messagingOnboardingInboundMessages` count queries |
+| Sessions By State | Active/problem session counts | `messagingOnboardingSessions` count queries |
+| Recent Sessions | Last updated sessions without full phone exposure | `messagingOnboardingSessions` |
+| Recent Events | PII-safe operational event timeline | `messagingOnboardingEvents` |
+| Messaging Alerts | Existing alert feed filtered to this subsystem | `systemAlerts` |
 
 ---
 
-## New Collections (1)
+## Implemented Files
 
-| Collection | Purpose | Doc ID Format |
-|---|---|---|
-| `messagingOnboardingMetrics` | Daily aggregated counters | `YYYY-MM-DD` |
-
-Alerts use existing `systemAlerts` collection (from ops monitoring system).
-
----
-
-## Relationship to Existing Systems
-
-- **Reuses:** `messagingOnboardingEvents` (already written by all CFs)
-- **Reuses:** `messagingOnboardingSessions` (for active session queries)
-- **Reuses:** `systemAlerts` collection (from ops monitoring)
-- **Follows:** Same pattern as Scheduler Monitor (`/ops/scheduler`)
-- **Follows:** Same platform-only access pattern
+| File | Purpose |
+|---|---|
+| `src/app/(main)/ops/messaging-onboarding/page.tsx` | Route shell |
+| `src/app/api/ops/messaging-onboarding/route.ts` | Platform-only Admin SDK snapshot API |
+| `src/components/templates/main-app/platform/messagingOnboardingMonitor/index.tsx` | Dashboard UI |
+| `src/lib/ops/messagingOnboardingTypes.ts` | Shared UI/API response types |
+| `src/config/features.ts` | `ENABLE_MESSAGING_ONBOARDING_DASHBOARD` |
+| `src/constants/database.ts` | `SYSTEM_HEALTH` collection constant |
+| `firestore.rules` | Explicit client deny for `systemHealth` |
 
 ---
 
-## Implementation Order
+## What Was Rejected From OpenWA
 
-1. Create `messagingOnboardingMetrics` collection + aggregation CF
-2. Create `checkStuckSessions` CF (stuck session recovery)
-3. Create `monitorOnboardingHealth` CF (threshold alerts)
-4. Build dashboard page (`/ops/messaging-onboarding`)
-5. Wire to navigation (Ops Control Room)
+| OpenWA idea | Decision |
+|---|---|
+| `whatsapp-web.js` gateway | Rejected. Not aligned with policy/compliance risk. |
+| QR-scanned sessions | Rejected. Wrong operational model for SMB trust. |
+| Bulk messaging | Rejected. Outside MenuList messaging onboarding scope. |
+| API-key permission model | Not adopted as a user feature. Platform role gate is sufficient. |
 
 ---
 
-_Document Status: DOCUMENTED — Ready for Implementation. March 12, 2026._
+_Document Status: IMPLEMENTED. May 17, 2026._

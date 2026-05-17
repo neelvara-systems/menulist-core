@@ -1,8 +1,8 @@
 # Messaging Onboarding — Marketing & Sales Collateral
 
-**Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine  
-**Status:** Draft — Documentation Phase  
-**Last Updated:** February 17, 2026  
+**Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
+**Status:** Implementation-Complete Sales Reference
+**Last Updated:** May 17, 2026
 **Audience:** Internal — Sales team, marketing, business development
 
 ---
@@ -36,10 +36,10 @@ The owner doesn't sign up. Doesn't create an account. Doesn't learn a dashboard.
 
 They send menu photos on WhatsApp — the app they already use every day — and MenuList handles everything silently. Menu extraction, structuring, preview, approval, and publishing happen automatically.
 
-After 5 minutes of effort, the owner has:
+After a few minutes of effort, the owner has:
 
-- A live digital menu accessible by QR code
-- An official business page
+- A live official menu link
+- QR and official business page access through existing MenuList share surfaces
 - A dashboard account (for future use)
 
 ### Why This Matters
@@ -64,7 +64,7 @@ Average time to live: **2-7 days** with significant human effort.
 ### What MenuList Does
 
 - Send menu photos on WhatsApp → approve preview → live
-- Average time to live: **under 5 minutes**
+- Average time to live: **in minutes**
 - Human effort: **near zero** (just send photos and tap approve)
 - Sales involvement: **none**
 
@@ -96,12 +96,12 @@ Average time to live: **2-7 days** with significant human effort.
 
 - Owner sends menu photos on WhatsApp
 - MenuList extracts, structures, and publishes automatically
-- Live digital presence in under 5 minutes
+- Live digital presence in minutes
 - No signup, no training, no dashboard required
 
 ### Slide 3: How It Works
 
-**3 steps. Under 5 minutes.**
+**3 steps. Live in minutes.**
 
 1. **Send** — Owner sends menu photos on WhatsApp
 2. **Review** — Owner sees preview, confirms details
@@ -185,7 +185,7 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### Non-India Messaging (Global)
 
-- **Positioning:** "Digital menu setup in 5 minutes via WhatsApp"
+- **Positioning:** "Digital menu setup in minutes via WhatsApp"
 - **Channel:** Google Ads, social media, local business directories
 - **Language:** English, professional, benefit-driven
 - **Key phrase:** "Send your menu. We handle the rest."

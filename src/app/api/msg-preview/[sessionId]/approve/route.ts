@@ -9,38 +9,16 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/messaging-onboarding/messaging-onboarding_impl.md §4.2, §8.2.7
  */
 
-import countryData from "@atoms/phoneNumberInput/countryData";
 import { DB_COLLECTIONS } from "@constant/database";
-import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
-import { getOwnerRoleId } from "@data/defaultRoles";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
-import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
+import { executeMessagingOnboardingPublish } from "@lib/messaging-onboarding/publish";
 import { secureError } from "@lib/security/secureLogger";
-import { slugify } from "@lib/utils/slugify";
 import crypto from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const db = admin.firestore();
-
-const getCanonicalExtractionLanguages = (languages: any): string[] => normalizeProjectLanguages(
-  Array.isArray(languages)
-    ? languages.map((language) => typeof language === "string" ? language : language?.code)
-    : [],
-);
-
-const getDetectedDefaultLanguage = (languages: any): string => {
-  if (Array.isArray(languages)) {
-    const primary = languages.find((language) => language?.isPrimary)?.code;
-    if (primary) return String(primary).trim().toLowerCase();
-
-    const firstCode = typeof languages[0] === "string" ? languages[0] : languages[0]?.code;
-    if (firstCode) return String(firstCode).trim().toLowerCase();
-  }
-  return CANONICAL_SOURCE_LANGUAGE;
-};
 
 const ApproveSchema = z.object({
   token: z.string().min(20),
@@ -63,7 +41,7 @@ export async function POST(
     const publishLimit = await checkRateLimit({ key: `publish:${ip}`, ...publishLimitConfig });
     if (!publishLimit.allowed) {
       return NextResponse.json(
-        { error: "Too many publish attempts. Please wait before trying again." },
+        { error: "Too many publish attempts. Wait before trying again." },
         { status: 429 }
       );
     }
@@ -105,6 +83,17 @@ export async function POST(
           throw new Error("Invalid token");
         }
 
+        if (data.state === "LIVE" && data.publishedResult) {
+          return {
+            ...data,
+            _alreadyLive: true,
+          };
+        }
+
+        if (data.state === "PUBLISHING") {
+          throw new Error("Publish already in progress");
+        }
+
         // Check session is in correct state
         if (data.state !== "AWAITING_APPROVAL") {
           throw new Error(
@@ -141,10 +130,20 @@ export async function POST(
       if (msg.includes("Cannot publish")) {
         return NextResponse.json({ error: msg }, { status: 409 });
       }
+      if (msg.includes("already in progress")) {
+        return NextResponse.json({ error: "Publishing is already in progress." }, { status: 409 });
+      }
       if (msg.includes("expired")) {
         return NextResponse.json({ error: "Session expired" }, { status: 410 });
       }
       throw txError;
+    }
+
+    if (sessionData._alreadyLive && sessionData.publishedResult) {
+      return NextResponse.json({
+        success: true,
+        publishedResult: sessionData.publishedResult,
+      });
     }
 
     // Log preview approved event
@@ -196,7 +195,7 @@ export async function POST(
     const resolvedAddress = address || sessionData.extractedBusinessInfo?.address || "";
 
     try {
-      const result = await executePublishFromApiRoute(sessionId, {
+      const result = await executeMessagingOnboardingPublish(sessionId, {
         businessName,
         businessType: resolvedBusinessType,
         phone: resolvedPhone,
@@ -211,7 +210,7 @@ export async function POST(
     } catch (publishError) {
       // Retry once
       try {
-        const result = await executePublishFromApiRoute(sessionId, {
+        const result = await executeMessagingOnboardingPublish(sessionId, {
           businessName,
           businessType: resolvedBusinessType,
           phone: resolvedPhone,
@@ -257,7 +256,7 @@ export async function POST(
           .catch(() => { });
 
         return NextResponse.json(
-          { error: "Publishing failed. Please try again." },
+          { error: "Publishing failed. Try again." },
           { status: 500 },
         );
       }
@@ -269,239 +268,4 @@ export async function POST(
       { status: 500 },
     );
   }
-}
-
-/**
- * Execute publish directly from API route using Admin SDK.
- * Mirrors publishPipeline.ts logic but runs in Next.js context.
- * @see __docs__/messaging-onboarding/messaging-onboarding_impl.md §8.2.7 — ADR-10
- */
-async function executePublishFromApiRoute(
-  sessionId: string,
-  params: {
-    businessName: string;
-    businessType: string;
-    phone: string;
-    address: string;
-    sessionData: any;
-  },
-): Promise<any> {
-  const { businessName, businessType, phone, address, sessionData } = params;
-
-  // Infer country/currency from phone (uses frontend countryData.ts — 252 countries)
-  const countryInfo = inferCountryFromPhone(sessionData.providerDisplayId || "");
-  const country = countryInfo.code;
-  const currency = { code: countryInfo.currencyCode, symbol: countryInfo.currencySymbol, timezone: countryInfo.timeZone };
-
-  // Generate placeholder email
-  const generatedEmail = getGeneratedEmail(sessionData.providerDisplayId || "");
-
-  const menuData = sessionData.extractedMenuData;
-  const extractedLanguageCodes = getCanonicalExtractionLanguages(menuData?.languages);
-  const detectedDefaultLanguage = getDetectedDefaultLanguage(menuData?.languages);
-
-  // Story 3B: Check if user with this phone already exists (spec §Story 3B)
-  // Query BEFORE transaction — if exists, we UPDATE instead of CREATE
-  const existingUserQuery = await db
-    .collection(DB_COLLECTIONS.USERS)
-    .where("phone", "==", sessionData.providerDisplayId || "")
-    .limit(1)
-    .get();
-  const existingUserDoc = existingUserQuery.empty ? null : existingUserQuery.docs[0];
-
-  // Pre-check subdomain uniqueness (must be outside transaction)
-  const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
-
-  // Atomic transaction
-  const result = await db.runTransaction(async (transaction) => {
-    // Centralized tenant + store creation
-    const core = await createTenantStoreInTransaction(transaction, db, {
-      businessName,
-      businessType,
-      email: generatedEmail,
-      onboardingSource: 'MESSAGING_ONBOARDING',
-      subdomain: { preChecked: preCheckedSubdomain },
-      includeTimeSlotPresets: true,
-      storeExtra: {
-        activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
-        phoneNumber: sessionData.providerDisplayId || "",
-        activeLanguages: extractedLanguageCodes,
-        defaultLanguage: detectedDefaultLanguage,
-        country,
-        currencyCode: currency.code,
-        currencySymbol: currency.symbol,
-        timeZone: currency.timezone,
-        logo: "",
-      },
-    });
-
-    // Create or Update User (Story 3B: link to existing user doc if phone exists)
-    // Auth Fix: Generate claimToken outside conditional so it's accessible in return
-    let claimToken: string | null = null;
-    let userRef;
-    if (existingUserDoc) {
-      // Story 3B: User exists (prior dashboard signup) — UPDATE, not create
-      userRef = existingUserDoc.ref;
-      transaction.update(userRef, {
-        tenantId: core.tenantId,
-        storeId: core.storeId,
-        stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],
-        provider: sessionData.provider,
-        providerUserId: sessionData.providerUserId,
-        onboardingSource: "MESSAGING_ONBOARDING",
-        modifiedOn: core.now,
-      });
-    } else {
-      // New user — CREATE
-      // Auth Fix: Generate claimToken so owner can link their Google account
-      claimToken = crypto.randomBytes(32).toString("base64url");
-      const claimTokenExpiresAt = Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-      userRef = db.collection(DB_COLLECTIONS.USERS).doc();
-      transaction.set(userRef, {
-        phone: sessionData.providerDisplayId || "",
-        email: generatedEmail,
-        name: businessName,
-        isVerified: true,          // Auth Fix: Required for NextAuth signIn callback
-        active: true,
-        platformRole: "OWNER",     // Auth Fix: Required for session.platformRole
-        tenantId: core.tenantId,
-        storeId: core.storeId,
-        stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],
-        profileImage: "",
-        provider: sessionData.provider,
-        providerUserId: sessionData.providerUserId,
-        createdVia: "messaging-onboarding",
-        onboardingSource: "MESSAGING_ONBOARDING",
-        claimToken,                // Auth Fix: One-time token for Google account linking
-        claimTokenExpiresAt,       // Auth Fix: 7-day expiry for claim token
-        createdOn: core.now,
-        modifiedOn: core.now,
-      });
-    }
-
-    // Create Project
-    // Path: projects/{tId}/{sId}/{projectId} — matches database/projects/index.ts DAL pattern
-    const projectId = `${core.tenantId}-default-${core.storeId}`;
-    const projectRef = db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId);
-    const validUploads = (sessionData.uploads || []).filter(
-      (u: any) => (sessionData.validMenuFiles || []).includes(u.id),
-    );
-
-    transaction.set(projectRef, {
-      projectId,
-      tenantId: core.tenantId,
-      storeId: core.storeId,
-      files: validUploads.map((upload: any, index: number) => ({
-        uid: upload.id,
-        name: upload.id,
-        size: upload.fileSize,
-        type: upload.mimeType,
-        url: upload.storageUrl,
-        // CRITICAL: Must wrap in { data: ... } to match ExtractedData schema.
-        // Dashboard editor reads extractedData.data.categories / extractedData.data.items
-        // (44 references across 13 editor files). Without wrapper → empty/broken menu.
-        extractedData: index === 0 ? { data: menuData } : null,
-      })),
-      languages: extractedLanguageCodes,
-      defaultLanguage: detectedDefaultLanguage,
-      active: true,
-      deleted: false,
-      createdOn: core.now,
-      modifiedOn: core.now,
-    });
-
-    // URL Routing Architecture: Create projectsSummary with slug
-    // Ensures slug-based URL routing works for messaging-onboarded stores
-    const projectSlug = slugify("Menu") || "menu-1";
-    const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${core.storeId}`);
-    transaction.set(projectsSummaryRef, {
-      lastUpdated: core.now,
-      [`projects.${projectId}`]: {
-        name: "Menu",
-        description: `Digital menu for ${businessName}`,
-        active: true,
-        isDefault: true,
-        slug: projectSlug,
-      },
-    }, { merge: true });
-
-    return { tenantId: core.tenantId, storeId: core.storeId, projectId, userId: userRef.id, subdomain: core.subdomain, claimToken };
-  });
-
-  // Update session to LIVE + set confirmationPending for WhatsApp message (T3/M-5)
-  // URL Routing Architecture: Use subdomain-based URL (not path-based)
-  const publicUrl = getMenuUrl(result.subdomain);
-  // Auth Fix: Include claimToken in dashboard URL so owner can link Google account
-  const claimTokenForUrl = result.claimToken || "";
-  const dashboardUrl = claimTokenForUrl
-    ? `${SIGNIN_URL}?claim=${claimTokenForUrl}`
-    : SIGNIN_URL;
-
-  const sessionRef = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS).doc(sessionId);
-  await sessionRef.update({
-    state: "LIVE",
-    stateHistory: FieldValue.arrayUnion({
-      state: "LIVE",
-      timestamp: Timestamp.now(),
-      reason: "Published successfully",
-    }),
-    publishedResult: {
-      tenantId: result.tenantId,
-      storeId: result.storeId,
-      projectId: result.projectId,
-      userId: result.userId,
-      publicUrl,
-      dashboardUrl,
-    },
-    confirmationPending: true,
-    publishedAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-  });
-
-  // TODO (M-3): Create OBP (Official Business Page) if ENABLE_OBP flag is on
-  // OBP creation should be called after the transaction succeeds, using the new storeId/tenantId.
-  // Pattern: await createOBP({ tenantId, storeId, businessName, businessType, ... });
-  // Deferred to post-v1 — OBP creation is non-blocking and can be added independently.
-
-  // TODO (M-4): Generate QR code for the digital menu
-  // QR code generation should use the publicUrl and store in Firebase Storage.
-  // Deferred to post-v1 — QR is non-blocking and can be added independently.
-
-  return {
-    tenantId: result.tenantId,
-    storeId: result.storeId,
-    projectId: result.projectId,
-    publicUrl,
-    dashboardUrl,
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════
-// COUNTRY / CURRENCY INFERENCE (derived from frontend countryData.ts — 252 countries)
-// ═══════════════════════════════════════════════════════════════
-
-const DEFAULT_COUNTRY_INFO = countryData.find((c) => c.code === "IN")!;
-
-/**
- * Infer country from E.164 phone number using frontend countryData.
- * Sorts dial codes by length DESC so longer codes match first.
- */
-function inferCountryFromPhone(phone: string): typeof countryData[number] {
-  const cleaned = phone.replace(/[^0-9+]/g, "");
-  const withPlus = cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
-
-  // Sort by dial code length DESC for longest-match-first
-  const sorted = [...countryData].sort(
-    (a, b) => b.dialCode.replace(/\s/g, "").length - a.dialCode.replace(/\s/g, "").length,
-  );
-
-  for (const entry of sorted) {
-    const code = entry.dialCode.replace(/\s/g, "");
-    if (withPlus.startsWith(code)) {
-      return entry;
-    }
-  }
-
-  return DEFAULT_COUNTRY_INFO;
 }

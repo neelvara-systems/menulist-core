@@ -24,7 +24,7 @@ const getPlanBullets = (planId: string, monthlyCreditAllowance: string | number)
                 'Multi-language menu',
                 'Pro analytics action summaries',
                 'Branding and presentation control',
-                'Update once, changes reflect everywhere instantly'
+                'Update once, publish from the approved source'
             ];
         case 'premium':
             return [

@@ -1,9 +1,11 @@
 # MenuList Hype & Domination Marketing Playbook
 
 **Created:** March 2026
-**Status:** ACTIVE — Customer acquisition phase
+**Status:** STRATEGY CONTEXT — not a separate website version
 **Source:** Web research (Cluely/Roy Lee, PLG examples, viral loops, landing page CRO) + Cascade analysis
-**Purpose:** Complete marketing/sales/distribution playbook for MenuList's initial market domination phase
+**Purpose:** Marketing/sales/distribution context for MenuList. Use the current implementation and content docs for homepage copy and layout decisions.
+
+> Canonical governance note (May 17, 2026): The current website implementation is the only source-code version. This playbook can inform distribution psychology, but homepage copy, screenshots, claims, and CTAs must follow the current codebase-first official-source strategy. Do not use this document to reintroduce hype, automatic external-sync claims, or generic "AI SaaS" language.
 
 ---
 
@@ -15,7 +17,7 @@ You're right that infrastructure positioning alone won't get initial traction. H
 
 Most products that try the hype route fail because they have nothing to show. MenuList is different:
 
-1. **The transformation is VISUAL and INSTANT** — Menu photo → live business page in minutes. This is demo-able in 30 seconds.
+1. **The transformation is visual and concrete** — current menu → official public menu source. This is demo-able without claiming uncontrolled external sync.
 2. **Built-in distribution** — Every QR menu, every OBP page, every shared link says "Powered by MenuList." This is the Linktree/Typeform model.
 3. **Zero-friction entry** — Business owners already HAVE menus. You're not asking them to create something new. Just upload what exists.
 4. **India-first advantage** — Millions of restaurants/businesses still share menu photos on WhatsApp. The gap between current reality and what MenuList offers is ENORMOUS.
@@ -89,7 +91,7 @@ Business uploads menu
 ```
 Founder creates transformation demo video
   → Posts on X, LinkedIn, Instagram Reels
-  → Shows: messy menu photo → upload → live business page in 30 seconds
+  → Shows: current menu → upload → reviewed public menu source
   → Viewers share because it looks like magic
   → Business owners think "I need this"
   → Click through to website

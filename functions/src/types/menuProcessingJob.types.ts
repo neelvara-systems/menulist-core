@@ -66,6 +66,10 @@ export interface MenuImageProcessingJob {
     action?: string;
     businessCategory?: string;
     businessType?: string;
+    /** Server-only extraction path. Used by messaging onboarding to reuse AI extraction without writing a temp project. */
+    skipProjectSave?: boolean;
+    /** Optional source marker for cross-flow diagnostics. */
+    source?: string;
 
     // ─────────────────────────────────────────────────────────────
     // OUTPUT (Populated on completion)
@@ -142,6 +146,8 @@ export interface MenuImageProcessingJob {
             lowConfidenceCount: number;
             averageConfidenceScore: number;
         };
+        /** Per-file extracted data for flows that skip project writes and persist elsewhere. */
+        redistributedFiles?: Record<string, unknown>;
     };
 
     // Per-file results (after redistribution)

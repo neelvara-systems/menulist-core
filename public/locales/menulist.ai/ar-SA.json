@@ -2092,7 +2092,7 @@
             "pricing": "الأسعار",
             "multiLocation": "مواقع متعددة",
             "login": "تسجيل الدخول",
-            "cta": "أنشئ MenuList الخاص بك ←",
+            "cta": "ارفع قائمتك →",
             "openMenu": "فتح قائمة التنقل",
             "closeMenu": "إغلاق القائمة"
         },
@@ -2114,18 +2114,24 @@
             "bottomTagline": "صفحات القائمة الرسمية. مصممة ليتم العثور عليها."
         },
         "Hero": {
-            "titlePart1": "قائمتك ",
-            "titleHighlight": "الرسمية.",
-            "titlePart2": " من مكان واحد.",
-            "subtitle": "ارفع قائمتك مرة واحدة. نحن نجهز وننشر كل شيء من أجلك.",
-            "cta": "أنشئ MenuList الخاص بك ←",
-            "caption": "يستغرق دقائق. بدون تصميم. بدون إعداد تقني.",
+            "titlePart1": "ارفع قائمتك. ",
+            "titleHighlight": "اجعل قائمتك الرسمية على الإنترنت.",
+            "titlePart2": "",
+            "subtitle": "ابدأ بالقائمة التي تستخدمها الآن. MenuList يجهز القائمة المباشرة والصفحة الرسمية وقائمة QR وتطبيق العملاء ورابط الويب وملف PDF من مكان واحد تتحكم به.",
+            "cta": "ارفع قائمتك →",
+            "caption": "البداية مجانية. تراجع قبل النشر.",
             "surfaceQrMenu": "قائمة QR",
             "surfaceOfficialPage": "الصفحة الرسمية",
             "surfaceDigitalScreen": "شاشة رقمية",
             "surfaceWebLink": "الويب والرابط",
             "surfacePrintPdf": "طباعة و PDF",
-            "surfaceCustomerApp": "Customer App"
+            "surfaceCustomerApp": "Customer App",
+            "eyebrow": "بدون إعداد تقني",
+            "secondaryCta": "شاهد ما يراه العملاء",
+            "proof0": "قائمة مباشرة وصفحة رسمية",
+            "proof1": "أنت توافق قبل النشر",
+            "proof2": "QR والروابط والتطبيق وPDF يستخدمون نفس القائمة",
+            "visualLabel": "معاينة القائمة المباشرة والصفحة الرسمية في MenuList"
         },
         "Problem": {
             "title": "معظم الشركات ليس لديها نسخة رسمية واحدة من قائمتها.",
@@ -2591,7 +2597,7 @@
             "formAgreeEnd": " الخاصة بـ MenuList.",
             "formSubmit": "إرسال الرسالة",
             "formSubmitting": "جارٍ الإرسال...",
-            "successTitle": "تم إرسال الرسالة!",
+            "successTitle": "تم إرسال الرسالة",
             "successBody": "استلمنا رسالتك وسنرد عليك قريباً.",
             "successAnother": "إرسال رسالة أخرى"
         },

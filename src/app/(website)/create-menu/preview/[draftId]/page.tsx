@@ -10,14 +10,15 @@
 
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
+import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
 import { FEATURE_FLAGS } from '@config/features';
 import { Metadata } from 'next';
 import PreviewClient from '../../PreviewClient';
 
 export const metadata: Metadata = {
-    title: 'Menu Preview — MenuList',
-    description: 'Preview your extracted menu before publishing.',
+    title: 'Menu Source Preview — MenuList',
+    description: 'Review your prepared menu source before publishing.',
     robots: {
         index: false,
         follow: false,
@@ -42,11 +43,15 @@ export default function PreviewPage({ params }: PreviewPageProps) {
                     padding: '40px 20px',
                     textAlign: 'center',
                 }}>
-                    <h1 style={{ fontSize: '24px', marginBottom: '16px', color: '#1a1a2e' }}>
-                        Not Available
-                    </h1>
-                    <p style={{ fontSize: '16px', color: '#64748b' }}>
-                        This feature is not yet available.
+                    <WebsiteHeadline
+                        as="h1"
+                        size="compact"
+                        text="Menu source preview is being prepared"
+                        highlightedText="source preview"
+                        style={{ marginBottom: '16px' }}
+                    />
+                    <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)' }}>
+                        Start from the guided setup for now.
                     </p>
                 </div>
                 <Footer />

@@ -11,15 +11,15 @@
 
 | Page             | Title                                                                 | Source File                           |
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
-| Homepage         | MenuList — Upload Your Menu. Your Business is Online.                 | `(website)/layout.tsx` (default)      |
+| Homepage         | MenuList - Upload Your Menu Online                                    | `(website)/layout.tsx`                |
 | Features         | Features — MenuList \| Everything Your Menu Needs, Nothing It Doesn't | `(website)/features/page.tsx`         |
-| How It Works     | How MenuList Works — From Menu Photo to Online in Minutes             | `(website)/how-it-works/page.tsx`     |
+| How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
 | Pricing          | Pricing — MenuList \| Simple, Transparent Plans for Every Business    | `(website)/pricing/page.tsx`          |
 | Multi-Location   | Multi-Location Menu Management — MenuList \| One Menu, Every Outlet   | `(website)/multi-location/page.tsx`   |
 | About            | About MenuList — Built in India for Growing Businesses                | `(website)/about/page.tsx`            |
 | Contact          | Contact Us — MenuList \| Get in Touch                                 | `(website)/contact/page.tsx`          |
-| Get Started      | Get Started — Upload Your Menu and Get Online                         | `(website)/get-started/page.tsx`      |
-| Create Menu      | Create Your Menu — MenuList \| Free Digital Menu Creator              | `(website)/create-menu/page.tsx`      |
+| Get Started      | Get Started — Create Your Official Menu Source                        | `(website)/get-started/page.tsx`      |
+| Create Menu      | Create Your Official Menu Source — MenuList                           | `(website)/create-menu/page.tsx`      |
 | Trust & Security | Trust & Security — MenuList \| How We Keep Your Data Safe             | `(website)/trust-security/page.tsx`   |
 | Privacy          | Privacy Policy — MenuList                                             | `(website)/privacy-policy/page.tsx`   |
 | Terms            | Terms of Service — MenuList                                           | `(website)/terms-of-service/page.tsx` |
@@ -29,14 +29,15 @@
 
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homepage       | Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look.                        |
+| Homepage       | Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
-| How It Works   | Upload a menu photo or PDF. MenuList structures everything, prepares images and descriptions, and publishes to QR, web, screens, and your official business page.   |
+| How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source for your public menu, official page, QR assets, customer app, PDF, and web link.   |
 | Pricing        | Choose the right MenuList plan for your business. Free to start. Upgrade for more surfaces, multi-language support, and multi-location management.                  |
-| Multi-Location | Manage menus across all your locations from one place. One master menu, every outlet inherits it. Update once — every location reflects the change instantly.       |
+| Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |
 | About          | MenuList turns your menu into your entire online presence. Built for businesses that care about how they present themselves to customers.                           |
 | Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
-| Get Started    | Upload your menu and get your business online in minutes. Digital menu, QR menu, and official business page — all from one upload.                                  |
+| Get Started    | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links.             |
+| Create Menu    | Start with your current menu and create the owner-approved source for your public menu, official page, QR assets, customer app, and share links.                      |
 
 ### 1.3 Heading Hierarchy
 
@@ -246,13 +247,13 @@ This creates a growing network of indexed pages that reinforce MenuList as the c
 <!-- Homepage (from layout.tsx default metadata) -->
 <meta
   property="og:title"
-  content="MenuList — Upload Your Menu. Your Business is Online."
+  content="MenuList — The Official Source for What Customers See"
 />
 <meta
   property="og:description"
-  content="Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look."
+  content="MenuList gives your menu and business information one owner-approved source for the public menu, official business page, QR assets, customer app, screens, and share links."
 />
-<meta property="og:image" content="https://menulist.ai/og-image.png" />
+<meta property="og:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 <meta property="og:url" content="https://menulist.ai" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="MenuList" />
@@ -261,13 +262,13 @@ This creates a growing network of indexed pages that reinforce MenuList as the c
 <meta name="twitter:card" content="summary_large_image" />
 <meta
   name="twitter:title"
-  content="MenuList — Upload Your Menu. Your Business is Online."
+  content="MenuList — The Official Source for What Customers See"
 />
 <meta
   name="twitter:description"
-  content="Turn a menu photo into your digital menu, QR menu, and official business page — in minutes, not months. One menu, everywhere customers look."
+  content="MenuList gives your menu and business information one owner-approved source for the public menu, official business page, QR assets, customer app, screens, and share links."
 />
-<meta name="twitter:image" content="https://menulist.ai/og-image.png" />
+<meta name="twitter:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 ```
 
 ### OG Image Specs

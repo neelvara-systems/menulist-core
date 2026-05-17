@@ -2092,7 +2092,7 @@
             "pricing": "Precios",
             "multiLocation": "Multi-ubicación",
             "login": "Iniciar sesión",
-            "cta": "Crea tu MenuList →",
+            "cta": "Sube tu menú →",
             "openMenu": "Abrir menú de navegación",
             "closeMenu": "Cerrar menú"
         },
@@ -2114,18 +2114,24 @@
             "bottomTagline": "Páginas de menú oficiales. Hechas para ser encontradas."
         },
         "Hero": {
-            "titlePart1": "Tu ",
-            "titleHighlight": "menú oficial.",
-            "titlePart2": " Desde un solo lugar.",
-            "subtitle": "Sube tu menú una vez. Nosotros preparamos y publicamos todo por ti.",
-            "cta": "Crea tu MenuList →",
-            "caption": "Toma minutos. Sin diseño. Sin configuración técnica.",
+            "titlePart1": "Sube tu menú. ",
+            "titleHighlight": "Ten tu menú oficial en línea.",
+            "titlePart2": "",
+            "subtitle": "Empieza con el menú que ya usas. MenuList prepara tu menú en vivo, página oficial, menú QR, app para clientes, enlace web y PDF desde un solo lugar que controlas.",
+            "cta": "Sube tu menú →",
+            "caption": "Gratis para empezar. Revisas antes de publicar.",
             "surfaceQrMenu": "Menú QR",
             "surfaceOfficialPage": "Página oficial",
             "surfaceDigitalScreen": "Pantalla digital",
             "surfaceWebLink": "Web y enlace",
             "surfacePrintPdf": "Imprimir y PDF",
-            "surfaceCustomerApp": "Customer App"
+            "surfaceCustomerApp": "Customer App",
+            "eyebrow": "Sin configuración técnica",
+            "secondaryCta": "Ver lo que ven tus clientes",
+            "proof0": "Menú en vivo y página oficial",
+            "proof1": "Apruebas antes de publicar",
+            "proof2": "QR, enlaces, app y PDF usan el mismo menú",
+            "visualLabel": "Vista previa del menú en vivo y la página oficial de MenuList"
         },
         "Problem": {
             "title": "La mayoría de los negocios no tienen una sola versión oficial de su menú.",
@@ -2591,7 +2597,7 @@
             "formAgreeEnd": " de MenuList.",
             "formSubmit": "Enviar mensaje",
             "formSubmitting": "Enviando...",
-            "successTitle": "¡Mensaje enviado!",
+            "successTitle": "Mensaje enviado",
             "successBody": "Recibimos tu mensaje y te responderemos pronto.",
             "successAnother": "Enviar otro mensaje"
         },

@@ -106,14 +106,14 @@ const CustomePlanForB2B: any = {
 } as const;
 
 // ═══════════════════════════════════════════════════════════
-// AI Enhancement Packs (One pack at launch — per-store)
+// Content Credit Packs (one pack at launch — per-store)
 // @see __docs__/ai-enhancement-packs/ai-enhancement-packs_spec.md
 // ═══════════════════════════════════════════════════════════
 const aiEnhancementPacksList: AIEnhancementPack[] = [
     {
         "packId": "enhancement",
-        "name": "AI Enhancement Pack",
-        "description": "More AI-enhanced images, descriptions, and translations for your menu.",
+        "name": "Content Credit Pack",
+        "description": "More generated images, descriptions, and translations for your menu.",
         "creditAmount": 250,
         "priceINR": { "price": 299900, "monthlyCredits": null },
         "priceUSD": { "price": 2900, "monthlyCredits": null }
@@ -150,5 +150,3 @@ const getB2BPlansList = () => {
 }
 
 export { aiEnhancementPacksList, B2BplansList, B2CplansList, creditPacksList, CustomePlanForB2B, getB2BPlansList, getB2CPlansList };
-
-

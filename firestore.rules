@@ -246,6 +246,10 @@ service cloud.firestore {
     match /messagingOnboardingSessions/{sessionId} {
       allow read, write: if false;  // Only Cloud Functions / Admin SDK
     }
+
+    match /messagingOnboardingInboundMessages/{messageId} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK
+    }
     
     match /messagingOnboardingRateLimits/{userHash} {
       allow read, write: if false;  // Only Cloud Functions / Admin SDK
@@ -506,6 +510,10 @@ service cloud.firestore {
     match /systemAlerts/{docId} {
       allow read: if isAuthenticated();
       allow write: if false;
+    }
+
+    match /systemHealth/{docId} {
+      allow read, write: if false;
     }
     
     match /ops_config/{docId} {

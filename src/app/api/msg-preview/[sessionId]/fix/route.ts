@@ -91,7 +91,7 @@ export async function POST(
     if (currentCorrections >= MAX_CORRECTIONS_PER_SESSION) {
       return NextResponse.json(
         {
-          error: "Maximum corrections reached. Please send new menu photos.",
+          error: "Maximum corrections reached. Send new menu photos.",
           maxReached: true,
         },
         { status: 429 },
@@ -158,7 +158,7 @@ export async function POST(
       correctionNumber: currentCorrections + 1,
       maxCorrections: MAX_CORRECTIONS_PER_SESSION,
       message:
-        "Fix request submitted. Please send clearer photos of the affected pages.",
+        "Correction request sent. Send clearer photos of the affected pages.",
     });
   } catch (error) {
     secureError("[msg-preview/fix] Error", error as Error);

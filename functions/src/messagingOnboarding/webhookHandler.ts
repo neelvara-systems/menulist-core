@@ -10,12 +10,15 @@
 import type { Response } from "express";
 import * as functions from "firebase-functions";
 import { FEATURE_FLAGS } from "./constants";
-import { logOnboardingEvent, maskUserId } from "./eventLogger";
+import { logOnboardingEvent } from "./eventLogger";
 import {
   getProviderAdapter,
   getProviderFromWebhookPath,
 } from "./providers/providerRegistry";
-import { handleMessage } from "./sessionEngine";
+import {
+  enqueueInboundMessage,
+  processQueuedInboundMessage,
+} from "./inboundQueue";
 
 const logger = functions.logger;
 
@@ -96,49 +99,36 @@ export async function messagingOnboardingWebhook(
       return;
     }
 
-    // Respond 200 immediately (Meta requires <5s response)
+    let queued;
+    try {
+      queued = await enqueueInboundMessage(normalizedMsg);
+    } catch (queueError) {
+      logger.error("[Webhook] Failed to persist inbound message", {
+        provider,
+        userId: normalizedMsg.userId.slice(-4),
+        error: (queueError as Error).message,
+      });
+      res.status(500).send("Queue unavailable");
+      return;
+    }
+
+    // Respond only after durable persistence. Meta requires a quick response,
+    // and the scheduled intake processor will retry pending messages if this
+    // post-ack processing attempt is interrupted.
     res.status(200).send("OK");
 
-    // Process message async (after response sent)
+    if (!queued.created) {
+      logger.info("[Webhook] Duplicate inbound message acknowledged", {
+        provider,
+        messageId: queued.messageId,
+        userId: normalizedMsg.userId.slice(-4),
+      });
+      return;
+    }
+
+    // Best-effort immediate drain after acknowledgement.
     try {
-      const replyText = await handleMessage(normalizedMsg, adapter);
-
-      if (replyText) {
-        try {
-          await adapter.sendTextMessage(normalizedMsg.userId, replyText);
-
-          logOnboardingEvent({
-            sessionId: "webhook-reply",
-            provider,
-            eventType: "MESSAGE_SENT",
-            sessionState: "COLLECTING_INPUT",
-            userIdMasked: maskUserId(normalizedMsg.userId),
-            metadata: {
-              messageLength: replyText.length,
-              trigger: "webhook_reply",
-            },
-          });
-        } catch (sendErr) {
-          logger.error("[Webhook] Failed to send reply", {
-            provider,
-            userId: normalizedMsg.userId.slice(-4),
-            error: (sendErr as Error).message,
-          });
-
-          logOnboardingEvent({
-            sessionId: "webhook-reply",
-            provider,
-            eventType: "MESSAGE_SEND_FAILED",
-            sessionState: "COLLECTING_INPUT",
-            userIdMasked: maskUserId(normalizedMsg.userId),
-            error: {
-              code: "SEND_FAILED",
-              message: (sendErr as Error).message,
-              retryable: true,
-            },
-          });
-        }
-      }
+      await processQueuedInboundMessage(queued.messageId);
     } catch (err) {
       // INV-1: Safe-Ignore Principle — never crash on unexpected input
       logger.error("[Webhook] Error processing message", {

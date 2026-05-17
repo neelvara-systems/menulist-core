@@ -55,6 +55,7 @@ export const UPLOAD_ACCEPTING_STATES: MessagingOnboardingState[] = [
 /** Session upload entry */
 export interface SessionUpload {
   id: string;
+  fileName?: string;
   providerMediaId: string;
   storagePath: string;
   storageUrl: string;
@@ -144,6 +145,7 @@ export interface MessagingOnboardingSession {
   // Extraction
   extractionJobId: string | null;
   extractedMenuData: any | null;
+  extractedProjectFiles?: any[] | null;
   qualityScore: number | null;
 
   // Preview
@@ -165,6 +167,7 @@ export interface MessagingOnboardingSession {
   correctionCount: number;
   reminderSentAt: Timestamp | null;
   pendingUploadsWhileProcessing: boolean;
+  previewMessagePending?: boolean;
   confirmationPending?: boolean;
   fixMessagePending?: boolean;
 
@@ -219,6 +222,41 @@ export interface NormalizedMessage {
   rawPayload: unknown;
 }
 
+export type MessagingInboundStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "PROCESSED"
+  | "FAILED";
+
+/**
+ * Durable inbound webhook message.
+ * Collection: messagingOnboardingInboundMessages/{messageId}
+ *
+ * Stores only the provider-normalized payload required to process the message.
+ * The raw provider payload is intentionally not persisted.
+ */
+export interface MessagingOnboardingInboundMessage {
+  messageId: string;
+  provider: MessagingProvider;
+  providerMessageId: string;
+  providerUserId: string;
+  providerDisplayId: string;
+  messageType: NormalizedMessage["messageType"];
+  text?: string;
+  media?: NormalizedMessage["media"];
+  providerTimestamp: Timestamp;
+  status: MessagingInboundStatus;
+  attempts: number;
+  maxAttempts: number;
+  nextAttemptAt: Timestamp;
+  processingStartedAt?: Timestamp | null;
+  processedAt?: Timestamp | null;
+  lastError?: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  expiresAt: Timestamp;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ASSET INTELLIGENCE TYPES
 // ═══════════════════════════════════════════════════════════════
@@ -251,6 +289,9 @@ export interface AssetValidationResult {
 /** Onboarding lifecycle event types */
 export type MsgOnboardingEventType =
   // Session Lifecycle
+  | "INBOUND_MESSAGE_QUEUED"
+  | "INBOUND_MESSAGE_PROCESSED"
+  | "INBOUND_MESSAGE_FAILED"
   | "SESSION_CREATED"
   | "SESSION_STATE_CHANGED"
   | "SESSION_EXPIRED"
@@ -306,6 +347,7 @@ export interface MsgOnboardingEvent {
   userIdMasked: string;
   metadata: Record<string, any>;
   timestamp: Timestamp;
+  expiresAt?: Timestamp;
   sessionAgeMs: number;
   error?: {
     code: string;

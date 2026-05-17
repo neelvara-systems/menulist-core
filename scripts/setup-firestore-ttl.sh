@@ -32,6 +32,8 @@ echo "Setting up Firestore TTL policies for project: $PROJECT_ID"
 echo "→ authSecurityEvents: TTL on 'expiresAt' (90 days from creation)"
 gcloud firestore fields ttls update expiresAt \
   --collection-group=authSecurityEvents \
+  --enable-ttl \
+  --async \
   --project="$PROJECT_ID" \
   --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
 
@@ -43,6 +45,8 @@ gcloud firestore fields ttls update expiresAt \
 echo "→ applicationLogs: TTL on 'expiresAt' (30 days from creation)"
 gcloud firestore fields ttls update expiresAt \
   --collection-group=applicationLogs \
+  --enable-ttl \
+  --async \
   --project="$PROJECT_ID" \
   --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
 
@@ -54,6 +58,8 @@ gcloud firestore fields ttls update expiresAt \
 echo "→ errorLogs: TTL on 'expiresAt' (30 days from creation)"
 gcloud firestore fields ttls update expiresAt \
   --collection-group=errorLogs \
+  --enable-ttl \
+  --async \
   --project="$PROJECT_ID" \
   --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
 
@@ -65,6 +71,8 @@ gcloud firestore fields ttls update expiresAt \
 echo "→ systemErrors: TTL on 'expiresAt' (30 days from creation)"
 gcloud firestore fields ttls update expiresAt \
   --collection-group=systemErrors \
+  --enable-ttl \
+  --async \
   --project="$PROJECT_ID" \
   --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
 
@@ -76,6 +84,8 @@ gcloud firestore fields ttls update expiresAt \
 echo "→ systemHealth: TTL on 'expiresAt' (7 days from creation)"
 gcloud firestore fields ttls update expiresAt \
   --collection-group=systemHealth \
+  --enable-ttl \
+  --async \
   --project="$PROJECT_ID" \
   --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
 
@@ -87,6 +97,21 @@ gcloud firestore fields ttls update expiresAt \
 echo "→ messagingOnboardingEvents: TTL on 'expiresAt' (30 days from creation)"
 gcloud firestore fields ttls update expiresAt \
   --collection-group=messagingOnboardingEvents \
+  --enable-ttl \
+  --async \
+  --project="$PROJECT_ID" \
+  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+
+# ─────────────────────────────────────────────────────────────
+# messagingOnboardingInboundMessages — Delete after 30 days
+# Durable webhook queue docs are only needed for replay/dedup history
+# Field: expiresAt (Firestore Timestamp)
+# ─────────────────────────────────────────────────────────────
+echo "→ messagingOnboardingInboundMessages: TTL on 'expiresAt' (30 days from creation)"
+gcloud firestore fields ttls update expiresAt \
+  --collection-group=messagingOnboardingInboundMessages \
+  --enable-ttl \
+  --async \
   --project="$PROJECT_ID" \
   --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
 

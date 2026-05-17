@@ -264,7 +264,26 @@ no background change on scroll
 no shadow on scroll
 ```
 
-### 5.5 Icons
+### 5.5 Supporting Page Hero
+
+Use `WebsitePageHero` for secondary pages that need the same official-source hierarchy as the homepage without recreating one-off hero styles.
+
+```
+eyebrow: uppercase, brand blue, 13px, bold, letter-spacing 0
+headline: WebsiteHeadline with shared highlight treatment
+subtitle: max 620px, 18px desktop / 16px mobile, secondary text
+actions: WebsiteButton primary/ghost pair when needed
+proof: WebsiteProofStrip when a page needs a short credibility row
+```
+
+Rules:
+
+- Do not use viewport-width font scaling.
+- Do not use negative letter spacing.
+- Keep proof strips to three short claims.
+- Keep owner-facing claims factual and tied to implemented product behavior.
+
+### 5.6 Icons
 
 - Library: `react-icons/lu` (Lucide) — already standard
 - Default size: 20px inline, 24px standalone, 32-40px section icons

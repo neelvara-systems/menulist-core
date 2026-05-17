@@ -10,8 +10,9 @@ import AntdRegistry from '../lib/AntdRegistry';
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
 
-const defaultTitle = 'MenuList — Your Menu, Always Running';
-const defaultDescription = 'MenuList keeps your digital menu accurate, up-to-date, and ready to share. Upload once. Everything stays current automatically.';
+const defaultTitle = 'MenuList - Upload Your Menu Online';
+const defaultDescription = 'Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.';
+const defaultImage = '/images/website/menulist-og-official-source.png';
 const appleStartupImages = [
     {
         href: '/splash/apple-splash-1290x2796.png',
@@ -56,7 +57,7 @@ export const metadata: Metadata = {
     description: defaultDescription,
     metadataBase: new URL(siteUrl),
     manifest: '/manifest.json',
-    keywords: ['digital menu', 'restaurant menu', 'menu management', 'QR menu', 'online menu', 'menu link'],
+    keywords: ['official menu', 'business menu', 'menu management', 'QR menu', 'official business page', 'multi-location menu'],
     authors: [{ name: 'MenuList', url: siteUrl }],
     openGraph: {
         title: defaultTitle,
@@ -65,10 +66,10 @@ export const metadata: Metadata = {
         siteName: 'MenuList',
         images: [
             {
-                url: '/og-image.png',
+                url: defaultImage,
                 width: 1200,
                 height: 630,
-                alt: 'MenuList — Your Menu, Always Running',
+                alt: 'MenuList - upload your menu online preview',
             },
         ],
         locale: 'en_US',
@@ -78,7 +79,7 @@ export const metadata: Metadata = {
         card: 'summary_large_image',
         title: defaultTitle,
         description: defaultDescription,
-        images: ['/og-image.png'],
+        images: [defaultImage],
     },
     icons: {
         icon: '/favicon.ico',

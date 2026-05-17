@@ -1,9 +1,9 @@
 # Messaging Onboarding — Help Documentation
 
-**Feature:** Messaging Onboarding  
-**Audience:** Business owners (restaurants, salons, cafes, service providers)  
-**Tone:** Simple, patient, step-by-step. Zero jargon.  
-**Last Updated:** February 17, 2026
+**Feature:** Messaging Onboarding
+**Audience:** Business owners (restaurants, salons, cafes, service providers)
+**Tone:** Simple, patient, step-by-step. Zero jargon.
+**Last Updated:** May 17, 2026
 
 ---
 
@@ -19,7 +19,7 @@ Send your menu photos on WhatsApp and get a live digital menu in minutes. No sig
 
 - A phone with WhatsApp
 - Photos of your menu (or a PDF file)
-- 5 minutes
+- A few minutes
 
 ### How It Works
 
@@ -62,7 +62,7 @@ Send your menu photos on WhatsApp and get a live digital menu in minutes. No sig
 
 > 💡 **Tip:** Make sure the PDF is not password-protected. If it is, take photos of the pages instead.
 
-### How to review your preview
+### How to confirm your preview
 
 1. After sending photos, wait for the preview link message
 2. Tap the link to open your menu preview
@@ -165,7 +165,7 @@ Send your menu photos on WhatsApp and get a live digital menu in minutes. No sig
 - 💡 Hold the camera steady and straight — avoid angles
 - 💡 If your menu is on a board, take one clear photo of the entire board
 - 💡 PDF files usually give the best results — send PDF if you have one
-- 💡 Check the preview carefully before approving — it's easier to fix now than later
+- 💡 Confirm the preview before approving.
 
 ---
 

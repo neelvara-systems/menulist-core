@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { LuFileText, LuLayoutGrid, LuLink, LuMapPin, LuMonitor, LuQrCode, LuSmartphone } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
@@ -11,7 +12,7 @@ const surfaceMeta = [
   { icon: LuFileText },
   { icon: LuLayoutGrid },
   { icon: LuSmartphone },
-  { icon: LuMapPin, comingSoon: true },
+  { icon: LuMapPin },
 ];
 
 export default function SurfacesSection() {
@@ -23,13 +24,28 @@ export default function SurfacesSection() {
     desc: t(`Surfaces.surface${i}Desc`),
   }));
   return (
-    <SectionWrapper variant="subtle">
+    <SectionWrapper id="public-proof" variant="subtle">
       <AnimateOnScroll>
         <SectionHeading
           title={t('Surfaces.title')}
           highlightedText={t('Surfaces.highlight')}
           subtitle={t('Surfaces.subtitle')}
         />
+      </AnimateOnScroll>
+
+      <AnimateOnScroll delay={0.1}>
+        <div className="ws-draft-visual-frame ws-draft-visual-frame--wide">
+          <Image
+            src="/images/website/menulist-public-surfaces-matrix.webp"
+            alt={t('Surfaces.title')}
+            width={1600}
+            height={1000}
+            loading="eager"
+            unoptimized
+            sizes="(min-width: 1024px) 960px, 100vw"
+            className="ws-draft-product-image"
+          />
+        </div>
       </AnimateOnScroll>
 
       <div
@@ -53,7 +69,6 @@ export default function SurfacesSection() {
                   display: 'flex',
                   gap: 'var(--ws-space-4)',
                   alignItems: 'flex-start',
-                  opacity: surface.comingSoon ? 0.7 : 1,
                   height: '100%',
                 }}
               >
@@ -62,25 +77,20 @@ export default function SurfacesSection() {
                     width: '40px',
                     height: '40px',
                     borderRadius: 'var(--ws-radius-md)',
-                    backgroundColor: surface.comingSoon ? 'var(--ws-bg-subtle)' : 'var(--ws-bg-accent)',
+                    backgroundColor: 'var(--ws-bg-accent)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
                   }}
                 >
-                  <Icon size={20} color={surface.comingSoon ? 'var(--ws-text-muted)' : 'var(--ws-brand-secondary)'} />
+                  <Icon size={20} color="var(--ws-brand-secondary)" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}>
                     <h3 className="ws-h3" style={{ fontSize: '1rem' }}>
                       {surface.title}
                     </h3>
-                    {surface.comingSoon && (
-                      <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--ws-text-muted)', backgroundColor: 'var(--ws-border-subtle)', padding: '2px 8px', borderRadius: '20px', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
-                        {t('Surfaces.soon')}
-                      </span>
-                    )}
                   </div>
                   <p className="ws-body-sm" style={{ marginTop: '2px' }}>
                     {surface.subtitle}

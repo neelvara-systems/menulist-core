@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { LuBadgeCheck, LuLanguages, LuList, LuSearch } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
@@ -71,150 +72,17 @@ export default function CustomerBrowseSection() {
         </div>
 
         <AnimateOnScroll delay={0.15}>
-          <div
-            aria-label={t('CustomerBrowse.previewLabel')}
-            style={{
-              border: '1px solid var(--ws-border-default)',
-              borderRadius: 'var(--ws-radius-xl)',
-              backgroundColor: '#fff',
-              boxShadow: 'var(--ws-shadow-lg)',
-              padding: 'var(--ws-space-5)',
-              maxWidth: 460,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-3)' }}>
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  backgroundColor: 'var(--ws-bg-accent)',
-                  border: '1px solid var(--ws-border-default)',
-                }}
-              />
-              <div style={{ minWidth: 0 }}>
-                <p className="ws-body-sm" style={{ fontWeight: 700, color: 'var(--ws-text-primary)' }}>
-                  {t('CustomerBrowse.previewBusiness')}
-                </p>
-                <p className="ws-caption">{t('CustomerBrowse.previewMeta')}</p>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                gap: 'var(--ws-space-2)',
-                alignItems: 'center',
-                marginTop: 'var(--ws-space-4)',
-                color: 'var(--ws-success)',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-              }}
-            >
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 999,
-                  backgroundColor: 'var(--ws-success)',
-                  display: 'inline-block',
-                }}
-              />
-              {t('CustomerBrowse.previewFreshness')}
-            </div>
-
-            <div
-              style={{
-                marginTop: 'var(--ws-space-4)',
-                border: '1px solid var(--ws-border-default)',
-                borderRadius: 'var(--ws-radius-lg)',
-                padding: '12px 14px',
-                color: 'var(--ws-text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <LuSearch size={18} />
-              <span className="ws-body-sm">{t('CustomerBrowse.previewSearch')}</span>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                gap: 'var(--ws-space-2)',
-                marginTop: 'var(--ws-space-4)',
-                overflow: 'hidden',
-              }}
-            >
-              <span
-                className="ws-body-sm"
-                style={{
-                  backgroundColor: 'var(--ws-brand-secondary)',
-                  color: '#fff',
-                  borderRadius: 999,
-                  padding: '8px 14px',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {t('CustomerBrowse.previewSectionActive')}
-              </span>
-              <span
-                className="ws-body-sm"
-                style={{
-                  border: '1px solid var(--ws-border-default)',
-                  borderRadius: 999,
-                  padding: '8px 14px',
-                  color: 'var(--ws-text-secondary)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {t('CustomerBrowse.previewSectionNext')}
-              </span>
-            </div>
-
-            <div style={{ marginTop: 'var(--ws-space-5)' }}>
-              <p
-                className="ws-caption"
-                style={{
-                  color: 'var(--ws-brand-secondary)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0,
-                }}
-              >
-                {t('CustomerBrowse.previewCategory')}
-              </p>
-              {[0, 1].map((itemIndex) => (
-                <div
-                  key={itemIndex}
-                  style={{
-                    border: '1px solid var(--ws-border-default)',
-                    borderRadius: 'var(--ws-radius-lg)',
-                    padding: '14px',
-                    marginTop: 'var(--ws-space-3)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 'var(--ws-space-4)',
-                  }}
-                >
-                  <div>
-                    <p className="ws-body-sm" style={{ fontWeight: 700, color: 'var(--ws-text-primary)' }}>
-                      {t(`CustomerBrowse.previewItem${itemIndex}Name`)}
-                    </p>
-                    <p className="ws-caption" style={{ marginTop: 2 }}>
-                      {t(`CustomerBrowse.previewItem${itemIndex}Desc`)}
-                    </p>
-                  </div>
-                  <p className="ws-body-sm" style={{ fontWeight: 700, color: 'var(--ws-brand-secondary)', whiteSpace: 'nowrap' }}>
-                    {t(`CustomerBrowse.previewItem${itemIndex}Price`)}
-                  </p>
-                </div>
-              ))}
-            </div>
+          <div className="ws-draft-visual-frame ws-draft-visual-frame--phone" aria-label={t('CustomerBrowse.previewLabel')}>
+            <Image
+              src="/images/website/menulist-public-menu-mobile.webp"
+              alt={t('CustomerBrowse.previewLabel')}
+              width={900}
+              height={1400}
+              loading="eager"
+              unoptimized
+              sizes="(min-width: 1024px) 360px, 86vw"
+              className="ws-draft-product-image"
+            />
           </div>
         </AnimateOnScroll>
       </div>

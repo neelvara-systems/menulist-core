@@ -5,6 +5,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const policyFacts = [
     { label: 'Subscription fees', value: 'Final and non-refundable once billing cycle starts' },
@@ -29,7 +30,7 @@ const whyNoRefund = [
     {
         icon: LuShield,
         title: 'Immediate value delivery',
-        desc: 'Upon subscribing, you receive immediate access to the complete platform — tools, templates, and resources. The value is delivered instantly.',
+        desc: 'Upon subscribing, you receive immediate access to the complete platform — tools, templates, and resources. The value starts as soon as access is granted.',
         points: [
             'Full platform access from the moment of subscription',
             'Content generation credits available immediately',
@@ -95,10 +96,13 @@ export default function RefundPolicyPage() {
                         <p style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
                             Refund Policy
                         </p>
-                        <h1 className="ws-h1">
-                            Cancellations and{' '}
-                            <span className="ws-highlight">refunds.</span>
-                        </h1>
+                        <WebsiteHeadline
+                            as="h1"
+                            parts={[
+                                { text: 'Cancellations and ' },
+                                { text: 'refunds.', highlight: true },
+                            ]}
+                        />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '580px', marginLeft: 'auto', marginRight: 'auto' }}>
                             Clear terms for subscription cancellations, refunds, and billing. All fees are final and non-refundable.
                         </p>
@@ -210,7 +214,7 @@ export default function RefundPolicyPage() {
             <SectionWrapper variant="default">
                 <AnimateOnScroll>
                     <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
-                        <h2 className="ws-h2">Questions about billing?</h2>
+                        <WebsiteHeadline as="h2" text="Questions about billing?" />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)' }}>
                             Our support team is here to help clarify any questions about billing, subscriptions, or this policy.
                         </p>

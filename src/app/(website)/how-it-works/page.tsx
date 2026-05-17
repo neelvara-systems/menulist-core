@@ -6,14 +6,14 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'How MenuList Works — From Menu Photo to Online in Minutes',
-    description: 'Upload a menu photo or PDF. MenuList structures everything, prepares images and descriptions, and publishes to QR, web, screens, and your official business page.',
+    title: 'How MenuList Works — From Current Menu to Official Public Source',
+    description: 'Upload a menu photo or PDF. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page.',
     alternates: {
         canonical: '/how-it-works',
     },
     openGraph: {
-        title: 'How MenuList Works — From Menu Photo to Online in Minutes',
-        description: 'Upload a menu photo or PDF. MenuList structures everything, prepares images and descriptions, and publishes to QR, web, screens, and your official business page.',
+        title: 'How MenuList Works — From Current Menu to Official Public Source',
+        description: 'Upload a menu photo or PDF. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page.',
         url: '/how-it-works',
     },
 };

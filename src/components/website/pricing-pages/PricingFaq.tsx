@@ -16,7 +16,7 @@ const pricingFaqData = [
         category: 'Getting Started',
         question: `How long does setup take?`,
         answer: (
-            <p>Go live in minutes.</p>
+            <p>Most businesses can prepare the first version quickly after upload and owner review.</p>
         )
     },
     {
@@ -30,7 +30,7 @@ const pricingFaqData = [
         category: 'Getting Started',
         question: `What happens after I subscribe?`,
         answer: (
-            <p>Upload your menu, review it, and publish instantly.</p>
+            <p>Upload your menu, review the prepared source, then publish when it is ready.</p>
         )
     },
     // == Understanding Plans ==
@@ -42,7 +42,7 @@ const pricingFaqData = [
                 <p>Choose based on your stage:</p>
                 <ul className="list-disc list-outside pl-5 space-y-1">
                     <li><strong>Starter</strong> — getting your menu online quickly with one outlet.</li>
-                    <li><strong>Pro</strong> — full presentation control, generated descriptions and photos, multi-language, and branding. Most restaurants choose this.</li>
+                    <li><strong>Pro</strong> — full presentation control, generated descriptions and photos, multi-language, and branding. Most growing businesses choose this.</li>
                     <li><strong>Premium</strong> — central control across multiple outlets with consistent branding.</li>
                 </ul>
             </div>
@@ -52,7 +52,7 @@ const pricingFaqData = [
         category: 'Understanding Plans',
         question: `Can I upgrade later?`,
         answer: (
-            <p>Yes. Move from Starter to Pro or Premium anytime without losing data. Upgrades happen instantly with prorated billing.</p>
+            <p>Yes. Move from Starter to Pro or Premium anytime without losing data. Upgrades are handled through the billing flow with prorated billing where applicable.</p>
         )
     },
     {

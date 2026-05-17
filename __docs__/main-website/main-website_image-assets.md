@@ -1,186 +1,286 @@
 # Website Image & Asset Requirements
 
-**Status:** 🟡 PARTIALLY RESOLVED — Major sections now use CSS/SVG/Canvas animations (no real images needed)
-**Last Updated:** February 2026 (updated after Stripe-inspired audit)
+**Status:** ✅ CURRENT — Draft generated mockups mounted in homepage UI
+**Last Updated:** May 17, 2026
+**Primary Stage Output:** `website-prep-codex-prompts/stage-06-output-screenshot-asset-production-system.md`
+**Latest Asset Output:** `website-prep-codex-prompts/stage-06-2-output-clean-demo-screenshot-capture.md`
 
 ---
 
-## What Changed — Stripe-Inspired Audit (Feb 2026)
+## Current Asset Strategy
 
-After a comprehensive Stripe-inspired UI/UX audit, multiple sections were rebuilt using **pure CSS mockups, SVG animations, and Canvas** — eliminating most real-image dependencies:
+The canonical homepage is product-led and mounts generated mockups directly in the UI as **draft marketing visuals**. Coded cards, icons, and typography remain supporting structure, but the visible homepage now has product-led image proof in the hero, setup, public surfaces, customer menu, analytics, and Official Business Page sections. These small pre-compressed files are rendered as direct unoptimized `next/image` assets so the draft visuals are visible reliably during review.
 
-| Section                             | Before               | After                                                                                                                        | Images Needed? |
-| ----------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| Homepage — How It Works             | Simple numbered grid | **InteractiveWorkflowSection** — auto-advancing 4-step demo with CSS product frames                                          | ✅ None        |
-| Homepage — Stats                    | Missing              | **StatsSection** — animated canvas network + clickable stats                                                                 | ✅ None        |
-| How It Works page (`/how-it-works`) | Basic text sections  | Full Stripe-style redesign with dark animated SVG flow diagram + numbered step sections + CSS UI mockups                     | ✅ None        |
-| Multi-Location page                 | Basic text           | Full Stripe-style redesign with dark animated electricity flow (Master → 5 Outlets) + CSS price override + dashboard mockups | ✅ None        |
-| Footer                              | Plain layout         | Animated logo mark watermark (SVG stroke animation, loops every 9s)                                                          | ✅ None        |
-| Solution Section                    | Static SVG           | SVG with electricity flowing animation on dotted lines                                                                       | ✅ None        |
+Asset production must preserve MenuList's current positioning:
 
-**Only 3 real assets are still needed for production launch** (see Priority Order below).
+- customer-facing business truth infrastructure
+- official public source for menu and business details
+- owner-approved publishing
+- public menu + Official Business Page proof
+- operational calm
+- no fake dashboards
+- no automatic Google/Instagram/WhatsApp sync claims
+- no AI-hype visuals
 
----
+This document is the operational asset checklist. The detailed production plan, capture order, and image-generation prompts live in the Stage 6 output.
 
-## Summary
+Stage 6.1 produced a safe synthetic asset pack because the current tenant-store data is temporary and some extracted source menu data is not approved for public marketing. These assets are now visible on the homepage as controlled draft placeholders, but they must not be described as real customer screenshots or customer proof.
 
-The website uses live animated CSS/SVG components for all UI demonstrations. Real images are still needed only for: OG image (social sharing), favicon (browser tab), and the hero phone mockup.
-
-**All assets should be placed in:** `public/images/website/`
-
-**Image format rules:**
-
-- Hero images: WebP or PNG, max 250KB, 1200×675px minimum
-- Section images: WebP or PNG, max 100KB each
-- Icons: SVG preferred (already using react-icons/lu — no new icon files needed)
-- Logo: SVG, placed at `public/images/website/logo.svg`
+Stage 6.2 produced private browser-rendered synthetic demo captures under `__docs__/main-website/asset-production/stage-06-2/`. These captures are useful for screenshot-slot planning and visual QA, but they are not public customer proof and should not be moved into `public/images/website/` without a separate approval pass.
 
 ---
 
-## Required Assets
+## Asset Storage
 
-### 1. Logo
+Approved launch assets should be placed under:
 
-| Asset                   | File                                | Specs          | Description                                                                                                  |
-| ----------------------- | ----------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------ |
-| Logo mark (icon only)   | `logo-mark.svg`                     | 28×28px SVG    | Blue square with menu lines (currently inline SVG in Header.tsx)                                             |
-| Logo full (icon + text) | `logo-full.svg`                     | ~150×28px SVG  | Logo mark + "MenuList" text for OG images                                                                    |
-| Favicon                 | `favicon.ico` + `favicon-32x32.png` | 32×32, 16×16   | Place in `public/` root                                                                                      |
-| Apple touch icon        | `apple-touch-icon.png`              | 180×180px PNG  | Place in `public/icons/`                                                                                     |
-| OG Image                | `og-image.png`                      | 1200×630px PNG | Social share image — "MenuList" logo centered on white/blue background with tagline "Where your menu lives." |
-
----
-
-### 2. Homepage — Hero Section
-
-| Asset                      | File                    | Specs                           | Description                                                                                                                                                       |
-| -------------------------- | ----------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Phone mockup**           | `hero-phone-mockup.png` | ~400×760px PNG (transparent bg) | A real screenshot of the QR/client menu on a phone frame. Shows a sample restaurant menu with items, prices, categories, and images. This is the dominant visual. |
-| **Surface labels graphic** | (not needed)            | —                               | Currently using CSS-drawn labels — works fine as-is                                                                                                               |
-
-**Current state:** Placeholder CSS shapes showing a phone outline with colored blocks.  
-**What's needed:** Real product screenshot of the client-facing menu on a phone, showing actual menu items with images and prices.
-
----
-
-### 3. Homepage — Solution Section (System Diagram)
-
-| Asset              | File                      | Specs | Description                                                                                                                                                   |
-| ------------------ | ------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **System diagram** | (not needed — SVG inline) | —     | Currently an inline SVG showing "Your Menu" → QR/Google/Screens/Web/Print. Works well as-is. Can be enhanced later with a more polished SVG but not blocking. |
-
----
-
-### 4. Homepage — Prepared For You Section
-
-| Asset                        | File                       | Specs          | Description                                                               |
-| ---------------------------- | -------------------------- | -------------- | ------------------------------------------------------------------------- |
-| **Extraction before/after**  | `feature-extraction.png`   | ~600×400px PNG | Optional: Side-by-side showing paper menu photo → structured digital data |
-| **Generated images example** | `feature-images.png`       | ~600×400px PNG | Optional: Grid of 4 AI-generated food item images                         |
-| **Descriptions example**     | `feature-descriptions.png` | ~600×400px PNG | Optional: Menu item with generated description text                       |
-| **Translation example**      | `feature-translation.png`  | ~600×400px PNG | Optional: Same item shown in English + Hindi + Arabic                     |
-
-**Note:** These are optional enhancements. The section works with just icons + text (current state). Images would strengthen the section but are not blocking.
-
----
-
-### 5. Multi-Location Page
-
-| Asset                     | File                      | Specs | Description                       |
-| ------------------------- | ------------------------- | ----- | --------------------------------- |
-| **Master-outlet diagram** | (not needed — SVG inline) | —     | Currently inline SVG. Works well. |
-
----
-
-### 6. How It Works Page (`/how-it-works`)
-
-✅ **No images needed** — fully redesigned with Stripe-inspired CSS UI mockups:
-
-- Dark animated SVG flow diagram (HQ → Build → QR/Screens/Web/Print/Translate)
-- Step 01–04 alternating sections with CSS product mockups (upload form, AI panel, publish grid, update timeline)
-- All mockups are pure CSS/SVG — no screenshots required
-
----
-
-### 7. Multi-Location Page (`/multi-location`)
-
-✅ **No images needed** — fully redesigned with Stripe-inspired CSS UI mockups:
-
-- Dark animated SVG flow diagram (Master Menu HQ → 5 Outlets, electricity flowing)
-- Step 01: Master menu table mockup
-- Step 02: Local price override card (master vs outlet comparison)
-- Step 03: Locations dashboard list
-- All mockups are pure CSS — no screenshots required
-
-### 8. About Page
-
-No images needed — minimal page per content doc.
-
----
-
-### 9. Get Started Page
-
-| Asset           | File         | Specs | Description                                          |
-| --------------- | ------------ | ----- | ---------------------------------------------------- |
-| **Google logo** | (not needed) | —     | Currently inline SVG for Google OAuth button. Works. |
-
----
-
-## Priority Order
-
-| Priority | Asset                                          | Blocking?                                               | Impact                                                        |
-| -------- | ---------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------- | --- | --- |
-| **P0**   | OG Image (`og-image.png`)                      | Yes — social sharing looks broken without it            | High                                                          |
-| **P0**   | Favicon + apple-touch-icon                     | Yes — browser tab looks generic                         | High                                                          |
-| **P1**   | Hero phone mockup                              | No — placeholder works but real screenshot sells better | High                                                          |
-| ~~P2~~   | ~~Logo SVG (mark + full)~~                     | ~~No~~                                                  | Resolved — existing animated logo used in footer as watermark |
-| ~~P3~~   | ~~Feature section images (4)~~                 | ~~No~~                                                  | Resolved — CSS mockups now replace all feature images         |
-| ~~P3~~   | ~~How It Works / Multi-Location page mockups~~ | ~~No~~                                                  | Resolved — full CSS redesign with no image dependencies       |     | Low |
-
----
-
-## Folder Structure
-
-```
-public/
-├── images/
-│   └── website/
-│       ├── logo-mark.svg
-│       ├── logo-full.svg
-│       ├── og-image.png          (1200×630)
-│       ├── hero-phone-mockup.png (400×760)
-│       ├── feature-extraction.png (optional)
-│       ├── feature-images.png     (optional)
-│       ├── feature-descriptions.png (optional)
-│       └── feature-translation.png  (optional)
-├── favicon.ico
-├── favicon-32x32.png
-└── icons/
-    └── apple-touch-icon.png
+```text
+public/images/website/
 ```
 
+Use lowercase kebab-case filenames:
+
+```text
+public/images/website/
+├── menulist-hero-official-source.webp
+├── menulist-og-official-source.png
+├── menulist-public-menu-mobile.webp
+├── menulist-obp-browser.webp
+├── menulist-setup-relief-workflow.webp
+├── menulist-public-surfaces-matrix.webp
+├── menulist-analytics-proof.webp
+├── menulist-launch-square.png
+└── menulist-linkedin-launch.png
+```
+
+Do not place raw capture files, private demo data, or unapproved screenshots in `public/`.
+
+Compatibility copy:
+
+```text
+public/og-image.png
+```
+
+This file is currently a copy of `public/images/website/menulist-og-official-source.png` so legacy metadata references have a real image.
+
+## Stage 6.1 Generated Asset Pack
+
+| Asset | File | Status | Notes |
+| --- | --- | --- | --- |
+| Hero official-source composite | `public/images/website/menulist-hero-official-source.webp` | Generated + visible draft | Synthetic demo product composite; mounted in `HeroSection.tsx` |
+| Open Graph image | `public/images/website/menulist-og-official-source.png` | Generated | Current website metadata target |
+| Backward-compatible OG image | `public/og-image.png` | Generated | Copy of the new OG image |
+| Mobile public menu visual | `public/images/website/menulist-public-menu-mobile.webp` | Generated + visible draft | Synthetic customer-browse placeholder; mounted in `CustomerBrowseSection.tsx` |
+| OBP browser visual | `public/images/website/menulist-obp-browser.webp` | Generated + visible draft | Synthetic Official Business Page placeholder; mounted in `BusinessSection.tsx` |
+| Setup relief workflow | `public/images/website/menulist-setup-relief-workflow.webp` | Generated + visible draft | Synthetic upload/review/publish strip; mounted in `SetupReliefSection.tsx` |
+| Public surfaces matrix | `public/images/website/menulist-public-surfaces-matrix.webp` | Generated + visible draft | Synthetic MenuList-controlled surfaces visual; mounted in `SurfacesSection.tsx` |
+| Analytics proof visual | `public/images/website/menulist-analytics-proof.webp` | Generated + visible draft | Synthetic demo metrics only; mounted in `AnalyticsInsightsSection.tsx` |
+| Launch square image | `public/images/website/menulist-launch-square.png` | Generated | Square social/launch asset |
+| LinkedIn launch image | `public/images/website/menulist-linkedin-launch.png` | Generated | Social preview derivative |
+
+Generator:
+
+- `scripts/website-assets/generate-stage6-assets.mjs`
+
+Generated pack note:
+
+- `__docs__/main-website/asset-production/stage-06-1/stage-06-1-synthetic-asset-pack.md`
+
+## Stage 6.2 Private Clean Demo Captures
+
+| Capture | File | Status | Notes |
+| --- | --- | --- | --- |
+| Hero official-source capture | `__docs__/main-website/asset-production/stage-06-2/captures/hero-official-source.png` | Captured | Browser-rendered synthetic demo reference; not public proof |
+| Mobile public menu capture | `__docs__/main-website/asset-production/stage-06-2/captures/public-menu-mobile.png` | Captured | Synthetic customer-browse reference |
+| Official Business Page capture | `__docs__/main-website/asset-production/stage-06-2/captures/official-business-page.png` | Captured | Synthetic OBP/public-presence reference |
+| Setup/review workflow capture | `__docs__/main-website/asset-production/stage-06-2/captures/setup-review-workflow.png` | Captured | Synthetic setup-relief reference |
+| Public surfaces matrix capture | `__docs__/main-website/asset-production/stage-06-2/captures/public-surfaces-matrix.png` | Captured | MenuList-controlled surface reference only; no external sync claim |
+| Analytics proof capture | `__docs__/main-website/asset-production/stage-06-2/captures/analytics-proof.png` | Captured | Synthetic metrics only; not customer proof |
+
+Source board:
+
+- `__docs__/main-website/asset-production/stage-06-2/demo-screenshot-board.html`
+
+Capture note:
+
+- `__docs__/main-website/asset-production/stage-06-2/stage-06-2-clean-demo-captures.md`
+
+Publishing rule:
+
+- Keep raw Stage 6.2 captures under `__docs__/`.
+- Do not move them into `public/images/website/` until the synthetic identity is explicitly approved for public use or replaced with a founder-approved demo tenant.
+
 ---
 
-## How to Create
+## Required Launch Assets
 
-### OG Image (P0)
+| Priority | Asset | Recommended file | Role | Source | Blocking |
+| --- | --- | --- | --- | --- | --- |
+| P0 | Hero official-source composite | `menulist-hero-official-source.webp` | First-screen credibility | Real OBP + public menu + source-card composite | No, visible draft is mounted; replace before broad proof-led launch |
+| P0 | Open Graph image | `menulist-og-official-source.png` | Social/link preview | Hero composite derivative | Yes before serious launch sharing |
+| P0 | Mobile public menu screenshot | `menulist-public-menu-mobile.webp` | Customer browse proof | Real public menu route | Visible draft now; replace before final proof-led launch |
+| P0 | OBP browser screenshot | `menulist-obp-browser.webp` | Public-presence authority proof | Real Official Business Page route | Visible draft now; replace before final proof-led launch |
+| P0 | Setup relief workflow visual | `menulist-setup-relief-workflow.webp` | Effort-removal proof | Upload/review/publish screenshots | Visible draft now; replace when founder-approved demo tenant exists |
+| P1 | Analytics proof crop | `menulist-analytics-proof.webp` | Post-publish owner confidence | Owner dashboard/mobile dashboard | Visible draft now; final needs staged demo metrics |
+| P1 | Public surfaces matrix | `menulist-public-surfaces-matrix.webp` | Multi-surface proof | OBP, menu, QR/share, customer app, digital screen/PDF | Visible draft now; final needs real source screenshots |
+| P1 | LinkedIn launch image | `menulist-linkedin-launch.png` | Launch distribution | Hero/OBP/menu composite | Useful |
+| P2 | Square launch visual | `menulist-launch-square.png` | Instagram/WhatsApp launch | Workflow strip | Useful |
+| P2 | Digital screen proof | `menulist-digital-screen-proof.webp` | Store-display proof | `src/app/screen/[token]/ScreenDisplay.tsx` | Optional |
 
-- White background
-- MenuList logo mark centered
-- "MenuList" text below in Inter SemiBold
-- Tagline "Where your menu lives." in Inter Regular, slate-500
-- Dimensions: 1200×630px
-- Can be created in Figma, Canva, or any design tool
+---
 
-### Hero Phone Mockup (P1)
+## Screenshot Source Requirements
 
-- Take a real screenshot of the client-facing menu (the QR/web menu that customers see)
-- Use a menu with real items, prices, images, and categories
-- Wrap in a phone frame (use a Figma mockup template or similar)
-- Export as PNG with transparent background
+Use one founder-approved demo business across all captures. The same demo identity should appear in:
 
-### Favicon (P0)
+- Official Business Page
+- public menu
+- QR/share flow
+- setup/upload flow
+- analytics proof
+- customer app or digital-screen proof if captured
 
-- Use the logo mark (blue square with menu lines)
-- Export at 32×32px and 16×16px
-- Generate .ico from the PNG using any favicon generator
+Recommended demo-state requirements:
+
+- 3-5 categories
+- 12-20 items
+- INR pricing
+- 4-6 strong item images
+- clean business name and logo
+- safe address/phone values
+- realistic business hours
+- one visible language switcher state
+- visible freshness/current-status signal
+- no real customer data
+- no private owner email
+- no raw tenant/store/project IDs
+- no debug overlays
+
+---
+
+## Capture Targets
+
+| Target | Runtime/source file | Use |
+| --- | --- | --- |
+| Homepage composition | `src/components/website/home/HomePage.tsx` | Asset-slot order and fallback coded visuals |
+| Hero layout | `src/components/website/home/HeroSection.tsx` | Hero composite structure |
+| Public menu route | `src/app/client/[[...slug]]/page.tsx` | Real customer menu screenshot |
+| Public menu renderer | `src/components/templates/website/clientWebsite/index.tsx` | Menu language, freshness, customer app, analytics context |
+| Official Business Page | `src/app/client/obp/OBPContent.tsx` | OBP screenshot and public-presence proof |
+| Mobile upload | `src/components/mobile/sheets/MenuUploadSheet.tsx` | Setup relief proof |
+| Extraction review | `src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx` | Owner approval proof |
+| Official Page settings | `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx` | Owner public-presence control |
+| Mobile Share | `src/components/mobile/screens/MobileShareScreen.tsx` | QR/link deployment proof |
+| Owner dashboard | `src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx` | Analytics proof |
+| Mobile dashboard | `src/components/mobile/screens/MobileDashboardScreen.tsx` | Mobile analytics proof |
+| Digital screen | `src/app/screen/[token]/ScreenDisplay.tsx` | Optional real-world deployment proof |
+
+---
+
+## Asset Type Rules
+
+### Use Real Screenshots For
+
+- public menu
+- Official Business Page
+- setup/upload/review
+- owner dashboard analytics
+- mobile share/QR
+- digital screen preview
+
+### Use Composites For
+
+- hero
+- public surfaces matrix
+- OG/social assets
+- setup relief workflow strip
+- launch announcement visuals
+
+### Use Typography-Led Visuals For
+
+- industry breadth
+- simple stats
+- proof-strip claims
+- email header variants
+
+### Avoid
+
+- fake dashboards
+- generated UI unrelated to the repo
+- stock restaurant photos as proof
+- fake testimonials/logos
+- automatic external-platform sync visuals
+- purple/blue AI startup art
+- excessive arrows or technical architecture diagrams
+
+---
+
+## Production Order
+
+1. Prepare founder-approved demo business.
+2. Capture public menu mobile screenshot.
+3. Capture OBP desktop and mobile screenshots.
+4. Capture setup/upload and extraction-review states.
+5. Capture owner dashboard/mobile dashboard only after safe demo metrics are ready.
+6. Build hero composite.
+7. Derive OG/social assets from hero composite.
+8. Build customer-browse and setup-relief section visuals.
+9. Build public-surfaces matrix.
+10. Compress and verify all exported assets.
+11. Insert assets into homepage only when they outperform current coded visuals.
+12. Re-run desktop/mobile visual QA.
+
+---
+
+## File Size And Format Rules
+
+| Asset type | Format | Target size |
+| --- | --- | --- |
+| Homepage section image | WebP | Under 220 KB each |
+| Hero composite | WebP | Under 350 KB |
+| OG/social image | PNG or JPG | Under 500 KB |
+| Small icon/logo | SVG or PNG | Under 50 KB |
+| Raw screenshots | Do not place in `public/` | Keep private until approved |
+
+---
+
+## Approval Rules
+
+Founder approval is required before publishing:
+
+- any real customer/business screenshot
+- any metric or analytics screenshot
+- any asset using a real phone number, address, logo, or menu
+- any claim implying automatic external sync
+- any ad/campaign visual
+
+Founder approval is optional for:
+
+- typography-only industry grid
+- coded fallback visual polish
+- internal screenshot staging notes
+
+---
+
+## Current Blocking Items
+
+- No founder-approved demo tenant has been selected for real public screenshots.
+- Stage 6.1 synthetic assets now cover the OG/social and placeholder visual gap.
+- Stage 6.2 private clean demo captures now cover screenshot-slot planning without publishing unapproved data.
+- Stage 7 visual QA screenshots now confirm the homepage first viewport after mobile overflow fixes:
+  - `__docs__/main-website/asset-production/stage-07/homepage-desktop-stage-07.png`
+  - `__docs__/main-website/asset-production/stage-07/homepage-mobile-stage-07.png`
+- Stage 7.1 visual QA screenshots confirm the draft generated mockups are mounted in the rendered homepage:
+  - `__docs__/main-website/asset-production/stage-07-1/homepage-draft-mockups-desktop.png`
+  - `__docs__/main-website/asset-production/stage-07-1/homepage-draft-mockups-mobile.png`
+- The synthetic pack must be replaced or validated before it is presented as real product proof.
+- Analytics proof still requires safe demo metrics before real dashboard capture.
+- Public-surface matrix still requires 4-6 clean real source screenshots for final launch proof.
+
+---
+
+## Reference
+
+For full details, use:
+
+- `__docs__/main-website/website-prep-codex-prompts/stage-06-output-screenshot-asset-production-system.md`

@@ -8,10 +8,12 @@ import { Switch } from '@shadcncomponents/switch';
 import { useToast } from '@shadcnhooks/use-toast';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { signIn, useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteHeadline from '../shared/WebsiteHeadline';
 import CurrencySwitcher from './CurrencySwitcher';
 import './main.css';
 import PlanCard from './PlanCard';
@@ -37,6 +39,7 @@ export const formatCurrencyOnPricingPage = (amount: number, currency: Currency) 
 };
 
 const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeSubscription?: FirestoreSubscriptionDoc }> = ({ welcomeTenantName, activeSubscription }) => {
+    const t = useTranslations('Website');
     const { toast } = useToast();
     const { data: session, status } = useSession();
     const [activeBusinessType, setActiveBusinessType] = useState<PlanType>('B2C');
@@ -52,6 +55,10 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     const allPlansList = [...getB2CPlansList(), ...getB2BPlansList()];
     const [isLoading, setIsLoading] = useState(false);
     const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+    const pricingDecisionSteps = Array.from({ length: 3 }, (_, index) => ({
+        title: t(`Pricing.decision${index}Title`),
+        desc: t(`Pricing.decision${index}Desc`),
+    }));
 
     const handleLoader = (action: { type: string }) => {
         setIsLoading(action.type === "loader/startLoader");
@@ -160,24 +167,27 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             <section style={{ padding: 'var(--ws-space-16) var(--ws-space-6) var(--ws-space-4)', textAlign: 'center' }}>
                 {/* LAYER 1 — Core Message */}
                 <div className="ws-container" style={{ maxWidth: '680px' }}>
-                    <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 700, lineHeight: 1.25, color: 'var(--ws-text-primary)', letterSpacing: '-0.01em' }}>
-                        Everything your customers see. <span style={{ color: 'var(--ws-brand-secondary)' }}>One system.</span>
-                    </h1>
+                    <WebsiteHeadline
+                        as="h1"
+                        size="section"
+                        text={t('Pricing.heroTitle')}
+                        highlightedText={t('Pricing.heroHighlight')}
+                    />
                     <p style={{ fontSize: '1rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)', lineHeight: 1.6 }}>
-                        Menu, pricing, availability, and presentation — always accurate, always live.<br />
-                        <strong style={{ color: 'var(--ws-text-primary)' }}>No design or technical setup required.</strong>
+                        {t('Pricing.heroSubtitle')}<br />
+                        <strong style={{ color: 'var(--ws-text-primary)' }}>{t('Pricing.heroSubline')}</strong>
                     </p>
                     <p style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-4)', lineHeight: 1.5 }}>
-                        Your menu becomes your single source of truth across all customer touchpoints.
+                        {t('Pricing.heroSourceLine')}
                     </p>
                 </div>
 
                 {/* LAYER 2 — Outcome + Pain (merged, 3 items max) */}
                 <div className="ws-container" style={{ marginTop: 'var(--ws-space-10)' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-10)', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>
-                        <span>Look premium instantly</span>
-                        <span>No manual menu work</span>
-                        <span>No more outdated PDFs</span>
+                        <span>{t('Pricing.proof0')}</span>
+                        <span>{t('Pricing.proof1')}</span>
+                        <span>{t('Pricing.proof2')}</span>
                     </div>
                 </div>
 
@@ -204,9 +214,9 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                                     transition: 'all var(--ws-transition-fast)',
                                 }}
                             >
-                                {planId === 'starter' && 'Starter'}
-                                {planId === 'pro' && 'Pro (Recommended)'}
-                                {planId === 'premium' && 'Premium'}
+                                {planId === 'starter' && t('Pricing.planStarter')}
+                                {planId === 'pro' && t('Pricing.planPro')}
+                                {planId === 'premium' && t('Pricing.planPremium')}
                             </button>
                         ))}
                     </div>
@@ -215,20 +225,20 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap' }}>
                         <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
                         <div className="flex justify-center items-center gap-3">
-                            <span className={`text-sm font-medium ${billingInterval === 'MONTH' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Monthly</span>
+                            <span className={`text-sm font-medium ${billingInterval === 'MONTH' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{t('Pricing.monthly')}</span>
                             <Switch
                                 checked={billingInterval === 'YEAR'}
                                 onCheckedChange={(checked) => setBillingInterval(checked ? 'YEAR' : 'MONTH')}
-                                aria-label="Switch between monthly and yearly billing"
+                                aria-label={t('Pricing.billingToggleLabel')}
                             />
                             <div className="flex items-center gap-2">
-                                <span className={`text-sm font-medium ${billingInterval === 'YEAR' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>Yearly</span>
-                                <span className="text-xs font-semibold text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400 px-2 py-0.5 rounded-full">SAVE 17%</span>
+                                <span className={`text-sm font-medium ${billingInterval === 'YEAR' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{t('Pricing.yearly')}</span>
+                                <span className="text-xs font-semibold text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400 px-2 py-0.5 rounded-full">{t('Pricing.saveYearly')}</span>
                             </div>
                         </div>
                     </div>
                     <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)' }}>
-                        Pricing shown based on your location
+                        {t('Pricing.locationNote')}
                     </p>
                 </div>
             </section>
@@ -236,6 +246,86 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             <section style={{ padding: '0 var(--ws-space-6) var(--ws-space-16)' }}>
                 <div className="ws-container">
                     <div id="subscription-plans" style={{ paddingTop: 'var(--ws-space-6)' }}>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'minmax(0, 0.72fr) minmax(0, 1.28fr)',
+                                gap: 'var(--ws-space-6)',
+                                alignItems: 'stretch',
+                                marginBottom: 'var(--ws-space-8)',
+                            }}
+                        >
+                            <div
+                                className="ws-card"
+                                style={{
+                                    background: 'var(--ws-bg-subtle)',
+                                    borderColor: 'var(--ws-border-default)',
+                                }}
+                            >
+                                <p
+                                    style={{
+                                        margin: 0,
+                                        color: 'var(--ws-brand-secondary)',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 800,
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
+                                    {t('Pricing.decisionEyebrow')}
+                                </p>
+                                <h2
+                                    style={{
+                                        margin: 'var(--ws-space-3) 0 0',
+                                        color: 'var(--ws-text-primary)',
+                                        fontSize: '1.5rem',
+                                        lineHeight: 1.2,
+                                        fontWeight: 800,
+                                    }}
+                                >
+                                    {t('Pricing.decisionTitle')}
+                                </h2>
+                                <p className="ws-caption" style={{ marginTop: 'var(--ws-space-3)' }}>
+                                    {t('Pricing.decisionSubtitle')}
+                                </p>
+                            </div>
+
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                    gap: 'var(--ws-space-4)',
+                                }}
+                            >
+                                {pricingDecisionSteps.map((step, index) => (
+                                    <div key={step.title} className="ws-card" style={{ height: '100%' }}>
+                                        <div
+                                            style={{
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: '999px',
+                                                background: 'var(--ws-bg-accent)',
+                                                color: 'var(--ws-brand-secondary)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '0.875rem',
+                                                fontWeight: 800,
+                                                marginBottom: 'var(--ws-space-3)',
+                                            }}
+                                        >
+                                            {index + 1}
+                                        </div>
+                                        <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--ws-text-primary)' }}>
+                                            {step.title}
+                                        </h3>
+                                        <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>
+                                            {step.desc}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="mb-20">
                             {activeBusinessType === 'B2C' ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
@@ -272,8 +362,8 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
                 {/* Pro reinforcement */}
                 <p style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-6)' }}>
-                    <strong style={{ color: 'var(--ws-text-primary)' }}>Most restaurants choose Pro</strong> for the best balance of presentation and automation.<br />
-                    If you&apos;re unsure, start with Pro.
+                    <strong style={{ color: 'var(--ws-text-primary)' }}>{t('Pricing.proReinforcementStrong')}</strong> {t('Pricing.proReinforcementBody')}<br />
+                    {t('Pricing.proReinforcementAdvice')}
                 </p>
             </section>
 
@@ -281,29 +371,29 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 <CreditPacksCtaSection currency={currency} activeSubscription={activeSubscription} />
             </SectionWrapper>
 
-            {/* "Go live in minutes" — time-to-value */}
+            {/* Time-to-value path */}
             <SectionWrapper variant="default">
                 <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
                     <SectionHeading
-                        title="Go live in minutes"
-                        highlightedText="minutes"
+                        title={t('Pricing.setupTitle')}
+                        highlightedText={t('Pricing.setupHighlight')}
                         centered
                     />
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-8)', flexWrap: 'wrap', marginTop: 'var(--ws-space-8)' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ws-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-brand-secondary)' }}>1</div>
-                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Upload your menu</p>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>Image, PDF, or link</p>
+                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{t('Pricing.setupStep0Title')}</p>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>{t('Pricing.setupStep0Desc')}</p>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ws-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-brand-secondary)' }}>2</div>
-                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Review and adjust</p>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>MenuList structures everything</p>
+                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{t('Pricing.setupStep1Title')}</p>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>{t('Pricing.setupStep1Desc')}</p>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--ws-bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-brand-secondary)' }}>3</div>
-                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Publish and share</p>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>QR, link, screens — instantly</p>
+                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{t('Pricing.setupStep2Title')}</p>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: '4px' }}>{t('Pricing.setupStep2Desc')}</p>
                         </div>
                     </div>
                 </div>
@@ -312,12 +402,12 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             {/* Infrastructure layer */}
             <SectionWrapper variant="subtle">
                 <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: 'var(--ws-space-6)' }}>Your menu stays consistent everywhere your customers see it</p>
+                    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: 'var(--ws-space-6)' }}>{t('Pricing.surfaceTitle')}</p>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-8)', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--ws-text-secondary)' }}>
-                        <span>QR codes</span>
-                        <span>Direct links</span>
-                        <span>Screens and shared menus</span>
-                        <span>Real-time updates included</span>
+                        <span>{t('Pricing.surface0')}</span>
+                        <span>{t('Pricing.surface1')}</span>
+                        <span>{t('Pricing.surface2')}</span>
+                        <span>{t('Pricing.surface3')}</span>
                     </div>
                 </div>
             </SectionWrapper>
@@ -340,7 +430,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                                 transition: 'all var(--ws-transition-fast)',
                             }}
                         >
-                            {isComparisonOpen ? 'Hide full comparison' : 'View full comparison'}
+                            {isComparisonOpen ? t('Pricing.hideComparison') : t('Pricing.showComparison')}
                         </button>
                     </div>
                     {isComparisonOpen && (
@@ -381,6 +471,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 };
 
 const PricingPage: React.FC<{ welcomeTenantName?: string, activeSubscription?: FirestoreSubscriptionDoc }> = ({ welcomeTenantName, activeSubscription }) => {
+    const t = useTranslations('Website');
     return (
         <div id="pricing" className="ws-page">
             <PricingPageRenderer welcomeTenantName={welcomeTenantName} activeSubscription={activeSubscription} />
@@ -389,9 +480,7 @@ const PricingPage: React.FC<{ welcomeTenantName?: string, activeSubscription?: F
             {/* Final CTA */}
             <SectionWrapper variant="default">
                 <div style={{ textAlign: 'center', maxWidth: '520px', margin: '0 auto' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: 'var(--ws-space-4)' }}>
-                        Start with Pro — run your entire menu from one place
-                    </h2>
+                    <WebsiteHeadline as="h2" size="compact" text={t('Pricing.finalTitle')} />
                     <a
                         href="#subscription-plans"
                         style={{
@@ -409,7 +498,7 @@ const PricingPage: React.FC<{ welcomeTenantName?: string, activeSubscription?: F
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ws-brand-primary)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--ws-brand-secondary)'; }}
                     >
-                        Start with Pro
+                        {t('Pricing.finalCta')}
                     </a>
                 </div>
             </SectionWrapper>

@@ -5,14 +5,14 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Get Started — Upload Your Menu and Get Online',
-    description: 'Upload your menu and get your business online in minutes. Digital menu, QR menu, and official business page — all from one upload.',
+    title: 'Get Started — Create Your Official Menu Source',
+    description: 'Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links.',
     alternates: {
         canonical: '/get-started',
     },
     openGraph: {
-        title: 'Get Started — Upload Your Menu and Get Online',
-        description: 'Upload your menu and get your business online in minutes. Digital menu, QR menu, and official business page — all from one upload.',
+        title: 'Get Started — Create Your Official Menu Source',
+        description: 'Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links.',
         url: '/get-started',
     },
 };

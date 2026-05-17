@@ -1,5 +1,5 @@
-import AnalyticsInsightsSection from './AnalyticsInsightsSection';
 import StickyCta from '../shared/StickyCta';
+import AnalyticsInsightsSection from './AnalyticsInsightsSection';
 import BusinessSection from './BusinessSection';
 import CustomerBrowseSection from './CustomerBrowseSection';
 import FaqSection from './FaqSection';
@@ -9,6 +9,8 @@ import IndustrySection from './IndustrySection';
 import InteractiveWorkflowSection from './InteractiveWorkflowSection';
 import PreparedForYouSection from './PreparedForYouSection';
 import ProblemSection from './ProblemSection';
+import RevenuePathSection from './RevenuePathSection';
+import SetupReliefSection from './SetupReliefSection';
 import SmartFeaturesSection from './SmartFeaturesSection';
 import SolutionSection from './SolutionSection';
 import StatsSection from './StatsSection';
@@ -18,15 +20,17 @@ export default function HomePage() {
   return (
     <main>
       <HeroSection />
+      <RevenuePathSection />
+      <InteractiveWorkflowSection />
       <ProblemSection />
       <SolutionSection />
-      <InteractiveWorkflowSection />
-      <PreparedForYouSection />
+      <StatsSection />
+      <SetupReliefSection />
       <SurfacesSection />
       <CustomerBrowseSection />
-      <SmartFeaturesSection />
       <AnalyticsInsightsSection />
-      <StatsSection />
+      <SmartFeaturesSection />
+      <PreparedForYouSection />
       <BusinessSection />
       <IndustrySection />
       <FaqSection />

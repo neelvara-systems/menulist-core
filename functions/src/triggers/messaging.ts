@@ -26,7 +26,12 @@ export const messagingOnboarding = onRequest(
 // Uses onDocumentUpdated on menuImageProcessingJobs (same collection as dashboard extraction)
 // @see impl.md §8.2.6 — ADR-9
 export const msgExtractionWatcher = onDocumentUpdated(
-    { ...FUNCTION_OPTIONS.base, secrets: SECRET_GROUPS.WHATSAPP_OUTBOUND, document: `${MENU_IMAGE_PROCESSING_JOBS_COLLECTION}/{jobId}` },
+    {
+        ...FUNCTION_OPTIONS.base,
+        timeoutSeconds: 540,
+        secrets: SECRET_GROUPS.WHATSAPP_OUTBOUND,
+        document: `${MENU_IMAGE_PROCESSING_JOBS_COLLECTION}/{jobId}`,
+    },
     async (event) => {
         const before = event.data?.before.data();
         const after = event.data?.after.data();
