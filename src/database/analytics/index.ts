@@ -100,7 +100,7 @@ const reportAnalyticsQueueFlushError = (
   reportedAnalyticsQueueFailures.add(queueKey);
 
   const queued = analyticsWriteQueue.get(queueKey);
-  logger.error('[AnalyticsQueue] Queued analytics flush failed', error, {
+  logger.warn('[AnalyticsQueue] Queued analytics flush failed', {
     phase,
     queueKey,
     tenantId: queued?.tenantId,
@@ -108,6 +108,7 @@ const reportAnalyticsQueueFlushError = (
     projectId: queued?.projectId,
     dateString: queued?.dateString,
     eventCount: queued?.eventCount,
+    error: error instanceof Error ? error.message : String(error),
   });
 };
 
@@ -284,6 +285,37 @@ const writeAnalyticsEventNow = async (
   }, { merge: true });
 };
 
+const writeAnalyticsEventViaPublicApi = async (
+  updateData: Record<string, any>,
+  tenantId: string | number,
+  storeId: string | number,
+  projectId: string,
+  dateString: string,
+  storeTimeZone?: string,
+  businessDayEndTime?: string,
+) => {
+  const response = await fetch('/api/public/analytics/track', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    keepalive: true,
+    body: JSON.stringify({
+      updateData,
+      tenantId: String(tenantId),
+      storeId: String(storeId),
+      projectId,
+      dateString,
+      storeTimeZone,
+      businessDayEndTime,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Public analytics flush failed with HTTP ${response.status}`);
+  }
+};
+
 const flushAnalyticsQueueKey = async (queueKey: string) => {
   const queued = analyticsWriteQueue.get(queueKey);
   if (!queued) return;
@@ -293,15 +325,27 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
   if (queued.flushTimer) clearTimeout(queued.flushTimer);
 
   try {
-    await writeAnalyticsEventNow(
-      queued.updateData,
-      queued.tenantId,
-      queued.storeId,
-      queued.projectId,
-      queued.dateString,
-      queued.storeTimeZone,
-      queued.businessDayEndTime,
-    );
+    if (typeof window !== 'undefined') {
+      await writeAnalyticsEventViaPublicApi(
+        queued.updateData,
+        queued.tenantId,
+        queued.storeId,
+        queued.projectId,
+        queued.dateString,
+        queued.storeTimeZone,
+        queued.businessDayEndTime,
+      );
+    } else {
+      await writeAnalyticsEventNow(
+        queued.updateData,
+        queued.tenantId,
+        queued.storeId,
+        queued.projectId,
+        queued.dateString,
+        queued.storeTimeZone,
+        queued.businessDayEndTime,
+      );
+    }
     analyticsWriteQueue.delete(queueKey);
     reportedAnalyticsQueueFailures.delete(queueKey);
     persistAnalyticsQueue();

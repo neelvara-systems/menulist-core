@@ -130,6 +130,21 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Public Analytics - Anonymous customer analytics flushes
+     * Used by: POST /api/public/analytics/track
+     *
+     * Why 120/min:
+     * - Public menu/OBP/customer-app events are client-coalesced before flush.
+     * - Allows normal customer bursts from a shared network.
+     * - Still blocks abusive anonymous write loops before they reach Firestore.
+     */
+    PUBLIC_ANALYTICS: {
+        limit: 120,
+        window: 60,
+        description: 'Public analytics - 120 coalesced flushes per minute per IP'
+    },
+
+    /**
      * Payment Operations - Security critical
      * Used by: Onboarding, subscription creation, topup orders
      */

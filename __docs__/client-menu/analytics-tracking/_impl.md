@@ -252,8 +252,9 @@ export async function trackAnalyticsEvent(
 ) {
   const date = getAnalyticsDateKey(new Date(), storeTimeZone);
   if (typeof window !== 'undefined') {
-    // Public customer analytics bypasses apiCallComposerClient so anonymous
-    // menu users do not trigger auth session checks or loader dispatches.
+    // Public customer analytics bypasses direct Firestore writes. Anonymous
+    // menu users flush the coalesced queue through /api/public/analytics/track,
+    // where the server validates the target and writes with Admin SDK.
     enqueueAnalyticsWrite(updateData, tenantId, storeId, projectId, date, storeTimeZone);
     return true;
   }

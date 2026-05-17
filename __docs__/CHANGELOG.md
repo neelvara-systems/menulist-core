@@ -6,6 +6,14 @@
 
 ---
 
+## May 17, 2026 — Public Route Recovery
+
+### Fixed
+
+- **Public tenant pages restored after Firestore permission failures** — Public tenant route, OBP, manifest, compliance, and sitemap server reads now use Firebase Admin SDK instead of anonymous browser Firestore reads.
+- **Customer app icon route uses server credentials** — Public PWA icon generation now reads store identity through Firebase Admin SDK so install icons do not rely on anonymous Firestore access.
+- **Public analytics moved behind a server route** — Anonymous menu, OBP, and Customer App analytics queues now flush through `POST /api/public/analytics/track`, keeping Firestore rules strict while avoiding public browser permission errors.
+
 ## May 17, 2026 — Messaging Onboarding Monitoring
 
 ### Added

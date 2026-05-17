@@ -52,6 +52,10 @@ None — analytics data is append-only / increment-only.
 |----------|---------|-----------|----------|--------|-------|
 | `computeDecisionBlocksScores` | Scheduled (hourly, timezone-aware) | 24x/day scheduler, but each store settles once at its local nightly hour | 10-30s typical per batch | 256MB | Runs decision blocks, menu intelligence, OBP analytics, and customer analytics in one store-scoped nightly flow. |
 
+## Public Write Path
+
+Anonymous customer analytics no longer writes directly to Firestore from the browser. Public menu, OBP, and Customer App events still coalesce in the local queue, then flush to `POST /api/public/analytics/track`. The route is IP-rate-limited, validates the tenant/store/project target, and writes the same daily analytics document with Firebase Admin SDK. Firestore rules stay authenticated-only for `analytics/{docId}`.
+
 ---
 
 ## Cost Estimate (per 1000 stores, 100 customer scans/store/month)

@@ -259,7 +259,7 @@ match /pwa-icons/{storeId}/{size} {
 | `/api/app-icons/{id}/{size}`           | GET    | 0 (Storage)       | Yes (100/min) | CDN cached                          |
 | `/api/app-icons/generate`              | POST   | 1R + 3W (Storage) | Yes (5/min)   | Owner only                          |
 
-**No dedicated analytics endpoints needed.** Analytics events flow through the existing client-side `trackEvent()` which writes directly to Firestore via `trackAnalyticsEvent` — same path used for menu views. Dashboard reads use existing `useAnalyticsData` hook with `projectId='customerApp'`.
+Customer App analytics events flow through the existing client-side `trackEvent()` and local analytics queue with `projectId='customerApp'`. Anonymous flushes use `POST /api/public/analytics/track`; the server validates the store/project target and writes with Firebase Admin SDK. Dashboard reads use existing `useAnalyticsData` hook with `projectId='customerApp'`.
 
 ---
 

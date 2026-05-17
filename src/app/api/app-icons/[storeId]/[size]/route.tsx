@@ -14,17 +14,16 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import {
     clampCustomerAppIconSize,
     CUSTOMER_APP_ICON_CACHE_CONTROL,
     renderCustomerAppIcon,
     resolveCustomerAppIconSource,
 } from '@lib/pwa/customerAppAssets';
-import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'nodejs'; // Firestore client needs node runtime
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Caching rationale (KEPT — do not remove):
@@ -43,9 +42,8 @@ export async function GET(
     const storeId = params.storeId;
 
     try {
-        const ref = doc(firebaseClient, DB_COLLECTIONS.STORES, storeId);
-        const snap = await getDoc(ref);
-        const store = snap.exists() ? snap.data() : null;
+        const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
+        const store = snap.exists ? snap.data() : null;
 
         const displayName: string = getStoreContextName(store, 'Menu');
         const iconSource = resolveCustomerAppIconSource(store);
