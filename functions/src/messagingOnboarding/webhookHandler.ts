@@ -17,7 +17,6 @@ import {
 } from "./providers/providerRegistry";
 import {
   enqueueInboundMessage,
-  processQueuedInboundMessage,
 } from "./inboundQueue";
 
 const logger = functions.logger;
@@ -112,9 +111,9 @@ export async function messagingOnboardingWebhook(
       return;
     }
 
-    // Respond only after durable persistence. Meta requires a quick response,
-    // and the scheduled intake processor will retry pending messages if this
-    // post-ack processing attempt is interrupted.
+    // Respond only after durable persistence. Provider webhooks must not depend
+    // on post-response work; Cloud Functions may freeze execution after ACK.
+    // msgIntakeProcessor drains pending queue items on the next schedule tick.
     res.status(200).send("OK");
 
     if (!queued.created) {
@@ -124,18 +123,6 @@ export async function messagingOnboardingWebhook(
         userId: normalizedMsg.userId.slice(-4),
       });
       return;
-    }
-
-    // Best-effort immediate drain after acknowledgement.
-    try {
-      await processQueuedInboundMessage(queued.messageId);
-    } catch (err) {
-      // INV-1: Safe-Ignore Principle — never crash on unexpected input
-      logger.error("[Webhook] Error processing message", {
-        provider,
-        error: (err as Error).message,
-        stack: (err as Error).stack?.slice(0, 500),
-      });
     }
 
     return;

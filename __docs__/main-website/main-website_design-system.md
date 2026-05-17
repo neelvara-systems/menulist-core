@@ -159,6 +159,14 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 | Footer column gap           | 48px    | `gap-12`           |
 | Icon + text gap             | 8-12px  | `gap-2` to `gap-3` |
 
+### 4.5 Mobile Polish Rules
+
+- Mobile interactive controls should use a 44px-class minimum tap box. Primary CTAs use 48px height where possible.
+- Mobile section rhythm should prefer 40-44px vertical padding over desktop-scale breathing room.
+- Dense mobile link groups may use two columns only when each item remains readable and tappable; otherwise fall back to one column.
+- Mobile footer links and social links must be tappable targets, not raw text links.
+- Avoid unsupported instant-propagation wording in mobile screenshots or locale overrides. Use approved-source language instead.
+
 ### 4.4 Layout Widths
 
 ```css

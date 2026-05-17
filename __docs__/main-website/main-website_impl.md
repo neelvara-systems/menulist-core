@@ -1,6 +1,6 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.4.1 Canonical Website Default
+**Status:** IMPLEMENTED — v3.4.2 Canonical Website Default
 **Last Updated:** May 17, 2026
 **Audience:** Developers
 
@@ -106,6 +106,8 @@ LocalisationProvider (locale from next-intl/server)
 
 **Supporting-page revenue polish:** Stage 7.5 extended the official-source system across supporting pages. `AboutPage`, `ContactPage`, `GetStartedPage`, `TrustSecurityPage`, and `pricing-pages/index.tsx` now use shared hero/proof patterns where appropriate; pricing visual copy was hardened without changing payment, subscription, Razorpay, auth, or onboarding logic; `/how-it-works` and `/multi-location` now avoid overclaiming instant propagation in public copy.
 
+**Mobile website polish:** Stage 7.7 tightened `website.css` mobile behavior across the homepage and supporting pages. Mobile controls now use 44px-class touch targets, the revenue path and proof sections use denser mobile grids, the footer navigation keeps tappable links, and stale `/multi-location` locale overrides were normalized away from instant/always-consistent claims. Pricing/payment/auth/create-menu runtime logic was not changed.
+
 **Canonical cleanup:** v3.3.0 made this implementation the only website source-code version. Old source-code backups, backup restore docs, the dead `HowItWorksSection.tsx`, and unused legacy landing-template visuals were removed. Historical strategy docs may remain for context, but they are not restoration sources.
 
 ---
@@ -190,7 +192,7 @@ src/components/website/
 
 - **Layout:** `@styles/app.scss` (imported in layout.tsx)
 - **Pages:** `@/styles/website.css` (imported per-page via page.tsx files)
-- **Approach:** CSS variables for colors, responsive breakpoints, mobile-first
+- **Approach:** CSS variables for colors, responsive breakpoints, mobile-first spacing, and 44px-class touch targets
 - **Components:** Mix of Tailwind CSS + custom CSS + shadcn/ui
 - **Theme:** Force light mode via `ThemeProvider` (website is always light)
 

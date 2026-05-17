@@ -21,6 +21,7 @@ export default function StickyCta() {
 
   return (
     <div
+      className="ws-sticky-cta"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -33,6 +34,7 @@ export default function StickyCta() {
       }}
     >
       <div
+        className="ws-sticky-cta__inner"
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(12px)',

@@ -43,9 +43,9 @@ export default function Header() {
 
   return (
     <>
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--ws-border-default)' }}>
-        <nav className="ws-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem', padding: '0 var(--ws-space-6)' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', textDecoration: 'none', color: 'var(--ws-text-primary)' }}>
+      <header className="ws-header" style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--ws-border-default)' }}>
+        <nav className="ws-container ws-header__nav" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem', padding: '0 var(--ws-space-6)' }}>
+          <Link href="/" className="ws-header__brand" style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', textDecoration: 'none', color: 'var(--ws-text-primary)' }}>
             <LogoMark height={26} />
             <span style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: 0 }}>MenuList</span>
           </Link>

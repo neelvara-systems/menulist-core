@@ -38,8 +38,7 @@
 │  inboundQueue                                                          │
 │    ├─ Dedup key: SHA-256(provider + providerMessageId)                │
 │    ├─ Persist sanitized NormalizedMessage before webhook ACK          │
-│    ├─ Process immediately when possible                               │
-│    └─ Retry from msgIntakeProcessor if webhook process is interrupted │
+│    └─ Process from msgIntakeProcessor after durable provider ACK      │
 └──────────────────────┬─────────────────────────────────────────────────┘
                        │ queued NormalizedMessage
                        ▼
@@ -620,8 +619,7 @@ Each provider gets its own webhook endpoint. The webhook handler resolves the pr
 // 3. providerAdapter.parseIncomingMessage(req) → NormalizedMessage
 // 4. inboundQueue.enqueueInboundMessage(normalizedMessage) — durable dedup write
 // 5. Send provider ACK only after queue write succeeds
-// 6. Best-effort immediate drain via processQueuedInboundMessage(messageId)
-// 7. msgIntakeProcessor retries pending queue items if webhook processing was interrupted
+// 6. msgIntakeProcessor drains pending queue items every 2 minutes
 // Must ACK provider quickly after durable queue write
 ```
 

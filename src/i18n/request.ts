@@ -79,6 +79,16 @@ function deepMerge(source: Record<string, any>, target: Record<string, any>): Re
     return result;
 }
 
+function isNextInternalControlError(error: unknown): boolean {
+    const digest = error && typeof error === 'object' && 'digest' in error
+        ? String((error as { digest?: unknown }).digest)
+        : '';
+
+    return digest === 'DYNAMIC_SERVER_USAGE'
+        || digest === 'NEXT_NOT_FOUND'
+        || digest.startsWith('NEXT_REDIRECT');
+}
+
 // https://next-intl-docs.vercel.app/docs/getting-started/app-router/without-i18n-routing
 export default getRequestConfig(async () => {
 
@@ -168,6 +178,10 @@ export default getRequestConfig(async () => {
         };
 
     } catch (error) {
+        if (isNextInternalControlError(error)) {
+            throw error;
+        }
+
         // Log error for debugging
         logger.error('i18n Configuration Error', error, {
             userAgent: windowRef()?.navigator?.userAgent,

@@ -631,7 +631,7 @@ Key FAQ topics:
 
 **Headline:**
 
-> One menu. Every location. Always consistent.
+> One menu. Every location. Built to stay consistent.
 
 **Subline:**
 
@@ -657,13 +657,13 @@ Key FAQ topics:
 
 **Heading:**
 
-> One master menu. Every outlet inherits it.
+> One master menu. Every outlet follows it.
 
 **Body:**
 
 > Build your core menu once at HQ. When you update the master and publish the approved version, linked outlets can reflect the change from the same source.
 
-**Visual:** Master menu → propagation arrows → 5 outlet menus updating simultaneously
+**Visual:** Master menu → approved-source flow → 5 outlet menus using the same source
 
 ---
 

@@ -143,6 +143,7 @@ export default function InteractiveWorkflowSection() {
       </div>
 
       <div
+        className="ws-workflow-step-grid"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -155,6 +156,7 @@ export default function InteractiveWorkflowSection() {
         {steps.map((step, i) => (
           <AnimateStaggerChild key={step.number} index={i}>
             <div
+              className="ws-workflow-step-card"
               style={{
                 position: 'relative',
                 overflow: 'hidden',
@@ -214,7 +216,7 @@ export default function InteractiveWorkflowSection() {
       </div>
 
       <AnimateOnScroll delay={0.2}>
-        <div style={{ textAlign: 'center', marginTop: 'var(--ws-space-14)' }}>
+        <div className="ws-workflow-cta" style={{ textAlign: 'center', marginTop: 'var(--ws-space-14)' }}>
           <p
             style={{
               fontSize: '0.875rem',

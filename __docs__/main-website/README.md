@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.1 (Canonical Website Default)
+**Version:** 3.4.2 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 17, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.1** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
+| **3.4.2** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
 
-Version 3.4.1 keeps the official-source positioning in the visual proof and supporting sections, but the first-screen promise now starts from the owner action a non-technical SMB understands immediately: upload the current menu, review, then publish.
+Version 3.4.2 keeps the official-source positioning in the visual proof and supporting sections, but the first-screen promise now starts from the owner action a non-technical SMB understands immediately: upload the current menu, review, then publish. The mobile presentation is tightened around readable first-screen clarity, tappable controls, and lower scroll fatigue.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -297,11 +297,35 @@ Protected scope:
 
 - Pricing, payment, Razorpay, subscription, billing, checkout, plan selection, and `/create-menu` upload/extraction/claim internals were not redesigned.
 
+## Stage 7.7 Mobile Website Polish
+
+Stage 7.7 reviewed the website from a phone viewport and tightened the mobile layout without changing the product strategy.
+
+Implemented change:
+
+- Fixed the missing `--ws-space-18` website spacing token.
+- Increased mobile tap targets for header controls, website CTAs, sticky CTA, and footer/social links.
+- Compacted homepage mobile rhythm for the hero, revenue path, workflow cards, proof band, and footer navigation.
+- Kept revenue-path links in a safe two-column mobile grid where the viewport supports it.
+- Rechecked key website pages at a 390px mobile viewport: `/`, `/pricing`, `/features`, `/how-it-works`, `/multi-location`, `/get-started`, and `/create-menu`.
+- Normalized stale non-primary locale overrides on `/multi-location` so mobile visitors do not see older "instant / in seconds / always consistent" claims.
+
+Reference principles used:
+
+- Mobile layout starts from readable first-screen clarity and one clear primary action.
+- Interactive targets should be comfortably tappable on phones.
+- Marketing sections must reduce scroll fatigue by using tighter cards, smaller gaps, and safe two-column grids only where labels remain readable.
+
+Protected scope:
+
+- Pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.2 | May 17, 2026 | Mobile website polish: touch targets, section rhythm, revenue/workflow compactness, footer mobile navigation, and stale multi-location locale claim cleanup. |
 | 3.4.0 | May 17, 2026 | Supporting pages polished across About, Contact, Get Started, Trust & Security, Pricing, How It Works, and Multi-Location; shared page hero/proof components added; pricing copy hardened without touching payment/auth/onboarding logic. |
 | 3.3.0 | May 17, 2026 | Current website established as the only source-code version. Old source-code backups, backup restore docs, dead homepage code, and unused old landing-template visuals removed. |
