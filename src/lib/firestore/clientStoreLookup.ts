@@ -22,9 +22,8 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import { unstable_cache } from 'next/cache';
 import { cache } from 'react';
 
@@ -32,8 +31,8 @@ export type ClientStoreLookupResult =
     | ({ id: string } & Record<string, any>)
     | null;
 
-const buildStoreRef = () => collection(firebaseClient, DB_COLLECTIONS.STORES);
-const buildTenantDocRef = (tenantId: string | number) => doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
+const buildStoreCollection = () => firestoreAdmin.collection(DB_COLLECTIONS.STORES);
+const buildTenantDocRef = (tenantId: string | number) => firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
 
 async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boolean> {
     if (isPlatformEntityBlocked(store)) return true;
@@ -41,8 +40,8 @@ async function isStoreOrTenantBlocked(store: Record<string, any>): Promise<boole
     const tenantId = store?.tenantId ?? store?.tId;
     if (tenantId == null || tenantId === '') return false;
 
-    const tenantSnap = await getDoc(buildTenantDocRef(tenantId));
-    if (!tenantSnap.exists()) return false;
+    const tenantSnap = await buildTenantDocRef(tenantId).get();
+    if (!tenantSnap.exists) return false;
 
     return isPlatformEntityBlocked(tenantSnap.data());
 }
@@ -52,13 +51,11 @@ export const getStoreBySubdomain = cache(
         async (subdomain: string): Promise<ClientStoreLookupResult> => {
             const normalized = subdomain.toLowerCase();
             // Primary: direct match on current subdomain.
-            const directQuery = query(
-                buildStoreRef(),
-                where('subdomain', '==', normalized),
-                where('active', '==', true),
-                limit(1),
-            );
-            const directSnap = await getDocs(directQuery);
+            const directSnap = await buildStoreCollection()
+                .where('subdomain', '==', normalized)
+                .where('active', '==', true)
+                .limit(1)
+                .get();
             if (!directSnap.empty) {
                 const data = { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
                 return await isStoreOrTenantBlocked(data) ? null : data;
@@ -71,13 +68,11 @@ export const getStoreBySubdomain = cache(
             // strings) written alongside `previousSubdomains` by the admin
             // rename endpoint. Each entry is filtered here against its
             // expiresAt on the object to honor the 12-month ceiling.
-            const chainQuery = query(
-                buildStoreRef(),
-                where('previousSubdomainSlugs', 'array-contains', normalized),
-                where('active', '==', true),
-                limit(1),
-            );
-            const chainSnap = await getDocs(chainQuery);
+            const chainSnap = await buildStoreCollection()
+                .where('previousSubdomainSlugs', 'array-contains', normalized)
+                .where('active', '==', true)
+                .limit(1)
+                .get();
             if (chainSnap.empty) return null;
             const doc = chainSnap.docs[0];
             const data = doc.data() as Record<string, any>;
@@ -106,14 +101,12 @@ export const getStoreBySubdomain = cache(
 export const getStoreByCustomDomain = cache(
     unstable_cache(
         async (domain: string): Promise<ClientStoreLookupResult> => {
-            const q = query(
-                buildStoreRef(),
-                where('customDomain', '==', domain.toLowerCase()),
-                where('domainVerified', '==', true),
-                where('active', '==', true),
-                limit(1),
-            );
-            const snapshot = await getDocs(q);
+            const snapshot = await buildStoreCollection()
+                .where('customDomain', '==', domain.toLowerCase())
+                .where('domainVerified', '==', true)
+                .where('active', '==', true)
+                .limit(1)
+                .get();
             if (snapshot.empty) return null;
             const data = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
             return await isStoreOrTenantBlocked(data) ? null : data;
@@ -139,28 +132,24 @@ export const getStoreByOutletSlug = cache(
         async (tenantId: number, outletSlug: string): Promise<ClientStoreLookupResult> => {
             const normalized = outletSlug.toLowerCase();
             // Primary: direct match on current slug.
-            const directQuery = query(
-                buildStoreRef(),
-                where('tenantId', '==', tenantId),
-                where('outletSlug', '==', normalized),
-                where('active', '==', true),
-                limit(1),
-            );
-            const directSnap = await getDocs(directQuery);
+            const directSnap = await buildStoreCollection()
+                .where('tenantId', '==', tenantId)
+                .where('outletSlug', '==', normalized)
+                .where('active', '==', true)
+                .limit(1)
+                .get();
             if (!directSnap.empty) {
                 const data = { id: directSnap.docs[0].id, ...directSnap.docs[0].data() };
                 return await isStoreOrTenantBlocked(data) ? null : data;
             }
             // Fallback: rename-chain lookup via previousOutletSlugs[]. Mirrors
             // the project-slug chain mechanism on outlet stores.
-            const chainQuery = query(
-                buildStoreRef(),
-                where('tenantId', '==', tenantId),
-                where('previousOutletSlugs', 'array-contains', normalized),
-                where('active', '==', true),
-                limit(1),
-            );
-            const chainSnap = await getDocs(chainQuery);
+            const chainSnap = await buildStoreCollection()
+                .where('tenantId', '==', tenantId)
+                .where('previousOutletSlugs', 'array-contains', normalized)
+                .where('active', '==', true)
+                .limit(1)
+                .get();
             if (chainSnap.empty) return null;
             const data = { id: chainSnap.docs[0].id, ...chainSnap.docs[0].data() };
             return await isStoreOrTenantBlocked(data) ? null : data;

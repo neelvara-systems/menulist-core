@@ -28,11 +28,11 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { PLATFORM_DOMAIN } from '@constant/urls';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import { MetadataRoute } from 'next';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
@@ -55,6 +55,18 @@ type OutletSitemapEntry = {
     modifiedOn: Date;
 };
 
+const getRequestHostname = (value: string | null): string => {
+    if (!value) return '';
+    return value
+        .split(',')[0]
+        .trim()
+        .toLowerCase()
+        .replace(/:\d+$/, '');
+};
+
+const isLocalHostname = (hostname: string): boolean =>
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
+
 const readModifiedOn = (raw: any): Date => {
     if (raw?.toDate) return raw.toDate();
     if (typeof raw === 'string') {
@@ -67,22 +79,18 @@ const readModifiedOn = (raw: any): Date => {
 const getMasterStoreSeed = unstable_cache(
     async (subdomain: string, customDomain: string | null): Promise<StoreSitemapSeed | null> => {
         try {
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
+            const storesRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES);
             const q = customDomain
-                ? query(
-                    storesRef,
-                    where('customDomain', '==', customDomain.toLowerCase()),
-                    where('domainVerified', '==', true),
-                    where('active', '==', true),
-                    limit(1),
-                )
-                : query(
-                    storesRef,
-                    where('subdomain', '==', subdomain.toLowerCase()),
-                    where('active', '==', true),
-                    limit(1),
-                );
-            const snapshot = await getDocs(q);
+                ? storesRef
+                    .where('customDomain', '==', customDomain.toLowerCase())
+                    .where('domainVerified', '==', true)
+                    .where('active', '==', true)
+                    .limit(1)
+                : storesRef
+                    .where('subdomain', '==', subdomain.toLowerCase())
+                    .where('active', '==', true)
+                    .limit(1);
+            const snapshot = await q.get();
             if (snapshot.empty) return null;
             const storeDoc = snapshot.docs[0];
             const data = storeDoc.data() as Record<string, any>;
@@ -103,13 +111,11 @@ const getMasterStoreSeed = unstable_cache(
 const getProjectsForSitemap = unstable_cache(
     async (storeId: string): Promise<ProjectSitemapEntry[]> => {
         try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
-                `projects_${storeId}`,
-            );
-            const snap = await getDoc(summaryRef);
-            if (!snap.exists()) return [];
+            const snap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+                .doc(`projects_${storeId}`)
+                .get();
+            if (!snap.exists) return [];
             const projects = parseSummaryProjects(snap.data());
             const entries: ProjectSitemapEntry[] = [];
             for (const project of Object.values(projects)) {
@@ -132,13 +138,11 @@ const getProjectsForSitemap = unstable_cache(
 const getOutletsForSitemap = unstable_cache(
     async (tenantId: number, masterStoreId: string): Promise<OutletSitemapEntry[]> => {
         try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
-                'storesSummary',
-            );
-            const summarySnap = await getDoc(summaryRef);
-            if (summarySnap.exists()) {
+            const summarySnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+                .doc('storesSummary')
+                .get();
+            if (summarySnap.exists) {
                 const stores = parseSummaryStores(summarySnap.data());
                 const summaryOutlets = Object.entries(stores)
                     .filter(([storeId, data]: [string, any]) => {
@@ -159,13 +163,11 @@ const getOutletsForSitemap = unstable_cache(
                 if (summaryOutlets.length > 0) return summaryOutlets;
             }
 
-            const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-            const q = query(
-                storesRef,
-                where('tenantId', '==', tenantId),
-                where('active', '==', true),
-            );
-            const snapshot = await getDocs(q);
+            const snapshot = await firestoreAdmin
+                .collection(DB_COLLECTIONS.STORES)
+                .where('tenantId', '==', tenantId)
+                .where('active', '==', true)
+                .get();
             const outlets: OutletSitemapEntry[] = [];
             for (const d of snapshot.docs) {
                 if (d.id === masterStoreId) continue;
@@ -188,12 +190,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const headersList = headers();
     const subdomain = headersList.get('x-tenant-subdomain');
     const customDomain = headersList.get('x-tenant-custom-domain');
+    const requestHostname = getRequestHostname(headersList.get('x-forwarded-host') || headersList.get('host'));
 
     let baseUrl: string;
     if (customDomain) {
         baseUrl = `https://${customDomain}`;
+    } else if (subdomain && requestHostname && !isLocalHostname(requestHostname)) {
+        baseUrl = `https://${requestHostname}`;
     } else if (subdomain) {
-        baseUrl = `https://${subdomain}.menulist.ai`;
+        baseUrl = `https://${subdomain}.${PLATFORM_DOMAIN}`;
     } else {
         // Fallback — shouldn't happen in production (middleware sets headers).
         return [];

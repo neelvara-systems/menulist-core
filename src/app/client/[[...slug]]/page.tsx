@@ -25,7 +25,6 @@ import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
-import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
 import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
@@ -74,10 +73,6 @@ import {
 } from "@lib/schema";
 import { slugify } from "@lib/utils/slugify";
 import ClientMenuRenderer from "@template/website/clientWebsite";
-import {
-    doc,
-    getDoc
-} from "firebase/firestore";
 import { Metadata, Viewport } from "next";
 import { unstable_cache } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -147,13 +142,13 @@ const serializeClientValue = (value: any): any => {
 // Get project data by ID
 async function getProjectData(projectId: string): Promise<any> {
     const [tId, , sId] = projectId.split("-");
-    const docRef = doc(
-        firebaseClient,
-        `${DB_COLLECTIONS.PROJECTS}/${tId}/${sId}`,
-        projectId,
-    );
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) return null;
+    const docSnap = await firestoreAdmin
+        .collection(DB_COLLECTIONS.PROJECTS)
+        .doc(String(tId))
+        .collection(String(sId))
+        .doc(projectId)
+        .get();
+    if (!docSnap.exists) return null;
     return docSnap.data();
 }
 
@@ -188,15 +183,13 @@ async function getProjectBySlugOrDefault(
 ): Promise<{ projectData: any; projectMetadata: any; redirectSlug: string | null; isMenuAliasFallback: boolean } | null> {
     // Read projectsSummary (1 read) — contains slug, previousSlugs, name, isDefault
     // This is the primary source for URL routing data (URL Routing Architecture — ADR-3)
-    const summaryDocRef = doc(
-        firebaseClient,
-        DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary",
-        `projects_${storeId}`,
-    );
-    const summarySnap = await getDoc(summaryDocRef);
+    const summarySnap = await firestoreAdmin
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+        .doc(`projects_${storeId}`)
+        .get();
     // Handles both storage formats: nested `{ projects: { id: {...} } }`
     // and legacy flat `{ "projects.id": {...} }` created by Admin SDK set() writes.
-    const summaryProjects = summarySnap.exists() ? parseSummaryProjects(summarySnap.data()) : {};
+    const summaryProjects = summarySnap.exists ? parseSummaryProjects(summarySnap.data()) : {};
 
     // Build projects list from summary (preferred) or fallback to data collection
     let projects: Array<{
@@ -455,13 +448,11 @@ function mergeOverlayMenu(baseProject: any, specialProject: any): any {
 const getMenuAliasCanonicalSlug = unstable_cache(
     async (storeId: number): Promise<string | null> => {
         try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary",
-                `projects_${storeId}`,
-            );
-            const summarySnap = await getDoc(summaryRef);
-            if (!summarySnap.exists()) return null;
+            const summarySnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+                .doc(`projects_${storeId}`)
+                .get();
+            if (!summarySnap.exists) return null;
             const projects = parseSummaryProjects(summarySnap.data());
             const activeProjects = Object.values(projects).filter(
                 (p: any) => p.active !== false && p.deleted !== true && !p.isSpecialMenu

@@ -9,7 +9,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import {
     getStoreByCustomDomain,
     getStoreBySubdomain,
@@ -18,10 +18,6 @@ import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
-import {
-    doc,
-    getDoc,
-} from "firebase/firestore";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import BrandOBPContent from "./BrandOBPContent";
@@ -63,13 +59,11 @@ const getObpMenuInfo = unstable_cache(
     async (storeId: number, activeSpecialMenuId?: string): Promise<ObpMenuInfo> => {
         const empty: ObpMenuInfo = { hasMenu: false, defaultSlug: undefined, projects: [] };
         try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary",
-                `projects_${storeId}`,
-            );
-            const summarySnap = await getDoc(summaryRef);
-            if (!summarySnap.exists()) return empty;
+            const summarySnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+                .doc(`projects_${storeId}`)
+                .get();
+            if (!summarySnap.exists) return empty;
             const raw = parseSummaryProjects(summarySnap.data());
             const entries = Object.entries(raw).map(([projectId, data]: [string, any]) => ({ projectId, ...data }));
             const activeRegular = entries.filter(
@@ -131,13 +125,11 @@ const getObpMenuInfo = unstable_cache(
 const countActiveStoresForTenant = unstable_cache(
     async (tenantId: number): Promise<number> => {
         try {
-            const summaryRef = doc(
-                firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary",
-                "storesSummary",
-            );
-            const summarySnap = await getDoc(summaryRef);
-            if (!summarySnap.exists()) return 1;
+            const summarySnap = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+                .doc("storesSummary")
+                .get();
+            if (!summarySnap.exists) return 1;
             const stores = summarySnap.data()?.stores || {};
             return Object.values(stores).filter(
                 (store: any) => store.tId === tenantId && store.active !== false && !isPlatformEntityBlocked(store),

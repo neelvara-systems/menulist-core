@@ -11,14 +11,13 @@ import { DB_COLLECTIONS } from "@constant/database";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { getBrandName } from "@lib/businessIdentity/names";
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
-import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import {
     getStoreByCustomDomain,
     getStoreBySubdomain,
 } from "@lib/firestore/clientStoreLookup";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { LuChevronLeft } from "react-icons/lu";
-import { doc, getDoc } from "firebase/firestore";
 import { notFound } from "next/navigation";
 
 // ── Store lookup + tenant headers — shared with other client pages ──
@@ -77,10 +76,12 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
     let content = systemContent;
 
     try {
-        const docRef = doc(firebaseClient, DB_COLLECTIONS.COMPLIANCE_PAGES, String(sId));
-        const docSnap = await getDoc(docRef);
+        const docSnap = await firestoreAdmin
+            .collection(DB_COLLECTIONS.COMPLIANCE_PAGES)
+            .doc(String(sId))
+            .get();
 
-        if (docSnap.exists()) {
+        if (docSnap.exists) {
             const data = docSnap.data();
             const overrideFieldMap: Record<string, string> = {
                 privacy: 'privacyOverride',

@@ -15,7 +15,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -23,7 +23,6 @@ import { resolveDomain } from '@lib/multiTenant/domainResolver';
 import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
-import { doc, getDoc } from 'firebase/firestore';
 import { headers } from 'next/headers';
 
 /**
@@ -37,13 +36,11 @@ import { headers } from 'next/headers';
 async function getStoreLevelStartUrl(store: any): Promise<string> {
     if (!store?.storeId) return '/';
     try {
-        const summaryRef = doc(
-            firebaseClient,
-            DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
-            `projects_${store.storeId}`,
-        );
-        const snap = await getDoc(summaryRef);
-        if (!snap.exists()) return '/';
+        const snap = await firestoreAdmin
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+            .doc(`projects_${store.storeId}`)
+            .get();
+        if (!snap.exists) return '/';
         const projects = parseSummaryProjects(snap.data());
         const hasCustomerMenu = Object.values(projects).some(
             (p: any) => p.active !== false && !p.isSpecialMenu,

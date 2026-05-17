@@ -14,7 +14,7 @@ import GlobalLanguagesList from "@data/languages";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getBrandName } from "@lib/businessIdentity/names";
-import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { parseSummaryStores } from "@lib/firestore/parseSummaryStores";
 import {
     appendPublicLanguageParam,
@@ -30,14 +30,6 @@ import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { StoreDataType } from "@type/platform/store";
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    where,
-} from "firebase/firestore";
 import { unstable_cache } from "next/cache";
 import OBPLanguageSwitcher from "./OBPLanguageSwitcher";
 import OBPAnalytics from "./OBPAnalytics";
@@ -79,9 +71,11 @@ const mapSummaryStoreToOutlet = (storeId: string, data: any): OutletInfo => ({
 // legacy summaries that do not yet carry outletSlug/isMaster fields.
 const getSummaryOutletsForTenant = unstable_cache(
     async (tenantId: number): Promise<OutletInfo[] | null> => {
-        const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary", "storesSummary");
-        const summarySnap = await getDoc(summaryRef);
-        if (!summarySnap.exists()) return null;
+        const summarySnap = await firestoreAdmin
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+            .doc("storesSummary")
+            .get();
+        if (!summarySnap.exists) return null;
 
         const stores = parseSummaryStores(summarySnap.data());
         const tenantStores = Object.entries(stores)
@@ -109,13 +103,11 @@ const getSummaryOutletsForTenant = unstable_cache(
 // Legacy fallback for storesSummary docs that predate outlet routing fields.
 const getCollectionOutletsForTenant = unstable_cache(
     async (tenantId: number, masterStoreId: number): Promise<OutletInfo[]> => {
-        const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-        const q = query(
-            storesRef,
-            where("tenantId", "==", tenantId),
-            where("active", "==", true),
-        );
-        const snapshot = await getDocs(q);
+        const snapshot = await firestoreAdmin
+            .collection(DB_COLLECTIONS.STORES)
+            .where("tenantId", "==", tenantId)
+            .where("active", "==", true)
+            .get();
 
         if (snapshot.empty) return [];
 
