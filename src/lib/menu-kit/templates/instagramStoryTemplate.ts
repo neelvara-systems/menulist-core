@@ -10,6 +10,7 @@
 import QRCode from 'qrcode';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
+import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 type StoryInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -95,9 +96,15 @@ export async function generateInstagramStory(input: StoryInput): Promise<Blob> {
     // Bottom branding area — subtle
     ctx.fillStyle = '#f5f5f5';
     ctx.fillRect(0, H - 120, W, 120);
-    ctx.font = '24px system-ui, -apple-system, sans-serif';
-    ctx.fillStyle = '#bbbbbb';
-    ctx.fillText('Powered by MenuList', W / 2, H - 55);
+    drawMenuListAttribution(ctx, {
+        color: '#bbbbbb',
+        font: '24px system-ui, -apple-system, sans-serif',
+        gap: 8,
+        logoHeight: 22,
+        text: 'Powered by MenuList',
+        x: W / 2,
+        y: H - 55,
+    });
 
     return new Promise((resolve, reject) => {
         canvas.toBlob(

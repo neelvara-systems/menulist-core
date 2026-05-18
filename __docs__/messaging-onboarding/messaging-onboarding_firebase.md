@@ -11,7 +11,7 @@
 
 - **Collections Used:** `messagingOnboardingSessions`, `messagingOnboardingInboundMessages`, `messagingOnboardingRateLimits`, `messagingOnboardingEvents` (tracking), `menuImageProcessingJobs` (reused), `tenants`, `stores`, `users`, `platformSummary`, `systemHealth`, `systemAlerts`
 - **Storage Buckets:** `messagingOnboarding/{sessionId}/{fileId}` (uploaded menu media)
-- **Cloud Functions:** `messagingOnboardingWebhook` (onRequest, per-provider routes), `msgIntakeProcessor` (scheduled), `msgSessionCleanup` (scheduled), `msgExtractionWatcher` (onDocumentUpdated), `processMenuImagesJob` (reused)
+- **Cloud Functions:** `messagingOnboardingWebhook` (onRequest, per-provider routes), `menulistMaintenanceScheduler` (scheduled registry: messaging intake + session cleanup), `msgExtractionWatcher` (onDocumentUpdated), `processMenuImagesJob` (reused)
 - **Architecture:** Provider-agnostic. All collections shared across providers. `provider` field on session doc identifies source.
 - **External APIs:** WhatsApp Cloud API (Meta), Gemini AI (Google)
 - **Estimated Monthly Cost:** Medium-High — scales linearly with onboarding volume
@@ -120,8 +120,7 @@
 | Function                        | Trigger                                     | Frequency                 | Duration | Memory | Notes                                                                                          |
 | ------------------------------- | ------------------------------------------- | ------------------------- | -------- | ------ | ---------------------------------------------------------------------------------------------- |
 | `messagingOnboardingWebhook`    | onRequest (HTTP POST from provider)         | Per incoming message      | <5s ACK; best-effort immediate drain | 256 MB | Verifies provider, writes durable queue doc, then attempts processing. If processing stops, scheduler retries. |
-| `msgIntakeProcessor`            | onSchedule (every 2 min)                    | 720/day                   | 5-30s    | 512 MB | Drains pending inbound queue, checks intake windows, triggers validation + extraction, and runs hourly health snapshot |
-| `msgSessionCleanup`             | onSchedule (daily at 4 AM UTC)              | 1/day                     | 10-60s   | 256 MB | Expiry, reminders (via provider adapter), storage cleanup                                      |
+| `menulistMaintenanceScheduler`  | onSchedule (every 2 min)                    | 720/day                   | 5-540s   | 1 GB   | Runs registry tasks: `messaging_intake` every 2 min, `messaging_session_cleanup` daily at 4 AM UTC, and other MenuList maintenance tasks with per-task Firestore leases |
 | `msgExtractionWatcher`          | onDocumentUpdated (menuImageProcessingJobs) | Per extraction job update | 1-5s     | 256 MB | Detects extraction completion for `msg-onboarding-*` jobs. Updates session, generates preview. |
 | `processMenuImagesJob` (reused) | onDocumentCreated                           | Per extraction            | 30-120s  | 2 GB   | Existing function, reused for messaging onboarding sessions                                    |
 
@@ -240,8 +239,8 @@
 | `/api/msg-preview/[sessionId]`         | GET       | 1R                               | No (token-based)       | Reads session doc for preview rendering                                                                                |
 | `/api/msg-preview/[sessionId]/approve` | POST      | 3-5R + 8-10W                     | Idempotent per attempt | Reads session, checks existing phone user and subdomain, writes tenant+store+user+project+summaries, finalizes session to LIVE in the same transaction, deletes session `extractedProjectFiles`, then revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. May retry if publish fails before commit (recovery to AWAITING_APPROVAL). |
 | `/api/msg-preview/[sessionId]/fix`     | POST      | 1R + 1W                          | 3/session max          | Reads session, writes fix request to session                                                                           |
-| `msgIntakeProcessor` (CF)              | scheduled | Queue drain + 1-50R + 0-5W       | N/A                    | Drains pending inbound messages, reads pending sessions, writes state changes, runs hourly bounded health snapshot      |
-| `msgSessionCleanup` (CF)               | scheduled | 1-100R + 0-50W + Storage deletes | N/A                    | Reads expired sessions, deletes media                                                                                  |
+| `menulistMaintenanceScheduler.messaging_intake` (CF task) | scheduled | Queue drain + 1-50R + 0-5W plus one lightweight task lease | N/A | Drains pending inbound messages, reads pending sessions, writes state changes, runs hourly bounded health snapshot |
+| `menulistMaintenanceScheduler.messaging_session_cleanup` (CF task) | scheduled | 1-100R + 0-50W + Storage deletes plus one lightweight task lease | N/A | Reads expired sessions, deletes media; runs daily inside the maintenance scheduler |
 
 ---
 

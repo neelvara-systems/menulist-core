@@ -1,4 +1,3 @@
-import { getResellerProfile, getResellerTransactions, getAllResellerTransactions } from "@database/reseller";
 import { ResellerProfile, ResellerTransaction } from "@type/reseller";
 import useSWR from "swr";
 
@@ -39,6 +38,20 @@ const fetchMonthlySummary = async (): Promise<ResellerMonthlySummary> => {
     return data;
 };
 
+const fetchResellerProfile = async (): Promise<ResellerProfile> => {
+    const response = await fetch('/api/reseller/profile');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Failed to load reseller profile');
+    return data.profile;
+};
+
+const fetchResellerClients = async (): Promise<ResellerTransaction[]> => {
+    const response = await fetch('/api/reseller/clients');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Failed to load reseller clients');
+    return Array.isArray(data.transactions) ? data.transactions : [];
+};
+
 /**
  * Fetch reseller profile + transactions for the authenticated reseller.
  * Uses SWR for caching and deduplication.
@@ -46,13 +59,13 @@ const fetchMonthlySummary = async (): Promise<ResellerMonthlySummary> => {
 export function useResellerDashboard(resellerId: string, isPlatform: boolean = false, resellerEmail?: string | null) {
     const { data: profile, error: profileError, isLoading: profileLoading, mutate: mutateProfile } = useSWR<ResellerProfile | null>(
         resellerId && !isPlatform ? `reseller-profile-${resellerId}-${resellerEmail || ''}` : null,
-        () => getResellerProfile(resellerId, resellerEmail),
+        fetchResellerProfile,
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 
     const { data: transactions, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = useSWR<ResellerTransaction[]>(
         resellerId ? `reseller-transactions-${resellerId}-${isPlatform}` : null,
-        () => isPlatform ? getAllResellerTransactions(200) : getResellerTransactions(resellerId, 100),
+        fetchResellerClients,
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 

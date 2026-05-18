@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
-import { getAllResellerTransactions, getResellerTransactions } from "@database/reseller";
+import { DB_COLLECTIONS } from "@constant/database";
+import { admin } from "@lib/firebase/firebaseAdmin";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 
@@ -20,11 +21,24 @@ export const GET = withAuth(async (request, session) => {
 
         const isPlatform = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
         const resellerId = session.user.id;
+        const db = admin.firestore();
 
-        // PLATFORM role sees all resellers' clients
-        const transactions = isPlatform
-            ? await getAllResellerTransactions(200)
-            : await getResellerTransactions(resellerId, 100);
+        const transactionsCollection = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS);
+        const transactionsQuery = isPlatform
+            ? transactionsCollection.orderBy("createdOn", "desc").limit(200)
+            : transactionsCollection.where("resellerId", "==", resellerId).limit(100);
+
+        const snapshot = await transactionsQuery.get();
+        const transactions = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+                ...data,
+                id: doc.id,
+                createdOn: data.createdOn?.toDate?.()?.toISOString?.() || data.createdOn || null,
+                modifiedOn: data.modifiedOn?.toDate?.()?.toISOString?.() || data.modifiedOn || null,
+                validUntil: data.validUntil?.toDate?.()?.toISOString?.() || data.validUntil || null,
+            };
+        }).sort((a, b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
 
         return NextResponse.json({ transactions });
 

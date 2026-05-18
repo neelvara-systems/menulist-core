@@ -26,7 +26,7 @@ import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import { SessionProvider as Provider } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ServerSidePageLoader from '../app/loading';
 import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataProvider';
 
@@ -493,11 +493,7 @@ export default function SessionProvider({ children, session }: Props) {
                     <ServerSidePageLoader page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"} />
                 ) : (session && !storeDetails && !canRenderBeforeStoreData) ? (
                     <ServerSidePageLoader page="Loading Store Data" />
-                ) : (
-                    <Suspense fallback={<ServerSidePageLoader page="Main Layout" />}>
-                        {children}
-                    </Suspense>
-                )}
+                ) : children}
             </PlatformGlobalDataProvider>
         </Provider>
     )

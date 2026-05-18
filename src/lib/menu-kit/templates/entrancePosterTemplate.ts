@@ -12,6 +12,7 @@ import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
+import { createMenuListLogoMarkDataUrl, getMenuListLogoMarkWidth } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 type PosterInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -112,10 +113,20 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     }
 
     // Bottom branding — subtle
+    const brandText = 'Menu powered by MenuList';
+    const brandLogoH = 3;
+    const brandLogoW = getMenuListLogoMarkWidth(brandLogoH);
+    const brandGap = 1.5;
+    const brandLogo = createMenuListLogoMarkDataUrl();
+    const brandY = H - 18;
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(180, 180, 180);
-    doc.text('Menu powered by MenuList', W / 2, H - 18, { align: 'center' });
+    const brandTextW = doc.getTextWidth(brandText);
+    const brandStartX = W / 2 - (brandLogoW + brandGap + brandTextW) / 2;
+    doc.addImage(brandLogo.dataUrl, 'PNG', brandStartX, brandY - brandLogoH + 0.6, brandLogoW, brandLogoH);
+    doc.text(brandText, brandStartX + brandLogoW + brandGap, brandY);
 
     return doc.output('blob');
 }

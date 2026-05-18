@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import { LuBadgeCheck, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuRefreshCw, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const surfaceKeys = [
   { key: 'surfaceOfficialPage', icon: LuLayoutGrid },
@@ -55,6 +57,9 @@ export default function HeroSection() {
             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
               {t('Hero.caption')}
             </p>
+
+            <WebsiteMobileSupportHint text={t('Hero.mobileSupport')} />
+            <WebsiteOwnerApprovalHint />
 
             <div className="ws-hero-official__proof">
               {[LuBadgeCheck, LuShieldCheck, LuRefreshCw].map((Icon, index) => (

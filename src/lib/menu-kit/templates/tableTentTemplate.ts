@@ -17,6 +17,7 @@ import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
+import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 type TentCardInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -115,9 +116,15 @@ function drawHalf(
     }
 
     // Branding footer
-    ctx.font = `${Math.round(5 * PX_PER_MM)}px ${fontBase}`;
-    ctx.fillStyle = '#b4b4b4';
-    ctx.fillText('Menu powered by MenuList', cx, h - Math.round(4 * PX_PER_MM));
+    drawMenuListAttribution(ctx, {
+        color: '#b4b4b4',
+        font: `${Math.round(5 * PX_PER_MM)}px ${fontBase}`,
+        gap: Math.round(1.5 * PX_PER_MM),
+        logoHeight: Math.round(3.4 * PX_PER_MM),
+        text: 'Menu powered by MenuList',
+        x: cx,
+        y: h - Math.round(4 * PX_PER_MM),
+    });
 }
 
 export async function generateTableTent(input: TentCardInput): Promise<Blob> {

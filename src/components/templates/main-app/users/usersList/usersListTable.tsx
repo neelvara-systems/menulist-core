@@ -7,19 +7,18 @@ const { Text } = Typography;
 function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
-    console.log("storeDetails", storeDetails)
-    console.log("tenantDetails", tenantDetails)
+    const safeUsersList = Array.isArray(usersList) ? usersList : [];
 
     const columns = [
         {
             title: 'Name',
             dataIndex: 'name',
-            key: Math.random(),
+            key: 'name',
             render: (_, record) => {
                 const image = record.profileImage || record.image
                 return <>
                     <Flex align='center' justify='flex-start' gap={10}>
-                        {Boolean(image) ? <img src={image} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
+                        {Boolean(image) ? <img alt="" src={image} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
                         <Text>{record.name}</Text>
                     </Flex>
                 </>
@@ -28,22 +27,22 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
         {
             title: 'Email',
             dataIndex: 'email',
-            key: Math.random(),
+            key: 'email',
         },
         {
             title: 'Number',
             dataIndex: 'phoneNumber',
-            key: Math.random(),
+            key: 'phoneNumber',
         },
         {
             title: 'Role',
             dataIndex: 'role',
-            key: Math.random(),
+            key: 'role',
             render: (_, record) => (
                 <>
-                    {record.stores.map((store, i) => {
-                        if (store.storeId != storeDetails.storeId) return null;
-                        const roleData = (tenantDetails.storesList.find((s) => s.storeId == store.storeId)?.storeDetails)?.roles?.find((r) => r.id == store.role);
+                    {(Array.isArray(record.stores) ? record.stores : []).map((store, i) => {
+                        if (store.storeId != storeDetails?.storeId) return null;
+                        const roleData = (tenantDetails?.storesList || []).find((s) => s.storeId == store.storeId)?.storeDetails?.roles?.find((r) => r.id == store.role);
                         return <Fragment key={i}>
                             <Tag>{roleData?.name || store.role}</Tag>
                         </Fragment>
@@ -54,7 +53,7 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
         {
             title: 'Status',
             dataIndex: 'active',
-            key: Math.random(),
+            key: 'active',
             render: (_, record) => (
                 <>
                     {!record.active ? <Tag color='error'>Deactivated</Tag> : <>
@@ -65,23 +64,29 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
         },
         {
             title: 'Action',
-            key: Math.random(),
+            key: 'action',
             render: (_, record) => (
                 <Space>
-                    <Button onClick={() => onEditUser(record)} shape="circle" icon={<LuPen />} />
-                    <Button onClick={() => onClickUserDetails(record)} shape="circle" icon={<LuEye />} />
+                    <Button onClick={(event) => {
+                        event.stopPropagation();
+                        onEditUser(record);
+                    }} shape="circle" icon={<LuPen />} />
+                    <Button onClick={(event) => {
+                        event.stopPropagation();
+                        onClickUserDetails(record);
+                    }} shape="circle" icon={<LuEye />} />
                 </Space>
             ),
         }
     ];
 
-    console.log("usersList", usersList)
     return (
         <>
-            <Table key={Math.random()}
+            <Table
                 pagination={false}
-                dataSource={usersList}
+                dataSource={safeUsersList}
                 columns={columns}
+                rowKey={(record) => record.id || record.email}
                 onRow={(record) => ({
                     onClick: () => onClickUserDetails(record), // Handle row click
                 })} />

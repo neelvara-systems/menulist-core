@@ -89,6 +89,10 @@ const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
     'resellerManagement',
     'resellerOnboarding',
 ];
+const SELECTED_PROJECT_DATA_MORE_SCREENS: MoreSubScreen[] = [
+    'dashboard',
+    'designEditor',
+];
 
 function normalizePathname(pathname: string) {
     if (pathname === '/') return pathname;
@@ -228,6 +232,9 @@ export default function MobileShell() {
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
     const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
     const isResellerMobileScreen = activeTab === 'more' && RESELLER_MORE_SCREENS.includes(moreScreen);
+    const shouldEagerLoadSelectedProject = activeTab === 'today'
+        || activeTab === 'menu'
+        || (activeTab === 'more' && SELECTED_PROJECT_DATA_MORE_SCREENS.includes(moreScreen));
     const shouldBypassSubscriptionGate = (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen)) || (isResellerAccount && isResellerMobileScreen);
     const activeOutletSummary = isMasterUser && activeStoreContext
         ? tenantDetails?.storesList?.find((store: any) => store.storeId === activeStoreContext)
@@ -394,7 +401,7 @@ export default function MobileShell() {
     return (
         <AntApp>
             <MobileAntdAppBridge />
-            <MobileProjectsProvider>
+            <MobileProjectsProvider eagerLoadSelectedProject={shouldEagerLoadSelectedProject}>
             <Flex
                 style={{
                     background: token.colorBgLayout,

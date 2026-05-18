@@ -59,18 +59,14 @@ export { embedArticleWorker, processMenuImages, publishApprovedJobFn, regenerate
 // ═══════════════════════════════════════════════════════════════
 
 import {
-  alertEscalation,
-  cleanupOldMenuJobs,
-  cleanupStuckMenuJobs,
-  msgIntakeProcessor,
-  msgSessionCleanup,
+  menulistMaintenanceScheduler,
 } from './triggers/schedulers';
 
-export { alertEscalation, cleanupOldMenuJobs, cleanupStuckMenuJobs, msgIntakeProcessor, msgSessionCleanup };
+export { menulistMaintenanceScheduler };
 
-// Chat analytics (daily aggregation at 1 AM UTC)
+// Chat analytics manual backfill only. Daily aggregation now runs inside
+// menulistMaintenanceScheduler to keep operational scheduled jobs centralized.
 const aggregateModule = require('./aggregateDailyChatStats');
-exports.aggregateDailyChatStats = aggregateModule.aggregateDailyChatStats;
 exports.backfillAggregates = aggregateModule.backfillAggregates;
 
 // Manual aggregation trigger (owner/admin only)

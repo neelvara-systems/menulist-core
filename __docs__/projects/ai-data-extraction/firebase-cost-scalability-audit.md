@@ -155,14 +155,18 @@ The AI Data Extraction pipeline is **economically sustainable at scale**. Fireba
 
 **Cost at 1,000/month:** $0.30. **At 100,000/month:** $30.00.
 
-### 3.5 Cleanup Scheduler Costs ✅
+### 3.5 Maintenance Scheduler Costs
 
-| Scheduler              | Frequency    | Invocations/month | Cost   |
-| ---------------------- | ------------ | ----------------- | ------ |
-| `cleanupStuckMenuJobs` | Every 15 min | 2,880             | ~$0.00 |
-| `cleanupOldMenuJobs`   | Daily 3 AM   | 30                | ~$0.00 |
+| Scheduler | Frequency | Invocations/month | Cost |
+|---|---:|---:|---:|
+| `menulistMaintenanceScheduler` | Every 2 min | 21,600 | Invocation cost normally within free tier; scheduler job count reduced |
 
-Scheduler reads are negligible (0-9 docs per run, usually 0).
+Extraction cleanup now runs as guarded registry tasks inside the maintenance scheduler:
+
+- `menu_stuck_cleanup` every 15 minutes
+- `menu_old_cleanup` daily at 3 AM UTC
+
+Each task uses a lightweight Firestore lease under `_system` so overlapping 2-minute ticks cannot duplicate cleanup writes or alerts.
 
 ---
 
@@ -236,14 +240,14 @@ Query: `where('createdAt', '>=', cutoff)` + `orderBy('createdAt', 'desc')`.
 - No unnecessary re-invocations (idempotency via transaction)
 - CF auto-scales horizontally for concurrent jobs
 
-### Cleanup Schedulers
+### Cleanup Tasks
 
-| Function               | Memory           | Schedule     | Avg Duration | Reads |
-| ---------------------- | ---------------- | ------------ | ------------ | ----- |
-| `cleanupStuckMenuJobs` | Default (256MiB) | Every 15 min | <5s          | 0-9   |
-| `cleanupOldMenuJobs`   | Default (256MiB) | Daily 3 AM   | <10s         | 0-500 |
+| Task | Parent Function | Schedule | Avg Duration | Reads |
+|---|---|---:|---:|---:|
+| `menu_stuck_cleanup` | `menulistMaintenanceScheduler` | Every 15 min | <5s | 0-9 plus lease |
+| `menu_old_cleanup` | `menulistMaintenanceScheduler` | Daily 3 AM | <10s | 0-500 plus lease |
 
-**Verdict:** Scheduler cost is virtually zero (~$0.01/month for all scheduler invocations combined).
+**Verdict:** The refactor primarily reduces Cloud Scheduler job sprawl and operational drift. Firestore lease reads/writes are intentionally tiny compared with extraction job writes.
 
 ---
 

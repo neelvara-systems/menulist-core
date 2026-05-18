@@ -177,8 +177,8 @@ All `completedAt` set on every terminal status transition. ✅
 | `processMenuImagesJob` | onDocumentCreated | aiParallel (540s, 2GiB) | prod only |
 | `dev_triggerProcessMenuImages` | onCall | aiParallel | `ensureDevEnvironment()` |
 | `processMenuImages` | onCall (shared) | aiParallel | Input validation |
-| `cleanupStuckMenuJobs` | onSchedule (15min) | default | — |
-| `cleanupOldMenuJobs` | onSchedule (daily 3AM) | default | — |
+| `menulistMaintenanceScheduler.menu_stuck_cleanup` | onSchedule task (15min) | 1GiB parent scheduler | Per-task Firestore lease |
+| `menulistMaintenanceScheduler.menu_old_cleanup` | onSchedule task (daily 3AM) | 1GiB parent scheduler | Per-task Firestore lease |
 
 ### Config: `FUNCTION_OPTIONS.aiParallel`
 - **Region:** us-central1

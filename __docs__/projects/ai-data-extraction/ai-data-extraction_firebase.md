@@ -42,7 +42,7 @@
 
 | Operation                          | Collection                | Trigger                 | Frequency | Docs Deleted | Soft/Hard | Notes                                                                    |
 | ---------------------------------- | ------------------------- | ----------------------- | --------- | ------------ | --------- | ------------------------------------------------------------------------ |
-| Cleanup old terminal jobs (7d TTL) | `menuImageProcessingJobs` | `cleanupOldMenuJobs` CF | Daily 3AM | Up to 500    | Hard      | Deletes completed/failed/cancelled jobs older than 7 days. Scheduler CF. |
+| Cleanup old terminal jobs (7d TTL) | `menuImageProcessingJobs` | `menulistMaintenanceScheduler.menu_old_cleanup` task | Daily 3AM | Up to 500    | Hard      | Deletes completed/failed/cancelled jobs older than 7 days inside the unified maintenance scheduler. |
 
 ---
 

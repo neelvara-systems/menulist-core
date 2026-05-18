@@ -158,6 +158,7 @@
         "integrations": "Integrations",
         "feedback": "Feedback",
         "posSync": "POS Sync",
+        "digitalScreens": "Digital Screens",
         "businessName": "Business Name",
         "businessNamePlaceholder": "Business Name",
         "businessNameRequired": "Please enter business name",
@@ -206,6 +207,7 @@
         "uploadLogo": "Upload Logo",
         "uploadLogoDesc": "Upload a high-resolution logo for your business. Recommended size: 512x512px.",
         "reset": "Reset",
+        "delete": "Delete",
         "clearAll": "Clear All",
         "workingHoursDesc": "Set your business operating hours for each day. Leave empty if closed.",
         "startTime": "Start Time",
@@ -1356,6 +1358,7 @@
         "policyUpdated": "Policy updated",
         "failedToUpdate": "Failed to update",
         "totalStores": "Total Stores",
+        "stores": "Stores",
         "outlets": "Outlets",
         "perMonthTotal": "/month total",
         "addOutlet": "Add Outlet",
@@ -1581,6 +1584,7 @@
         "allDaysHelper": "Use one schedule first, then adjust individual days only if needed.",
         "copyToAllDays": "Copy this day to all days",
         "copiedToAllDays": "Copied to all days",
+        "reset": "Reset",
         "saveHours": "Save Hours",
         "hoursSaved": "Hours saved",
         "failedToSave": "Failed to save. Please retry."
@@ -2218,6 +2222,7 @@
         "title": "Dashboard",
         "subtitle": "Quick status and performance for your selected {offering}.",
         "noProjects": "No projects yet. Upload your {offering} to see analytics.",
+        "loading": "Loading dashboard...",
         "failedToLoad": "Failed to load",
         "refreshed": "Refreshed",
         "failedToRefresh": "Failed to refresh",
@@ -2485,6 +2490,7 @@
             "proof1": "You approve before publishing",
             "proof2": "QR, links, app and PDF use the same menu",
             "visualLabel": "MenuList live menu and official page preview",
+            "mobileSupport": "No desktop required: update and publish your menu from a phone browser or PWA.",
             "sourceLabel": "Owner-approved source",
             "sourceTitle": "Menu and business details",
             "sourceMenu": "Menu state",
@@ -2514,6 +2520,8 @@
             "surfacePrintPdf": "Print/PDF",
             "surfaceCustomerApp": "Customer app"
         },
+        "mobileSupportLine": "No desktop required: manage and publish from a phone browser or the MenuList PWA.",
+        "ownerApprovalLine": "Nothing is published until you review and approve it.",
         "RevenuePath": {
             "eyebrow": "From menu to customer action",
             "title": "Your menu should help customers",
@@ -2876,6 +2884,7 @@
             "subtitle": "Start from the menu you already have. MenuList turns it into the official customer-facing version of your business.",
             "cta": "Upload your menu →",
             "caption": "No technical setup. Owner approval before publishing.",
+            "mobileSupport": "No desktop required: manage and publish from a phone browser or the MenuList PWA.",
             "bottomText": "Public page, live menu, QR assets, customer app, and customer-facing materials from one menu."
         },
         "Pricing": {

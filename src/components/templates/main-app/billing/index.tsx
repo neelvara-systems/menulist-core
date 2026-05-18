@@ -36,6 +36,7 @@ function BillingPage() {
     const { data: session } = useSession();
     const {
         activeSubscription,
+        activeSubscriptionLoading,
         activeStoreContext,
         isMasterUser,
         setActiveStoreContext,
@@ -68,11 +69,8 @@ function BillingPage() {
     const isInheritedBilling = Boolean(activeSubscription && billingStoreId && Number(activeSubscription.storeId) !== billingStoreId);
 
     useEffect(() => {
-        if (!sessionId && userId) {
-            setIsSubscriptionFetching(true)
-            refetchActiveSubscription();
-        }
-    }, [billingStoreId, sessionId, userId]);
+        setIsSubscriptionFetching(Boolean(!sessionId && userId && activeSubscriptionLoading));
+    }, [activeSubscriptionLoading, sessionId, userId]);
 
     const fetchBillingHistory = async () => {
         if (!userId || !effectiveHistoryStoreId) return;
@@ -270,7 +268,7 @@ function BillingPage() {
                     <ActiveSubscriptionCard activeSubscription={activeSubscription} refetchActiveSubscription={refetchActiveSubscription} setIsPricingModalOpen={setIsPricingModalOpen} setIsCreditsModalOpen={setIsCreditsModalOpen} />
                     <BillingHistory billingHistory={billingHistory} fetchBillingHistory={fetchBillingHistory} />
                 </>
-            ) : (
+            ) : !isSubscriptionFetching ? (
                 <Flex vertical style={{ justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%' }}>
                     <Alert
                         message={t('noActiveSubscription')}
@@ -292,7 +290,7 @@ function BillingPage() {
                         </Empty>
                     </Card>
                 </Flex>
-            )}
+            ) : null}
 
             <PricingPlansModal
                 action={isPricingModalOpen.action}

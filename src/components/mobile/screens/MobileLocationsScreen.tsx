@@ -6,6 +6,7 @@ import { updateOutletPolicy } from '@database/multiOutlet';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
+import { formatCurrency } from '@util/formatters';
 import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -189,7 +190,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                         </Flex>
                         <Flex gap={2} vertical>
                             <Title level={5} style={{ margin: 0 }}>
-                                {`${currency} ${amount * activeStoresList.length}`}
+                                {formatCurrency(amount * activeStoresList.length, currency)}
                             </Title>
                             <Text type="secondary">{t('perMonthTotal')}</Text>
                         </Flex>
@@ -280,7 +281,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                 return (
                                     <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
                                         <Flex gap={4} vertical>
-                                            <Text>{`Prorated charge today: ${currency} ${proration.proratedAmount}`}</Text>
+                                            <Text>{`Prorated charge today: ${formatCurrency(proration.proratedAmount, currency)}`}</Text>
                                             <Text type="secondary">{`${proration.daysRemaining} days left in cycle`}</Text>
                                         </Flex>
                                     </Card>

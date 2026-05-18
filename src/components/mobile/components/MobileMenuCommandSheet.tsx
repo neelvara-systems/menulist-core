@@ -21,6 +21,8 @@ type CommandAction = {
 interface MobileMenuCommandSheetProps {
     businessType?: string;
     labels: OfferingLabels;
+    lastUpdatedAt?: any;
+    menuVersion?: number;
     onAddItem: () => void;
     onCategories: () => void;
     onChangeAvailability: () => void;
@@ -42,9 +44,31 @@ interface MobileMenuCommandSheetProps {
     visible: boolean;
 }
 
+function formatRelativeDate(timestamp: any): string {
+    try {
+        const date = timestamp?.toDate?.() || (timestamp instanceof Date ? timestamp : new Date(timestamp));
+        if (isNaN(date.getTime())) return '';
+
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return 'Updated today';
+        if (diffDays === 1) return 'Updated yesterday';
+        if (diffDays < 7) return `Updated ${diffDays} days ago`;
+        if (diffDays < 30) return `Updated ${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+
+        return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    } catch {
+        return '';
+    }
+}
+
 export default function MobileMenuCommandSheet({
     businessType,
     labels,
+    lastUpdatedAt,
+    menuVersion,
     onAddItem,
     onCategories,
     onChangeAvailability,
@@ -265,12 +289,21 @@ export default function MobileMenuCommandSheet({
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('contentGenerationSection')}</Text>
                         {renderActionList(aiActions)}
-                    </Flex>
+                </Flex>
 
                     <Flex gap={8} vertical>
                         <Text strong type="secondary">{t('menuSetup')}</Text>
                         {renderActionList(menuSetupActions)}
                     </Flex>
+
+                    { (lastUpdatedAt || menuVersion) && (
+                        <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 6, paddingTop: 10 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {lastUpdatedAt && formatRelativeDate(lastUpdatedAt)}
+                                {menuVersion ? `${lastUpdatedAt ? ' · ' : ''}v${menuVersion}` : ''}
+                            </Text>
+                        </div>
+                    )}
                 </Flex>
             </Flex>
         </Popup>

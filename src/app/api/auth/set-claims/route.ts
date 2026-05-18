@@ -26,6 +26,17 @@ const setClaimsSchema = z.object({
     )
 });
 
+async function readSetClaimsBody(request: NextRequest): Promise<unknown | null> {
+    const rawBody = await request.text();
+    if (!rawBody.trim()) return {};
+
+    try {
+        return JSON.parse(rawBody);
+    } catch {
+        return null;
+    }
+}
+
 async function createCanonicaCustomTokenIfNeeded(
     email: string,
     displayName: string | null | undefined,
@@ -82,8 +93,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        // Get Firebase UID from request body (optional - we'll create if needed)
-        const body = await request.json();
+        // Get Firebase UID from request body (optional - we'll create if needed).
+        // Empty body is equivalent to `{}` for OAuth custom-token creation.
+        const body = await readSetClaimsBody(request);
+        if (body === null) {
+            secureLog('[Auth] Invalid JSON for set-claims');
+            return NextResponse.json(
+                { error: 'Invalid input' },
+                { status: 400 }
+            );
+        }
 
         // Validate input (OWASP A03: Injection Prevention)
         const validation = validateAPIInput(setClaimsSchema, body);

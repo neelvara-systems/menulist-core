@@ -38,7 +38,8 @@
 │  inboundQueue                                                          │
 │    ├─ Dedup key: SHA-256(provider + providerMessageId)                │
 │    ├─ Persist sanitized NormalizedMessage before webhook ACK          │
-│    └─ Process from msgIntakeProcessor after durable provider ACK      │
+│    └─ Process from menulistMaintenanceScheduler.messaging_intake      │
+│       after durable provider ACK                                      │
 └──────────────────────┬─────────────────────────────────────────────────┘
                        │ queued NormalizedMessage
                        ▼
@@ -619,7 +620,7 @@ Each provider gets its own webhook endpoint. The webhook handler resolves the pr
 // 3. providerAdapter.parseIncomingMessage(req) → NormalizedMessage
 // 4. inboundQueue.enqueueInboundMessage(normalizedMessage) — durable dedup write
 // 5. Send provider ACK only after queue write succeeds
-// 6. msgIntakeProcessor drains pending queue items every 2 minutes
+// 6. menulistMaintenanceScheduler.messaging_intake drains pending queue items every 2 minutes
 // Must ACK provider quickly after durable queue write
 ```
 
@@ -1902,7 +1903,7 @@ ENABLE_MESSAGING_ONBOARDING_TRACKING = process.env.ENABLE_MESSAGING_ONBOARDING_T
 | 0-30 days | Full event data retained for funnel, failure, abuse, and cost analysis |
 | 30+ days  | Firestore TTL deletes `messagingOnboardingEvents.expiresAt` documents  |
 
-Event cleanup uses Firestore TTL, not the `msgSessionCleanup` scheduler. This avoids a scheduled collection scan and keeps tracking storage bounded.
+Event cleanup uses Firestore TTL, not the `menulistMaintenanceScheduler.messaging_session_cleanup` task. This avoids a scheduled collection scan and keeps tracking storage bounded.
 
 ### 16.10 Security Rules
 

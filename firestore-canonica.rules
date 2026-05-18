@@ -149,6 +149,12 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /changelog/{tId}/{sId}/{pageId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantPath(tId, sId));
+      allow write: if isAuthenticated() && isPlatformAdmin();
+    }
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -169,6 +175,14 @@ service cloud.firestore {
         && request.auth.token.storeId != null
         && string(data.tId) == string(request.auth.token.tenantId)
         && string(data.sId) == string(request.auth.token.storeId);
+    }
+
+    function isCanonicaTenantPath(tId, sId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && string(tId) == string(request.auth.token.tenantId)
+        && string(sId) == string(request.auth.token.storeId);
     }
 
     function isCanonicaScopedRead() {

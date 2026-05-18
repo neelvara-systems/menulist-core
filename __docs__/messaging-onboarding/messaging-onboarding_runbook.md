@@ -52,9 +52,9 @@ Access is platform-only. Owners do not receive API keys or dashboard controls fo
 | Signal | First Check | Likely Fix |
 |---|---|---|
 | Invalid HMAC > 0 | Meta app secret and webhook app configuration | Confirm `WHATSAPP_APP_SECRET` and webhook subscription |
-| Inbound queue pending grows | Intake processor and queue drain logs | Check `msgIntakeProcessor`, provider API health, Firestore index health |
+| Inbound queue pending grows | Maintenance scheduler intake task and queue drain logs | Check `menulistMaintenanceScheduler` task `messaging_intake`, provider API health, Firestore index health |
 | Inbound failed grows | Recent event errors | Check media type/size, provider download errors, session state transitions |
-| Preview link send failed | Sessions with `previewMessagePending=true` | Check Meta send API health; `msgIntakeProcessor` retries every 2 minutes |
+| Preview link send failed | Sessions with `previewMessagePending=true` | Check Meta send API health; `menulistMaintenanceScheduler` retries `messaging_intake` every 2 minutes |
 | Preview link opens wrong domain | `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` on `msgExtractionWatcher` | Set it to the active preview host and redeploy the function |
 | Message send failed grows | `WHATSAPP_PHONE_NUMBER_ID` and access token | Rotate real token or check Graph API response |
 | Meta Graph API returns OAuth `190` | Temporary `WHATSAPP_ACCESS_TOKEN` expired | Generate a fresh token in Meta Developer app, update the Firebase secret, and redeploy affected WhatsApp functions |

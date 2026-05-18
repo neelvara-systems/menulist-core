@@ -1,7 +1,6 @@
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
@@ -20,14 +19,9 @@ import { firestoreAdmin } from './firebaseAdmin';
  * 
  * Cost Savings: 97.6% reduction in dashboard read operations!
  * 
- * Deployment:
- * 1. firebase deploy --only functions:aggregateDailyChatStats
- * 2. Verify in Firebase Console → Functions
- * 3. Check Cloud Scheduler → Job should show next run time
- * 
- * Manual Trigger (for testing/backfill):
- * firebase functions:shell
- * > aggregateDailyChatStats()
+ * Runtime:
+ * - Daily production execution is owned by menulistMaintenanceScheduler.
+ * - backfillAggregates remains callable for manual historical backfills.
  */
 
 interface DailyStats {
@@ -46,12 +40,14 @@ interface DailyStats {
     knowledgeGaps: Array<{ question: string; count: number; examples: string[] }>;
 }
 
-export const aggregateDailyChatStats = onSchedule({
-    schedule: '0 1 * * *', // Runs daily at 1:00 AM UTC
-    timeZone: 'UTC',
-    region: 'us-central1',
-    timeoutSeconds: 540
-}, async (event) => {
+export async function aggregateDailyChatStatsLogic(): Promise<{
+    totalTenants: number;
+    totalStores: number;
+    successCount: number;
+    failedCount: number;
+    skippedCount: number;
+    errors: Array<{ tId: string; storeId: string; error: string }>;
+}> {
     console.log('=== Daily Chat Stats Aggregation Started ===');
     console.log('Triggered at:', new Date().toISOString());
 
@@ -196,9 +192,9 @@ export const aggregateDailyChatStats = onSchedule({
         throw error; // Let Cloud Functions retry
     }
 
-    // Log final results (scheduled functions don't return values)
     console.log('Final Results:', JSON.stringify(results, null, 2));
-});
+    return results;
+}
 
 /**
  * Aggregate stats for a single STORE on a specific date

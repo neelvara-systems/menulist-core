@@ -10,7 +10,7 @@ import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -23,6 +23,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const t = useTranslations('Billing');
     const {
         activeSubscription,
+        activeSubscriptionLoading,
         activeStoreContext,
         isMasterUser,
         setActiveStoreContext,
@@ -81,10 +82,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             console.error('Failed to refetch subscription:', err);
         }
     };
-
-    useEffect(() => {
-        void refetchSubscription();
-    }, [billingStoreId]);
 
     if (!storeDetails) {
         return (
@@ -328,7 +325,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 ) : null}
 
-                {isLoading ? (
+                {(isLoading || activeSubscriptionLoading) ? (
                     <Card>
                         <Flex align="center" gap={8} justify="center">
                             <DotLoading color="primary" />
@@ -499,7 +496,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             </Flex>
                         </Flex>
                     </Card>
-                ) : (
+                ) : !activeSubscriptionLoading ? (
                     <Card>
                         <Flex align="center" gap={12} vertical>
                             <LuCreditCard color="#d1d5db" size={36} />
@@ -512,7 +509,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             </Button>
                         </Flex>
                     </Card>
-                )}
+                ) : null}
 
                 {sub && !isPaymentPending ? (
                     <Card>

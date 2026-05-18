@@ -4,6 +4,8 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const surfaceIcons = [LuQrCode, LuLink, LuMonitor, LuFileText, LuGlobe, LuSmartphone];
 const aiIcons = [LuImage, LuFileText, LuLanguages];
@@ -51,23 +53,25 @@ export default function ProductPage() {
     <main>
       {/* ── Hero ─────────────────────────────── */}
       <SectionWrapper>
-        <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
-          <AnimateOnScroll>
-            <WebsiteHeadline
-              as="h1"
-              parts={[
+          <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
+            <AnimateOnScroll>
+              <WebsiteHeadline
+                as="h1"
+                parts={[
                 { text: t('HowItWorks.heroTitle') },
                 { text: t('HowItWorks.heroHighlight'), highlight: true },
               ]}
             />
-            <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', color: 'var(--ws-text-secondary)' }}>
-              {t('HowItWorks.heroSubtitle')}
-            </p>
-            <div style={{ marginTop: 'var(--ws-space-8)' }}>
-              <WebsiteButton href="/create-menu">{t('HowItWorks.heroCta')}</WebsiteButton>
-            </div>
-          </AnimateOnScroll>
-        </div>
+              <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', color: 'var(--ws-text-secondary)' }}>
+                {t('HowItWorks.heroSubtitle')}
+              </p>
+              <WebsiteMobileSupportHint />
+              <WebsiteOwnerApprovalHint />
+              <div style={{ marginTop: 'var(--ws-space-8)' }}>
+                <WebsiteButton href="/create-menu">{t('HowItWorks.heroCta')}</WebsiteButton>
+              </div>
+            </AnimateOnScroll>
+          </div>
       </SectionWrapper>
 
       {/* ── Animated System Flow Diagram ────── */}

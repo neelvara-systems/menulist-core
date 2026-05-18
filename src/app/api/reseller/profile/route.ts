@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
-import { getResellerProfile } from "@database/reseller";
+import { DB_COLLECTIONS } from "@constant/database";
+import { admin } from "@lib/firebase/firebaseAdmin";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 
@@ -18,11 +19,31 @@ export const GET = withAuth(async (request, session) => {
         }
 
         const resellerId = session.user.id;
-        const profile = await getResellerProfile(resellerId, session.user.email);
+        const db = admin.firestore();
+        const directDoc = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get();
+        let profileDoc = directDoc.exists ? directDoc : null;
 
-        if (!profile) {
+        if (!profileDoc && session.user.email) {
+            const normalizedEmail = session.user.email.toLowerCase().trim();
+            const emailSnapshot = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES)
+                .where("email", "==", normalizedEmail)
+                .limit(1)
+                .get();
+            profileDoc = emailSnapshot.docs[0] || null;
+        }
+
+        if (!profileDoc) {
             return NextResponse.json({ error: "Reseller profile not found." }, { status: 404 });
         }
+
+        const { password: _password, ...profileData } = profileDoc.data() || {};
+        const profile = {
+            ...profileData,
+            id: profileDoc.id,
+            activatedAt: profileData.activatedAt?.toDate?.()?.toISOString?.() || profileData.activatedAt || null,
+            createdOn: profileData.createdOn?.toDate?.()?.toISOString?.() || profileData.createdOn || null,
+            modifiedOn: profileData.modifiedOn?.toDate?.()?.toISOString?.() || profileData.modifiedOn || null,
+        };
 
         return NextResponse.json({ profile });
 

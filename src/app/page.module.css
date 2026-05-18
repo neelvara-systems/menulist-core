@@ -1,5 +1,6 @@
 .loadingWrap {
   position: relative;
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -7,6 +8,8 @@
   background: #ffffff;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   padding: 24px;
 }
 

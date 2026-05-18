@@ -58,8 +58,8 @@ Client (Next.js)
 | `processMenuImagesJob` | onDocumentCreated | On job creation | Main extraction pipeline |
 | `dev_triggerProcessMenuImages` | onCall | Manual (dev only) | Dev environment trigger |
 | `processMenuImages` | onCall | Manual | Legacy callable (shared.ts) |
-| `cleanupStuckMenuJobs` | onSchedule | Every 15 min | Cleanup stuck/expired/cancelling jobs |
-| `cleanupOldMenuJobs` | onSchedule | Daily 3 AM UTC | Delete terminal jobs >7 days old |
+| `menulistMaintenanceScheduler.menu_stuck_cleanup` | onSchedule task | Every 15 min | Cleanup stuck/expired/cancelling jobs |
+| `menulistMaintenanceScheduler.menu_old_cleanup` | onSchedule task | Daily 3 AM UTC | Delete terminal jobs >7 days old |
 | `msgExtractionWatcher` | onDocumentUpdated | On job update | Messaging onboarding integration |
 
 ### Function Configuration

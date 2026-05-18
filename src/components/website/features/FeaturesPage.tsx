@@ -7,6 +7,8 @@ import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const groupIds = ['setup', 'surfaces', 'brand', 'smart', 'operations', 'integrity'];
 const groupIcons = [
@@ -52,6 +54,8 @@ export default function FeaturesPage() {
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '560px', marginLeft: 'auto', marginRight: 'auto' }}>
               {t('Features.heroSubtitle')}
             </p>
+            <WebsiteMobileSupportHint />
+            <WebsiteOwnerApprovalHint />
             <div style={{ marginTop: 'var(--ws-space-8)' }}>
               <WebsiteButton href="/create-menu">{t('Features.heroCta')}</WebsiteButton>
             </div>

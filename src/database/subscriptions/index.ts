@@ -10,6 +10,7 @@ import { getGracePeriodInfo } from "@util/razorpay";
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, Timestamp, where } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
+const activeSubscriptionRequests = new Map<string, Promise<FirestoreSubscriptionDoc | null>>();
 
 // Helper function to get subscription collection reference
 export const getCollectionRef = () => collection(firebaseClient, COLLECTION);
@@ -127,7 +128,12 @@ export const getActiveSubscriptionForStore = async (
     storeId: number,
     tenantStoresList?: MinimalStoreDataType[],
 ): Promise<FirestoreSubscriptionDoc | null> => {
-    return await apiCallComposer(
+    const requestKey = `${tenantId}:${storeId}`;
+    const shouldDedupeRequest = typeof window !== 'undefined';
+    const existingRequest = shouldDedupeRequest ? activeSubscriptionRequests.get(requestKey) : null;
+    if (existingRequest) return existingRequest;
+
+    const request = apiCallComposer(
         async () => {
             const raw = await fetchSubscriptionRaw(tenantId, storeId);
             if (raw) return await expireIfGracePeriodEnded(raw);
@@ -154,7 +160,16 @@ export const getActiveSubscriptionForStore = async (
             return await expireIfGracePeriodEnded(masterRaw);
         },
         `getActiveSubscriptionForStore: ${storeId}`
-    );
+    ).finally(() => {
+        if (shouldDedupeRequest) {
+            activeSubscriptionRequests.delete(requestKey);
+        }
+    });
+
+    if (shouldDedupeRequest) {
+        activeSubscriptionRequests.set(requestKey, request);
+    }
+    return await request;
 };
 
 

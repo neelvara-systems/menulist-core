@@ -14,11 +14,24 @@ import { FEATURE_FLAGS, TIMING } from "../messagingOnboarding/constants";
 import { logOnboardingEvent, maskUserId } from "../messagingOnboarding/eventLogger";
 import { getProviderAdapter } from "../messagingOnboarding/providers/providerRegistry";
 import { transitionState } from "../messagingOnboarding/sessionEngine";
-import { MessagingOnboardingSession } from "../types/messagingOnboarding.types";
+import {
+  MessagingOnboardingSession,
+  MessagingOnboardingState,
+} from "../types/messagingOnboarding.types";
 
 const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
+const EXPIRABLE_STATES: MessagingOnboardingState[] = [
+  "COLLECTING_INPUT",
+  "VALIDATING_ASSETS",
+  "AWAITING_MORE_UPLOADS",
+  "PROCESSING_MENU",
+  "PREVIEW_READY",
+  "AWAITING_APPROVAL",
+  "PUBLISHING",
+  "FAILED",
+];
 
 /**
  * Main cleanup logic — called by onSchedule daily.
@@ -43,7 +56,7 @@ export async function messagingSessionCleanupLogic(): Promise<{
   try {
     const expiredSnapshot = await db
       .collection(sessionsCol)
-      .where("state", "not-in", ["LIVE", "EXPIRED"])
+      .where("state", "in", EXPIRABLE_STATES)
       .where("expiresAt", "<=", now)
       .limit(50)
       .get();
@@ -84,6 +97,7 @@ export async function messagingSessionCleanupLogic(): Promise<{
     logger.error("[Cleanup] Failed to query expired sessions", {
       error: (err as Error).message,
     });
+    errors++;
   }
 
   // 2. Send 12h reminders for AWAITING_APPROVAL sessions

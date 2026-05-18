@@ -3796,6 +3796,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
 
             <MobileMenuCommandSheet
                 businessType={storeDetails?.businessType}
+                lastUpdatedAt={menuData?.lastPublishedAt || menuData?.modifiedOn}
+                menuVersion={menuData?.menuVersion}
                 labels={labels}
                 onAddItem={() => launchCommandAction(() => {
                     openAddItemSheet(null, 'commandMenu');

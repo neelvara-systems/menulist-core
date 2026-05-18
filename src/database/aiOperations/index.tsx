@@ -48,13 +48,35 @@ interface PaginatedResponse {
     hasMore: boolean;
 }
 
+const EMPTY_PAGINATED_RESPONSE: PaginatedResponse = {
+    data: [],
+    lastVisibleDoc: null,
+    hasMore: false,
+};
+
+const normalizePaginatedResponse = (response: unknown): PaginatedResponse => {
+    if (
+        response
+        && typeof response === 'object'
+        && Array.isArray((response as PaginatedResponse).data)
+    ) {
+        return {
+            data: (response as PaginatedResponse).data,
+            lastVisibleDoc: (response as PaginatedResponse).lastVisibleDoc || null,
+            hasMore: Boolean((response as PaginatedResponse).hasMore),
+        };
+    }
+
+    return EMPTY_PAGINATED_RESPONSE;
+};
+
 /**
  * Get AI operations with pagination and filtering
  * @param options - Pagination and filter options
  * @returns Promise with paginated data, last visible document, and hasMore flag
  */
 export const getPaginatedAiOperations = async (options: PaginationOptions): Promise<PaginatedResponse> => {
-    return await apiCallComposer(
+    const response = await apiCallComposer(
         async () => {
             const { pageSize, pageNumber, lastVisibleDoc, dateRange, action } = options;
 
@@ -176,6 +198,8 @@ export const getPaginatedAiOperations = async (options: PaginationOptions): Prom
         options,
         "getPaginatedAiOperations"
     );
+
+    return normalizePaginatedResponse(response);
 };
 
 export const getAiOperationsByStoreId = async (storeId) => {

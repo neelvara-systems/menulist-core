@@ -14,6 +14,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 import CurrencySwitcher from './CurrencySwitcher';
 import './main.css';
 import PlanCard from './PlanCard';
@@ -180,6 +182,8 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     <p style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-4)', lineHeight: 1.5 }}>
                         {t('Pricing.heroSourceLine')}
                     </p>
+                    <WebsiteMobileSupportHint />
+                    <WebsiteOwnerApprovalHint />
                 </div>
 
                 {/* LAYER 2 — Outcome + Pain (merged, 3 items max) */}

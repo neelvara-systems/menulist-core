@@ -474,39 +474,37 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     <Divider />
                     {managedLanguages.length > 1 ? (
                         <Form.Item label="Official page content language">
-                            <Input.Group compact>
-                                <Select
-                                    value={currentLanguage}
-                                    style={{ width: '100%' }}
-                                    options={managedLanguages.map((languageCode) => ({
-                                        label: getStoreLanguageLabel(languageCode),
-                                        value: languageCode,
-                                    }))}
-                                    onChange={(nextLanguage) => {
-                                        const visiblePresence = form.getFieldValue('publicPresence') || {};
-                                        const nextDrafts = {
-                                            ...localizedPresenceDrafts,
-                                            [currentLanguage]: {
-                                                descriptor: visiblePresence.descriptor || '',
-                                                knownFor: visiblePresence.knownFor || '',
-                                                specialNote: visiblePresence.specialNote || '',
-                                            },
-                                        };
+                            <Select
+                                value={currentLanguage}
+                                style={{ width: '100%' }}
+                                options={managedLanguages.map((languageCode) => ({
+                                    label: getStoreLanguageLabel(languageCode),
+                                    value: languageCode,
+                                }))}
+                                onChange={(nextLanguage) => {
+                                    const visiblePresence = form.getFieldValue('publicPresence') || {};
+                                    const nextDrafts = {
+                                        ...localizedPresenceDrafts,
+                                        [currentLanguage]: {
+                                            descriptor: visiblePresence.descriptor || '',
+                                            knownFor: visiblePresence.knownFor || '',
+                                            specialNote: visiblePresence.specialNote || '',
+                                        },
+                                    };
 
-                                        form.setFieldsValue({
-                                            __localizedPublicPresenceDrafts: nextDrafts,
-                                            __storeContentLanguage: nextLanguage,
-                                            publicPresence: {
-                                                ...visiblePresence,
-                                                descriptor: nextDrafts[nextLanguage]?.descriptor || '',
-                                                knownFor: nextDrafts[nextLanguage]?.knownFor || '',
-                                                specialNote: nextDrafts[nextLanguage]?.specialNote || '',
-                                            },
-                                        });
-                                        onContentLanguageChange?.(nextLanguage);
-                                    }}
-                                />
-                            </Input.Group>
+                                    form.setFieldsValue({
+                                        __localizedPublicPresenceDrafts: nextDrafts,
+                                        __storeContentLanguage: nextLanguage,
+                                        publicPresence: {
+                                            ...visiblePresence,
+                                            descriptor: nextDrafts[nextLanguage]?.descriptor || '',
+                                            knownFor: nextDrafts[nextLanguage]?.knownFor || '',
+                                            specialNote: nextDrafts[nextLanguage]?.specialNote || '',
+                                        },
+                                    });
+                                    onContentLanguageChange?.(nextLanguage);
+                                }}
+                            />
                         </Form.Item>
                     ) : null}
 
@@ -962,7 +960,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showCall']}
                                 label={t('showCallButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showCall !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuPhone size={12} />}
@@ -975,7 +972,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showWhatsApp']}
                                 label={t('showWhatsAppButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showWhatsApp !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuMessageSquare size={12} />}
@@ -988,7 +984,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showDirections']}
                                 label={t('showDirectionsButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showDirections !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuMapPin size={12} />}
@@ -1001,7 +996,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showReservation']}
                                 label={t('showReservationButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showReservation !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuCalendar size={12} />}
@@ -1014,7 +1008,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showOrder']}
                                 label={t('showOrderButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showOrder !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuShoppingBag size={12} />}
@@ -1027,7 +1020,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showGoogleReview']}
                                 label={t('showGoogleReviewButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showGoogleReview !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuStar size={12} />}
@@ -1040,7 +1032,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 name={['publicPresence', 'showFeedback']}
                                 label={t('showFeedbackButton')}
                                 valuePropName="checked"
-                                initialValue={publicPresence?.showFeedback !== false}
                             >
                                 <Switch
                                     checkedChildren={<LuMessageSquarePlus size={12} />}
@@ -1063,7 +1054,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         name={['publicPresence', 'showPrivacyLink']}
                                         label={t('showPrivacyLink')}
                                         valuePropName="checked"
-                                        initialValue={publicPresence?.showPrivacyLink !== false}
                                     >
                                         <Switch />
                                     </Form.Item>
@@ -1073,7 +1063,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         name={['publicPresence', 'showTermsLink']}
                                         label={t('showTermsLink')}
                                         valuePropName="checked"
-                                        initialValue={publicPresence?.showTermsLink !== false}
                                     >
                                         <Switch />
                                     </Form.Item>
@@ -1083,7 +1072,6 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         name={['publicPresence', 'showRefundLink']}
                                         label={t('showRefundLink')}
                                         valuePropName="checked"
-                                        initialValue={publicPresence?.showRefundLink !== false}
                                     >
                                         <Switch />
                                     </Form.Item>

@@ -10,6 +10,8 @@ import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const schema = z.object({
   name: z.string().min(2, 'Full name is required'),
@@ -88,6 +90,8 @@ export default function ContactPage() {
         subtitle={t('Contact.heroSubtitle')}
       >
         <WebsiteProofStrip items={proofItems} />
+        <WebsiteMobileSupportHint />
+        <WebsiteOwnerApprovalHint />
       </WebsitePageHero>
 
       {/* Two-column layout */}

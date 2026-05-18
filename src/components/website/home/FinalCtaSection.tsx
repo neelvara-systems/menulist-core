@@ -5,6 +5,8 @@ import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 export default function FinalCtaSection() {
   const t = useTranslations('Website');
@@ -41,6 +43,9 @@ export default function FinalCtaSection() {
           <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
             {t('FinalCta.caption')}
           </p>
+
+          <WebsiteMobileSupportHint text={t('FinalCta.mobileSupport')} />
+          <WebsiteOwnerApprovalHint />
 
           <p
             className="ws-body-sm"

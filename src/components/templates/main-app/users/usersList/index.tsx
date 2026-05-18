@@ -11,6 +11,23 @@ import UserAddUpdateForm from "./userForm";
 import UsersListTable from "./usersListTable";
 const { Search } = Input;
 
+const getSafeUsersList = (usersList: unknown) => Array.isArray(usersList) ? usersList : [];
+
+const userMatchesSearch = (user: any, query: string) => {
+    const searchableText = [
+        user?.name,
+        user?.email,
+        user?.phoneNumber,
+        user?.phone,
+        user?.role,
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    return searchableText.includes(query);
+}
+
 function UsersListPage() {
 
     const [searchQuery, setSearchQuery] = useState('')
@@ -20,40 +37,31 @@ function UsersListPage() {
     const { storeDetails, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
 
     useEffect(() => {
-        if (storeDetails?.storeKey) {
-            setFilterdUsersList(removeObjRef(usersList))
+        if (storeDetails?.storeId) {
+            setFilterdUsersList(removeObjRef(getSafeUsersList(usersList)))
         }
-    }, [storeDetails])
+    }, [storeDetails?.storeId, usersList])
 
     const onChangeSearchQuery = (query: string) => {
         query = query ? query.toLowerCase() : '';
         setSearchQuery(query);
-        const searchedCategory = [];
-        const searchListCopy = removeObjRef(usersList);
-        searchListCopy.map((category) => {
-            let queryIncludedItems = category.items.filter((i: any) => (i.label.toLowerCase()).includes(query) || (i.keywords ? (i.keywords?.toLowerCase())?.includes(query) : ""))
-            if (queryIncludedItems.length !== 0) {
-                const filteredCat = removeObjRef(category)
-                filteredCat.items = queryIncludedItems;
-                searchedCategory.push(filteredCat)
-            }
-        })
-        setFilterdUsersList(!query ? usersList : searchedCategory)
+        const searchListCopy = removeObjRef(getSafeUsersList(usersList));
+        const searchedUsers = searchListCopy.filter((user: any) => userMatchesSearch(user, query));
+        setFilterdUsersList(!query ? searchListCopy : searchedUsers)
     }
 
-    const onClickSearch = () => {
-        console.log("onclick search")
-    }
+    const onClickSearch = () => undefined
 
     const resetFilters = (updatedUsersList) => {
+        const safeUpdatedUsersList = getSafeUsersList(updatedUsersList);
         setSearchQuery('');
-        setUsersList(updatedUsersList);
-        setFilterdUsersList(updatedUsersList);
+        setUsersList(safeUpdatedUsersList);
+        setFilterdUsersList(safeUpdatedUsersList);
     }
 
     const onCloseFormModal = (updatedUser = null) => {
         if (updatedUser) {
-            const usersListCopy = removeObjRef(usersList);
+            const usersListCopy = removeObjRef(getSafeUsersList(usersList));
             const index = usersListCopy.findIndex((u) => u.id == updatedUser.id);
             if (index !== -1) {
                 usersListCopy[index] = updatedUser

@@ -9,6 +9,7 @@
 
 import QRCode from 'qrcode';
 import { getOfferingLabels } from '../businessTypeLabels';
+import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 const W = 1200;
@@ -101,10 +102,16 @@ export async function generateGoogleMapsImage(input: MenuKitInput): Promise<Blob
     ctx.fillText('Updated regularly', 80, H - 72);
 
     // Bottom branding — subtle, right-aligned
-    ctx.font = '20px system-ui, -apple-system, sans-serif';
-    ctx.fillStyle = '#cccccc';
-    ctx.textAlign = 'right';
-    ctx.fillText('Menu powered by MenuList', W - 80, H - 72);
+    drawMenuListAttribution(ctx, {
+        align: 'right',
+        color: '#cccccc',
+        font: '20px system-ui, -apple-system, sans-serif',
+        gap: 8,
+        logoHeight: 18,
+        text: 'Menu powered by MenuList',
+        x: W - 80,
+        y: H - 72,
+    });
 
     return new Promise((resolve, reject) => {
         canvas.toBlob(

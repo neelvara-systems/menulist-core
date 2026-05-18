@@ -6,6 +6,13 @@
 
 ---
 
+## May 18, 2026 — Maintenance Scheduler Consolidation
+
+### Changed
+
+- **MenuList scheduled maintenance consolidated** — Messaging intake, extraction cleanup, alert escalation, chat stats aggregation, old extraction job cleanup, and messaging session cleanup now run through `menulistMaintenanceScheduler` with a static task registry and per-task Firestore leases.
+- **Standalone scheduler exports retired** — `cleanupStuckMenuJobs`, `cleanupOldMenuJobs`, `msgIntakeProcessor`, `msgSessionCleanup`, `alertEscalation`, and scheduled `aggregateDailyChatStats` are no longer exported as independent scheduled functions. `backfillAggregates` remains callable for manual analytics backfills.
+
 ## May 17, 2026 — Public Route Recovery
 
 ### Fixed

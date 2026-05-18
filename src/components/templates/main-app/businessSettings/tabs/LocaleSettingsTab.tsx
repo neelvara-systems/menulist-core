@@ -148,12 +148,7 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                     </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                    <Form.Item
-                        name="defaultLanguage"
-                        label={t('defaultLanguage')}
-                        tooltip={t('defaultLanguageTooltip')}
-                        dependencies={['activeLanguages']}
-                    >
+                    <Form.Item noStyle dependencies={['activeLanguages']}>
                         {({ getFieldValue }) => {
                             const activeLanguages = normalizeStoreLanguagePolicy({
                                 activeLanguages: getFieldValue('activeLanguages') || [],
@@ -164,19 +159,25 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                                 : GlobalLanguagesList;
 
                             return (
-                                <Select
-                                    placeholder={t('selectDefaultLanguage')}
-                                    showSearch
-                                    filterOption={(input, option) =>
-                                        (option?.label?.toString().toLowerCase() || '').includes(input.toLowerCase())
-                                    }
-                                    options={availableOptions.map((lang) => ({
-                                        label: lang.nativeName !== lang.name
-                                            ? `${lang.nativeName} (${lang.name})`
-                                            : lang.name,
-                                        value: lang.code
-                                    }))}
-                                />
+                                <Form.Item
+                                    name="defaultLanguage"
+                                    label={t('defaultLanguage')}
+                                    tooltip={t('defaultLanguageTooltip')}
+                                >
+                                    <Select
+                                        placeholder={t('selectDefaultLanguage')}
+                                        showSearch
+                                        filterOption={(input, option) =>
+                                            (option?.label?.toString().toLowerCase() || '').includes(input.toLowerCase())
+                                        }
+                                        options={availableOptions.map((lang) => ({
+                                            label: lang.nativeName !== lang.name
+                                                ? `${lang.nativeName} (${lang.name})`
+                                                : lang.name,
+                                            value: lang.code
+                                        }))}
+                                    />
+                                </Form.Item>
                             );
                         }}
                     </Form.Item>

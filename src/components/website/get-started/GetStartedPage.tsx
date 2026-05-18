@@ -9,6 +9,8 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
+import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
+import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const setupIcons = [LuFileCheck, LuShieldCheck, LuCreditCard];
 
@@ -42,6 +44,8 @@ export default function GetStartedPage() {
         secondaryHref="#sign-in"
       >
         <WebsiteProofStrip items={proofItems} />
+        <WebsiteMobileSupportHint />
+        <WebsiteOwnerApprovalHint />
       </WebsitePageHero>
 
       <SectionWrapper id="sign-in" variant="subtle">

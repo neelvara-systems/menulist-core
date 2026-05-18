@@ -66,6 +66,8 @@ Supporting pages now share the same official-source discipline through shared he
 **Secondary CTA:** See what customers see (`#public-proof`)
 **Micro-trust line:** Free to start. You review before publishing.
 
+**Phone workflow line:** No desktop required — update and publish your menu from a phone browser or the MenuList PWA.
+
 **Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and Customer App.
 
 **Notes:**
@@ -506,6 +508,8 @@ Key FAQ topics:
 **Caption:**
 
 > No technical setup. Owner approval before publishing.
+
+**Phone workflow line:** No desktop required — manage and publish from a phone browser or the MenuList PWA.
 
 **Bottom text:**
 
@@ -1109,6 +1113,15 @@ Secondary CTA:
 ---
 
 ## Meta Content (All Pages)
+
+## Owner Reassurance Helpers
+
+Two reusable owner-facing helper lines are part of the website conversion system:
+
+- Phone-first operation: "No desktop required: manage and publish from a phone browser or the MenuList PWA."
+- Owner approval boundary: "Nothing is published until you review and approve it."
+
+These lines are intentionally short. They answer two high-friction SMB owner doubts: "Can I run this without a laptop?" and "Will the system publish something wrong without me?" They should appear near primary CTAs and supporting-page heroes, not inside every feature card.
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |

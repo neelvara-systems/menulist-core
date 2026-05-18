@@ -56,7 +56,7 @@ Styles:      @styles/app.scss (layout) + @/styles/website.css (per-page)
 
 ```
 LocalisationProvider (locale from next-intl/server)
-  → WebsiteAuthProvider (src/app/(website)/WebsiteAuthProvider.tsx)
+  → WebsiteAuthProvider (`src/app/(website)/WebsiteAuthProvider.tsx`)
     → ThemeProvider (forcedTheme="light")
       → GoogleAnalytics
       → ClarityAnalytics
@@ -153,6 +153,8 @@ src/components/website/
 | `SectionWrapper.tsx` | Section layout wrapper with consistent spacing |
 | `WebsiteButton.tsx` | Styled CTA button |
 | `WebsiteHeadline.tsx` | Shared hero/section headline renderer with consistent highlight styling |
+| `WebsiteMobileSupportHint.tsx` | Reusable owner reassurance line for phone-browser/PWA operation |
+| `WebsiteOwnerApprovalHint.tsx` | Reusable owner reassurance line for review-before-publish control |
 | `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |
 | `WebsiteProofStrip.tsx` | Shared proof strip used by supporting pages |
 | `WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages) |
@@ -163,10 +165,17 @@ src/components/website/
 
 - Config: `src/config/websiteLanguages.ts` (8 languages)
 - Switcher: `WebsiteLanguageSwitcher.tsx` — auto-detects position (opens upward near bottom)
-- Locale files: `public/locales/menulist.ai/{locale}.json` → `Website` namespace
+- Locale files (website namespace):
+  `public/locales/menulist.ai/en-US.json`, `public/locales/menulist.ai/hi-IN.json`,
+  `public/locales/menulist.ai/ta-IN.json`, `public/locales/menulist.ai/te-IN.json`,
+  `public/locales/menulist.ai/mr-IN.json`, `public/locales/menulist.ai/bn-IN.json`,
+  `public/locales/menulist.ai/ar-SA.json`, `public/locales/menulist.ai/es-ES.json`
 - Pattern: `useTranslations('Website')` with `t('Section.keyName')`
 - **Fully translated:** en-US + hi-IN (all sections)
 - **Core sections translated:** ar-SA, es-ES, ta-IN, te-IN, mr-IN, bn-IN (Header/Footer/Hero; rest falls back to English via deepMerge)
+- **Website language switcher:** `WEBSITE_LANGUAGES` drives 8 selectable locales
+  (`en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES`) from `src/config/websiteLanguages.ts`.
+- Additional locale files (`en-GB`, `gu-IN`, `zh-CN`) exist in `public/locales/menulist.ai/` for broader app usage and fallback-only coverage.
 
 ---
 

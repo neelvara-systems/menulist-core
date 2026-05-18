@@ -113,7 +113,8 @@ export async function messagingOnboardingWebhook(
 
     // Respond only after durable persistence. Provider webhooks must not depend
     // on post-response work; Cloud Functions may freeze execution after ACK.
-    // msgIntakeProcessor drains pending queue items on the next schedule tick.
+    // menulistMaintenanceScheduler.messaging_intake drains pending queue items
+    // on the next schedule tick.
     res.status(200).send("OK");
 
     if (!queued.created) {

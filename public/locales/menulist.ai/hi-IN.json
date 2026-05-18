@@ -2224,6 +2224,7 @@
             "proof1": "पब्लिश करने से पहले आपकी मंजूरी",
             "proof2": "QR, लिंक, ऐप और PDF एक ही मेन्यू से चलते हैं",
             "visualLabel": "MenuList लाइव मेन्यू और ऑफिशियल पेज प्रीव्यू",
+            "mobileSupport": "डेस्कटॉप की जरूरत नहीं: फोन ब्राउज़र या PWA से अपना मेन्यू अपडेट और पब्लिश करें।",
             "sourceLabel": "ओनर सोर्स",
             "sourceTitle": "मेन्यू और बिज़नेस सत्य",
             "sourceMenu": "मेन्यू स्टेट",
@@ -2253,6 +2254,8 @@
             "surfacePrintPdf": "प्रिंट और PDF",
             "surfaceCustomerApp": "Customer App"
         },
+        "mobileSupportLine": "डेस्कटॉप की जरूरत नहीं: फोन ब्राउज़र या MenuList PWA से मैनेज और पब्लिश करें।",
+        "ownerApprovalLine": "जब तक आप रिव्यू और अप्रूव नहीं करते, कुछ भी पब्लिश नहीं होता।",
         "RevenuePath": {
             "eyebrow": "मेन्यू से customer action तक",
             "title": "आपका मेन्यू customers को",
@@ -2615,6 +2618,7 @@
             "subtitle": "जो menu आपके पास already है, वहीं से शुरू करें। MenuList उसे आपके business का official customer-facing version बनाता है।",
             "cta": "मेन्यू अपलोड करें →",
             "caption": "कोई technical setup नहीं। Publish से पहले owner approval।",
+            "mobileSupport": "डेस्कटॉप की जरूरत नहीं: फोन ब्राउज़र या MenuList PWA से मैनेज और पब्लिश करें।",
             "bottomText": "Public page, live menu, QR assets, Customer App और customer-facing materials — एक menu से।"
         },
         "Pricing": {

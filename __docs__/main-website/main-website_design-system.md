@@ -242,7 +242,24 @@ NO hover transform
 NO hover shadow change
 ```
 
-### 5.3 Section Wrapper
+### 5.3 Owner Reassurance Helpers
+
+Use short inline helper lines below primary CTA/caption areas when they reduce non-technical SMB owner doubt.
+
+Approved helper patterns:
+
+- Phone-first operation: owner can manage and publish from a phone browser or PWA.
+- Owner approval boundary: nothing publishes until the owner reviews and approves it.
+
+Design rules:
+
+- Use caption-scale text.
+- Keep the icon small and calm.
+- Do not stack more than two helper lines in one hero area.
+- Do not use these helpers inside dense feature grids.
+- Do not turn them into large banners unless a page has a specific trust problem.
+
+### 5.4 Section Wrapper
 
 ```tsx
 // Standard section structure
@@ -261,7 +278,7 @@ NO hover shadow change
 </section>
 ```
 
-### 5.4 Header
+### 5.5 Header
 
 ```
 height: 64px (h-16)
@@ -278,7 +295,7 @@ no shadow on scroll
 - Website brand marks must render through `src/components/website/shared/LogoMark.tsx`.
 - `LogoMark.tsx` must stay aligned with the official MenuList app icon in `public/icons/android-chrome-512x512.png` and the icon-only geometry in `src/components/atoms/animatedVerticalLogo/index.tsx`.
 - Do not create one-off logo SVGs for the website header, footer, CTA blocks, or supporting pages.
-- Do not overwrite `public/icons/*` for website presentation changes; those files remain the app/PWA icon source.
+- Do not overwrite files under `public/icons/` for website presentation changes; those files remain the app/PWA icon source.
 
 ### 5.6 Supporting Page Hero
 

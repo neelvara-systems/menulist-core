@@ -379,6 +379,13 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
+
+    // Image Batch Processing Jobs — Tenant/store-scoped DAL path
+    match /imageBatchProcessingJobs/{tId}/{sId}/{docId} {
+      allow read, write: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+    }
     
     // Master Operational State — Multi-outlet awareness signals
     match /masterOperationalState/{docId} {
@@ -406,6 +413,13 @@ service cloud.firestore {
     match /changelog/{docId} {
       allow read: if true;
       allow write: if false;
+    }
+
+    // Changelog — Tenant/store-scoped DAL path
+    match /changelog/{tId}/{sId}/{pageId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
+      allow write: if isAuthenticated() && isPlatformAdmin();
     }
     
     // Changelog Feedback — Authenticated write
@@ -493,6 +507,14 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isPlatformAdmin();
       allow write: if false;
     }
+
+    match /menulistAiOperations/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
+      allow write: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+    }
     
     // ═══════════════════════════════════════════════════════════
     // SERVER-ONLY COLLECTIONS — Admin SDK only (deny all client)
@@ -540,11 +562,25 @@ service cloud.firestore {
     // Reseller Dashboard — Admin SDK only (API routes with withAuth)
     // @see __docs__/reseller-dashboard/reseller-dashboard_firebase.md §8
     match /resellerTransactions/{docId} {
-      allow read, write: if false;
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || resource.data.resellerId == request.auth.uid
+          || resource.data.resellerId == request.auth.token.uId
+        );
+      allow write: if false;
     }
     
-    match /resellerProfiles/{userId} {
-      allow read, write: if false;
+    match /resellerProfiles/{profileId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || resource.data.authUserId == request.auth.uid
+          || resource.data.authUserId == request.auth.token.uId
+          || profileId == request.auth.uid
+          || profileId == request.auth.token.uId
+        );
+      allow write: if false;
     }
     
     // Reviews & Reputation — Server-only writes, auth reads

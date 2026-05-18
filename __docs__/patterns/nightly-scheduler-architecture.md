@@ -55,11 +55,31 @@ Cloud Scheduler (every hour at :30)
 | **Shared store iteration**    | Stores read once, all tasks reuse                  |
 | **Consistent error handling** | All tasks use same try/catch + taskResults pattern |
 
+### Maintenance Scheduler Boundary
+
+MenuList has two scheduled entry points by design:
+
+- `computeDecisionBlocksScores` — store-EOD analytics, Decision Blocks, Menu Intelligence, and intelligence platform tasks.
+- `menulistMaintenanceScheduler` — high-frequency operational maintenance.
+
+`menulistMaintenanceScheduler` runs every 2 minutes and owns a static task registry:
+
+| Task | Cadence | Purpose |
+|---|---:|---|
+| `messaging_intake` | Every 2 min | Drain messaging onboarding inbound queue, process closed intake windows, retry pending preview/publish/fix messages |
+| `menu_stuck_cleanup` | Every 15 min | Mark stuck/expired/cancelling extraction jobs and run extraction health checks |
+| `alert_escalation` | Every 30 min | Re-send unresolved critical alert notifications |
+| `chat_stats_aggregation` | Daily 1 AM UTC | Build `chatAnalytics` aggregate docs |
+| `menu_old_cleanup` | Daily 3 AM UTC | Delete old terminal menu extraction jobs |
+| `messaging_session_cleanup` | Daily 4 AM UTC | Expire messaging onboarding sessions, reminders, and storage cleanup |
+
+Each task has an independent Firestore lease under `_system`, so overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts.
+
 ### Product Boundary
 
-This single entry point is for **MenuList store-EOD work only**. Canonica is a separate product with its own Firebase project and Cloud Functions package:
+These MenuList entry points are for MenuList work only. Canonica is a separate product with its own Firebase project and Cloud Functions package:
 
-- MenuList scheduled work: `functions/src/decisionBlocksScoring.ts` and operational schedulers under `functions/src/triggers/schedulers.ts`
+- MenuList scheduled work: `functions/src/decisionBlocksScoring.ts` and `functions/src/schedulers/menulistMaintenanceScheduler.ts`
 - Canonica scheduled work: `functions-canonica/src/index.ts` → `canonicaNightly`
 
 Do not register Canonica nightly tasks in MenuList schedulers. The shared codebase can reuse patterns, but the deployed scheduler runtime stays product-specific.
@@ -263,6 +283,7 @@ When creating an outlet store:
 | File                                     | Purpose                                        |
 | ---------------------------------------- | ---------------------------------------------- |
 | `functions/src/decisionBlocksScoring.ts` | MenuList store-EOD entry point — unified MenuList scheduler |
+| `functions/src/schedulers/menulistMaintenanceScheduler.ts` | MenuList operational maintenance scheduler with per-task leases |
 | `functions/src/aggregateCustomerAnalytics.ts` | Menu + Customer App analytics settlement helpers |
 | `functions/src/analytics/dashboardSummaryAggregation.ts` | Menu and Customer App owner-dashboard read-model writer |
 | `functions/src/analytics/obpAnalyticsAggregation.ts` | OBP analytics settlement helper |
@@ -289,12 +310,15 @@ When creating an outlet store:
 | `functions/src/analytics/obpAnalyticsAggregation.ts`  | OBP Analytics               |
 | `functions/src/billing/reconcileSubscriptions.ts`     | Subscription Reconciliation |
 | `functions/src/messaging/messagingEngine.ts`          | Lifecycle Messaging         |
+| `functions/src/schedulers/menuJobCleanup.ts`          | Maintenance extraction cleanup tasks |
+| `functions/src/schedulers/messagingSessionCleanup.ts` | Maintenance messaging session cleanup |
 
 ### Deprecated
 
 | File                                          | Status                         | Reason                                                            |
 | --------------------------------------------- | ------------------------------ | ----------------------------------------------------------------- |
 | `functions/src/schedulers/masterScheduler.ts` | **DEPRECATED** as scheduled CF | Tasks migrated to decisionBlocksScoring.ts. Manual triggers kept. |
+| Standalone `cleanupStuckMenuJobs`, `cleanupOldMenuJobs`, `msgIntakeProcessor`, `msgSessionCleanup`, `alertEscalation`, `aggregateDailyChatStats` scheduled exports | **DEPRECATED** | Tasks migrated to `menulistMaintenanceScheduler`; manual callables remain where applicable. |
 
 ---
 

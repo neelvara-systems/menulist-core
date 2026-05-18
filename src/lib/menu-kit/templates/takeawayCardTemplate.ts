@@ -14,6 +14,7 @@
 import QRCode from 'qrcode';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
+import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 
 type TakeawayInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -104,10 +105,15 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
     }
 
     // Bottom branding — tiny, right-aligned
-    ctx.font = '16px system-ui, -apple-system, sans-serif';
-    ctx.fillStyle = '#cccccc';
-    ctx.textAlign = 'right';
-    ctx.fillText('Powered by MenuList', W - 40, H - 30);
+    drawMenuListAttribution(ctx, {
+        align: 'right',
+        color: '#cccccc',
+        font: '16px system-ui, -apple-system, sans-serif',
+        logoHeight: 14,
+        text: 'Powered by MenuList',
+        x: W - 40,
+        y: H - 30,
+    });
 
     return new Promise((resolve, reject) => {
         canvas.toBlob(

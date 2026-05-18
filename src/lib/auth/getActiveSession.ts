@@ -1,7 +1,7 @@
 import LoginUserType from "@type/loginUser";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 
-const CLIENT_SESSION_TTL_MS = 1500;
+const CLIENT_SESSION_TTL_MS = 5000;
 
 let clientSessionCache: LoginUserType | null = null;
 let clientSessionCacheAt = 0;

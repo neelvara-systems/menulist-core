@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.3 (Canonical Website Default)
+**Version:** 3.4.4 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 18, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,7 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.3** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
+| **3.4.4** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
 
 Version 3.4.3 keeps the upload-first promise and adds a homepage search/AI discovery proof section grounded in shipped SEO/AEO infrastructure: owner SEO/AEO settings, business-copy setup, structured public pages, crawler/sitemap rules, and LLM discovery files. The public claim remains deliberately conservative: MenuList prepares a clearer official source for search engines and AI systems to read, but does not promise ranking, citation, or placement.
 
@@ -65,9 +65,19 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/components/website/ClarityAnalytics.tsx`               | Microsoft Clarity tracking                     |
 | `src/components/website/shared/WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages)                |
 | `src/config/websiteLanguages.ts`                            | Language configuration                         |
-| `public/locales/menulist.ai/{locale}.json`                  | Translation files (Website namespace)          |
+| `public/locales/menulist.ai/en-US.json`                     | Website locale default + base file (Website namespace) |
 | `src/styles/website.css`                                    | Website-specific styles                        |
 | `src/config/features.ts`                                    | `ENABLE_PUBLIC_MENU_ENTRY` flag                |
+
+Supported website locale files:
+- `public/locales/menulist.ai/en-US.json`
+- `public/locales/menulist.ai/hi-IN.json`
+- `public/locales/menulist.ai/ta-IN.json`
+- `public/locales/menulist.ai/te-IN.json`
+- `public/locales/menulist.ai/mr-IN.json`
+- `public/locales/menulist.ai/bn-IN.json`
+- `public/locales/menulist.ai/ar-SA.json`
+- `public/locales/menulist.ai/es-ES.json`
 
 ---
 
@@ -189,7 +199,7 @@ Stage 7 recommendation:
 
 ## Brand Mark Source
 
-Website header/footer logo rendering must use the official MenuList mark geometry from `public/icons/android-chrome-512x512.png` / `src/components/atoms/animatedVerticalLogo/index.tsx`. Do not recreate alternate rounded-stroke logo SVGs for website surfaces. `public/icons/*` remains the PWA/app-icon source and should not be overwritten during website logo polish.
+Website header/footer logo rendering must use the official MenuList mark geometry from `public/icons/android-chrome-512x512.png` / `src/components/atoms/animatedVerticalLogo/index.tsx`. Do not recreate alternate rounded-stroke logo SVGs for website surfaces. All files under `public/icons/` remain the PWA/app-icon source and should not be overwritten during website logo polish.
 
 ## Stage 7.2 Reference-Informed Revenue Readiness
 
@@ -338,12 +348,26 @@ Protected scope:
 
 - SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing, payment, Razorpay, auth, and create-menu runtime logic were not changed.
 
+## Stage 7.9 Owner Reassurance Helpers
+
+Stage 7.9 added small reusable website reassurance lines for non-technical SMB owners:
+
+- `WebsiteMobileSupportHint` reinforces that MenuList can be managed and published from a phone browser or PWA.
+- `WebsiteOwnerApprovalHint` reinforces that nothing is published until the owner reviews and approves it.
+- The helpers are used on primary conversion and supporting-page heroes, including homepage hero/final CTA, Product, Features, Pricing, Get Started, Multi-Location, About, Contact, and Trust & Security.
+- Locale coverage was added for `en-US` and `hi-IN`; other website locales continue to use the configured fallback behavior.
+
+Protected scope:
+
+- Pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.4 | May 18, 2026 | Added reusable phone-first and owner-approval reassurance helpers across website conversion pages with English and Hindi locale coverage. |
 | 3.4.3 | May 18, 2026 | Added homepage search/AI discovery proof section and FAQ caveat grounded in existing SEO/AEO, schema, crawler, sitemap, and LLM discovery infrastructure. |
 | 3.4.2 | May 17, 2026 | Mobile website polish: touch targets, section rhythm, revenue/workflow compactness, footer mobile navigation, and stale multi-location locale claim cleanup. |
 | 3.4.0 | May 17, 2026 | Supporting pages polished across About, Contact, Get Started, Trust & Security, Pricing, How It Works, and Multi-Location; shared page hero/proof components added; pricing copy hardened without touching payment/auth/onboarding logic. |

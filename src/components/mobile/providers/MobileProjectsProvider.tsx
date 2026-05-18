@@ -21,7 +21,7 @@ type MobileProjectsContextValue = {
     projectsById: Record<string, any>;
     projectsList: ProjectSummary[];
     refreshCachedProject: (projectId?: string | null, options?: { showLoader?: boolean }) => Promise<any | null>;
-    refreshProjects: (options?: { force?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => Promise<void>;
+    refreshProjects: (options?: { force?: boolean; loadSelectedProject?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => Promise<void>;
     removeCachedProject: (projectId: string) => void;
     selectedProject: any | null;
     selectedProjectId: string | null;
@@ -48,7 +48,13 @@ export function useMobileProjects() {
     return useContext(MobileProjectsContext);
 }
 
-export default function MobileProjectsProvider({ children }: { children: React.ReactNode }) {
+export default function MobileProjectsProvider({
+    children,
+    eagerLoadSelectedProject = true,
+}: {
+    children: React.ReactNode;
+    eagerLoadSelectedProject?: boolean;
+}) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const loggedInSession = useClientAuthSession();
     const sessionStoreId = loggedInSession?.sId || null;
@@ -110,7 +116,7 @@ export default function MobileProjectsProvider({ children }: { children: React.R
         return request;
     }, [sessionStoreId, sessionTenantId]);
 
-    const refreshProjects = useCallback(async (options?: { force?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => {
+    const refreshProjects = useCallback(async (options?: { force?: boolean; loadSelectedProject?: boolean; preferredProjectId?: string | null; showLoader?: boolean }) => {
         const storeId = storeDetails?.storeId;
         if (!sessionStoreId || !sessionTenantId) {
             setProjectsList([]);
@@ -128,12 +134,15 @@ export default function MobileProjectsProvider({ children }: { children: React.R
 
         const shouldForce = options?.force ?? false;
         const shouldShowLoader = options?.showLoader ?? !hasHydratedRef.current;
+        const shouldLoadSelectedProject = options?.loadSelectedProject ?? true;
 
         if (!shouldForce && hasHydratedRef.current && hydratedStoreIdRef.current === storeId) {
             if (options?.preferredProjectId !== undefined) {
                 const resolvedProject = resolveMobileSelectedProject(projectsListRef.current, options.preferredProjectId || null);
                 const preferred = resolvedProject?.projectId || null;
-                await loadProjectIntoCache(preferred);
+                if (shouldLoadSelectedProject) {
+                    await loadProjectIntoCache(preferred);
+                }
                 setSelectedProjectId(preferred);
                 setStoredMobileProjectId(preferred, storeId);
             }
@@ -172,7 +181,7 @@ export default function MobileProjectsProvider({ children }: { children: React.R
                     Object.entries(prev).filter(([projectId]) => validProjectIds.has(projectId))
                 ));
 
-                if (resolvedProjectId) {
+                if (resolvedProjectId && shouldLoadSelectedProject) {
                     await loadProjectIntoCache(resolvedProjectId, { force: shouldForce });
                 }
             }
@@ -243,9 +252,16 @@ export default function MobileProjectsProvider({ children }: { children: React.R
 
         void refreshProjects({
             force: true,
+            loadSelectedProject: false,
             showLoader: true,
         });
     }, [refreshProjects, sessionStoreId, sessionTenantId, storeDetails?.storeId]);
+
+    useEffect(() => {
+        if (!eagerLoadSelectedProject || !selectedProjectId || projectsByIdRef.current[selectedProjectId]) return;
+
+        void loadProjectIntoCache(selectedProjectId);
+    }, [eagerLoadSelectedProject, loadProjectIntoCache, selectedProjectId]);
 
     const selectProject = useCallback(async (projectId?: string | null) => {
         if (!sessionStoreId || !sessionTenantId) return;

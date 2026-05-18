@@ -7,6 +7,7 @@ import { Button, Card, Flex, NavBar, Popup, Text, TextArea, Toast } from '../ant
 
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
 type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
+type CompliancePagesState = Record<ComplianceTab, CompliancePageData>;
 
 interface MobileCompliancePagesEditorProps {
     baseUrl?: string;
@@ -20,14 +21,57 @@ const TAB_LABELS: Record<ComplianceTab, string> = {
     refund: 'Refund & Cancellation Policy',
 };
 
+const EMPTY_COMPLIANCE_PAGES: CompliancePagesState = {
+    privacy: null,
+    refund: null,
+    terms: null,
+};
+
+let compliancePagesCache: CompliancePagesState | null = null;
+let compliancePagesRequest: Promise<CompliancePagesState | null> | null = null;
+const compliancePagesListeners = new Set<(pages: CompliancePagesState) => void>();
+
+function normalizeCompliancePages(data: any): CompliancePagesState {
+    return {
+        privacy: data?.privacy || null,
+        refund: data?.refund || null,
+        terms: data?.terms || null,
+    };
+}
+
+function publishCompliancePages(pages: CompliancePagesState) {
+    compliancePagesCache = pages;
+    compliancePagesListeners.forEach((listener) => listener(pages));
+}
+
+async function loadCompliancePages(force = false) {
+    if (!force && compliancePagesCache) {
+        return compliancePagesCache;
+    }
+
+    if (!force && compliancePagesRequest) {
+        return compliancePagesRequest;
+    }
+
+    compliancePagesRequest = fetch('/api/compliance')
+        .then(async (response) => {
+            if (!response.ok) return null;
+            const data = await response.json();
+            const pages = normalizeCompliancePages(data);
+            publishCompliancePages(pages);
+            return pages;
+        })
+        .finally(() => {
+            compliancePagesRequest = null;
+        });
+
+    return compliancePagesRequest;
+}
+
 export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: MobileCompliancePagesEditorProps) {
     const { token } = theme.useToken();
-    const [pages, setPages] = useState<Record<ComplianceTab, CompliancePageData>>({
-        privacy: null,
-        refund: null,
-        terms: null,
-    });
-    const [loading, setLoading] = useState(true);
+    const [pages, setPages] = useState<CompliancePagesState>(compliancePagesCache || EMPTY_COMPLIANCE_PAGES);
+    const [loading, setLoading] = useState(!compliancePagesCache);
     const [saving, setSaving] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -45,21 +89,19 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/compliance');
-            if (!response.ok) return;
-            const data = await response.json();
-            setPages({
-                privacy: data?.privacy || null,
-                refund: data?.refund || null,
-                terms: data?.terms || null,
-            });
+            const nextPages = await loadCompliancePages();
+            if (nextPages) setPages(nextPages);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        compliancePagesListeners.add(setPages);
         void fetchData();
+        return () => {
+            compliancePagesListeners.delete(setPages);
+        };
     }, []);
 
     const openSheet = () => {
@@ -91,7 +133,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                 Toast.show({ content: data?.error || 'Failed to save.', duration: 1500 });
                 return;
             }
-            await fetchData();
+            await loadCompliancePages(true);
             setIsEditing(false);
             Toast.show({ content: `${pageLabel} updated.`, duration: 1200 });
         } finally {
@@ -115,7 +157,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                 Toast.show({ content: data?.error || 'Failed to reset.', duration: 1500 });
                 return;
             }
-            await fetchData();
+            await loadCompliancePages(true);
             setCustomText('');
             setIsEditing(false);
             Toast.show({ content: `${pageLabel} reset to default.`, duration: 1200 });

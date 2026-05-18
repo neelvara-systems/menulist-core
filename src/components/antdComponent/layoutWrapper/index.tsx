@@ -14,7 +14,7 @@ import NetworkStatusProvider from '@providers/NetworkStatusProvider';
 import { getDarkModeState, getRTLDirectionState, getSidebarLayoutState, getSidebarState } from '@reduxSlices/clientThemeConfig';
 import { Layout, theme } from 'antd';
 import dynamic from 'next/dynamic';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Fragment, useState } from 'react';
 import styles from './layoutWrapper.module.scss';
 
@@ -34,6 +34,7 @@ export default function AntdLayoutWrapper(props: any) {
     const isRTLDirection = useAppSelector(getRTLDirectionState)
     const { token } = theme.useToken();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
     const { isHandheld, isMobile, hasMounted } = useDeviceType();
     const [, setForceDesktopRefreshKey] = useState(0);
@@ -44,15 +45,16 @@ export default function AntdLayoutWrapper(props: any) {
     const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
     const isResellerRoute = pathname === '/reseller' || pathname.startsWith('/reseller/');
     const isHelpCenterRoute = pathname === '/help-center';
+    const isLocalMobileAudit = process.env.NODE_ENV !== 'production' && searchParams.has('mobileAudit');
     const routeHasMobileShell = !isDesktopOnlyRoute && (
-        isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute))
+        isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute))
     );
     const forceDesktop = hasMounted && !routeHasMobileShell && shouldForceDesktopForPath(pathname, isDesktopOnlyRoute);
     const shouldRenderMobileShell = hasMounted
         && FEATURE_FLAGS.ENABLE_MOBILE_UI
         && !forceDesktop
         && !isDesktopOnlyRoute
-        && (isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute)));
+        && (isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute)));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
 
     const renderContent = () => {
