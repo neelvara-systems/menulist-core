@@ -122,6 +122,7 @@ const ChatPanel = ({
                     sessionTitle={sessionTitle}
                     firstMessageContent={messages[0]?.content}
                     mode={mode}
+                    isMobile={isMobile}
                     onSearch={setConversationSearchQuery}
                 />
             )}

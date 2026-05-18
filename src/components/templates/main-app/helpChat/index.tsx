@@ -130,6 +130,7 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
             isLoading={isLoadingSessions}
             searchQuery={searchQuery}
             isMobile={isMobile}
+            isNewChat={isNewChat}
         />
     );
 
@@ -238,25 +239,25 @@ function HelpChat({ open, onClose, productContext }: HelpChatProps) {
                                     icon={<LuHistory size={18} />}
                                     onClick={() => setHistoryOpen(true)}
                                     aria-label="Open chat history"
-                                    style={{ height: 44, borderRadius: 10, fontWeight: 600 }}
-                                >
-                                    History
-                                </Button>
+                                    style={{ height: 44, width: 44, minWidth: 44, borderRadius: 10, fontWeight: 600 }}
+                                />
 
                                 <Text strong style={{ fontSize: 15, textAlign: 'center', flex: 1 }}>
                                     Help Assistant
                                 </Text>
 
                                 <Flex gap={6} align="center">
-                                    <Button
-                                        type="primary"
-                                        icon={<LuPlus size={17} />}
-                                        onClick={handleMobileNewChat}
-                                        aria-label="Start new chat"
-                                        style={{ height: 44, borderRadius: 10, fontWeight: 600 }}
-                                    >
-                                        New
-                                    </Button>
+                                    {!isNewChat && (
+                                        <Button
+                                            type="primary"
+                                            icon={<LuPlus size={17} />}
+                                            onClick={handleMobileNewChat}
+                                            aria-label="Start new chat"
+                                            style={{ height: 44, borderRadius: 10, fontWeight: 600 }}
+                                        >
+                                            New
+                                        </Button>
+                                    )}
                                     <Button
                                         type="text"
                                         icon={<LuX size={20} />}

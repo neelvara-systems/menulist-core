@@ -958,6 +958,7 @@ For EACH feature touched in a session, execute ALL steps A through K in order:
 - **SAFE_MODE:** `src/lib/ops/safeMode.ts` (blocks AI routes during cost spikes)
 - **Alerting:** `src/lib/ops/alerts.ts` (frontend) + `functions/src/monitoring/alerts.ts` (CF)
 - **MenuList store-EOD scheduler:** `functions/src/decisionBlocksScoring.ts` (hourly at :30 UTC, filters by store `timeZone` + `businessDayEndTime`). Canonica scheduled work lives in `functions-canonica/`.
+- **MenuList operational maintenance scheduler:** `functions/src/schedulers/menulistMaintenanceScheduler.ts` (every 2 minutes, static task registry with per-task Firestore leases). Add operational maintenance tasks here instead of creating new standalone scheduled functions unless the trigger has a separately documented SLA/product boundary.
 - **Secure logging:** `secureLog` / `secureError` — NEVER `console.log` / `console.error`
 - **Responsive breakpoints:** <768px = mobile, 768–1024px = tablet, ≥1024px = desktop (detected via `window.innerWidth` in `ClientMenuRenderer`).
 - **Slugify utility:** `src/lib/utils/slugify.ts` — converts text to URL-safe slugs. Handles diacritics. Non-Latin falls back to empty string.

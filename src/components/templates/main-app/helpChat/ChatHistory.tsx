@@ -25,9 +25,10 @@ interface ChatHistoryProps {
     isLoading?: boolean;
     searchQuery?: string; // Used to determine if New Chat button should be disabled
     isMobile?: boolean;
+    isNewChat?: boolean;
 }
 
-const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mode, onModeChange, hasMessages, disableModeToggle, onRenameSession, onDeleteSession, onClearAllData, isLoading = false, searchQuery = '', isMobile = false }: ChatHistoryProps) => {
+const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mode, onModeChange, hasMessages, disableModeToggle, onRenameSession, onDeleteSession, onClearAllData, isLoading = false, searchQuery = '', isMobile = false, isNewChat = false }: ChatHistoryProps) => {
     const { token } = theme.useToken();
     const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
@@ -81,24 +82,26 @@ const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mod
                 }}
             >
                 <Flex gap={8}>
-                    <Button
-                        // type="primary"
-                        // ghost
-                        icon={<LuPlus size={16} />}
-                        onClick={onNewChat}
-                        disabled={!isMobile && activeSessionId === null && !hasMessages && searchQuery.trim() === ''}
-                        block
-                        size="middle"
-                        aria-label="Start new chat conversation"
-                        style={{
-                            height: isMobile ? 44 : 35,
-                            fontWeight: 500,
-                            borderRadius: isMobile ? 10 : 6,
-                            fontSize: isMobile ? 15 : 14
-                        }}
-                    >
-                        New Chat
-                    </Button>
+                    {!isNewChat && (
+                        <Button
+                            // type="primary"
+                            // ghost
+                            icon={<LuPlus size={16} />}
+                            onClick={onNewChat}
+                            disabled={!isMobile && activeSessionId === null && !hasMessages && searchQuery.trim() === ''}
+                            block
+                            size="middle"
+                            aria-label="Start new chat conversation"
+                            style={{
+                                height: isMobile ? 44 : 35,
+                                fontWeight: 500,
+                                borderRadius: isMobile ? 10 : 6,
+                                fontSize: isMobile ? 15 : 14
+                            }}
+                        >
+                            New Chat
+                        </Button>
+                    )}
 
                     {/**
                      * DEV-ONLY: Clear All Chat Data Button

@@ -76,6 +76,7 @@ Always start response with:
    - Validation strengthening (web search + codebase reuse)
    - Core architecture protection (impact analysis before shared type changes)
    - Firebase cost discipline (reuse data, minimize reads/writes)
+   - Scheduler consolidation discipline (prefer existing product scheduler task registries over new standalone scheduled functions)
    - Client-side DAL preference (no unnecessary API routes)
    - Auto-triggered parity check + simulation after implementation
    - Cross-feature error fixing protocol

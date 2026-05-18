@@ -165,6 +165,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **Read Optimization**: Prefer client-side queries over server functions
 - **Write Patterns**: Batch operations, minimize document writes
 - **Auth Context**: User context affects security rules and costs
+- **Scheduled Function Consolidation**: Do not add new standalone MenuList scheduled Cloud Functions for operational maintenance by default. Add tasks to `functions/src/schedulers/menulistMaintenanceScheduler.ts` with an explicit cadence, per-task Firestore lease, state tracking, and Firebase cost note. Store-EOD analytics/intelligence remains in `functions/src/decisionBlocksScoring.ts`; Canonica scheduled work remains in `functions-canonica/`.
 
 ### Mobile Gotchas
 
@@ -424,6 +425,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Data Reuse**: Cache results, avoid duplicate reads
 - **Query Optimization**: Index planning, selective fetching
 - **Real-time Updates**: Use judiciously, cost-aware
+- **Scheduler Discipline**: Cloud Scheduler jobs should stay consolidated by product and workload class. MenuList operational maintenance goes through `menulistMaintenanceScheduler`; MenuList store-EOD work goes through `computeDecisionBlocksScores`; Canonica runs in its own scheduler/package. A new scheduled trigger requires explicit architecture justification, cost impact in INR, and docs update.
 
 ---
 

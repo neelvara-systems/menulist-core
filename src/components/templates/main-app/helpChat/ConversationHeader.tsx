@@ -13,9 +13,10 @@ interface ConversationHeaderProps {
     firstMessageContent?: string;
     mode: ChatMode;
     onSearch?: (query: string) => void;
+    isMobile?: boolean;
 }
 
-const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch }: ConversationHeaderProps) => {
+const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch, isMobile = false }: ConversationHeaderProps) => {
     const { token } = theme.useToken();
     const [conversationSearchQuery, setConversationSearchQuery] = useState('');
     const [showConversationSearch, setShowConversationSearch] = useState(false);
@@ -99,25 +100,27 @@ const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch 
                 </AnimatePresence>
                 
                 {/* Mode Badge */}
-                <Flex
-                    align="center"
-                    gap={6}
-                    style={{
-                        padding: '6px 12px',
-                        borderRadius: 8,
-                        background: mode === 'qna' ? token.colorPrimaryBg : token.colorInfoBg,
-                        border: `1px solid ${mode === 'qna' ? token.colorPrimaryBorder : token.colorInfoBorder}`,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: mode === 'qna' ? token.colorPrimary : token.colorInfo
-                    }}
-                >
-                    {mode === 'qna'
-                        ? <LuMessageSquare size={14} />
-                        : <LuSparkles size={14} />
-                    }
-                    <span>{mode === 'qna' ? 'QnA Mode' : 'Assistant Mode'}</span>
-                </Flex>
+                {!isMobile && (
+                    <Flex
+                        align="center"
+                        gap={6}
+                        style={{
+                            padding: '6px 12px',
+                            borderRadius: 8,
+                            background: mode === 'qna' ? token.colorPrimaryBg : token.colorInfoBg,
+                            border: `1px solid ${mode === 'qna' ? token.colorPrimaryBorder : token.colorInfoBorder}`,
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: mode === 'qna' ? token.colorPrimary : token.colorInfo
+                        }}
+                    >
+                        {mode === 'qna'
+                            ? <LuMessageSquare size={14} />
+                            : <LuSparkles size={14} />
+                        }
+                        <span>{mode === 'qna' ? 'QnA Mode' : 'Assistant Mode'}</span>
+                    </Flex>
+                )}
             </Flex>
         </div>
     );

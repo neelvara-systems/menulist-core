@@ -75,6 +75,15 @@ MenuList has two scheduled entry points by design:
 
 Each task has an independent Firestore lease under `_system`, so overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts.
 
+### Future Scheduler Rule
+
+Future MenuList scheduled work must use the existing product-level scheduler entry points unless there is a documented reason not to:
+
+- Operational maintenance tasks belong in `menulistMaintenanceScheduler` with a registry entry, cadence, timeout expectation, per-task Firestore lease, and state update.
+- Store-local EOD analytics, Decision Blocks, Menu Intelligence, and store-nightly intelligence tasks belong in `computeDecisionBlocksScores`.
+- Canonica scheduled work belongs in `functions-canonica/`, not in MenuList schedulers.
+- New standalone scheduled Cloud Functions are exceptions. Before adding one, document the trigger/SLA reason, Firebase cost impact in INR, expected invocation/read/write shape, monitoring, and why the existing scheduler boundary is not suitable.
+
 ### Product Boundary
 
 These MenuList entry points are for MenuList work only. Canonica is a separate product with its own Firebase project and Cloud Functions package:
