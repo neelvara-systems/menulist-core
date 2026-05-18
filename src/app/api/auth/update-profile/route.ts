@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { authOptions } from "@lib/auth";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { secureLog } from "@lib/security/secureLogger";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -56,7 +57,11 @@ export async function POST(request: NextRequest) {
 
     await userRef.update(updates);
 
-    console.log(`[update-profile] Updated profile for ${session.user.email}:`, Object.keys(updates));
+    secureLog("[update-profile] Updated profile", {
+      email: session.user.email,
+      userId: session.user.id,
+      updatedFields: Object.keys(updates),
+    });
 
     return NextResponse.json({
       success: true,

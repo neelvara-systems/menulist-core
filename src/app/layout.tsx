@@ -153,6 +153,43 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 {isDev && (
                     <script dangerouslySetInnerHTML={{
                         __html: `
+                            // Local dev must never stay controlled by an old PWA worker.
+                            // A stale Workbox registration can serve old _next chunks and
+                            // surface as React/webpack "undefined.call" hydration errors.
+                            (() => {
+                                if (!('serviceWorker' in navigator)) return;
+                                const host = window.location.hostname;
+                                const isLocalHost =
+                                    host === 'localhost' ||
+                                    host === '0.0.0.0' ||
+                                    host.endsWith('.local') ||
+                                    /^127(?:\\.\\d{1,3}){3}$/.test(host) ||
+                                    /^192\\.168(?:\\.\\d{1,3}){2}$/.test(host) ||
+                                    /^10(?:\\.\\d{1,3}){3}$/.test(host) ||
+                                    /^172\\.(1[6-9]|2\\d|3[0-1])(?:\\.\\d{1,3}){2}$/.test(host);
+
+                                if (!isLocalHost) return;
+
+                                navigator.serviceWorker.getRegistrations()
+                                    .then((registrations) => {
+                                        if (!registrations.length) return;
+                                        return Promise.all(
+                                            registrations.map((registration) => registration.unregister().catch(() => false))
+                                        ).then(() => {
+                                            if (!navigator.serviceWorker.controller) return;
+                                            try {
+                                                const reloadKey = '__menulist_dev_sw_cleared__';
+                                                if (sessionStorage.getItem(reloadKey)) return;
+                                                sessionStorage.setItem(reloadKey, '1');
+                                                window.location.reload();
+                                            } catch {
+                                                window.location.reload();
+                                            }
+                                        });
+                                    })
+                                    .catch(() => {});
+                            })();
+
                             // Suppress known development warnings
                             const originalConsoleWarn = console.warn;
                             console.warn = (...args) => {

@@ -273,7 +273,14 @@ no background change on scroll
 no shadow on scroll
 ```
 
-### 5.5 Supporting Page Hero
+### 5.5 Brand Mark
+
+- Website brand marks must render through `src/components/website/shared/LogoMark.tsx`.
+- `LogoMark.tsx` must stay aligned with the official MenuList app icon in `public/icons/android-chrome-512x512.png` and the icon-only geometry in `src/components/atoms/animatedVerticalLogo/index.tsx`.
+- Do not create one-off logo SVGs for the website header, footer, CTA blocks, or supporting pages.
+- Do not overwrite `public/icons/*` for website presentation changes; those files remain the app/PWA icon source.
+
+### 5.6 Supporting Page Hero
 
 Use `WebsitePageHero` for secondary pages that need the same official-source hierarchy as the homepage without recreating one-off hero styles.
 
@@ -292,7 +299,7 @@ Rules:
 - Keep proof strips to three short claims.
 - Keep owner-facing claims factual and tied to implemented product behavior.
 
-### 5.6 Icons
+### 5.7 Icons
 
 - Library: `react-icons/lu` (Lucide) — already standard
 - Default size: 20px inline, 24px standalone, 32-40px section icons

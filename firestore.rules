@@ -648,13 +648,13 @@ service cloud.firestore {
     // Check if user belongs to specific tenant by ID
     function belongsToTenantById(tenantIdInt) {
       return request.auth != null
-        && request.auth.token.tenantId == tenantIdInt;
+        && string(request.auth.token.tenantId) == string(tenantIdInt);
     }
     
     // Check if user belongs to specific store by ID
     function belongsToStoreById(storeIdInt) {
       return request.auth != null
-        && request.auth.token.storeId == storeIdInt;
+        && string(request.auth.token.storeId) == string(storeIdInt);
     }
     
     // Check if user is platform admin

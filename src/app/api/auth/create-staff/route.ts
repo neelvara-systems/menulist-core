@@ -17,6 +17,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { authOptions } from "@lib/auth";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { validateAPIInput } from "@lib/security/inputValidation";
+import { secureError, secureLog } from "@lib/security/secureLogger";
 import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -100,7 +101,11 @@ export async function POST(request: NextRequest) {
           modifiedOn: admin.firestore.Timestamp.now(),
         });
 
-        console.log(`[create-staff] Added store ${storeId} to existing user ${email} (tenant ${tenantId})`);
+        secureLog("[create-staff] Added store to existing user", {
+          email,
+          tenantId,
+          storeId,
+        });
 
         return NextResponse.json({
           success: true,
@@ -183,13 +188,17 @@ export async function POST(request: NextRequest) {
 
     // Generate password reset link (fire-and-forget)
     try {
-      const resetLink = await authAdmin.generatePasswordResetLink(email);
-      console.log(`[create-staff] Password reset link for ${email}: ${resetLink}`);
+      await authAdmin.generatePasswordResetLink(email);
+      secureLog("[create-staff] Password reset link generated", { email });
     } catch (resetError) {
-      console.warn("[create-staff] Could not generate password reset link:", resetError);
+      secureError("[create-staff] Could not generate password reset link", resetError as Error, { email });
     }
 
-    console.log(`[create-staff] New staff user created: ${email} → tenant ${tenantId}, store ${storeId}`);
+    secureLog("[create-staff] New staff user created", {
+      email,
+      tenantId,
+      storeId,
+    });
 
     return NextResponse.json({
       success: true,

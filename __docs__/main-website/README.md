@@ -56,9 +56,10 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/app/(website)/layout.tsx`                              | Shared layout (locale, auth, theme, analytics) |
 | `src/app/(website)/page.tsx`                                | Homepage route                                 |
 | `src/app/(website)/WebsiteAuthProvider.tsx`                 | Auth context for pricing/onboarding flows      |
-| `src/components/website/home/HomePage.tsx`                  | Current 16-section homepage composition plus sticky CTA |
+| `src/components/website/home/HomePage.tsx`                  | Current 17-section homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
+| `src/components/website/shared/LogoMark.tsx`                | Official MenuList logo mark used by website header/footer |
 | `src/components/website/SchemaMarkup.tsx`                   | Homepage JSON-LD schema                        |
 | `src/components/website/GoogleAnalytics.tsx`                | GA tracking                                    |
 | `src/components/website/ClarityAnalytics.tsx`               | Microsoft Clarity tracking                     |
@@ -185,6 +186,10 @@ Stage 7 recommendation:
 
 - Homepage is ready for controlled launch/founder review.
 - Full marketing-site launch still needs supporting page claim-hardening and founder-approved demo tenant screenshots.
+
+## Brand Mark Source
+
+Website header/footer logo rendering must use the official MenuList mark geometry from `public/icons/android-chrome-512x512.png` / `src/components/atoms/animatedVerticalLogo/index.tsx`. Do not recreate alternate rounded-stroke logo SVGs for website surfaces. `public/icons/*` remains the PWA/app-icon source and should not be overwritten during website logo polish.
 
 ## Stage 7.2 Reference-Informed Revenue Readiness
 

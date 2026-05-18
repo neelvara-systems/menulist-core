@@ -1,17 +1,18 @@
 'use client';
-import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import {
     DEPLOYMENT_IDENTITY_STORAGE_KEY,
     emitDeploymentIdentityUpdated,
 } from '@constant/deploymentDebug';
+import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { getStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
+import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import {
     readActiveStoreContextId,
     writeActiveStoreContextId,
 } from '@lib/multiOutlet/activeStoreContext';
-import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { ChangelogPage } from '@type/changelog';
@@ -33,6 +34,13 @@ type Props = {
     children: React.ReactNode;
     session: Session | null;
 }
+
+const maskDebugEmail = (email: unknown) => {
+    if (typeof email !== 'string') return email;
+    const [local, domain] = email.split('@');
+    if (!local || !domain) return '***';
+    return `${local.slice(0, 2)}***@${domain}`;
+};
 
 export default function SessionProvider({ children, session }: Props) {
     const pathname = usePathname();
@@ -83,6 +91,10 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
+    const [firebaseAuthReady, setFirebaseAuthReady] = useState(!session?.user?.storeId)
+    const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
+    const activeSubscriptionStoreIdRef = useRef<number | null>(null);
+    const activeSubscriptionRequestStoreIdRef = useRef<number | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
     const isPlatformSession = session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
@@ -104,6 +116,77 @@ export default function SessionProvider({ children, session }: Props) {
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string>();
 
+    const fetchActiveSubscriptionForStore = useCallback(async (
+        tenantId: number,
+        storeId: number,
+        storesList?: any[],
+    ) => {
+        activeSubscriptionRequestStoreIdRef.current = storeId;
+        setActiveSubscriptionLoading(true);
+
+        try {
+            const subscriptionData: any = await getActiveSubscriptionForStore(
+                tenantId,
+                storeId,
+                storesList,
+            );
+
+            if (activeSubscriptionRequestStoreIdRef.current === storeId) {
+                activeSubscriptionStoreIdRef.current = storeId;
+                setActiveSubscription(subscriptionData);
+            }
+
+            return subscriptionData;
+        } finally {
+            if (activeSubscriptionRequestStoreIdRef.current === storeId) {
+                activeSubscriptionRequestStoreIdRef.current = null;
+                setActiveSubscriptionLoading(false);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        const requiresFirebaseAuth = Boolean(session?.user?.tenantId && session?.user?.storeId);
+
+        if (!session) {
+            setFirebaseAuthReady(false);
+            setFirebaseAuthSyncError(null);
+            return;
+        }
+
+        if (!requiresFirebaseAuth) {
+            setFirebaseAuthReady(true);
+            setFirebaseAuthSyncError(null);
+            return;
+        }
+
+        setFirebaseAuthReady(false);
+        setFirebaseAuthSyncError(null);
+
+        ensureFirebaseAuthForSession(session)
+            .then(() => {
+                if (!cancelled) setFirebaseAuthReady(true);
+            })
+            .catch((error) => {
+                const normalizedError = error instanceof Error ? error : new Error('Firebase Auth sync failed');
+                console.error('[MenuList] Firebase Auth sync failed before store bootstrap', normalizedError);
+                if (!cancelled) {
+                    setFirebaseAuthSyncError(normalizedError);
+                    setActiveSubscriptionLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        session?.user?.email,
+        session?.user?.id,
+        session?.user?.storeId,
+        session?.user?.tenantId,
+    ]);
+
     // Listen for AI balance updates from API responses (saves Firebase reads)
     // When any AI service gets a response with remainingBalance, it fires this event
     useEffect(() => {
@@ -124,7 +207,7 @@ export default function SessionProvider({ children, session }: Props) {
         if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
             const debugSession = {
                 userId: session?.user?.id,
-                email: session?.user?.email,
+                email: maskDebugEmail(session?.user?.email),
                 platformRole: (session as any)?.platformRole || session?.user?.platformRole,
                 role: (session as any)?.role || session?.user?.role,
                 tenantId: session?.user?.tenantId,
@@ -134,6 +217,10 @@ export default function SessionProvider({ children, session }: Props) {
             };
             (window as any).__MENULIST_SESSION_DEBUG__ = debugSession;
             console.info('[MenuList session debug]', debugSession);
+        }
+
+        if (session?.user?.tenantId && session?.user?.storeId && !firebaseAuthReady) {
+            return;
         }
 
         // Create a key from relevant session data for comparison
@@ -172,13 +259,11 @@ export default function SessionProvider({ children, session }: Props) {
                     // setUsersList(removeObjRef(users))
 
                     // Fetch subscription data
-                    const subscriptionData: any = await getActiveSubscriptionForStore(
+                    const subscriptionData = await fetchActiveSubscriptionForStore(
                         Number(session.user.tenantId),
                         Number(session.user.storeId),
                         fetchedTenant.storesList,
                     )
-                    setActiveSubscription(subscriptionData)
-                    setActiveSubscriptionLoading(false)
 
                     // Set user context for Sentry with subscription info (client identification)
                     setUserContext({
@@ -193,16 +278,24 @@ export default function SessionProvider({ children, session }: Props) {
                         subscriptionPlan: subscriptionData?.planId || 'free',
                         subscriptionStatus: subscriptionData?.status || 'none',
                     });
-                }).catch(() => setActiveSubscriptionLoading(false))
-            }).catch(() => setActiveSubscriptionLoading(false))
+                }).catch((e) => {
+                    setActiveSubscriptionLoading(false)
+                    console.log(e)
+                })
+            }).catch((e) => {
+                setActiveSubscriptionLoading(false)
+                console.log(e)
+            })
 
         } else if (!session) {
             // Clear Sentry context on logout
+            activeSubscriptionStoreIdRef.current = null;
+            activeSubscriptionRequestStoreIdRef.current = null;
             setActiveSubscription(null);
             setActiveSubscriptionLoading(false);
             clearUserContext();
         }
-    }, [session]) // Re-run the effect when the session changes
+    }, [fetchActiveSubscriptionForStore, session, firebaseAuthReady]) // Re-run the effect when the session changes
 
     useEffect(() => {
         if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
@@ -225,12 +318,18 @@ export default function SessionProvider({ children, session }: Props) {
             if (storeDetails?.storeId !== loginStoreDetails.storeId) {
                 setStoreDetails(loginStoreDetails);
             }
-            setActiveSubscriptionLoading(true);
-            void getActiveSubscriptionForStore(
+            if (
+                activeSubscriptionStoreIdRef.current === loginStoreId
+                || activeSubscriptionRequestStoreIdRef.current === loginStoreId
+            ) {
+                return;
+            }
+
+            void fetchActiveSubscriptionForStore(
                 Number(session.user.tenantId),
                 loginStoreId,
                 tenantDetails.storesList,
-            ).then(setActiveSubscription).finally(() => setActiveSubscriptionLoading(false));
+            );
             return;
         }
 
@@ -261,14 +360,14 @@ export default function SessionProvider({ children, session }: Props) {
             }
 
             setStoreDetails(targetStore);
-            const subscriptionData = await getActiveSubscriptionForStore(
+            const subscriptionData = await fetchActiveSubscriptionForStore(
                 Number(session.user.tenantId),
                 targetStoreId,
                 tenantDetails.storesList,
             );
             if (!cancelled) {
+                activeSubscriptionStoreIdRef.current = targetStoreId;
                 setActiveSubscription(subscriptionData);
-                setActiveSubscriptionLoading(false);
             }
         };
 
@@ -286,6 +385,7 @@ export default function SessionProvider({ children, session }: Props) {
         loginStoreDetails,
         session,
         setActiveStoreContext,
+        fetchActiveSubscriptionForStore,
         storeDetails?.storeId,
         tenantDetails,
     ]);
@@ -389,7 +489,9 @@ export default function SessionProvider({ children, session }: Props) {
                 platformStoreSummaryLoading,
                 setPlatformStoreSummaryLoading
             }}>
-                {(session && !storeDetails && !canRenderBeforeStoreData) ? (
+                {(session && session.user?.storeId && !firebaseAuthReady && !canRenderBeforeStoreData) ? (
+                    <ServerSidePageLoader page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"} />
+                ) : (session && !storeDetails && !canRenderBeforeStoreData) ? (
                     <ServerSidePageLoader page="Loading Store Data" />
                 ) : (
                     <Suspense fallback={<ServerSidePageLoader page="Main Layout" />}>

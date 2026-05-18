@@ -18,10 +18,15 @@ type ConsoleBufferWindow = Window & {
     [INSTALLED_KEY]?: boolean;
 };
 
-const sensitivePattern = /(password|passwd|token|secret|authorization|api[_-]?key|session|cookie)=([^&\s]+)/gi;
+const sensitiveAssignmentPattern = /(password|passwd|token|secret|authorization|api[_-]?key|session|cookie)=([^&\s]+)/gi;
+const sensitiveJsonFieldPattern = /("(?:password|passwd|token|customToken|accessToken|refreshToken|secret|authorization|api[_-]?key|session|cookie)"\s*:\s*")([^"]*)(")/gi;
+const emailJsonFieldPattern = /("email"\s*:\s*")([^"]+@[^"]+)(")/gi;
 
 function sanitizeText(value: string): string {
-    const redacted = value.replace(sensitivePattern, '$1=[redacted]');
+    const redacted = value
+        .replace(sensitiveAssignmentPattern, '$1=[redacted]')
+        .replace(sensitiveJsonFieldPattern, '$1[redacted]$3')
+        .replace(emailJsonFieldPattern, '$1[redacted]$3');
     return redacted.length > MAX_ARG_LENGTH ? `${redacted.slice(0, MAX_ARG_LENGTH)}...[truncated]` : redacted;
 }
 

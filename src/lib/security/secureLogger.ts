@@ -17,14 +17,14 @@ type LogData = Record<string, any>;
  */
 const BLOCKED_FIELDS = new Set([
     'password',
-    'passwordHash',
+    'passwordhash',
     'token',
-    'accessToken',
-    'refreshToken',
-    'apiKey',
+    'accesstoken',
+    'refreshtoken',
+    'apikey',
     'secret',
-    'privateKey',
-    'creditCard',
+    'privatekey',
+    'creditcard',
     'ssn',
     'cvv',
     'pin'
@@ -37,7 +37,7 @@ const MASKED_FIELDS = new Set([
     'email',
     'phone',
     'ip',
-    'sessionId'
+    'sessionid'
 ]);
 
 /**

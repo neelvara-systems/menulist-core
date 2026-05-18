@@ -12,11 +12,17 @@
  * and syncs them by getting a custom token from the server.
  */
 
+import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { firebaseAuth } from '@lib/firebase/firebaseClient';
-import { syncCanonicaAuthWithCustomToken } from '@lib/firebase/syncCanonicaAuth';
-import { signInWithCustomToken } from 'firebase/auth';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+
+const maskDebugEmail = (email: unknown) => {
+    if (typeof email !== 'string') return email;
+    const [local, domain] = email.split('@');
+    if (!local || !domain) return '***';
+    return `${local.slice(0, 2)}***@${domain}`;
+};
 
 export function useFirebaseAuthSync() {
     const { data: session, status } = useSession();
@@ -37,17 +43,8 @@ export function useFirebaseAuthSync() {
         // Don't run if already synced or currently syncing
         if (isSynced || isSyncing) return;
 
-        // Check if Firebase Auth is already synced
-        const currentUser = firebaseAuth.currentUser;
-        
-        if (currentUser) {
-            // Already synced
-            setIsSynced(true);
-            return;
-        }
-
-        // NextAuth is authenticated but Firebase Auth is not
-        // Sync them by getting a custom token
+        // NextAuth is authenticated. Ensure Firebase Auth also has matching
+        // tenant/store claims before any Firestore DAL read runs.
         syncFirebaseAuth();
 
     }, [status, session, isSynced, isSyncing]);
@@ -59,29 +56,10 @@ export function useFirebaseAuthSync() {
         try {
             console.log('[Firebase Auth Sync] Starting sync...');
 
-            // Get custom token from server
-            const response = await fetch('/api/auth/set-claims', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}) // No UID - server will create token from NextAuth session
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to get custom token: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (!data.customToken) {
-                throw new Error('No custom token received from server');
-            }
-
-            // Sign in to Firebase Auth with custom token
-            await signInWithCustomToken(firebaseAuth, data.customToken);
-            await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+            await ensureFirebaseAuthForSession(session);
 
             console.log('[Firebase Auth Sync] ✅ Sync complete');
-            console.log('[Firebase Auth Sync] User:', firebaseAuth.currentUser?.email);
+            console.log('[Firebase Auth Sync] User:', maskDebugEmail(firebaseAuth.currentUser?.email));
             
             setIsSynced(true);
         } catch (err) {

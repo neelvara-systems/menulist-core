@@ -10,7 +10,8 @@
   z-index: 9999;
   backdrop-filter: blur(1px);
   svg {
-    max-width: 60%;
+    width: clamp(190px, 18vw, 280px);
+    max-width: 72vw;
     z-index: 99999;
     height: auto;
     filter: drop-shadow(4px 2px 6px #005fd25f);
@@ -20,7 +21,8 @@
 @media screen and (min-width: 0) and (max-width: 801px) {
   .loaderbody {
     svg {
-      max-width: 100%;
+      width: clamp(160px, 52vw, 240px);
+      max-width: 78vw;
     }
   }
 }

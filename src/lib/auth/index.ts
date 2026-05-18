@@ -517,9 +517,9 @@ const getDebugUserSnapshot = (dbUser: any) => {
 
     return {
         id: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.name,
-        image: dbUser.image,
+        email: maskDebugEmail(dbUser.email),
+        name: dbUser.name ? '[present]' : undefined,
+        image: dbUser.image ? '[present]' : undefined,
         isVerified: dbUser.isVerified,
         active: dbUser.active,
         blocked: dbUser.blocked,
@@ -533,11 +533,17 @@ const getDebugUserSnapshot = (dbUser: any) => {
         stores: Array.isArray(dbUser.stores)
             ? dbUser.stores.map((store: any) => ({
                 storeId: store?.storeId,
-                name: store?.name,
                 role: store?.role,
             }))
             : dbUser.stores,
     };
+};
+
+const maskDebugEmail = (email: unknown) => {
+    if (typeof email !== 'string') return email;
+    const [local, domain] = email.split('@');
+    if (!local || !domain) return '***';
+    return `${local.slice(0, 2)}***@${domain}`;
 };
 
 const logFetchedUserForDebug = (source: string, dbUser: any) => {

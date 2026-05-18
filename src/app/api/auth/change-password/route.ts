@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { authOptions } from "@lib/auth";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { secureLog } from "@lib/security/secureLogger";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -108,7 +109,10 @@ export async function POST(request: NextRequest) {
       passwordChangedAt: now,
     });
 
-    console.log(`[change-password] Password changed for ${session.user.email}`);
+    secureLog("[change-password] Password changed", {
+      email: session.user.email,
+      userId: session.user.id,
+    });
 
     return NextResponse.json({
       success: true,

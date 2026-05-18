@@ -82,7 +82,7 @@ export function initAppCheck() {
     const hostname = window.location.hostname;
     const hasDebugToken = Boolean(appCheckDebugToken);
     if (isLocalOrPreviewHost(hostname) && !hasDebugToken) {
-        console.warn(`%c🛡️ App Check%c skipped on ${hostname}. Use a debug token locally or on preview environments.`, APP_CHECK_BADGE, APP_CHECK_WARN);
+        console.info(`%c🛡️ App Check%c skipped on ${hostname}. This is expected for local development; add a debug token only when testing App Check locally.`, APP_CHECK_BADGE, APP_CHECK_INFO);
         return null;
     }
 
