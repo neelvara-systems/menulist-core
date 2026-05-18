@@ -1,9 +1,9 @@
 # POS Webhook Sync — Specification
 
 > **Document Type:** Business Requirements (CEO/PM readable)
-> **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: false`)
-> **Last Updated:** March 14, 2026
-> **Version:** 2.1
+> **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
+> **Last Updated:** May 18, 2026
+> **Version:** 2.2
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### What
 
-MenuList automatically sends the full, authoritative menu to a store's POS system whenever menu-affecting changes occur. One edit in MenuList = POS updated. No manual replication.
+When POS Sync is connected for a store, MenuList can send the full, authoritative menu to the store's POS webhook after approved menu-affecting changes. MenuList remains the upstream menu authority; the POS endpoint consumes a signed full-menu snapshot.
 
 ### Why
 

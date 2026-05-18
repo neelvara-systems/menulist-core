@@ -1,6 +1,8 @@
 'use client'
+import { helpCenterTabRouting } from '@constant/navigations';
 import { Button, Card, Col, Empty, Flex, message, Row, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 import { getStoresTickets, subscribeTicketById } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -14,6 +16,7 @@ import TicketItem from '../TicketItem';
 
 function RunningTickets() {
     const t = useTranslations('HelpCenter');
+    const router = useRouter();
     const { setAllItems, updateItem, cachedItems } = useTicketCache();
     const dispatch = useAppDispatch();
     const [selectedTicket, setSelectedTicket] = useState<SupportTicketType | null>(null);
@@ -130,7 +133,7 @@ function RunningTickets() {
                             type='text'
                             size='small'
                             icon={<LuArrowRight />}
-                            onClick={() => window.location.hash = '#ticket'}
+                            onClick={() => router.push(helpCenterTabRouting('ticket'))}
                         >
                             {t('viewAll')}
                         </Button>

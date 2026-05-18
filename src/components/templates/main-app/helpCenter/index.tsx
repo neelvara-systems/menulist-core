@@ -1,7 +1,10 @@
 'use client'
+import KnowledgeBaseExplorer from '@organisms/KnowledgeBaseExplorer';
+import { helpCenterTabRouting } from '@constant/navigations';
 import { Card, Flex, Typography } from 'antd';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import ChangelogView from './ChangelogView';
 import HeroSearchBar from './HeroSearchBar';
 import { HELP_CENTER_SELECT_TAB_EVENT, type HelpCenterSelectTabEventDetail } from './events';
 import LandingPage from './landing';
@@ -10,15 +13,29 @@ import { DEFAULT_HOME_TAB, HELP_CENTER_TABS, HOME_TAB_KEY } from './tabsConfig';
 
 const { Title } = Typography;
 
-function HelpCenter() {
+interface HelpCenterProps {
+    initialArticleId?: string;
+    initialChangelogId?: string;
+    initialTab?: string;
+}
+
+function HelpCenter({ initialArticleId, initialChangelogId, initialTab }: HelpCenterProps) {
     const router = useRouter();
-    const pathname = usePathname();
     const searchParams = useSearchParams();
-    const requestedTab = searchParams.get('tab');
+    const requestedTab = searchParams.get('tab') || initialTab;
     const requestedTabIsValid = requestedTab === HOME_TAB_KEY || HELP_CENTER_TABS.some(tab => tab.key === requestedTab);
     const [activeKey, setActiveKey] = useState<string>(requestedTab && requestedTabIsValid ? requestedTab : HOME_TAB_KEY);
 
     const activeTab = useMemo(() => HELP_CENTER_TABS.find(tab => tab.key === activeKey) || null, [activeKey]);
+    const activeTabContent = useMemo(() => {
+        if (activeKey === 'kb') {
+            return <KnowledgeBaseExplorer initialArticleId={initialArticleId} />;
+        }
+        if (activeKey === 'changelog') {
+            return <ChangelogView initialEntryId={initialChangelogId} />;
+        }
+        return activeTab?.render;
+    }, [activeKey, activeTab?.render, initialArticleId, initialChangelogId]);
 
     // Memoize styles to prevent re-renders
     const cardStyle = useMemo(() => ({ height: '100%' }), []);
@@ -42,14 +59,14 @@ function HelpCenter() {
 
         if (requestedTab && !requestedTabIsValid) {
             setActiveKey(HOME_TAB_KEY);
-            router.replace(pathname, { scroll: false });
+            router.replace(helpCenterTabRouting(HOME_TAB_KEY), { scroll: false });
         }
-    }, [pathname, requestedTab, requestedTabIsValid, router]);
+    }, [requestedTab, requestedTabIsValid, router]);
 
     const handleTabChange = useCallback((nextKey: string) => {
         setActiveKey(nextKey);
-        router.replace(nextKey === HOME_TAB_KEY ? pathname : `${pathname}?tab=${nextKey}`, { scroll: false });
-    }, [pathname, router]);
+        router.replace(helpCenterTabRouting(nextKey), { scroll: false });
+    }, [router]);
 
     useEffect(() => {
         const handleSelectTab = (event: Event) => {
@@ -86,7 +103,7 @@ function HelpCenter() {
                         ) : (
                             <Card style={tabCardStyle}>
                                 {shouldShowTabTitle && <Title level={4} style={titleStyle}>{activeTab?.title ?? DEFAULT_HOME_TAB.title}</Title>}
-                                {activeTab?.render}
+                                {activeTabContent}
                             </Card>
                         )}
                     </div>}

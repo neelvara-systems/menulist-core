@@ -44,6 +44,11 @@ const normalizeClaimValue = (value: unknown) => (
     value === null || value === undefined ? "" : String(value)
 );
 
+const claimsUseCanonicalTenantStoreTypes = (claims: Record<string, unknown> | undefined) => (
+    typeof claims?.tenantId === 'string'
+    && typeof claims?.storeId === 'string'
+);
+
 const getSessionTenantId = (session: any) => (
     session?.user?.tenantId ?? session?.tId ?? null
 );
@@ -60,7 +65,8 @@ const claimsMatchSessionStore = (claims: Record<string, unknown> | undefined, se
         return true;
     }
 
-    return normalizeClaimValue(claims?.tenantId) === normalizeClaimValue(tenantId)
+    return claimsUseCanonicalTenantStoreTypes(claims)
+        && normalizeClaimValue(claims?.tenantId) === normalizeClaimValue(tenantId)
         && normalizeClaimValue(claims?.storeId) === normalizeClaimValue(storeId);
 };
 

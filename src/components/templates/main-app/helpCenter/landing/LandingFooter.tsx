@@ -1,5 +1,6 @@
 'use client'
 
+import { helpCenterTabRouting } from '@constant/navigations';
 import { Flex, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -28,7 +29,7 @@ function LandingFooter() {
                 <Link href="/dashboard" style={{ color: token.colorText, textDecoration: 'none' }}>
                     {t('backToDashboard')}
                 </Link>
-                <Link href="/help-center?tab=contact-us" style={{ color: token.colorText, textDecoration: 'none' }}>
+                <Link href={helpCenterTabRouting('contact-us')} style={{ color: token.colorText, textDecoration: 'none' }}>
                     {t('contactUs')}
                 </Link>
                 <Flex align="center" gap={8}>

@@ -1,6 +1,8 @@
 'use client'
 import { Button, Card, Empty, Flex, List, Typography, message, theme } from 'antd';
+import { helpCenterTabRouting } from '@constant/navigations';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { LuArrowRight } from 'react-icons/lu';
 
@@ -11,6 +13,7 @@ import { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType, KnowledgeBaseSec
 
 function TrendingTopics() {
     const t = useTranslations('HelpCenter');
+    const router = useRouter();
     const { token } = theme.useToken();
     const { categoriesData, getCategoriesCached } = useKBCategoriesCache();
     const [hovered, setHovered] = useState<string | null>(null);
@@ -67,7 +70,7 @@ function TrendingTopics() {
             <Flex vertical gap="large">
                 <Flex justify="space-between" align="center">
                     <Typography.Title level={4} style={{ margin: 0 }}>{t('popularResources')}</Typography.Title>
-                    <Button type="text" size="small" icon={<LuArrowRight />} iconPosition='end'>{t('viewAll')}</Button>
+                    <Button type="text" size="small" icon={<LuArrowRight />} iconPosition='end' onClick={() => router.push(helpCenterTabRouting('kb'))}>{t('viewAll')}</Button>
                 </Flex>
                 {categoriesData ? <List
                     dataSource={articles}

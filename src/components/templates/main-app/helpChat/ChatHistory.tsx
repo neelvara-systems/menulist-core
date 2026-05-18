@@ -182,21 +182,23 @@ const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mod
             </div>
 
             {/* Footer with Mode Toggle */}
-            <div
-                role="toolbar"
-                aria-label="Chat mode selector"
-                style={{
-                    padding: 12,
-                    borderTop: `1px solid ${token.colorBorderSecondary}`,
-                    background: token.colorBgContainer
-                }}
-            >
-                <ModeToggle
-                    value={mode}
-                    onChange={onModeChange}
-                    disabled={disableModeToggle || false}
-                />
-            </div>
+            {!(isMobile && hasMessages) && (
+                <div
+                    role="toolbar"
+                    aria-label="Chat mode selector"
+                    style={{
+                        padding: 12,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        background: token.colorBgContainer
+                    }}
+                >
+                    <ModeToggle
+                        value={mode}
+                        onChange={onModeChange}
+                        disabled={disableModeToggle || false}
+                    />
+                </div>
+            )}
 
             {/* Delete Confirmation Modal */}
             <Modal

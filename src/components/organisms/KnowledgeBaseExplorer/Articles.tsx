@@ -1,4 +1,5 @@
 import { useArticleCache } from '@hook/useArticleCache';
+import { normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import ArticleView from '@organisms/ArticleView';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategory, KnowledgeBaseSection } from '@type/knowledgeBase';
 import { Button, Empty, Flex, Skeleton, Typography } from 'antd';
@@ -8,13 +9,14 @@ import { LuFileSearch, LuRefreshCw } from 'react-icons/lu';
 const { Title, Text } = Typography;
 
 interface ArticlesProps {
+    activeArticleId?: string | null;
     parent: KnowledgeBaseCategory | KnowledgeBaseSection;
     articles: KnowledgeBaseArticleMeta[];
     searchTerm?: string;
     onResetSearch?: () => void;
 }
 
-const Articles = ({ parent, articles, searchTerm, onResetSearch }: ArticlesProps) => {
+const Articles = ({ activeArticleId, parent, articles, searchTerm, onResetSearch }: ArticlesProps) => {
     const { getArticle } = useArticleCache();
     const [fullArticles, setFullArticles] = useState<(KnowledgeBaseArticleType | null)[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,6 +40,23 @@ const Articles = ({ parent, articles, searchTerm, onResetSearch }: ArticlesProps
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [articles]);
+
+    useEffect(() => {
+        if (loading || !activeArticleId || fullArticles.length === 0) return;
+
+        const activeArticle = fullArticles.find(article => article?.id === activeArticleId);
+        if (!activeArticle) return;
+
+        const slug = normalizeHelpCenterRouteSegment(activeArticle.title);
+        const scrollTimer = window.setTimeout(() => {
+            document.getElementById(slug)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 100);
+
+        return () => window.clearTimeout(scrollTimer);
+    }, [activeArticleId, fullArticles, loading]);
 
     return (
         <Flex vertical gap="large">

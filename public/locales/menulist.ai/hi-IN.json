@@ -2406,7 +2406,9 @@
             "outcome4Title": "Presence visibility",
             "outcome4Desc": "Deployment checklists owner को Google, Instagram, WhatsApp, QR और in-store materials पर official link track करने में मदद करते हैं।",
             "outcome5Title": "Growing business के लिए ready",
-            "outcome5Desc": "Growing businesses के लिए MenuList menu data को exports, screens और future connections के लिए organized रखता है।"
+            "outcome5Desc": "Growing businesses के लिए MenuList menu data को exports, screens और future connections के लिए organized रखता है।",
+            "outcome6Title": "Connected POS updates",
+            "outcome6Desc": "POS Sync connected होने पर approved menu changes store POS webhook को signed full-menu snapshot के रूप में भेजे जा सकते हैं।"
         },
         "Surfaces": {
             "title": "एक menu उन जगहों के लिए जहाँ ग्राहक देखते हैं।",
@@ -2804,6 +2806,8 @@
             "group4F4Desc": "\"मेन्यू भेजो\", \"कहाँ हो?\", और \"खुले हो?\" के लिए तैयार मैसेज — आपके लिंक, पता और घंटों के साथ। एक टैप में कॉपी और भेजें।",
             "group4F5Title": "कमांड सेंटर",
             "group4F5Desc": "मूल्य निर्धारण, उपलब्धता, श्रेणियों और स्थिति के लिए बल्क ऑपरेशन। कई आइटम चुनें और एक एक्शन में बदलाव लागू करें — लागू करने से पहले पूर्वावलोकन के साथ।",
+            "group4F6Title": "POS Sync",
+            "group4F6Desc": "Connected POS systems के लिए approved menu changes publish के बाद store POS webhook को signed full-menu snapshot भेज सकते हैं।",
             "group5Label": "सटीकता और विश्वास",
             "group5Heading": "आपका मेन्यू सही रखना आसान रहता है।",
             "group5Subheading": "बिल्ट-इन सिस्टम जो गलतियों को ग्राहकों तक पहुँचने से रोकते हैं।",

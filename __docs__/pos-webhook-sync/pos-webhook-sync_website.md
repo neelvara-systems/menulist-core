@@ -4,8 +4,10 @@
 > **Audience:** Potential customers visiting menulist.ai
 > **Language:** Follows `__docs__/constitution/02-language-governance.md`
 > **Status:** Implemented
-> **Last Updated:** February 14, 2026
-> **Version:** 2.0
+> **Last Updated:** May 18, 2026
+> **Version:** 2.1
+
+> Current website governance note: This page is an older feature-page draft. The active main website should mention POS Sync only as low-prominence operations proof until vendor/customer proof exists. Use "approved menu changes can be sent as a signed full-menu snapshot to a connected store POS webhook" language. Do not use "works with any POS", "real-time sync", "seamless integration", "POS connector", or universal POS support claims on the main website.
 
 ---
 

@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.4 (Canonical Website Default)
+**Version:** 3.4.5 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 18, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.4** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
+| **3.4.5** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
 
-Version 3.4.3 keeps the upload-first promise and adds a homepage search/AI discovery proof section grounded in shipped SEO/AEO infrastructure: owner SEO/AEO settings, business-copy setup, structured public pages, crawler/sitemap rules, and LLM discovery files. The public claim remains deliberately conservative: MenuList prepares a clearer official source for search engines and AI systems to read, but does not promise ranking, citation, or placement.
+Version 3.4.5 keeps the upload-first promise, the owner reassurance helpers, and the search/AI discovery proof. It also adds POS Sync as a low-prominence operations proof point grounded in current runtime capability: `ENABLE_POS_SYNC` is enabled, owner settings exist, and approved menu changes can be delivered as a signed full-menu snapshot to a connected store POS webhook. The public claim remains deliberately conservative: MenuList does not present itself as a POS integration suite and does not promise universal POS support, instant external propagation, or external vendor outcomes.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -361,12 +361,26 @@ Protected scope:
 
 - Pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.10 POS Sync Website Proof
+
+Stage 7.10 adds POS Sync as operations proof, not as a standalone homepage category:
+
+- `SmartFeaturesSection` now includes one quiet-reliability proof point for connected POS webhook updates.
+- The Features page Operations group now includes one POS Sync card.
+- Copy is grounded in current runtime truth: `ENABLE_POS_SYNC` is enabled and POS Sync sends a signed full-menu snapshot to a store-level POS webhook after approved publish-triggering changes.
+- The website deliberately avoids "works with any POS", "real-time sync", "seamless integration", and POS-connector-suite language.
+
+Protected scope:
+
+- POS Sync runtime, webhook delivery APIs, test API, secret regeneration behavior, owner settings behavior, pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.5 | May 18, 2026 | Added POS Sync as a low-prominence operations proof on homepage/features and corrected stale POS Sync docs status without changing POS runtime. |
 | 3.4.4 | May 18, 2026 | Added reusable phone-first and owner-approval reassurance helpers across website conversion pages with English and Hindi locale coverage. |
 | 3.4.3 | May 18, 2026 | Added homepage search/AI discovery proof section and FAQ caveat grounded in existing SEO/AEO, schema, crawler, sitemap, and LLM discovery infrastructure. |
 | 3.4.2 | May 17, 2026 | Mobile website polish: touch targets, section rhythm, revenue/workflow compactness, footer mobile navigation, and stale multi-location locale claim cleanup. |

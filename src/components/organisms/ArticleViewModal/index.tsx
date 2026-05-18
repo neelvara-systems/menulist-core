@@ -3,7 +3,7 @@
 import { useArticleCache } from '@hook/useArticleCache';
 import ArticleView from '@organisms/ArticleView';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType } from '@type/knowledgeBase';
-import { Button, Divider, Flex, Modal, Skeleton, Space, Typography, theme } from 'antd';
+import { Button, Divider, Flex, Grid, Modal, Skeleton, Space, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuFileX, LuSearch } from 'react-icons/lu';
 
@@ -17,9 +17,11 @@ interface ArticleViewModalProps {
 
 export default function ArticleViewModal({ open, onClose, article: providedArticle }: ArticleViewModalProps) {
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
     const { getArticle, addArticleToCache } = useArticleCache();
     const [fullArticle, setFullArticle] = useState<KnowledgeBaseArticleType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const isMobile = screens.md === false;
 
     useEffect(() => {
         if (!open || !providedArticle) {
@@ -63,8 +65,25 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
             open={open}
             onCancel={onClose}
             footer={null}
-            width={900}
-            style={{ top: 20 }}
+            width={isMobile ? '100vw' : 900}
+            style={{
+                top: isMobile ? 0 : 20,
+                maxWidth: isMobile ? '100vw' : undefined,
+                margin: isMobile ? 0 : undefined,
+                paddingBottom: isMobile ? 0 : undefined,
+            }}
+            styles={{
+                body: {
+                    maxHeight: isMobile ? '100dvh' : 'calc(100vh - 80px)',
+                    overflowY: 'auto',
+                    padding: isMobile ? 10 : undefined,
+                },
+                content: {
+                    borderRadius: isMobile ? 0 : undefined,
+                    minHeight: isMobile ? '100dvh' : undefined,
+                    padding: isMobile ? 8 : undefined,
+                },
+            }}
         >
             {isLoading ? (
                 /* Loading Skeleton */
@@ -90,7 +109,7 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
                     mode="modal"
                     showBreadcrumbs={true}
                     showTags={true}
-                    maxHeight="75vh"
+                    maxHeight={isMobile ? 'calc(100dvh - 72px)' : '75vh'}
                 />
             ) : (
                 /* Article Not Found State */

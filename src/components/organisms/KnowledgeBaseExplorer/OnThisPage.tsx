@@ -1,3 +1,4 @@
+import { normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import { Flex, Typography } from 'antd';
 import { LuDot } from 'react-icons/lu';
@@ -11,7 +12,7 @@ interface OnThisPageProps {
 
 const OnThisPage = ({ articles, from }: OnThisPageProps) => {
     const items = articles.map(article => {
-        const slug = article.title.toLowerCase().replace(/\s+/g, '-');
+        const slug = normalizeHelpCenterRouteSegment(article.title);
         return {
             key: article.id,
             href: `#${slug}`,

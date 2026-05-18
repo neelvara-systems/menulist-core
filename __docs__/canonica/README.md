@@ -104,14 +104,14 @@ MenuList is the first embedded Canonica client. Owner support entry points now o
 
 - Desktop sidebar Help → `/help-center`
 - Desktop support popover Help Center → `/help-center`
-- Desktop support popover Documentation → `/help-center?tab=kb`
-- Desktop support popover Submit a Ticket → `/help-center?tab=ticket`
+- Desktop support popover Documentation → `/help-center/kb`
+- Desktop support popover Submit a Ticket → `/help-center/ticket`
 - Mobile More tab Help Center → existing Help Center home inside `MobileShell`
 - Mobile More tab Documentation → existing Help Center `kb` tab inside `MobileShell`
 - Mobile More tab Support Tickets → existing Help Center `ticket` tab inside `MobileShell`
 - Mobile More tab Release Notes → existing Help Center `changelog` tab inside `MobileShell`
 
-The mobile More tab does not route-hop to `/canonica/*`; it renders `src/components/templates/main-app/helpCenter` inside the MenuList mobile shell to prevent hash/router fights, accidental desktop fallback, or app reloads. Direct mobile visits to `/help-center`, `/help-center?tab=kb`, `/help-center?tab=ticket`, and `/help-center?tab=changelog` resolve to the same More-tab sub-screens and expose a Back to MenuList action. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
+The mobile More tab does not route-hop to `/canonica/*`; it renders `src/components/templates/main-app/helpCenter` inside the MenuList mobile shell to prevent hash/router fights, accidental desktop fallback, or app reloads. Direct visits to `/help-center`, `/help-center/kb`, `/help-center/ticket`, `/help-center/changelog`, and legacy `?tab=` URLs resolve to the same Help Center tabs. Article deep links use `/help-center/kb/articles/:articleId`; changelog deep links use `/help-center/changelog/:entryId`. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
 
 ### Canonica Public Routes
 

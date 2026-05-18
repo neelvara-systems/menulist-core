@@ -2,7 +2,8 @@
 
 import HelpCenter from '@template/main-app/helpCenter';
 import { HELP_CENTER_TABS, HOME_TAB_KEY } from '@template/main-app/helpCenter/tabsConfig';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { helpCenterTabRouting } from '@constant/navigations';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
 import { Flex, Text } from '../antd';
@@ -21,18 +22,21 @@ function normalizeHelpCenterTab(tab?: string | null) {
 
 export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScreenProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
+    const requestedPathTab = pathname.startsWith('/help-center/') ? pathname.split('/')[2] : null;
     const activeTab = useMemo(
-        () => normalizeHelpCenterTab(requestedTab || initialTab),
-        [initialTab, requestedTab],
+        () => normalizeHelpCenterTab(requestedTab || requestedPathTab || initialTab),
+        [initialTab, requestedPathTab, requestedTab],
     );
 
     useEffect(() => {
-        const nextPath = activeTab === HOME_TAB_KEY ? '/help-center' : `/help-center?tab=${activeTab}`;
+        const nextPath = helpCenterTabRouting(activeTab);
         const currentPath = `${window.location.pathname}${window.location.search}`;
+        const isNestedHelpPath = window.location.pathname.startsWith(`${nextPath}/`);
 
-        if (currentPath !== nextPath) {
+        if (currentPath !== nextPath && !isNestedHelpPath) {
             router.replace(`${nextPath}${window.location.hash}`, { scroll: false });
         }
     }, [activeTab, router]);

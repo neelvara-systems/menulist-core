@@ -2,6 +2,7 @@
 'use client'
 
 import Confetti from '@atoms/Confetti';
+import { helpCenterTabRouting } from '@constant/navigations';
 import { AIEnhancementPack, Plan } from '@data/common';
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
@@ -16,10 +17,10 @@ import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, message } f
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { FaBoltLightning } from 'react-icons/fa6';
-import { LuBuilding2, LuStore } from 'react-icons/lu';
+import { LuBuilding2, LuHelpCircle, LuStore } from 'react-icons/lu';
 import ActiveSubscriptionCard from './ActiveSubscriptionCard';
 import BillingHistory from './BillingHistory';
 import CreditsPackModal from './CreditsPackModal';
@@ -31,6 +32,7 @@ const { Title, Text } = Typography;
 function BillingPage() {
     const t = useTranslations('Billing');
     const searchParams = useSearchParams();
+    const router = useRouter();
     const sessionId = searchParams.get('session_id');
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const { data: session } = useSession();
@@ -210,6 +212,21 @@ function BillingPage() {
             <Text type="secondary" style={{ marginBottom: '24px', display: 'block' }}>
                 {t('subtitle')}
             </Text>
+
+            <Card style={{ marginBottom: 16 }}>
+                <Flex align="center" justify="space-between" gap={16} wrap>
+                    <Flex align="center" gap={10}>
+                        <LuHelpCircle size={20} />
+                        <Flex vertical>
+                            <Text strong>Billing help</Text>
+                            <Text type="secondary">Questions about plans, invoices, payment retries, or credits.</Text>
+                        </Flex>
+                    </Flex>
+                    <Button onClick={() => router.push(helpCenterTabRouting('ticket'))}>
+                        Contact support
+                    </Button>
+                </Flex>
+            </Card>
 
             {canSwitchBillingStore ? (
                 <Card style={{ marginBottom: 16 }}>

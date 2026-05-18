@@ -1,10 +1,11 @@
 'use client';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from '@type/knowledgeBase';
 import { Breadcrumb, Empty, Flex, Grid, message, Typography } from 'antd';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Articles from './Articles';
 import Categories from './Categories';
 import HelpSidebar from './HelpSidebar';
@@ -14,7 +15,13 @@ import Sections from './Sections';
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
 
-const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
+interface KnowledgeBaseExplorerProps {
+    from?: string;
+    initialArticleId?: string;
+    initialCategoryData?: KnowledgeBaseCategoriesType | null;
+}
+
+const KnowledgeBaseExplorer = ({ from = "", initialArticleId, initialCategoryData = null }: KnowledgeBaseExplorerProps) => {
     const screens = useBreakpoint();
     const dispatch = useAppDispatch();
     const [categoriesData, setCategoriesData] = useState<KnowledgeBaseCategoriesType | null>(initialCategoryData);
@@ -23,8 +30,46 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
     const [selectedKnowledgeBaseSection, setSelectedKnowledgeBaseSection] = useState<KnowledgeBaseSection | null>(null);
     const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticleMeta | null>(null);
     const { getCategoriesCached, setCategoriesCache } = useKBCategoriesCache();
+    const initialArticleAppliedRef = useRef(false);
 
     const isModalView = from == "modal";
+
+    const findArticleLocation = useCallback((articleId: string, data: KnowledgeBaseCategoriesType | null = categoriesData) => {
+        const categories = Object.values(data?.categories || {});
+        const requestedSegment = normalizeHelpCenterRouteSegment(articleId);
+        const matchesArticle = (article: KnowledgeBaseArticleMeta) => {
+            return article.id === articleId
+                || article.url === articleId
+                || normalizeHelpCenterRouteSegment(article.url) === requestedSegment
+                || normalizeHelpCenterRouteSegment(article.title) === requestedSegment;
+        };
+
+        for (const category of categories) {
+            const directArticle = category.articles?.find(matchesArticle);
+            if (directArticle) {
+                return { article: directArticle, category, section: null };
+            }
+
+            for (const section of category.sections || []) {
+                const sectionArticle = section.articles?.find(matchesArticle);
+                if (sectionArticle) {
+                    return { article: sectionArticle, category, section };
+                }
+            }
+        }
+
+        return null;
+    }, [categoriesData]);
+
+    const selectArticleById = useCallback((articleId: string, data: KnowledgeBaseCategoriesType | null = categoriesData) => {
+        const location = findArticleLocation(articleId, data);
+        if (!location) return false;
+
+        setSelectedCategory(location.category);
+        setSelectedKnowledgeBaseSection(location.section);
+        setSelectedArticle(location.article);
+        return true;
+    }, [categoriesData, findArticleLocation]);
 
     const handleCategorySelect = (category: KnowledgeBaseCategory) => {
         setSelectedCategory(category);
@@ -38,7 +83,9 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
     };
 
     const handleArticleSelect = (article: KnowledgeBaseArticleMeta) => {
-        setSelectedArticle(article);
+        if (!selectArticleById(article.id)) {
+            setSelectedArticle(article);
+        }
     };
 
     const resetSelection = () => {
@@ -80,9 +127,15 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
         }
     }, [selectedKnowledgeBaseSection, selectedCategory]);
 
+    useEffect(() => {
+        if (!initialArticleId || !categoriesData || initialArticleAppliedRef.current) return;
+
+        initialArticleAppliedRef.current = selectArticleById(initialArticleId, categoriesData);
+    }, [categoriesData, initialArticleId, selectArticleById]);
+
     const renderContent = () => {
         if (selectedKnowledgeBaseSection) {
-            return <Articles parent={selectedKnowledgeBaseSection} articles={articles} />;
+            return <Articles activeArticleId={selectedArticle?.id} parent={selectedKnowledgeBaseSection} articles={articles} />;
         }
         if (selectedCategory) {
             return (
@@ -90,7 +143,7 @@ const KnowledgeBaseExplorer = ({ from = "", initialCategoryData = null }) => {
                     {selectedCategory.sections && selectedCategory.sections.length > 0 && (
                         <Sections category={selectedCategory} onSectionSelect={handleKnowledgeBaseSectionSelect} />
                     )}
-                    {articles.length > 0 && <Articles parent={selectedCategory} articles={articles} />}
+                    {articles.length > 0 && <Articles activeArticleId={selectedArticle?.id} parent={selectedCategory} articles={articles} />}
                 </>
             );
         }

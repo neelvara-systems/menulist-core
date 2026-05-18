@@ -3,6 +3,7 @@
 import AnimatedGradientBubbles from '@atoms/AnimatedGradientBubbles';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
+import { helpCenterTabRouting } from '@constant/navigations';
 import { loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useChangelogCache } from '@hook/useChangelogCache';
@@ -57,7 +58,7 @@ function isNewEntry(entry: ChangelogEntry, lastViewedAt: number): boolean {
     } catch { return false; }
 }
 
-function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null }) {
+function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?: string; pageData: ChangelogPage | null }) {
     const { getItem } = useChangelogCache();
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
     const [entries, setEntries] = useState<ChangelogEntry[]>([]);
@@ -134,6 +135,19 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
     useEffect(() => {
         fetchLatestPage();
     }, [storeDetails, pageData]);
+
+    useEffect(() => {
+        if (!initialEntryId || entries.length === 0) return;
+
+        const scrollTimer = window.setTimeout(() => {
+            document.getElementById(`changelog-entry-${initialEntryId}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 150);
+
+        return () => window.clearTimeout(scrollTimer);
+    }, [entries.length, initialEntryId]);
 
     const loadMore = async () => {
         if (!changelogPage || !storeDetails) return;
@@ -302,7 +316,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                                                         <Text>No results found for your search.</Text>
                                                         <Text>
                                                             Can&apos;t find what you&apos;re looking for? Check out our{' '}
-                                                            <Link href="/platform/knowledge-base">
+                                                            <Link href={helpCenterTabRouting('kb')}>
                                                                 knowledge base
                                                             </Link>
                                                             .
@@ -322,6 +336,7 @@ function DisplayChangelog({ pageData = null }: { pageData: ChangelogPage | null 
                                     {filteredEntries.map((item, index) => (
                                         <motion.div
                                             key={item.id}
+                                            id={`changelog-entry-${item.id}`}
                                             variants={itemVariants}
                                             style={{
                                                 marginBottom: isNarrow ? 16 : 24,

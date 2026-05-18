@@ -375,8 +375,8 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                                 <DateTimeDisplay value={ticket.modifiedOn || ticket.createdOn} mode="fromnow" />
                             </Flex>
                         }
-                        style={{ borderRadius: 12, minHeight: 360 }}
-                        styles={{ body: { height: 'auto', minHeight: 320, padding: 12 } }}
+                        style={{ borderRadius: 12, minHeight: 0 }}
+                        styles={{ body: { height: 'auto', minHeight: 280, padding: 12 } }}
                     >
                         <ConversationTimeline
                             isMobile
@@ -403,6 +403,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
             styles={{
                 body: isMobile ? {
                     padding: 0,
+                    height: 'calc(100dvh - 138px)',
                     overflow: 'hidden'
                 } : {
                     padding: 0,
@@ -411,6 +412,9 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 },
                 footer: isMobile ? {
                     padding: '10px 12px calc(10px + env(safe-area-inset-bottom))',
+                } : undefined,
+                content: isMobile ? {
+                    height: '100dvh',
                 } : undefined,
             }}
             footer={footerContent}

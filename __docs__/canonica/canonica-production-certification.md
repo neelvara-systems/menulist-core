@@ -222,9 +222,10 @@ Owner KB screen
 
 ```
 MenuList owner clicks Help / Documentation / Support Tickets
-  → desktop sidebar/support popover opens /help-center, /help-center?tab=kb, or /help-center?tab=ticket
+  → desktop sidebar/support popover opens /help-center, /help-center/kb, or /help-center/ticket
   → mobile More tab renders the existing Help Center home/tabs inside MobileShell
-  → direct mobile /help-center paths resolve to the same More-tab help screens
+  → direct /help-center path tabs and legacy ?tab= URLs resolve to the same Help Center screens
+  → /help-center/kb/articles/:articleId and /help-center/changelog/:entryId support direct content links
   → /canonica/help reuses the same Help Center home for direct shell access
   → owner sees KB, ticket, and changelog surfaces without the legacy generic mobile FAQ/WhatsApp placeholder
   → mobile Help Center and direct Canonica shell routes expose Back to MenuList

@@ -111,6 +111,8 @@ LocalisationProvider (locale from next-intl/server)
 
 **Search/AI discovery proof:** Stage 7.8 added `SearchDiscoverySection.tsx` after `SurfacesSection.tsx`. It exposes shipped SEO/AEO and discovery infrastructure in calm owner language: owner SEO/AEO settings, Business Copy Setup, structured public business/menu facts, sitemap/robots rules, and LLM discovery files. The copy explicitly avoids ranking, citation, or placement guarantees. SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing/payment/auth, and create-menu runtime logic were not changed.
 
+**POS Sync operations proof:** Stage 7.10 added one POS Sync proof point to `SmartFeaturesSection.tsx` and one Operations card to `FeaturesPage.tsx`. This is intentionally low prominence because POS Sync is an advanced operations capability, not the first-screen buying promise for a non-technical SMB owner. Copy uses signed full-menu snapshot and connected store POS webhook language and does not claim universal POS support, real-time sync, or a POS integration suite. POS Sync runtime, APIs, settings behavior, pricing/payment/auth, and create-menu runtime logic were not changed.
+
 **Canonical cleanup:** v3.3.0 made this implementation the only website source-code version. Old source-code backups, backup restore docs, the dead `HowItWorksSection.tsx`, and unused legacy landing-template visuals were removed. Historical strategy docs may remain for context, but they are not restoration sources.
 
 ---

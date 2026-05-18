@@ -1,5 +1,6 @@
 'use client'
 
+import { helpCenterTabRouting } from '@constant/navigations';
 import { UserUploadedFileType } from '@type/common';
 import { theme, Typography } from 'antd';
 import ChatInput from './ChatInput';
@@ -43,7 +44,7 @@ const ChatFooter = ({
                 <div style={{ textAlign: 'center', padding: isMobile ? '8px 12px' : '12px 24px' }}>
                     <Text type="secondary" style={{ fontSize: isMobile ? 11 : 12 }}>
                         Answers may still miss details. If you don&apos;t find the correct answer, you can still explore our documentation{' '}
-                        <a href="/kb" target="_blank" rel="noopener noreferrer">here</a>.
+                        <a href={helpCenterTabRouting('kb')} target="_blank" rel="noopener noreferrer">here</a>.
                     </Text>
                 </div>
             )}

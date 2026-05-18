@@ -7,7 +7,18 @@ import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
 export const HOME_ROUTING = `/`;
 export const CLIENT_DASHBOARD_ROUTING = `/dashboard`;
 export const HELP_CENTER_ROUTING = `/help-center`;
-export const helpCenterTabRouting = (tab: string) => `${HELP_CENTER_ROUTING}?tab=${tab}`;
+export const HELP_CENTER_HOME_TAB = 'home';
+export const helpCenterTabRouting = (tab: string) => tab && tab !== HELP_CENTER_HOME_TAB ? `${HELP_CENTER_ROUTING}/${tab}` : HELP_CENTER_ROUTING;
+export const normalizeHelpCenterRouteSegment = (value?: string | null) => (value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+export const getHelpCenterArticleRouteSegment = (article: { id?: string; url?: string; title?: string }) =>
+    article.url || normalizeHelpCenterRouteSegment(article.title) || article.id || '';
+export const helpCenterArticleRouting = (articleId: string) => `${helpCenterTabRouting('kb')}/articles/${articleId}`;
+export const helpCenterChangelogRouting = (entryId?: string) => entryId ? `${helpCenterTabRouting('changelog')}/${entryId}` : helpCenterTabRouting('changelog');
 
 export const NAVIGARIONS_ROUTINGS = {
 

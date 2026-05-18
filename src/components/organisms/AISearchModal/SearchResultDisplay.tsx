@@ -1,6 +1,7 @@
 'use client';
 
 import CategoryIcon from '@atoms/CategoryIcon';
+import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterTabRouting } from '@constant/navigations';
 import ArticleView from '@organisms/ArticleView';
 import { Button, Divider, List, theme, Typography } from 'antd';
 import { useState } from 'react';
@@ -60,6 +61,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                         dataSource={state.data.references}
                         renderItem={(item: SearchDisplayResultReferenceType, index) => {
                             const isExpanded = expandedArticleId === item.article.id;
+                            const articleHref = helpCenterArticleRouting(getHelpCenterArticleRouteSegment(item.article));
                             return (
                                 <div style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, padding: '8px 0' }}>
                                     <List.Item
@@ -74,10 +76,10 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                                             </Button>
                                         ]}
                                         style={{ borderBottom: 'none' }}
-                                    >
-                                        <List.Item.Meta
-                                            avatar={<CategoryIcon icon={item.category.icon} />}
-                                            title={<a href={`/kb/articles/${item.article.id}`} target="_blank" rel="noopener noreferrer">{item.article.title || `Reference ${index + 1}`}</a>}
+                                            >
+                                                <List.Item.Meta
+                                                    avatar={<CategoryIcon icon={item.category.icon} />}
+                                            title={<a href={articleHref} target="_blank" rel="noopener noreferrer">{item.article.title || `Reference ${index + 1}`}</a>}
                                             description={`${item.category.title} / ${item.section.title}`}
                                         />
                                     </List.Item>
@@ -91,7 +93,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                                                 showCopyLink={false}
                                                 enableKeyboardShortcuts={false}
                                             />
-                                            <Button icon={<LuArrowRight />} type='text' href={`/kb/articles/${item.article.id}`} target="_blank" rel="noopener noreferrer">
+                                            <Button icon={<LuArrowRight />} type='text' href={articleHref} target="_blank" rel="noopener noreferrer">
                                                 Open Full Article
                                             </Button>
                                         </div>
@@ -114,7 +116,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
             {/* Display additional information */}
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
-                    Answers may still miss details. If you don&apos;t find the correct answer, you can still explore our documentation <a href="/kb">here</a>.
+                    Answers may still miss details. If you don&apos;t find the correct answer, you can still explore our documentation <a href={helpCenterTabRouting('kb')}>here</a>.
                 </Typography.Text>
             </div>
         </div>

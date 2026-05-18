@@ -35,13 +35,13 @@ const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch,
     return (
         <div
             style={{
-                padding: '16px 20px',
+                padding: isMobile ? '10px 12px' : '16px 20px',
                 borderBottom: `1px solid ${token.colorBorderSecondary}`,
                 background: token.colorBgContainer
             }}
         >
             <Flex justify="space-between" align="center" gap={12}>
-                <Title level={5} style={{ margin: 0, fontSize: 16, fontWeight: 600, flex: 1 }}>
+                <Title level={5} ellipsis style={{ margin: 0, fontSize: isMobile ? 14 : 16, fontWeight: 600, flex: 1, minWidth: 0 }}>
                     {sessionTitle || (firstMessageContent ? firstMessageContent.substring(0, 50) + (firstMessageContent.length > 50 ? '...' : '') : '')}
                 </Title>
                 
@@ -51,7 +51,7 @@ const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch,
                         <motion.div
                             key="search-input"
                             initial={{ width: 0, opacity: 0 }}
-                            animate={{ width: 300, opacity: 1 }}
+                            animate={{ width: isMobile ? 180 : 300, opacity: 1 }}
                             exit={{ width: 0, opacity: 0 }}
                             transition={{ duration: 0.2, ease: "easeOut" }}
                             style={{ overflow: 'hidden' }}

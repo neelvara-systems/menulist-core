@@ -9,6 +9,8 @@
 
 > Search/AI discovery note (May 18, 2026): It is strategically valid to surface MenuList's SEO/AEO and machine-readable discovery infrastructure on the homepage because owners increasingly care about AI search visibility. The allowed marketing angle is "clear official source for search engines and AI systems to read." The forbidden angle is any promise of ranking, citation, automatic Google refresh, or AI-hype positioning.
 
+> POS Sync note (May 18, 2026): POS Sync should be marketed on the main website as proof that MenuList can support serious operations, not as a standalone POS-integration category. The allowed wording is "approved menu changes can be sent as a signed full-menu snapshot to a connected store POS webhook." Avoid "works with any POS", "real-time sync", "seamless integration", and POS connector-suite claims until validated by customer/vendor proof.
+
 ---
 
 ## My Honest Take (Cascade's Strategic Analysis)

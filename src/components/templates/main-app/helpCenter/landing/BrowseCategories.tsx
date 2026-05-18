@@ -1,9 +1,11 @@
 'use client'
 import CategoryIcon from '@atoms/CategoryIcon';
+import { helpCenterTabRouting } from '@constant/navigations';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { KnowledgeBaseCategory } from '@type/knowledgeBase';
 import { Button, Card, Col, Empty, Flex, Row, Typography, message } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 import { LuArrowRight } from 'react-icons/lu';
 
@@ -11,6 +13,7 @@ const { Title, Text, Paragraph } = Typography;
 
 function BrowseCategories() {
     const t = useTranslations('HelpCenter');
+    const router = useRouter();
     const { categoriesMap, getCategoriesCached } = useKBCategoriesCache();
 
     useEffect(() => {
@@ -70,7 +73,7 @@ function BrowseCategories() {
                                     )}
                                     <Flex justify="space-between" align="center">
                                         {sectionLabel ? <Text type="secondary">{`${sectionLabel} · ${articleLabel}`}</Text> : <Text type="secondary">{`${articleLabel}`}</Text>}
-                                        <Button type="link" size="small">
+                                        <Button type="link" size="small" onClick={() => router.push(helpCenterTabRouting('kb'))}>
                                             <Flex align="center" gap={4}>
                                                 <span>{t('explore')}</span>
                                                 <LuArrowRight />

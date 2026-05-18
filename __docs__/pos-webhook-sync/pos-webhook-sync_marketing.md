@@ -3,8 +3,10 @@
 > **Document Type:** Internal Sales/Marketing Strategy
 > **Audience:** Sales team, marketing, founder
 > **Status:** Implemented
-> **Last Updated:** February 14, 2026
-> **Version:** 2.0
+> **Last Updated:** May 18, 2026
+> **Version:** 2.1
+
+> Current marketing governance note: Use this document for strategic context, not as literal main-website copy. POS Sync should support MenuList's upstream menu-truth positioning. Main website copy must stay conservative: connected store POS webhook, signed full-menu snapshot, approved changes after publish. Avoid universal POS, real-time sync, seamless integration, POS connector-suite, and unsupported "always updated" claims.
 
 ---
 

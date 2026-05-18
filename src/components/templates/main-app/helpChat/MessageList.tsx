@@ -113,6 +113,7 @@ const MessageList = ({
                                 feedbackState={feedbackState}
                                 searchQuery={conversationSearchQuery}
                                 onEscalate={message.escalation?.suggested ? () => onEscalate?.(message) : undefined}
+                                isMobile={isMobile}
                             />
                             {/* Suggested follow-up questions */}
                             {suggestedQuestions.length > 0 && (

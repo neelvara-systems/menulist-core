@@ -26,9 +26,10 @@ interface MessageBubbleProps {
     feedbackState?: 'up' | 'down' | null;
     searchQuery?: string;
     onEscalate?: () => void;
+    isMobile?: boolean;
 }
 
-const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTyping, onSkipTyping, feedbackState, searchQuery, onEscalate }: MessageBubbleProps) => {
+const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTyping, onSkipTyping, feedbackState, searchQuery, onEscalate, isMobile = false }: MessageBubbleProps) => {
     const { token } = theme.useToken();
     const [modal, setModal] = useState<{ active: boolean; article: any | null }>({ active: false, article: null });
     const [displayedText, setDisplayedText] = useState('');
@@ -88,9 +89,9 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                 marginBottom: 16
             }}
         >
-            <div style={{ maxWidth: '80%' }}>
-                <Flex gap={8} align="flex-start">
-                    {!isUser && (
+            <div style={{ maxWidth: isMobile ? '100%' : '80%', width: isMobile ? '100%' : undefined }}>
+                <Flex gap={isMobile ? 6 : 8} align="flex-start" justify={isUser ? 'flex-end' : 'flex-start'}>
+                    {!isUser && !isMobile && (
                         <div
                             style={{
                                 width: 34,
@@ -109,7 +110,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                         </div>
                     )}
 
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: isMobile ? '0 1 auto' : 1, maxWidth: isMobile ? (isUser ? '88%' : '100%') : '100%', minWidth: 0 }}>
                         <Card
                             style={{
                                 background: isUser ? token.colorPrimaryBg : token.colorBgElevated,
@@ -118,7 +119,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                             }}
                             styles={{
                                 body: {
-                                    padding: 18
+                                    padding: isMobile ? 12 : 18
                                 }
                             }}
                         >
@@ -145,7 +146,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                     }}
                                 >
                                     <LuFileText size={14} color={token.colorPrimary} />
-                                    <Text style={{ fontSize: 12, fontWeight: 500, color: token.colorPrimary }}>
+                                    <Text ellipsis style={{ fontSize: 12, fontWeight: 500, color: token.colorPrimary, minWidth: 0 }}>
                                         Source: {bestReference.title || 'Knowledge Base Article'}
                                     </Text>
                                 </Flex>
@@ -159,7 +160,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                         alt={message.image.name || 'Uploaded image'}
                                         style={{
                                             width: '100%',
-                                            maxWidth: 300,
+                                            maxWidth: isMobile ? '100%' : 300,
                                             borderRadius: 12,
                                             objectFit: 'cover'
                                         }}
@@ -253,6 +254,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                 <MessageReferences
                                     references={message.references || []}
                                     onArticleModalOpen={handleArticleModalOpen}
+                                    isMobile={isMobile}
                                 />
                             )}
 
@@ -299,7 +301,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                         )}
                     </div>
 
-                    {isUser && (
+                    {isUser && !isMobile && (
                         <div
                             style={{
                                 width: 32,

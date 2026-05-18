@@ -1,5 +1,6 @@
 'use client';
 
+import { helpCenterChangelogRouting, helpCenterTabRouting } from '@constant/navigations';
 import { Card, Checkbox, Flex, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuArrowRight } from 'react-icons/lu';
@@ -9,10 +10,10 @@ const { Title, Text, Link } = Typography;
 const GettingStarted = () => {
     const t = useTranslations('HelpCenter');
     const onboardingSteps = [
-        { label: t('step1Upload'), link: '/help/kb/articles/content-upload' },
+        { label: t('step1Upload'), link: helpCenterTabRouting('kb') },
         { label: t('step2Branding'), link: '/settings/branding' },
-        { label: t('step3Changelog'), link: '/changelog/new' },
-        { label: t('watchOverview'), link: '/help/demo' },
+        { label: t('step3Changelog'), link: helpCenterChangelogRouting() },
+        { label: t('watchOverview'), link: helpCenterTabRouting('kb') },
     ];
 
     return (

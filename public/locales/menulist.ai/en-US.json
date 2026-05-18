@@ -2672,7 +2672,9 @@
             "outcome4Title": "Presence visibility",
             "outcome4Desc": "Deployment checklists help owners keep the official link present on Google, Instagram, WhatsApp, QR, and in-store materials.",
             "outcome5Title": "Ready for serious operations",
-            "outcome5Desc": "For growing businesses, MenuList keeps menu data organized for exports, screens, and future connections."
+            "outcome5Desc": "For growing businesses, MenuList keeps menu data organized for exports, screens, and future connections.",
+            "outcome6Title": "Connected POS updates",
+            "outcome6Desc": "When POS Sync is connected, approved menu changes can be sent as a signed full-menu snapshot to the store POS webhook."
         },
         "Surfaces": {
             "title": "One menu for the places customers check.",
@@ -3070,6 +3072,8 @@
             "group4F4Desc": "Pre-written messages for \"Send menu\", \"Where are you?\", and \"Are you open?\" — with your link, address, and hours included. One tap to copy and send.",
             "group4F5Title": "Command Center",
             "group4F5Desc": "Bulk operations for pricing, availability, categories, and status. Select multiple items and apply changes in one action — with full preview before applying.",
+            "group4F6Title": "POS Sync",
+            "group4F6Desc": "For connected POS systems, approved menu changes can send a signed full-menu snapshot to the store POS webhook after publish.",
             "group5Label": "Accuracy & Trust",
             "group5Heading": "Your menu stays easier to keep accurate.",
             "group5Subheading": "Built-in systems that prevent mistakes from reaching your customers.",

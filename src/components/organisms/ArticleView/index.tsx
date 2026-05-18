@@ -18,6 +18,7 @@
 'use client';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import { getTiptapExtensions } from '@config/tiptap';
 import { addContentFeedback } from '@database/contentFeedback';
 import { updateArticleFeedbackGeneric } from '@database/feedback/genericFeedback';
@@ -31,7 +32,7 @@ import { formatViewCountShort, getUserViewCount } from '@lib/viewCount';
 import FeedbackSection from '@molecules/FeedbackSection';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
-import { Badge, Breadcrumb, Button, Card, Divider, Flex, message, theme, Tooltip, Typography } from 'antd';
+import { Badge, Breadcrumb, Button, Card, Divider, Flex, Grid, message, theme, Tooltip, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { LuCalendar, LuCheck, LuClock, LuEye, LuFolderOpen, LuLink, LuTag } from 'react-icons/lu';
 
@@ -93,12 +94,16 @@ const ArticleView: React.FC<ArticleViewProps> = ({
     showMetadata = true
 }) => {
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
     const { user } = useClientAuthSession() || {};
     const [linkCopied, setLinkCopied] = useState(false);
+    const isMobile = screens.md === false;
 
     // Track article view for analytics and recently viewed (disabled when viewing from Recently Viewed)
+    const articleRouteSegment = useMemo(() => getHelpCenterArticleRouteSegment(article), [article.id, article.url, article.title]);
+
     useArticleViewTracking(disableTracking ? null : article, {
-        href: `/app/help-center/kb/articles/${article.id}`,
+        href: helpCenterArticleRouting(articleRouteSegment),
         includeFullArticle: mode === 'modal', // Store full article for modal view
     });
 
@@ -119,7 +124,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({
     });
 
     // Generate slug for anchor link
-    const slug = article.title.toLowerCase().replace(/\s+/g, '-');
+    const slug = normalizeHelpCenterRouteSegment(article.title);
 
     // Calculate metadata
     const readingTime = useMemo(() => getReadingTime(article.content), [article.content]);
@@ -131,7 +136,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({
     // Copy link to clipboard with visual feedback
     const handleCopyLink = useCallback(async () => {
         try {
-            const url = `${window.location.origin}${window.location.pathname}#${slug}`;
+            const url = `${window.location.origin}${helpCenterArticleRouting(articleRouteSegment)}`;
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(url);
@@ -161,7 +166,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({
         } catch (error) {
             message.error('Failed to copy link. Please try again.');
         }
-    }, [slug]);
+    }, [articleRouteSegment]);
 
     // Feedback functionality
     const feedback = useFeedback(
@@ -246,31 +251,37 @@ const ArticleView: React.FC<ArticleViewProps> = ({
                 border: 'none',
                 maxHeight: maxHeight || '75vh',
                 overflowY: 'auto' as const,
+                marginBottom: isMobile ? 0 : baseStyles.marginBottom,
             };
         }
 
-        return baseStyles;
-    }, [mode, maxHeight, token.colorBorderSecondary]);
+        return {
+            ...baseStyles,
+            marginBottom: isMobile ? 12 : baseStyles.marginBottom,
+        };
+    }, [isMobile, mode, maxHeight, token.colorBorderSecondary]);
 
     // Memoize title style to prevent re-renders
     const titleStyle = useMemo(() => ({
         margin: 0,
         marginBottom: 0,
         flex: 1,
-        lineHeight: 1.3
-    }), []);
+        fontSize: isMobile ? 18 : undefined,
+        lineHeight: 1.3,
+        minWidth: 0,
+    }), [isMobile]);
 
     // Memoize header div style
     const headerDivStyle = useMemo(() => ({
-        padding: 18,
+        padding: isMobile ? 14 : 18,
         backgroundColor: mode === 'preview' ? token.colorFillQuaternary : 'transparent',
         borderRadius: mode === 'preview' ? token.borderRadiusLG : 0
-    }), [mode, token.colorFillQuaternary, token.borderRadiusLG]);
+    }), [isMobile, mode, token.colorFillQuaternary, token.borderRadiusLG]);
 
     // Memoize other inline styles
     const breadcrumbStyle = useMemo(() => ({ marginBottom: 16 }), []);
-    const flexGapStyle = useMemo(() => ({ marginBottom: mode === 'preview' ? 6 : 12 }), []);
-    const contentPaddingStyle = useMemo(() => ({ padding: 24 }), []);
+    const flexGapStyle = useMemo(() => ({ marginBottom: mode === 'preview' ? 6 : 12 }), [mode]);
+    const contentPaddingStyle = useMemo(() => ({ padding: isMobile ? 14 : 24 }), [isMobile]);
     const dividerMarginStyle = useMemo(() => ({ margin: 0 }), []);
 
     return (
@@ -287,7 +298,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({
                     )}
 
                     {/* Title and Copy Link */}
-                    <Flex justify="space-between" align="flex-start" gap={16} style={flexGapStyle}>
+                    <Flex justify="space-between" align="flex-start" gap={isMobile ? 8 : 16} style={flexGapStyle}>
                         <Title
                             level={mode === 'preview' ? 3 : 4}
                             id={slug}
@@ -310,7 +321,7 @@ const ArticleView: React.FC<ArticleViewProps> = ({
                                     }}
                                     aria-label="Copy article link"
                                 >
-                                    {linkCopied ? 'Copied!' : 'Copy Link'}
+                                    {isMobile ? null : (linkCopied ? 'Copied!' : 'Copy Link')}
                                 </Button>
                             </Tooltip>
                         )}

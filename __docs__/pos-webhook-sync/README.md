@@ -1,9 +1,9 @@
 # POS Webhook Sync — Documentation Hub
 
 > **Feature:** POS Webhook Sync (Menu Snapshot Broadcast)
-> **Status:** Implemented — Feature flag: `ENABLE_POS_SYNC: false`
-> **Last Updated:** March 14, 2026
-> **Version:** 2.1
+> **Status:** Implemented — Feature flag: `ENABLE_POS_SYNC: true`
+> **Last Updated:** May 18, 2026
+> **Version:** 2.2
 
 ---
 
@@ -22,11 +22,11 @@
 
 ## What Is This Feature?
 
-**One-liner:** Menu changes automatically reach your POS system via a secure webhook — no integration, no manual updates.
+**One-liner:** Approved MenuList menu changes can be delivered to a connected store POS webhook as a signed full-menu snapshot.
 
 **Problem Solved:** When a business uses both MenuList (for digital menu) and a POS system, menu changes must be manually replicated in both places. This leads to price mismatches, missing items, and daily operational friction — especially for chains with multiple outlets.
 
-**Solution:** MenuList automatically sends a full menu snapshot to a store's configured POS webhook endpoint whenever menu-affecting changes occur. One edit in MenuList = everywhere updated. MenuList stays upstream; POS consumes.
+**Solution:** When POS Sync is connected for a store, MenuList sends a signed full menu snapshot to that store's configured POS webhook endpoint after approved menu-affecting changes. MenuList stays upstream; the POS endpoint consumes the current menu truth.
 
 ---
 
@@ -82,7 +82,7 @@ Log delivery result to stores/{storeId}/posDeliveryLogs
 
 ```typescript
 // src/config/features.ts
-ENABLE_POS_SYNC: false, // Toggle to enable POS webhook sync
+ENABLE_POS_SYNC: true, // POS webhook sync is enabled in the current runtime
 ```
 
 ---
@@ -91,6 +91,7 @@ ENABLE_POS_SYNC: false, // Toggle to enable POS webhook sync
 
 | Version | Date              | Changes                                                                                                                                                                                           |
 | ------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.2     | May 18, 2026      | Status corrected to match current runtime flag. Public website positioning constrained to connected store POS webhook, signed full-menu snapshot language; no universal POS or real-time-sync claims. |
 | 1.0     | February 13, 2026 | Initial documentation (no code yet)                                                                                                                                                               |
 | 2.0     | February 14, 2026 | Full implementation complete. 5→2 server routes. ADR section added.                                                                                                                               |
 | 2.1     | March 14, 2026    | ChatGPT infrastructure audit review. +4 ADRs (9-12). payloadHash added to delivery logs. Failure threshold 1→3. Phase 2 architecture documented. MOL synergy documented. Open questions resolved. |

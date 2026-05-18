@@ -22,6 +22,21 @@ service cloud.firestore {
     
     // Projects Data - Multi-tenant isolated project data
     // Case 72: Multi-Outlet Protection - Outlet cannot write to master-controlled fields
+    match /projects/{tId}/{sId}/{projectId} {
+      allow read: if isAuthenticated() && belongsToTenant(tId);
+
+      // Create: Normal tenant admin check (new projects have no masterProjectId yet)
+      allow create: if isTenantAdmin(tId, sId);
+
+      // Update: If linked to master, restrict what can be modified
+      allow update: if isTenantAdmin(tId, sId)
+                    && isValidOutletUpdate();
+
+      // Delete: Normal tenant admin check (deletion protected in DAL via hasLinkedOutlets)
+      allow delete: if isTenantAdmin(tId, sId);
+    }
+
+    // Legacy alias kept for older project-data paths.
     match /projectsData/{tId}/{sId}/{projectId} {
       allow read: if isAuthenticated() && belongsToTenant(tId);
       

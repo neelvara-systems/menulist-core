@@ -1,6 +1,7 @@
 'use client';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterChangelogRouting, helpCenterTabRouting } from '@constant/navigations';
 import FeedbackSection from '@molecules/FeedbackSection';
 import { getTiptapExtensions } from '@config/tiptap';
 import { addContentFeedback } from '@database/contentFeedback';
@@ -8,12 +9,14 @@ import { updateChangelogFeedbackGeneric } from '@database/feedback/genericFeedba
 import { useContentViewTracking } from '@hook/useContentViewTracking';
 import { useFeedback } from '@hook/useFeedback';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
+import ArticleViewModal from '@organisms/ArticleViewModal';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { generateHTML } from '@tiptap/core';
 import { ChangelogEntry } from '@type/changelog';
+import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import { getYouTubeID } from '@util/utils';
-import { Breadcrumb, Card, Flex, Image, Typography, theme } from 'antd';
-import React, { useContext, useMemo } from 'react';
+import { Breadcrumb, Card, Flex, Grid, Image, Typography, theme } from 'antd';
+import React, { useContext, useMemo, useState } from 'react';
 import ChangelogTagRenderer from './ChangelogTagRenderer';
 
 const { Title, Text } = Typography;
@@ -28,7 +31,10 @@ interface ChangelogPreviewProps {
 
 const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode, disableTracking = false }) => {
     const { token } = useToken();
+    const screens = Grid.useBreakpoint();
     const { cachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const [articleModal, setArticleModal] = useState<{ active: boolean; article: KnowledgeBaseArticleMeta | null }>({ active: false, article: null });
+    const isMobile = screens.md === false;
 
     // Track changelog view for analytics and recently viewed (disabled when viewing from Recently Viewed)
     useContentViewTracking(
@@ -37,7 +43,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                   id: item.id,
                   type: 'changelog',
                   title: item.title,
-                  href: `/app/help-center/changelog/${item.id}`,
+                  href: helpCenterChangelogRouting(item.id),
                   meta: {
                       tags: item.tags,
                       version: item.version || null,
@@ -141,10 +147,10 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
         >
             <div style={{ maxHeight: mode === 'modal' ? '70vh' : 'max-content', overflowY: 'auto', paddingRight: 16 }}>
                 <Flex vertical gap="large">
-                    <Flex gap="small" align="center" justify="between">
-                        <Title level={3} style={titleStyle} ellipsis={false}>{item.title}</Title>
+                    <Flex gap="small" align={isMobile ? 'flex-start' : 'center'} justify="space-between" vertical={isMobile}>
+                        <Title level={isMobile ? 4 : 3} style={titleStyle} ellipsis={false}>{item.title}</Title>
                         {mode === 'modal' && (
-                            <Flex align="center" gap="middle">
+                            <Flex align="center" gap="middle" wrap>
                                 <DateTimeDisplay value={item.releasedOn} />
                                 {item.version && <Text type="secondary">Version {item.version}</Text>}
                             </Flex>
@@ -187,7 +193,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                                     return (
                                         <iframe
                                             key={index}
-                                            width="240"
+                                            width={isMobile ? "100%" : "240"}
                                             height="135"
                                             src={`https://www.youtube.com/embed/${videoId}`}
                                             title="YouTube video player"
@@ -224,10 +230,16 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                                     const section = category?.sections?.find(s => s.id === source.sectionId);
                                     const article = section?.articles?.find(a => a.id === source.articleId) || category?.articles?.find(a => a.id === source.articleId);
 
+                                    const openArticle = (event: React.MouseEvent<HTMLAnchorElement>) => {
+                                        if (!article) return;
+                                        event.preventDefault();
+                                        setArticleModal({ active: true, article });
+                                    };
+
                                     const breadcrumbItems = [
-                                        category ? { title: <a href={`/help/${category.url}`} target="_blank">{category.title}</a> } : null,
-                                        section ? { title: <a href={`/help/${category?.url}/${section.url}`} target="_blank">{section.title}</a> } : null,
-                                        article ? { title: <a href={`/help/${category?.url}/${section ? section.url + '/' : ''}${article.url}`} target="_blank">{article.title}</a> } : null,
+                                        category ? { title: <a href={helpCenterTabRouting('kb')}>{category.title}</a> } : null,
+                                        section ? { title: <a href={helpCenterTabRouting('kb')}>{section.title}</a> } : null,
+                                        article ? { title: <a href={helpCenterArticleRouting(getHelpCenterArticleRouteSegment(article))} onClick={openArticle}>{article.title}</a> } : null,
                                     ].filter(Boolean);
 
                                     return <Breadcrumb key={i} items={breadcrumbItems as any} />;
@@ -248,6 +260,11 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                 onFeedbackSubmit={feedback.handleFeedbackSubmit}
                 onModalClose={() => feedback.setIsFeedbackModalVisible(false)}
                 contentLabel="changelog entry"
+            />
+            <ArticleViewModal
+                open={articleModal.active}
+                onClose={() => setArticleModal({ active: false, article: null })}
+                article={articleModal.article}
             />
         </Card>
     );

@@ -13,6 +13,7 @@ interface MessageReferencesProps {
     references: any[];
     onArticleModalOpen: (article: any) => void;
     showConfidenceScores?: boolean; // Admin-only feature
+    isMobile?: boolean;
 }
 
 // Helper to get confidence level and color
@@ -27,7 +28,7 @@ const getConfidenceInfo = (score?: number) => {
     return { label: `${percentage}% - Low`, color: 'error' };
 };
 
-const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScores = false }: MessageReferencesProps) => {
+const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScores = false, isMobile = false }: MessageReferencesProps) => {
     const { token } = theme.useToken();
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
@@ -66,17 +67,18 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                <Flex gap={8} align="center" justify="space-between">
-                                    <Flex gap={8} align="center" style={{ flex: 1 }}>
+                                <Flex gap={8} align={isMobile ? 'flex-start' : 'center'} justify="space-between">
+                                    <Flex gap={8} align="flex-start" style={{ flex: 1, minWidth: 0 }}>
                                         <LuFileText size={16} color={token.colorPrimary} />
-                                        <div style={{ flex: 1 }}>
-                                            <Flex align="center" gap={8}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <Flex align={isMobile ? 'flex-start' : 'center'} gap={8} vertical={isMobile}>
                                                 <Text
                                                     strong
                                                     style={{
                                                         fontSize: 13,
                                                         cursor: 'pointer',
-                                                        color: token.colorPrimary
+                                                        color: token.colorPrimary,
+                                                        lineHeight: 1.35,
                                                     }}
                                                     onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}
                                                 >
@@ -104,7 +106,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                             </Text>
                                         </div>
                                     </Flex>
-                                    <Space size={4}>
+                                    <Space size={4} direction={isMobile ? 'vertical' : 'horizontal'}>
                                         <Tooltip title="Quick preview">
                                             <Button
                                                 type="text"
@@ -122,7 +124,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                                 onClick={() => setExpandedArticleId(isExpanded ? null : ref.id)}
                                                 style={{ borderRadius: 8 }}
                                             >
-                                                {isExpanded ? 'Hide' : 'Preview'}
+                                                {isMobile ? null : (isExpanded ? 'Hide' : 'Preview')}
                                             </Button>
                                         </Tooltip>
                                         <Tooltip title="View full article">

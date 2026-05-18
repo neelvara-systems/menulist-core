@@ -8,7 +8,11 @@ import { useContext, useEffect, useState } from 'react';
 
 const { Title, Paragraph } = Typography;
 
-const ChangelogView = () => {
+interface ChangelogViewProps {
+    initialEntryId?: string;
+}
+
+const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
     const t = useTranslations('HelpCenter');
     const { getItem } = useChangelogCache();
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
@@ -31,7 +35,7 @@ const ChangelogView = () => {
     }, [storeDetails]);
 
     return (
-        <DisplayChangelog pageData={changelogPage} />
+        <DisplayChangelog initialEntryId={initialEntryId} pageData={changelogPage} />
     );
 };
 

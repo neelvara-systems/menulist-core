@@ -389,11 +389,13 @@ MenuList turns approved menu and business details into visible public pages, str
 - Temporary status reaches customers.
 - Presence visibility.
 - Ready for serious operations.
+- Connected POS updates.
 
 **Notes:**
 
 - This is proof language, not hype language.
 - Keep all claims tied to implemented surfaces and repo evidence.
+- POS Sync belongs here as an operations proof, not as a separate homepage promise. Use signed full-menu snapshot to connected store POS webhook language; avoid "works with any POS", "real-time sync", and POS integration suite claims.
 
 ---
 
