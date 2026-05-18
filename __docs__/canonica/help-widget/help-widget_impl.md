@@ -101,6 +101,8 @@ v2 additions:
 - `data-label`: Custom text for launcher
 - `data-size`: `small`, `medium`, `large`
 - `data-offset-x`, `data-offset-y`: Edge offset in pixels
+- `data-history`: `session` (default) or `forget`
+- `data-feature`, `data-page`, `data-workflow`, `data-entity-hints`, `data-user-role`, `data-plan`: optional mount-time context attributes for products that cannot call the SDK before the widget script initializes
 
 v2 JavaScript API (exposed on `window.CanonicaWidget`):
 
@@ -109,6 +111,9 @@ v2 JavaScript API (exposed on `window.CanonicaWidget`):
 - `setContext(null)` — clears product context and sends a clear message to the iframe so stale page context is not reused
 - `open()` — programmatically open widget
 - `close()` — programmatically close widget
+- `clearHistory()` / `reset()` — clears in-memory widget conversation and pending input
+- `getContext()` — returns the current sanitized context payload
+- `on(event, callback)` / `off(event, callback)` — listens to `open`, `close`, `context`, and `history:clear` events without coupling the host app to iframe internals
 
 Context is normalized and size-limited before it leaves the host page, then passed from host page → embed script → iframe via `postMessage` → WidgetClient state → API request body.
 
@@ -122,7 +127,7 @@ Global security headers keep `frame-ancestors 'none'` for the app by default. `/
 
 - `MenuListCanonicaWidgetTestHost` requests `POST /api/canonica/menulist-widget-test-key`.
 - The route derives a deterministic per-store `cn_*` key from `NEXTAUTH_SECRET`, stores only `hashApiKey(apiKey)` under `stores/{sId}.canonicaWidgetTestApi`, and returns the raw key to the current authenticated page.
-- The host injects `/widget/canonica-widget.js` with the returned key. The public script creates the same launcher and iframe used by external products.
+- The host injects `/widget/canonica-widget.js` with the returned key, `data-history="session"`, and sanitized mount-time context attributes. The public script creates the same launcher and iframe used by external products.
 - Context is limited to sanitized MenuList page/workflow hints such as `menulist_projects_home`; no MenuList tenant/store/user IDs are sent as product context.
 - Widget runtime routes explicitly opt in to this test credential source for predictive help, widget search, and widget feedback only. Shared public API validation defaults to normal `publicApi` credentials, so this temporary key cannot authorize unrelated MenuList or Canonica public API routes.
 - The deterministic test key shape is `cn_` plus a 64-character HMAC digest. Widget routes prefer the `canonicaWidgetTestApi` lookup for that shape in test mode, avoiding repeated failed `publicApi` lookups during local integration testing.
@@ -135,7 +140,8 @@ v1 features: welcome screen, chat bubbles, canonical badge, references, suggeste
 
 v2 additions:
 
-- **Session memory**: In-memory array of last 5 messages. Sent as `conversationHistory` in assistant-mode queries. Cleared on widget close (no persistence).
+- **Session memory**: In-memory array of last 5 messages. Sent as `conversationHistory` in assistant-mode queries. Default `session` mode preserves the page session across close/open until reload or explicit clear; `forget` mode clears on close. No persistence.
+- **History controls**: Header shows an icon-only start-new-chat action only when messages exist; host SDK can also call `clearHistory()`.
 - **Feedback UI**: Thumbs up/down on AI answers. Calls `POST /api/widget/feedback`.
 - **Conversation context**: After first Q&A, subsequent questions include history for contextual follow-ups.
 - **postMessage listener**: Receives context updates from host page embed script.
@@ -250,7 +256,10 @@ Widget maintains conversation state in WidgetClient component memory (React stat
 Rules:
 
 - Maximum 5 messages retained (last 5)
-- Cleared when widget is closed (no cross-session persistence)
+- Default `data-history="session"` keeps messages while the iframe lives so close/open does not erase follow-up context
+- `data-history="forget"` clears messages when the widget closes
+- Explicit `CanonicaWidget.clearHistory()` clears messages, pending input, image preview, loading, and errors
+- Reloading the host page or unmounting the iframe clears all widget memory
 - Sent as `conversationHistory` in search request body
 - `coreSearch()` already supports `conversationHistory` parameter (used by Help Center assistant mode)
 - First query is always stateless (QnA mode)
@@ -405,6 +414,7 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, MenuList external-client context wiring, and stale async response guard in the iframe client. |
 | 2026-05-12 | 2.2.1   | Public endpoint cost/security hardening: malformed key short-circuit before Firestore lookup, hash-based rate-limit keys before auth lookup, positive workspace validation, and tenant-filtered vector-search/index documentation. |
 | 2026-05-12 | 2.2.0   | Runtime contract hardening: hash-only widget keys, Canonica-specific key endpoint, tenant-scoped search history feedback, server-side widget image validation, guided workflow rendering, predictive suggestion delivery, and tenant-scoped KB category docs. |
 | 2026-03-09 | 2.1.0   | Settings page refactored: 520-line inline page → thin wrapper + CanonicaSettings template. Feature Status card removed (exposed internal flags). Sidebar now filters nav by feature flags. Governance useMemo deps fixed. Setup progress guide added to settings. |

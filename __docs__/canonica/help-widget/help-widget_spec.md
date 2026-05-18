@@ -79,6 +79,13 @@ Step 8: User can ask follow-up → conversation context maintained in session
 | `data-size`         | No       | `medium`       | `small`, `medium`, `large`                             |
 | `data-offset-x`     | No       | `20`           | Horizontal offset from edge (px)                       |
 | `data-offset-y`     | No       | `20`           | Vertical offset from edge (px)                         |
+| `data-history`      | No       | `session`      | `session` keeps in-memory page history until reload/clear. `forget` clears on close. |
+| `data-feature`      | No       | —              | Optional mount-time product feature context            |
+| `data-page`         | No       | —              | Optional mount-time page context                       |
+| `data-workflow`     | No       | —              | Optional mount-time workflow context                   |
+| `data-entity-hints` | No       | —              | Optional comma-separated entity hints                  |
+| `data-user-role`    | No       | —              | Optional sanitized role label, not a permission check  |
+| `data-plan`         | No       | —              | Optional sanitized plan label                          |
 
 ### SDK Context (Optional, via JavaScript API)
 
@@ -97,9 +104,15 @@ window.CanonicaWidget.setContext({
   page: "webhook_settings",
   workflow: "configure_webhook",
 });
+
+// Clear stale context/history when the host app changes scope
+window.CanonicaWidget.setContext(null);
+window.CanonicaWidget.clearHistory();
 ```
 
 Context is sent with every query. System degrades gracefully without it.
+
+Supported runtime methods: `setContext()`, `page()`, `open()`, `close()`, `clearHistory()`, `reset()`, `getContext()`, `on(event, callback)`, and `off(event, callback)`.
 
 ---
 
@@ -123,8 +136,8 @@ Context is sent with every query. System degrades gracefully without it.
 
 ### Widget Content (inside iframe)
 
-- Header: Accent-colored bar with "Help" title
-- Welcome screen: "How can we help?" + description
+- Header: Accent-colored bar with "Help" title, close button, and icon-only "start new chat" button only after a session has messages
+- Welcome screen: "How can we help?" + description, optional page-context chip, and starter questions
 - Chat interface: User messages (right, accent) + AI answers (left, gray)
 - Canonical badge: "Verified answer" (green) when answer is canonical
 - References: Article title tags below answers (clickable for deep link)
@@ -132,6 +145,14 @@ Context is sent with every query. System degrades gracefully without it.
 - Feedback: Thumbs up/down on AI answers
 - Input: Rounded text input with send button
 - Footer: "Powered by Canonica" with link
+
+### History Behavior
+
+- Default `data-history="session"` keeps the current page conversation in iframe memory so follow-up questions can use the last 5 messages.
+- The history is not persisted to Firestore, localStorage, cookies, or Canonica account records.
+- Closing the widget preserves the in-memory page session by default. Reloading the host page, changing iframe lifetime, or calling `CanonicaWidget.clearHistory()` resets it.
+- `data-history="forget"` clears the conversation on close for hosts that want privacy-first behavior over follow-up continuity.
+- The empty/new chat screen does not show a start-new-chat action because there is no active history to clear.
 
 ### Mobile Behavior
 
@@ -213,5 +234,6 @@ Aligned with Canonica Non-Goals Charter (doctrine/02):
 
 | Date       | Version | Change                                                                                                                                                     |
 | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-18 | 2.3.0   | Added current runtime contract for mount-time context attributes, explicit transient history behavior, clear-history API, and widget empty-state behavior. |
 | 2026-03-08 | 2.0.0   | Complete rewrite: context-aware support, launcher customization, session memory, feedback signals, origin allowlist, SDK context API, ChatGPT review table |
 | 2026-03-07 | 1.0.0   | Initial spec                                                                                                                                               |

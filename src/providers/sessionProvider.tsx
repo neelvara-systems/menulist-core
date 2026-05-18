@@ -4,6 +4,7 @@ import {
     emitDeploymentIdentityUpdated,
 } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import RolesPermissionInitialData from '@data/rolesPermissionsInitialData';
 import { getStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
@@ -394,6 +395,11 @@ export default function SessionProvider({ children, session }: Props) {
         const authorityStoreDetails = loginStoreDetails || storeDetails;
         if (objectNullCheck(authorityStoreDetails)) {
             if (!authorityStoreDetails?.roles) return;
+
+            if (session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE) {
+                setUserPermissions(RolesPermissionInitialData);
+                return;
+            }
 
             // Get user's single role for their login store. HQ users keep HQ
             // authority while viewing an outlet context.
