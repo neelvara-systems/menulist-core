@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.4.2 Canonical Website Default
-**Last Updated:** May 17, 2026
+**Status:** IMPLEMENTED — v3.4.3 Canonical Website Default
+**Last Updated:** May 18, 2026
 **Audience:** Developers
 
 ---
@@ -73,7 +73,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (16 sections plus sticky CTA, in order)
+## 4. Homepage Sections (17 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -87,14 +87,15 @@ LocalisationProvider (locale from next-intl/server)
 | 6 | Stats | `StatsSection.tsx` |
 | 7 | Setup Relief | `SetupReliefSection.tsx` |
 | 8 | Surfaces | `SurfacesSection.tsx` |
-| 9 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 10 | Analytics Insights | `AnalyticsInsightsSection.tsx` |
-| 11 | Smart Features | `SmartFeaturesSection.tsx` |
-| 12 | Prepared For You | `PreparedForYouSection.tsx` |
-| 13 | Business | `BusinessSection.tsx` |
-| 14 | Industry | `IndustrySection.tsx` |
-| 15 | FAQ | `FaqSection.tsx` |
-| 16 | Final CTA | `FinalCtaSection.tsx` |
+| 9 | Search Discovery | `SearchDiscoverySection.tsx` |
+| 10 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 11 | Analytics Insights | `AnalyticsInsightsSection.tsx` |
+| 12 | Smart Features | `SmartFeaturesSection.tsx` |
+| 13 | Prepared For You | `PreparedForYouSection.tsx` |
+| 14 | Business | `BusinessSection.tsx` |
+| 15 | Industry | `IndustrySection.tsx` |
+| 16 | FAQ | `FaqSection.tsx` |
+| 17 | Final CTA | `FinalCtaSection.tsx` |
 
 **Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, `CustomerBrowseSection.tsx`, `AnalyticsInsightsSection.tsx`, and `BusinessSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 
@@ -107,6 +108,8 @@ LocalisationProvider (locale from next-intl/server)
 **Supporting-page revenue polish:** Stage 7.5 extended the official-source system across supporting pages. `AboutPage`, `ContactPage`, `GetStartedPage`, `TrustSecurityPage`, and `pricing-pages/index.tsx` now use shared hero/proof patterns where appropriate; pricing visual copy was hardened without changing payment, subscription, Razorpay, auth, or onboarding logic; `/how-it-works` and `/multi-location` now avoid overclaiming instant propagation in public copy.
 
 **Mobile website polish:** Stage 7.7 tightened `website.css` mobile behavior across the homepage and supporting pages. Mobile controls now use 44px-class touch targets, the revenue path and proof sections use denser mobile grids, the footer navigation keeps tappable links, and stale `/multi-location` locale overrides were normalized away from instant/always-consistent claims. Pricing/payment/auth/create-menu runtime logic was not changed.
+
+**Search/AI discovery proof:** Stage 7.8 added `SearchDiscoverySection.tsx` after `SurfacesSection.tsx`. It exposes shipped SEO/AEO and discovery infrastructure in calm owner language: owner SEO/AEO settings, Business Copy Setup, structured public business/menu facts, sitemap/robots rules, and LLM discovery files. The copy explicitly avoids ranking, citation, or placement guarantees. SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing/payment/auth, and create-menu runtime logic were not changed.
 
 **Canonical cleanup:** v3.3.0 made this implementation the only website source-code version. Old source-code backups, backup restore docs, the dead `HowItWorksSection.tsx`, and unused legacy landing-template visuals were removed. Historical strategy docs may remain for context, but they are not restoration sources.
 
@@ -121,7 +124,7 @@ src/components/website/
 ├── SchemaMarkup.tsx            — Homepage JSON-LD schema
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
-├── home/                       — 16 homepage sections + StickyCta
+├── home/                       — 17 homepage sections + StickyCta
 ├── about/AboutPage.tsx         — About page
 ├── contact/ContactPage.tsx     — Contact page
 ├── features/FeaturesPage.tsx   — Features page

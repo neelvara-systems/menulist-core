@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.2 (Canonical Website Default)
+**Version:** 3.4.3 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 17, 2026
+**Last Updated:** May 18, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.2** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
+| **3.4.3** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
 
-Version 3.4.2 keeps the official-source positioning in the visual proof and supporting sections, but the first-screen promise now starts from the owner action a non-technical SMB understands immediately: upload the current menu, review, then publish. The mobile presentation is tightened around readable first-screen clarity, tappable controls, and lower scroll fatigue.
+Version 3.4.3 keeps the upload-first promise and adds a homepage search/AI discovery proof section grounded in shipped SEO/AEO infrastructure: owner SEO/AEO settings, business-copy setup, structured public pages, crawler/sitemap rules, and LLM discovery files. The public claim remains deliberately conservative: MenuList prepares a clearer official source for search engines and AI systems to read, but does not promise ranking, citation, or placement.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -320,12 +320,26 @@ Protected scope:
 
 - Pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.8 Search & AI Discovery Homepage Proof
+
+Stage 7.8 added a homepage `SearchDiscoverySection` after public surfaces. The section translates shipped owner/product capability into non-technical buyer language:
+
+- SEO and AEO settings exist on owner desktop and mobile surfaces.
+- Business Copy Setup can prepare Official Page, SEO/AEO, and Customer App copy from current business/menu details.
+- Public pages expose structured business/menu facts, sitemap signals, robots rules, and LLM discovery files.
+- The page explicitly avoids ranking, citation, and placement guarantees.
+
+Protected scope:
+
+- SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing, payment, Razorpay, auth, and create-menu runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.3 | May 18, 2026 | Added homepage search/AI discovery proof section and FAQ caveat grounded in existing SEO/AEO, schema, crawler, sitemap, and LLM discovery infrastructure. |
 | 3.4.2 | May 17, 2026 | Mobile website polish: touch targets, section rhythm, revenue/workflow compactness, footer mobile navigation, and stale multi-location locale claim cleanup. |
 | 3.4.0 | May 17, 2026 | Supporting pages polished across About, Contact, Get Started, Trust & Security, Pricing, How It Works, and Multi-Location; shared page hero/proof components added; pricing copy hardened without touching payment/auth/onboarding logic. |
 | 3.3.0 | May 17, 2026 | Current website established as the only source-code version. Old source-code backups, backup restore docs, dead homepage code, and unused old landing-template visuals removed. |

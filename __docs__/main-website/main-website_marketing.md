@@ -7,6 +7,8 @@
 
 > Canonical governance note (May 17, 2026): The current website implementation is the only source-code version. This playbook can inform distribution psychology, but homepage copy, screenshots, claims, and CTAs must follow the current codebase-first official-source strategy. Do not use this document to reintroduce hype, automatic external-sync claims, or generic "AI SaaS" language.
 
+> Search/AI discovery note (May 18, 2026): It is strategically valid to surface MenuList's SEO/AEO and machine-readable discovery infrastructure on the homepage because owners increasingly care about AI search visibility. The allowed marketing angle is "clear official source for search engines and AI systems to read." The forbidden angle is any promise of ranking, citation, automatic Google refresh, or AI-hype positioning.
+
 ---
 
 ## My Honest Take (Cascade's Strategic Analysis)

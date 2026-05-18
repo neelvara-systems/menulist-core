@@ -72,7 +72,7 @@ export default function SessionExpiryMonitor() {
             const hasShownBefore = localStorage.getItem('session_expired_shown');
             if (hasShownBefore) {
                 // Redirect silently
-                router.push(`/${NAVIGARIONS_ROUTINGS.SIGNIN}?expired=true`);
+                router.push(`${NAVIGARIONS_ROUTINGS.SIGNIN}?expired=true`);
                 return;
             }
 
@@ -87,7 +87,7 @@ export default function SessionExpiryMonitor() {
 
     const handleGoToLogin = () => {
         setShowExpiryModal(false);
-        router.push(`/${NAVIGARIONS_ROUTINGS.SIGNIN}?expired=true`);
+        router.push(`${NAVIGARIONS_ROUTINGS.SIGNIN}?expired=true`);
     };
 
     return (

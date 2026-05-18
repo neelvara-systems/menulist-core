@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import { getUserByEmail } from '@database/users';
+import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
 import { canonicaAdminApp, canonicaAuthAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
@@ -73,7 +73,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         // Get user from database
-        const dbUser: any = await getUserByEmail(session.user.email);
+        const dbUser: any = await getAuthUserByEmail(session.user.email);
 
         if (!dbUser) {
             return NextResponse.json(

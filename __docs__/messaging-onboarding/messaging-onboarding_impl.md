@@ -1387,7 +1387,7 @@ Do not enable the Cloud Function runtime flag with dummy WhatsApp secrets. Missi
 
 | Variable                           | Purpose                    | Where  |
 | ---------------------------------- | -------------------------- | ------ |
-| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Base URL for preview pages | `.env` |
+| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Required base URL for preview pages. Dev/staging uses `https://menulist.online`; production must set the production preview host explicitly. | Function runtime env |
 
 ---
 

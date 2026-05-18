@@ -24,6 +24,7 @@ Do not replace this path with OpenWA, `whatsapp-web.js`, QR-scanned WhatsApp Web
 | `WHATSAPP_VERIFY_TOKEN` | Firebase Secret Manager | Required for Meta webhook registration |
 | `ENABLE_MESSAGING_ONBOARDING` | Function runtime env | Must stay false until real provider credentials exist |
 | `MESSAGING_ONBOARDING_PROVIDERS` | Function runtime env | Default `whatsapp` |
+| `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` | Function runtime env | Required preview host; dev/staging uses `https://menulist.online` |
 
 Do not create dummy WhatsApp secrets to satisfy deploy checks. Dummy secrets hide the real operational blocker and make provider behavior unreliable.
 
@@ -54,7 +55,9 @@ Access is platform-only. Owners do not receive API keys or dashboard controls fo
 | Inbound queue pending grows | Intake processor and queue drain logs | Check `msgIntakeProcessor`, provider API health, Firestore index health |
 | Inbound failed grows | Recent event errors | Check media type/size, provider download errors, session state transitions |
 | Preview link send failed | Sessions with `previewMessagePending=true` | Check Meta send API health; `msgIntakeProcessor` retries every 2 minutes |
+| Preview link opens wrong domain | `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` on `msgExtractionWatcher` | Set it to the active preview host and redeploy the function |
 | Message send failed grows | `WHATSAPP_PHONE_NUMBER_ID` and access token | Rotate real token or check Graph API response |
+| Meta Graph API returns OAuth `190` | Temporary `WHATSAPP_ACCESS_TOKEN` expired | Generate a fresh token in Meta Developer app, update the Firebase secret, and redeploy affected WhatsApp functions |
 | Cost per publish high | Processing runs per session | Review duplicate uploads, low publish rate, and extraction retry behavior |
 | No sessions after enabling | Webhook registration URL and function env | Confirm Meta webhook URL and `ENABLE_MESSAGING_ONBOARDING=true` |
 

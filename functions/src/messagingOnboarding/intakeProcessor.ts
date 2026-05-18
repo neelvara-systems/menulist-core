@@ -95,10 +95,6 @@ export async function intakeProcessorLogic(): Promise<{
 
   await recordMessagingOnboardingHealth({ inboundProcessed, processed, errors });
 
-  if (processed > 0 || errors > 0) {
-    logger.info("[IntakeProcessor] Run complete", { processed, errors });
-  }
-
   return { inboundProcessed, processed, errors };
 }
 

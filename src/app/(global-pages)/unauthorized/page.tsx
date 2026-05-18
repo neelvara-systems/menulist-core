@@ -54,7 +54,7 @@ function UnAuthorized() {
                             <Button
                                 size='large'
                                 icon={<LuMail />}
-                                onClick={() => router.push(`/${NAVIGARIONS_ROUTINGS.SIGNIN}`)}
+                                onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}
                             >
                                 {isEmailError ? 'Try Another Email' : 'Sign In Again'}
                             </Button>

@@ -116,7 +116,7 @@ function ForgotPasswordPage() {
                                 <Button type="primary" size="large" htmlType="submit" style={{ width: 275 }} className="login-form-button">Send Forgot Password Email</Button>
                             </Space>
 
-                            <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 20 }} onClick={() => router.push(`/${NAVIGARIONS_ROUTINGS.SIGNIN}`)}>
+                            <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 20 }} onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}>
                                 <Button type="dashed" className="login-form-button" icon={<LuArrowLeft />} style={{ color: token.colorTextLabel }}>Return to sign in</Button>
                             </Space>
                         </Form>

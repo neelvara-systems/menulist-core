@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 17, 2026
+**Last Updated:** May 18, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -35,15 +35,16 @@ Supporting pages now share the same official-source discipline through shared he
 6. `StatsSection`
 7. `SetupReliefSection`
 8. `SurfacesSection`
-9. `CustomerBrowseSection`
-10. `AnalyticsInsightsSection`
-11. `SmartFeaturesSection`
-12. `PreparedForYouSection`
-13. `BusinessSection`
-14. `IndustrySection`
-15. `FaqSection`
-16. `FinalCtaSection`
-17. `StickyCta`
+9. `SearchDiscoverySection`
+10. `CustomerBrowseSection`
+11. `AnalyticsInsightsSection`
+12. `SmartFeaturesSection`
+13. `PreparedForYouSection`
+14. `BusinessSection`
+15. `IndustrySection`
+16. `FaqSection`
+17. `FinalCtaSection`
+18. `StickyCta`
 
 **Canonical section policy:** `StatsSection`, `AnalyticsInsightsSection`, `IndustrySection`, and `SetupReliefSection` are part of the current homepage. They are not alternate-version carryovers; they are the active source-of-truth page flow.
 
@@ -272,7 +273,57 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 8 — Customer Browse Proof
+### Section 8 — Search and AI Discovery
+
+**Section heading:**
+
+> Be readable where customers search.
+
+**Supporting text:**
+
+> Your official page and menu are prepared as clear public business facts, so search engines and AI assistants have a cleaner source to read.
+
+**Primary proof panel:**
+
+> One official source for people and machines.
+
+MenuList turns approved menu and business details into visible public pages, structured data, sitemap signals, and owner-controlled search copy.
+
+**Flow:**
+
+1. Owner-approved menu and business facts
+2. Official page, live menu, and public link
+3. Structured data, sitemap, and AI-readable files
+
+**Signal cards:**
+
+| Signal | Message |
+| --- | --- |
+| Business facts stay clear | Hours, address, phone, actions, cuisine, service modes, photos, and social links can sit on the official page. |
+| Menu facts are structured | Items, sections, prices, availability, update signals, and business context are published in machine-readable formats. |
+| Search copy can follow each language | Owner settings include SEO and AEO fields, preview, and business-copy setup for enabled languages. |
+| Crawlers get a stable source | Public pages, sitemap, robots rules, and LLM discovery files point systems back to the current MenuList source. |
+
+**Proof chips:**
+
+- SEO and AEO settings are built in.
+- Copy starts from current business and menu facts.
+- Owners review before publishing.
+- No ranking or citation promises.
+
+**Caveat:**
+
+> Google, Bing, ChatGPT, and other AI systems decide what they crawl, cite, and show. MenuList prepares a clearer official source; it does not promise placement.
+
+**Notes:**
+
+- Added because AI search and answer-engine discovery are now an owner-relevant buying concern.
+- Grounded in existing owner SEO/AEO settings, Business Copy Setup, public schema/sitemap/robots infrastructure, and LLM discovery files.
+- The section must never promise Google ranking, Google Maps updates, ChatGPT citation, or automatic external-platform refresh.
+
+---
+
+### Section 9 — Customer Browse Proof
 
 **Section heading:**
 
@@ -293,7 +344,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 9 — Analytics And Intent Proof
+### Section 10 — Analytics And Intent Proof
 
 **Section heading:**
 
@@ -318,7 +369,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 10 — Quiet Reliability
+### Section 11 — Quiet Reliability
 
 **Section heading:**
 
@@ -344,7 +395,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 11 — Real-World Deployment
+### Section 12 — Real-World Deployment
 
 **Section heading:**
 
@@ -370,7 +421,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 12 — Business Fit
+### Section 13 — Business Fit
 
 **Section heading:**
 
@@ -390,7 +441,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 13 — Industry Breadth
+### Section 14 — Industry Breadth
 
 **Section heading:**
 
@@ -422,7 +473,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 14 — FAQ
+### Section 15 — FAQ
 
 FAQ language should reinforce MenuList as the official customer-facing source. Avoid reducing the product to a "digital menu", "restaurant website", "AI tool", or "QR generator". Do not overclaim automatic external distribution; use owner-approved source and MenuList public-surface language.
 
@@ -435,11 +486,12 @@ Key FAQ topics:
 - Supported business types.
 - Business data safety.
 - Multi-location support.
+- Search/AI placement caveat.
 - Pricing entry point.
 
 ---
 
-### Section 15 — Final CTA
+### Section 16 — Final CTA
 
 **Heading:**
 

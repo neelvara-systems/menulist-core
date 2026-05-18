@@ -15,7 +15,7 @@ import { signOut } from "next-auth/react";
  * Sign out the current user (client-side only)
  * Safe to import in client components
  */
-export const signOutSession = (callbackUrl: string = `/${NAVIGARIONS_ROUTINGS.SIGNIN}`) => {
+export const signOutSession = (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN) => {
     return new Promise((res, rej) => {
         signOutFirebaseAuth()
             .then(() => {

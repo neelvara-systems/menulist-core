@@ -1,20 +1,25 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
-import { addPlatformUser, getUserByEmail, getUserByLoginIdentifier, normalizePhoneUsername } from "@database/users";
-import { firebaseAuth, firebaseClient, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
+import { firebaseAuth, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
 import { containsSensitiveData, secureError, secureLog } from '@lib/security/secureLogger';
 import { getEmailValidationError, validateEmail } from '@lib/validation/emailDomainValidator';
 import { UserDataType } from "@type/platform/user";
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from "firebase/firestore";
 import { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { signOut } from "next-auth/react";
 import { sanitizeSession } from '../../middleware/auth';
 import { checkAccountLock, getLockoutMessage, logFailedLogin, logSuccessfulLogin } from "./security";
+import {
+    addAuthPlatformUser,
+    getAuthEntitySnapshot,
+    getAuthUserByEmail,
+    getAuthUserByLoginIdentifier,
+    normalizePhoneUsername,
+} from "./serverUserContext";
 
 // Validate required environment variables at startup
 if (!process.env.NEXTAUTH_SECRET) {
@@ -122,7 +127,7 @@ export const authOptions: NextAuthOptions = {
             }
 
             if (user && !('isVerified' in user)) {
-                let dbUser: any = await getUserByEmail(email);
+                let dbUser: any = await getAuthUserByEmail(email);
                 logFetchedUserForDebug('signIn', dbUser);
 
                 // ✅ SECURITY FIX: Allow new OAuth users to login
@@ -142,7 +147,7 @@ export const authOptions: NextAuthOptions = {
                     };
 
                     try {
-                        dbUser = await addPlatformUser(newUser);
+                        dbUser = await addAuthPlatformUser(newUser);
                         secureLog('[Auth] New OAuth user created', { email });
 
                         // Log successful signup
@@ -295,7 +300,7 @@ export const authOptions: NextAuthOptions = {
                         await logFailedLogin(loginIdentifier, 'invalid_username', 'credentials');
                         throw new Error("Invalid email/phone or password");
                     }
-                    dbUser = await getUserByLoginIdentifier(phoneUsername);
+                    dbUser = await getAuthUserByLoginIdentifier(phoneUsername);
                     email = typeof dbUser?.email === 'string' ? dbUser.email.toLowerCase().trim() : '';
                     const resolvedEmailValidation = validateEmail(email);
                     if (!resolvedEmailValidation.valid) {
@@ -313,7 +318,7 @@ export const authOptions: NextAuthOptions = {
 
                 // Step 2: Get user from database
                 if (!dbUser) {
-                    dbUser = await getUserByEmail(email);
+                    dbUser = await getAuthUserByEmail(email);
                 }
                 dbUser = await applyInheritedBlockState(dbUser);
                 logFetchedUserForDebug('credentials', dbUser);
@@ -352,7 +357,7 @@ export const authOptions: NextAuthOptions = {
     ]
 }
 
-export const signOutSession = (callbackUrl: string = `/${NAVIGARIONS_ROUTINGS.SIGNIN}`) => {
+export const signOutSession = (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN) => {
     return new Promise((res, rej) => {
         signOutFirebaseAuth()
             .then(() => {
@@ -369,8 +374,7 @@ const getEntityBlockSnapshot = async (collectionName: string, id?: string | numb
     if (id == null || id === '') return null;
 
     try {
-        const snapshot = await getDoc(doc(firebaseClient, collectionName, String(id)));
-        return snapshot.exists() ? snapshot.data() : null;
+        return await getAuthEntitySnapshot(collectionName, id);
     } catch (error) {
         secureError('[Auth] Failed to fetch entity block context', error as Error, {
             collectionName,
@@ -495,7 +499,7 @@ const getAuthSessionUserContext = async (email: string, forceRefresh = false): P
         return cloneAuthSessionUserContext(cached.user);
     }
 
-    let dbUser: any = await getUserByEmail(normalizedEmail);
+    let dbUser: any = await getAuthUserByEmail(normalizedEmail);
     dbUser = await applyInheritedBlockState(dbUser);
     const sessionUser = getDatabaseUserForSession(dbUser);
 

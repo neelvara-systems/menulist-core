@@ -4,7 +4,7 @@
 
 **Date:** May 17, 2026
 **Implementation Version:** v3.7 Firebase cost audit
-**Status:** COMPLETE — Runtime hardening applied; WhatsApp live test blocked until real provider credentials exist
+**Status:** COMPLETE — Runtime hardening applied; dev/staging WhatsApp onboarding has been verified once with real inbound media. Repeat Meta media/API tests require rotating the temporary WhatsApp access token when it expires.
 
 ---
 

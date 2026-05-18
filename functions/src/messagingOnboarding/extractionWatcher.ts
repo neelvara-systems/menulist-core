@@ -23,6 +23,21 @@ const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
 
+const normalizeBaseUrl = (value?: string): string => {
+  const trimmed = value?.trim().replace(/\/+$/, "") || "";
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
+function getPreviewBaseUrl(): string {
+  const previewBaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_MSG_PREVIEW_BASE_URL);
+  if (!previewBaseUrl) {
+    logger.error("[ExtractionWatcher] Missing NEXT_PUBLIC_MSG_PREVIEW_BASE_URL");
+    throw new Error("NEXT_PUBLIC_MSG_PREVIEW_BASE_URL is required for messaging onboarding preview links");
+  }
+  return previewBaseUrl;
+}
+
 /**
  * Handle extraction job completion for messaging onboarding sessions.
  * Called by the onDocumentUpdated trigger in index.ts.
@@ -206,8 +221,7 @@ async function handleExtractionComplete(
 
   // Generate preview token (cryptographically random, 32 chars)
   const previewToken = crypto.randomBytes(24).toString("base64url");
-  const previewBaseUrl =
-    process.env.NEXT_PUBLIC_MSG_PREVIEW_BASE_URL || "https://menulist.ai";
+  const previewBaseUrl = getPreviewBaseUrl();
   const previewUrl = `${previewBaseUrl}/msg-preview/${sessionId}?token=${previewToken}`;
 
   // Store extraction result in session

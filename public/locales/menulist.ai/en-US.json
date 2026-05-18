@@ -2694,6 +2694,30 @@
             "soon": "Soon",
             "bottomCaption": "The goal is not more links. The goal is one current menu customers can trust wherever they find you."
         },
+        "SearchDiscovery": {
+            "title": "Be readable where customers search.",
+            "highlight": "where customers search.",
+            "subtitle": "Your official page and menu are prepared as clear public business facts, so search engines and AI assistants have a cleaner source to read.",
+            "panelEyebrow": "Search and AI discovery",
+            "panelTitle": "One official source for people and machines.",
+            "panelDesc": "MenuList turns approved menu and business details into visible public pages, structured data, sitemap signals, and owner-controlled search copy.",
+            "flow0": "Owner-approved menu and business facts",
+            "flow1": "Official page, live menu, and public link",
+            "flow2": "Structured data, sitemap, and AI-readable files",
+            "signal0Title": "Business facts stay clear",
+            "signal0Desc": "Hours, address, phone, actions, cuisine, service modes, photos, and social links can sit on the official page.",
+            "signal1Title": "Menu facts are structured",
+            "signal1Desc": "Items, sections, prices, availability, update signals, and business context are published in machine-readable formats.",
+            "signal2Title": "Search copy can follow each language",
+            "signal2Desc": "Owner settings include SEO and AEO fields, preview, and business-copy setup for enabled languages.",
+            "signal3Title": "Crawlers get a stable source",
+            "signal3Desc": "Public pages, sitemap, robots rules, and LLM discovery files point systems back to the current MenuList source.",
+            "proof0": "SEO and AEO settings are built in",
+            "proof1": "Copy starts from current business and menu facts",
+            "proof2": "Owners review before publishing",
+            "proof3": "No ranking or citation promises",
+            "caption": "Google, Bing, ChatGPT, and other AI systems decide what they crawl, cite, and show. MenuList prepares a clearer official source; it does not promise placement."
+        },
         "CustomerBrowse": {
             "title": "Customers find what they want faster.",
             "highlight": "faster",
@@ -2841,7 +2865,9 @@
             "q6": "Do you support multiple locations?",
             "a6": "Yes. MenuList supports multi-location control so a brand can keep shared menu truth, branding, and public presence aligned while still allowing location-specific differences when needed.",
             "q7": "What does it cost?",
-            "a7": "MenuList offers a free plan to get started, with paid plans for businesses that need more surfaces, locations, or public source controls. Visit the pricing page for current plans."
+            "a7": "MenuList offers a free plan to get started, with paid plans for businesses that need more surfaces, locations, or public source controls. Visit the pricing page for current plans.",
+            "q8": "Will this guarantee Google or AI search placement?",
+            "a8": "No. Search engines and AI systems decide what they crawl, cite, and show. MenuList prepares your official page and menu as clear, structured public business information so those systems have a better source to read."
         },
         "FinalCta": {
             "title": "Make one public menu ",

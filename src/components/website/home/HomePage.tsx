@@ -10,6 +10,7 @@ import InteractiveWorkflowSection from './InteractiveWorkflowSection';
 import PreparedForYouSection from './PreparedForYouSection';
 import ProblemSection from './ProblemSection';
 import RevenuePathSection from './RevenuePathSection';
+import SearchDiscoverySection from './SearchDiscoverySection';
 import SetupReliefSection from './SetupReliefSection';
 import SmartFeaturesSection from './SmartFeaturesSection';
 import SolutionSection from './SolutionSection';
@@ -27,6 +28,7 @@ export default function HomePage() {
       <StatsSection />
       <SetupReliefSection />
       <SurfacesSection />
+      <SearchDiscoverySection />
       <CustomerBrowseSection />
       <AnalyticsInsightsSection />
       <SmartFeaturesSection />

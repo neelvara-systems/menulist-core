@@ -2433,6 +2433,30 @@
             "soon": "जल्द",
             "bottomCaption": "Goal ज्यादा links नहीं है। Goal एक ऐसा current menu है जिस पर customers भरोसा कर सकें।"
         },
+        "SearchDiscovery": {
+            "title": "जहाँ customers search करते हैं, वहाँ readable रहें.",
+            "highlight": "search करते हैं.",
+            "subtitle": "आपका official page और menu clear public business facts की तरह तैयार होते हैं, ताकि search engines और AI assistants को पढ़ने के लिए साफ source मिले।",
+            "panelEyebrow": "Search और AI discovery",
+            "panelTitle": "People और machines के लिए एक official source.",
+            "panelDesc": "MenuList approved menu और business details को visible public pages, structured data, sitemap signals और owner-controlled search copy में बदलता है।",
+            "flow0": "Owner-approved menu और business facts",
+            "flow1": "Official page, live menu और public link",
+            "flow2": "Structured data, sitemap और AI-readable files",
+            "signal0Title": "Business facts clear रहते हैं",
+            "signal0Desc": "Hours, address, phone, actions, cuisine, service modes, photos और social links official page पर रह सकते हैं।",
+            "signal1Title": "Menu facts structured होते हैं",
+            "signal1Desc": "Items, sections, prices, availability, update signals और business context machine-readable formats में publish होते हैं।",
+            "signal2Title": "Search copy हर language के साथ चल सकती है",
+            "signal2Desc": "Owner settings में SEO और AEO fields, preview और enabled languages के लिए business-copy setup included है।",
+            "signal3Title": "Crawlers को stable source मिलता है",
+            "signal3Desc": "Public pages, sitemap, robots rules और LLM discovery files systems को current MenuList source की तरफ point करते हैं।",
+            "proof0": "SEO और AEO settings built in हैं",
+            "proof1": "Copy current business और menu facts से शुरू होती है",
+            "proof2": "Publish से पहले owner review करता है",
+            "proof3": "Ranking या citation promise नहीं",
+            "caption": "Google, Bing, ChatGPT और दूसरे AI systems decide करते हैं कि वे क्या crawl, cite और show करते हैं। MenuList एक clearer official source तैयार करता है; placement promise नहीं करता।"
+        },
         "CustomerBrowse": {
             "title": "ग्राहक जो चाहते हैं, उसे जल्दी ढूंढ लेते हैं।",
             "highlight": "जल्दी",
@@ -2580,7 +2604,9 @@
             "q6": "क्या आप मल्टिपल लोकेशन सपोर्ट करते हैं?",
             "a6": "हाँ। MenuList multi-location control support करता है ताकि brand shared menu truth, branding और public presence aligned रख सके, और जरूरत पड़ने पर location-specific differences भी रख सके।",
             "q7": "इसकी क्या कीमत है?",
-            "a7": "MenuList में शुरू करने के लिए free plan है, और जिन businesses को ज्यादा surfaces, locations या advanced source-control features चाहिए उनके लिए paid plans हैं। Current plans और pricing के लिए Pricing page देखें।"
+            "a7": "MenuList में शुरू करने के लिए free plan है, और जिन businesses को ज्यादा surfaces, locations या advanced source-control features चाहिए उनके लिए paid plans हैं। Current plans और pricing के लिए Pricing page देखें।",
+            "q8": "क्या इससे Google या AI search में placement guarantee होती है?",
+            "a8": "नहीं। Search engines और AI systems खुद decide करते हैं कि वे क्या crawl, cite और show करते हैं। MenuList आपका official page और menu clear, structured public business information की तरह तैयार करता है ताकि उन systems के पास पढ़ने के लिए बेहतर source हो।"
         },
         "FinalCta": {
             "title": "एक public menu बनाएं ",

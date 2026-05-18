@@ -93,7 +93,7 @@ export const msgIntakeProcessor = onSchedule({
 }, async () => {
     try {
         const result = await intakeProcessorLogic();
-        if (result.processed > 0 || result.errors > 0) {
+        if (result.inboundProcessed > 0 || result.processed > 0 || result.errors > 0) {
             functions.logger.info('[msgIntakeProcessor] Completed', result);
         }
     } catch (error: any) {

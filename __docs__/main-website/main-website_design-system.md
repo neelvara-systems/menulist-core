@@ -166,6 +166,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 - Dense mobile link groups may use two columns only when each item remains readable and tappable; otherwise fall back to one column.
 - Mobile footer links and social links must be tappable targets, not raw text links.
 - Avoid unsupported instant-propagation wording in mobile screenshots or locale overrides. Use approved-source language instead.
+- Search/AI discovery proof must stay calm and caveated: use structured-source language, not ranking/citation promises or AI-hype styling.
 
 ### 4.4 Layout Widths
 

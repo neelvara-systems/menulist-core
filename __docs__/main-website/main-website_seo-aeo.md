@@ -1,7 +1,9 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** March 2026
+**Last Updated:** May 18, 2026
+
+> May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
 ---
 
@@ -213,6 +215,27 @@ Every public menu page (existing, already implemented) includes:
 - Business name + location
 
 This creates a growing network of indexed pages that reinforce MenuList as the canonical menu source.
+
+### 3.5 Homepage Search/AI Discovery Proof
+
+The homepage `SearchDiscoverySection` should communicate four grounded facts:
+
+1. Owner-approved menu and business facts become public pages and links.
+2. Public pages include structured business/menu data, sitemap signals, crawler policy, and LLM discovery files.
+3. Owner settings include SEO/AEO fields, preview, and business-copy setup for enabled languages.
+4. Search engines and AI systems decide what they crawl, cite, and show.
+
+Approved public caveat:
+
+> Google, Bing, ChatGPT, and other AI systems decide what they crawl, cite, and show. MenuList prepares a clearer official source; it does not promise placement.
+
+Do not use:
+
+- "Guaranteed AI visibility"
+- "Rank higher on Google"
+- "Get cited by ChatGPT"
+- "Automatic Google/Instagram/WhatsApp sync"
+- "AI-powered SEO"
 
 ---
 

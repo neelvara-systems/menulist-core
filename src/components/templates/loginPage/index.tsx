@@ -47,7 +47,7 @@ const { Text } = Typography;
 function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const session = useSession();
+  const { data: sessionData, update: updateSession } = useSession();
   const dispatch = useAppDispatch();
   const [error, setError] = useState({ id: '', message: '' });
   const { token } = theme.useToken();
@@ -92,63 +92,65 @@ function LoginPage() {
   // Handle post-login setup (for both Google and redirect-based logins)
   useEffect(() => {
     const setupFirebaseAuth = async () => {
-      if (Boolean(session?.data?.user) && session?.data?.user?.email) {
+      if (Boolean(sessionData?.user) && sessionData?.user?.email) {
         console.log("User found, setting up Firebase Auth...");
 
-        // Check if Firebase Auth is already signed in
-        const currentUser = firebaseAuth.currentUser;
+        const syncFirebaseAuthForCurrentSession = async () => {
+          // Check if Firebase Auth is already signed in
+          const currentUser = firebaseAuth.currentUser;
 
-        if (!currentUser) {
-          // User is logged in with NextAuth but not Firebase Auth
-          // This happens after Google OAuth redirect
-          console.log("Setting up Firebase Auth for OAuth user...");
+          if (!currentUser) {
+            // User is logged in with NextAuth but not Firebase Auth
+            // This happens after Google OAuth redirect
+            console.log("Setting up Firebase Auth for OAuth user...");
 
-          try {
-            // Get custom token from server for OAuth users
-            const setClaimsResponse = await fetch('/api/auth/set-claims', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({}) // No UID - will create token
-            });
+            try {
+              // Get custom token from server for OAuth users
+              const setClaimsResponse = await fetch('/api/auth/set-claims', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}) // No UID - will create token
+              });
 
-            if (setClaimsResponse.ok) {
-              const data = await setClaimsResponse.json();
+              if (setClaimsResponse.ok) {
+                const data = await setClaimsResponse.json();
 
-              if (data.customToken) {
-                // Sign in with custom token
-                const { signInWithCustomToken } = await import('firebase/auth');
-                await signInWithCustomToken(firebaseAuth, data.customToken);
-                await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
-                console.log('✅ Firebase Auth established with custom token');
-                console.log('✅ Custom claims:', data.claims);
+                if (data.customToken) {
+                  // Sign in with custom token
+                  const { signInWithCustomToken } = await import('firebase/auth');
+                  await signInWithCustomToken(firebaseAuth, data.customToken);
+                  await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+                  console.log('✅ Firebase Auth established with custom token');
+                  console.log('✅ Custom claims:', data.claims);
+                }
+              } else {
+                console.warn('⚠️ Failed to get custom token for OAuth user');
               }
-            } else {
-              console.warn('⚠️ Failed to get custom token for OAuth user');
+            } catch (error) {
+              console.error("Firebase Auth setup error:", error);
             }
-          } catch (error) {
-            console.error("Firebase Auth setup error:", error);
-          }
-        } else {
-          console.log("✅ Firebase Auth already active");
+          } else {
+            console.log("✅ Firebase Auth already active");
 
-          // Ensure custom claims are set
-          try {
-            const setClaimsResponse = await fetch('/api/auth/set-claims', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ uid: currentUser.uid })
-            });
+            // Ensure custom claims are set
+            try {
+              const setClaimsResponse = await fetch('/api/auth/set-claims', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: currentUser.uid })
+              });
 
-            if (setClaimsResponse.ok) {
-              const data = await setClaimsResponse.json();
-              console.log('✅ Custom claims verified/set');
-              await currentUser.getIdToken(true); // Refresh token
-              await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+              if (setClaimsResponse.ok) {
+                const data = await setClaimsResponse.json();
+                console.log('✅ Custom claims verified/set');
+                await currentUser.getIdToken(true); // Refresh token
+                await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+              }
+            } catch (error) {
+              console.warn('Custom claims check failed:', error);
             }
-          } catch (error) {
-            console.warn('Custom claims check failed:', error);
           }
-        }
+        };
 
         // Claim account flow: If there's a pending claim token, link accounts before redirecting
         const pendingClaim = localStorage.getItem('pendingClaimToken');
@@ -164,9 +166,11 @@ function LoginPage() {
 
             if (claimRes.ok && claimData.success) {
               localStorage.removeItem('pendingClaimToken');
+              await updateSession();
+              await syncFirebaseAuthForCurrentSession();
               dispatch(showSuccessToast("Your business has been linked to your Google account!"));
-              // Trigger full page reload to refresh NextAuth session (jwt callback re-reads from DB)
-              window.location.href = `/${CLIENT_DASHBOARD_ROUTING}`;
+              // Use a hard navigation so the dashboard starts from the refreshed auth context.
+              window.location.href = CLIENT_DASHBOARD_ROUTING;
               return;
             } else {
               // Claim failed — clear token, continue to dashboard normally
@@ -181,13 +185,15 @@ function LoginPage() {
           }
         }
 
+        await syncFirebaseAuthForCurrentSession();
+
         // Redirect to dashboard
-        router.push(`/${CLIENT_DASHBOARD_ROUTING}`);
+        router.push(CLIENT_DASHBOARD_ROUTING);
       }
     };
 
     setupFirebaseAuth();
-  }, [session, router, claimProcessing, dispatch])
+  }, [sessionData, router, claimProcessing, dispatch, updateSession])
 
   // Handle email/password setup for messaging-onboarded users (claim flow MODE 2)
   const handleClaimEmailSetup = async (values: any) => {
@@ -417,7 +423,7 @@ function LoginPage() {
                     loading={claimProcessing}
                     onClick={() => {
                       dispatch(startLoader("LoginPage:signInWithGoogle"));
-                      signIn('google', { callbackUrl: `${location.origin}/${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
                     }}
                   >
                     Sign in with Google</Button>
@@ -436,7 +442,7 @@ function LoginPage() {
                     icon={<FcGoogle />}
                     onClick={() => {
                       dispatch(startLoader("LoginPage:signInWithGoogle"));
-                      signIn('google', { callbackUrl: `${location.origin}/${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
                     }}
                   >
                     Sign in with Google</Button>
