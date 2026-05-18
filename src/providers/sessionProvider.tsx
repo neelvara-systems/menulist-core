@@ -268,7 +268,7 @@ export default function SessionProvider({ children, session }: Props) {
                     // Set user context for Sentry with subscription info (client identification)
                     setUserContext({
                         id: session.user.id,
-                        email: session.user.email,
+                        email: (session.user as any).displayEmail || (session.user as any).phone || (session.user as any).phoneUsername || session.user.email,
                         name: session.user.name,
                         tId: session.user.tenantId,
                         sId: session.user.storeId,

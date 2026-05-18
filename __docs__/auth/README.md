@@ -456,18 +456,27 @@ console.log("Claims:", tokenResult.claims);
 
 ### `POST /api/auth/create-staff`
 
-Creates a Firebase Auth user via Admin SDK with a secure random password. Replaces client-side `createUserWithEmailAndPassword`. Staff receives password reset email.
+Compatibility route for staff creation. Current owner UI uses `POST /api/staff`, which creates a Firebase Auth user via Admin SDK. Staff receive a Staff ID alias. Staff with email also receive a Firebase password setup email; staff without email receive an owner-issued one-time temporary passcode.
 
-- **Body:** `{ email, name, tenantId, storeId }`
+- **Body:** `{ email?, name, tenantId, storeId }`
 - **Auth:** Requires active NextAuth session
-- **Returns:** `{ success, uid, email }`
+- **Returns:** `{ success, userId, email, passwordResetEmailSent, staffLoginId?, temporaryPasscode? }`
+
+### `POST /api/staff/password-reset`
+
+Resets staff access for a staff member assigned to the current store. Owner reset creates a new one-time temporary passcode shown to the owner. Staff can use that passcode with email, Staff ID, or phone aliases on the same account.
+
+- **Body:** `{ userId, tenantId, storeId }`
+- **Auth:** Requires active NextAuth session with `canManageUsers`
+- **Returns:** `{ success, userId, passwordResetEmailSent?, staffLoginId?, temporaryPasscode? }`
 
 ### `POST /api/auth/claim-account`
 
-Links a messaging-onboarded business to a real account. Two modes:
+Links a messaging-onboarded business to a real account. Three modes:
 
 - **MODE 1 (Google):** `{ claimToken }` — requires active NextAuth session. Transfers tenant/store to Google user doc.
-- **MODE 2 (Email/Password):** `{ claimToken, email, password, name? }` — no session required. Creates Firebase Auth user and converts placeholder user doc.
+- **MODE 2 (Email/Password):** `{ claimToken, email, password, name? }` — no session required. Creates Firebase Auth user and converts placeholder user doc. The WhatsApp phone also becomes a login alias for the same password.
+- **MODE 3 (WhatsApp Phone/Passcode):** `{ claimToken, password, name?, useWhatsappPhone: true }` — no session required. Uses the verified WhatsApp number as the login identifier with the generated messaging email behind Firebase Auth.
 
 ### `GET /api/auth/validate-claim?token=TOKEN`
 
@@ -485,7 +494,7 @@ Changes logged-in user's password. Verifies current password via Firebase Auth R
 
 - **Body:** `{ currentPassword, newPassword }`
 - **Auth:** Requires active NextAuth session
-- **Note:** Only works for email/password users, not OAuth-only
+- **Note:** Works for password/passcode accounts, including email/password, Staff ID/passcode, and WhatsApp-number/passcode accounts. OAuth-only users manage their password with the OAuth provider.
 
 ### Key Design Decisions (Auth Audit)
 

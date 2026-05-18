@@ -10,6 +10,7 @@ import {
     LuInfo,
     LuListChecks,
     LuMessageCircle,
+    LuRefreshCcw,
     LuSend,
     LuThumbsDown,
     LuThumbsUp,
@@ -18,6 +19,9 @@ import {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_SESSION_MESSAGES = 5;
+const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
+
+type WidgetHistoryMode = 'session' | 'forget';
 
 interface WidgetProcedureStep {
     stepOrder: number;
@@ -67,8 +71,8 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
         const current = sanitizeContextString(input[key]);
         if (current) output[key] = current;
     });
-    if (typeof input.contextVersion === 'number') {
-        output.contextVersion = input.contextVersion;
+    if (typeof input.contextVersion === 'number' && input.contextVersion >= 1 && input.contextVersion <= 10) {
+        output.contextVersion = Math.floor(input.contextVersion);
     }
     if (Array.isArray(input.entityHints)) {
         output.entityHints = input.entityHints
@@ -76,7 +80,10 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
             .map((hint) => sanitizeContextString(hint, 64))
             .filter((hint): hint is string => Boolean(hint));
     }
-    return Object.keys(output).length > 0 ? output : null;
+    if (Object.keys(output).length === 0) return null;
+
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(output)).length;
+    return payloadBytes <= MAX_CONTEXT_PAYLOAD_BYTES ? output : null;
 };
 
 const normalizeSuggestion = (value: unknown): string | null => {
@@ -114,6 +121,26 @@ const normalizeSuggestions = (values: unknown[]): string[] => {
     return normalized;
 };
 
+const formatContextLabel = (context: Record<string, any> | null): string | null => {
+    const rawValue = typeof context?.page === 'string'
+        ? context.page
+        : typeof context?.feature === 'string'
+            ? context.feature
+            : '';
+    if (!rawValue) return null;
+
+    const ignored = new Set(['menulist', 'owner', 'app', 'home', 'page']);
+    const words = rawValue
+        .split(/[_-]+/)
+        .filter((part) => part && !ignored.has(part))
+        .slice(0, 4);
+    if (words.length === 0) return null;
+
+    return words
+        .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+        .join(' ');
+};
+
 export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [messages, setMessages] = useState<WidgetMessage[]>([]);
     const [query, setQuery] = useState('');
@@ -121,15 +148,30 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
     const [productContext, setProductContext] = useState<Record<string, any> | null>(null);
+    const [historyMode, setHistoryMode] = useState<WidgetHistoryMode>('session');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const activeRequestRef = useRef(0);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, []);
 
     useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+
+    const clearConversation = useCallback(() => {
+        activeRequestRef.current += 1;
+        setMessages([]);
+        setQuery('');
+        setLoading(false);
+        setError(null);
+        setSelectedImage(null);
+    }, []);
+
+    const closeWidget = useCallback(() => {
+        window.parent?.postMessage({ type: 'canonica-widget-close' }, '*');
+    }, []);
 
     // Listen for context updates from embed script via postMessage
     useEffect(() => {
@@ -138,6 +180,16 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (e.data?.type === 'canonica-context-update') {
                 const nextContext = sanitizeContextPayload(e.data.context);
                 setProductContext(nextContext);
+            }
+            if (e.data?.type === 'canonica-widget-visibility') {
+                const nextHistoryMode: WidgetHistoryMode = e.data.historyMode === 'forget' ? 'forget' : 'session';
+                setHistoryMode(nextHistoryMode);
+                if (e.data.state === 'closed' && e.data.clearHistory) {
+                    clearConversation();
+                }
+            }
+            if (e.data?.type === 'canonica-widget-clear-history') {
+                clearConversation();
             }
             if (e.data?.type === 'canonica-predictive-suggestion' && e.data.suggestion) {
                 const suggestion = e.data.suggestion;
@@ -167,7 +219,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         };
         window.addEventListener('message', handler);
         return () => window.removeEventListener('message', handler);
-    }, []);
+    }, [clearConversation]);
 
     // Build conversation history for context (last 5 messages)
     const getConversationHistory = () => {
@@ -185,6 +237,8 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         const q = (searchQuery || query).trim();
         if (!q || loading) return;
         const shouldAppendUserMessage = options?.appendUserMessage !== false;
+        const requestId = activeRequestRef.current + 1;
+        activeRequestRef.current = requestId;
 
         const userMsg: WidgetMessage = {
             id: `u-${Date.now()}`,
@@ -238,6 +292,8 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             }
 
             const data = await res.json();
+            if (activeRequestRef.current !== requestId) return;
+
             const relatedSuggestions = Array.isArray(data.graphExpansion?.relatedSuggestions)
                 ? data.graphExpansion.relatedSuggestions
                 : [];
@@ -260,12 +316,20 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
             setMessages(prev => [...prev, aiMsg]);
         } catch (err: any) {
+            if (activeRequestRef.current !== requestId) return;
             setError(err.message || 'Something went wrong');
         } finally {
-            setLoading(false);
-            inputRef.current?.focus();
+            if (activeRequestRef.current === requestId) {
+                setLoading(false);
+                inputRef.current?.focus();
+            }
         }
     };
+
+    const contextLabel = formatContextLabel(productContext);
+    const starterQuestions = productContext
+        ? ['What can I do here?', 'Why is this not working?', 'How do I finish this?']
+        : ['How do I get started?', 'Where can I find help?', 'Why is this not working?'];
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -337,10 +401,33 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
             {/* Header */}
             <div style={styles.header}>
-                <div style={styles.headerIcon}>
-                    <LuMessageCircle size={16} aria-hidden />
+                <div style={styles.headerMain}>
+                    <div style={styles.headerIcon}>
+                        <LuMessageCircle size={16} aria-hidden />
+                    </div>
+                    <div style={styles.headerText}>
+                        <span style={styles.headerTitle}>Help</span>
+                        {historyMode === 'session' && messages.length > 0 && (
+                            <span style={styles.headerSubtitle}>This chat stays on this page until reload.</span>
+                        )}
+                    </div>
                 </div>
-                <span style={styles.headerTitle}>Help</span>
+                <div style={styles.headerActions}>
+                    {messages.length > 0 && (
+                        <button
+                            style={{ ...styles.headerButton, opacity: loading ? 0.5 : 1 }}
+                            onClick={clearConversation}
+                            disabled={loading}
+                            aria-label="Start new chat"
+                            title="Start new chat"
+                        >
+                            <LuRefreshCcw size={15} aria-hidden />
+                        </button>
+                    )}
+                    <button style={styles.headerButton} onClick={closeWidget} aria-label="Close widget" title="Close">
+                        <LuX size={16} aria-hidden />
+                    </button>
+                </div>
             </div>
 
             {/* Messages area */}
@@ -351,9 +438,19 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                             <LuMessageCircle size={32} aria-hidden />
                         </div>
                         <p style={styles.welcomeTitle}>How can we help?</p>
+                        {contextLabel && (
+                            <div style={styles.contextChip}>Help for {contextLabel}</div>
+                        )}
                         <p style={styles.welcomeSubtext}>
                             Ask a question and we will find the best answer from our knowledge base.
                         </p>
+                        <div style={styles.starterGrid}>
+                            {starterQuestions.map((starter) => (
+                                <button key={starter} style={styles.starterBtn} onClick={() => handleSearch(starter)}>
+                                    {starter}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -568,14 +665,22 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
 const styles: Record<string, CSSProperties> = {
     container: { display: 'flex', flexDirection: 'column', width: '100%', height: '100dvh', minHeight: 0, overflow: 'hidden', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#ffffff', color: '#1a1a2e', fontSize: 14 },
-    header: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: '#6366f1', color: '#ffffff', flexShrink: 0 },
+    header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', background: '#6366f1', color: '#ffffff', flexShrink: 0 },
+    headerMain: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
     headerIcon: { width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 },
+    headerText: { minWidth: 0, display: 'flex', flexDirection: 'column' },
     headerTitle: { fontSize: 15, fontWeight: 600 },
+    headerSubtitle: { maxWidth: 210, fontSize: 10, lineHeight: 1.25, color: 'rgba(255,255,255,0.78)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    headerActions: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
+    headerButton: { width: 40, height: 40, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.18)', color: '#ffffff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     messagesArea: { flex: 1, overflowY: 'auto', padding: 16 },
-    welcomeContainer: { width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '40px 16px', boxSizing: 'border-box' },
+    welcomeContainer: { width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '28px 12px', boxSizing: 'border-box' },
     welcomeIcon: { color: '#6366f1', marginBottom: 12 },
     welcomeTitle: { maxWidth: '100%', fontSize: 16, fontWeight: 600, margin: '0 0 8px 0', color: '#1a1a2e', overflowWrap: 'break-word' },
+    contextChip: { maxWidth: '100%', margin: '0 0 10px 0', padding: '5px 9px', borderRadius: 999, background: '#eef2ff', color: '#4338ca', fontSize: 11, fontWeight: 700, overflowWrap: 'break-word' },
     welcomeSubtext: { maxWidth: 300, fontSize: 13, color: '#6b7280', margin: 0, lineHeight: 1.5, overflowWrap: 'break-word' },
+    starterGrid: { width: '100%', maxWidth: 300, marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 },
+    starterBtn: { minHeight: 44, padding: '8px 11px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#ffffff', color: '#4338ca', fontSize: 12, fontWeight: 600, lineHeight: 1.3, cursor: 'pointer', textAlign: 'left' as const },
     userMsgRow: { display: 'flex', justifyContent: 'flex-end', marginBottom: 12 },
     aiMsgRow: { display: 'flex', justifyContent: 'flex-start', marginBottom: 12 },
     userBubble: { maxWidth: '80%', padding: '10px 14px', borderRadius: '16px 16px 4px 16px', background: '#6366f1', color: '#ffffff' },

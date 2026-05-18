@@ -8,11 +8,12 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from "@constant/user";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
 
-export const normalizePhoneUsername = (value: string) => value.replace(/[^0-9]/g, '');
+export const normalizePhoneUsername = normalizeLoginDigits;
 
 const normalizeEmail = (email: string) => String(email || '').toLowerCase().trim();
 
@@ -72,9 +73,16 @@ export const getAuthUserByLoginIdentifier = async (identifier: string) => {
     const phoneUsername = normalizePhoneUsername(normalizedIdentifier);
     if (!phoneUsername) return null;
 
-    for (const field of ['username', 'loginUsername', 'phoneUsername', 'phone', 'phoneNumber']) {
+    for (const field of ['username', 'loginUsername', 'phoneUsername']) {
         const user = await getFirstAuthUserByField(field, phoneUsername);
         if (user) return user;
+    }
+
+    for (const candidate of getPhoneLookupCandidates(normalizedIdentifier)) {
+        for (const field of ['phone', 'phoneNumber']) {
+            const user = await getFirstAuthUserByField(field, candidate);
+            if (user) return user;
+        }
     }
 
     return null;

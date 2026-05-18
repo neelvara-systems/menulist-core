@@ -5,9 +5,10 @@ import { removeObjRef } from "@util/utils"
 import { Select } from "antd"
 import { useContext } from "react"
 
-function RolesMapping({ userDetails, onChangeValue }) {
+function RolesMapping({ disabled = false, staffStores = [], userDetails, onChangeValue }) {
 
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const activeStoreRoles = staffStores.find((store) => store.storeId == storeDetails?.storeId)?.roles || storeDetails?.roles || [];
 
     // Get user's current role for this store
     const userStoreMapping = userDetails?.stores?.find(s => s.storeId == storeDetails?.storeId);
@@ -28,10 +29,11 @@ function RolesMapping({ userDetails, onChangeValue }) {
                 allowClear
                 style={{ width: '100%' }}
                 placeholder="Please select role"
+                disabled={disabled}
                 defaultValue={currentRole}
                 value={currentRole}
                 onChange={(value) => onChangeRoleValue(value)}
-                options={storeDetails?.roles?.map((role) => ({ label: role.name, value: role.id }))}
+                options={activeStoreRoles?.filter((role) => role.active !== false)?.map((role) => ({ label: role.name, value: role.id }))}
             />
         </FormElementWrapper>
     )

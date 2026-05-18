@@ -58,15 +58,18 @@ const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test
 
 export async function POST(request: NextRequest) {
     // Feature flag check
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
         return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
     }
 
     try {
         // API key authentication
-        const apiKey = request.headers.get('x-api-key');
+        const apiKey = request.headers.get('x-api-key')?.trim();
         if (!apiKey) {
             return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
+        }
+        if (!apiKey.startsWith('cn_')) {
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
@@ -87,12 +90,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const authResult = await validatePublicApiKey(apiKey);
+        const authResult = await validatePublicApiKey(apiKey, {
+            includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
+            preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
+        });
         if (!authResult) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
 
         const { storeData, storeId } = authResult;
+        const credential = authResult.credential || {};
+        if (credential.productId && credential.productId !== 'CN') {
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+        }
+        if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+        }
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
         if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {

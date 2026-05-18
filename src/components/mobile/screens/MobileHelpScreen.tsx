@@ -25,7 +25,10 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
-    const requestedPathTab = pathname.startsWith('/help-center/') ? pathname.split('/')[2] : null;
+    const pathSegments = useMemo(() => pathname.split('/').filter(Boolean), [pathname]);
+    const requestedPathTab = pathSegments[0] === 'help-center' ? pathSegments[1] : null;
+    const requestedArticleId = requestedPathTab === 'kb' && pathSegments[2] === 'articles' ? pathSegments[3] : undefined;
+    const requestedChangelogId = requestedPathTab === 'changelog' ? pathSegments[2] : undefined;
     const activeTab = useMemo(
         () => normalizeHelpCenterTab(requestedTab || requestedPathTab || initialTab),
         [initialTab, requestedPathTab, requestedTab],
@@ -324,7 +327,11 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         padding: 0 !important;
                     }
                 `}</style>
-                <HelpCenter />
+                <HelpCenter
+                    initialArticleId={requestedArticleId}
+                    initialChangelogId={requestedChangelogId}
+                    initialTab={activeTab}
+                />
             </div>
         </Flex>
     );

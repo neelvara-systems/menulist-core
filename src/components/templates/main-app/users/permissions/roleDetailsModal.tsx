@@ -1,13 +1,11 @@
 import DrawerElement from "@antdComponent/drawerElement";
 import RolesPermissionInitialData from "@data/rolesPermissionsInitialData";
-import { updateStore } from "@database/stores";
 import { useAppDispatch } from "@hook/useAppDispatch";
-import { requestBodyComposer } from "@lib/apiHelper";
+import { saveRoleDefinition } from "@lib/staffManagement/client";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
-import { showWarningToast } from "@reduxSlices/toast";
+import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast";
 import RolesPermissionForm from "@template/platform/stores/rolesPermissionForm";
 import { StoreRoleDataType } from "@type/platform/roles";
-import { getObjectDifferance } from "@util/deepMerge";
 import { objectNullCheck, removeObjRef } from "@util/utils";
 import { Button, Flex, Input, Switch, Typography } from "antd";
 import { useContext, useEffect, useState } from "react";
@@ -21,7 +19,14 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
 
     useEffect(() => {
         if (modalData.active) {
-            setRoleData(removeObjRef(modalData.data))
+            setRoleData(objectNullCheck(modalData, 'data')
+                ? removeObjRef(modalData.data)
+                : {
+                    active: true,
+                    description: "",
+                    name: "",
+                    permissions: RolesPermissionInitialData,
+                } as StoreRoleDataType)
         } else {
             setRoleData(null)
         }
@@ -32,32 +37,28 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
     }
 
     const addUpdateDetails = async () => {
-        let dataCopy: StoreRoleDataType[] = removeObjRef(storeDetails.roles || [])
-        if (!dataCopy) dataCopy = []
-        let index = dataCopy.findIndex((u) => u.id == roleData.id)
-
-        if (index == -1) {
-            const newRole: StoreRoleDataType = await requestBodyComposer({
-                ...roleData,
-                id: `custom-${storeDetails.storeId}-${new Date().getTime()}`
-            })
-            newRole.createdOn = newRole.modifiedOn;
-            newRole.createdBy = newRole.modifiedBy;
-            dataCopy.push(newRole)
-        } else {
-            dataCopy[index] = await requestBodyComposer(roleData)
+        if (!roleData?.name?.trim()) {
+            dispatch(showWarningToast("Role name is required"))
+            return
         }
 
-        const updatedChanges = modalData.data ? getObjectDifferance(roleData, modalData.data) : roleData;
-        if (Object.keys(updatedChanges).length > 0) {
-            console.log("Changes detected:", updatedChanges);
-            updateStore({ roles: dataCopy, storeId: storeDetails.storeId }).then((saved) => {
-                onCancel({ ...storeDetails, roles: dataCopy })
-                setStoreDetails({ ...storeDetails, roles: dataCopy })
+        try {
+            const response = await saveRoleDefinition({
+                role: {
+                    active: roleData.active !== false,
+                    description: roleData.description || "",
+                    id: roleData.id,
+                    name: roleData.name,
+                    permissions: roleData.permissions || RolesPermissionInitialData,
+                },
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
             })
-        } else {
-            dispatch(showWarningToast("No changes detected."))
-            console.log("No changes detected.");
+            onCancel({ ...storeDetails, roles: response.roles })
+            setStoreDetails({ ...storeDetails, roles: response.roles })
+            dispatch(showSuccessToast(objectNullCheck(modalData, 'data') ? "Role updated" : "Role added"))
+        } catch (err: any) {
+            dispatch(showErrorToast(err?.message || "Could not save role"))
         }
     }
 
@@ -93,7 +94,7 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
                 <Flex gap={8} align="center">
                     <Text style={{ minWidth: 100 }}>Active</Text>
                     <Switch
-                        checked={roleData?.active || false}
+                        checked={roleData?.active !== false}
                         onChange={() => onChangeValue('active', !Boolean(roleData?.active))}
                     />
                 </Flex>

@@ -1,9 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { calculateOfflineAmount, getResellerTierById, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
-import { createResellerTransaction, getResellerProfile, updateResellerStatsOnRenewal } from "@database/reseller";
-import { updateSubscription } from "@database/subscriptions";
+import { DB_COLLECTIONS } from "@constant/database";
+import { createResellerTransaction, getResellerProfile, updateResellerStatsOnRenewal } from "@database/reseller/server";
+import { updateSubscription } from "@database/subscriptions/server";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
+import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
@@ -62,18 +64,14 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Offline payment mode is no longer available." }, { status: 400 });
         }
 
-        // Find existing subscription for this store
-        const { getDocs, query, where, collection } = await import('firebase/firestore');
-        const { firebaseClient } = await import('@lib/firebase/firebaseClient');
-        const { DB_COLLECTIONS } = await import('@constant/database');
-
-        const subsQuery = query(
-            collection(firebaseClient, DB_COLLECTIONS.SUBSCRIPTIONS),
-            where('storeId', '==', storeId),
-            where('tenantId', '==', tenantId),
-            where('billingMode', '==', 'manual')
-        );
-        const subsSnapshot = await getDocs(subsQuery);
+        // Find existing subscription for this store using Admin SDK.
+        const subsSnapshot = await firestoreAdmin
+            .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('storeId', '==', storeId)
+            .where('tenantId', '==', tenantId)
+            .where('billingMode', '==', 'manual')
+            .limit(1)
+            .get();
 
         if (subsSnapshot.empty) {
             return NextResponse.json({ error: "No manual subscription found for this store." }, { status: 404 });

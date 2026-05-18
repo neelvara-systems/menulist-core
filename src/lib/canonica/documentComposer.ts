@@ -32,7 +32,7 @@ const normalizeSourceContext = (sourceContext: unknown) => {
     const sourceTId = normalizeNumber(normalized.tId);
     const sourceSId = normalizeNumber(normalized.sId);
 
-    if (sourcePId) {
+    if (sourcePId && sourcePId !== PRODUCT_IDS.CANONICA) {
         normalized.pId = sourcePId;
         if (sourceTId !== undefined) {
             normalized.tId = sourceTId;
@@ -70,13 +70,14 @@ const buildSourceContextFromSession = async () => {
     const sourceSId = normalizeNumber((session as any).sId);
 
     if (!uId || !email || !name) return undefined;
+    const includeCrossProductScope = Boolean(sourcePId && sourcePId !== PRODUCT_IDS.CANONICA);
 
     return {
         uId,
         name,
         email,
         ...(phone ? { phone } : {}),
-        ...(sourcePId ? {
+        ...(includeCrossProductScope ? {
             pId: sourcePId,
             ...(sourceTId !== undefined ? { tId: sourceTId } : {}),
             ...(sourceSId !== undefined ? { sId: sourceSId } : {}),

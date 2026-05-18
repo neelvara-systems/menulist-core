@@ -19,8 +19,9 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { getCanonicaBetaPlan, getCanonicaPlanById } from '@data/canonica/plans';
-import { createInitialSubscription } from '@database/subscriptions';
+import { createInitialSubscription } from '@database/subscriptions/server';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { createTenantStoreInTransaction, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -117,7 +118,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
 
             // Update User with tenant/store IDs
-            updateUserWithTenantStore(transaction, db, userId, core);
+            updateUserWithTenantStore(transaction, db, userId, core, {
+                pId: PRODUCT_IDS.CANONICA,
+                productId: PRODUCT_IDS.CANONICA,
+                onboardingSource: 'CANONICA_ONBOARDING',
+            });
 
             return { tenantId: core.tenantId, storeId: core.storeId };
         });

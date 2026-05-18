@@ -4,13 +4,14 @@ import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { useTodayAction } from '@providers/TodayActionProvider';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, getSidebarLayoutState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import { Button, Flex, Menu, MenuProps, Popover, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { LuArrowBigDown } from 'react-icons/lu';
 import { MdDarkMode, MdLightMode, MdOutlineSettingsSuggest } from 'react-icons/md';
 import { TbPhoneCalling } from 'react-icons/tb';
@@ -30,6 +31,7 @@ const HorizontalSidebarComponent = () => {
     const pathname = usePathname()
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const { isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
 
     // Today action indicator (per Strategy Doc: small dot when action exists)
     const { hasAction: hasTodayAction } = useTodayAction();
@@ -40,15 +42,51 @@ const HorizontalSidebarComponent = () => {
         { label: 'Support', route: 'dashboard-help', icon: <TbPhoneCalling /> },
     ]
 
+    const canShowNavForPermissions = (nav: NavItemType) => {
+        if (!userPermissions) return true;
+        if (nav.route === NAVIGARIONS_ROUTINGS.BILLING || nav.route === NAVIGARIONS_ROUTINGS.TRANSACTIONS) {
+            return userPermissions.canAccessBilling !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.USERS) {
+            return userPermissions.canManageUsers !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS) {
+            return userPermissions.canManageStore !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.DASHBOARD) {
+            return userPermissions.canViewAnalytics !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.FEEDBACK) {
+            return userPermissions.canManageChat !== false || userPermissions.canViewCustomerData !== false;
+        }
+        if (
+            nav.route === NAVIGARIONS_ROUTINGS.PROJECTS
+            || nav.route === NAVIGARIONS_ROUTINGS.TODAY
+            || nav.route === NAVIGARIONS_ROUTINGS.USE_MENULIST
+            || nav.route === NAVIGARIONS_ROUTINGS.QR_CODE
+        ) {
+            return userPermissions.canManageMenu !== false || userPermissions.canPublishMenu !== false;
+        }
+        return true;
+    }
+
     const getMenuItems = () => {
         const menuCopy = [];
         SIDEBAR_DASHBOARD_LAYOUT.map((nav: NavItemType) => {
+            if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
+                if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL || userPermissions?.canManageOutlets === false) {
+                    return;
+                }
+            }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD || ![ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole)) {
                     return;
                 }
             }
             if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
+                return;
+            }
+            if (!canShowNavForPermissions(nav)) {
                 return;
             }
 
@@ -118,7 +156,7 @@ const HorizontalSidebarComponent = () => {
                 setActiveNav([currentNav.key])
             }
         }
-    }, [pathname, platformRole, hasTodayAction])
+    }, [pathname, platformRole, hasTodayAction, isMasterUser, userPermissions])
 
     const onClickNav: MenuProps['onClick'] = (menu: any) => {
         getMenuItems().map((nav: any) => {

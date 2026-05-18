@@ -4,6 +4,7 @@ import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 import { objectNullCheck } from "@util/utils";
@@ -35,7 +36,7 @@ export const getUserByEmail = (email: string) => {
     })
 }
 
-export const normalizePhoneUsername = (value: string) => value.replace(/[^0-9]/g, '');
+export const normalizePhoneUsername = normalizeLoginDigits;
 
 const getFirstUserByField = async (field: string, value: string) => {
     const q = query(getCollectionRef(), where(field, "==", value), limit(1));
@@ -62,10 +63,15 @@ export const getUserByLoginIdentifier = async (identifier: string) => {
         if (user) return user;
     }
 
-    const phoneUser = await getFirstUserByField('phone', phoneUsername);
-    if (phoneUser) return phoneUser;
+    for (const candidate of getPhoneLookupCandidates(normalizedIdentifier)) {
+        const phoneUser = await getFirstUserByField('phone', candidate);
+        if (phoneUser) return phoneUser;
 
-    return getFirstUserByField('phoneNumber', phoneUsername);
+        const phoneNumberUser = await getFirstUserByField('phoneNumber', candidate);
+        if (phoneNumberUser) return phoneNumberUser;
+    }
+
+    return null;
 }
 
 export const getUserByTenantId = (tenantId: string) => {

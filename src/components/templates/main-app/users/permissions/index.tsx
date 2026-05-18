@@ -2,8 +2,8 @@
 
 import TextElement from "@antdComponent/textElement";
 import { PermissionKey } from "@constant/permissions";
+import { DEFAULT_ROLE_IDS } from "@data/defaultRoles";
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from "@data/rolesPermissionsInitialData";
-import { useAppDispatch } from "@hook/useAppDispatch";
 import EditorWrapper from "@organisms/editor/editorWrapper";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { StoreRoleDataType } from "@type/platform/roles";
@@ -16,10 +16,10 @@ const { Meta } = Card
 
 function UserPermissionsPage() {
     const [activeRole, setActiveRole] = useState<StoreRoleDataType>(null);
-    const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [showDetailsModal, setShowDetailsModal] = useState({ active: false, data: null })
-    const dispatch = useAppDispatch()
     const { token } = theme.useToken();
+    const canAssignRoles = userPermissions?.canAssignRoles === true;
 
     const onCloseRoleModal = (storeData) => {
         if (storeData?.roles && activeRole?.id) {
@@ -62,8 +62,10 @@ function UserPermissionsPage() {
 
                             <Card
                                 hoverable
+                                aria-disabled={!canAssignRoles}
                                 style={{ width: 180, display: "flex", justifyContent: "center", alignItems: "center" }}
                                 onClick={() => {
+                                    if (!canAssignRoles) return;
                                     setActiveRole(null);
                                     setShowDetailsModal({ active: true, data: null })
                                 }}
@@ -78,7 +80,7 @@ function UserPermissionsPage() {
                             <Card
                                 style={{ width: "100%" }}
                                 title={`${activeRole.name} Role Permissions`}
-                                extra={<Button type="primary" icon={<LuPen />} onClick={() => setShowDetailsModal({ active: true, data: activeRole })}>Edit Role</Button>}
+                                extra={<Button disabled={!canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER} type="primary" icon={<LuPen />} onClick={() => setShowDetailsModal({ active: true, data: activeRole })}>Edit Role</Button>}
                             >
                                 <Flex vertical gap={16}>
                                     <Meta title={activeRole.description} description={`Last Updated: ${activeRole.modifiedBy || activeRole.createdBy}`} />

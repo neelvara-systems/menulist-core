@@ -19,6 +19,7 @@ import { z } from 'zod';
 const MAX_STRING_LENGTH = 100;
 const MAX_ENTITY_HINTS = 5;
 const MAX_HINT_LENGTH = 64;
+const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
 const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
 
 /**
@@ -57,6 +58,14 @@ export const CanonicaContextSchema = z.object({
     ).max(MAX_ENTITY_HINTS).optional(),
     userRole: ContextStringSchema.optional(),
     plan: ContextStringSchema.optional(),
-}).strip();
+}).strip().superRefine((value, ctx) => {
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(value)).length;
+    if (payloadBytes > MAX_CONTEXT_PAYLOAD_BYTES) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Context payload must be 2KB or smaller',
+        });
+    }
+});
 
 export type ValidatedContextPayload = z.infer<typeof CanonicaContextSchema>;

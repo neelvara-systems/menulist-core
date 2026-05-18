@@ -6,7 +6,7 @@ rules_version = '2';
  * CRITICAL: These rules enforce:
  * 1. Authentication (only logged-in users)
  * 2. Tenant isolation (users can only access their tenant's data)
- * 3. File type validation (images only)
+ * 3. File type validation (path-specific MIME whitelists)
  * 4. File size limits (max 10MB)
  * 5. Content type validation (MIME type checking)
  * 
@@ -32,7 +32,7 @@ service firebase.storage {
      */
     function belongsToTenant(tId) {
       return isAuthenticated() 
-             && request.auth.token.tId == int(tId);
+             && string(request.auth.token.tenantId) == string(tId);
     }
     
     /**
@@ -40,7 +40,18 @@ service firebase.storage {
      */
     function belongsToStore(tId, sId) {
       return belongsToTenant(tId)
-             && request.auth.token.sId == int(sId);
+             && (
+               string(request.auth.token.storeId) == string(sId)
+               || (
+                 request.auth.token.storeIds != null
+                 && request.auth.token.storeIds.hasAny([string(sId)])
+               )
+             );
+    }
+
+    function isPlatformAdmin() {
+      return isAuthenticated()
+             && request.auth.token.platformRole == 'PLATFORM';
     }
     
     /**
@@ -48,6 +59,22 @@ service firebase.storage {
      */
     function isValidImageType() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
+    }
+
+    function isValidSvgType() {
+      return request.resource.contentType == 'image/svg+xml';
+    }
+
+    function isValidDocumentType() {
+      return request.resource.contentType.matches('application/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)')
+             || request.resource.contentType == 'text/plain';
+    }
+
+    function isValidKnowledgeSourceType() {
+      return isValidImageType()
+             || isValidDocumentType()
+             || request.resource.contentType.matches('audio/.*')
+             || request.resource.contentType.matches('video/.*');
     }
     
     /**
@@ -62,6 +89,14 @@ service firebase.storage {
      */
     function isValidImageUpload() {
       return isValidImageType() && isValidSize();
+    }
+
+    function isValidImageOrDocumentUpload() {
+      return (isValidImageType() || isValidDocumentType()) && isValidSize();
+    }
+
+    function isValidPlatformAssetUpload() {
+      return (isValidImageType() || isValidSvgType() || isValidDocumentType()) && isValidSize();
     }
 
     function isValidMediaProfile(profile) {
@@ -89,7 +124,7 @@ service firebase.storage {
      */
     match /supportTickets/documents/{tId}/{sId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
       allow delete: if belongsToStore(tId, sId);
     }
     
@@ -99,7 +134,7 @@ service firebase.storage {
      */
     match /supportTickets/messages/{tId}/{sId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
       allow delete: if belongsToStore(tId, sId);
     }
     
@@ -109,7 +144,7 @@ service firebase.storage {
      */
     match /changelog/files/{tId}/{sId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageUpload();
+      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
       allow delete: if belongsToStore(tId, sId);
     }
 
@@ -121,6 +156,92 @@ service firebase.storage {
       allow read: if true;
       allow write: if belongsToStore(tId, sId) && isValidImageUpload() && isValidMediaProfile(profile);
       allow delete: if belongsToStore(tId, sId);
+    }
+
+    /**
+     * Store-owned direct uploads that have not yet migrated to media profiles.
+     * Path: stores/{fileType}/{tId}/{sId}/{fileId}
+     */
+    match /stores/{fileType}/{tId}/{sId}/{fileId} {
+      allow read: if true;
+      allow write: if belongsToStore(tId, sId)
+                   && fileType.matches('^(pwa-icons|obp-photos|obp-covers)$')
+                   && isValidImageUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+
+    /**
+     * Notes documents, tenant-scoped.
+     * Path: notes/documents/{tId}/{sId}/{noteId}/{fileId}
+     */
+    match /notes/documents/{tId}/{sId}/{noteId}/{fileId} {
+      allow read: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+
+    /**
+     * Project upload fallback paths for menu files and images.
+     * Path: projects/{fileType}/{tId}/{sId}/{fileId}
+     */
+    match /projects/{fileType}/{tId}/{sId}/{fileId} {
+      allow read: if belongsToStore(tId, sId);
+      allow write: if belongsToStore(tId, sId)
+                   && fileType.matches('^(files|assets|itemImages|project-images|custom|generated|edited)$')
+                   && isValidImageOrDocumentUpload();
+      allow delete: if belongsToStore(tId, sId);
+    }
+
+    /**
+     * Knowledge-base ingestion source files.
+     * Path: ingestion_source_files/{tId}/{sId}/{fileId}
+     */
+    match /ingestion_source_files/{tId}/{sId}/{fileId} {
+      allow read: if isPlatformAdmin() || belongsToStore(tId, sId);
+      allow write: if (isPlatformAdmin() || belongsToStore(tId, sId))
+                   && isValidKnowledgeSourceType()
+                   && request.resource.size <= 50 * 1024 * 1024;
+      allow delete: if isPlatformAdmin() || belongsToStore(tId, sId);
+    }
+
+    /**
+     * Platform-managed assets and fonts.
+     */
+    match /common/assets/{assetType}/{fileId} {
+      allow read: if true;
+      allow write: if isPlatformAdmin() && isValidPlatformAssetUpload();
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /fonts/{fileName} {
+      allow read: if true;
+      allow write: if isPlatformAdmin()
+        && request.resource.contentType.matches('font/.*|application/(font-woff|font-woff2|octet-stream)')
+        && isValidSize();
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /templates/{componentId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isPlatformAdmin() && isValidPlatformAssetUpload();
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /tenants/logos/{fileId} {
+      allow read: if true;
+      allow write: if isPlatformAdmin() && isValidImageUpload();
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /users/{fileType}/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+        && fileId.matches('^' + request.auth.uid + '[-_].*')
+        && fileType.matches('^(profile|additionalDocuments)$')
+        && isValidImageOrDocumentUpload();
+      allow delete: if isAuthenticated()
+        && fileId.matches('^' + request.auth.uid + '[-_].*')
+        && fileType.matches('^(profile|additionalDocuments)$');
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -135,7 +256,7 @@ service firebase.storage {
      */
     match /MenuListAi/project/files/{fileId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isValidImageUpload();
+      allow write: if isAuthenticated() && isValidImageOrDocumentUpload();
       allow delete: if isAuthenticated();
     }
     

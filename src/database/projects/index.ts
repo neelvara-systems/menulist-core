@@ -52,6 +52,7 @@ import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/
 import type { MediaImageType, MediaImageVariantId } from "@lib/media/imageProfiles";
 import { isDataUrl } from "@lib/media/mediaStorage";
 import { prepareMediaImage } from "@lib/media/prepareMediaImage";
+import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
 import {
@@ -1296,10 +1297,17 @@ export const getDeletedProjectsList = async () => {
 const getProjectDataCore = async (projectId: string): Promise<Project> => {
     const docRef = await getDataDocRef(projectId);
     const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) {
-        throw new Error("Project not found");
+    if (docSnap.exists()) {
+        return normalizeProjectReadState(docSnap.data() as Project) as Project;
     }
-    return normalizeProjectReadState(docSnap.data() as Project) as Project;
+
+    const legacyDocRef = doc(firebaseClient, DATA_COLLECTION, projectId);
+    const legacyDocSnap = await getDoc(legacyDocRef);
+    if (legacyDocSnap.exists()) {
+        return normalizeProjectReadState(legacyDocSnap.data() as Project) as Project;
+    }
+
+    throw new Error("Project not found");
 };
 
 export const getProjectData = async (projectId: string): Promise<Project> => {
@@ -1345,10 +1353,17 @@ export const getProjectDataByStore = async (
                 projectId,
             );
             const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) {
-                throw new Error(`Project not found: ${projectId} in store ${sId}`);
+            if (docSnap.exists()) {
+                return normalizeProjectReadState(docSnap.data() as Project) as Project;
             }
-            return normalizeProjectReadState(docSnap.data() as Project) as Project;
+
+            const legacyDocRef = doc(firebaseClient, DATA_COLLECTION, projectId);
+            const legacyDocSnap = await getDoc(legacyDocRef);
+            if (legacyDocSnap.exists()) {
+                return normalizeProjectReadState(legacyDocSnap.data() as Project) as Project;
+            }
+
+            throw new Error(`Project not found: ${projectId} in store ${sId}`);
         },
         { tId, sId, projectId },
         "getProjectDataByStore",
@@ -1423,11 +1438,17 @@ export const uploadFile = async (
 
     if (data.url) {
         if (data.url.includes("base64")) {
+            const session = await getActiveSession();
             //upload logo image to firebase storage
             fileUrl = await uploadBase64ToStorage({
                 fileId: docId,
                 url: data.url,
-                path: `MenuListAi/project/${from}/${docId}`,
+                path: generateStoragePath({
+                    collection: DATA_COLLECTION,
+                    fileType: from,
+                    session,
+                    fileId: docId,
+                }),
                 type: data.type,
             });
         }

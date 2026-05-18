@@ -44,8 +44,11 @@ export async function POST(request: NextRequest) {
         }
 
         // API key authentication (same pattern as widget search)
-        const apiKey = request.headers.get('x-api-key');
+        const apiKey = request.headers.get('x-api-key')?.trim();
         if (!apiKey) {
+            return new NextResponse(null, { status: 204 });
+        }
+        if (!apiKey.startsWith('cn_')) {
             return new NextResponse(null, { status: 204 });
         }
 
@@ -59,8 +62,18 @@ export async function POST(request: NextRequest) {
             return new NextResponse(null, { status: 204 });
         }
 
-        const authResult = await validatePublicApiKey(apiKey);
+        const authResult = await validatePublicApiKey(apiKey, {
+            includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
+            preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
+        });
         if (!authResult) {
+            return new NextResponse(null, { status: 204 });
+        }
+        const credential = authResult.credential || {};
+        if (credential.productId && credential.productId !== 'CN') {
+            return new NextResponse(null, { status: 204 });
+        }
+        if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
             return new NextResponse(null, { status: 204 });
         }
 

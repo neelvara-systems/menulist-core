@@ -1,6 +1,6 @@
 # Roles & Permissions — Technical Implementation
 
-**Status:** ✅ Implemented | **Last Updated:** February 13, 2026
+**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** May 18, 2026
 
 > **Scope:** This document covers Layer 1 (staff-level RBAC). For Layer 2 (OutletPolicy chain restrictions) and the two-layer interaction model, see [Multi-Chain Permissions](../multi-chain-permissions/multi-chain-permissions_impl.md).
 
@@ -41,6 +41,10 @@ roles: StoreRoleDataType[]          stores: [{
 | Centralized permission constants                    | ✅ Done |
 | Multi-outlet permissions added (Feb 12, 2026)       | ✅ Done |
 | Outlet policy enforcement via `applyOutletPolicy()` | ✅ Done |
+| Staff CRUD API (`/api/staff`)                        | ✅ Done |
+| Staff password reset/passcode API (`/api/staff/password-reset`) | ✅ Done |
+| Role CRUD API (`/api/staff/roles`)                   | ✅ Done |
+| Desktop and mobile staff screens use API             | ✅ Done |
 
 ---
 
@@ -151,6 +155,11 @@ export function getPermissionsForRole(
 | `src/data/rolesPermissionsInitialData.ts`             | ✅ OK  |
 | `src/lib/permissions/hasPermission.ts`                | ✅ OK  |
 | `src/lib/permissions/applyOutletPolicy.ts`            | ✅ OK  |
+| `src/lib/staffManagement/server.ts`                   | ✅ OK  |
+| `src/lib/staffManagement/client.ts`                   | ✅ OK  |
+| `src/app/api/staff/route.ts`                          | ✅ OK  |
+| `src/app/api/staff/password-reset/route.ts`            | ✅ OK  |
+| `src/app/api/staff/roles/route.ts`                    | ✅ OK  |
 | `src/app/api/onboarding/create-subscription/route.ts` | ✅ OK  |
 | `src/components/.../users/permissions/*`              | ✅ OK  |
 
@@ -185,3 +194,38 @@ Categories:
 - **Pricing** (1): `canOverridePrices`
 - **Analytics** (2): `canViewAnalytics`, `canExportData`
 - **Customer** (2): `canManageChat`, `canViewCustomerData`
+
+---
+
+## 9. Staff CRUD Runtime Contract
+
+### API Endpoints
+
+| Endpoint | Method | Purpose | Required Permission |
+| --- | --- | --- | --- |
+| `src/app/api/staff/route.ts` | `GET` | List active staff for a store | `canManageUsers` |
+| `src/app/api/staff/route.ts` | `POST` | Create staff or add same-tenant staff to a store | `canManageUsers`; `canAssignRoles` for non-Staff role assignment |
+| `src/app/api/staff/route.ts` | `PATCH` | Update staff profile, active state, default store, store mappings, roles | `canManageUsers`; `canAssignRoles` when mappings/roles change |
+| `src/app/api/staff/route.ts` | `DELETE` | Remove staff from current store; soft-delete if no stores remain | `canManageUsers` |
+| `src/app/api/staff/password-reset/route.ts` | `POST` | Create a one-time temporary staff passcode for email, Staff ID, or phone login | `canManageUsers` |
+| `src/app/api/staff/roles/route.ts` | `POST/PATCH` | Create or update role definition | `canAssignRoles` |
+| `src/app/api/staff/roles/route.ts` | `DELETE` | Deactivate role definition | `canAssignRoles` |
+
+### Server Guards
+
+- `withAuth()` wraps every staff/role API route.
+- Tenant ID must match the authenticated session unless the session is platform admin.
+- Non-master store users can only manage their own store.
+- Master store users can manage staff mappings inside the same tenant.
+- Store mappings are validated against real store documents and active role definitions.
+- The `owner` role definition is locked from edits/deactivation.
+- Last active owner protection prevents removing/demoting/deactivating the only owner for a store.
+
+### UI Wiring
+
+| Surface | Files | Contract |
+| --- | --- | --- |
+| Desktop staff | `src/components/templates/main-app/users/usersList/*` | Loads staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()` |
+| Desktop roles | `src/components/templates/main-app/users/permissions/*` | Saves through `saveRoleDefinition()` |
+| Mobile staff | `src/components/mobile/screens/MobileUsersScreen.tsx` | Uses the same staff client helpers as desktop |
+| Mobile roles | `src/components/mobile/screens/MobileRolesScreen.tsx` | Uses the same role client helpers as desktop |

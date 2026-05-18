@@ -1,9 +1,9 @@
 # Roles & Permissions — Documentation Hub
 
 > **Feature:** Role-Based Access Control (RBAC)  
-> **Status:** ✅ Implemented  
-> **Last Updated:** February 13, 2026  
-> **Version:** 2.1
+> **Status:** ✅ Staff CRUD + permissions wired end-to-end
+> **Last Updated:** May 18, 2026
+> **Version:** 3.0
 
 > **Scope:** Staff-level permissions (Layer 1). For chain-level outlet restrictions (Layer 2: OutletPolicy), see [Multi-Chain Permissions](../multi-chain-permissions/).
 
@@ -23,11 +23,16 @@
 
 ### What Works
 
+- Server-side staff list/create/update/remove flow via `src/app/api/staff/route.ts`
+- Owner-triggered staff password reset/passcode flow via `src/app/api/staff/password-reset/route.ts`
+- Staff can be created with email, Staff ID, and phone login aliases on one account; owner reset creates a temporary passcode
+- Server-side role create/update/deactivate flow via `src/app/api/staff/roles/route.ts`
+- Desktop and mobile staff management use the same API contract
 - UI for creating/editing roles with feature-flag permissions
 - Single role per store (simplified from multi-role)
 - Simple role IDs: `owner`, `manager`, `staff` (no storeId suffix)
 - Centralized permission constants (`src/constants/permissions.ts`)
-- Firebase claims include role
+- Staff operations enforce `canManageUsers`; role/store assignment enforces `canAssignRoles`
 
 ### Implementation ✅ (Feature-Flag Style)
 
@@ -105,6 +110,11 @@ STAFF (User)
 | **Permissions UI**          | `src/components/templates/main-app/users/permissions/index.tsx`               |
 | **Role Form**               | `src/components/templates/main-app/users/permissions/roleDetailsModal.tsx`    |
 | **User Role Mapping**       | `src/components/templates/main-app/users/usersList/userForm/rolesMapping.tsx` |
+| **Staff API**               | `src/app/api/staff/route.ts`                                                  |
+| **Staff Password Reset/Passcode API** | `src/app/api/staff/password-reset/route.ts`                                   |
+| **Role API**                | `src/app/api/staff/roles/route.ts`                                            |
+| **Staff Server Contract**   | `src/lib/staffManagement/server.ts`                                           |
+| **Staff Client Helpers**    | `src/lib/staffManagement/client.ts`                                           |
 | **Default Data**            | `src/data/rolesPermissionsInitialData.ts`                                     |
 | **Set Claims API**          | `src/app/api/auth/set-claims/route.ts`                                        |
 | **Onboarding API**          | `src/app/api/onboarding/create-subscription/route.ts`                         |
@@ -125,6 +135,19 @@ STAFF (User)
 | **P1**   | Multi-outlet permissions (2 new flags)  | ✅ Done |
 | **P1**   | Outlet policy enforcement               | ✅ Done |
 | **P1**   | UI permission checks via context        | ✅ Done |
+| **P0**   | Staff list/create/update/remove API     | ✅ Done |
+| **P0**   | Desktop staff CRUD wired to API         | ✅ Done |
+| **P0**   | Mobile staff CRUD wired to API          | ✅ Done |
+| **P0**   | Role editor wired to API                | ✅ Done |
+
+## Production Rules
+
+- Staff users are never hard-deleted from Firebase Auth or Firestore. Removing the last store mapping deactivates and soft-deletes the user document.
+- A user can belong to one tenant and multiple stores inside that tenant.
+- Store role IDs are validated against the target store before staff creation or update.
+- The `owner` role is locked from role-editor changes so owners cannot remove the last full-access role definition.
+- A staff member with the last active owner mapping for a store cannot be deactivated, removed, or demoted until another active owner exists.
+- `platformRole` remains separate from store-scoped `role`; `active` / `isVerified` are lifecycle fields, not authorization.
 
 ---
 

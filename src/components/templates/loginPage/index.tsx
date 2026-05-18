@@ -31,10 +31,10 @@ const validateEmail = (email: string) => {
 
 const validateLoginIdentifier = (value: string) => {
   const identifier = (value || '').trim();
-  if (!identifier) return { valid: false, reason: 'Email or phone is required' };
+  if (!identifier) return { valid: false, reason: 'Email, phone, or staff ID is required' };
   if (identifier.includes('@')) return validateEmail(identifier);
   const phoneUsername = identifier.replace(/[^0-9]/g, '');
-  if (phoneUsername.length < 10) return { valid: false, reason: 'Enter a valid email or phone number' };
+  if (phoneUsername.length < 10) return { valid: false, reason: 'Enter a valid email, phone, or staff ID' };
   return { valid: true };
 };
 
@@ -57,7 +57,9 @@ function LoginPage() {
   const [claimInfo, setClaimInfo] = useState<{ businessName: string; phone: string | null } | null>(null);
   const [claimProcessing, setClaimProcessing] = useState(false);
   const [showClaimEmailSetup, setShowClaimEmailSetup] = useState(false);
+  const [showClaimPhoneSetup, setShowClaimPhoneSetup] = useState(false);
   const [claimSetupSuccess, setClaimSetupSuccess] = useState(false);
+  const [claimSetupLoginLabel, setClaimSetupLoginLabel] = useState('your login details');
 
   // Check for claim token in URL on mount (gated by feature flag)
   useEffect(() => {
@@ -221,10 +223,50 @@ function LoginPage() {
       if (res.ok && data.success) {
         localStorage.removeItem('pendingClaimToken');
         setClaimSetupSuccess(true);
+        setClaimSetupLoginLabel('your email and password');
         dispatch(showSuccessToast('Account created! You can now log in.'));
         // Reset claim state so normal login form shows
         setClaimInfo(null);
         setShowClaimEmailSetup(false);
+      } else {
+        dispatch(showErrorToast(data.error || 'Failed to set up account'));
+      }
+    } catch (err) {
+      dispatch(showErrorToast('An error occurred. Please try again.'));
+    } finally {
+      dispatch(stopLoader(requestId));
+    }
+  };
+
+  const handleClaimPhoneSetup = async (values: any) => {
+    const requestId = "LoginPage:claimPhoneSetup";
+    try {
+      dispatch(startLoader(requestId));
+      const claimToken = localStorage.getItem('pendingClaimToken');
+      if (!claimToken) {
+        dispatch(showErrorToast('Claim token missing. Please use the link from your message.'));
+        return;
+      }
+
+      const res = await fetch('/api/auth/claim-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          claimToken,
+          password: values.password,
+          name: claimInfo?.businessName,
+          useWhatsappPhone: true,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        localStorage.removeItem('pendingClaimToken');
+        setClaimSetupSuccess(true);
+        setClaimSetupLoginLabel('your WhatsApp number and passcode');
+        dispatch(showSuccessToast('Account created! You can now log in.'));
+        setClaimInfo(null);
+        setShowClaimPhoneSetup(false);
       } else {
         dispatch(showErrorToast(data.error || 'Failed to set up account'));
       }
@@ -345,7 +387,7 @@ function LoginPage() {
               <>
                 <h3 className={`${styles.heading}`} style={{ color: token.colorSuccess }}>Account created!</h3>
                 <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>Menulist Ai</h1>
-                <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>You can now log in with your email and password below</div>
+                <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>You can now log in with {claimSetupLoginLabel} below</div>
               </>
             ) : (
               <>
@@ -413,6 +455,45 @@ function LoginPage() {
                   </Space>
                 </Form>
               </>
+            ) : claimInfo && showClaimPhoneSetup && !claimSetupSuccess ? (
+              <>
+                <Form
+                  name="claim_phone_setup"
+                  className={`${styles.form} login-form`}
+                  initialValues={{}}
+                  onFinish={handleClaimPhoneSetup}
+                  validateMessages={validateMessages}
+                  style={{ marginTop: 16 }}
+                >
+                  <Form.Item
+                    className={styles.formItem}
+                    name="password"
+                    rules={[{ required: true, message: 'Please choose a passcode!' }, { min: 6, message: 'Passcode must be at least 6 characters' }]}
+                  >
+                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Choose passcode" />
+                  </Form.Item>
+                  <Form.Item
+                    className={styles.formItem}
+                    name="confirmPassword"
+                    dependencies={['password']}
+                    rules={[
+                      { required: true, message: 'Please confirm your passcode!' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue('password') === value) return Promise.resolve();
+                          return Promise.reject(new Error('Passcodes do not match'));
+                        },
+                      }),
+                    ]}
+                  >
+                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Confirm passcode" />
+                  </Form.Item>
+                  <Space direction="vertical" align="center" style={{ width: '100%' }}>
+                    <Button type="primary" size="large" htmlType="submit" style={{ width: 220 }}>Use WhatsApp Number</Button>
+                    <Button type="link" onClick={() => setShowClaimPhoneSetup(false)}>Back to options</Button>
+                  </Space>
+                </Form>
+              </>
             ) : claimInfo && !claimSetupSuccess ? (
               /* ━━━ CLAIM FLOW: Choose Google or Email ━━━ */
               <>
@@ -432,6 +513,11 @@ function LoginPage() {
                 <Button type="default" size="large" style={{ width: '100%' }} onClick={() => setShowClaimEmailSetup(true)}>
                   Set up with email and password
                 </Button>
+                {claimInfo.phone ? (
+                  <Button type="default" size="large" style={{ width: '100%', marginTop: 12 }} onClick={() => setShowClaimPhoneSetup(true)}>
+                    Use WhatsApp number {claimInfo.phone}
+                  </Button>
+                ) : null}
               </>
             ) : (
               /* ━━━ NORMAL LOGIN FLOW ━━━ */
@@ -460,13 +546,13 @@ function LoginPage() {
                     className={styles.formItem}
                     name="email"
                     rules={[
-                      { required: true, message: 'Please input your email or phone!' },
+                      { required: true, message: 'Please input your email, phone, or staff ID!' },
                       {
                         validator: async (_, value) => {
                           if (!value) return Promise.resolve();
                           const result = validateLoginIdentifier(value);
                           if (!result.valid) {
-                            return Promise.reject(new Error(result.reason || 'Invalid email or phone'));
+                            return Promise.reject(new Error(result.reason || 'Invalid email, phone, or staff ID'));
                           }
                           return Promise.resolve();
                         }
@@ -479,7 +565,7 @@ function LoginPage() {
                       size="large"
                       prefix={<UserOutlined className="site-form-item-icon" />}
                       allowClear
-                      placeholder="Email or phone"
+                      placeholder="Email, phone, or staff ID"
                     />
                   </Form.Item>
                   <Form.Item

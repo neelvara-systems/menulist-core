@@ -34,6 +34,9 @@ const HeaderComponent = () => {
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
     const router = useRouter();
     const formatter = useFormatter();
+    const userLoginLabel = userData?.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${userData?.staffLoginId || userData?.loginUsername || ''}`
+        : userData?.displayEmail || userData?.phone || userData?.phoneUsername || userData?.email;
 
     const [notifications, setNotifications] = useState([
         { type: "Order", description: "New Order Placed", isReaded: false, status: "success" },
@@ -90,7 +93,7 @@ const HeaderComponent = () => {
                             <ProfileActionsModal userData={userData}>
                                 {showUserDetailsInHeader && <div className={`${styles.actionsWrap} ${styles.dateWrap}`}>
                                     <TextElement styles={{ margin: "7px 0 0 0", fontSize: "12px", lineHeight: "12px" }} text={`${userData?.name}`} type='primary' size={"medium"} />
-                                    <TextElement styles={{ margin: "unset", fontSize: "10px" }} text={`${userData?.email}`} />
+                                    <TextElement styles={{ margin: "unset", fontSize: "10px" }} text={`${userLoginLabel}`} />
                                 </div>}
                                 <Suspense fallback={<div><LuLoader /></div>}>
                                     <Badge dot={true} style={{ top: "3px", right: "8px", background: "green" }}>

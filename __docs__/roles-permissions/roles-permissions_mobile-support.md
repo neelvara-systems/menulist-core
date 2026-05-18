@@ -1,6 +1,6 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** February 16, 2026 (v2 — mobile management implemented)
+**Last Updated:** May 18, 2026 (v3 — mobile wired to server APIs)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage roles and permissions from phone
 
 ---
@@ -28,11 +28,19 @@
 | Toggle individual permissions  | `MobileRolesScreen` (switch per perm) | ✅     |
 | Toggle category permissions    | `MobileRolesScreen` (checkbox "All")  | ✅     |
 | Add custom role                | `MobileRolesScreen` (add button)      | ✅     |
-| Delete role                    | `MobileRolesScreen` (confirmation)    | ✅     |
+| Deactivate role                | `MobileRolesScreen` (confirmation)    | ✅     |
+| Add staff                      | `MobileUsersScreen`                   | ✅     |
+| Reset staff password/passcode    | `MobileUsersScreen`                   | ✅     |
+| Staff/owner change own password  | `MobileMoreScreen` → Account access   | ✅     |
+| Activate/deactivate staff      | `MobileUsersScreen`                   | ✅     |
+| Change staff role              | `MobileUsersScreen`                   | ✅     |
+| Remove staff from store        | `MobileUsersScreen`                   | ✅     |
 
 ## DAL Parity
 
-- Uses same `updateStore({ roles: [...] })` as desktop `roleDetailsModal.tsx`
+- Uses same `/api/staff`, `/api/staff/password-reset`, and `/api/staff/roles` server contracts as desktop
+- Mobile add/reset supports email, phone, and Staff ID aliases. Owner reset shows a temporary passcode once.
+- Mobile self-service password change uses the shared `/api/auth/change-password` route from More → Account access. This works for password/passcode accounts when the current password/passcode is known.
 - Same `storeDetails.roles` data source
 - Same `PERMISSION_CATEGORIES_CONFIG` and `PERMISSION_LABELS` constants
 - Same `StoreRoleDataType` type
@@ -43,10 +51,12 @@
 | Purpose              | Path                                                            |
 | -------------------- | --------------------------------------------------------------- |
 | Mobile roles screen  | `src/components/mobile/screens/MobileRolesScreen.tsx`           |
+| Mobile staff screen  | `src/components/mobile/screens/MobileUsersScreen.tsx`           |
+| Mobile account access | `src/components/mobile/screens/MobileMoreScreen.tsx`           |
 | Desktop equivalent   | `src/components/templates/main-app/users/permissions/index.tsx` |
 | Permission constants | `src/data/rolesPermissionsInitialData.ts`                       |
 | Role types           | `src/types/platform/roles.ts`                                   |
 
 ## RBAC Enforcement (Inherited)
 
-All DAL functions check permissions via `getActiveSession()`. Mobile screens calling the same DAL functions automatically inherit permission enforcement.
+Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store checks, `canManageUsers`, `canAssignRoles`, role validation, and last-owner protection.

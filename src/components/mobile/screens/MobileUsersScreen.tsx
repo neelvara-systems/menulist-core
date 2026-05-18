@@ -1,11 +1,11 @@
 'use client'
 
-import { updatePlatformUser } from '@database/users';
+import { createStaffUser, fetchStaffUsers, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
 import { useTranslations } from 'next-intl';
-import { useContext, useState } from 'react';
-import { LuMail, LuPhone, LuPlus, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
+import { useContext, useEffect, useState } from 'react';
+import { LuKeyRound, LuMail, LuPhone, LuPlus, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -15,83 +15,204 @@ interface MobileUsersScreenProps {
 
 export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const t = useTranslations('MobileUsers');
-    const { usersList, setUsersList, storeDetails } = useContext(PlatformGlobalDataContext);
+    const { usersList, setUsersList, storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const [showAddUser, setShowAddUser] = useState(false);
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPhone, setNewUserPhone] = useState('');
     const [newUserRole, setNewUserRole] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [isUpdatingUser, setIsUpdatingUser] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserDataType | null>(null);
+    const [staffStores, setStaffStores] = useState<any[]>([]);
 
     const users: UserDataType[] = usersList || [];
-    const roles = storeDetails?.roles || [];
+    const roles = staffStores.find((store) => store.storeId === storeDetails?.storeId)?.roles || storeDetails?.roles || [];
+    const canManageUsers = userPermissions?.canManageUsers === true;
+    const canAssignRoles = userPermissions?.canAssignRoles === true;
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!storeDetails?.tenantId || !storeDetails?.storeId || !canManageUsers) {
+            setUsersList([]);
+            setStaffStores([]);
+            return;
+        }
+
+        setIsLoadingUsers(true);
+        fetchStaffUsers(storeDetails.tenantId, storeDetails.storeId)
+            .then((data) => {
+                if (cancelled) return;
+                setUsersList(data.users || []);
+                setStaffStores(data.stores || []);
+            })
+            .catch((err: any) => {
+                if (!cancelled) Toast.show({ content: err?.message || 'Failed to load staff', duration: 2000 });
+            })
+            .finally(() => {
+                if (!cancelled) setIsLoadingUsers(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [canManageUsers, setUsersList, storeDetails?.storeId, storeDetails?.tenantId, t]);
 
     const handleAddUser = async () => {
-        if (!newUserEmail.trim()) {
-            Toast.show({ content: t('emailRequired'), duration: 1500 });
+        if (!newUserEmail.trim() && !newUserName.trim()) {
+            Toast.show({ content: 'Enter a name or email', duration: 1500 });
             return;
         }
 
         setIsAdding(true);
         try {
-            const res = await fetch('/api/auth/create-staff', {
-                body: JSON.stringify({
-                    email: newUserEmail.trim().toLowerCase(),
-                    name: newUserName.trim() || undefined,
-                    role: newUserRole || undefined,
-                    storeId: storeDetails?.storeId,
-                    storeName: storeDetails?.name,
-                    tenantId: storeDetails?.tenantId,
-                }),
-                headers: { 'Content-Type': 'application/json' },
-                method: 'POST',
-            });
-            const data = await res.json();
-
-            if (!res.ok) {
-                const errorMessages: Record<string, string> = {
-                    ALREADY_ASSIGNED: 'User already assigned to this store',
-                    EMAIL_EXISTS: 'Email already used',
-                    EMAIL_OTHER_TENANT: 'This email belongs to another business',
-                    INVALID_EMAIL: 'Invalid email address',
-                };
-                Toast.show({ content: errorMessages[data.code] || data.error || t('failedToAdd'), duration: 2000 });
-                return;
-            }
-
-            const savedUser: any = {
-                active: true,
-                email: data.email,
-                id: data.userId,
-                name: newUserName.trim() || data.email?.split('@')[0],
+            const data = await createStaffUser({
+                email: newUserEmail.trim().toLowerCase() || undefined,
+                name: newUserName.trim() || undefined,
+                phoneNumber: newUserPhone.trim() || undefined,
+                role: newUserRole || undefined,
                 storeId: storeDetails?.storeId,
-                storeIds: [storeDetails?.storeId],
-                stores: [{ name: storeDetails?.name, role: newUserRole || '', storeId: storeDetails?.storeId }],
+                storeName: storeDetails?.name,
                 tenantId: storeDetails?.tenantId,
-            };
+            });
 
-            setUsersList([...users, savedUser]);
-            Toast.show({ content: data.mode === 'existing_user_added_to_store' ? 'Existing staff added to store' : 'Staff member created', duration: 1500 });
+            setUsersList([...users, data.user]);
+            if (data.temporaryPasscode && data.staffLoginId) {
+                void Dialog.alert({
+                    confirmText: 'Done',
+                    content: (
+                        <Flex gap={8} vertical>
+                            <Text>Share these details with the staff member. This passcode is shown once.</Text>
+                            <Text strong>Staff ID: {data.staffLoginId}</Text>
+                            <Text strong>Passcode: {data.temporaryPasscode}</Text>
+                        </Flex>
+                    ),
+                    title: 'Staff login details',
+                });
+                Toast.show({ content: 'Staff ID and passcode created', duration: 1800 });
+            } else {
+                Toast.show({
+                    content: data.mode === 'existing_user_added_to_store'
+                        ? 'Existing staff added to store'
+                        : data.passwordResetEmailSent === false
+                            ? 'Staff created. Setup email was not sent.'
+                            : 'Staff member created. Setup email sent.',
+                    duration: 1800,
+                });
+            }
             setShowAddUser(false);
             setNewUserName('');
             setNewUserEmail('');
             setNewUserPhone('');
             setNewUserRole('');
         } catch (err: any) {
-            Toast.show({ content: err?.message || 'Failed to add user', duration: 2000 });
+            const errorMessages: Record<string, string> = {
+                ALREADY_ASSIGNED: 'User already assigned to this store',
+                EMAIL_EXISTS: 'Email already used',
+                EMAIL_OTHER_TENANT: 'This email belongs to another business',
+                INVALID_EMAIL: 'Invalid email address',
+                ROLE_ASSIGNMENT_FORBIDDEN: 'You cannot assign this role',
+            };
+            Toast.show({ content: errorMessages[err.code] || err?.message || 'Failed to add user', duration: 2000 });
         } finally {
             setIsAdding(false);
         }
     };
 
     const handleToggleActive = async (user: UserDataType) => {
+        setIsUpdatingUser(true);
         try {
-            await updatePlatformUser({ active: !user.active, id: user.id } as any);
-            setUsersList(users.map((item: any) => item.id === user.id ? { ...item, active: !item.active } : item));
+            const response = await updateStaffUser({
+                active: !user.active,
+                tenantId: storeDetails?.tenantId,
+                userId: user.id,
+            });
+            setUsersList(users.map((item: any) => item.id === user.id ? response.user : item));
             Toast.show({ content: user.active ? t('userDeactivated') : t('userActivated'), duration: 1500 });
-        } catch {
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+        } catch (err: any) {
+            Toast.show({ content: err?.message || t('failedToUpdate'), duration: 2000 });
+        } finally {
+            setIsUpdatingUser(false);
+        }
+    };
+
+    const handleChangeRole = async (user: UserDataType, roleId: string) => {
+        if (!canAssignRoles) return;
+        setIsUpdatingUser(true);
+        try {
+            const nextStores = ((user as any).stores || []).map((store: any) => (
+                store.storeId === storeDetails?.storeId ? { ...store, role: roleId } : store
+            ));
+            const response = await updateStaffUser({
+                storeId: (user as any).storeId,
+                stores: nextStores,
+                tenantId: storeDetails?.tenantId,
+                userId: user.id,
+            });
+            setUsersList(users.map((item: any) => item.id === user.id ? response.user : item));
+            setSelectedUser(response.user as any);
+            Toast.show({ content: 'Staff member updated', duration: 1200 });
+        } catch (err: any) {
+            Toast.show({ content: err?.message || t('failedToUpdate'), duration: 2000 });
+        } finally {
+            setIsUpdatingUser(false);
+        }
+    };
+
+    const handleRemoveUser = async (user: UserDataType) => {
+        setIsUpdatingUser(true);
+        try {
+            const response = await removeStaffFromStore({
+                storeId: storeDetails?.storeId,
+                tenantId: storeDetails?.tenantId,
+                userId: user.id,
+            });
+            setUsersList(response.user?.deleted
+                ? users.filter((item: any) => item.id !== user.id)
+                : users.map((item: any) => item.id === user.id ? response.user : item));
+            setSelectedUser(null);
+            Toast.show({ content: 'Staff member removed', duration: 1500 });
+        } catch (err: any) {
+            Toast.show({ content: err?.message || t('failedToUpdate'), duration: 2000 });
+        } finally {
+            setIsUpdatingUser(false);
+        }
+    };
+
+    const handleResetPassword = async (user: UserDataType) => {
+        setIsUpdatingUser(true);
+        try {
+            const data = await requestStaffPasswordReset({
+                storeId: storeDetails?.storeId,
+                tenantId: storeDetails?.tenantId,
+                userId: user.id,
+            });
+            if (data.user) {
+                setUsersList(users.map((item: any) => item.id === user.id ? data.user : item));
+                setSelectedUser(data.user as any);
+            }
+            if (data.temporaryPasscode && data.staffLoginId) {
+                void Dialog.alert({
+                    confirmText: 'Done',
+                    content: (
+                        <Flex gap={8} vertical>
+                            <Text>Share these details with the staff member. This passcode is shown once.</Text>
+                            <Text strong>Staff ID: {data.staffLoginId}</Text>
+                            <Text strong>Passcode: {data.temporaryPasscode}</Text>
+                        </Flex>
+                    ),
+                    title: 'New staff passcode',
+                });
+                Toast.show({ content: 'Temporary passcode created', duration: 1500 });
+            } else {
+                Toast.show({ content: 'Staff access reset', duration: 1500 });
+            }
+        } catch (err: any) {
+            Toast.show({ content: err?.message || 'Could not reset staff access', duration: 2000 });
+        } finally {
+            setIsUpdatingUser(false);
         }
     };
 
@@ -102,7 +223,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
         return role?.name || storeMapping.role;
     };
 
-    if (!storeDetails) {
+    if (!storeDetails || isLoadingUsers) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
                 <MobileSettingsScreenHeader
@@ -111,6 +232,21 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                     title={t('title')}
                 />
                 <Flex align="center" flex={1} justify="center"><DotLoading color="primary" /></Flex>
+            </Flex>
+        );
+    }
+
+    if (!canManageUsers) {
+        return (
+            <Flex style={{ minHeight: '100%' }} vertical>
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
+                    title={t('title')}
+                />
+                <Flex align="center" flex={1} justify="center" style={{ padding: 16 }}>
+                    <Text type="secondary">Your current role cannot manage staff for this store.</Text>
+                </Flex>
             </Flex>
         );
     }
@@ -140,7 +276,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                 {users.map((user: any) => (
                                     <List.Item
                                         arrow
-                                        description={<Flex align="center" gap={6}><Text type="secondary">{user.email}</Text>{!user.active ? <Tag color="default">Inactive</Tag> : null}</Flex>}
+                                        description={<Flex align="center" gap={6}><Text type="secondary">{user.staffAuthMode === 'owner_passcode' ? user.staffLoginId || user.loginUsername : user.displayEmail || user.email}</Text>{!user.active ? <Tag color="default">Inactive</Tag> : null}</Flex>}
                                         extra={<Tag color="primary">{getUserRoleName(user)}</Tag>}
                                         key={user.id}
                                         onClick={() => setSelectedUser(user)}
@@ -170,21 +306,64 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                 {(selectedUser as any).profileImage ? <Avatar size={48} src={(selectedUser as any).profileImage} /> : <Avatar icon={<LuUser size={20} />} size={48} />}
                                 <Flex gap={2} vertical>
                                     <Title level={4} style={{ margin: 0 }}>{(selectedUser as any).name || t('unnamed')}</Title>
-                                    <Text type="secondary">{(selectedUser as any).email}</Text>
+                                    <Text type="secondary">{(selectedUser as any).staffAuthMode === 'owner_passcode' ? (selectedUser as any).staffLoginId || (selectedUser as any).loginUsername : (selectedUser as any).displayEmail || (selectedUser as any).email}</Text>
                                 </Flex>
                             </Flex>
 
                             <Card>
                                 <List>
-                                    <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).email || 'No email'}</Text>} />
+                                    <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).staffAuthMode === 'owner_passcode' ? `Staff ID: ${(selectedUser as any).staffLoginId || (selectedUser as any).loginUsername}` : (selectedUser as any).displayEmail || (selectedUser as any).email || 'No email'}</Text>} />
+                                    {(selectedUser as any).staffAuthMode !== 'owner_passcode' && ((selectedUser as any).staffLoginId || (selectedUser as any).loginUsername) ? (
+                                        <List.Item prefix={<LuKeyRound color="#9ca3af" size={16} />} title={<Text>Staff ID: {(selectedUser as any).staffLoginId || (selectedUser as any).loginUsername}</Text>} />
+                                    ) : null}
                                     <List.Item prefix={<LuPhone color="#9ca3af" size={16} />} title={<Text>{(selectedUser as any).phoneNumber ? `${(selectedUser as any).dialCode || ''} ${(selectedUser as any).phoneNumber}` : 'No phone'}</Text>} />
                                     <List.Item prefix={(selectedUser as any).active ? <LuUserCheck color="#22c55e" size={16} /> : <LuUserX color="#f87171" size={16} />} title={<Text>{(selectedUser as any).active ? t('active') : t('deactivated')}</Text>} />
                                 </List>
                             </Card>
 
+                            <Card title={t('role')}>
+                                <Flex gap={8} wrap>
+                                    {roles.map((role: any) => (
+                                        <Button
+                                            disabled={!canAssignRoles || isUpdatingUser}
+                                            fill={getUserRoleName(selectedUser as UserDataType) === role.name || (selectedUser as any)?.stores?.some((store: any) => store.storeId === storeDetails?.storeId && store.role === role.id) ? 'solid' : 'outline'}
+                                            key={role.id}
+                                            onClick={() => void handleChangeRole(selectedUser as UserDataType, role.id)}
+                                            size="small"
+                                        >
+                                            {role.name}
+                                        </Button>
+                                    ))}
+                                </Flex>
+                            </Card>
+
                             <Button
                                 block
                                 fill="outline"
+                                loading={isUpdatingUser}
+                                onClick={() => {
+                                    void Dialog.confirm({
+                                        cancelText: t('cancel'),
+                                        confirmText: 'Create passcode',
+                                        content: 'A new temporary passcode will show once. Share it with the staff member.',
+                                        onConfirm: async () => {
+                                            await handleResetPassword(selectedUser);
+                                        },
+                                        title: 'Reset staff passcode?',
+                                    });
+                                }}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuKeyRound size={14} />
+                                    <Text>Reset password</Text>
+                                </Flex>
+                            </Button>
+
+                            <Button
+                                block
+                                fill="outline"
+                                loading={isUpdatingUser}
                                 onClick={() => {
                                     void Dialog.confirm({
                                         cancelText: t('cancel'),
@@ -203,6 +382,30 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                 style={(selectedUser as any).active ? { borderColor: '#dc2626', color: '#dc2626' } : undefined}
                             >
                                 {(selectedUser as any).active ? t('deactivate') : t('activate')}
+                            </Button>
+
+                            <Button
+                                block
+                                fill="outline"
+                                loading={isUpdatingUser}
+                                onClick={() => {
+                                    void Dialog.confirm({
+                                        cancelText: t('cancel'),
+                                        confirmText: 'Remove',
+                                        content: 'This removes the staff member from this store. Their account is kept for audit history.',
+                                        onConfirm: async () => {
+                                            await handleRemoveUser(selectedUser);
+                                        },
+                                        title: 'Remove staff member?',
+                                    });
+                                }}
+                                size="large"
+                                style={{ borderColor: '#dc2626', color: '#dc2626' }}
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuTrash2 size={14} />
+                                    <Text>Remove from store</Text>
+                                </Flex>
                             </Button>
                         </Flex>
                     </Flex>
@@ -225,7 +428,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('emailLabel')}</Text>
-                                <Text type="secondary">Use the email they will sign in with. It should be active and accessible by that person.</Text>
+                                <Text type="secondary">Leave blank to create a staff ID and passcode.</Text>
                                 <Input onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" value={newUserEmail} />
                             </Flex>
                         </Card>
@@ -250,7 +453,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                         ) : null}
                         <Flex gap={8}>
                             <Button block fill="outline" onClick={() => setShowAddUser(false)} size="large">{t('cancel')}</Button>
-                            <Button block disabled={!newUserEmail.trim()} loading={isAdding} onClick={() => void handleAddUser()} size="large">{t('add')}</Button>
+                            <Button block disabled={!newUserEmail.trim() && !newUserName.trim()} loading={isAdding} onClick={() => void handleAddUser()} size="large">{t('add')}</Button>
                         </Flex>
                     </Flex>
                 </Flex>

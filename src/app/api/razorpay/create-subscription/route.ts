@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
-import { createInitialSubscription } from "@database/subscriptions";
+import { createInitialSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { logger } from "@lib/monitoring/logger";

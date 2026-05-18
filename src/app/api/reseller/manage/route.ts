@@ -5,7 +5,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import {
     getAllResellerProfiles,
     getResellerProfileById,
-} from "@database/reseller";
+} from "@database/reseller/server";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { buildSecurityContext } from "@lib/security/securityContext";

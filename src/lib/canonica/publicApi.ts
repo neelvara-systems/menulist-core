@@ -53,9 +53,12 @@ export async function authenticateCanonicaPublicApi(
     if (!result) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
+    if (result.credentialSource !== 'publicApi') {
+        return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
+    }
 
     const { storeData, storeId } = result;
-    const publicApi = storeData.publicApi || {};
+    const publicApi = result.credential || storeData.publicApi || {};
     if (publicApi.productId && publicApi.productId !== 'CN') {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }

@@ -10,23 +10,26 @@ import { Fragment, useContext } from 'react';
 import { LuTrash } from 'react-icons/lu';
 const { Text } = Typography;
 
-function StoresMapping({ userDetails, onChangeValue }) {
+function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, onChangeValue }) {
 
     const { tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext)
+    const storesList = staffStores.length
+        ? staffStores.map((store) => ({ ...store, storeDetails: store }))
+        : (tenantDetails?.storesList || []);
 
     const onChangeStoreValue = (index, from, value) => {
         const userCopy: UserDataType = removeObjRef(userDetails);
         userCopy.stores[index][from] = value;
         if (from == "storeId") {
-            const storeIndex = tenantDetails?.storesList.findIndex((s) => s.storeId == value);
-            const storeDetails = tenantDetails?.storesList[storeIndex];
+            const storeIndex = storesList.findIndex((s) => s.storeId == value);
+            const storeDetails = storesList[storeIndex];
             userCopy.stores[index].name = storeDetails?.name;
             userCopy.storeIds = Boolean(userCopy.stores?.length) ? userCopy.stores.map((s) => s.storeId) : [];
 
             if (!userCopy.storeId) {
                 userCopy.storeId = value
             }
-            if (!Boolean(storeDetails.storeDetails)) {//if storedetails is not fetched then fetch it on run time when user selected the store
+            if (!staffStores.length && !Boolean(storeDetails.storeDetails)) {//if storedetails is not fetched then fetch it on run time when user selected the store
                 getStoreById(storeDetails.storeId).then((store: StoreDataType) => {
                     tenantDetails.storesList[storeIndex].storeDetails = store;
                     setTenantDetails(removeObjRef(tenantDetails))
@@ -71,9 +74,10 @@ function StoresMapping({ userDetails, onChangeValue }) {
                                         defaultValue={mappedStore?.storeId}
                                         value={mappedStore?.storeId}
                                         style={{ width: "100%" }}
+                                        disabled={!canAssignRoles}
                                         placeholder="Select Store"
                                         onChange={(storeId) => onChangeStoreValue(index, 'storeId', storeId)}
-                                        options={tenantDetails?.storesList?.map((s) => ({ label: `${s.storeId}-${s.name}`, value: s.storeId }))}
+                                        options={storesList?.map((s) => ({ label: `${s.storeId}-${s.name}`, value: s.storeId }))}
                                     />
                                 </Flex>
 
@@ -82,15 +86,16 @@ function StoresMapping({ userDetails, onChangeValue }) {
                                         allowClear
                                         style={{ width: '100%' }}
                                         placeholder="Please select role"
+                                        disabled={!canAssignRoles}
                                         defaultValue={mappedStore?.role || ''}
                                         value={mappedStore?.role || ''}
                                         onChange={(value) => onChangeStoreValue(index, 'role', value)}
-                                        options={(tenantDetails.storesList.find(s => s.storeId == mappedStore?.storeId))?.storeDetails?.roles?.map((role) => ({ label: role.name, value: role.id }))}
+                                        options={(storesList.find(s => s.storeId == mappedStore?.storeId))?.storeDetails?.roles?.filter((role) => role.active !== false)?.map((role) => ({ label: role.name, value: role.id }))}
                                     />
                                 </FormElementWrapper>
 
                                 <Flex justify='flex-end'>
-                                    <Button danger type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Delete Store Mapping</Button>
+                                    <Button danger disabled={!canAssignRoles} type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Delete Store Mapping</Button>
                                 </Flex>
                             </Flex>
                         </Card>
@@ -98,7 +103,7 @@ function StoresMapping({ userDetails, onChangeValue }) {
                 })}
             </>}
             <Flex justify={!Boolean(userDetails?.stores?.length) ? "center" : 'flex-end'}>
-                {(tenantDetails?.storesList?.length > 1 && tenantDetails?.storesList.length != userDetails?.stores?.length) && <Button type="primary" ghost onClick={onClickAddStore}>Add Store</Button>}
+                {(canAssignRoles && storesList?.length > 1 && storesList.length != userDetails?.stores?.length) && <Button type="primary" ghost onClick={onClickAddStore}>Add Store</Button>}
             </Flex>
 
             {Boolean(userDetails?.stores?.length) && userDetails?.stores?.length > 1 && <>
@@ -110,6 +115,7 @@ function StoresMapping({ userDetails, onChangeValue }) {
                                 defaultValue={userDetails?.storeId}
                                 value={userDetails?.storeId}
                                 style={{ width: "100%" }}
+                                disabled={!canAssignRoles}
                                 placeholder="Select Default Store"
                                 onChange={(storeId) => onChangeValue('storeId', storeId)}
                                 options={userDetails?.stores?.map((s) => ({ label: s.name, value: s.storeId }))}

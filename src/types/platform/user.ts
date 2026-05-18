@@ -1,5 +1,6 @@
 import { GlobalAddressType } from "@type/common";
 import type { PlatformBlockDetails } from "./blocking";
+import type { ProductId } from "@constant/product";
 
 export type UserStoreMappingType = {
     storeId: number;
@@ -42,10 +43,16 @@ export type UserDataType = {
     deletedAt: string;
 
     email: string;
+    displayEmail?: string;
     name: string;
     countryCode?: string;
     phoneNumber: string;
     dialCode: string;
+    phoneUsername?: string;
+    loginUsername?: string;
+    staffAuthMode?: "email" | "owner_passcode";
+    staffLoginId?: string;
+    phoneLoginEnabled?: boolean;
 
     alternatePhoneNumber?: {
         countryCode?: string;
@@ -69,6 +76,8 @@ export type UserDataType = {
 
     tenantId: number;
     storeId: number;//defalt store id
+    pId?: ProductId;
+    productId?: ProductId;
     stores: UserStoreMappingType[],
     storeIds: number[],
 

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { aiEnhancementPacksList } from "@data/PlatformPlansList";
-import { getActiveSubscriptionForStore } from "@database/subscriptions";
+import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";

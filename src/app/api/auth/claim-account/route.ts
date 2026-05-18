@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Claim Account API — Link Account to Messaging-Onboarded Business
  *
- * Two modes:
+ * Three modes:
  *
  * MODE 1: Google OAuth (requires active NextAuth session)
  *   Body: { claimToken }
@@ -13,13 +13,20 @@ export const dynamic = 'force-dynamic';
  *   Creates Firebase Auth user, updates messaging user doc with real email.
  *   Owner can then login via email/password OR Google.
  *
+ * MODE 3: WhatsApp Phone + Passcode Setup (no session required — token IS auth)
+ *   Body: { claimToken, password, name?, useWhatsappPhone: true }
+ *   Creates/updates Firebase Auth user with the generated messaging email.
+ *   Owner logs in with the WhatsApp phone number and passcode.
+ *
  * Token never expires (256-bit random, brute force impossible).
  *
  * @see __docs__/auth/README.md — Messaging Onboarding Login Flow
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { getGeneratedEmail } from "@constant/urls";
 import { authOptions } from "@lib/auth";
+import { buildPhoneUsername, isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { getServerSession } from "next-auth";
@@ -33,6 +40,13 @@ const ClaimWithPasswordSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().max(100).optional(),
+});
+
+const ClaimWithWhatsappPhoneSchema = z.object({
+  claimToken: z.string().min(20),
+  password: z.string().min(6),
+  name: z.string().max(100).optional(),
+  useWhatsappPhone: z.literal(true),
 });
 
 async function linkClaimedSubscriptions(params: {
@@ -63,6 +77,40 @@ async function linkClaimedSubscriptions(params: {
   await batch.commit();
 }
 
+const getMessagingPhone = (messagingUser: FirebaseFirestore.DocumentData) => (
+  String(messagingUser.phone || messagingUser.providerDisplayId || "").trim()
+);
+
+const createOrUpdateFirebasePasswordUser = async (params: {
+  displayName?: string;
+  email: string;
+  emailVerified: boolean;
+  password: string;
+  updateIfExists?: boolean;
+}) => {
+  try {
+    const firebaseUser = await authAdmin.createUser({
+      displayName: params.displayName,
+      email: params.email,
+      emailVerified: params.emailVerified,
+      password: params.password,
+    });
+    return firebaseUser.uid;
+  } catch (fbError: any) {
+    if (fbError?.code !== "auth/email-already-exists" || !params.updateIfExists) {
+      throw fbError;
+    }
+
+    const existingUser = await authAdmin.getUserByEmail(params.email);
+    await authAdmin.updateUser(existingUser.uid, {
+      displayName: params.displayName,
+      emailVerified: params.emailVerified,
+      password: params.password,
+    });
+    return existingUser.uid;
+  }
+};
+
 export async function POST(request: NextRequest) {
   try {
     // 🔒 RATE LIMITING: Prevent brute force account claim attempts
@@ -75,7 +123,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { claimToken, email, password } = body;
+    const { claimToken, email, password, useWhatsappPhone } = body;
 
     if (!claimToken || typeof claimToken !== "string" || claimToken.length < 20) {
       return NextResponse.json({ error: "Invalid claim token" }, { status: 400 });
@@ -104,6 +152,87 @@ export async function POST(request: NextRequest) {
     }
 
     const now = admin.firestore.Timestamp.now();
+
+    const messagingPhone = getMessagingPhone(messagingUser);
+    const phoneUsername = buildPhoneUsername(messagingPhone);
+
+    // ━━━ MODE 3: WhatsApp Phone + Passcode Setup (no session required) ━━━
+    if (useWhatsappPhone && password) {
+      const validation = ClaimWithWhatsappPhoneSchema.safeParse(body);
+      if (!validation.success) {
+        return NextResponse.json(
+          { error: "Invalid input", details: validation.error.flatten() },
+          { status: 400 },
+        );
+      }
+
+      if (!phoneUsername) {
+        return NextResponse.json({ error: "No WhatsApp phone number found for this claim" }, { status: 400 });
+      }
+
+      const { password: cleanPassword, name } = validation.data;
+      const existingEmail = String(messagingUser.email || "").toLowerCase().trim();
+      const loginEmail = isInternalAuthEmail(existingEmail)
+        ? existingEmail
+        : getGeneratedEmail(messagingPhone);
+      const displayName = name || messagingUser.name || phoneUsername;
+      const firebaseUid = await createOrUpdateFirebasePasswordUser({
+        displayName,
+        email: loginEmail,
+        emailVerified: true,
+        password: cleanPassword,
+        updateIfExists: true,
+      });
+
+      const batch = db.batch();
+
+      batch.update(messagingUserDoc.ref, {
+        email: loginEmail,
+        name: displayName,
+        phone: messagingPhone,
+        phoneUsername,
+        phoneLoginEnabled: true,
+        isVerified: true,
+        active: true,
+        claimToken: null,
+        claimTokenExpiresAt: null,
+        claimedAt: now,
+        claimedVia: "whatsapp-phone-passcode",
+        firebaseUid,
+        modifiedOn: now,
+      });
+
+      await batch.commit();
+
+      await linkClaimedSubscriptions({
+        email: loginEmail,
+        name: displayName,
+        now,
+        storeId: Number(messagingUser.storeId),
+        tenantId: Number(messagingUser.tenantId),
+        userDocId: messagingUserDoc.id,
+      });
+
+      await authAdmin.setCustomUserClaims(firebaseUid, {
+        role: "owner",
+        platformRole: "OWNER",
+        tenantId: String(messagingUser.tenantId),
+        storeId: String(messagingUser.storeId),
+        uId: messagingUserDoc.id,
+        admin: true,
+        storeIds: [String(messagingUser.storeId)],
+      });
+
+      console.log(`[claim-account] ✅ WhatsApp phone setup: ${phoneUsername.slice(-4)} → tenant ${messagingUser.tenantId}`);
+
+      return NextResponse.json({
+        success: true,
+        mode: "whatsapp-phone",
+        tenantId: messagingUser.tenantId,
+        storeId: messagingUser.storeId,
+        message: "Account created. You can now log in with your WhatsApp number and passcode.",
+      });
+    }
 
     // ━━━ MODE 2: Email + Password Setup (no session required) ━━━
     if (email && password) {
@@ -137,16 +266,14 @@ export async function POST(request: NextRequest) {
         }, { status: 409 });
       }
 
-      // Create Firebase Auth user
       let firebaseUid: string;
       try {
-        const firebaseUser = await authAdmin.createUser({
-          email: lowerEmail,
-          password: cleanPassword,
-          emailVerified: true,
+        firebaseUid = await createOrUpdateFirebasePasswordUser({
           displayName: name || messagingUser.name || lowerEmail.split("@")[0],
+          email: lowerEmail,
+          emailVerified: true,
+          password: cleanPassword,
         });
-        firebaseUid = firebaseUser.uid;
       } catch (fbError: any) {
         if (fbError.code === "auth/email-already-exists") {
           return NextResponse.json({
@@ -162,6 +289,9 @@ export async function POST(request: NextRequest) {
       batch.update(messagingUserDoc.ref, {
         email: lowerEmail,
         name: name || messagingUser.name,
+        phone: messagingPhone || messagingUser.phone,
+        phoneUsername: phoneUsername || undefined,
+        phoneLoginEnabled: Boolean(phoneUsername),
         isVerified: true,
         active: true,
         claimToken: null, // One-time use — clear token
@@ -193,9 +323,12 @@ export async function POST(request: NextRequest) {
       // Set custom claims on Firebase Auth
       await authAdmin.setCustomUserClaims(firebaseUid, {
         role: "owner",
+        platformRole: "OWNER",
         tenantId: String(messagingUser.tenantId),
         storeId: String(messagingUser.storeId),
         uId: messagingUserDoc.id,
+        admin: true,
+        storeIds: [String(messagingUser.storeId)],
       });
 
       console.log(`[claim-account] ✅ Email/password setup: ${lowerEmail} → tenant ${messagingUser.tenantId}`);

@@ -55,7 +55,7 @@ export const getCategories = async () => {
             if (docSnap.exists()) {
                 return { ...docSnap.data(), id: docSnap.id };
             }
-            if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID) {
+            if (scopedDocId !== LEGACY_CATEGORIES_DOC_ID && session?.platformRole === 'PLATFORM') {
                 const legacyDocSnap = await getDoc(doc(canonicaFirebaseClient, `${COLLECTION}`, LEGACY_CATEGORIES_DOC_ID));
                 if (legacyDocSnap.exists()) {
                     const legacyData = legacyDocSnap.data() as KnowledgeBaseCategoriesType;
@@ -66,7 +66,7 @@ export const getCategories = async () => {
                             if (Number.isFinite(categoryTenantId) && Number.isFinite(categoryStoreId)) {
                                 return categoryTenantId === Number(session?.tId) && categoryStoreId === Number(session?.sId);
                             }
-                            return session?.platformRole === 'PLATFORM';
+                            return true;
                         })
                     );
                     return { categories: filteredCategories, id: legacyDocSnap.id };

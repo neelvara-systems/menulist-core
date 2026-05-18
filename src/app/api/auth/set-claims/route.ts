@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
 import { canonicaAdminApp, canonicaAuthAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
@@ -40,7 +41,7 @@ async function readSetClaimsBody(request: NextRequest): Promise<unknown | null> 
 async function createCanonicaCustomTokenIfNeeded(
     email: string,
     displayName: string | null | undefined,
-    customClaims: Record<string, string>,
+    customClaims: Record<string, unknown>,
 ): Promise<string | null> {
     if (shouldUseSharedCanonicaFirebase) return null;
 
@@ -71,6 +72,41 @@ async function createCanonicaCustomTokenIfNeeded(
     await canonicaAuthAdmin.setCustomUserClaims(canonicaUid, customClaims);
     return canonicaAuthAdmin.createCustomToken(canonicaUid, customClaims);
 }
+
+const getStoreIdsClaim = (dbUser: any): string[] => {
+    const rawStoreIds = Array.isArray(dbUser?.storeIds)
+        ? dbUser.storeIds
+        : Array.isArray(dbUser?.stores)
+            ? dbUser.stores.map((store: any) => store?.storeId)
+            : [];
+
+    const storeIds = rawStoreIds
+        .filter((storeId: unknown) => storeId !== null && storeId !== undefined && storeId !== '')
+        .map((storeId: unknown) => String(storeId));
+
+    if (dbUser?.storeId !== null && dbUser?.storeId !== undefined && dbUser?.storeId !== '') {
+        storeIds.push(String(dbUser.storeId));
+    }
+
+    return Array.from(new Set(storeIds));
+};
+
+const hasTenantAdminClaim = (role: unknown, platformRole: unknown): boolean => {
+    const normalizedRole = String(role || '').toLowerCase();
+    const normalizedPlatformRole = String(platformRole || '').toUpperCase();
+
+    return normalizedPlatformRole === 'PLATFORM'
+        || normalizedRole === 'platform'
+        || normalizedRole === 'owner';
+};
+
+const normalizeProductId = (value: unknown): ProductId => {
+    if (typeof value !== 'string') return DEFAULT_PRODUCT_ID;
+    const normalized = value.trim().toUpperCase();
+    return Object.values(PRODUCT_IDS).includes(normalized as ProductId)
+        ? normalized as ProductId
+        : DEFAULT_PRODUCT_ID;
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -123,13 +159,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ? dbUser.stores.find((store: any) => store.storeId === dbUser.storeId)?.role
             : undefined;
         const userRole = storeRole || dbUser.role;
+        const productId = normalizeProductId(dbUser.pId || dbUser.productId);
 
         const customClaims = {
+            pId: productId,
             role: userRole || 'OWNER',
             platformRole: dbUser.platformRole || 'USER',
             tenantId: String(dbUser.tenantId),
             storeId: String(dbUser.storeId),
             uId: dbUser.id,
+            admin: hasTenantAdminClaim(userRole, dbUser.platformRole),
+            storeIds: getStoreIdsClaim(dbUser),
         };
         const canonicaCustomToken = await createCanonicaCustomTokenIfNeeded(
             session.user.email,

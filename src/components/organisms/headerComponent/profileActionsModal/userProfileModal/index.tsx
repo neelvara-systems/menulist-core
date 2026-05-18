@@ -24,6 +24,9 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
     const [activeSection, setActiveSection] = useState<'profile' | 'password'>('profile');
 
     const userData = session?.user as any;
+    const userLoginLabel = userData?.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${userData?.staffLoginId || userData?.loginUsername || ''}`
+        : userData?.displayEmail || userData?.phone || userData?.phoneUsername || userData?.email;
 
     useEffect(() => {
         if (open && userData) {
@@ -122,7 +125,7 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                         <Text strong style={{ fontSize: 16 }}>{userData?.name || 'User'}</Text>
                         <Space size={4}>
                             <LuMail size={12} style={{ color: token.colorTextSecondary }} />
-                            <Text type="secondary" style={{ fontSize: 13 }}>{userData?.email}</Text>
+                            <Text type="secondary" style={{ fontSize: 13 }}>{userLoginLabel}</Text>
                         </Space>
                         <Space size={4} style={{ marginTop: 4 }}>
                             <Tag color={userRole === 'OWNER' ? 'blue' : userRole === 'PLATFORM' ? 'purple' : 'default'}>
@@ -206,7 +209,7 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
                             <Space size={8}>
                                 <LuShield size={16} style={{ color: token.colorInfo }} />
                                 <Text style={{ fontSize: 13 }}>
-                                    If you signed in with Google, you may not have a password set. Use this form only if you have an email/password login.
+                                    If you signed in with Google, you may not have a password set. Use this form only if you have a password or passcode login.
                                 </Text>
                             </Space>
                         </div>

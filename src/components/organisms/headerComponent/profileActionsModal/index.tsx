@@ -21,6 +21,9 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
     const { token } = theme.useToken();
     const router = useRouter();
     const dispatch = useAppDispatch()
+    const userLoginLabel = (userData as any)?.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${(userData as any)?.staffLoginId || (userData as any)?.loginUsername || ''}`
+        : (userData as any)?.displayEmail || (userData as any)?.phone || (userData as any)?.phoneUsername || userData.email;
 
     const MENU_SECTIONS = [
         {
@@ -89,7 +92,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
                         </Badge>
                         <Space direction='vertical' size={0}>
                             <TextElement text={userData.name || 'User'} type='primary' size={"medium"} styles={{ fontWeight: 600 }} />
-                            <TextElement text={userData.email} styles={{ fontSize: 13 }} />
+                            <TextElement text={userLoginLabel} styles={{ fontSize: 13 }} />
                         </Space>
                     </Space>
                 </div>

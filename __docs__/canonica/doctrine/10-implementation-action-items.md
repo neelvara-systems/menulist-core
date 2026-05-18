@@ -16,7 +16,7 @@
 7. Created `functions-canonica/` — Directory with package.json, tsconfig, firebaseAdmin, index.ts
 8. Updated `src/lib/firebase/functions.ts` — KB callables now use `canonicaFunctions`
 9. Updated `src/lib/apiHelper/index.ts` — `pId` injected via `requestBodyComposer`
-10. Updated `src/lib/auth/index.ts` — `pId = "ML"` added to NextAuth session
+10. Updated `src/lib/auth/index.ts` — NextAuth session derives `pId` from user/store/tenant product identity; MenuList defaults to `ML`, Canonica direct workspaces resolve to `CN`
 11. Updated `src/middleware/auth.ts` — `pId` added to `sanitizeSession`
 12. Updated 19 Canonica DAL files — all switched from `firebaseClient` to `canonicaFirebaseClient`
 13. Updated `src/database/queryEmbeddings/index.ts` — switched to `canonicaFirestoreAdmin`
@@ -28,6 +28,7 @@
 19. Exported KB callables from `functions-canonica/src/index.ts`: `embedArticleWorker`, `regenerateEmbedding`, `publishApprovedJobFn`
 20. Added Canonica Functions KB embedding helpers using Canonica Firebase Admin + Vertex AI
 21. Hardened Canonica auth sync so Firebase Auth lookup failures are not mistaken for missing users
+22. Hardened direct Canonica identity: Canonica onboarding writes `pId/productId = "CN"`, Firebase custom claims include `pId`, and direct Canonica `sourceContext` omits cross-product `pId/tId/sId` while MenuList-client writes retain `sourceContext.pId = "ML"`
 
 ---
 

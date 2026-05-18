@@ -132,6 +132,9 @@ export const SUPPORT_URL = `https://${SUPPORT_SUBDOMAIN}.${PLATFORM_DOMAIN}`;
 /** Messaging-onboarding placeholder email domain (not a real subdomain) */
 export const MSG_EMAIL_DOMAIN = `msg.${PLATFORM_DOMAIN}`;
 
+/** Staff ID placeholder email domain (not a real mailbox) */
+export const STAFF_EMAIL_DOMAIN = `staff.${PLATFORM_DOMAIN}`;
+
 // ═══════════════════════════════════════════════════════════════
 // Derived URLs
 // ═══════════════════════════════════════════════════════════════

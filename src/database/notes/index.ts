@@ -6,6 +6,7 @@ import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.NOTES;
@@ -36,7 +37,7 @@ const getNoteConfigDocRef = (session: any) => {
 }
 
 
-const uploadImage = async (data, type = '', fileId) => {
+const uploadImage = async (data, type = '', fileId, session: any) => {
 
     let newUrl: any = '';
     let imageType: any = data.imageType;
@@ -49,7 +50,12 @@ const uploadImage = async (data, type = '', fileId) => {
             newUrl = await uploadBase64ToStorage({
                 fileId: docId,
                 url: imageToUpdate,
-                path: `${COLLECTION}/${type}/${docId}`,
+                path: generateStoragePath({
+                    collection: COLLECTION,
+                    fileType: type,
+                    session,
+                    fileId: docId,
+                }),
                 type: imageType
             })
         }
@@ -71,7 +77,7 @@ export const addNote = async (data: any) => {
                 submitData.documents = data.documents;
                 for (let i = 0; i < data.documents.length; i++) {
                     if (submitData.documents[i].url.includes('base64')) {
-                        submitData.documents[i].url = await uploadImage({ imageType: data.documents[i].type, imageToUpdate: data.documents[i].url }, 'documents', data.documents[i].label)
+                        submitData.documents[i].url = await uploadImage({ imageType: data.documents[i].type, imageToUpdate: data.documents[i].url }, 'documents', data.documents[i].label, session)
                     }
                 }
             }
@@ -92,7 +98,7 @@ export const updateNote = async (data: any) => {
             if (files.length) {
                 for (let i = 0; i < data.documents.length; i++) {
                     if (updateData.documents[i].url.includes('base64')) {
-                        updateData.documents[i].url = await uploadImage({ imageType: data.documents[i].type, imageToUpdate: data.documents[i].url }, 'documents', data.documents[i].label)
+                        updateData.documents[i].url = await uploadImage({ imageType: data.documents[i].type, imageToUpdate: data.documents[i].url }, 'documents', data.documents[i].label, session)
                     }
                 }
             }

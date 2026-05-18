@@ -99,8 +99,10 @@ function normalizePathname(pathname: string) {
     return pathname.replace(/\/+$/, '');
 }
 
-function getHelpCenterMoreScreen(search: string) {
-    const tab = new URLSearchParams(search).get('tab') || '';
+function getHelpCenterMoreScreen(pathname: string, search: string) {
+    const segments = normalizePathname(pathname).split('/').filter(Boolean);
+    const pathTab = segments[0] === 'help-center' ? segments[1] || '' : '';
+    const tab = new URLSearchParams(search).get('tab') || pathTab;
     return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'canonicaHelp';
 }
 
@@ -146,11 +148,11 @@ function parseMobileRoutePathname(pathname: string, search = ''): { tab: MobileT
     const opsScreen = OPS_PATH_TO_MORE_SCREEN[normalizedPathname];
     const resellerScreen = RESELLER_PATH_TO_MORE_SCREEN[normalizedPathname];
 
-    if (normalizedPathname === '/help-center') {
+    if (normalizedPathname === '/help-center' || normalizedPathname.startsWith('/help-center/')) {
         return {
             tab: 'more',
             todayScreen: 'main',
-            moreScreen: getHelpCenterMoreScreen(search),
+            moreScreen: getHelpCenterMoreScreen(normalizedPathname, search),
         };
     }
 

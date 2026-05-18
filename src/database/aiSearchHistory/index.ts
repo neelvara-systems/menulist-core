@@ -46,6 +46,8 @@ export const findCachedSearchByCacheKey = async (
         const q = query(
             collRef,
             where("cacheKey", "==", cacheKey),
+            where("tId", "==", session.tId),
+            where("sId", "==", session.sId),
             limit(1)
         );
         const snapshot = await getDocs(q);
@@ -53,13 +55,6 @@ export const findCachedSearchByCacheKey = async (
         if (!snapshot.empty) {
             const docSnapshot = snapshot.docs[0];
             const data = docSnapshot.data();
-            if (
-                Number(data.tId) !== Number(session.tId) ||
-                Number(data.sId) !== Number(session.sId)
-            ) {
-                return null;
-            }
-
             return {
                 ...data,
                 id: docSnapshot.id,

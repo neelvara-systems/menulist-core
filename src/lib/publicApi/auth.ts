@@ -119,14 +119,59 @@ export function logApiRequest(
  *
  * @returns Store data if valid key, null if invalid
  */
+export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetTestApi';
+
+export type PublicApiKeyValidationResult = {
+    credential?: Record<string, any>;
+    credentialSource: PublicApiCredentialSource;
+    storeData: any;
+    storeId: string;
+};
+
+export type PublicApiKeyValidationOptions = {
+    includeCanonicaWidgetTestApi?: boolean;
+    preferCanonicaWidgetTestApi?: boolean;
+};
+
+const isCanonicaWidgetTestKey = (apiKey: string): boolean => /^cn_[a-f0-9]{64}$/i.test(apiKey);
+
 export async function validatePublicApiKey(
     apiKey: string | null,
-): Promise<{ storeData: any; storeId: string } | null> {
+    options: PublicApiKeyValidationOptions = {},
+): Promise<PublicApiKeyValidationResult | null> {
     const normalizedApiKey = normalizePublicApiKey(apiKey);
     if (!normalizedApiKey) return null;
 
     const db = admin.firestore();
     const keyHash = hashApiKey(normalizedApiKey);
+
+    let credentialSource: PublicApiCredentialSource = 'publicApi';
+    const includeCanonicaWidgetTestApi = Boolean(options.includeCanonicaWidgetTestApi);
+    const preferCanonicaWidgetTestApi = Boolean(
+        options.preferCanonicaWidgetTestApi
+        && includeCanonicaWidgetTestApi
+        && isCanonicaWidgetTestKey(normalizedApiKey)
+    );
+
+    const queryCanonicaWidgetTestApi = async () => db
+        .collection(DB_COLLECTIONS.STORES)
+        .where('canonicaWidgetTestApi.apiKeyHash', '==', keyHash)
+        .limit(1)
+        .get();
+
+    if (preferCanonicaWidgetTestApi) {
+        const widgetSnapshot = await queryCanonicaWidgetTestApi();
+        if (!widgetSnapshot.empty) {
+            const doc = widgetSnapshot.docs[0];
+            const storeData = doc.data();
+            return {
+                credential: storeData.canonicaWidgetTestApi,
+                credentialSource: 'canonicaWidgetTestApi',
+                storeData,
+                storeId: doc.id,
+            };
+        }
+    }
 
     // Primary: lookup by hash (secure)
     let snapshot = await db
@@ -144,14 +189,27 @@ export async function validatePublicApiKey(
             .get();
     }
 
+    if (
+        snapshot.empty
+        && includeCanonicaWidgetTestApi
+        && normalizedApiKey.startsWith('cn_')
+        && !preferCanonicaWidgetTestApi
+    ) {
+        snapshot = await queryCanonicaWidgetTestApi();
+        credentialSource = 'canonicaWidgetTestApi';
+    }
+
     if (snapshot.empty) {
         secureLog('[Public API] Invalid API key attempt');
         return null;
     }
 
     const doc = snapshot.docs[0];
+    const storeData = doc.data();
     return {
-        storeData: doc.data(),
+        credential: credentialSource === 'publicApi' ? storeData.publicApi : storeData.canonicaWidgetTestApi,
+        credentialSource,
+        storeData,
         storeId: doc.id,
     };
 }

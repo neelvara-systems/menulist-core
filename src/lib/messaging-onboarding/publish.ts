@@ -4,6 +4,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
+import { buildPhoneUsername, getPhoneLookupCandidates } from "@lib/auth/loginIdentifiers";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
@@ -110,12 +111,25 @@ export async function executeMessagingOnboardingPublish(
 
   // Story 3B: Check if user with this phone already exists (spec §Story 3B)
   // Query BEFORE transaction — if exists, we UPDATE instead of CREATE
-  const existingUserQuery = await db
-    .collection(DB_COLLECTIONS.USERS)
-    .where("phone", "==", sessionData.providerDisplayId || "")
-    .limit(1)
-    .get();
-  const existingUserDoc = existingUserQuery.empty ? null : existingUserQuery.docs[0];
+  const phoneUsername = buildPhoneUsername(sessionData.providerDisplayId || "");
+  let existingUserDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+  for (const [field, candidates] of [
+    ["phoneUsername", phoneUsername ? [phoneUsername] : []],
+    ["phone", getPhoneLookupCandidates(sessionData.providerDisplayId || "")],
+  ] as Array<[string, string[]]>) {
+    for (const candidate of candidates) {
+      const existingUserQuery = await db
+        .collection(DB_COLLECTIONS.USERS)
+        .where(field, "==", candidate)
+        .limit(1)
+        .get();
+      if (!existingUserQuery.empty) {
+        existingUserDoc = existingUserQuery.docs[0];
+        break;
+      }
+    }
+    if (existingUserDoc) break;
+  }
 
   // Pre-check subdomain uniqueness (must be outside transaction)
   const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
@@ -178,6 +192,9 @@ export async function executeMessagingOnboardingPublish(
         stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],
         provider: sessionData.provider,
         providerUserId: sessionData.providerUserId,
+        phone: sessionData.providerDisplayId || "",
+        phoneUsername: phoneUsername || undefined,
+        phoneLoginEnabled: phoneUsername ? true : undefined,
         onboardingSource: "MESSAGING_ONBOARDING",
         modifiedOn: core.now,
       });
@@ -193,6 +210,7 @@ export async function executeMessagingOnboardingPublish(
         isVerified: true,
         active: true,
         platformRole: "OWNER",
+        phoneUsername: phoneUsername || undefined,
         tenantId: core.tenantId,
         storeId: core.storeId,
         stores: [{ storeId: core.storeId, name: core.storeName, role: getOwnerRoleId() }],

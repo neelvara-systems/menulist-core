@@ -26,7 +26,7 @@ const SidebarComponent = () => {
     const router = useRouter()
     const isDarkMode = useAppSelector(getDarkModeState);
     const isCollapsed = useAppSelector(getSidebarState)
-    const { isMasterUser } = useContext(PlatformGlobalDataContext);
+    const { isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const [hoverId, setHoverId] = useState(null);
@@ -43,12 +43,40 @@ const SidebarComponent = () => {
         { label: 'Support', route: 'dashboard-help', icon: <TbPhoneCalling /> },
     ]
 
+    const canShowNavForPermissions = (nav: NavItemType) => {
+        if (!userPermissions) return true;
+        if (nav.route === NAVIGARIONS_ROUTINGS.BILLING || nav.route === NAVIGARIONS_ROUTINGS.TRANSACTIONS) {
+            return userPermissions.canAccessBilling !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.USERS) {
+            return userPermissions.canManageUsers !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS) {
+            return userPermissions.canManageStore !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.DASHBOARD) {
+            return userPermissions.canViewAnalytics !== false;
+        }
+        if (nav.route === NAVIGARIONS_ROUTINGS.FEEDBACK) {
+            return userPermissions.canManageChat !== false || userPermissions.canViewCustomerData !== false;
+        }
+        if (
+            nav.route === NAVIGARIONS_ROUTINGS.PROJECTS
+            || nav.route === NAVIGARIONS_ROUTINGS.TODAY
+            || nav.route === NAVIGARIONS_ROUTINGS.USE_MENULIST
+            || nav.route === NAVIGARIONS_ROUTINGS.QR_CODE
+        ) {
+            return userPermissions.canManageMenu !== false || userPermissions.canPublishMenu !== false;
+        }
+        return true;
+    }
+
     useEffect(() => {
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {
             // Hide Locations for non-master users or when feature is disabled
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
-                return isMasterUser && FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL;
+                return isMasterUser && FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL && userPermissions?.canManageOutlets !== false;
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD
@@ -57,7 +85,7 @@ const SidebarComponent = () => {
             if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
                 return false;
             }
-            return true;
+            return canShowNavForPermissions(nav);
         });
 
         // Create deep copy to avoid state mutation
@@ -97,7 +125,7 @@ const SidebarComponent = () => {
 
         if (currentNav) setActiveNav(currentNav);
         setSidebarMenusList(menuCopy);
-    }, [pathname, isMasterUser, platformRole])
+    }, [pathname, isMasterUser, platformRole, userPermissions])
 
     const showExpandedSidebar = useMemo(() => Boolean(!isCollapsed || isHover), [isCollapsed, isHover])
 

@@ -117,36 +117,88 @@ service cloud.firestore {
       allow delete: if isCanonicaScopedDelete();
     }
 
+    match /canonica_cacheVersions/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /chatSessions/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
+    }
+
+    match /feedback/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /supportTickets/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
+    }
+
+    match /queryEmbeddings/{docId} {
+      allow read, write: if false;
+    }
+
     // KB collections can live in the Canonica Firebase project for the
-    // founder-onboarding bootstrap. They remain authenticated admin surfaces.
+    // founder-onboarding bootstrap. They remain tenant/store-scoped.
     match /kb_categories/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || kbCategoriesDocMatchesCurrentStore(docId));
+      allow create, update: if isAuthenticated()
+        && (isPlatformAdmin() || (hasTenantWriteRole() && kbCategoriesDocMatchesCurrentStore(docId)));
+      allow delete: if isAuthenticated() && isPlatformAdmin();
     }
 
     match /kb_articles/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
     }
 
     match /kb_sections/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
     }
 
     match /kb_generation_jobs/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
     }
 
     match /kb_staging_sections/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
     }
 
     match /kb_staging_chunks/{docId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if isCanonicaScopedDelete();
     }
 
     match /aiSearchHistory/{docId} {
       allow read: if isCanonicaScopedRead();
       allow create: if isCanonicaScopedCreate();
-      allow update, delete: if false;
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
     }
 
     match /changelog/{tId}/{sId}/{pageId} {
@@ -162,6 +214,21 @@ service cloud.firestore {
     function isPlatformAdmin() {
       return request.auth != null
         && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function hasTenantWriteRole() {
+      return request.auth.token.admin == true
+        || request.auth.token.platformRole == 'PLATFORM'
+        || request.auth.token.role == 'PLATFORM'
+        || request.auth.token.role == 'OWNER'
+        || request.auth.token.role == 'owner';
+    }
+
+    function kbCategoriesDocMatchesCurrentStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId == 'categories_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
     }
 
     function isCanonicaPlatformSummaryDoc(document) {

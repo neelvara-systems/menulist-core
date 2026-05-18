@@ -9,13 +9,17 @@
  *           data-shape="rounded"
  *           data-display="icon"
  *           data-label="?"
- *           data-size="medium">
+ *           data-size="medium"
+ *           data-history="session">
  *   </script>
  *
  * JavaScript API (optional):
  *   window.CanonicaWidget.setContext({ feature: 'billing', page: 'invoices' })
+ *   window.CanonicaWidget.page({ feature: 'billing', page: 'invoices' })
  *   window.CanonicaWidget.open()
  *   window.CanonicaWidget.close()
+ *   window.CanonicaWidget.clearHistory()
+ *   window.CanonicaWidget.on('open', function () {})
  *
  * Options:
  *   data-api-key       (required) Your Canonica API key
@@ -27,6 +31,7 @@
  *   data-size          (optional) "small" | "medium" | "large"
  *   data-offset-x      (optional) Horizontal offset in px (default: 20)
  *   data-offset-y      (optional) Vertical offset in px (default: 20)
+ *   data-history       (optional) "session" | "forget" (default: session, no persistent storage)
  */
 (function () {
     'use strict';
@@ -58,7 +63,9 @@
     var size = script.getAttribute('data-size') || 'medium';
     var offsetX = parseInt(script.getAttribute('data-offset-x') || '20', 10);
     var offsetY = parseInt(script.getAttribute('data-offset-y') || '20', 10);
+    var historyMode = script.getAttribute('data-history') === 'forget' ? 'forget' : 'session';
     var widgetHost = new URL(script.src).origin;
+    var maxContextPayloadBytes = 2048;
 
     // Size presets
     var sizes = {
@@ -80,11 +87,20 @@
     var productContext = null;
     var pendingSuggestion = null;
     var predictiveRequestTimer = null;
+    var eventListeners = {};
 
     function sanitizeContextString(value, maxLength) {
         if (typeof value !== 'string') return null;
         var normalized = value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, maxLength || 100);
         return normalized || null;
+    }
+
+    function getPayloadByteLength(value) {
+        var serialized = JSON.stringify(value);
+        if (window.TextEncoder) {
+            return new TextEncoder().encode(serialized).length;
+        }
+        return encodeURIComponent(serialized).replace(/%[A-F\d]{2}/gi, 'x').length;
     }
 
     function sanitizeContextPayload(ctx) {
@@ -103,7 +119,42 @@
                 .map(function (hint) { return sanitizeContextString(hint, 64); })
                 .filter(Boolean);
         }
-        return Object.keys(output).length ? output : null;
+        if (!Object.keys(output).length) return null;
+        return getPayloadByteLength(output) <= maxContextPayloadBytes ? output : null;
+    }
+
+    function readInitialContextFromAttributes() {
+        var ctx = {
+            contextVersion: 1,
+            feature: script.getAttribute('data-feature'),
+            page: script.getAttribute('data-page'),
+            workflow: script.getAttribute('data-workflow'),
+            userRole: script.getAttribute('data-user-role'),
+            plan: script.getAttribute('data-plan'),
+        };
+        var hints = script.getAttribute('data-entity-hints');
+        if (hints) {
+            ctx.entityHints = hints.split(',').map(function (hint) { return hint.trim(); }).filter(Boolean);
+        }
+        return sanitizeContextPayload(ctx);
+    }
+
+    function emitEvent(type, payload) {
+        var eventPayload = payload || {};
+        if (eventListeners[type]) {
+            eventListeners[type].slice().forEach(function (callback) {
+                try { callback(eventPayload); } catch (_) {}
+            });
+        }
+        try {
+            window.dispatchEvent(new CustomEvent('canonica:widget', { detail: { type: type, payload: eventPayload } }));
+        } catch (_) {}
+    }
+
+    function postToIframe(message) {
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(message, widgetHost);
+        }
     }
 
     // ===== POSITION HELPERS =====
@@ -195,6 +246,10 @@
         });
 
         document.body.appendChild(launcher);
+
+        if (productContext) {
+            requestPredictiveHelp(productContext);
+        }
     }
 
     // ===== WIDGET CONTAINER =====
@@ -254,30 +309,37 @@
         });
         launcher.textContent = '✕';
         launcher.style.fontSize = (s.iconFont) + 'px';
-        // Send current context and suggestion to iframe
+        emitEvent('open', { context: productContext, historyMode: historyMode });
+        postToIframe({ type: 'canonica-widget-visibility', state: 'open', historyMode: historyMode });
         sendContextToIframe();
         sendSuggestionToIframe();
     }
 
     function sendContextToIframe() {
-        if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({ type: 'canonica-context-update', context: productContext }, widgetHost);
-        }
+        postToIframe({ type: 'canonica-context-update', context: productContext });
     }
 
     function sendSuggestionToIframe() {
         if (pendingSuggestion && iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage({ type: 'canonica-predictive-suggestion', suggestion: pendingSuggestion }, widgetHost);
+            postToIframe({ type: 'canonica-predictive-suggestion', suggestion: pendingSuggestion });
         }
     }
 
     function closeWidget() {
         isOpen = false;
+        if (!container || !launcher) return;
         container.style.opacity = '0';
         container.style.transform = 'translateY(10px) scale(0.95)';
         setTimeout(function () { if (!isOpen) container.style.display = 'none'; }, 200);
         launcher.textContent = getLauncherContent();
         launcher.style.fontSize = (shape === 'pill' ? s.iconFont : s.font) + 'px';
+        postToIframe({ type: 'canonica-widget-visibility', state: 'closed', historyMode: historyMode, clearHistory: historyMode === 'forget' });
+        emitEvent('close', { historyMode: historyMode, cleared: historyMode === 'forget' });
+    }
+
+    function clearHistory() {
+        postToIframe({ type: 'canonica-widget-clear-history' });
+        emitEvent('history:clear', {});
     }
 
     // ===== MESSAGE LISTENER =====
@@ -291,13 +353,34 @@
         setContext: function (ctx) {
             var sanitizedContext = sanitizeContextPayload(ctx);
             productContext = sanitizedContext;
-            // Forward to iframe if already loaded
+            if (!sanitizedContext) {
+                pendingSuggestion = null;
+                if (launcher) {
+                    launcher.setAttribute('aria-label', 'Open help widget');
+                    launcher.removeAttribute('title');
+                    launcher.style.boxShadow = '0 4px 24px rgba(0,0,0,0.15)';
+                }
+            }
+            emitEvent('context', { context: sanitizedContext });
             sendContextToIframe();
             if (sanitizedContext) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
         open: function () { openWidget(); },
         close: function () { closeWidget(); },
+        clearHistory: function () { clearHistory(); },
+        reset: function () { clearHistory(); },
+        on: function (eventName, callback) {
+            if (typeof eventName !== 'string' || typeof callback !== 'function') return function () {};
+            eventListeners[eventName] = eventListeners[eventName] || [];
+            eventListeners[eventName].push(callback);
+            return function () { window.CanonicaWidget.off(eventName, callback); };
+        },
+        off: function (eventName, callback) {
+            if (!eventListeners[eventName]) return;
+            eventListeners[eventName] = eventListeners[eventName].filter(function (current) { return current !== callback; });
+        },
+        getContext: function () { return productContext; },
     };
 
     function requestPredictiveHelp(ctx) {
@@ -331,6 +414,8 @@
     }
 
     // ===== INIT =====
+    productContext = readInitialContextFromAttributes();
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', createLauncher);
     } else {

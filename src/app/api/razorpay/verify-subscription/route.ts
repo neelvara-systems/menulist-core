@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import { getSubscriptionById, updateSubscription } from "@database/subscriptions";
+import { getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
@@ -150,6 +150,7 @@ export const POST = withAuth(async (request, session) => {
 
         const priceKey = `price${payment.currency.toUpperCase()}`;
         const creditsForPlan = planDetails[priceKey]?.monthlyCredits || 0;
+        const paymentAmount = Number(payment.amount || 0);
 
         validateTransition(internalSub.status, 'active', 'api:verify-subscription');
         const updatePayload: Partial<FirestoreSubscriptionDoc> = {
@@ -193,7 +194,7 @@ export const POST = withAuth(async (request, session) => {
                 {
                     status: "verified",
                     timestamp: Timestamp.now(),
-                    amount: payment.amount,
+                    amount: Number.isFinite(paymentAmount) ? paymentAmount : 0,
                     currency: payment.currency,
                     remark: "Subscription verified",
                 },

@@ -1,8 +1,8 @@
 # Roles & Permissions — Product Specification
 
 **Feature:** Role-Based Access Control (RBAC)  
-**Status:** ✅ Implemented (Feature-Flag Style)  
-**Date:** February 13, 2026
+**Status:** ✅ Staff CRUD + permissions wired end-to-end
+**Date:** May 18, 2026
 
 > **Scope:** Staff-level permissions (Layer 1). For chain-level outlet restrictions (Layer 2: OutletPolicy), see [Multi-Chain Permissions Spec](../multi-chain-permissions/multi-chain-permissions_spec.md).
 
@@ -153,7 +153,21 @@ store.roles = [
 // The storeId is already in the user.stores mapping and store document context
 ```
 
-### 4.2 Permission Resolution ✅ FIXED
+### 4.2 Staff Management ✅ IMPLEMENTED
+
+**Current behavior:**
+
+- Staff list loads from `GET /api/staff`, not direct client reads from `users`.
+- Staff creation uses `POST /api/staff`. Email is optional for staff who do not have their own inbox.
+- Email staff keep global email uniqueness and receive a Firebase password setup email; staff can also use **Forgot password** on the sign-in page.
+- No-email staff receive an owner-issued Staff ID and one-time temporary passcode, backed by Firebase Auth with an internal login email.
+- Every staff user can have email, phone, and Staff ID login aliases on the same Firebase Auth account.
+- Owners reset staff access by creating a new temporary passcode shown once. Staff self-service reset remains email-based.
+- Existing same-tenant staff can be mapped to another store.
+- Staff updates use `PATCH /api/staff` with server-side role/store validation.
+- Removing staff uses `DELETE /api/staff` and removes only the selected store mapping; if no mappings remain, the user is deactivated and soft-deleted.
+
+### 4.3 Permission Resolution ✅ FIXED
 
 **New behavior:**
 
@@ -161,7 +175,7 @@ store.roles = [
 - `userPermissions` available via React Context globally
 - UI can check `userPermissions.canAccessBilling` directly
 
-### 4.3 Role ID Format ✅ SIMPLIFIED
+### 4.4 Role ID Format ✅ SIMPLIFIED
 
 **Current format:**
 
@@ -238,6 +252,22 @@ const { userPermissions } = useContext(PlatformGlobalDataContext);
 | UI feature hiding via context            | ✅ Done |
 | Multi-outlet permissions (2 flags)       | ✅ Done |
 | Outlet policy enforcement                | ✅ Done |
+| Staff CRUD server APIs                    | ✅ Done |
+| Desktop staff flow                        | ✅ Done |
+| Mobile staff flow                         | ✅ Done |
+| Role editor server API                    | ✅ Done |
+
+## 7. Permission Set Decision
+
+The current 23 permissions remain the production baseline. No additional owner-facing toggles were added in May 2026 because the existing groups already cover the live product surfaces without making the role editor harder for a non-technical owner:
+
+- `canManageMenu` / `canPublishMenu` cover menu editing, QR/output operations, Today menu actions, and owner menu workflow.
+- `canManageStore` covers business settings, identity, hours, discovery setup, and public business configuration.
+- `canManageUsers` / `canAssignRoles` split staff lifecycle from role/store assignment.
+- `canManageChat` / `canViewCustomerData` cover feedback and customer interaction surfaces.
+- `canManageOutlets` / `canSwitchStores` cover chain and outlet management.
+
+New permissions should only be added when one existing permission would give clearly unsafe access to an unrelated workflow.
 
 ---
 

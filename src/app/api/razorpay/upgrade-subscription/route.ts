@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import { getSubscriptionById, updateSubscription } from '@database/subscriptions';
+import { getSubscriptionById, updateSubscription } from '@database/subscriptions/server';
 import { canManageBillingMutation } from '@lib/billing/billingAccess';
 import { safeSyncStorePlanEntitlementFromSubscription } from '@lib/billing/subscriptionEntitlementSync';
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';

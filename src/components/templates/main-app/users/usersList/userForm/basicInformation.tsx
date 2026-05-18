@@ -11,7 +11,7 @@ const imageStyles = {
     borderRadius: "50%"
 }
 
-function BasicInformation({ userDetails, selectedProfileImage, onChangeValue, fileInputRef }) {
+function BasicInformation({ allowProfileImage = true, userDetails, selectedProfileImage, onChangeValue, fileInputRef }) {
 
     const renderImage = (src) => {
         return <>
@@ -22,7 +22,7 @@ function BasicInformation({ userDetails, selectedProfileImage, onChangeValue, fi
 
     return (
         <EditorWrapper gap={20}>
-            <EditorWrapper>
+            {allowProfileImage && <EditorWrapper>
                 <Flex onClick={() => fileInputRef.current.click()} align="center" justify="center" gap={10}>
                     {selectedProfileImage.src ? renderImage(selectedProfileImage.src) : <>
                         {userDetails?.profileImage ? renderImage(userDetails?.profileImage) : <>
@@ -30,7 +30,7 @@ function BasicInformation({ userDetails, selectedProfileImage, onChangeValue, fi
                         </>}
                     </>}
                 </Flex>
-            </EditorWrapper>
+            </EditorWrapper>}
 
             <FormElementWrapper label="Active" >
                 <Switch size="small"
@@ -44,8 +44,15 @@ function BasicInformation({ userDetails, selectedProfileImage, onChangeValue, fi
                 <Input placeholder="Name" value={userDetails?.name || ""} onChange={(e) => onChangeValue('name', e.target.value)} />
             </FormElementWrapper>
 
-            <FormElementWrapper label='Email' mandatory>
-                <Input type='email' placeholder="Email" value={userDetails?.email || ""} onChange={(e) => onChangeValue('email', e.target.value)} />
+            <FormElementWrapper label='Email'>
+                <Input
+                    disabled={Boolean(userDetails?.id)}
+                    type='email'
+                    placeholder="Email, if staff has one"
+                    value={userDetails?.staffAuthMode === 'owner_passcode' ? '' : userDetails?.displayEmail || userDetails?.email || ""}
+                    onChange={(e) => onChangeValue('email', e.target.value)}
+                />
+                <Text type="secondary">Leave blank to create a staff ID and passcode.</Text>
             </FormElementWrapper>
 
             <FormElementWrapper label='Phone Number' mandatory>

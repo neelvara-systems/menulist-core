@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { getSubscriptionById, updateSubscription } from "@database/subscriptions";
-import { createPaymentTransaction } from "@database/subscriptions/paymentTransactions"; // Assumes this function exists for auditing
+import { DB_COLLECTIONS } from "@constant/database";
+import { getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validator";
@@ -15,6 +16,43 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 const LOG_FILE = "razorpay-subscription.log";
+
+const sanitizeForAdminFirestore = (value: any): any => {
+    if (value === undefined) return null;
+    if (value === null) return null;
+    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
+    if (value instanceof Date) return value;
+    if (typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, nestedValue]) => [key, sanitizeForAdminFirestore(nestedValue)])
+        );
+    }
+
+    return value;
+};
+
+const normalizeNumericId = (value: unknown): number | null => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+};
+
+const writePaymentTransactionAudit = async (data: any): Promise<string> => {
+    const tenantId = normalizeNumericId(data?.tenantId ?? data?.tId);
+    const storeId = normalizeNumericId(data?.storeId ?? data?.sId);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const docRef = await firestoreAdmin.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).add({
+        ...sanitizeForAdminFirestore(data),
+        tenantId,
+        storeId,
+        tId: data?.tId ?? tenantId,
+        sId: data?.sId ?? storeId,
+        createdOn: now,
+        modifiedOn: now,
+    });
+
+    return docRef.id;
+};
 
 const getInvoiceById = async (eventPayloadToUpload: any, invoiceId: string) => {
     try {
@@ -96,7 +134,7 @@ export async function POST(request: Request) {
             eventPayloadToUpload = await getInvoiceById(eventPayloadToUpload, paymentEntity?.invoice_id);
         }
         // await writeLogEntry({ logFileName: LOG_FILE, logType: `RAZORPAY_WEBHOOK_EVENT_${event.event}`, data: eventPayloadToUpload });
-        await createPaymentTransaction(eventPayloadToUpload);
+        await writePaymentTransactionAudit(eventPayloadToUpload);
         if (!eventPayloadToUpload.transactionType) return NextResponse.json({ received: true });
 
         switch (event.event) {

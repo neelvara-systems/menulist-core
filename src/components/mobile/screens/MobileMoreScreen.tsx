@@ -24,6 +24,7 @@ import {
     LuCreditCard,
     LuGlobe,
     LuHelpCircle,
+    LuKeyRound,
     LuLogOut,
     LuMapPin,
     LuMessageCircle,
@@ -40,7 +41,7 @@ import {
     LuUsers,
     LuX,
 } from 'react-icons/lu';
-import { Avatar, Card, Dialog, Flex, List, NavBar, Tag, Text, Title, Toast } from '../antd';
+import { Avatar, Button, Card, Dialog, Flex, Input, List, NavBar, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import type { MobilePlatformInternalScreenKey } from './MobilePlatformInternalScreen';
 
@@ -136,6 +137,7 @@ const isPlatformInternalScreen = (screen: MoreSubScreen): screen is MobilePlatfo
 
 export type MoreSubScreen =
     | 'main'
+    | 'accountAccess'
     | 'businessProfileHub'
     | 'searchDiscoveryHub'
     | 'billing'
@@ -235,6 +237,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
     const canUseResellerScreens = isPlatformAdmin || isResellerAccount;
+    const userLoginLabel = (session?.user as any)?.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${(session?.user as any)?.staffLoginId || (session?.user as any)?.loginUsername || ''}`
+        : (session?.user as any)?.displayEmail
+            || (session?.user as any)?.phone
+            || (session?.user as any)?.phoneUsername
+            || userEmail;
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');
@@ -337,8 +345,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
         { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
         { key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, keywords: ['branches', 'outlets', 'stores', 'chain', 'multi location'], label: t('locations'), description: t('locationsDesc'), onClick: () => openSubScreen('locations') },
-        { key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, keywords: ['staff', 'team', 'employee', 'user access', 'invite'], label: t('staff'), description: t('staffDesc'), onClick: () => openSubScreen('users') },
-        { key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, keywords: ['permissions', 'access control', 'manager', 'cashier', 'role'], label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') },
+        ...(userPermissions?.canManageUsers ? [{ key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, keywords: ['staff', 'team', 'employee', 'user access', 'invite'], label: t('staff'), description: t('staffDesc'), onClick: () => openSubScreen('users') }] : []),
+        ...(userPermissions?.canAssignRoles ? [{ key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, keywords: ['permissions', 'access control', 'manager', 'cashier', 'role'], label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') }] : []),
     ];
 
     const businessPresenceItems: MoreListItem[] = [
@@ -459,7 +467,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     let subScreenContent: ReactNode = null;
 
-    if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} />;
+    if (subScreen === 'accountAccess') subScreenContent = <MobileAccountAccessScreen onBack={() => setSubScreen('main')} userLoginLabel={userLoginLabel} userName={userName} />;
+    else if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
@@ -601,7 +610,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                     {userImage ? <Avatar size={48} src={userImage} /> : <Avatar size={48}>{userName.charAt(0).toUpperCase()}</Avatar>}
                     <Flex gap={2} vertical>
                         <Title level={5} style={{ margin: 0 }}>{userName}</Title>
-                        {userEmail ? <Text type="secondary">{userEmail}</Text> : null}
+                        {userLoginLabel ? <Text type="secondary">{userLoginLabel}</Text> : null}
                     </Flex>
                 </Flex>
             </Card>
@@ -684,6 +693,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 <List>
                     <List.Item
                         arrow
+                        description={<Text type="secondary">Change your password or passcode.</Text>}
+                        onClick={() => openSubScreen('accountAccess')}
+                        prefix={<LuKeyRound color="#16a34a" size={20} />}
+                        title={<Text strong>Account access</Text>}
+                    />
+                    <List.Item
+                        arrow
                         description={<Text type="secondary">{t('appSettingsDesc')}</Text>}
                         onClick={() => setIsAppSettingsOpen(true)}
                         prefix={<LuSettings color="#64748b" size={20} />}
@@ -721,6 +737,113 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 onClose={() => setIsAppSettingsOpen(false)}
                 visible={isAppSettingsOpen}
             />
+        </Flex>
+    );
+}
+
+function MobileAccountAccessScreen({
+    onBack,
+    userLoginLabel,
+    userName,
+}: {
+    onBack: () => void;
+    userLoginLabel?: string;
+    userName: string;
+}) {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const resetForm = () => {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+    };
+
+    const changePassword = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            Toast.show({ content: 'Enter all password fields.', duration: 1800 });
+            return;
+        }
+        if (newPassword.length < 6) {
+            Toast.show({ content: 'New password must be at least 6 characters.', duration: 1800 });
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            Toast.show({ content: 'Passwords do not match.', duration: 1800 });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                body: JSON.stringify({ currentPassword, newPassword }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Could not change password.');
+            }
+            resetForm();
+            Toast.show({ content: 'Password changed.', duration: 1500 });
+            onBack();
+        } catch (error: any) {
+            Toast.show({ content: error?.message || 'Could not change password.', duration: 2200 });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <MobileSettingsScreenHeader
+                description="Update the password or passcode used for this account."
+                onBack={onBack}
+                title="Account access"
+            />
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card>
+                    <Flex gap={4} vertical>
+                        <Text strong>{userName}</Text>
+                        {userLoginLabel ? <Text type="secondary">{userLoginLabel}</Text> : null}
+                    </Flex>
+                </Card>
+                <Card title="Change password">
+                    <Flex gap={12} vertical>
+                        <Input
+                            autoComplete="current-password"
+                            onChange={setCurrentPassword}
+                            placeholder="Current password or passcode"
+                            type="password"
+                            value={currentPassword}
+                        />
+                        <Input
+                            autoComplete="new-password"
+                            onChange={setNewPassword}
+                            placeholder="New password"
+                            type="password"
+                            value={newPassword}
+                        />
+                        <Input
+                            autoComplete="new-password"
+                            onChange={setConfirmPassword}
+                            placeholder="Confirm new password"
+                            type="password"
+                            value={confirmPassword}
+                        />
+                        <Button block loading={saving} onClick={changePassword} size="large">
+                            Change password
+                        </Button>
+                    </Flex>
+                </Card>
+                <Card>
+                    <Text type="secondary">
+                        If staff cannot sign in, the owner can create a new temporary passcode from Staff.
+                    </Text>
+                </Card>
+            </Flex>
         </Flex>
     );
 }

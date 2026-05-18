@@ -56,6 +56,14 @@ The widget sits entirely in Layer 4. It is a query entry point. The intelligence
 
 ---
 
+## MenuList Test Host
+
+MenuList can temporarily act as an external Canonica client for widget testing through `ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST`.
+
+This adapter does **not** replace MenuList's native Help Center. It loads the same public widget script and iframe an outside SaaS product would use, derives a scoped `cn_*` test key for the current MenuList store, stores only its hash under `canonicaWidgetTestApi`, and passes only sanitized page/workflow context. Widget runtime routes must explicitly opt in to this temporary credential source; normal public APIs still require `publicApi` credentials. It exists so the real widget runtime can be tested before a separate external product is available.
+
+---
+
 ## Key Architectural Decisions
 
 | #   | Decision                                         | Rationale                                                                                                                                    |
@@ -68,6 +76,7 @@ The widget sits entirely in Layer 4. It is a query entry point. The intelligence
 | 6   | **Widget UI stays zero-dependency**              | No antd, no framer-motion, no SCSS. 248 lines of inline-styled React. Critical for iframe bundle size.                                       |
 | 7   | **Canonical-first always**                       | Widget never bypasses canonical retrieval. Context assists retrieval, never replaces it. Knowledge must always come from canonical articles. |
 | 8   | **One-time-visible keys**                        | Settings and onboarding never persist raw widget keys. Existing keys can only be identified by prefix; regenerate to copy again.              |
+| 9   | **Transient widget history only**                | The widget can keep an in-memory page session for follow-up context, but never writes anonymous widget chat history to Firestore/localStorage. |
 
 ---
 
@@ -78,7 +87,7 @@ The widget sits entirely in Layer 4. It is a query entry point. The intelligence
 | Search pipeline        | Unified `coreSearch()`                    | Same                                                                                                                                                          |
 | Context-aware support  | Feature-flagged, schema exists            | Full SDK integration, context boosts entity matching                                                                                                          |
 | Launcher customization | Position + color + text                   | Shape, display mode, size, offset                                                                                                                             |
-| Session memory         | None (stateless)                          | In-memory session (last 5 messages)                                                                                                                           |
+| Session memory         | None (stateless)                          | In-memory page session (last 5 messages), explicit clear, optional `data-history="forget"` clear-on-close mode. No persistence.                              |
 | Query telemetry        | Via `aiSearchHistory` (from `coreSearch`) | Same, enriched with mountContext                                                                                                                              |
 | Feedback signals       | None                                      | Thumbs up/down → signal mutation pipeline                                                                                                                     |
 | Origin allowlist       | None (any domain)                         | Per-tenant allowed domains                                                                                                                                    |
@@ -106,5 +115,6 @@ These align with Canonica's Non-Goals Charter (doctrine/02):
 
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-18 | 2.3.0   | Runtime widget contract updated: mount-time script context attributes, `data-history`, explicit clear-history API, open/close events, and MenuList external-client test host context wiring.                                                            |
 | 2026-03-08 | 2.0.0   | Complete documentation rewrite: v2 architecture with context-aware support, launcher customization, session memory, feedback signals, origin allowlist. Unified search architecture. ChatGPT conversation reviewed + validated against Canonica codebase. |
 | 2026-03-07 | 1.0.0   | Initial implementation: embed script + iframe page + public API + feature flag                                                                                                                                                                            |

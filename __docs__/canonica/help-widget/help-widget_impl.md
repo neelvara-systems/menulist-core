@@ -50,8 +50,10 @@ src/app/widget/[apiKey]/WidgetClient.tsx   # Session memory, feedback, image upl
 src/app/api/widget/search/route.ts        # Origin allowlist, conversation history, server-side image validation
 src/app/api/widget/feedback/route.ts      # Feedback endpoint with tenant-scoped searchHistory ownership check
 src/app/api/canonica/widget-key/route.ts  # Hash-only widget key generate/revoke endpoint
+src/app/api/canonica/menulist-widget-test-key/route.ts  # MenuList-as-client test key adapter
 src/app/(canonica)/canonica/settings/page.tsx  # Thin page wrapper (dynamic import of template)
 src/components/templates/canonica/CanonicaSettings.tsx  # Widget config UI (9 attributes + origin allowlist + embed code generator + live preview + setup progress)
+src/components/canonica/MenuListCanonicaWidgetTestHost.tsx  # Temporary MenuList external-client host
 src/types/platform/store.ts               # MODIFY: added widgetConfig + widgetAllowedOrigins fields
 ```
 
@@ -113,6 +115,17 @@ Context is normalized and size-limited before it leaves the host page, then pass
 When `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is enabled, `page()/setContext()` also calls `POST /api/canonica/predictive-help` only when a valid context payload is present. A returned suggestion is held in memory, indicated on the launcher, and delivered into the iframe as a proactive assistant message. No raw page events are stored.
 
 Global security headers keep `frame-ancestors 'none'` for the app by default. `/widget/*` is the explicit exception: middleware omits `X-Frame-Options` and allows HTTPS/localhost frame ancestors so the embeddable iframe can render. API calls still enforce API-key auth, rate limits, and the per-store origin allowlist.
+
+### 3.3.1 MenuList-as-Client Test Host
+
+`ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST` mounts the real widget inside the MenuList owner app for integration testing only. This treats MenuList as a separate external client:
+
+- `MenuListCanonicaWidgetTestHost` requests `POST /api/canonica/menulist-widget-test-key`.
+- The route derives a deterministic per-store `cn_*` key from `NEXTAUTH_SECRET`, stores only `hashApiKey(apiKey)` under `stores/{sId}.canonicaWidgetTestApi`, and returns the raw key to the current authenticated page.
+- The host injects `/widget/canonica-widget.js` with the returned key. The public script creates the same launcher and iframe used by external products.
+- Context is limited to sanitized MenuList page/workflow hints such as `menulist_projects_home`; no MenuList tenant/store/user IDs are sent as product context.
+- Widget runtime routes explicitly opt in to this test credential source for predictive help, widget search, and widget feedback only. Shared public API validation defaults to normal `publicApi` credentials, so this temporary key cannot authorize unrelated MenuList or Canonica public API routes.
+- The deterministic test key shape is `cn_` plus a 64-character HMAC digest. Widget routes prefer the `canonicaWidgetTestApi` lookup for that shape in test mode, avoiding repeated failed `publicApi` lookups during local integration testing.
 
 ### 3.4 Widget Client (`src/app/widget/[apiKey]/WidgetClient.tsx`)
 

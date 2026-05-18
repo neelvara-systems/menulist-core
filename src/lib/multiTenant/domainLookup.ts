@@ -7,8 +7,7 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 
 export interface TenantInfo {
     storeId: number;
@@ -26,15 +25,12 @@ export interface TenantInfo {
  */
 export async function lookupBySubdomain(subdomain: string): Promise<TenantInfo | null> {
     try {
-        const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-        const q = query(
-            storesRef,
-            where('subdomain', '==', subdomain.toLowerCase()),
-            where('active', '==', true),
-            limit(1)
-        );
-
-        const snapshot = await getDocs(q);
+        const snapshot = await firestoreAdmin
+            .collection(DB_COLLECTIONS.STORES)
+            .where('subdomain', '==', subdomain.toLowerCase())
+            .where('active', '==', true)
+            .limit(1)
+            .get();
 
         if (snapshot.empty) {
             return null;
@@ -64,16 +60,13 @@ export async function lookupBySubdomain(subdomain: string): Promise<TenantInfo |
  */
 export async function lookupByCustomDomain(domain: string): Promise<TenantInfo | null> {
     try {
-        const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-        const q = query(
-            storesRef,
-            where('customDomain', '==', domain.toLowerCase()),
-            where('domainVerified', '==', true),
-            where('active', '==', true),
-            limit(1)
-        );
-
-        const snapshot = await getDocs(q);
+        const snapshot = await firestoreAdmin
+            .collection(DB_COLLECTIONS.STORES)
+            .where('customDomain', '==', domain.toLowerCase())
+            .where('domainVerified', '==', true)
+            .where('active', '==', true)
+            .limit(1)
+            .get();
 
         if (snapshot.empty) {
             return null;

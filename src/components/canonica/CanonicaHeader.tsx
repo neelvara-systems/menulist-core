@@ -7,7 +7,8 @@
  * Separate from MenuList's HeaderComponent.
  */
 
-import { CANONICA_SIDEBAR_NAV } from '@constant/canonica/navigations';
+import { CANONICA_BASE_PATH, CANONICA_SIDEBAR_NAV } from '@constant/canonica/navigations';
+import { PRODUCT_IDS } from '@constant/product';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { clearForceDesktopMode } from '@lib/mobile/forceDesktopMode';
 import type { MenuProps } from 'antd';
@@ -59,9 +60,18 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
         return name.charAt(0).toUpperCase();
     }, [session]);
 
-    const returnToMenuList = () => {
+    const sourceProductId = (session as any)?.pId || (session?.user as any)?.pId || (session?.user as any)?.productId;
+    const isMenuListClient = sourceProductId === PRODUCT_IDS.MENULIST;
+    const returnLabel = isMenuListClient
+        ? (showMenuButton ? 'MenuList' : 'Back to MenuList')
+        : (showMenuButton ? 'Home' : 'Canonica Home');
+
+    const handleReturn = () => {
         clearForceDesktopMode();
-        router.push(showMenuButton ? '/dashboard#mobile/more' : '/dashboard');
+        router.push(isMenuListClient
+            ? (showMenuButton ? '/dashboard#mobile/more' : '/dashboard')
+            : CANONICA_BASE_PATH
+        );
     };
 
     return (
@@ -108,10 +118,10 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
                 <Button
                     type="text"
                     icon={<LuArrowLeft size={16} />}
-                    onClick={returnToMenuList}
+                    onClick={handleReturn}
                     style={{ minHeight: 40, paddingInline: showMenuButton ? 8 : 12 }}
                 >
-                    {showMenuButton ? 'MenuList' : 'Back to MenuList'}
+                    {returnLabel}
                 </Button>
                 <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
                     <Avatar

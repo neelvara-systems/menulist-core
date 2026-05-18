@@ -1,7 +1,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@constant/AI/unitCosts";
 import { DB_COLLECTIONS } from "@constant/database";
-import { getActiveSubscriptionForStore } from "@database/subscriptions";
+import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 

@@ -1,13 +1,21 @@
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
-import { Button, Flex, Space, Table, Tag, Typography } from "antd";
+import { Button, Flex, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import { Fragment, memo, useContext } from "react";
-import { LuEye, LuPen, LuUser } from "react-icons/lu";
+import { LuEye, LuKeyRound, LuPen, LuTrash2, LuUser } from "react-icons/lu";
 const { Text } = Typography;
 
-function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
+function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onResetPassword, staffStores = [], usersList }) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const safeUsersList = Array.isArray(usersList) ? usersList : [];
+    const roleStores = staffStores.length
+        ? staffStores.map((store) => ({ storeDetails: store, storeId: store.storeId }))
+        : (tenantDetails?.storesList || []);
+    const getLoginLabel = (record: any) => (
+        record?.staffAuthMode === 'owner_passcode'
+            ? record?.staffLoginId || record?.loginUsername || 'Staff ID pending'
+            : record?.displayEmail || record?.phone || record?.phoneNumber || record?.email || 'No email'
+    );
 
     const columns = [
         {
@@ -25,9 +33,15 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
             },
         },
         {
-            title: 'Email',
+            title: 'Login',
             dataIndex: 'email',
             key: 'email',
+            render: (_, record) => (
+                <Space direction="vertical" size={0}>
+                    <Text>{getLoginLabel(record)}</Text>
+                    {record?.staffLoginId || record?.loginUsername ? <Tag>Staff ID: {record.staffLoginId || record.loginUsername}</Tag> : null}
+                </Space>
+            ),
         },
         {
             title: 'Number',
@@ -42,7 +56,7 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
                 <>
                     {(Array.isArray(record.stores) ? record.stores : []).map((store, i) => {
                         if (store.storeId != storeDetails?.storeId) return null;
-                        const roleData = (tenantDetails?.storesList || []).find((s) => s.storeId == store.storeId)?.storeDetails?.roles?.find((r) => r.id == store.role);
+                        const roleData = roleStores.find((s) => s.storeId == store.storeId)?.storeDetails?.roles?.find((r) => r.id == store.role);
                         return <Fragment key={i}>
                             <Tag>{roleData?.name || store.role}</Tag>
                         </Fragment>
@@ -67,7 +81,7 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
             key: 'action',
             render: (_, record) => (
                 <Space>
-                    <Button onClick={(event) => {
+                    <Button disabled={!canManageUsers} onClick={(event) => {
                         event.stopPropagation();
                         onEditUser(record);
                     }} shape="circle" icon={<LuPen />} />
@@ -75,6 +89,40 @@ function UsersListTable({ onClickUserDetails, onEditUser, usersList }) {
                         event.stopPropagation();
                         onClickUserDetails(record);
                     }} shape="circle" icon={<LuEye />} />
+                    <Popconfirm
+                        cancelText="Cancel"
+                        okText="Create passcode"
+                        onConfirm={(event) => {
+                            event?.stopPropagation?.();
+                            onResetPassword(record);
+                        }}
+                        title="Create a new temporary passcode for this staff member?"
+                    >
+                        <Button
+                            disabled={!canManageUsers}
+                            onClick={(event) => event.stopPropagation()}
+                            shape="circle"
+                            icon={<LuKeyRound />}
+                        />
+                    </Popconfirm>
+                    <Popconfirm
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true }}
+                        okText="Remove"
+                        onConfirm={(event) => {
+                            event?.stopPropagation?.();
+                            onDeleteUser(record);
+                        }}
+                        title="Remove this staff member from this store?"
+                    >
+                        <Button
+                            danger
+                            disabled={!canManageUsers}
+                            onClick={(event) => event.stopPropagation()}
+                            shape="circle"
+                            icon={<LuTrash2 />}
+                        />
+                    </Popconfirm>
                 </Space>
             ),
         }

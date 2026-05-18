@@ -1,16 +1,16 @@
 import DrawerElement from "@antdComponent/drawerElement"
 import ImageUploadInput from "@atoms/imageUploadInput"
-import { getAllStoresByTenantId } from "@database/stores"
-import { addPlatformUser, updatePlatformUser } from "@database/users"
 import { useAppDispatch } from "@hook/useAppDispatch"
 import { _debounce } from "@hook/useDebounce"
+import { createStaffUser, updateStaffUser } from "@lib/staffManagement/client"
+import type { StaffStoreOption } from "@lib/staffManagement/types"
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider"
 import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast"
 import { UserUploadedFileType } from '@type/common'
 import { UserDataType } from "@type/platform/user"
 import { getObjectDifferance } from "@util/deepMerge"
 import { removeObjRef, updateDeepPathValue } from "@util/utils"
-import { Button, Card, Divider, Flex, theme } from "antd"
+import { Button, Card, Divider, Flex, Modal, Space, theme, Typography } from "antd"
 import { createRef, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { LuBellRing, LuBookOpenCheck, LuCake, LuCalculator, LuCalendarClock, LuClipboardSignature, LuImagePlus, LuLock, LuMapPin, LuSiren, LuStore, LuUpload, LuUploadCloud } from "react-icons/lu"
 import AccessPermissions from "./accessPermissions"
@@ -24,13 +24,17 @@ import Employment from "./employment"
 import Notifications from "./notifications"
 import StoresMapping from "./storesMapping"
 import Timings from "./timings"
+import RolesMapping from "./rolesMapping"
+const { Text } = Typography
 
 type UserModalDataType = {
+    canAssignRoles?: boolean
     modalData: {
         active: boolean
         data: UserDataType
     },
     onCloseModal: Function
+    staffStores?: StaffStoreOption[]
 }
 
 const ITEMS_LIST_LABELS = {
@@ -52,41 +56,71 @@ const ITEMS_LIST_LABELS = {
  * @param {UserModalDataType} param0 containing modalData and onCloseModal
  * @returns {JSX.Element} the form
  */
-function UserAddUpdateForm({ modalData, onCloseModal }: UserModalDataType) {
+function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, staffStores = [] }: UserModalDataType) {
 
     const [userDetails, setUserDetails] = useState<UserDataType>(null)
-    const { tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext)
+    const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext)
     const fileInputRef = useRef(null);
     const [selectedProfileImage, setSelectedProfileImage] = useState<UserUploadedFileType>({ name: "", size: 0, type: "", url: null })
     const dispatch = useAppDispatch();
     const [activeTab, setActiveTab] = useState(0)
     const { token } = theme.useToken();
 
+    const getDefaultRoleId = () => {
+        const roles = staffStores.find((store) => store.storeId === storeDetails?.storeId)?.roles || storeDetails?.roles || [];
+        return roles.find((role) => role.id === 'staff' && role.active !== false)?.id
+            || roles.find((role) => role.active !== false)?.id
+            || 'staff';
+    }
+
+    const getInitialUser = (): UserDataType => ({
+        active: true,
+        deleted: false,
+        deletedAt: '',
+        email: '',
+        isVerified: false,
+        name: '',
+        phoneNumber: '',
+        dialCode: '',
+        platformRole: 'USER',
+        storeId: storeDetails?.storeId,
+        storeIds: storeDetails?.storeId ? [storeDetails.storeId] : [],
+        stores: storeDetails?.storeId ? [{
+            name: storeDetails?.name || '',
+            role: getDefaultRoleId(),
+            storeId: storeDetails.storeId,
+        }] : [],
+        tenantId: storeDetails?.tenantId || tenantDetails?.tenantId,
+    } as UserDataType)
+
     useEffect(() => {
         if (modalData.data) {
             const userToUpdate = modalData.data;
             setUserDetails(userToUpdate);
-            const ifUserHasMultipleStorePermission = true;
-            if (ifUserHasMultipleStorePermission) {
-                //if user has permissions to assign multiple stores then fetch all stores for tenantId
-                getAllStoresByTenantId(userToUpdate?.tenantId).then((stores) => {
-                    const storesListCopy = removeObjRef(tenantDetails?.storesList)
-                    stores.map((store) => {
-                        const storeIndex = storesListCopy.findIndex((s) => s.storeId == store?.storeId);
-                        storesListCopy[storeIndex].storeDetails = removeObjRef(store);
-                    })
-                    setTenantDetails(removeObjRef({ ...tenantDetails, storesList: storesListCopy }))
-                    console.log("stores for tenantId: ", userToUpdate?.tenantId, stores)
-                })
-            }
         } else {
             setSelectedProfileImage({ name: "", size: 0, type: "", url: null })
-            setUserDetails(null)
+            setUserDetails(modalData.active ? getInitialUser() : null)
         }
-    }, [modalData])
+    }, [modalData, storeDetails?.storeId, storeDetails?.tenantId])
 
     const onClose = (data = null) => {
         onCloseModal(data)
+    }
+
+    const showStaffPasscode = (data: any) => {
+        if (!data?.temporaryPasscode || !data?.staffLoginId) return;
+        Modal.info({
+            okText: "Done",
+            title: "Staff login details",
+            content: (
+                <Space direction="vertical" size={8}>
+                    <Text>Share these details with the staff member. This passcode is shown once.</Text>
+                    <Text strong>Staff ID: {data.staffLoginId}</Text>
+                    <Text strong>Passcode: {data.temporaryPasscode}</Text>
+                    <Text type="secondary">They can log in from the normal sign-in page.</Text>
+                </Space>
+            ),
+        });
     }
 
     const scrollSmoothHandler = (index) => {
@@ -99,8 +133,9 @@ function UserAddUpdateForm({ modalData, onCloseModal }: UserModalDataType) {
 
     const onCreate = async () => {
 
-        if (!Boolean(userDetails.email)) {
-            dispatch(showErrorToast("Email is required"))
+        const normalizedEmail = userDetails.email?.trim().toLowerCase();
+        if (!normalizedEmail && !userDetails.name?.trim()) {
+            dispatch(showErrorToast("Name is required when email is not available"))
             return
         }
 
@@ -108,99 +143,79 @@ function UserAddUpdateForm({ modalData, onCloseModal }: UserModalDataType) {
             // Create staff via server API — handles Firebase Auth + Firestore doc creation
             // @see __docs__/auth/ADR-email-uniqueness-strategy.md
             const currentStore = tenantDetails?.storesList?.find((s: any) => s.storeId === userDetails.storeId);
-            const res = await fetch('/api/auth/create-staff', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: userDetails.email,
-                    name: userDetails.name || userDetails.email.split('@')[0],
-                    tenantId: userDetails.tenantId || tenantDetails?.tenantId,
-                    storeId: userDetails.storeId,
-                    storeName: currentStore?.name || currentStore?.storeDetails?.name,
-                    role: userDetails.stores?.[0]?.role,
-                }),
+            const primaryStore = userDetails.stores?.find((store) => store.storeId === userDetails.storeId) || userDetails.stores?.[0];
+            const data = await createStaffUser({
+                countryCode: userDetails.countryCode,
+                dialCode: userDetails.dialCode,
+                email: normalizedEmail || undefined,
+                name: userDetails.name || userDetails.phoneNumber || normalizedEmail?.split('@')[0],
+                phoneNumber: userDetails.phoneNumber,
+                role: primaryStore?.role || getDefaultRoleId(),
+                storeId: primaryStore?.storeId || userDetails.storeId,
+                storeName: primaryStore?.name || currentStore?.name || currentStore?.storeDetails?.name,
+                tenantId: userDetails.tenantId || tenantDetails?.tenantId,
             });
-            const data = await res.json();
-
-            if (!res.ok) {
-                if (data.code === 'EMAIL_EXISTS') {
-                    dispatch(showWarningToast("Email already used"))
-                } else if (data.code === 'INVALID_EMAIL') {
-                    dispatch(showWarningToast("Invalid email"))
-                } else if (data.code === 'EMAIL_OTHER_TENANT') {
-                    dispatch(showErrorToast("This email belongs to another business"))
-                } else if (data.code === 'ALREADY_ASSIGNED') {
-                    dispatch(showWarningToast("User is already assigned to this store"))
-                } else {
-                    dispatch(showErrorToast(data.error || "Something went wrong"))
-                }
-                return;
-            }
 
             // API created the Firestore doc — use userId from response
-            const createdUser: any = {
-                id: data.userId,
-                email: data.email,
-                name: userDetails.name || data.email?.split('@')[0],
-                ...userDetails,
-                isVerified: false,
-                active: userDetails.active == undefined ? true : userDetails.active,
-            };
+            const createdUser: any = data.user || { ...userDetails, email: data.email, id: data.userId };
 
-            // Handle profile image upload if selected (update existing doc)
-            if (selectedProfileImage.url && data.userId) {
-                try {
-                    await updatePlatformUser({
-                        id: data.userId,
-                        imageToUpdate: selectedProfileImage.url,
-                        imageType: selectedProfileImage.type,
-                    });
-                } catch {
-                    console.warn("[userForm] Profile image upload failed for new user");
-                }
-            }
-
-            if (data.mode === 'existing_user_added_to_store') {
+            if (data.temporaryPasscode) {
+                showStaffPasscode(data);
+                dispatch(showSuccessToast("Staff user created with staff ID and temporary passcode"));
+            } else if (data.mode === 'existing_user_added_to_store') {
                 dispatch(showSuccessToast("Existing staff member added to this store"));
+            } else if (data.passwordResetEmailSent === false) {
+                dispatch(showWarningToast("Staff user created, but the setup email was not sent. Use Reset password from the staff list."))
             } else {
-                dispatch(showSuccessToast("Staff user created"));
+                dispatch(showSuccessToast("Staff user created and setup email sent"));
             }
             onClose(createdUser)
-        } catch (err) {
-            dispatch(showErrorToast("Something went wrong"))
+        } catch (err: any) {
+            if (err.code === 'EMAIL_EXISTS') {
+                dispatch(showWarningToast("Email already used"))
+            } else if (err.code === 'INVALID_EMAIL') {
+                dispatch(showWarningToast("Invalid email"))
+            } else if (err.code === 'EMAIL_OTHER_TENANT') {
+                dispatch(showErrorToast("This email belongs to another business"))
+            } else if (err.code === 'ALREADY_ASSIGNED') {
+                dispatch(showWarningToast("User is already assigned to this store"))
+            } else if (err.code === 'ROLE_ASSIGNMENT_FORBIDDEN') {
+                dispatch(showErrorToast("You cannot assign this role"))
+            } else {
+                dispatch(showErrorToast(err.message || "Something went wrong"))
+            }
             console.error("Staff creation error:", err);
         }
     }
 
-    const addUpdateUser = (changesToUpload) => {
-
-        if (selectedProfileImage.url) {
-            changesToUpload.imageToUpdate = selectedProfileImage.url
-            changesToUpload.imageType = selectedProfileImage.type
-        }
+    const addUpdateUser = async (changesToUpload) => {
         //update user flow
         if (modalData.data) {
             const originalUser = modalData.data
             const updatedChanges: any = getObjectDifferance(changesToUpload, originalUser);
             if (Object.keys(updatedChanges).length > 0) {
-                updatedChanges.id = originalUser.id;
-                updatePlatformUser(updatedChanges).then((uploadedData) => {
+                updateStaffUser({
+                    active: changesToUpload.active,
+                    alternatePhoneNumber: changesToUpload.alternatePhoneNumber,
+                    countryCode: changesToUpload.countryCode,
+                    dialCode: changesToUpload.dialCode,
+                    name: changesToUpload.name,
+                    phoneNumber: changesToUpload.phoneNumber,
+                    storeId: changesToUpload.storeId,
+                    stores: changesToUpload.stores,
+                    tenantId: changesToUpload.tenantId || storeDetails?.tenantId,
+                    userId: originalUser.id,
+                }).then((response) => {
                     dispatch(showSuccessToast("User updated successfully"))
-                    onClose({ ...originalUser, ...uploadedData })
+                    onClose(response.user || { ...originalUser, ...updatedChanges })
+                }).catch((err: any) => {
+                    dispatch(showErrorToast(err.code === 'ROLE_ASSIGNMENT_FORBIDDEN' ? "You cannot change roles or store access" : err.message || "Something went wrong"))
                 })
             } else {
                 dispatch(showWarningToast("No changes found"))
             }
         } else {
-            //add user flow
-            addPlatformUser(changesToUpload).then((uploaded) => {
-                dispatch(showSuccessToast("User added successfully"));
-                onClose(uploaded)
-            })
-                .catch((err) => {
-                    dispatch(showErrorToast("Something went wrong"))
-                    console.log(err);
-                });
+            await onCreate()
         }
     }
 
@@ -222,19 +237,19 @@ function UserAddUpdateForm({ modalData, onCloseModal }: UserModalDataType) {
         {
             label: ITEMS_LIST_LABELS.BASE_INFORMATION,
             active: true,
-            children: <BasicInformation fileInputRef={fileInputRef} userDetails={userDetails} selectedProfileImage={selectedProfileImage} onChangeValue={onChangeValue} />,
+            children: <BasicInformation allowProfileImage={false} fileInputRef={fileInputRef} userDetails={userDetails} selectedProfileImage={selectedProfileImage} onChangeValue={onChangeValue} />,
             icon: <LuClipboardSignature />,
         },
         {
             label: ITEMS_LIST_LABELS.ASSIGNED_STORES,
             active: tenantDetails?.storesList?.length > 1,
-            children: <StoresMapping userDetails={userDetails} onChangeValue={onChangeValue} />,
+            children: <StoresMapping canAssignRoles={canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />,
             icon: <LuStore />,
         },
         {
             label: ITEMS_LIST_LABELS.ASSIGNED_ROLES,
             active: true,
-            children: <StoresMapping userDetails={userDetails} onChangeValue={onChangeValue} />,
+            children: <RolesMapping disabled={!canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />,
             icon: <LuLock />,
         },
         {

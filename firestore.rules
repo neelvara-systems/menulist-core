@@ -19,6 +19,14 @@ service cloud.firestore {
       allow read: if isAuthenticated() && belongsToTenant(tId);
       allow write: if isTenantAdmin(tId, sId);
     }
+
+    // Legacy flat Projects Data - read-only compatibility for old project docs.
+    // Current writes must use /projects/{tId}/{sId}/{projectId}.
+    match /projects/{projectId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || legacyProjectBelongsToTenant(resource.data));
+      allow write: if false;
+    }
     
     // Projects Data - Multi-tenant isolated project data
     // Case 72: Multi-Outlet Protection - Outlet cannot write to master-controlled fields
@@ -65,28 +73,63 @@ service cloud.firestore {
     
     // User profiles - Users can read/write their own data
     match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated() && (isPlatformAdmin() || request.auth.uid == userId);
+      allow write: if isAuthenticated() && (isPlatformAdmin() || request.auth.uid == userId);
     }
     
     // ═══════════════════════════════════════════════════════════
     // PAYMENT & ONBOARDING SECURITY (Phase 1-3 Implementation)
     // ═══════════════════════════════════════════════════════════
     
-    // Tenants - SERVER-SIDE ONLY (no client writes)
+    // Tenants - tenant-scoped client reads, owner/platform controlled writes
     match /tenants/{tenantId} {
-      // Users can READ their own tenant data
-      allow read: if isAuthenticated() && belongsToTenantById(int(tenantId));
-      // NO client writes - must use server-side API
-      allow write: if false;
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || belongsToTenantById(tenantId));
+      allow create: if isAuthenticated() && isPlatformAdmin();
+      allow update: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(tenantId)
+            && hasTenantWriteRole()
+            && string(request.resource.data.tenantId) == string(resource.data.tenantId)
+          )
+        );
+      allow delete: if false;
     }
     
-    // Stores - SERVER-SIDE ONLY (no client writes)
+    // Stores - tenant/store-scoped client reads and owner settings writes
     match /stores/{storeId} {
-      // Users can READ their own store data
-      allow read: if isAuthenticated() && belongsToStoreById(int(storeId));
-      // NO client writes - must use server-side API
-      allow write: if false;
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(resource.data.tenantId)
+            && belongsToStoreById(storeId)
+          )
+        );
+      allow create: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(request.resource.data.tenantId)
+            && isTenantAdmin(request.resource.data.tenantId, storeId)
+            && string(request.resource.data.storeId) == string(storeId)
+          )
+        );
+      allow update: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(resource.data.tenantId)
+            && belongsToTenantById(request.resource.data.tenantId)
+            && belongsToStoreById(storeId)
+            && hasTenantWriteRole()
+            && string(request.resource.data.storeId) == string(resource.data.storeId)
+            && string(request.resource.data.tenantId) == string(resource.data.tenantId)
+          )
+        );
+      allow delete: if false;
     }
     
     // Platform Summary - PLATFORM ADMIN ONLY, plus tenant-scoped Canonica summary docs
@@ -94,24 +137,66 @@ service cloud.firestore {
       // Platform admins can read every platform summary document.
       // Canonica tenant users can read/write only the known Canonica summary docs
       // that carry matching tId/sId fields. All other writes remain server-only.
-      allow read: if isAuthenticated()
-                  && (isPlatformAdmin()
-                      || (isCanonicaPlatformSummaryDoc(document) && isCanonicaTenantMember(resource.data)));
-      allow create: if isAuthenticated()
-                    && isCanonicaPlatformSummaryDoc(document)
-                    && (isPlatformAdmin() || isCanonicaTenantMember(request.resource.data));
-      allow update: if isAuthenticated()
-                    && isCanonicaPlatformSummaryDoc(document)
+      allow read: if isPublicScreenSummaryDoc(document)
+                  || (
+                    isAuthenticated()
                     && (
                       isPlatformAdmin()
+                      || isCurrentStoreSummaryDoc(document)
+                      || (isCanonicaPlatformSummaryDoc(document) && isCanonicaTenantMember(resource.data))
+                    )
+                  );
+      allow create: if isAuthenticated()
+                    && (
+                      isPlatformAdmin()
+                      || canWriteCurrentStoreSummaryDoc(document)
                       || (
-                        isCanonicaTenantMember(resource.data)
+                        isCanonicaPlatformSummaryDoc(document)
+                        && isCanonicaTenantMember(request.resource.data)
+                      )
+                    );
+      allow update: if isAuthenticated()
+                    && (
+                      isPlatformAdmin()
+                      || canWriteCurrentStoreSummaryDoc(document)
+                      || canWriteStoresSummaryDoc(document)
+                      || (
+                        isCanonicaPlatformSummaryDoc(document)
+                        && isCanonicaTenantMember(resource.data)
                         && isCanonicaTenantMember(request.resource.data)
                         && request.resource.data.tId == resource.data.tId
                         && request.resource.data.sId == resource.data.sId
                       )
                     );
       allow delete: if false;
+    }
+
+    function isCurrentStoreSummaryDoc(document) {
+      return request.auth != null
+        && (
+          document == 'projects_' + string(request.auth.token.storeId)
+          || document == 'campaigns_' + string(request.auth.token.storeId)
+        );
+    }
+
+    function canWriteCurrentStoreSummaryDoc(document) {
+      return isCurrentStoreSummaryDoc(document)
+        && isTenantAdmin(string(request.auth.token.tenantId), string(request.auth.token.storeId));
+    }
+
+    function canWriteStoresSummaryDoc(document) {
+      return document == 'storesSummary'
+        && isTenantAdmin(string(request.auth.token.tenantId), string(request.auth.token.storeId))
+        && resource.data.keys().hasAll(['stores'])
+        && request.resource.data.keys().hasAll(['stores'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stores', 'lastUpdated'])
+        && request.resource.data.stores.diff(resource.data.stores).affectedKeys().hasOnly([string(request.auth.token.storeId)]);
+    }
+
+    function isPublicScreenSummaryDoc(document) {
+      return document.matches('^campaigns_.*$')
+        && resource.data.screen.enabled == true
+        && resource.data.screen.screenToken is string;
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -208,6 +293,13 @@ service cloud.firestore {
       allow update: if isCanonicaScopedUpdate();
       allow delete: if isCanonicaScopedDelete();
     }
+
+    match /canonica_cacheVersions/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
     
     // Subscriptions - SERVER-SIDE ONLY (no client writes)
     // Contains: monthlyCredits, topUpCredits, monthlyCreditsAllowance (AI capacity fields)
@@ -217,8 +309,26 @@ service cloud.firestore {
     // Credit values are NOT displayed in UI (doctrine compliance).
     match /subscriptions/{subscriptionId} {
       // Users can READ their own subscription
-      allow read: if isAuthenticated() && ownsSubscription(subscriptionId);
+      allow read: if isAuthenticated() && ownsSubscription();
       // NO client writes - must use payment APIs
+      allow write: if false;
+    }
+
+    // Payment Transactions — Server-side writes, tenant-scoped owner reads
+    match /payment_transactions/{transactionId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || (belongsToTenantById(resource.data.tenantId)
+                && belongsToStoreById(resource.data.storeId)));
+      allow write: if false;
+    }
+
+    // Topups — Server-side writes, tenant-scoped owner reads
+    match /topups/{topupId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || (belongsToTenantById(resource.data.tenantId)
+                && belongsToStoreById(resource.data.storeId)));
       allow write: if false;
     }
     
@@ -251,6 +361,19 @@ service cloud.firestore {
       
       // DELETE: Not allowed from client (cleanup via retention function)
       allow delete: if false;
+    }
+
+    // Feedback Events — anonymous append-only aggregate events, no PII
+    match /feedbackEvents/{eventId} {
+      allow create: if request.resource.data.type == 'feedback_event'
+        && request.resource.data.eventType in ['FEEDBACK_SUBMITTED', 'FEEDBACK_RESOLVED']
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.tId is int
+        && request.resource.data.sId is int
+        && request.resource.data.projectId is string;
+      allow read, update, delete: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -330,69 +453,106 @@ service cloud.firestore {
     // rolled up nightly by `aggregateCustomerAnalytics` (Cloud Function).
     // @see __docs__/customer-app/customer-app_firebase.md
     match /analytics/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || isTenantStoreDoc(resource.data)
+            || docIdMatchesCurrentTenantStore(docId));
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && request.resource.data.projectId is string;
+      allow update: if isTenantStoreUpdate()
+        && string(request.resource.data.projectId) == string(resource.data.projectId);
+      allow delete: if false;
     }
     
     // Chat Analytics — Aggregated daily chat stats
     match /chatAnalytics/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
       // Writes are server-side only (nightly aggregation)
       allow write: if false;
     }
     
     // Chat Sessions — Individual chat sessions
     match /chatSessions/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     // AI Search History — Search query logs
     match /aiSearchHistory/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if false;
     }
     
-    // Query Embeddings — Cached vector embeddings
+    // Query Embeddings — Cached vector embeddings (server/admin only)
     match /queryEmbeddings/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if false;
     }
     
     // Feedback — User feedback
     match /feedback/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if false;
     }
     
     // Support Tickets — Customer support
     match /supportTickets/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     // Decision Blocks — Precomputed intelligence (read-only from client)
     match /decisionBlocks/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || isTenantStoreDoc(resource.data)
+            || docIdMatchesCurrentTenantStore(docId));
       allow write: if false;
     }
     
     // Menu Intelligence — Continuous intelligence state (read-only from client)
     match /menuIntelligence/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || isTenantStoreDoc(resource.data)
+            || docIdMatchesCurrentTenantStore(docId));
       allow write: if false;
     }
     
     // Owner Control Usage — Authority maturation tracking
     match /ownerControlUsage/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || isTenantStoreDoc(resource.data)
+            || docIdMatchesCurrentTenantStore(docId));
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && docIdMatchesCurrentTenantStore(docId);
+      allow update: if isTenantStoreUpdate()
+        && docIdMatchesCurrentTenantStore(docId);
+      allow delete: if false;
     }
     
     // Image Batch Processing Jobs — Batch image generation
     match /imageBatchProcessingJobs/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if false;
     }
 
     // Image Batch Processing Jobs — Tenant/store-scoped DAL path
@@ -404,8 +564,18 @@ service cloud.firestore {
     
     // Master Operational State — Multi-outlet awareness signals
     match /masterOperationalState/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || docIdMatchesCurrentTenantPrefix(docId));
+      allow create, update: if isAuthenticated()
+        && (isPlatformAdmin() || (hasTenantWriteRole() && docIdMatchesCurrentTenantPrefix(docId)));
+      allow delete: if false;
+    }
+
+    // AI Insights — generated by server jobs, read by tenant members/platform
+    match /insights/{tId}/stores/{sId}/ai/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
+      allow write: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -415,19 +585,19 @@ service cloud.firestore {
     // Pricing Plans — Public read, no client writes
     match /pricingPlans/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAuthenticated() && isPlatformAdmin();
     }
     
     // Blogs — Public read
     match /blogs/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAuthenticated() && isPlatformAdmin();
     }
     
     // Changelog — Public read
     match /changelog/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAuthenticated() && isPlatformAdmin();
     }
 
     // Changelog — Tenant/store-scoped DAL path
@@ -436,17 +606,23 @@ service cloud.firestore {
         && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
       allow write: if isAuthenticated() && isPlatformAdmin();
     }
+
+    // Shared static assets/font presets — read by owner tools, maintained by platform
+    match /common/assets/{assetType}/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isPlatformAdmin();
+    }
     
     // Changelog Feedback — Authenticated write
     match /changelog_feedback/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isPlatformAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if false;
     }
     
     // Article Feedback — Authenticated write
     match /article_feedback/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isPlatformAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if false;
     }
@@ -454,8 +630,8 @@ service cloud.firestore {
     // Landing Page Enquiries — Public create
     match /landingPageEnquiries/{docId} {
       allow create: if true;
-      allow read: if isAuthenticated();
-      allow update, delete: if false;
+      allow read, update: if isAuthenticated() && isPlatformAdmin();
+      allow delete: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -463,33 +639,56 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     
     match /kb_categories/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || kbCategoriesDocMatchesCurrentStore(docId));
+      allow create, update: if isAuthenticated()
+        && (isPlatformAdmin() || (hasTenantWriteRole() && kbCategoriesDocMatchesCurrentStore(docId)));
+      allow delete: if isAuthenticated() && isPlatformAdmin();
     }
     
     match /kb_articles/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     match /kb_sections/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     match /kb_generation_jobs/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     match /kb_staging_sections/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     match /kb_staging_chunks/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data);
+      allow update: if isTenantStoreUpdate();
+      allow delete: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -508,8 +707,8 @@ service cloud.firestore {
     
     // AI Help Center Feedback — Authenticated write
     match /aiHelpCenterFeedback/{docId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow create: if isTenantStoreCreate(request.resource.data);
       allow update, delete: if false;
     }
     
@@ -545,7 +744,7 @@ service cloud.firestore {
     }
     
     match /systemAlerts/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isPlatformAdmin();
       allow write: if false;
     }
 
@@ -554,7 +753,7 @@ service cloud.firestore {
     }
     
     match /ops_config/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isPlatformAdmin();
       allow write: if false;
     }
     
@@ -605,16 +804,20 @@ service cloud.firestore {
     }
     
     match /reviewsState/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
       allow write: if false;
     }
     
-    // Compliance Pages — Public read (required for verification bots)
-    // Write: authenticated users only (API route has withAuth + Zod validation)
+    // Compliance Pages — Public read, tenant-scoped owner/platform writes
     // @see __docs__/compliance-pages/
     match /compliancePages/{docId} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create: if canWriteCompliancePage(docId, request.resource.data);
+      allow update: if canWriteCompliancePage(docId, request.resource.data)
+        && string(request.resource.data.sId) == string(resource.data.sId)
+        && string(request.resource.data.tId) == string(resource.data.tId);
+      allow delete: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -663,11 +866,19 @@ service cloud.firestore {
                     && request.resource.data.projectId is string;
       
       // Update: Only allow cancellation from client
-      // (processing → cancelling only)
+      // pending → cancelled or processing → cancelling
       allow update: if isAuthenticated()
                     && resource.data.uId == request.auth.uid
-                    && request.resource.data.status == 'cancelling'
-                    && resource.data.status == 'processing';
+                    && (
+                      (
+                        request.resource.data.status == 'cancelling'
+                        && resource.data.status == 'processing'
+                      )
+                      || (
+                        request.resource.data.status == 'cancelled'
+                        && resource.data.status == 'pending'
+                      )
+                    );
       
       // Delete: Not allowed from client (cleanup via scheduled function)
       allow delete: if false;
@@ -685,15 +896,101 @@ service cloud.firestore {
     // Check if user belongs to tenant
     function belongsToTenant(tId) {
       return request.auth != null
-        && request.auth.token.tenantId == tId;
+        && string(request.auth.token.tenantId) == string(tId);
     }
     
     // Check if user is tenant admin
     function isTenantAdmin(tId, sId) {
       return request.auth != null
-        && request.auth.token.tenantId == tId
-        && request.auth.token.admin == true
-        && (request.auth.token.storeIds == null || request.auth.token.storeIds.has(sId));
+        && string(request.auth.token.tenantId) == string(tId)
+        && hasTenantWriteRole()
+        && (
+          string(request.auth.token.storeId) == string(sId)
+          || request.auth.token.storeIds == null
+          || request.auth.token.storeIds.hasAny([string(sId)])
+        );
+    }
+
+    function hasTenantWriteRole() {
+      return request.auth.token.admin == true
+        || request.auth.token.platformRole == 'PLATFORM'
+        || request.auth.token.role == 'PLATFORM'
+        || request.auth.token.role == 'OWNER'
+        || request.auth.token.role == 'owner';
+    }
+
+    function legacyProjectBelongsToTenant(data) {
+      return request.auth != null
+        && (
+          string(data.tId) == string(request.auth.token.tenantId)
+          || string(data.tenantId) == string(request.auth.token.tenantId)
+        );
+    }
+
+    function canWriteCompliancePage(docId, data) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            data.keys().hasAll(['tId', 'sId'])
+            && string(docId) == string(data.sId)
+            && belongsToTenantById(data.tId)
+            && belongsToStoreById(data.sId)
+            && hasTenantWriteRole()
+          )
+        );
+    }
+
+    function isTenantStoreDoc(data) {
+      return isAuthenticated()
+        && data.keys().hasAll(['tId', 'sId'])
+        && belongsToTenantById(data.tId)
+        && belongsToStoreById(data.sId);
+    }
+
+    function isTenantStoreCreate(data) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            data.keys().hasAll(['tId', 'sId'])
+            && belongsToTenantById(data.tId)
+            && belongsToStoreById(data.sId)
+          )
+        );
+    }
+
+    function isTenantStoreUpdate() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isTenantStoreDoc(resource.data)
+            && isTenantStoreCreate(request.resource.data)
+            && string(request.resource.data.tId) == string(resource.data.tId)
+            && string(request.resource.data.sId) == string(resource.data.sId)
+          )
+        );
+    }
+
+    function docIdMatchesCurrentTenantStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId.matches('^' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId) + '(_|$).*');
+    }
+
+    function docIdMatchesCurrentTenantPrefix(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && docId.matches('^' + string(request.auth.token.tenantId) + '[-_].*');
+    }
+
+    function kbCategoriesDocMatchesCurrentStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId == 'categories_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
     }
     
     // Check if user belongs to specific tenant by ID
@@ -705,7 +1002,13 @@ service cloud.firestore {
     // Check if user belongs to specific store by ID
     function belongsToStoreById(storeIdInt) {
       return request.auth != null
-        && string(request.auth.token.storeId) == string(storeIdInt);
+        && (
+          string(request.auth.token.storeId) == string(storeIdInt)
+          || (
+            request.auth.token.storeIds != null
+            && request.auth.token.storeIds.hasAny([string(storeIdInt)])
+          )
+        );
     }
     
     // Check if user is platform admin
@@ -756,15 +1059,16 @@ service cloud.firestore {
     }
     
     // Check if user owns subscription (for read access)
-    function ownsSubscription(subscriptionId) {
-      // User must be authenticated and have tenant/store IDs
-      // We'll validate ownership by reading the subscription document
-      // This is safe because it's read-only access
-      return request.auth != null
-        && request.auth.token.tenantId != null
-        && request.auth.token.storeId != null;
-      // Note: Full ownership validation happens in the API routes
-      // This just ensures authenticated users with tenant/store can read
+    function ownsSubscription() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            resource.data.keys().hasAll(['tenantId', 'storeId'])
+            && belongsToTenantById(resource.data.tenantId)
+            && belongsToStoreById(resource.data.storeId)
+          )
+        );
     }
     
     // ═══════════════════════════════════════════════════════════

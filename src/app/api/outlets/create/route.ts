@@ -11,7 +11,7 @@ import { resolveBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
 import { createDefaultRoles } from "@data/defaultRoles";
-import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions";
+import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { checkRateLimit } from "@lib/rateLimit";
 import { razorpayClient } from "@lib/razorpay/razorpay";

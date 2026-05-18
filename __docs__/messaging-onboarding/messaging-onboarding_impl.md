@@ -1055,13 +1055,14 @@ const generatedEmail = `${providerDisplayId.replace("+", "")}@msg.menulist.ai`;
 
 **Problem:** Owner has no password, no email, no NextAuth account. How do they log into the dashboard?
 
-**Solution:** Magic link via messaging:
+**Solution:** Claim link with three setup choices:
 
-1. WhatsApp publish confirmation includes: `"Manage anytime: menulist.ai/login"`
-2. Owner opens dashboard → enters phone number → receives magic link via WhatsApp
-3. First login links phone to a real NextAuth session
-4. Owner can optionally set a real email at this point
-5. Subsequent logins work via standard NextAuth (email or phone)
+1. WhatsApp publish confirmation includes a dashboard claim URL: `menulist.ai/signin?claim={claimToken}`
+2. Owner opens the claim URL and sees the business name plus masked WhatsApp number
+3. Owner can claim with Google, email/password, or WhatsApp number/passcode
+4. WhatsApp number/passcode keeps the generated `@msg.menulist.ai` email as the Firebase Auth email and stores `phoneUsername` as the owner-facing login alias
+5. Email/password claim stores the real email and also keeps the WhatsApp number as a phone login alias
+6. Subsequent credential login accepts email, Staff ID, or phone; Firebase Auth still verifies one canonical auth account
 
 > **ADR-8 (NEW):** Magic link via messaging for first dashboard login. Phone number is the initial identity. Email linking is optional and happens on first dashboard visit. This keeps onboarding zero-friction while enabling full dashboard access later.
 
@@ -1549,7 +1550,7 @@ functions.logger.info("[Msg-Onboarding] Message received", {
 1. WhatsApp provides verified phone number — no additional verification needed
 2. Owner may not have or check email regularly
 3. Phone is the primary communication channel for target ICP (Indian SMBs)
-4. Dashboard login via magic link sent to WhatsApp (phone-to-email linking happens on first dashboard login)
+4. Dashboard claim link is sent to WhatsApp; owner can claim with Google, email/password, or WhatsApp number/passcode
 
 ### ADR-6: Why Provider-Agnostic Architecture from Day One
 
@@ -2315,15 +2316,15 @@ firebase functions:secrets:set WHATSAPP_APP_SECRET
 
 ### 19.6 NextAuth Phone Login Integration
 
-The magic link login (ADR-8, §8.2.3) requires a custom NextAuth provider for phone-based auth. The existing NextAuth config uses email-based providers. The phone provider must:
+The current credentials provider accepts email, Staff ID, or phone as the first field. Phone-based auth does not use a custom magic-link provider; it resolves the phone alias to the user document and then verifies the same Firebase Auth password/passcode used by that account.
 
-1. Accept phone number on login page
-2. Send a magic link via WhatsApp (using the provider adapter)
-3. On callback, look up the existing user doc by phone number (created during publish)
-4. Link the NextAuth account to that user doc
-5. Populate the NextAuth session with `tenantId`, `storeId`, etc.
+1. `claim-account` Mode 3 creates/updates Firebase Auth for the generated `@msg.menulist.ai` email
+2. The user doc stores `phoneUsername` as the owner-facing login alias
+3. The sign-in form accepts the WhatsApp number
+4. `getAuthUserByLoginIdentifier()` resolves `phoneUsername`, E.164 phone, or digits-only phone
+5. NextAuth session is populated with `tenantId`, `storeId`, and `stores[]`
 
-**This is the most complex integration point** and should be implemented AFTER the core onboarding pipeline is working. The owner can still access their menu via the direct link — dashboard login is a convenience feature.
+This keeps WhatsApp-number login inside the existing Firebase Auth + NextAuth stack instead of adding a second auth system.
 
 ### 19.7 Firestore Indexes (Exact Entries)
 

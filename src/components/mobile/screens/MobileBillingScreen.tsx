@@ -10,6 +10,7 @@ import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useContext, useMemo, useState } from 'react';
 import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
@@ -32,6 +33,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         tenantDetails,
         userPermissions,
     } = useContext(PlatformGlobalDataContext);
+    const router = useRouter();
     const { data: session } = useSession();
     const [billingHistory, setBillingHistory] = useState<any[]>([]);
     const [showPlans, setShowPlans] = useState(false);
@@ -561,12 +563,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Flex>
                 </Card>
 
-                <Card onClick={() => window.open('https://wa.me/919876543210', '_blank')}>
+                <Card onClick={() => router.push('/help-center/ticket')}>
                     <Flex align="center" gap={12}>
                         <LuMessageCircle color="#22c55e" size={20} />
                         <Flex gap={2} vertical>
                             <Text strong>{t('needBillingHelp')}</Text>
-                            <Text type="secondary">{t('chatWhatsApp')}</Text>
+                            <Text type="secondary">Open a support ticket in Help Center.</Text>
                         </Flex>
                     </Flex>
                 </Card>

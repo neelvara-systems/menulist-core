@@ -59,17 +59,15 @@ export const findCachedSearchByCacheKeyServer = async (
 ): Promise<AiSearchHistory | null> => {
     const snapshot = await firestoreAdmin.collection(COLLECTION)
         .where('cacheKey', '==', cacheKey)
-        .limit(10)
+        .where('tId', '==', Number(session.tId))
+        .where('sId', '==', Number(session.sId))
+        .limit(1)
         .get();
 
     if (snapshot.empty) return null;
 
     const candidates = snapshot.docs
         .map((docSnapshot) => ({ ...docSnapshot.data(), id: docSnapshot.id } as AiSearchHistory))
-        .filter((data) => (
-            Number(data.tId) === Number(session.tId) &&
-            Number(data.sId) === Number(session.sId)
-        ))
         .sort((a, b) => {
             const bCreated = getCanonicaTimestampMillis(b.createdOn || b.modifiedOn);
             const aCreated = getCanonicaTimestampMillis(a.createdOn || a.modifiedOn);

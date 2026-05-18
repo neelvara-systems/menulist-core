@@ -52,25 +52,34 @@ None — users are deactivated (soft delete), never hard deleted.
 
 ## New Auth APIs (Added Feb 19, 2026 — Auth Audit)
 
-### `POST /api/auth/create-staff`
+### `POST /api/staff`
 
 | Operation                               | Collection | Type       | Frequency          | Notes                             |
 | --------------------------------------- | ---------- | ---------- | ------------------ | --------------------------------- |
-| Firebase Auth createUser                | —          | Auth Write | Per staff creation | Admin SDK, secure random password |
-| Firebase Auth generatePasswordResetLink | —          | Auth Write | Per staff creation | Staff sets own password           |
+| Firebase Auth createUser                | —          | Auth Write | Per staff creation | Admin SDK. Staff get Staff ID alias; email staff also get setup email |
+| Firebase Auth sendOobCode               | —          | Auth Write | Per email staff creation | Sends password setup email        |
+| Update staff doc reset metadata         | `users`    | Write      | Per staff creation | `staffLoginId`, `loginUsername`, `phoneUsername`, setup metadata |
 
-> No direct Firestore ops — caller (userForm) handles user doc creation via `addPlatformUser()`.
+### `POST /api/staff/password-reset`
+
+| Operation                       | Collection | Type       | Frequency | Notes                                      |
+| ------------------------------- | ---------- | ---------- | --------- | ------------------------------------------ |
+| Read staff doc                  | `users`    | Read       | Per reset | Validate tenant and current store mapping  |
+| Firebase Auth updateUser        | —          | Auth Write | Per reset | Owner reset creates a new temporary passcode for the same Firebase Auth account |
+| Update staff doc reset metadata | `users`    | Write      | Per reset | Records request timestamp and requester ID |
+
+Owner-triggered reset never stores the staff password or passcode. The temporary passcode is returned once to the owner so it can be shared offline. Staff self-service reset still uses Firebase email reset when a real email exists.
 
 ### `POST /api/auth/claim-account`
 
 | Operation                         | Collection | Type       | Frequency               | Notes                               |
 | --------------------------------- | ---------- | ---------- | ----------------------- | ----------------------------------- |
 | Query by claimToken               | `users`    | Read       | Per claim               | 1 doc read (indexed query)          |
-| Update messaging user doc         | `users`    | Write      | Per claim (Mode 1 & 2)  | Clear claimToken, update email/name |
+| Update messaging user doc         | `users`    | Write      | Per claim (Mode 1, 2, 3) | Clear claimToken, update email/name/phone login alias |
 | Update tenant doc                 | `tenants`  | Write      | Per claim (Mode 1 only) | Transfer ownership                  |
 | Update store docs                 | `stores`   | Write      | Per claim (Mode 1 only) | Transfer ownership                  |
-| Firebase Auth createUser          | —          | Auth Write | Per claim (Mode 2 only) | Admin SDK                           |
-| Firebase Auth setCustomUserClaims | —          | Auth Write | Per claim (Mode 2 only) | Set tenantId/storeId                |
+| Firebase Auth createUser/updateUser | —        | Auth Write | Per claim (Mode 2 and 3) | Admin SDK; Mode 3 uses generated messaging email behind phone login |
+| Firebase Auth setCustomUserClaims | —          | Auth Write | Per claim (Mode 2 and 3) | Set tenantId/storeId                |
 
 ### `GET /api/auth/validate-claim`
 

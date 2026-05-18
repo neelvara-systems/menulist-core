@@ -1,5 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
+import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from "@constant/product";
+import { getDisplayEmail } from "@lib/auth/loginIdentifiers";
 import { firebaseAuth, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
@@ -245,12 +247,14 @@ export const authOptions: NextAuthOptions = {
                     blockDetails: dbUser.blockDetails,
                     tenantId: dbUser.tenantId,
                     storeId: dbUser.storeId,
+                    pId: (dbUser as any).pId || DEFAULT_PRODUCT_ID,
+                    productId: (dbUser as any).productId || (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     platformRole: dbUser.platformRole,
                     role: sessionStoreRole || '',
                     stores: dbUser.stores
                 };
                 session.platformRole = dbUser.platformRole || "USER";
-                session.pId = "ML";
+                session.pId = (dbUser as any).pId || DEFAULT_PRODUCT_ID;
                 session.tId = dbUser.tenantId;
                 session.sId = dbUser.storeId;
                 session.uId = dbUser.id;
@@ -384,13 +388,25 @@ const getEntityBlockSnapshot = async (collectionName: string, id?: string | numb
     }
 };
 
+const normalizeAuthProductId = (value: unknown): ProductId | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toUpperCase();
+    return Object.values(PRODUCT_IDS).includes(normalized as ProductId)
+        ? normalized as ProductId
+        : undefined;
+};
+
 const applyInheritedBlockState = async (dbUser: any): Promise<any> => {
     if (!dbUser || isPlatformEntityBlocked(dbUser)) return dbUser;
 
     const tenant = await getEntityBlockSnapshot(DB_COLLECTIONS.TENANTS, dbUser.tenantId);
+    const tenantProductId = normalizeAuthProductId((tenant as any)?.pId)
+        || normalizeAuthProductId((tenant as any)?.productId);
     if (isPlatformEntityBlocked(tenant)) {
         return {
             ...dbUser,
+            pId: normalizeAuthProductId(dbUser.pId) || tenantProductId || DEFAULT_PRODUCT_ID,
+            productId: normalizeAuthProductId(dbUser.productId) || tenantProductId || DEFAULT_PRODUCT_ID,
             blocked: true,
             blockDetails: {
                 ...tenant.blockDetails,
@@ -402,9 +418,19 @@ const applyInheritedBlockState = async (dbUser: any): Promise<any> => {
     }
 
     const store = await getEntityBlockSnapshot(DB_COLLECTIONS.STORES, dbUser.storeId);
+    const storeProductId = normalizeAuthProductId((store as any)?.pId)
+        || normalizeAuthProductId((store as any)?.productId);
+    const resolvedProductId = normalizeAuthProductId(dbUser.pId)
+        || normalizeAuthProductId(dbUser.productId)
+        || storeProductId
+        || tenantProductId
+        || DEFAULT_PRODUCT_ID;
+
     if (isPlatformEntityBlocked(store)) {
         return {
             ...dbUser,
+            pId: resolvedProductId,
+            productId: resolvedProductId,
             blocked: true,
             blockDetails: {
                 ...store.blockDetails,
@@ -415,7 +441,11 @@ const applyInheritedBlockState = async (dbUser: any): Promise<any> => {
         };
     }
 
-    return dbUser;
+    return {
+        ...dbUser,
+        pId: resolvedProductId,
+        productId: resolvedProductId,
+    };
 };
 
 const getDatabaseUserForSession = (dbUser: any): any => {
@@ -445,6 +475,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
     // Only persist the minimal set of fields required for authorization and UI.
     return {
         id: sanitized.id,
+        displayEmail: getDisplayEmail(sanitized.displayEmail || sanitized.email),
         email: sanitized.email,
         name: sanitized.name,
         image: sanitized.image,
@@ -454,8 +485,21 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         blockDetails: sanitized.blockDetails,
         tenantId: sanitized.tenantId,
         storeId: sanitized.storeId,
+        pId: normalizeAuthProductId(sanitized.pId)
+            || normalizeAuthProductId(sanitized.productId)
+            || DEFAULT_PRODUCT_ID,
+        productId: normalizeAuthProductId(sanitized.productId)
+            || normalizeAuthProductId(sanitized.pId)
+            || DEFAULT_PRODUCT_ID,
         platformRole: sanitized.platformRole,
         role: sanitized.role,
+        staffAuthMode: sanitized.staffAuthMode,
+        staffLoginId: sanitized.staffLoginId,
+        loginUsername: sanitized.loginUsername,
+        phone: sanitized.phone,
+        phoneNumber: sanitized.phoneNumber,
+        phoneUsername: sanitized.phoneUsername,
+        phoneLoginEnabled: sanitized.phoneLoginEnabled,
         // Keep only what we actually use for role derivation
         stores: Array.isArray(sanitized.stores)
             ? sanitized.stores.map((s: any) => ({
@@ -525,6 +569,8 @@ const getDebugUserSnapshot = (dbUser: any) => {
         blocked: dbUser.blocked,
         blockDetails: dbUser.blockDetails,
         deleted: dbUser.deleted,
+        pId: dbUser.pId,
+        productId: dbUser.productId,
         tenantId: dbUser.tenantId,
         storeId: dbUser.storeId,
         platformRole: dbUser.platformRole,

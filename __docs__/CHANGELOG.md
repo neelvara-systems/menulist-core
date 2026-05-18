@@ -6,6 +6,22 @@
 
 ---
 
+## May 18, 2026 — Staff and Permissions Completion
+
+### Changed
+
+- **Staff management moved behind server APIs** — Staff list, create, update, and remove-store flows now use authenticated `/api/staff` routes instead of direct browser writes to the server-only `users` collection.
+- **Staff password setup/reset wired** — Staff receive a Staff ID alias. Staff with email also receive Firebase setup email. Owner reset creates a one-time temporary passcode from desktop/mobile staff management.
+- **Phone and Staff ID login aliases wired** — Credential login now accepts email, Staff ID, or phone. Messaging-onboarded owners can claim with their WhatsApp number and passcode, and owner-triggered staff reset creates a one-time passcode.
+- **Role editing moved behind server APIs** — Desktop and mobile role creation/update/deactivation now use `/api/staff/roles` with store-role permission checks.
+- **Staff and role permissions enforced** — Staff lifecycle actions require `canManageUsers`; store/role assignment and role definition edits require `canAssignRoles`.
+
+### Fixed
+
+- **Desktop staff add/edit flow now initializes store and role mapping** — New staff starts with the current store and Staff role instead of submitting an empty store mapping.
+- **Mobile staff management now has update and remove actions** — Mobile owners can add staff, change role, activate/deactivate, and remove staff from a store.
+- **Last-owner protection added** — The system blocks removing, deactivating, or demoting the last active Owner mapping for a store.
+
 ## May 18, 2026 — Maintenance Scheduler Consolidation
 
 ### Changed

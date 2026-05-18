@@ -17,7 +17,7 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { getMenuItemsForScreen, getScreenDataByToken } from "@database/campaigns";
+import { getMenuItemsForScreenServer, getScreenDataByTokenServer } from "@database/campaigns/serverScreen";
 import { SCREEN_CONFIG } from "@lib/screen/screenRenderer";
 import { generateScreenSlides } from "@lib/screen/slideGenerator";
 import { unstable_cache } from "next/cache";
@@ -29,13 +29,13 @@ import ScreenDisplay from "./ScreenDisplay";
 // Eliminates redundant Firestore reads when multiple screens share a token
 // or when the same screen refreshes within the cache window
 const getCachedScreenData = unstable_cache(
-    getScreenDataByToken,
+    getScreenDataByTokenServer,
     ['screen-data-by-token'],
     { revalidate: 60, tags: ['screen-data'] }
 );
 
 const getCachedMenuItems = unstable_cache(
-    getMenuItemsForScreen,
+    getMenuItemsForScreenServer,
     ['screen-menu-items'],
     { revalidate: 60, tags: ['screen-data'] }
 );

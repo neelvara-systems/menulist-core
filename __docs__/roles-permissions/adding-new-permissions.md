@@ -1,7 +1,7 @@
 # Guide: Adding New Permissions
 
 > **Audience:** Developers  
-> **Last Updated:** February 13, 2026
+> **Last Updated:** May 18, 2026
 
 ---
 
@@ -13,10 +13,11 @@ When adding a new permission, update these files **in order**:
 | ---- | ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | 1    | `src/constants/permissions.ts`             | Add constant + add to PERMISSIONS object + add to ALL_PERMISSIONS + add to category + add label |
 | 2    | `src/types/platform/roles.ts`              | Add to RolePermissions type                                                                     |
-| 3    | `src/data/defaultRoles.ts`                 | Add to OWNER/MANAGER/STAFF permissions                                                          |
+| 3    | `src/data/shared/defaultRoles.ts`          | Add to OWNER/MANAGER/STAFF permissions                                                          |
 | 4    | `src/data/rolesPermissionsInitialData.ts`  | Add to initialData array with label, category, and description (for UI display)                 |
 | 5    | `src/lib/permissions/applyOutletPolicy.ts` | **If OutletPolicy-relevant:** Add mapping from OutletPolicy flag → RolePermission key           |
-| 6    | Test                                       | Verify permission works in UI                                                                   |
+| 6    | `functions/src/sharedData/defaultRoles.ts` | Copy `src/data/shared/defaultRoles.ts` byte-for-byte                                            |
+| 7    | Test                                       | Verify permission works in UI and `npx tsc --noEmit --incremental false` passes                 |
 
 ---
 
@@ -75,7 +76,7 @@ export type RolePermissions = {
 
 ## Step 3: Add to Default Roles
 
-**File:** `src/data/defaultRoles.ts`
+**File:** `src/data/shared/defaultRoles.ts`
 
 Decide which roles should have this permission by default:
 

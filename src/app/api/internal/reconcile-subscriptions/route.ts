@@ -1,15 +1,15 @@
 export const dynamic = 'force-dynamic';
-import { getCollectionRef, updateSubscription } from "@database/subscriptions";
+import { getCollectionRef, updateSubscription } from "@database/subscriptions/server";
 import {
     getActivePlanTypeForSubscription,
     isSubscriptionEntitlementSynced,
     safeSyncStorePlanEntitlementFromSubscription,
 } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { PaymentStatus } from "@type/razorpay";
-import { getDocs, query, Timestamp, where } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
 
@@ -56,11 +56,9 @@ export async function GET(request: Request) {
 
     try {
         // 2. Query all subscriptions that should be "alive" in our system
-        const q = query(
-            getCollectionRef(),
-            where("status", "in", ["active", "past_due", "paused"])
-        );
-        const snapshot = await getDocs(q);
+        const snapshot = await getCollectionRef()
+            .where("status", "in", ["active", "past_due", "paused"])
+            .get();
 
         if (snapshot.empty) {
             return NextResponse.json({
@@ -103,8 +101,8 @@ export async function GET(request: Request) {
 
                     // Only sync if Razorpay's cycle is NEWER (start is later)
                     if (rzpCycleStart > localCycleStart) {
-                        updates.cycleStartDate = Timestamp.fromMillis(rzpCycleStart);
-                        updates.cycleEndDate = Timestamp.fromMillis(rzpCycleEnd);
+                        updates.cycleStartDate = admin.firestore.Timestamp.fromMillis(rzpCycleStart);
+                        updates.cycleEndDate = admin.firestore.Timestamp.fromMillis(rzpCycleEnd);
                         syncDetails.push({
                             subId: sub.id,
                             field: "cycleDates",
@@ -130,7 +128,7 @@ export async function GET(request: Request) {
                     const rzpChargeAt = rzpSub.charge_at * 1000;
                     const localRenewsOn = sub.renewsOn?.toMillis?.() || 0;
                     if (Math.abs(rzpChargeAt - localRenewsOn) > 86400000) { // >1 day difference
-                        updates.renewsOn = Timestamp.fromMillis(rzpChargeAt);
+                        updates.renewsOn = admin.firestore.Timestamp.fromMillis(rzpChargeAt);
                         syncDetails.push({
                             subId: sub.id,
                             field: "renewsOn",
@@ -144,7 +142,7 @@ export async function GET(request: Request) {
                 if (Object.keys(updates).length > 0) {
                     updates.lastWebhook = {
                         event: "reconciliation.sync",
-                        timestamp: Timestamp.now(),
+                        timestamp: admin.firestore.Timestamp.now(),
                     };
                     await updateSubscription(sub.id, updates);
                     synced++;

@@ -24,6 +24,8 @@ function ForgotPasswordPage() {
     const session = useSession();
     const dispatch = useAppDispatch();
     const [error, setError] = useState({ id: '', message: '' });
+    const [successMessage, setSuccessMessage] = useState('');
+    const [isSending, setIsSending] = useState(false);
     const { token } = theme.useToken();
     const isDarkMode = useAppSelector(getDarkModeState)
     const router = useRouter();
@@ -35,24 +37,30 @@ function ForgotPasswordPage() {
         }
     }, [])
 
-    const forgotPassword = async (email: string) => {
-        return sendPasswordResetEmail(firebaseAuth, email)
-            .then(() => {
-                return { success: true };
-            })
-            .catch((error) => {
-                if (error.code.includes(LOGIN_ERRORS.INVALID_EMAIL)) {
-                    return { success: false, message: "Invalid email" };
-                } else if (error.code.includes(LOGIN_ERRORS.UNREGISTRED)) {
-                    return { success: false, message: "Email not registered" };
-                } else {
-                    return { success: false, message: "Somthing went wrong, please try again !" };
-                }
-            });
+    const forgotPassword = async ({ email }: { email: string }) => {
+        setIsSending(true);
+        setSuccessMessage('');
+        setError(EMPTY_ERROR);
+
+        try {
+            await sendPasswordResetEmail(firebaseAuth, email);
+            setSuccessMessage("Password reset email sent. Check your inbox and follow the link to choose a new password.");
+        } catch (error: any) {
+            if (error.code?.includes(LOGIN_ERRORS.INVALID_EMAIL)) {
+                setError({ id: LOGIN_ERRORS.INVALID_EMAIL, message: "Invalid email" });
+            } else if (error.code?.includes(LOGIN_ERRORS.UNREGISTRED)) {
+                setError({ id: LOGIN_ERRORS.UNREGISTRED, message: "Email not registered" });
+            } else {
+                setError({ id: 'RESET_FAILED', message: "Something went wrong, please try again." });
+            }
+        } finally {
+            setIsSending(false);
+        }
     }
 
     const onValuesChange = () => {
         setError(EMPTY_ERROR)
+        setSuccessMessage('')
     };
 
     const validateMessages = {
@@ -87,7 +95,10 @@ function ForgotPasswordPage() {
                         }}>
                         <h3 className={`${styles.heading}`} style={{ color: token.colorTextLabel }}>Forgot your password?</h3>
                         {/* <h1 className={`heading ${styles.heading} ${styles.title}`}>EcomsAi</h1> */}
-                        <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>Please enter the email address associated with your account and We will email you a link to reset your password.</div>
+                        <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>Enter the email address on your account. We will email you a link to reset your password.</div>
+                        <div style={{ color: token.colorTextSecondary, fontSize: 13, margin: '0 auto 16px', maxWidth: 360, textAlign: 'center' }}>
+                            If you use a Staff ID or phone passcode and do not have an email, ask the owner to create a new temporary passcode from Staff.
+                        </div>
                         <Form
                             name="forgot-password"
                             className={`${styles.form} login-form`}
@@ -112,8 +123,9 @@ function ForgotPasswordPage() {
                                     />
                                 </Form.Item> */}
                             {error.message && <div className={styles.error}>{error.message}</div>}
+                            {successMessage && <div style={{ color: token.colorSuccess, textAlign: 'center' }}>{successMessage}</div>}
                             <Space direction="vertical" align="center" style={{ width: "100%" }} >
-                                <Button type="primary" size="large" htmlType="submit" style={{ width: 275 }} className="login-form-button">Send Forgot Password Email</Button>
+                                <Button loading={isSending} type="primary" size="large" htmlType="submit" style={{ width: 275 }} className="login-form-button">Send Forgot Password Email</Button>
                             </Space>
 
                             <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 20 }} onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}>

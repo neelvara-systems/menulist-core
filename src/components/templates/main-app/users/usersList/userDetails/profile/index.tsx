@@ -10,10 +10,12 @@ import AddressCard from './addressCard';
 function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, onClickEdit?: any }) {
 
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
-    console.log("storeDetails", storeDetails)
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
+    const loginLabel = (userDetails as any)?.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${(userDetails as any)?.staffLoginId || (userDetails as any)?.loginUsername || '-'}`
+        : (userDetails as any)?.displayEmail || userDetails?.email || '-';
     return (
         <Card title='User Profile' style={{ width: '100%', height: "max-content" }} extra={<Button type='primary' ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}>
             <Flex justify='flex-start' align='flex-start' vertical>
@@ -22,7 +24,10 @@ function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, 
                     <img src={userDetails?.profileImage} style={{ width: 50, height: 50, borderRadius: 25 }} />
                     <Flex justify='flex-start' align='flex-start' vertical gap={10}>
                         <TextElement text={userDetails?.name} icon={<LuUser />} />
-                        <TextElement text={userDetails?.email} icon={<LuMail />} />
+                        <TextElement text={loginLabel} icon={<LuMail />} />
+                        {(userDetails as any)?.staffAuthMode !== 'owner_passcode' && ((userDetails as any)?.staffLoginId || (userDetails as any)?.loginUsername) ? (
+                            <TextElement text={`Staff ID: ${(userDetails as any).staffLoginId || (userDetails as any).loginUsername}`} icon={<LuClipboard />} />
+                        ) : null}
                         <TextElement text={userDetails?.phoneNumber ? `${userDetails?.dialCode} ${userDetails?.phoneNumber}` : '-'} icon={<LuPhoneCall />} />
                         {userDetails?.alternatePhoneNumber && (
                             <TextElement

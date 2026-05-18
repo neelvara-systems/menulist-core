@@ -47,6 +47,8 @@ const normalizeClaimValue = (value: unknown) => (
 const claimsUseCanonicalTenantStoreTypes = (claims: Record<string, unknown> | undefined) => (
     typeof claims?.tenantId === 'string'
     && typeof claims?.storeId === 'string'
+    && typeof claims?.admin === 'boolean'
+    && Array.isArray(claims?.storeIds)
 );
 
 const getSessionTenantId = (session: any) => (

@@ -2,7 +2,7 @@
 
 **Feature:** Staff-Level RBAC (Layer 1)  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 13, 2026  
+**Last Updated:** May 18, 2026
 **Priority:** LOW — Role checks use cached session data. Only role CRUD triggers writes.
 
 > **Scope:** This doc covers Firebase ops for role definitions and user role assignments. For OutletPolicy (Layer 2) ops, see [Multi-Chain Permissions Firebase](../multi-chain-permissions/multi-chain-permissions_firebase.md).
@@ -14,7 +14,8 @@
 - **Collections Used:** `stores` (role definitions in `roles[]` array), `users` (role assignment in `stores[].role`)
 - **Storage Buckets:** None
 - **Cloud Functions:** None
-- **Estimated Monthly Cost:** **$0.00** — Role checks use session-cached data; role edits are rare admin actions
+- **API Routes:** `GET/POST/PATCH/DELETE /api/staff`, `POST /api/staff/password-reset`, `POST/PATCH/DELETE /api/staff/roles`
+- **Estimated Monthly Cost:** **₹0.00 to ₹1/month for typical SMB use** — role checks stay in-memory; staff/role admin screens are rare owner actions
 
 ---
 
@@ -33,9 +34,10 @@
 
 | Operation                       | Collection | Trigger                  | Frequency         | Docs Read | Notes                                                                                                                                                             |
 | ------------------------------- | ---------- | ------------------------ | ----------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Resolve user role + permissions | —          | Session load             | Per login/refresh | 0         | `sessionProvider` uses `storeDetails.roles` (already loaded with store doc) + `session.user.stores[].role` (already in NextAuth session). Zero incremental reads. |
-| Permission check in UI          | —          | Any gated feature access | Per feature       | 0         | `userPermissions` context set once at session load. All UI gating is in-memory.                                                                                   |
-| Permission check in API         | —          | API route                | Per request       | 0         | `getActiveSession()` returns cached session with role data. No Firestore read.                                                                                    |
+| Resolve user role + permissions | — | Session load | Per login/refresh | 0 incremental | `sessionProvider` uses loaded store/session data. |
+| Permission check in UI | — | Any gated feature access | Per feature | 0 | `userPermissions` context set once at session load. |
+| Staff list | `users`, `stores` | Staff screen open | Rare | Tenant users + store docs | Server API reads tenant users and relevant store role definitions because `users` is server-only for cross-user reads. |
+| Role save validation | `stores`, `users` | Role create/update/deactivate | Rare | 1 store + tenant users when deactivating | Used to validate role and prevent deactivating a role assigned to active staff. |
 
 ### Writes
 
@@ -46,16 +48,19 @@
 | Create custom role               | `stores/{storeId}` | Admin adds new role                            | Very rare     | 1            | `roles[]` (array append on store doc) | New `StoreRoleDataType` with `id: "custom-{timestamp}"`.                                                                                                                                  |
 | Assign role to user              | `users/{userId}`   | Admin changes user's role                      | Very rare     | 1            | `stores[].role`                       | Updates the role ID on the user's store entry.                                                                                                                                            |
 | Create user with role            | `users/{userId}`   | New user signup/invite                         | Per signup    | 1            | `stores[].role` (+ other user fields) | Role set during user creation. Part of user doc write.                                                                                                                                    |
+| Update staff profile/mapping     | `users/{userId}`   | Owner edits staff                              | Rare          | 1            | Profile fields, `active`, `stores[]`, `storeIds[]`, `storeId` | Server validates tenant/store/role before writing. |
+| Reset staff password/passcode    | `users/{userId}`   | Owner resets staff password or new staff setup | Rare          | 1            | `passwordResetRequestedAt`, `passcodeResetAt`, `staffLoginId`, `loginUsername` | Owner reset updates Firebase Auth password and returns a temporary passcode once. MenuList stores only reset metadata, never the passcode. |
+| Remove staff from store          | `users/{userId}`   | Owner removes staff                            | Rare          | 1            | `stores[]`, `storeIds[]`, `active`, `deleted`, `deletedAt` | If no store mappings remain, the user is deactivated and soft-deleted. |
 
 ### Deletes
 
-None — roles are deactivated (`active: false`), never deleted. User role assignments are changed, never removed.
+None — roles are deactivated (`active: false`), never hard-deleted. Staff users are soft-deleted only when the last store mapping is removed; Firebase Auth accounts are not hard-deleted by the owner UI.
 
 ---
 
 ## Cost Estimate
 
-**$0.00/month** — Permission resolution is entirely in-memory using session-cached data. The only writes are rare admin actions (role edits, user assignment), which amount to < 10 writes/month for a typical tenant.
+Typical SMB estimate: **₹0.00 to ₹1/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management, and writes happen only on rare staff or role changes.
 
 ---
 

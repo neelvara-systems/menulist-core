@@ -13,11 +13,10 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import { deleteComplianceOverride, getComplianceOverrides, saveComplianceOverride } from '@database/compliance';
+import { deleteComplianceOverrideServer, getComplianceOverridesServer, saveComplianceOverrideServer } from '@database/compliance/server';
 import { sanitizeComplianceContent } from '@lib/compliance/sanitizer';
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../middleware/auth';
@@ -63,7 +62,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     const systemRefund = generateComplianceContent('refund', inputs);
 
     // Check for custom overrides
-    const overrides = await getComplianceOverrides(sId);
+    const overrides = await getComplianceOverridesServer(sId);
 
     return NextResponse.json({
         privacy: {
@@ -132,7 +131,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        await saveComplianceOverride(sId, tId, type, sanitized);
+        await saveComplianceOverrideServer(sId, tId, type, sanitized);
 
         return NextResponse.json({
             success: true,
@@ -141,7 +140,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     if (action === 'reset') {
-        await deleteComplianceOverride(sId, type);
+        await deleteComplianceOverrideServer(sId, type);
 
         return NextResponse.json({
             success: true,
@@ -157,16 +156,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
  */
 async function getStoreData(sId: number): Promise<any | null> {
     try {
-        const storesRef = collection(firebaseClient, DB_COLLECTIONS.STORES);
-        const q = query(
-            storesRef,
-            where('storeId', '==', sId),
-            where('active', '==', true),
-            limit(1),
-        );
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return null;
-        return snapshot.docs[0].data();
+        const snapshot = await firestoreAdmin
+            .collection(DB_COLLECTIONS.STORES)
+            .doc(String(sId))
+            .get();
+        if (!snapshot.exists || snapshot.data()?.active === false) return null;
+        return snapshot.data();
     } catch {
         return null;
     }

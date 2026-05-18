@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
  */
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
-import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions";
+import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";

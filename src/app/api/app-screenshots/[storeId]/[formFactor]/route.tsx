@@ -25,9 +25,8 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { doc, getDoc } from 'firebase/firestore';
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'nodejs';
@@ -154,9 +153,8 @@ export async function GET(
     const height = form === 'narrow' ? 1920 : 1080;
 
     try {
-        const ref = doc(firebaseClient, DB_COLLECTIONS.STORES, storeId);
-        const snap = await getDoc(ref);
-        const store = snap.exists() ? snap.data() : null;
+        const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
+        const store = snap.exists ? snap.data() : null;
 
         const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
         const displayName: string = getStoreContextName(store, 'Menu');

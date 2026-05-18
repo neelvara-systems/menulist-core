@@ -1,8 +1,9 @@
 'use client'
 
 import { PermissionKey } from '@constant/permissions';
+import { DEFAULT_ROLE_IDS } from '@data/defaultRoles';
 import RolesPermissionInitialData, { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from '@data/rolesPermissionsInitialData';
-import { updateStore } from '@database/stores';
+import { deleteRoleDefinition, saveRoleDefinition } from '@lib/staffManagement/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreRoleDataType } from '@type/platform/roles';
 import { useTranslations } from 'next-intl';
@@ -17,13 +18,14 @@ interface MobileRolesScreenProps {
 
 export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
     const t = useTranslations('MobileRoles');
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const [selectedRole, setSelectedRole] = useState<StoreRoleDataType | null>(null);
     const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<StoreRoleDataType | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     const roles = storeDetails?.roles || [];
+    const canAssignRoles = userPermissions?.canAssignRoles === true;
 
     const handleEditRole = (role: StoreRoleDataType) => {
         setEditingRole(JSON.parse(JSON.stringify(role)));
@@ -50,20 +52,24 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
 
         setIsSaving(true);
         try {
-            const rolesCopy = JSON.parse(JSON.stringify(roles));
-            const index = rolesCopy.findIndex((role: StoreRoleDataType) => role.id === editingRole.id);
-
-            if (index === -1) rolesCopy.push(editingRole);
-            else rolesCopy[index] = editingRole;
-
-            await updateStore({ roles: rolesCopy, storeId: storeDetails?.storeId });
-            setStoreDetails({ ...storeDetails, roles: rolesCopy });
+            const response = await saveRoleDefinition({
+                role: {
+                    active: editingRole.active !== false,
+                    description: editingRole.description || '',
+                    id: roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? editingRole.id : undefined,
+                    name: editingRole.name,
+                    permissions: editingRole.permissions || RolesPermissionInitialData,
+                },
+                storeId: storeDetails?.storeId,
+                tenantId: storeDetails?.tenantId,
+            });
+            setStoreDetails({ ...storeDetails, roles: response.roles });
             setIsEditSheetOpen(false);
             setEditingRole(null);
-            if (selectedRole?.id === editingRole.id) setSelectedRole(editingRole);
+            if (selectedRole?.id === editingRole.id) setSelectedRole(response.role || editingRole);
             Toast.show({ content: t('roleSaved'), duration: 1000 });
-        } catch {
-            Toast.show({ content: t('failedToSave'), duration: 2000 });
+        } catch (err: any) {
+            Toast.show({ content: err?.message || t('failedToSave'), duration: 2000 });
         } finally {
             setIsSaving(false);
         }
@@ -77,13 +83,16 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
             cancelText: t('cancel'),
             onConfirm: async () => {
                 try {
-                    const rolesCopy = roles.filter((item: StoreRoleDataType) => item.id !== role.id);
-                    await updateStore({ roles: rolesCopy, storeId: storeDetails?.storeId });
-                    setStoreDetails({ ...storeDetails, roles: rolesCopy });
+                    const response = await deleteRoleDefinition({
+                        roleId: role.id,
+                        storeId: storeDetails?.storeId,
+                        tenantId: storeDetails?.tenantId,
+                    });
+                    setStoreDetails({ ...storeDetails, roles: response.roles });
                     if (selectedRole?.id === role.id) setSelectedRole(null);
                     Toast.show({ content: t('roleDeleted'), duration: 1000 });
-                } catch {
-                    Toast.show({ content: t('failedToDelete'), duration: 2000 });
+                } catch (err: any) {
+                    Toast.show({ content: err?.message || t('failedToDelete'), duration: 2000 });
                 }
             },
         });
@@ -121,7 +130,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                                     {selectedRole.active ? t('active') : t('inactive')}
                                 </Tag>
                             </Flex>
-                            <Button fill="outline" onClick={() => handleEditRole(selectedRole)} size="small">
+                            <Button disabled={!canAssignRoles || selectedRole.id === DEFAULT_ROLE_IDS.OWNER} fill="outline" onClick={() => handleEditRole(selectedRole)} size="small">
                                 <Flex align="center" gap={6}>
                                     <LuPencil size={14} />
                                     <Text>{t('edit')}</Text>
@@ -169,7 +178,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                         <Flex align="center" gap={12} vertical>
                             <LuShield color="#cbd5e1" size={40} />
                             <Empty description={t('noRolesYet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                            <Button color="primary" onClick={handleAddRole} size="large">
+                            <Button color="primary" disabled={!canAssignRoles} onClick={handleAddRole} size="large">
                                 <Flex align="center" gap={6}>
                                     <LuPlus size={16} />
                                     <Text>{t('createRole')}</Text>
@@ -195,7 +204,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                             </List>
                         </Card>
 
-                        <Button block color="primary" fill="outline" onClick={handleAddRole} size="large">
+                        <Button block color="primary" disabled={!canAssignRoles} fill="outline" onClick={handleAddRole} size="large">
                             <Flex align="center" gap={6} justify="center">
                                 <LuPlus size={16} />
                                 <Text>{t('addCustomRole')}</Text>
@@ -300,7 +309,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                                 );
                             })}
 
-                            {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? (
+                            {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) && editingRole.id !== DEFAULT_ROLE_IDS.OWNER ? (
                                 <Button
                                     block
                                     color="danger"
