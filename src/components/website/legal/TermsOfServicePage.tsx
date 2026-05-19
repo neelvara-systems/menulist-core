@@ -18,10 +18,10 @@ const accountCards = [
     {
         icon: LuShield,
         title: 'Account security',
-        desc: 'You are responsible for safeguarding your account credentials and for any activities under your account.',
+        desc: 'You are responsible for safeguarding owner and staff access and for activities under accounts you create or control.',
         points: [
             'Use a strong, unique password',
-            'Never share your password with anyone',
+            'Share staff login details only with the intended staff member',
             'Notify us immediately of any unauthorized access',
         ],
     },
@@ -33,6 +33,29 @@ const accountCards = [
             'Business catalogs, menus, product images, and descriptions',
             'Restaurant, retail, or service business use',
             'Violation of these policies may result in immediate account suspension',
+        ],
+    },
+];
+
+const staffAccessCards = [
+    {
+        icon: LuUsers,
+        title: 'Staff and authorized users',
+        desc: 'If you add staff to MenuList, you are responsible for choosing the right role, sharing login details safely, and removing access when it is no longer needed.',
+        points: [
+            'Assign roles that match what each staff member needs to do',
+            'Keep staff phone numbers, emails, and store assignments accurate',
+            'Reset passcodes, sign out sessions, deactivate, or remove staff when access should end',
+        ],
+    },
+    {
+        icon: LuShield,
+        title: 'Staff use of business data',
+        desc: 'Staff must use MenuList only for the business that gave them access and only within the role assigned by that business.',
+        points: [
+            'Do not use another business account without permission',
+            'Do not share Staff ID, passcode, or account access with others',
+            'Do not export, copy, or disclose business or customer data unless the business authorizes it',
         ],
     },
 ];
@@ -72,7 +95,7 @@ const terminationReasons = [
     {
         icon: LuGavel,
         title: 'Termination and suspension',
-        desc: 'We may terminate or suspend your account immediately, without prior notice, for the following reasons.',
+        desc: 'We may terminate or suspend your account, or specific staff access, immediately, without prior notice, for the following reasons.',
         points: [
             'Breach of these Terms of Service',
             'Non-payment of subscription fees',
@@ -93,7 +116,7 @@ const terminationReasons = [
 ];
 
 export default function TermsOfServicePage() {
-    const lastUpdated = 'November 5, 2025';
+    const lastUpdated = 'May 19, 2026';
 
     return (
         <div className="ws-page">
@@ -180,8 +203,46 @@ export default function TermsOfServicePage() {
                 </div>
             </SectionWrapper>
 
-            {/* Content Ownership */}
+            {/* Staff Access */}
             <SectionWrapper variant="subtle">
+                <AnimateOnScroll>
+                    <SectionHeading
+                        title="Staff access and permissions"
+                        subtitle="How team access works when a business adds staff to MenuList."
+                    />
+                </AnimateOnScroll>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    {staffAccessCards.map((item, i) => {
+                        const Icon = item.icon;
+                        return (
+                            <AnimateStaggerChild key={item.title} index={i}>
+                                <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
+                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                                        <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            <Icon size={22} color="var(--ws-brand-secondary)" />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                                            <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
+                                        </div>
+                                    </div>
+                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
+                                        {item.points.map((point) => (
+                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
+                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                                <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{point}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </AnimateStaggerChild>
+                        );
+                    })}
+                </div>
+            </SectionWrapper>
+
+            {/* Content Ownership */}
+            <SectionWrapper variant="default">
                 <AnimateOnScroll>
                     <SectionHeading
                         title="Content ownership and rights"
@@ -219,7 +280,7 @@ export default function TermsOfServicePage() {
             </SectionWrapper>
 
             {/* Subscriptions & Payments */}
-            <SectionWrapper variant="default">
+            <SectionWrapper variant="subtle">
                 <AnimateOnScroll>
                     <SectionHeading
                         title="Subscriptions and payments"
@@ -239,7 +300,7 @@ export default function TermsOfServicePage() {
             </SectionWrapper>
 
             {/* Termination & Disclaimers */}
-            <SectionWrapper variant="subtle">
+            <SectionWrapper variant="default">
                 <AnimateOnScroll>
                     <SectionHeading
                         title="Termination, suspension, and disclaimers"
@@ -277,7 +338,7 @@ export default function TermsOfServicePage() {
             </SectionWrapper>
 
             {/* Governing Law */}
-            <SectionWrapper variant="default">
+            <SectionWrapper variant="subtle">
                 <AnimateOnScroll>
                     <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
                         <WebsiteHeadline as="h2" text="Governed by Indian law." />

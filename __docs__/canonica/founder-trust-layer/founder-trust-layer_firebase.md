@@ -1,7 +1,7 @@
 # Founder Trust Layer — Firebase Cost Tracking
 
 > **Version:** 1.0.0
-> **Status:** DOCUMENTED — Implementation Pending
+> **Status:** IMPLEMENTED
 > **Created:** 2026-03-09
 > **Feature Flag:** `ENABLE_CANONICA_TRUST_METRICS`
 
@@ -13,10 +13,11 @@
 
 | Collection | Operation | Purpose | Reads/Night/Tenant |
 |---|---|---|---|
-| `canonica_canonicalAnswers` | Read | Active answers, drift flags | 0 (reused from step 1) |
-| `canonica_entities` | Read | Entity map | 0 (reused from step 1) |
-| `canonica_signalEvents` | Read | Signal counts by entity | 0 (reused from step 1) |
-| `aiSearchHistory` | Read | Coverage + resolution classification | 0-1 (shared with step 4) |
+| `canonica_canonicalAnswers` | Read | Active answers, drift flags | Up to 500 docs |
+| `canonica_entities` | Read | Active entity map | Up to 1000 docs |
+| `canonica_signalEvents` | Read | Recent signal counts by entity | Up to 1000 docs |
+| `aiSearchHistory` | Read | Coverage + resolution classification | 0 extra docs; reused from coverage KPI result |
+| `platformSummary/trustMetrics_{tId}_{sId}` | Read | Previous metric values for trend fields | 1 doc |
 
 ### Existing Collection (WRITE)
 
@@ -36,8 +37,8 @@
 
 | Operation | Count | Source |
 |---|---|---|
-| Reads (new) | 0-1 | Previous trust metrics doc (for trend) |
-| Reads (reused) | ~500-1000 | Already loaded by steps 1 + 4 |
+| Reads (new) | Up to 2501 docs | Active answers + active entities + recent signals + previous trust summary |
+| Reads (reused) | Up to 500 docs | Search history rows already loaded by coverage KPI |
 | Writes | 1 | `platformSummary/trustMetrics_{tId}_{sId}` |
 
 ### Per Dashboard View
@@ -55,33 +56,33 @@
 | Operation | Count/Month | Cost |
 |---|---|---|
 | Nightly writes | 300 (10 × 30) | ~$0.0005 |
-| Nightly reads (previous doc) | 300 | ~$0.0001 |
+| Nightly reads (worst-case bounded) | ~750,300 | ~$0.45 |
 | Dashboard reads | ~300 (10 × ~30 views) | ~$0.0001 |
-| **Total** | | **~$0.001/month** |
+| **Total** | | **~$0.45/month (~₹38/month at ₹83/USD)** |
 
 ### At 100 Tenants (Growth)
 
 | Operation | Count/Month | Cost |
 |---|---|---|
 | Nightly writes | 3,000 | ~$0.005 |
-| Nightly reads | 3,000 | ~$0.001 |
+| Nightly reads (worst-case bounded) | ~7.5M | ~$4.50 |
 | Dashboard reads | ~3,000 | ~$0.001 |
-| **Total** | | **~$0.007/month** |
+| **Total** | | **~$4.51/month (~₹374/month at ₹83/USD)** |
 
 ### At 1,000 Tenants (Scale)
 
 | Operation | Count/Month | Cost |
 |---|---|---|
 | Nightly writes | 30,000 | ~$0.054 |
-| Nightly reads | 30,000 | ~$0.018 |
+| Nightly reads (worst-case bounded) | ~75M | ~$45 |
 | Dashboard reads | ~30,000 | ~$0.018 |
-| **Total** | | **~$0.09/month** |
+| **Total** | | **~$45.07/month (~₹3,741/month at ₹83/USD)** |
 
-**Cost is negligible** at any reasonable scale because:
+**Cost remains bounded and dashboard-cheap** because:
 1. Zero new collections — no ongoing storage growth
 2. Only 1 write per tenant per night (not per query)
 3. Only 1 read per dashboard view (not per metric)
-4. All computation reuses data already loaded by existing nightly steps
+4. All raw reads are bounded and happen in the nightly batch, not on dashboard views
 
 ---
 
@@ -127,7 +128,7 @@ The trust metrics doc is accessed by document ID (`trustMetrics_{tId}_{sId}`), n
 
 | Decision | Cost Impact |
 |---|---|
-| Reuse data from existing nightly steps | Saves 500-1000 reads/tenant/night |
+| Reuse coverage history rows from Step 4 | Saves up to 500 duplicate `aiSearchHistory` reads/tenant/night |
 | Single platformSummary doc (not per-metric docs) | Saves 3 writes/tenant/night |
 | Nightly aggregation (not real-time) | Saves continuous read/write costs |
 | No separate entity health collection | Saves 1 collection + N docs/tenant |

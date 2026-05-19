@@ -31,6 +31,7 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { upsertCanonicaTenantSummary } from './tenantSummary';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS (mirrored from src/config/onboardingBootstrapConfig.ts)
@@ -533,6 +534,19 @@ async function autoPromoteEntities(
         } else {
             result.forReview++;
         }
+    }
+
+    if (result.promoted > 0) {
+        await upsertCanonicaTenantSummary(db, tId, sId, {
+            source: 'onboarding_bootstrap',
+            hasEntities: true,
+        }).catch(error => {
+            logger.warn('[Canonica Onboarding] Failed to sync tenant summary after entity promotion', {
+                tId,
+                sId,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        });
     }
 
     return result;

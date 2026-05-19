@@ -26,3 +26,9 @@ Content feedback (likes/dislikes) on articles and changelog is already simple en
 ## 2. Content Feedback on Mobile
 
 Article and changelog likes/dislikes are **single-tap actions** that work on any screen size. No dedicated mobile component needed — the existing icons are touch-friendly (>44px tap targets).
+
+## 3. Platform Feedback Admin on Mobile
+
+**Updated 2026-05-19:** Feedback Admin is available to `PLATFORM` users from MenuList Mobile More -> Canonica -> Feedback Admin.
+
+This route mounts the existing platform Feedback Admin template through `MobilePlatformInternalScreen`. It is a real operator screen with feedback stats, feedback list, and detail modal. The mobile wrapper must keep cards, descriptions, and modals within the viewport; it must not create a duplicate MenuList-only feedback admin screen.

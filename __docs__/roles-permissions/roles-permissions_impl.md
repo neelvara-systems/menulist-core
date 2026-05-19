@@ -45,6 +45,7 @@ roles: StoreRoleDataType[]          stores: [{
 | Staff password reset/passcode API (`/api/staff/password-reset`) | ✅ Done |
 | Staff force sign-out API (`/api/staff/force-signout`) | ✅ Done |
 | Session access check API (`/api/auth/access-status`) | ✅ Done |
+| Self-service password/passcode change API (`/api/auth/change-password`) | ✅ Done |
 | Role CRUD API (`/api/staff/roles`)                   | ✅ Done |
 | Desktop and mobile staff screens use API             | ✅ Done |
 
@@ -165,8 +166,11 @@ export function getPermissionsForRole(
 | `src/app/api/staff/password-reset/route.ts`            | ✅ OK  |
 | `src/app/api/staff/force-signout/route.ts`             | ✅ OK  |
 | `src/app/api/auth/access-status/route.ts`              | ✅ OK  |
+| `src/app/api/auth/change-password/route.ts`            | ✅ OK  |
 | `src/app/api/staff/roles/route.ts`                    | ✅ OK  |
 | `src/app/api/onboarding/create-subscription/route.ts` | ✅ OK  |
+| `src/lib/staffManagement/shareLoginDetails.ts`        | ✅ OK  |
+| `src/components/templates/main-app/users/StaffLoginDetailsContent.tsx` | ✅ OK |
 | `src/components/.../users/permissions/*`              | ✅ OK  |
 
 ---
@@ -216,6 +220,7 @@ Categories:
 | `src/app/api/staff/password-reset/route.ts` | `POST` | Create a one-time temporary staff passcode for email, Staff ID, or phone login | `canManageUsers` |
 | `src/app/api/staff/force-signout/route.ts` | `POST` | Revoke an active staff session without deactivating the account | `canManageUsers` |
 | `src/app/api/auth/access-status/route.ts` | `GET` | Fresh server-side account/tenant/store/session revocation check used by the dashboard monitor | Active authenticated session |
+| `src/app/api/auth/change-password/route.ts` | `POST` | Let the currently signed-in owner or staff member change their own password/passcode after current password verification | Active authenticated session |
 | `src/app/api/staff/roles/route.ts` | `POST/PATCH` | Create or update role definition | `canAssignRoles` |
 | `src/app/api/staff/roles/route.ts` | `DELETE` | Deactivate role definition | `canAssignRoles` |
 | `src/app/api/analytics/*/route.ts` | `GET` | Owner analytics reads backed by GA APIs | `canViewAnalytics` |
@@ -243,6 +248,8 @@ Categories:
 - **Deactivate staff:** writes the same session revocation fields, sets `authDisabled: true`, and disables Firebase Auth. Reactivation re-enables Firebase Auth but does not clear `sessionRevokedAt`, so old sessions stay invalid.
 - **Remove last store mapping:** soft-deletes the user, revokes sessions, disables Firebase Auth, and preserves the Firestore user document for audit history.
 - **Owner passcode reset:** updates Firebase Auth password, revokes refresh tokens, writes `sessionRevokedAt`, and returns the temporary passcode once. No passcode is stored in Firestore.
+- **Self-service password/passcode change:** a signed-in owner or staff member can change their own password/passcode after current password verification. The route is protected by `withAuth()`, `AUTH_SENSITIVE` rate limiting, Zod validation, and secure logging. It updates Firebase Auth and writes `passwordChangedAt` to the user document.
+- **One-time login sharing:** desktop and mobile login-detail popups let owners copy Staff ID, copy passcode, copy both details, use the native browser share sheet when `navigator.share` exists, or open WhatsApp Web with a prefilled login message. If the staff phone number is saved, WhatsApp Web opens with that number in the URL. This is client-only and does not create extra Firebase reads or writes.
 - **Platform user block:** sets `blocked` / `blockDetails`, disables Firebase Auth, revokes sessions, and is enforced by the same access-status route. Tenant/store blocks are inherited at login/session refresh and checked fresh by `/api/auth/access-status`.
 - **Business A to business B:** user documents are tenant-scoped. A staff member leaving business A should be removed/deactivated there. Business B creates a new staff account. Personal email reuse across tenants stays blocked until a platform-owned transfer flow is built because `getAuthUserByEmail()` assumes a single user document per email.
 

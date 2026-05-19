@@ -81,6 +81,7 @@ const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'chatBackfill',
     'chatWeeklyDigest',
     'chatRoiCalculator',
+    'canonicaWidget',
     'opsControlRoom',
     'extractionMonitor',
     'schedulerMonitor',

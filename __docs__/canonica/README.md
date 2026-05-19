@@ -113,6 +113,24 @@ MenuList is the first embedded Canonica client. Owner support entry points now o
 
 The mobile More tab does not route-hop to `/canonica/*`; it renders `src/components/templates/main-app/helpCenter` inside the MenuList mobile shell to prevent hash/router fights, accidental desktop fallback, or app reloads. Direct visits to `/help-center`, `/help-center/kb`, `/help-center/ticket`, `/help-center/changelog`, and legacy `?tab=` URLs resolve to the same Help Center tabs. Nested `/help-center/*` routes are treated as MobileShell routes, so mobile article, ticket, and changelog deep links do not fall back to Today or a blank desktop shell. Article deep links use `/help-center/kb/articles/:articleId`; changelog deep links use `/help-center/changelog/:entryId`. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
 
+### MenuList Platform Operator Wiring
+
+MenuList also exposes Canonica operator screens for `PLATFORM` users from Mobile More -> Canonica. These are real product screens mounted through `src/components/mobile/screens/MobilePlatformInternalScreen.tsx`, not lightweight overview pages:
+
+- Support Tickets
+- Feedback Admin
+- Knowledge Base
+- KB Generation
+- Changelog
+- Widget Management
+- Chat Management
+- Chat Insights
+- Chat Backfill
+- Chat Weekly Digest
+- Chat ROI Calculator
+
+Back navigation from these screens returns to the Canonica hub. Expensive operations such as Chat Backfill must use explicit user confirmation and the cached platform store-summary selector instead of raw tenant/store inputs or the logged-in user's default store.
+
 ### Canonica Public Routes
 
 - `/sites/canonica` and `__canonica` host rewrites → Canonica marketing site
@@ -127,6 +145,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `POST /api/helpCenter/search-kb` — Non-streaming RAG search
 - `POST /api/helpCenter/search-kb-stream` — Streaming RAG search (SSE)
 - `POST /api/helpCenter/article-embedding` — Generate & store article embeddings
+- `POST /api/canonica/tenant-summary` — Authenticated server-side sync for `platformSummary/canonicaTenantsSummary` after client-side entity creation
 
 ### Database Layer (DAL)
 
@@ -142,6 +161,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `src/database/queryEmbeddings/index.ts` — Embedding vector cache
 - `src/database/kb-generation/jobs.ts` — Ingestion job lifecycle
 - `src/database/canonica/entities.ts` — Canonica entity CRUD + search index
+- `src/lib/canonica/tenantSummaryClient.ts` — Fire-and-forget entity-registry sync after manual entity creation
 - `src/database/canonica/canonicalAnswers.ts` — Canonical answer CRUD + governance
 - `src/database/canonica/mutationProposals.ts` — Mutation proposal lifecycle
 - `src/database/canonica/entityCandidates.ts` — Entity candidate staging + promotion
@@ -153,7 +173,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 ### Cloud Functions
 
 - `functions-canonica/src/index.ts` — Canonica Cloud Functions entry point
-- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica nightly: drift detection, signal mutation, signal resolution, coverage KPI, fallback detection, impact tracking, confidence adjustment, signal TTL, graph rebuild, predictive sync
+- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica nightly: summary-based tenant discovery, drift detection, signal mutation, signal resolution, coverage KPI, trust metrics, fallback detection, impact tracking, confidence adjustment, signal TTL, graph rebuild, predictive sync
+- `functions-canonica/src/canonica/tenantSummary.ts` — Cost-optimized `platformSummary/canonicaTenantsSummary` registry used by the scheduler before legacy entity-scan fallback
 - `functions-canonica/src/canonica/canonicaNightly.ts` — Persists structured run logs to `canonica_schedulerRunLogs` with per-tenant task results and diagnostics
 - `functions-canonica/src/canonica/draftGenerator.ts` — Canonical answer draft generation
 - `functions-canonica/src/canonica/resolutionExtractor.ts` — Ticket-resolution knowledge extraction
@@ -238,6 +259,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_auditLogs`             | Governance audit trail (append-only)    | Tenant+Store scoped                 |
 | `canonica_frictionDailyStats`    | Daily friction aggregates               | Tenant+Store scoped                 |
 | `canonica_schedulerRunLogs`      | Canonica nightly run logs and diagnostics | Platform-only read, server-written |
+| `platformSummary/canonicaTenantsSummary` | Scheduler tenant/store registry | Server-written, platform-only summary |
+| `platformSummary/trustMetrics_{tId}_{sId}` | Founder trust metrics dashboard read model | Tenant+Store scoped summary |
 | `canonica_integrationEvents`     | Workflow integration events             | Tenant+Store scoped, server-written |
 | `canonica_integrationDeliveryLogs` | Integration delivery attempt logs      | Tenant+Store scoped, server-written |
 | `canonica_predictiveTriggers`    | Predictive support trigger rules        | Tenant+Store scoped                 |

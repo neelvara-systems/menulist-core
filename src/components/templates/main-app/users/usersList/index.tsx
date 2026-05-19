@@ -6,16 +6,16 @@ import type { StaffStoreOption } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { removeObjRef } from "@util/utils";
-import { Alert, Button, Card, Flex, Input, Modal, Space, Spin, Typography } from "antd";
+import { Alert, Button, Card, Flex, Input, Modal, Space, Spin } from "antd";
 import { useContext, useEffect, useState } from "react";
 import { LuListFilter, LuPlus, LuSettings } from "react-icons/lu";
 import { useRouter } from "next/navigation";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
+import StaffLoginDetailsContent from "../StaffLoginDetailsContent";
 import UserDetailsModal from "./userDetailsModal";
 import UserAddUpdateForm from "./userForm";
 import UsersListTable from "./usersListTable";
 const { Search } = Input;
-const { Text } = Typography;
 
 const getSafeUsersList = (usersList: unknown) => Array.isArray(usersList) ? usersList : [];
 
@@ -99,12 +99,13 @@ function UsersListPage() {
             okText: "Done",
             title: "Staff login details",
             content: (
-                <Space direction="vertical" size={8}>
-                    <Text>Share these details with the staff member. This passcode is shown once.</Text>
-                    <Text strong>Staff ID: {data.staffLoginId}</Text>
-                    <Text strong>Passcode: {data.temporaryPasscode}</Text>
-                    <Text type="secondary">They can log in from the normal sign-in page.</Text>
-                </Space>
+                <StaffLoginDetailsContent
+                    countryCode={data.user?.countryCode}
+                    dialCode={data.user?.dialCode}
+                    phoneNumber={data.user?.phoneNumber}
+                    staffLoginId={data.staffLoginId}
+                    temporaryPasscode={data.temporaryPasscode}
+                />
             ),
         });
     }

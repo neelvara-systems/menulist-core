@@ -54,6 +54,19 @@ export const FUNCTION_FLAGS = {
     ENABLE_CANONICA_FRICTION_INTELLIGENCE: false,
 
     /**
+     * Canonica Founder Trust Layer
+     *
+     * When true + ENABLE_CANONICA_NIGHTLY is true:
+     * Aggregates coverage, resolution, drift, entity health, and top failing
+     * entities into platformSummary/trustMetrics_{tId}_{sId}.
+     *
+     * Zero new collections. One compact platformSummary write per tenant/run.
+     *
+     * @see __docs__/canonica/founder-trust-layer/
+     */
+    ENABLE_CANONICA_TRUST_METRICS: false,
+
+    /**
      * Canonica Founder Onboarding (Knowledge Bootstrap Engine)
      *
      * Step 12 of nightly batch: auto-extracts entities from published KB articles,

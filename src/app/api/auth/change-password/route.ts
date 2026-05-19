@@ -11,45 +11,68 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { authOptions } from "@lib/auth";
-import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
-import { secureLog } from "@lib/security/secureLogger";
-import { getServerSession } from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
+import { admin, authAdmin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { logger } from "@lib/monitoring/logger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { validateAPIInput } from "@lib/security/inputValidation";
+import { buildSecurityContext } from "@lib/security/securityContext";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { withAuth } from "../../../../middleware/auth";
 
-const db = admin.firestore();
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(6).max(128),
+});
 
-export async function POST(request: NextRequest) {
+const getRequestIp = (request: NextRequest) => (
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+  || request.headers.get("x-real-ip")
+  || "unknown"
+);
+
+export const POST = withAuth(async (request: NextRequest, session) => {
   try {
-    // 🔒 RATE LIMITING: Prevent brute force password change attempts
-    const { checkRateLimit } = await import('@lib/rateLimit');
-    const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rl = await checkRateLimit({ key: `auth-pwd:${ip}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
-    if (!rl.allowed) {
-      return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
-    }
-
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email || !session?.user?.id) {
+    const userId = String(session?.uId || session?.user?.id || "");
+    const email = String(session?.user?.email || "").toLowerCase().trim();
+    if (!userId || !email) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const rl = await checkRateLimit({
+      key: `auth-pwd:${userId || getRequestIp(request)}`,
+      ...getRateLimitForFeature("AUTH_SENSITIVE"),
+    });
+    if (!rl.allowed) {
+      logger.security("Rate Limit Exceeded", {
+        ...buildSecurityContext(session, request),
+        endpoint: request.nextUrl.pathname,
+        feature: "AUTH_SENSITIVE",
+      }, "medium");
+
+      return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
+    }
+
     const body = await request.json();
-    const { currentPassword, newPassword } = body;
+    const validation = validateAPIInput(ChangePasswordSchema, body);
+    if (validation.success === false) {
+      logger.security("Input Validation Failed - Change Password", {
+        ...buildSecurityContext(session, request),
+        endpoint: request.nextUrl.pathname,
+        error: validation.error,
+      }, "medium");
 
-    if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
-      return NextResponse.json({ error: "New password must be at least 6 characters" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid password details" }, { status: 400 });
     }
 
-    if (newPassword.length > 128) {
-      return NextResponse.json({ error: "Password too long" }, { status: 400 });
-    }
+    const { currentPassword, newPassword } = validation.data;
 
     // Find the Firebase Auth user for this email
     let firebaseUser;
     try {
-      firebaseUser = await authAdmin.getUserByEmail(session.user.email);
+      firebaseUser = await authAdmin.getUserByEmail(email);
     } catch (err: any) {
       if (err.code === "auth/user-not-found") {
         return NextResponse.json({
@@ -72,28 +95,39 @@ export async function POST(request: NextRequest) {
 
     // Verify current password by attempting to sign in
     // (Admin SDK doesn't have a "verify password" method, so we use a workaround)
-    if (currentPassword) {
-      try {
-        // Use Firebase Auth REST API to verify current password
-        const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`;
-        const verifyRes = await fetch(verifyUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: session.user.email,
-            password: currentPassword,
-            returnSecureToken: false,
-          }),
-        });
+    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (!firebaseApiKey) {
+      logger.error("[change-password] Firebase API key missing", undefined, {
+        ...buildSecurityContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      });
 
-        if (!verifyRes.ok) {
-          return NextResponse.json({ error: "Current password is incorrect" }, { status: 403 });
-        }
-      } catch (verifyError) {
-        return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
+      return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
+    }
+
+    try {
+      // Admin SDK does not expose password verification; use Firebase Auth REST API.
+      const verifyUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseApiKey}`;
+      const verifyRes = await fetch(verifyUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password: currentPassword,
+          returnSecureToken: false,
+        }),
+      });
+
+      if (!verifyRes.ok) {
+        return NextResponse.json({ error: "Current password is incorrect" }, { status: 403 });
       }
-    } else {
-      return NextResponse.json({ error: "Current password is required" }, { status: 400 });
+    } catch (verifyError) {
+      logger.error("[change-password] Current password verification failed", verifyError, {
+        ...buildSecurityContext(session, request),
+        endpoint: request.nextUrl.pathname,
+      });
+
+      return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
     }
 
     // Update the password via Admin SDK
@@ -103,15 +137,15 @@ export async function POST(request: NextRequest) {
 
     // Update modifiedOn in Firestore
     const now = admin.firestore.Timestamp.now();
-    const userRef = db.collection(DB_COLLECTIONS.USERS).doc(session.user.id);
+    const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId);
     await userRef.update({
       modifiedOn: now,
       passwordChangedAt: now,
     });
 
-    secureLog("[change-password] Password changed", {
-      email: session.user.email,
-      userId: session.user.id,
+    logger.info("[change-password] Password changed", {
+      ...buildSecurityContext(session, request),
+      endpoint: request.nextUrl.pathname,
     });
 
     return NextResponse.json({
@@ -119,7 +153,11 @@ export async function POST(request: NextRequest) {
       message: "Password changed successfully",
     });
   } catch (error) {
-    console.error("[change-password] Error:", (error as Error).message);
+    logger.error("[change-password] Error", error, {
+      ...buildSecurityContext(session, request),
+      endpoint: request.nextUrl.pathname,
+    });
+
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
-}
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { LuCheck, LuDatabase, LuLock, LuShield, LuUserCheck } from 'react-icons/lu';
+import { LuCheck, LuDatabase, LuLock, LuShield, LuUserCheck, LuUsers } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -14,6 +14,7 @@ const dataCollected = [
         desc: 'Data you voluntarily give us when you register and use our services.',
         points: [
             'Account information: Name, email address, and business details when you register',
+            'Staff account information: Staff name, email or phone number, Staff ID alias, role, store assignment, and account status when a business adds team access',
             'Business content: Menus, price lists, images, and documents you upload',
             'Payment information: Processed securely through Razorpay — we never store credit card details',
         ],
@@ -35,7 +36,8 @@ const dataCollected = [
         points: [
             'IP address, browser type, and operating system',
             'Device information and usage analytics',
-            'No personal customer data is collected from your end-users',
+            'Authentication and security events, including access checks, reset requests, and session revocation metadata',
+            'Menu analytics do not collect customer identities; optional feedback may include contact details a guest chooses to provide',
         ],
     },
 ];
@@ -44,6 +46,7 @@ const howWeUse = [
     { label: 'Provide services', value: 'Process your content and generate assets' },
     { label: 'Customer support', value: 'Manage your account and assist you' },
     { label: 'Communications', value: 'Send important updates and policy changes' },
+    { label: 'Staff access control', value: 'Create staff access, apply roles, reset passcodes, and revoke sessions' },
     { label: 'Improve platform', value: 'Analyse usage to enhance features' },
     { label: 'Security', value: 'Detect and prevent fraud and abuse' },
     { label: 'Legal compliance', value: 'Comply with laws and regulations' },
@@ -68,6 +71,16 @@ const securityMeasures = [
             'Regular security audits',
         ],
     },
+    {
+        icon: LuUserCheck,
+        title: 'Access controls',
+        desc: 'Owner and staff access is controlled through roles, store assignments, account status, and session checks.',
+        points: [
+            'Owners can assign staff roles and store access',
+            'Owners can reset staff passcodes or sign out staff sessions',
+            'MenuList does not store plain-text staff passcodes',
+        ],
+    },
 ];
 
 const privacyRights = [
@@ -80,7 +93,7 @@ const privacyRights = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'November 5, 2025';
+    const lastUpdated = 'May 19, 2026';
 
     return (
         <div className="ws-page">
@@ -210,6 +223,27 @@ export default function PrivacyPolicyPage() {
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                 {['We never sell, rent, or trade your personal information', 'Data is shared only when strictly necessary for service operation', 'All third parties operate under confidentiality agreements'].map((p) => (
+                                    <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
+                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                        <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </AnimateStaggerChild>
+                    <AnimateStaggerChild index={2}>
+                        <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
+                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                                <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <LuUsers size={22} color="var(--ws-brand-secondary)" />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Authorized team access</h3>
+                                    <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>Owners may give staff access to the business account. Staff can see only the areas their assigned role allows.</p>
+                                </div>
+                            </div>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
+                                {['Staff access is controlled by the business owner', 'Role and store assignments limit what staff can access', 'Owners should remove, deactivate, or sign out staff when access is no longer needed'].map((p) => (
                                     <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
                                         <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
                                         <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>

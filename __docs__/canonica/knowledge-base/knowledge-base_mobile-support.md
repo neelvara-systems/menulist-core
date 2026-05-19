@@ -51,9 +51,14 @@ The AI QnA Chatbot (which uses KB articles) is the primary mobile use case. Dire
 
 ## 5. Platform Admin on Mobile
 
-KB management (CRUD) is **NOT required on mobile**:
-- 3-pane splitter layout needs desktop
-- TipTap rich text editor needs desktop
-- Category/section/article CRUD needs desktop
+**Updated 2026-05-19:** KB management is now exposed to `PLATFORM` users from MenuList Mobile More -> Canonica -> Knowledge Base.
 
-Only **owner-side browsing** would benefit from mobile optimization.
+This does not create a separate mobile-only KB editor. The mobile shell mounts the same platform Knowledge Base template through `MobilePlatformInternalScreen` so the route remains a real product screen with category, section, article, search, and CRUD workflows.
+
+Mobile support expectation:
+
+- usable for emergency review and small edits;
+- no horizontal page overflow;
+- split panes stack vertically inside the mobile wrapper;
+- modals and drawers fit the viewport;
+- large content authoring remains better on desktop through the desktop-tools shortcut.

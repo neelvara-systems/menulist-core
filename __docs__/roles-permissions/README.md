@@ -15,6 +15,9 @@
 | -------------- | -------------------------------------------------------- | -------------------------------- |
 | **CEO / PM**   | [\_spec.md](./roles-permissions_spec.md)                 | Role definitions, user stories   |
 | **Developers** | [\_impl.md](./roles-permissions_impl.md)                 | Technical blueprint, code paths  |
+| **Developers** | [\_firebase.md](./roles-permissions_firebase.md)         | Firebase reads/writes/cost       |
+| **QA / Release** | [\_verification.md](./roles-permissions_verification.md) | Final review and production audit |
+| **Mobile**     | [\_mobile-support.md](./roles-permissions_mobile-support.md) | Mobile parity contract         |
 | **Developers** | [adding-new-permissions.md](./adding-new-permissions.md) | Guide for adding new permissions |
 
 ---
@@ -27,6 +30,7 @@
 - Owner-triggered staff password reset/passcode flow via `src/app/api/staff/password-reset/route.ts`
 - Owner-triggered live session revocation flow via `src/app/api/staff/force-signout/route.ts` and `src/app/api/auth/access-status/route.ts`
 - Staff can be created with email, Staff ID, and phone login aliases on one account; owner reset creates a temporary passcode
+- One-time Staff ID/passcode details can be copied, shared with the browser share sheet, or opened in WhatsApp Web with the staff phone number when saved
 - Server-side role create/update/deactivate flow via `src/app/api/staff/roles/route.ts`
 - Desktop and mobile staff management use the same API contract
 - UI for creating/editing roles with 29 feature-flag permissions
@@ -119,9 +123,12 @@ STAFF (User)
 | **Staff Password Reset/Passcode API** | `src/app/api/staff/password-reset/route.ts`                                   |
 | **Staff Force Sign-Out API** | `src/app/api/staff/force-signout/route.ts`                                   |
 | **Session Access Check API** | `src/app/api/auth/access-status/route.ts`                                    |
+| **Self-Service Password API** | `src/app/api/auth/change-password/route.ts`                                  |
 | **Role API**                | `src/app/api/staff/roles/route.ts`                                            |
 | **Staff Server Contract**   | `src/lib/staffManagement/server.ts`                                           |
 | **Staff Client Helpers**    | `src/lib/staffManagement/client.ts`                                           |
+| **Staff Login Share Helpers** | `src/lib/staffManagement/shareLoginDetails.ts`                               |
+| **Desktop Login Details UI** | `src/components/templates/main-app/users/StaffLoginDetailsContent.tsx`        |
 | **Default Data**            | `src/data/rolesPermissionsInitialData.ts`                                     |
 | **Set Claims API**          | `src/app/api/auth/set-claims/route.ts`                                        |
 | **Onboarding API**          | `src/app/api/onboarding/create-subscription/route.ts`                         |
@@ -149,6 +156,8 @@ STAFF (User)
 | **P0**   | Permission taxonomy updated to live product surfaces | ✅ Done |
 | **P0**   | Desktop/mobile route and screen gates   | ✅ Done |
 | **P0**   | Analytics/domain/POS API permission checks | ✅ Done |
+| **P0**   | Staff login detail copy/share/WhatsApp actions | ✅ Done |
+| **P0**   | Staff/owner self-service password change route hardened | ✅ Done |
 
 ## Production Rules
 

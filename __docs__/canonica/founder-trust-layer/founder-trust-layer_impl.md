@@ -433,7 +433,7 @@ ENABLE_CANONICA_TRUST_METRICS: false,
 ### Cloud Functions
 
 ```typescript
-// functions/src/constants/features.ts
+// functions-canonica/src/constants/features.ts
 ENABLE_CANONICA_TRUST_METRICS: false,
 ```
 

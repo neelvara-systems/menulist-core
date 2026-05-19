@@ -23,6 +23,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { getCanonicaBetaPlan, getCanonicaPlanById } from '@data/canonica/plans';
 import { createInitialSubscription } from '@database/subscriptions/server';
 import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
+import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { createTenantStoreInTransaction, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -126,6 +127,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
 
             return { tenantId: core.tenantId, storeId: core.storeId };
+        });
+
+        await upsertCanonicaTenantSummaryAdmin({
+            tId: result.tenantId,
+            sId: result.storeId,
+            source: 'client_onboarding',
+            hasEntities: false,
+        }).catch((summaryError) => {
+            secureError('[Canonica Onboard] Tenant summary sync failed', summaryError as Error, {
+                tenantId: result.tenantId,
+                storeId: result.storeId,
+            });
         });
 
         // 6. Create Subscription (Beta: free, no Razorpay needed; paid: Razorpay recurring)

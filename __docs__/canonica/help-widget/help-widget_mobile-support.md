@@ -8,7 +8,7 @@
 
 ## Mobile Decision
 
-`/canonica/widget` is supported on mobile through the existing Canonica dashboard shell. Do not create a separate mobile-only widget settings route.
+`/canonica/widget` is supported on mobile through the existing Canonica dashboard shell. MenuList's mobile More tab also opens the same widget console from More -> Canonica -> Widget Management. Do not create a separate mobile-only widget settings route.
 
 Reason:
 
@@ -27,6 +27,8 @@ The mobile route uses the same `CanonicaWidgetManagement` template as desktop:
 - Context snippet.
 - Cost and cache strategy summary.
 - Desktop/mobile preview.
+
+MenuList mobile only acts as a client/test host entry point. It must render Canonica's responsive widget console inside the existing mobile sub-screen model instead of duplicating widget settings in a separate MenuList-only implementation.
 
 ## Cost And Cache Mobile Rule
 
@@ -54,10 +56,11 @@ Current mobile-visible decisions:
 
 1. Open `/canonica/widget` at mobile width.
 2. Confirm the Canonica drawer includes the Widget route under Management for platform users.
-3. Confirm the Cost & Cache section stacks into one column on narrow screens.
-4. Confirm Save remains reachable after scrolling past Cost & Cache.
-5. Confirm no extra request is made by the Cost & Cache section itself.
-6. Confirm desktop layout still shows the same Cost & Cache content without disrupting existing cards.
+3. Confirm MenuList mobile More -> Canonica includes Widget Management and opens the same widget console in the mobile sub-screen flow.
+4. Confirm the Cost & Cache section stacks into one column on narrow screens.
+5. Confirm Save remains reachable after scrolling past Cost & Cache.
+6. Confirm no extra request is made by the Cost & Cache section itself.
+7. Confirm desktop layout still shows the same Cost & Cache content without disrupting existing cards.
 
 ## Version History
 

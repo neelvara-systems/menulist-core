@@ -111,74 +111,92 @@ export default function OwnerAppUpdatePrompt() {
                 borderRadius: 18,
                 border: '1px solid rgba(15, 23, 42, 0.12)',
                 background: '#ffffff',
+                boxSizing: 'border-box',
                 boxShadow: '0 18px 50px rgba(15, 23, 42, 0.22)',
                 padding: 14,
                 color: '#0f172a',
                 fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
                 <div
-                    aria-hidden="true"
                     style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        background: '#0054D0',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
+                        alignItems: 'flex-start',
+                        display: 'grid',
+                        gap: 12,
+                        gridTemplateColumns: '44px minmax(0, 1fr) 44px',
+                        width: '100%',
                     }}
                 >
-                    <LuRefreshCw size={20} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25 }}>
-                        Update available
+                    <div
+                        aria-hidden="true"
+                        style={{
+                            alignItems: 'center',
+                            background: '#0054D0',
+                            borderRadius: 14,
+                            color: '#ffffff',
+                            display: 'flex',
+                            height: 44,
+                            justifyContent: 'center',
+                            width: 44,
+                        }}
+                    >
+                        <LuRefreshCw size={21} />
                     </div>
-                    <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.35, marginTop: 2 }}>
-                        A newer MenuList version is ready. Refresh when you are not editing.
-                        {buildTime ? ` Build: ${buildTime}.` : ''}
+                    <div style={{ minWidth: 0, paddingTop: 1 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.2 }}>
+                            Update available
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: 13, lineHeight: 1.35, marginTop: 4 }}>
+                            A newer MenuList version is ready. Refresh when you are not editing.
+                        </div>
+                        {buildTime ? (
+                            <div style={{ color: '#64748b', fontSize: 12, lineHeight: 1.35, marginTop: 3 }}>
+                                Build: {buildTime}
+                            </div>
+                        ) : null}
                     </div>
+                    <button
+                        aria-label="Dismiss update prompt"
+                        onClick={handleDismiss}
+                        style={{
+                            alignItems: 'center',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            height: 44,
+                            justifyContent: 'center',
+                            padding: 0,
+                            width: 44,
+                        }}
+                        type="button"
+                    >
+                        <LuX size={19} />
+                    </button>
                 </div>
                 <button
                     onClick={handleRefresh}
                     style={{
+                        alignItems: 'center',
+                        background: '#0054D0',
                         border: 'none',
                         borderRadius: 999,
-                        background: '#0054D0',
+                        boxSizing: 'border-box',
                         color: '#ffffff',
                         cursor: 'pointer',
-                        fontSize: 13,
-                        fontWeight: 700,
-                        minHeight: 38,
-                        padding: '0 14px',
-                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        fontSize: 14,
+                        fontWeight: 800,
+                        justifyContent: 'center',
+                        minHeight: 46,
+                        padding: '0 18px',
+                        width: '100%',
                     }}
                     type="button"
                 >
                     Refresh now
-                </button>
-                <button
-                    aria-label="Dismiss update prompt"
-                    onClick={handleDismiss}
-                    style={{
-                        alignItems: 'center',
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#64748b',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        height: 38,
-                        justifyContent: 'center',
-                        padding: 0,
-                        width: 34,
-                    }}
-                    type="button"
-                >
-                    <LuX size={18} />
                 </button>
             </div>
         </div>

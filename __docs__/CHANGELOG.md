@@ -10,10 +10,14 @@
 
 ### Changed
 
+- **Staff login details are easier to share** — One-time Staff ID/passcode popups now support copying Staff ID, copying passcode, copying both details, native browser sharing when available, and opening WhatsApp Web with a prefilled login message. When the staff phone number is saved, WhatsApp Web opens directly for that number.
 - **Permission set expanded to 29 production flags** — Added dedicated controls for public presence, integrations, menu sharing, menu design, feedback, and digital screens while preserving existing role fields.
 - **Desktop and mobile navigation now use shared permission requirements** — Restricted pages and mobile tabs/hubs are hidden or blocked based on normalized role permissions instead of scattered local checks.
 - **Protected APIs now enforce store role permissions** — Analytics, domain/subdomain, and POS sync routes now validate the current store role before serving protected owner data or mutation flows.
 - **Default roles are normalized safely** — Existing default owner/manager/staff roles receive new default permissions automatically, while custom roles keep missing new permissions denied.
+- **Staff access hardening completed** — Self-service password/passcode change now uses protected auth middleware, Zod validation, auth-sensitive rate limiting, and secure logging; mobile role permission switches no longer double-toggle when tapped.
+- **Website now surfaces staff access control** — The homepage and Features page now explain staff accounts, roles, passcode reset, and owner sign-out as operations proof for teams without presenting it as HR or payroll software.
+- **Legal and security pages now reflect staff access** — Privacy Policy, Terms of Service, and Trust & Security now cover owner-managed staff identities, role-scoped access, passcode reset metadata, and owner session revocation without claiming HR, payroll, attendance, or compliance certification.
 
 ## May 19, 2026 — Canonica Widget Management
 

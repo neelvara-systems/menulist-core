@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.5 (Canonical Website Default)
+**Version:** 3.4.8 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 18, 2026
+**Last Updated:** May 19, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.5** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
+| **3.4.8** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
 
-Version 3.4.5 keeps the upload-first promise, the owner reassurance helpers, and the search/AI discovery proof. It also adds POS Sync as a low-prominence operations proof point grounded in current runtime capability: `ENABLE_POS_SYNC` is enabled, owner settings exist, and approved menu changes can be delivered as a signed full-menu snapshot to a connected store POS webhook. The public claim remains deliberately conservative: MenuList does not present itself as a POS integration suite and does not promise universal POS support, instant external propagation, or external vendor outcomes.
+Version 3.4.8 keeps the upload-first promise, the owner reassurance helpers, search/AI discovery proof, and low-prominence POS Sync operations proof. It also surfaces staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out as operations proof for teams. The Features page now carries dedicated owner-phone and staff-access operations cards grounded in shipped owner surfaces. Privacy, Terms, and Trust & Security now explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -374,12 +374,55 @@ Protected scope:
 
 - POS Sync runtime, webhook delivery APIs, test API, secret regeneration behavior, owner settings behavior, pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.11 Features Page Mobile Owner Operations Proof
+
+Stage 7.11 adds a dedicated Features page Operations card for phone-first owner work:
+
+- The Features page Operations group now includes "Owner dashboard on your phone."
+- Copy is grounded in existing mobile owner surfaces: dashboard, More/settings screens, digital screens, POS Sync, daily operations, customer signals, and menu publishing support.
+- The homepage and supporting-page helper line remains the short reassurance version; the Features page carries the fuller capability explanation.
+- The wording avoids overclaiming exact desktop/mobile parity for every advanced edge case.
+
+Protected scope:
+
+- Mobile owner runtime, dashboard logic, settings behavior, digital screens runtime, POS Sync runtime, pricing, payment, Razorpay, subscription, billing, checkout, auth, and `/create-menu` runtime logic were not changed.
+
+## Stage 7.12 Staff Access Website Proof
+
+Stage 7.12 adds staff access control as operations proof for team-run businesses:
+
+- `SmartFeaturesSection` now includes one quiet-reliability proof point for staff access control.
+- The Features page Operations group now includes "Staff accounts and roles."
+- Homepage FAQ now answers whether staff can use MenuList without full owner access.
+- Copy is grounded in shipped staff management: email or Staff ID/passcode access, role assignment, passcode reset, and owner force sign-out.
+- The website deliberately avoids HR, payroll, attendance, shift-planning, or workforce-management claims.
+
+Protected scope:
+
+- Staff/auth runtime, role/permission APIs, pricing, payment, Razorpay, subscription, billing, checkout, and `/create-menu` runtime logic were not changed.
+
+## Stage 7.13 Staff Access Policy Alignment
+
+Stage 7.13 aligns public policy/security pages with the staff access feature:
+
+- Privacy Policy now discloses staff account information, role/store assignment, account status, reset/session metadata, authorized team access, and the fact that MenuList does not store plain-text staff passcodes.
+- Terms of Service now defines owner responsibility for staff access, safe sharing of Staff ID/passcode details, role assignment, and ending access when staff leave.
+- Trust & Security now avoids the older "Google Sign-In only" framing and explains Firebase/Google Auth handling, role-scoped staff access, and owner reset/sign-out controls.
+- Public copy remains factual and does not present this as GDPR certification, HR software, payroll, attendance, or a legal compliance guarantee.
+
+Protected scope:
+
+- Staff/auth runtime, legal entity details, cookie consent, DPA/SLA pages, pricing, payment, Razorpay, subscription, billing, checkout, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.8 | May 19, 2026 | Aligned Privacy Policy, Terms of Service, and Trust & Security with owner-managed staff access, role-scoped permissions, passcode reset metadata, and session revocation. |
+| 3.4.7 | May 19, 2026 | Added staff access control as homepage/features/FAQ operations proof without changing staff/auth runtime. |
+| 3.4.6 | May 19, 2026 | Added a dedicated Features page Operations card for phone-browser/PWA owner management without changing mobile runtime. |
 | 3.4.5 | May 18, 2026 | Added POS Sync as a low-prominence operations proof on homepage/features and corrected stale POS Sync docs status without changing POS runtime. |
 | 3.4.4 | May 18, 2026 | Added reusable phone-first and owner-approval reassurance helpers across website conversion pages with English and Hindi locale coverage. |
 | 3.4.3 | May 18, 2026 | Added homepage search/AI discovery proof section and FAQ caveat grounded in existing SEO/AEO, schema, crawler, sitemap, and LLM discovery infrastructure. |

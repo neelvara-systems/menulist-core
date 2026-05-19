@@ -52,6 +52,10 @@ const { Title, Text, Paragraph } = Typography;
 
 type SnippetType = 'html' | 'spa' | 'next';
 
+type CanonicaWidgetManagementProps = {
+    embeddedMobile?: boolean;
+};
+
 type WidgetConfigResponse = {
     config?: Partial<CanonicaWidgetConfig>;
     allowedOrigins?: string[];
@@ -91,7 +95,7 @@ const CACHE_DECISION_ITEMS = [
     },
 ] as const;
 
-export default function CanonicaWidgetManagement() {
+export default function CanonicaWidgetManagement({ embeddedMobile = false }: CanonicaWidgetManagementProps) {
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
@@ -263,7 +267,7 @@ export default function CanonicaWidgetManagement() {
     }
 
     return (
-        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 76 : 0 }}>
+        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? (embeddedMobile ? 128 : 76) : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
                     <Title level={4} style={{ margin: 0 }}>Widget Management</Title>
@@ -597,7 +601,7 @@ export default function CanonicaWidgetManagement() {
                     position: 'fixed',
                     left: 0,
                     right: 0,
-                    bottom: 0,
+                    bottom: embeddedMobile ? 'calc(env(safe-area-inset-bottom) + 88px)' : 0,
                     zIndex: 20,
                     padding: '10px 12px',
                     background: '#ffffff',

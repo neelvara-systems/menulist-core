@@ -92,14 +92,16 @@ All mobile screens MUST use identical data shapes as desktop:
 
 ## 6. Platform Admin on Mobile
 
-Platform admin features (ticket management, KB CRUD, chat monitoring) are **NOT required on mobile**:
+**Updated 2026-05-19:** Platform admin features are available to `PLATFORM` users from MenuList Mobile More -> Canonica. This does not replace the owner-facing Help Center mobile flow; it adds operator access for support recovery and emergency admin work.
 
-| Feature | Mobile? | Reason |
-|---------|:-------:|--------|
-| Ticket dashboard (platform) | ❌ | Complex table layout, requires desktop |
-| KB management | ❌ | TipTap editor not mobile-friendly |
-| KB generation | ❌ | File upload + review workflow is desktop-only |
-| Chat monitoring | ❌ | Filters + drawer layout needs desktop |
-| Changelog CRUD | ❌ | Rich text editor needs desktop |
+| Feature | Mobile? | Route model |
+|---------|:-------:|-------------|
+| Ticket dashboard (platform) | Yes | Real platform template through `MobilePlatformInternalScreen` |
+| Feedback Admin | Yes | Real platform template through `MobilePlatformInternalScreen` |
+| KB management | Yes | Real platform template through `MobilePlatformInternalScreen` |
+| KB generation | Yes | Real platform template through `MobilePlatformInternalScreen` |
+| Chat monitoring | Yes | Real platform template through `MobilePlatformInternalScreen` |
+| Changelog CRUD | Yes | Real platform template through `MobilePlatformInternalScreen` |
+| Widget Management | Yes | Same `CanonicaWidgetManagement` template with embedded mobile mode |
 
-Only **owner-side** Help Center features need mobile support.
+Desktop remains preferred for dense authoring, exports, and long triage sessions. Mobile platform routes must still be readable, navigable, and action-capable without horizontal page overflow.

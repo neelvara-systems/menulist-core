@@ -1,16 +1,88 @@
 'use client'
 
 import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
+import { buildStaffLoginDetailsText, copyTextToClipboard, isNativeStaffShareAvailable, openWhatsAppWebShare, shareStaffLoginDetails } from '@lib/staffManagement/shareLoginDetails';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
-import { LuKeyRound, LuLogOut, LuMail, LuPhone, LuPlus, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
+import { LuCopy, LuKeyRound, LuLogOut, LuMail, LuPhone, LuPlus, LuSend, LuShare2, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileUsersScreenProps {
     onBack: () => void;
+}
+
+function StaffLoginDetailsPanel({
+    countryCode,
+    dialCode,
+    phoneNumber,
+    staffLoginId,
+    temporaryPasscode,
+}: {
+    countryCode?: string;
+    dialCode?: string;
+    phoneNumber?: string;
+    staffLoginId: string;
+    temporaryPasscode: string;
+}) {
+    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const details = { countryCode, dialCode, phoneNumber, staffLoginId, temporaryPasscode };
+    const fullText = buildStaffLoginDetailsText(details);
+
+    useEffect(() => {
+        setSupportsNativeShare(isNativeStaffShareAvailable());
+    }, []);
+
+    const copyValue = async (value: string, label: string) => {
+        const copied = await copyTextToClipboard(value);
+        Toast.show({ content: copied ? `${label} copied` : `Could not copy ${label.toLowerCase()}`, duration: 1500 });
+    };
+
+    const shareOnWhatsAppWeb = () => {
+        const opened = openWhatsAppWebShare(details);
+        Toast.show({
+            content: opened ? 'WhatsApp Web opened' : 'Could not open WhatsApp Web',
+            duration: 1500,
+        });
+    };
+
+    const shareFromDevice = async () => {
+        const result = await shareStaffLoginDetails(details);
+        if (result === 'cancelled') return;
+        Toast.show({
+            content: result === 'shared' ? 'Share sheet opened' : 'Could not share login details',
+            duration: 1500,
+        });
+    };
+
+    return (
+        <Flex gap={10} vertical>
+            <Text>Share these details with the staff member. This passcode is shown once.</Text>
+            <Text strong>Staff ID: {staffLoginId}</Text>
+            <Text strong>Passcode: {temporaryPasscode}</Text>
+            <Flex gap={8} style={{ marginTop: 4 }} vertical>
+                <Button block fill="outline" icon={<LuCopy size={16} />} onClick={() => void copyValue(staffLoginId, 'Staff ID')}>
+                    Copy Staff ID
+                </Button>
+                <Button block fill="outline" icon={<LuCopy size={16} />} onClick={() => void copyValue(temporaryPasscode, 'Passcode')}>
+                    Copy passcode
+                </Button>
+                <Button block fill="outline" icon={<LuCopy size={16} />} onClick={() => void copyValue(fullText, 'Login details')}>
+                    Copy both
+                </Button>
+                {supportsNativeShare ? (
+                    <Button block fill="outline" icon={<LuShare2 size={16} />} onClick={() => void shareFromDevice()}>
+                        Share
+                    </Button>
+                ) : null}
+                <Button block icon={<LuSend size={16} />} onClick={shareOnWhatsAppWeb}>
+                    Open WhatsApp Web
+                </Button>
+            </Flex>
+        </Flex>
+    );
 }
 
 export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
@@ -31,6 +103,8 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const roles = staffStores.find((store) => store.storeId === storeDetails?.storeId)?.roles || storeDetails?.roles || [];
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const defaultStaffCountryCode = (storeDetails as any)?.countryCode || '';
+    const defaultStaffDialCode = (storeDetails as any)?.dialCode || '';
 
     useEffect(() => {
         let cancelled = false;
@@ -69,6 +143,8 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
         setIsAdding(true);
         try {
             const data = await createStaffUser({
+                countryCode: newUserPhone.trim() ? defaultStaffCountryCode : undefined,
+                dialCode: newUserPhone.trim() ? defaultStaffDialCode : undefined,
                 email: newUserEmail.trim().toLowerCase() || undefined,
                 name: newUserName.trim() || undefined,
                 phoneNumber: newUserPhone.trim() || undefined,
@@ -83,11 +159,13 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 void Dialog.alert({
                     confirmText: 'Done',
                     content: (
-                        <Flex gap={8} vertical>
-                            <Text>Share these details with the staff member. This passcode is shown once.</Text>
-                            <Text strong>Staff ID: {data.staffLoginId}</Text>
-                            <Text strong>Passcode: {data.temporaryPasscode}</Text>
-                        </Flex>
+                        <StaffLoginDetailsPanel
+                            countryCode={(data.user as any)?.countryCode || defaultStaffCountryCode}
+                            dialCode={(data.user as any)?.dialCode || defaultStaffDialCode}
+                            phoneNumber={(data.user as any)?.phoneNumber || newUserPhone}
+                            staffLoginId={data.staffLoginId}
+                            temporaryPasscode={data.temporaryPasscode}
+                        />
                     ),
                     title: 'Staff login details',
                 });
@@ -197,11 +275,13 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 void Dialog.alert({
                     confirmText: 'Done',
                     content: (
-                        <Flex gap={8} vertical>
-                            <Text>Share these details with the staff member. This passcode is shown once.</Text>
-                            <Text strong>Staff ID: {data.staffLoginId}</Text>
-                            <Text strong>Passcode: {data.temporaryPasscode}</Text>
-                        </Flex>
+                        <StaffLoginDetailsPanel
+                            countryCode={(data.user as any)?.countryCode || (user as any)?.countryCode || defaultStaffCountryCode}
+                            dialCode={(data.user as any)?.dialCode || (user as any)?.dialCode || defaultStaffDialCode}
+                            phoneNumber={(data.user as any)?.phoneNumber || (user as any)?.phoneNumber}
+                            staffLoginId={data.staffLoginId}
+                            temporaryPasscode={data.temporaryPasscode}
+                        />
                     ),
                     title: 'New staff passcode',
                 });

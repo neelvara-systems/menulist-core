@@ -10,9 +10,10 @@ import { UserUploadedFileType } from '@type/common'
 import { UserDataType } from "@type/platform/user"
 import { getObjectDifferance } from "@util/deepMerge"
 import { removeObjRef, updateDeepPathValue } from "@util/utils"
-import { Button, Card, Divider, Flex, Modal, Space, theme, Typography } from "antd"
+import { Button, Card, Divider, Flex, Modal, theme } from "antd"
 import { createRef, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { LuBellRing, LuBookOpenCheck, LuCake, LuCalculator, LuCalendarClock, LuClipboardSignature, LuImagePlus, LuLock, LuMapPin, LuSiren, LuStore, LuUpload, LuUploadCloud } from "react-icons/lu"
+import StaffLoginDetailsContent from "../../StaffLoginDetailsContent"
 import AccessPermissions from "./accessPermissions"
 import AdditionalDocuments from "./additionalDocuments"
 import AdditionalInfo from "./additionalInfo"
@@ -25,7 +26,6 @@ import Notifications from "./notifications"
 import StoresMapping from "./storesMapping"
 import Timings from "./timings"
 import RolesMapping from "./rolesMapping"
-const { Text } = Typography
 
 type UserModalDataType = {
     canAssignRoles?: boolean
@@ -113,12 +113,13 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             okText: "Done",
             title: "Staff login details",
             content: (
-                <Space direction="vertical" size={8}>
-                    <Text>Share these details with the staff member. This passcode is shown once.</Text>
-                    <Text strong>Staff ID: {data.staffLoginId}</Text>
-                    <Text strong>Passcode: {data.temporaryPasscode}</Text>
-                    <Text type="secondary">They can log in from the normal sign-in page.</Text>
-                </Space>
+                <StaffLoginDetailsContent
+                    countryCode={data.user?.countryCode || userDetails.countryCode}
+                    dialCode={data.user?.dialCode || userDetails.dialCode}
+                    phoneNumber={data.user?.phoneNumber || userDetails.phoneNumber}
+                    staffLoginId={data.staffLoginId}
+                    temporaryPasscode={data.temporaryPasscode}
+                />
             ),
         });
     }

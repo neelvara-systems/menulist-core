@@ -1,7 +1,7 @@
 'use client';
 
 import { useAppDispatch } from '@hook/useAppDispatch';
-import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -17,7 +17,9 @@ import {
     Modal,
     Progress,
     Row,
+    Select,
     Space,
+    Spin,
     Statistic,
     Table,
     Tag,
@@ -26,6 +28,7 @@ import {
     theme
 } from 'antd';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useContext, useState } from 'react';
 import { LuAlertTriangle, LuCheckCircle, LuClock, LuDatabase, LuSkipForward, LuXCircle } from 'react-icons/lu';
 
@@ -41,7 +44,7 @@ interface BackfillResult {
 
 export default function AnalyticsBackfill() {
     const router = useRouter();
-    const loggedInSession = useClientAuthSession();
+    const { data: loggedInSession, status: sessionStatus }: any = useSession();
     const dispatch = useAppDispatch();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { token } = theme.useToken();
@@ -55,6 +58,15 @@ export default function AnalyticsBackfill() {
         errors: number;
     } | null>(null);
     const [progress, setProgress] = useState<number>(0);
+    const platformRole = loggedInSession?.platformRole || loggedInSession?.user?.platformRole;
+    const isPlatform = platformRole === 'PLATFORM';
+    const {
+        loading: storesLoading,
+        selectedStore,
+        selectedStoreId,
+        selectOptions,
+        setSelectedStoreId,
+    } = usePlatformStoreSummaryOptions(sessionStatus === 'authenticated' && isPlatform);
 
     // Calculate date range for display
     const getDateRange = () => {
@@ -80,16 +92,20 @@ export default function AnalyticsBackfill() {
         };
     };
 
-    // Check if user is owner
-    //uncomment this in production
-    const isOwner = true //loggedInSession?.user?.role === ECOMSAI_PLATFORM_USER_ROLE;
+    if (sessionStatus === 'loading') {
+        return (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+                <Spin />
+            </div>
+        );
+    }
 
-    if (!isOwner) {
+    if (!isPlatform) {
         return (
             <div style={{ padding: '24px' }}>
                 <Alert
                     message="Access Denied"
-                    description="Only store owners can access this page. This tool generates reports from past chat history."
+                    description="Only platform users can run chat analytics backfills."
                     type="error"
                     showIcon
                     icon={<LuXCircle />}
@@ -107,6 +123,10 @@ export default function AnalyticsBackfill() {
         // Validate days before showing modal
         if (!days || days < 1) {
             message.warning('Please enter a valid number of days (1-90)');
+            return;
+        }
+        if (!selectedStore?.tId || !selectedStore?.sId) {
+            message.warning('Select a store first');
             return;
         }
 
@@ -129,7 +149,7 @@ export default function AnalyticsBackfill() {
                         <li>Analyze conversations from {days} day{days > 1 ? 's' : ''}</li>
                         <li>Take about {Math.ceil(days * 1.5)} seconds to complete</li>
                         <li>Skip days that already have reports</li>
-                        <li>Process data for your store: <Text strong>{getStoreContextName(storeDetails as any, 'Your Store')}</Text></li>
+                        <li>Process data for: <Text strong>{selectedStore?.name || `Store ${selectedStore?.sId}`}</Text></li>
                     </ul>
                     <Paragraph type="warning" style={{ fontSize: '13px', marginBottom: 0 }}>
                         ⚠️ This process reads a lot of data. Only continue if you need past reports.
@@ -145,8 +165,8 @@ export default function AnalyticsBackfill() {
     };
 
     const handleBackfill = async () => {
-        if (!loggedInSession?.tId || !loggedInSession?.sId) {
-            message.error('Session Error: Store information not found in session');
+        if (!selectedStore?.tId || !selectedStore?.sId) {
+            message.warning('Select a store first');
             return;
         }
 
@@ -158,9 +178,9 @@ export default function AnalyticsBackfill() {
 
         try {
             const result = await backfillAggregates(
-                Number(loggedInSession.tId),  // ✅ Send as number (matches Firestore type)
-                Number(loggedInSession.sId),  // ✅ Send as number (matches Firestore type)
-                days || 30 // Ensure we pass a valid number
+                Number(selectedStore.tId),
+                Number(selectedStore.sId),
+                days || 30
             );
 
             setResults(result.results);
@@ -266,7 +286,7 @@ export default function AnalyticsBackfill() {
                         Chat Backfill
                     </Title>
                     <Paragraph type="secondary">
-                        Generate reports from your past chat history
+                        Generate analytics reports from a selected client store&apos;s past chat history.
                     </Paragraph>
                 </div>
 
@@ -454,15 +474,30 @@ export default function AnalyticsBackfill() {
                 />
 
                 {/* Store Info */}
-                <Card title="Your Store Information" size="small">
-                    <Descriptions column={2} size="small">
-                        <Descriptions.Item label="Store Name">
-                            {getStoreContextName(storeDetails as any, 'N/A')}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Your Access">
-                            <Tag color="gold">Owner</Tag>
-                        </Descriptions.Item>
-                    </Descriptions>
+                <Card title="Target Store" size="small">
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Select
+                            showSearch
+                            optionFilterProp="label"
+                            loading={storesLoading}
+                            value={selectedStoreId}
+                            onChange={setSelectedStoreId}
+                            options={selectOptions}
+                            placeholder="Select store"
+                            style={{ width: '100%' }}
+                        />
+                        <Descriptions column={2} size="small">
+                            <Descriptions.Item label="Store Name">
+                                {selectedStore?.name || getStoreContextName(storeDetails as any, 'N/A')}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Tenant / Store">
+                                {selectedStore ? `T${selectedStore.tId} / S${selectedStore.sId}` : 'N/A'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Access">
+                                <Tag color="gold">Platform</Tag>
+                            </Descriptions.Item>
+                        </Descriptions>
+                    </Space>
                 </Card>
 
                 {/* Configuration */}

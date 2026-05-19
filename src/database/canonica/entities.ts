@@ -20,6 +20,7 @@ import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
+import { markCanonicaTenantHasEntities } from '@lib/canonica/tenantSummaryClient';
 import { CanonicaEntity, CanonicaEntityRelation, CanonicaEntitySearchIndex } from "@type/canonica";
 
 // ═══════════════════════════════════════════════════════════════
@@ -125,6 +126,7 @@ export const addEntity = async (data: Omit<CanonicaEntity, 'id'>) => {
 
             const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getEntityCollectionRef(), submitData);
+            markCanonicaTenantHasEntities(data.tId, data.sId, 'entity_created').catch(() => undefined);
             return { ...submitData, id: docRef.id } as CanonicaEntity;
         },
         data,

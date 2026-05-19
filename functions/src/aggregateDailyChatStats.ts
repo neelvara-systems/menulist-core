@@ -483,5 +483,5 @@ export const backfillAggregates = onCall(backfillOptions, async (request) => {
         }
     }
 
-    return { tenantId, days, results };
+    return { tenantId, storeId, days, results };
 });

@@ -193,7 +193,7 @@ INTEGRATION POINTS (existing system):
 **What happens:**
 
 1. Feature flag `ENABLE_CANONICA_NIGHTLY` checked — if OFF, task is skipped
-2. **Tenant Discovery:** Queries `canonica_entities` for all distinct tenant+store pairs (max 1000 scanned entity docs; truncation is logged)
+2. **Tenant Discovery:** Reads `platformSummary/canonicaTenantsSummary` first (1 doc). Client onboarding registers tenants as inactive for scheduler purposes until entities exist. Manual entity creation and onboarding bootstrap mark `hasEntities: true`; if the summary is missing/empty, the scheduler falls back to the legacy `canonica_entities` scan (max 1000 docs), logs truncation, and backfills the summary for future runs.
 3. **For each tenant — governed sequential steps:**
 
    **Step 1 — Drift Detection:**
@@ -222,7 +222,13 @@ INTEGRATION POINTS (existing system):
    **Step 4 — Canonical Coverage KPI:**
    - Reads last 24h of search history
    - Counts canonical hits vs misses
-   - Stores hit rate in `platformSummary/canonica_{sId}`
+   - Stores hit rate in `platformSummary/coverage_{tId}_{sId}`
+
+   **Step 4B — Founder Trust Metrics:**
+   - Feature-flagged by `ENABLE_CANONICA_TRUST_METRICS`
+   - Reuses the coverage history rows from Step 4
+   - Reads bounded active answers, active entities, recent signals, and the previous trust summary for trend fields
+   - Stores coverage, resolution, drift, entity health, top failing entities, and escalation breakdown in `platformSummary/trustMetrics_{tId}_{sId}`
 
    **Step 5 — Recurring Fallback Detection:**
    - Scans search history for entities with 5+ canonical misses in 14 days
@@ -535,11 +541,12 @@ Every integration point is designed to fail silently:
 
 1. ~~No admin UI for Canonica~~ → **MutationProposalReview UI** built (list + approve/reject)
 2. ~~Signal events lack entity binding~~ → **Signal entity auto-resolution** runs nightly, matching metadata against entity search index
-3. ~~No canonical coverage tracking~~ → **Coverage KPI** aggregated nightly, stored in `platformSummary/canonica_{sId}`
-4. ~~Candidates can't become entities without code~~ → **promoteCandidate()** one-click: candidate → entity + search index
-5. ~~Nightly job missing operational loop~~ → **7-step batch** with drift + resolution + mutation + coverage + fallback + impact + confidence
-6. ~~No mobile-safe Canonica shell~~ → **Responsive owner shell** with mobile drawer navigation, sticky header, scrollable governance tables, and viewport-width modals
-7. ~~No public/end-user UI readiness pass~~ → **Public site + widget hardened** for mobile sizing, onboarding routing, MIME-safe image preview, and no tenant/store id exposure
+3. ~~No canonical coverage tracking~~ → **Coverage KPI** aggregated nightly, stored in `platformSummary/coverage_{tId}_{sId}`
+4. ~~Trust metrics documented but not wired~~ → **Founder Trust Metrics** now have a Cloud Functions flag and nightly writer, stored in `platformSummary/trustMetrics_{tId}_{sId}`
+5. ~~Candidates can't become entities without code~~ → **promoteCandidate()** one-click: candidate → entity + search index
+6. ~~Nightly job missing operational loop~~ → **Consolidated Canonica batch** with drift + resolution + mutation + coverage + trust metrics + fallback + impact + confidence
+7. ~~No mobile-safe Canonica shell~~ → **Responsive owner shell** with mobile drawer navigation, sticky header, scrollable governance tables, and viewport-width modals
+8. ~~No public/end-user UI readiness pass~~ → **Public site + widget hardened** for mobile sizing, onboarding routing, MIME-safe image preview, and no tenant/store id exposure
 
 ### Recommended Next Steps
 

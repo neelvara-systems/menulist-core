@@ -3,7 +3,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
-const OUTCOME_COUNT = 7;
+const OUTCOME_COUNT = 8;
 
 export default function SmartFeaturesSection() {
   const t = useTranslations('Website');

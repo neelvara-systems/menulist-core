@@ -118,6 +118,7 @@ const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'chatBackfill',
     'chatWeeklyDigest',
     'chatRoiCalculator',
+    'canonicaWidget',
 ];
 
 const canonicaInternalScreens: MobilePlatformInternalScreenKey[] = [
@@ -126,6 +127,7 @@ const canonicaInternalScreens: MobilePlatformInternalScreenKey[] = [
     'knowledgeBase',
     'kbGeneration',
     'changelog',
+    'canonicaWidget',
     'chatManagement',
     'chatInsights',
     'chatBackfill',
@@ -194,6 +196,7 @@ export type MoreSubScreen =
     | 'chatBackfill'
     | 'chatWeeklyDigest'
     | 'chatRoiCalculator'
+    | 'canonicaWidget'
     | 'opsControlRoom'
     | 'extractionMonitor'
     | 'schedulerMonitor'
@@ -404,7 +407,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ] : [];
 
     const canonicaManagementItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'canonicaHub', icon: <LuBookOpen color="#7c3aed" size={20} />, keywords: ['canonica', 'support', 'tickets', 'knowledge base', 'kb', 'chat', 'changelog'], label: 'Canonica', description: 'Canonica support, knowledge base, changelog, chat analytics, and backfill tools.', onClick: () => openSubScreen('canonicaHub') },
+        { key: 'canonicaHub', icon: <LuBookOpen color="#7c3aed" size={20} />, keywords: ['canonica', 'support', 'tickets', 'knowledge base', 'kb', 'chat', 'changelog', 'widget'], label: 'Canonica', description: 'Canonica support, knowledge base, widget, changelog, chat analytics, and backfill tools.', onClick: () => openSubScreen('canonicaHub') },
     ] : [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
@@ -431,6 +434,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'knowledgeBase', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['knowledge base', 'help articles', 'kb'], label: 'Knowledge Base', description: 'Platform knowledge base editing and publishing.', onClick: () => openSubScreen('knowledgeBase') },
         { key: 'kbGeneration', icon: <LuSparkles color="#9333ea" size={20} />, keywords: ['kb generation', 'articles', 'content generation'], label: 'KB Generation', description: 'Generate, review, and reconcile knowledge base content.', onClick: () => openSubScreen('kbGeneration') },
         { key: 'changelog', icon: <LuReceipt color="#f59e0b" size={20} />, keywords: ['changelog', 'release notes', 'updates'], label: 'Changelog', description: 'Create and publish platform release notes.', onClick: () => openSubScreen('changelog') },
+        { key: 'canonicaWidget', icon: <LuKeyRound color="#7c3aed" size={20} />, keywords: ['widget', 'embed', 'api key', 'origins', 'cache', 'cost', 'configuration'], label: 'Widget Management', description: 'Configure widget keys, install snippets, origins, appearance, and cache strategy.', onClick: () => openSubScreen('canonicaWidget') },
         { key: 'chatManagement', icon: <LuMessageCircle color="#6366f1" size={20} />, keywords: ['chat', 'conversations', 'management'], label: 'Chat Management', description: 'Review and manage customer chat conversations.', onClick: () => openSubScreen('chatManagement') },
         { key: 'chatInsights', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['chat insights', 'analytics', 'conversation analytics'], label: 'Chat Insights', description: 'Conversation analytics and chat quality signals.', onClick: () => openSubScreen('chatInsights') },
         { key: 'chatBackfill', icon: <LuRefreshCw color="#0ea5e9" size={20} />, keywords: ['chat backfill', 'analytics backfill'], label: 'Chat Backfill', description: 'Backfill chat analytics and operational data.', onClick: () => openSubScreen('chatBackfill') },
@@ -445,6 +449,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         {
             title: 'Knowledge',
             items: canonicaHubItems.filter((item) => ['knowledgeBase', 'kbGeneration', 'changelog'].includes(item.key)),
+        },
+        {
+            title: 'Management',
+            items: canonicaHubItems.filter((item) => ['canonicaWidget'].includes(item.key)),
         },
         {
             title: 'Chat',
@@ -544,7 +552,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
-    else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} sections={canonicaHubSections} title="Canonica" />;
+    else if (subScreen === 'canonicaHub') subScreenContent = <MobileMoreHubScreen description="Canonica support, knowledge base, widget, changelog, chat analytics, and backfill tools." items={canonicaHubItems} onBack={() => setSubScreen('main')} sections={canonicaHubSections} title="Canonica" />;
     else if (subScreen === 'resellerHub') subScreenContent = <MobileMoreHubScreen description="Partner onboarding, client activation, offline prepaid licenses, and reseller profile management." items={resellerHubItems} onBack={() => setSubScreen('main')} title="Reseller" />;
     else if (subScreen === 'basicSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen(getBackTarget('basicSettings'))} />;
     else if (subScreen === 'locale') subScreenContent = <MobileLocaleSettingsScreen onBack={() => setSubScreen('main')} onOpenBusinessCopySetup={() => setSubScreen('businessCopySetup')} />;

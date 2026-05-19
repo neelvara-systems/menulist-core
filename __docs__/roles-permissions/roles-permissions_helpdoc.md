@@ -32,7 +32,7 @@ Roles control what each team member can see and do in your MenuList dashboard. E
 
 If email is provided, MenuList sends a password setup email and the staff member signs in with that email.
 
-MenuList also creates a Staff ID for the staff member. If email is left blank, MenuList shows a temporary **Passcode** once. Share those details with the staff member. They sign in from the normal MenuList sign-in page using Staff ID or phone and the passcode.
+MenuList also creates a Staff ID for the staff member. If email is left blank, MenuList shows a temporary **Passcode** once. Use **Copy Staff ID**, **Copy passcode**, **Copy both**, **Share** when the browser supports it, or **Open WhatsApp Web** from the login details popup to share those details with the staff member. If the staff phone number is saved, WhatsApp Web opens directly for that number. They sign in from the normal MenuList sign-in page using Staff ID or phone and the passcode.
 
 ### How to reset staff access
 
@@ -41,7 +41,8 @@ MenuList also creates a Staff ID for the staff member. If email is left blank, M
 3. Click **Reset password**
 4. Confirm the action
 5. MenuList shows a new temporary passcode once
-6. The staff member can sign in with their email, Staff ID, or phone using that passcode
+6. Copy or share the new Staff ID/passcode from the popup
+7. The staff member can sign in with their email, Staff ID, or phone using that passcode
 
 Owners can reset staff access, but MenuList does not show the existing password.
 

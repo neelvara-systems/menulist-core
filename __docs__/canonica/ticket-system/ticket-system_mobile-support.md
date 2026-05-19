@@ -64,10 +64,14 @@
 
 ## 6. Platform Admin on Mobile
 
-Platform admin ticket management is **NOT required on mobile**:
-- Complex table with 8 columns needs desktop
-- Filter drawer with 8 filter types needs desktop
-- 1200px detail drawer needs desktop
-- Internal notes/tags editing needs desktop
+**Updated 2026-05-19:** Platform ticket management is exposed to `PLATFORM` users from MenuList Mobile More -> Canonica -> Support Tickets.
 
-Only **owner-side** ticket operations need mobile support.
+The mobile route mounts the same platform Support Tickets template through `MobilePlatformInternalScreen`. It is a real product workflow with analytics, queue, deleted tickets, filters, ticket details, replies, status changes, internal notes, tags, and export actions where the browser supports them.
+
+Mobile expectations:
+
+- tables scroll inside their own container instead of widening the page;
+- ticket detail drawers collapse to viewport width;
+- reply input remains reachable above the mobile shell bottom navigation;
+- Back returns to More -> Canonica;
+- expensive or destructive actions keep confirmation/error states.

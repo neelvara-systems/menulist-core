@@ -29,6 +29,11 @@ const trustPillars = [
     points: 3,
   },
   {
+    icon: LuUserCheck,
+    key: 'staffAccess',
+    points: 3,
+  },
+  {
     icon: LuGlobe,
     key: 'https',
     points: 3,
@@ -58,7 +63,7 @@ const trustPillars = [
 export default function TrustSecurityPage() {
   const t = useTranslations('Website');
   const proofItems = Array.from({ length: 3 }, (_, i) => t(`TrustSecurity.proof${i}`));
-  const securityFacts = Array.from({ length: 7 }, (_, i) => ({
+  const securityFacts = Array.from({ length: 8 }, (_, i) => ({
     label: t(`TrustSecurity.fact${i}Label`),
     value: t(`TrustSecurity.fact${i}Value`),
   }));

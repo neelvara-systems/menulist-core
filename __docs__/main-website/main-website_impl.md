@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.4.3 Canonical Website Default
-**Last Updated:** May 18, 2026
+**Status:** IMPLEMENTED — v3.4.8 Canonical Website Default
+**Last Updated:** May 19, 2026
 **Audience:** Developers
 
 ---
@@ -112,6 +112,12 @@ LocalisationProvider (locale from next-intl/server)
 **Search/AI discovery proof:** Stage 7.8 added `SearchDiscoverySection.tsx` after `SurfacesSection.tsx`. It exposes shipped SEO/AEO and discovery infrastructure in calm owner language: owner SEO/AEO settings, Business Copy Setup, structured public business/menu facts, sitemap/robots rules, and LLM discovery files. The copy explicitly avoids ranking, citation, or placement guarantees. SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing/payment/auth, and create-menu runtime logic were not changed.
 
 **POS Sync operations proof:** Stage 7.10 added one POS Sync proof point to `SmartFeaturesSection.tsx` and one Operations card to `FeaturesPage.tsx`. This is intentionally low prominence because POS Sync is an advanced operations capability, not the first-screen buying promise for a non-technical SMB owner. Copy uses signed full-menu snapshot and connected store POS webhook language and does not claim universal POS support, real-time sync, or a POS integration suite. POS Sync runtime, APIs, settings behavior, pricing/payment/auth, and create-menu runtime logic were not changed.
+
+**Mobile owner operations proof:** Stage 7.11 added a dedicated Operations card to `FeaturesPage.tsx` for phone-browser/PWA owner management. This expands the existing short reassurance line into a feature-level proof point, grounded in existing mobile owner surfaces rather than a new runtime change. Mobile owner runtime, dashboard logic, digital screens runtime, POS Sync runtime, pricing/payment/auth, and create-menu runtime logic were not changed.
+
+**Staff access operations proof:** Stage 7.12 added one staff-access proof point to `SmartFeaturesSection.tsx`, one Operations card to `FeaturesPage.tsx`, and one FAQ entry. Copy is grounded in shipped staff management: email or Staff ID/passcode access, role assignment, passcode reset, and owner force sign-out. Staff/auth runtime, role/permission APIs, pricing/payment/auth, and create-menu runtime logic were not changed.
+
+**Staff access policy alignment:** Stage 7.13 updated public Privacy Policy, Terms of Service, and Trust & Security content to reflect owner-managed staff identities, role/store-scoped access, passcode reset metadata, authorized team access, and owner session revocation controls. This was a content/security-disclosure alignment only; no staff/auth runtime behavior changed.
 
 **Canonical cleanup:** v3.3.0 made this implementation the only website source-code version. Old source-code backups, backup restore docs, the dead `HowItWorksSection.tsx`, and unused legacy landing-template visuals were removed. Historical strategy docs may remain for context, but they are not restoration sources.
 

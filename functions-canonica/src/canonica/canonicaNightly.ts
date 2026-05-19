@@ -7,15 +7,16 @@
  * Deployed as a scheduled Cloud Function in the Canonica Firebase project.
  * Feature-flag gated: ENABLE_CANONICA_NIGHTLY in functions-canonica/src/constants/features.ts.
  * 
- * 8-Step Nightly Batch:
+ * Canonica Nightly Batch:
  * 1. Drift Detection — evaluate all active canonical answers for 4 drift classes
  * 2. Signal Entity Resolution — resolve 'unresolved' entityIds
  * 3. Signal Mutation — cluster signals → generate mutation proposals
  * 4. Canonical Coverage KPI — hit/miss aggregation
- * 5. Recurring Fallback Detection — auto-generate proposals for 5+ misses
- * 6. Post-Mutation Impact Tracking — 14-day before/after comparison
- * 7. Confidence Auto-Adjustment — boost answers with 30+ serves, 0 negatives
- * 8. Signal TTL Auto-Archive — delete signals older than 12 months
+ * 5. Founder Trust Metrics — write compact trust dashboard summary
+ * 6. Recurring Fallback Detection — auto-generate proposals for 5+ misses
+ * 7. Post-Mutation Impact Tracking — 14-day before/after comparison
+ * 8. Confidence Auto-Adjustment — boost answers with 30+ serves, 0 negatives
+ * 9. Signal TTL Auto-Archive — delete signals older than 12 months
  * 
  * RULES:
  * - Idempotent: running twice produces identical results
@@ -40,6 +41,12 @@ import { generateFrictionInsight } from './frictionInsight';
 import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
+import {
+    CANONICA_TENANT_SUMMARY_DOC_ID,
+    CanonicaTenantStore,
+    parseCanonicaTenantSummary,
+    upsertCanonicaTenantSummaryEntries,
+} from './tenantSummary';
 
 const SCHEDULER_LIMITS = {
     tenantDiscoveryDocs: 1000,
@@ -90,9 +97,10 @@ interface CanonicaTenantRun {
 }
 
 interface TenantDiscoveryResult {
-    tenants: TenantStore[];
+    tenants: CanonicaTenantStore[];
     scannedDocs: number;
     truncated: boolean;
+    source: 'summary' | 'entity_scan';
 }
 
 function buildDiagnostic(
@@ -137,16 +145,29 @@ function isCanonicaEnabled(): boolean {
 // TENANT DISCOVERY
 // ═══════════════════════════════════════════════════════════════
 
-interface TenantStore {
-    tId: number;
-    sId: number;
-}
-
 /**
  * Discover tenants that have Canonica entities (i.e., have been onboarded).
- * Uses canonica_entities collection to find distinct tId/sId pairs.
+ * Reads platformSummary/canonicaTenantsSummary first. Falls back to the old
+ * canonica_entities scan only for migration/backfill safety.
  */
 async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
+    const summarySnap = await db
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(CANONICA_TENANT_SUMMARY_DOC_ID)
+        .get();
+    const summaryTenants = summarySnap.exists
+        ? parseCanonicaTenantSummary(summarySnap.data())
+        : [];
+
+    if (summaryTenants.length > 0) {
+        return {
+            tenants: summaryTenants,
+            scannedDocs: 1,
+            truncated: false,
+            source: 'summary',
+        };
+    }
+
     const snapshot = await db
         .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
         .select('tId', 'sId')
@@ -154,7 +175,7 @@ async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
         .get();
 
     const seen = new Set<string>();
-    const tenants: TenantStore[] = [];
+    const tenants: CanonicaTenantStore[] = [];
 
     for (const doc of snapshot.docs) {
         const data = doc.data();
@@ -169,10 +190,21 @@ async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
         }
     }
 
+    await upsertCanonicaTenantSummaryEntries(db, tenants, {
+        source: 'entity_scan_migration',
+        hasEntities: true,
+    }).catch(error => {
+        logger.warn('[Canonica Nightly] Failed to backfill tenant summary from entity scan', {
+            error: error instanceof Error ? error.message : String(error),
+            tenantCount: tenants.length,
+        });
+    });
+
     return {
         tenants,
         scannedDocs: snapshot.size,
         truncated: snapshot.size >= SCHEDULER_LIMITS.tenantDiscoveryDocs,
+        source: 'entity_scan',
     };
 }
 
@@ -190,6 +222,31 @@ interface DriftResult {
     answersEvaluated: number;
     driftDetected: number;
     driftCleared: number;
+}
+
+interface CanonicaCoverageHistoryRow {
+    canonical: boolean;
+    canonicalAnswerId?: string;
+    matchedEntityIds: string[];
+    confidence?: string;
+}
+
+interface CoverageKpiResult {
+    hits: number;
+    misses: number;
+    rate: number;
+    errors: CanonicaSchedulerDiagnostic[];
+    historyRows: CanonicaCoverageHistoryRow[];
+}
+
+interface TrustMetricsResult {
+    written: boolean;
+    coverageRate: number;
+    resolutionRate: number;
+    driftRate: number;
+    entityHealthScore: number;
+    topFailingEntities: number;
+    errors: CanonicaSchedulerDiagnostic[];
 }
 
 async function runDriftDetection(tId: number, sId: number): Promise<DriftResult> {
@@ -591,13 +648,13 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
 
 /**
  * Aggregate canonical hit/miss ratio from perf logs.
- * Stores in platformSummary/canonica_{sId} for dashboard visibility.
+ * Stores in platformSummary/coverage_{tId}_{sId} for dashboard visibility.
  * 
  * This is THE metric that proves Canonica works.
  * Without tracking it, the system's value is invisible.
  */
-async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: number; misses: number; rate: number; errors: CanonicaSchedulerDiagnostic[] }> {
-    const result: { hits: number; misses: number; rate: number; errors: CanonicaSchedulerDiagnostic[] } = { hits: 0, misses: 0, rate: 0, errors: [] };
+async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageKpiResult> {
+    const result: CoverageKpiResult = { hits: 0, misses: 0, rate: 0, errors: [], historyRows: [] };
 
     // Read last 24h of search history to count canonical vs non-canonical
     const dayAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
@@ -613,6 +670,12 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: n
 
         for (const doc of historySnap.docs) {
             const data = doc.data();
+            result.historyRows.push({
+                canonical: data.canonical === true,
+                canonicalAnswerId: typeof data.canonicalAnswerId === 'string' ? data.canonicalAnswerId : undefined,
+                matchedEntityIds: Array.isArray(data.matchedEntityIds) ? data.matchedEntityIds.filter((id: unknown) => typeof id === 'string') : [],
+                confidence: typeof data.confidence === 'string' ? data.confidence : undefined,
+            });
             if (data.canonical === true) {
                 result.hits++;
             } else {
@@ -644,6 +707,256 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<{ hits: n
         });
         result.errors.push(diagnostic);
         logger.error('[Canonica Coverage] KPI aggregation failed', diagnostic);
+    }
+
+    return result;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FOUNDER TRUST METRICS (Expansion Item #10)
+// ═══════════════════════════════════════════════════════════════
+
+function toPercent(numerator: number, denominator: number): number {
+    if (denominator <= 0) return 0;
+    return Math.round((numerator / denominator) * 100);
+}
+
+function getPreviousMetric(previous: Record<string, any> | undefined, path: string, fallback = 0): number {
+    const value = path.split('.').reduce<any>((acc, part) => acc?.[part], previous);
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function classifySearchEscalation(row: CanonicaCoverageHistoryRow): keyof CanonicaTrustMetricsEscalationBreakdown | null {
+    if (row.canonical === true && row.confidence !== 'low') return null;
+    if (row.confidence === 'low') return 'lowConfidence';
+    if (row.matchedEntityIds.length > 0 && !row.canonicalAnswerId) return 'knowledgeGap';
+    if (row.matchedEntityIds.length === 0) return 'retrievalFailure';
+    return 'knowledgeGap';
+}
+
+interface CanonicaTrustMetricsEscalationBreakdown {
+    knowledgeGap: number;
+    lowConfidence: number;
+    entityMismatch: number;
+    retrievalFailure: number;
+    userRequested: number;
+    total: number;
+}
+
+async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: CoverageKpiResult): Promise<TrustMetricsResult> {
+    const result: TrustMetricsResult = {
+        written: false,
+        coverageRate: 0,
+        resolutionRate: 0,
+        driftRate: 0,
+        entityHealthScore: 0,
+        topFailingEntities: 0,
+        errors: [],
+    };
+
+    if (!FUNCTION_FLAGS.ENABLE_CANONICA_TRUST_METRICS) return result;
+
+    try {
+        const dayAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+
+        const [answersSnap, entitiesSnap, signalsSnap, previousSnap] = await Promise.all([
+            db.collection(DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS)
+                .where('tId', '==', tId)
+                .where('sId', '==', sId)
+                .where('status', '==', 'active')
+                .limit(SCHEDULER_LIMITS.activeAnswersPerTenant)
+                .get(),
+            db.collection(DB_COLLECTIONS.CANONICA_ENTITIES)
+                .where('tId', '==', tId)
+                .where('sId', '==', sId)
+                .where('status', '==', 'active')
+                .limit(SCHEDULER_LIMITS.entitiesPerTenant)
+                .get(),
+            db.collection(DB_COLLECTIONS.CANONICA_SIGNAL_EVENTS)
+                .where('tId', '==', tId)
+                .where('sId', '==', sId)
+                .where('timestamp', '>=', dayAgo)
+                .limit(SCHEDULER_LIMITS.signalEventsPerWindow)
+                .get(),
+            db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+                .doc(`trustMetrics_${tId}_${sId}`)
+                .get(),
+        ]);
+
+        const activeAnswers = answersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        const activeEntities = entitiesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        const previous = previousSnap.exists ? previousSnap.data() : undefined;
+
+        const coverageTotal = coverageResult.hits + coverageResult.misses;
+        const coverageRate = toPercent(coverageResult.hits, coverageTotal);
+        result.coverageRate = coverageRate;
+
+        const escalationBreakdown: CanonicaTrustMetricsEscalationBreakdown = {
+            knowledgeGap: 0,
+            lowConfidence: 0,
+            entityMismatch: 0,
+            retrievalFailure: 0,
+            userRequested: 0,
+            total: 0,
+        };
+        const missCountByEntity = new Map<string, number>();
+
+        let escalatedQueries = 0;
+        for (const row of coverageResult.historyRows) {
+            const escalationClass = classifySearchEscalation(row);
+            if (!escalationClass) continue;
+
+            escalationBreakdown[escalationClass]++;
+            escalatedQueries++;
+            for (const entityId of row.matchedEntityIds) {
+                missCountByEntity.set(entityId, (missCountByEntity.get(entityId) || 0) + 1);
+            }
+        }
+
+        const signalsByEntity = new Map<string, { total: number; ticket: number; chatNegative: number; escalation: number }>();
+        for (const signalDoc of signalsSnap.docs) {
+            const signal = signalDoc.data();
+            const entityId = typeof signal.entityId === 'string' ? signal.entityId : '';
+            if (!entityId || entityId === 'unresolved') continue;
+
+            const counts = signalsByEntity.get(entityId) || { total: 0, ticket: 0, chatNegative: 0, escalation: 0 };
+            counts.total++;
+            if (signal.type === 'ticket') counts.ticket++;
+            else if (signal.type === 'chat_negative') counts.chatNegative++;
+            else if (signal.type === 'escalation') {
+                counts.escalation++;
+                escalationBreakdown.userRequested++;
+            }
+            signalsByEntity.set(entityId, counts);
+        }
+
+        escalationBreakdown.total = escalatedQueries + escalationBreakdown.userRequested;
+
+        const totalQueries = coverageResult.historyRows.length;
+        const resolutionRate = totalQueries > 0
+            ? toPercent(Math.max(totalQueries - escalatedQueries, 0), totalQueries)
+            : 0;
+        result.resolutionRate = resolutionRate;
+
+        const driftedAnswers = activeAnswers.filter(answer => answer.governance?.driftFlag === true);
+        const driftRate = toPercent(driftedAnswers.length, activeAnswers.length);
+        result.driftRate = driftRate;
+
+        const answerCountsByEntity = new Map<string, { active: number; drifted: number }>();
+        for (const answer of activeAnswers) {
+            const entityIds: string[] = Array.isArray(answer.scope?.entityIds) ? answer.scope.entityIds : [];
+            for (const entityId of entityIds) {
+                const counts = answerCountsByEntity.get(entityId) || { active: 0, drifted: 0 };
+                counts.active++;
+                if (answer.governance?.driftFlag === true) counts.drifted++;
+                answerCountsByEntity.set(entityId, counts);
+            }
+        }
+
+        const entityHealthScores: number[] = [];
+        const topFailingEntities: Array<{
+            entityId: string;
+            entityName: string;
+            entityType: string;
+            queryCount: number;
+            escalationCount: number;
+            reliabilityScore: number;
+            failureScore: number;
+        }> = [];
+
+        for (const entity of activeEntities) {
+            const entityId = entity.id;
+            const answerCounts = answerCountsByEntity.get(entityId) || { active: 0, drifted: 0 };
+            const signals = signalsByEntity.get(entityId) || { total: 0, ticket: 0, chatNegative: 0, escalation: 0 };
+            const misses = missCountByEntity.get(entityId) || 0;
+            const totalEntitySignals = signals.total + misses;
+
+            const coverageScore = answerCounts.active > 0 ? 100 : 0;
+            const driftScore = answerCounts.active > 0
+                ? toPercent(answerCounts.active - answerCounts.drifted, answerCounts.active)
+                : 100;
+            const reliabilityFailures = signals.chatNegative + signals.escalation + misses;
+            const reliabilityScore = totalEntitySignals > 0
+                ? Math.max(0, toPercent(totalEntitySignals - reliabilityFailures, totalEntitySignals))
+                : 100;
+            const healthScore = Math.max(0, Math.min(100, Math.round(
+                coverageScore * 0.4 +
+                driftScore * 0.3 +
+                reliabilityScore * 0.2 +
+                10 // indexed/active entity bonus
+            )));
+
+            entityHealthScores.push(healthScore);
+
+            const failureScore = signals.escalation * 3 + signals.chatNegative * 2 + misses;
+            if (failureScore > 0) {
+                topFailingEntities.push({
+                    entityId,
+                    entityName: entity.name || entityId,
+                    entityType: entity.type || 'feature',
+                    queryCount: totalEntitySignals,
+                    escalationCount: signals.escalation,
+                    reliabilityScore,
+                    failureScore,
+                });
+            }
+        }
+
+        const avgHealth = entityHealthScores.length > 0
+            ? Math.round(entityHealthScores.reduce((sum, score) => sum + score, 0) / entityHealthScores.length)
+            : 0;
+        result.entityHealthScore = avgHealth;
+
+        const top5Failing = topFailingEntities
+            .sort((a, b) => b.failureScore - a.failureScore)
+            .slice(0, 5);
+        result.topFailingEntities = top5Failing.length;
+
+        await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`trustMetrics_${tId}_${sId}`).set({
+            lastUpdated: Timestamp.now(),
+            date: new Date().toISOString().split('T')[0],
+            coverage: {
+                rate: coverageRate,
+                hits: coverageResult.hits,
+                misses: coverageResult.misses,
+                total: coverageTotal,
+                previousRate: getPreviousMetric(previous, 'coverage.rate'),
+            },
+            resolution: {
+                rate: resolutionRate,
+                resolved: Math.max(totalQueries - escalatedQueries, 0),
+                escalated: escalatedQueries,
+                total: totalQueries,
+                previousRate: getPreviousMetric(previous, 'resolution.rate'),
+            },
+            drift: {
+                rate: driftRate,
+                driftedCount: driftedAnswers.length,
+                activeCount: activeAnswers.length,
+                previousRate: getPreviousMetric(previous, 'drift.rate'),
+            },
+            entityHealth: {
+                avgScore: avgHealth,
+                healthyCount: entityHealthScores.filter(score => score >= 80).length,
+                attentionCount: entityHealthScores.filter(score => score >= 40 && score < 80).length,
+                criticalCount: entityHealthScores.filter(score => score < 40).length,
+                totalEntities: entityHealthScores.length,
+                previousAvgScore: getPreviousMetric(previous, 'entityHealth.avgScore'),
+            },
+            topFailingEntities: top5Failing,
+            escalationBreakdown,
+        }, { merge: true });
+
+        result.written = true;
+    } catch (error) {
+        const diagnostic = buildDiagnostic(error, {
+            tId,
+            sId,
+            phase: 'trust_metrics',
+            operation: 'aggregate_trust_metrics',
+        });
+        result.errors.push(diagnostic);
+        logger.error('[Canonica Trust] Metrics aggregation failed', diagnostic);
     }
 
     return result;
@@ -1106,6 +1419,7 @@ export interface CanonicaNightlyResult {
         scannedDocs: number;
         truncated: boolean;
         tenantCount: number;
+        source: 'summary' | 'entity_scan' | 'not_started';
     };
     tenantsProcessed: number;
     totalDriftDetected: number;
@@ -1115,6 +1429,7 @@ export interface CanonicaNightlyResult {
     totalFallbackProposals: number;
     totalImpactTracked: number;
     totalConfidenceAdjusted: number;
+    totalTrustMetricsWritten: number;
     totalSignalsArchived: number;
     totalDraftsGenerated: number;
     totalDraftsFailed: number;
@@ -1176,6 +1491,7 @@ export async function runCanonicaNightly(options: {
             scannedDocs: 0,
             truncated: false,
             tenantCount: 0,
+            source: 'not_started',
         },
         tenantsProcessed: 0,
         totalDriftDetected: 0,
@@ -1185,6 +1501,7 @@ export async function runCanonicaNightly(options: {
         totalFallbackProposals: 0,
         totalImpactTracked: 0,
         totalConfidenceAdjusted: 0,
+        totalTrustMetricsWritten: 0,
         totalSignalsArchived: 0,
         totalDraftsGenerated: 0,
         totalDraftsFailed: 0,
@@ -1241,6 +1558,7 @@ export async function runCanonicaNightly(options: {
                     draftsGenerated: result.totalDraftsGenerated,
                     draftsFailed: result.totalDraftsFailed,
                     frictionEntities: result.totalFrictionEntities,
+                    trustMetricsWritten: result.totalTrustMetricsWritten,
                     graphIndexRebuilt: result.graphIndexRebuilt,
                     predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
                 },
@@ -1252,6 +1570,7 @@ export async function runCanonicaNightly(options: {
                     workflowIntegrationsEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_WORKFLOW_INTEGRATIONS,
                     autoKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_AUTO_KNOWLEDGE,
                     frictionIntelligenceEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_FRICTION_INTELLIGENCE,
+                    trustMetricsEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_TRUST_METRICS,
                     founderOnboardingEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_FOUNDER_ONBOARDING,
                     ticketKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE,
                     graphEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH,
@@ -1333,7 +1652,7 @@ export async function runCanonicaNightly(options: {
         completedAt: null,
     });
 
-    let tenants: TenantStore[] = [];
+    let tenants: CanonicaTenantStore[] = [];
 
     try {
         // Feature flag gate
@@ -1354,6 +1673,7 @@ export async function runCanonicaNightly(options: {
             scannedDocs: discovery.scannedDocs,
             truncated: discovery.truncated,
             tenantCount: tenants.length,
+            source: discovery.source,
         };
 
         if (discovery.truncated) {
@@ -1450,6 +1770,37 @@ export async function runCanonicaNightly(options: {
                 })
             );
             if (coverageResult) tenantRun.coverageRate = coverageResult.rate;
+
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_TRUST_METRICS && coverageResult) {
+                await runTenantTask(
+                    tenantRun,
+                    'trust_metrics',
+                    'aggregateTrustMetrics',
+                    () => aggregateTrustMetrics(tId, sId, coverageResult) as Promise<any>,
+                    (taskResult) => {
+                        if (taskResult.written) result.totalTrustMetricsWritten++;
+                    },
+                    (taskResult) => ({
+                        written: taskResult.written,
+                        coverageRate: taskResult.coverageRate,
+                        resolutionRate: taskResult.resolutionRate,
+                        driftRate: taskResult.driftRate,
+                        entityHealthScore: taskResult.entityHealthScore,
+                        topFailingEntities: taskResult.topFailingEntities,
+                        enabled: FUNCTION_FLAGS.ENABLE_CANONICA_TRUST_METRICS,
+                    })
+                );
+            } else {
+                tenantRun.tasks.push({
+                    name: 'trust_metrics',
+                    status: 'skipped',
+                    durationMs: 0,
+                    details: {
+                        enabled: FUNCTION_FLAGS.ENABLE_CANONICA_TRUST_METRICS,
+                        reason: coverageResult ? 'feature_flag_off' : 'coverage_unavailable',
+                    },
+                });
+            }
 
             const fallbackResult = await runTenantTask(
                 tenantRun,

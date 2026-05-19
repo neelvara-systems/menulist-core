@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 const path = require('path');
+const fs = require('fs/promises');
 const { withSentryConfig } = require('@sentry/nextjs');
 const createNextIntlPlugin = require('next-intl/plugin');
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
@@ -13,6 +14,49 @@ const withNextIntl = createNextIntlPlugin();
 // Production deploys (VERCEL_ENV=production) get full PWA
 const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
 const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().toISOString();
+
+class MenuListServerChunkCompatPlugin {
+    apply(compiler) {
+        compiler.hooks.afterEmit.tapPromise('MenuListServerChunkCompatPlugin', async () => {
+            const outputPath = compiler.options.output.path;
+            if (!outputPath) return;
+
+            const chunksDir = path.join(outputPath, 'chunks');
+            const copyServerChunks = async (sourceDir, relativeDir = '') => {
+                let entries = [];
+                try {
+                    entries = await fs.readdir(sourceDir, { withFileTypes: true });
+                } catch {
+                    return;
+                }
+
+                await Promise.all(entries.map(async (entry) => {
+                    const source = path.join(sourceDir, entry.name);
+                    const relativePath = path.join(relativeDir, entry.name);
+
+                    if (entry.isDirectory()) {
+                        await copyServerChunks(source, relativePath);
+                        return;
+                    }
+
+                    if (!entry.isFile() || !entry.name.endsWith('.js')) return;
+
+                    const destination = path.join(outputPath, relativePath);
+                    await fs.mkdir(path.dirname(destination), { recursive: true });
+                    await fs.copyFile(source, destination);
+                }));
+            };
+
+            try {
+                await fs.access(chunksDir);
+            } catch {
+                return;
+            }
+
+            await copyServerChunks(chunksDir);
+        });
+    }
+}
 
 
 
@@ -119,9 +163,11 @@ const nextConfig = {
 
         // Keep server runtime chunk resolution aligned with Next's emitted
         // files. Next 14 app-route/page-data collection resolves Node server
-        // chunks as sibling `./1234.js` files, including production builds.
+        // chunks as sibling `./1234.js` / `./vendor-chunks/name.js` files,
+        // including production builds.
         if (isServer && nextRuntime !== 'edge' && config.output) {
             config.output.chunkFilename = '[name].js';
+            config.plugins.push(new MenuListServerChunkCompatPlugin());
         }
 
         // Disable webpack cache where it is known to destabilize route builds:

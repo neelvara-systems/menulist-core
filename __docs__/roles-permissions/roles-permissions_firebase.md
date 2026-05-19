@@ -14,8 +14,8 @@
 - **Collections Used:** `stores` (role definitions in `roles[]` array), `users` (role assignment in `stores[].role`)
 - **Storage Buckets:** None
 - **Cloud Functions:** None
-- **API Routes:** `GET/POST/PATCH/DELETE /api/staff`, `POST /api/staff/password-reset`, `POST /api/staff/force-signout`, `GET /api/auth/access-status`, `POST/PATCH/DELETE /api/staff/roles`, plus owner permission guards on analytics, domain/subdomain, and POS sync APIs
-- **Estimated Monthly Cost:** **₹0.00 to ₹2/month for typical SMB use** — role checks stay in-memory; staff/role admin screens are rare owner actions; authenticated dashboard sessions run a lightweight access check while visible
+- **API Routes:** `GET/POST/PATCH/DELETE /api/staff`, `POST /api/staff/password-reset`, `POST /api/staff/force-signout`, `GET /api/auth/access-status`, `POST /api/auth/change-password`, `POST/PATCH/DELETE /api/staff/roles`, plus owner permission guards on analytics, domain/subdomain, and POS sync APIs
+- **Estimated Monthly Cost:** **₹0.00 to ₹10/month for typical SMB use** — role checks stay in-memory; staff/role admin screens are rare owner actions; authenticated dashboard sessions run a lightweight access check while visible
 
 ---
 
@@ -39,6 +39,7 @@
 | Staff list | `users`, `stores` | Staff screen open | Rare | Tenant users + store docs | Server API reads tenant users and relevant store role definitions because `users` is server-only for cross-user reads. |
 | Legacy default-role repair | `stores/{storeId}` | Staff screen open/create on an old store missing default roles or missing permission keys on existing default roles | One time per legacy store | 1 store | Appends missing `owner` / `manager` / `staff` role definitions and normalizes missing default-role permission keys before staff role validation. |
 | Role save validation | `stores`, `users` | Role create/update/deactivate | Rare | 1 store + tenant users when deactivating | Used to validate role and prevent deactivating a role assigned to active staff. |
+| Copy/share login details | — | Owner copies, native-shares, or opens WhatsApp Web from the one-time login details popup | Rare | 0 | Uses the passcode already returned by create/reset and the selected staff phone number already loaded in the UI. No extra Firestore read. |
 
 ### Writes
 
@@ -52,6 +53,7 @@
 | Create user with role            | `users/{userId}`   | New user signup/invite                         | Per signup    | 1            | `stores[].role` (+ other user fields) | Role set during user creation. Part of user doc write.                                                                                                                                    |
 | Update staff profile/mapping     | `users/{userId}`   | Owner edits staff                              | Rare          | 1            | Profile fields, `active`, `stores[]`, `storeIds[]`, `storeId`, `sessionRevokedAt`, `authDisabled` | Server validates tenant/store/role before writing. Deactivation revokes sessions and is mirrored to Firebase Auth disabled state. |
 | Reset staff password/passcode    | `users/{userId}`   | Owner resets staff password or new staff setup | Rare          | 1            | `passwordResetRequestedAt`, `passcodeResetAt`, `staffLoginId`, `loginUsername`, `sessionRevokedAt`, `authTokensRevokedAt` | Owner reset updates Firebase Auth password, revokes existing sessions, and returns a temporary passcode once. MenuList stores only reset metadata, never the passcode. |
+| Self-service password/passcode change | `users/{userId}` | Signed-in owner or staff member changes own password/passcode | Rare | 1 | `modifiedOn`, `passwordChangedAt` | Route verifies the current password through Firebase Auth REST, updates Firebase Auth through Admin SDK, and writes only password-change metadata to Firestore. |
 | Force sign out staff             | `users/{userId}`   | Owner signs out active staff                   | Rare          | 1            | `sessionRevokedAt`, `sessionRevokedBy`, `sessionRevokedReason`, `authTokensRevokedAt` | Firebase Auth refresh tokens are revoked. The account stays enabled, so staff can sign in again with current credentials. |
 | Remove staff from store          | `users/{userId}`   | Owner removes staff                            | Rare          | 1            | `stores[]`, `storeIds[]`, `active`, `deleted`, `deletedAt`, `sessionRevokedAt`, `authDisabled` | If no store mappings remain, the user is deactivated, soft-deleted, signed out, and disabled in Firebase Auth. |
 | Session access check             | `users`, `tenants`, `stores` | Authenticated dashboard focus/interval check | While dashboard is open | 1 user + tenant/store docs when present | None | `GET /api/auth/access-status` is no-store. It catches revoked sessions, deleted/inactive users, direct user blocks, tenant blocks, and store blocks. |
@@ -64,7 +66,7 @@ None — roles are deactivated (`active: false`), never hard-deleted. Staff user
 
 ## Cost Estimate
 
-Typical SMB estimate: **₹0.00 to ₹2/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management, writes happen only on rare staff or role changes, and the access-status check is a small authenticated-dashboard safety read while the app is visible.
+Typical SMB estimate: **₹0.00 to ₹10/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management, writes happen only on rare staff or role changes, and the access-status check is a small authenticated-dashboard safety read while the app is visible. The upper end assumes multiple staff dashboards stay open for long shifts; inactive browser tabs do not run the interval check.
 
 ---
 

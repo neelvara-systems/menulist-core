@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 18, 2026
+**Last Updated:** May 19, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -390,12 +390,14 @@ MenuList turns approved menu and business details into visible public pages, str
 - Presence visibility.
 - Ready for serious operations.
 - Connected POS updates.
+- Staff access control.
 
 **Notes:**
 
 - This is proof language, not hype language.
 - Keep all claims tied to implemented surfaces and repo evidence.
 - POS Sync belongs here as an operations proof, not as a separate homepage promise. Use signed full-menu snapshot to connected store POS webhook language; avoid "works with any POS", "real-time sync", and POS integration suite claims.
+- Staff access belongs here as operations proof, not as the homepage promise. Use concrete owner controls: add staff, assign roles, reset passcodes, and sign out access when staff leaves.
 
 ---
 
@@ -491,6 +493,7 @@ Key FAQ topics:
 - Business data safety.
 - Multi-location support.
 - Search/AI placement caveat.
+- Staff access without owner access.
 - Pricing entry point.
 
 ---
@@ -678,6 +681,45 @@ Key FAQ topics:
 **Sub-text:**
 
 > No technical setup. Owner review before publishing.
+
+---
+
+## Page 2A: Features (/features)
+
+**Canonical note:** The Features page can explain deeper product capability than the homepage, but it must stay owner-readable and evidence-backed. Feature cards should not become a generic SaaS checklist.
+
+### Operations Group
+
+**Mobile owner operations card:**
+
+Title:
+
+> Owner dashboard on your phone
+
+Description:
+
+> Use the mobile owner dashboard from a phone browser or the MenuList PWA to update menus, publish changes, check customer signals, adjust settings, manage screens, and handle daily operations without a desktop.
+
+**Notes:**
+
+- This is a dedicated Features page proof point because it reduces the non-technical SMB owner's fear that MenuList requires desktop administration.
+- Keep the homepage version short as reassurance copy near CTAs.
+- Avoid claiming exact parity for every advanced edge case; the claim is practical phone-first owner operation.
+
+**Staff accounts and roles card:**
+
+Title:
+
+> Staff accounts and roles
+
+Description:
+
+> Add staff with email or Staff ID and passcode, choose what each role can access, reset passcodes, and sign out old sessions when staff changes.
+
+**Notes:**
+
+- This is a day-one business-operations proof point for teams where not everyone should have owner access.
+- Keep the claim to implemented access controls. Do not imply payroll, attendance, shift planning, or HR management.
 
 ---
 
@@ -992,15 +1034,21 @@ Key FAQ topics:
 
 **Proof strip:**
 
-- No stored passwords
+- No stored plain-text passwords
 - Business data stays isolated
 - Privacy-conscious analytics
+
+**Staff access security facts:**
+
+- Plain-text passwords or passcodes stored by MenuList: No.
+- Owner-managed staff access: roles, reset, and sign-out.
+- Staff access belongs in the access-control/security layer, not in public claims as GDPR certification or HR/workforce management.
 
 **Copy policy:**
 
 - Owner-first language is preferred over raw implementation jargon.
 - Technical facts are allowed when they are factual and useful, but avoid public overclaims such as "impossible by design".
-- Security copy must not claim more than the implemented auth, tenant isolation, analytics, HTTPS, and integration behavior supports.
+- Security copy must not claim more than the implemented auth, tenant isolation, staff role/access controls, analytics, HTTPS, and integration behavior supports.
 
 ---
 
@@ -1008,7 +1056,10 @@ Key FAQ topics:
 
 ### Privacy Policy, Terms of Service, Refund Policy
 
-- **Content:** Reuse existing legal text (already reviewed and valid)
+- **Privacy Policy staff-access content:** Disclose staff account details, role/store assignment, account status, reset/session metadata, authorized team access, and that MenuList does not store plain-text staff passcodes.
+- **Terms staff-access content:** Make owners responsible for staff access they create, safe sharing of Staff ID/passcode details, correct role assignment, and ending access when staff leave.
+- **Trust/security staff-access content:** Use factual role-scoped access language. Do not claim legal certification, GDPR certification, HR/payroll/attendance coverage, or full workforce management.
+- **Refund Policy:** No staff-specific change required.
 - **Styling:** Apply new design system (clean typography, proper spacing)
 - **Layout:** Single column, `max-w-3xl`, generous line height
 

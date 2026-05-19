@@ -127,16 +127,15 @@ It is **founder confidence in AI answer quality** — expressed as 4 numbers.
 
 ---
 
-## Files (Planned)
+## Files
 
-### New Files (3)
+### Implemented Files
 
 1. `src/components/templates/canonica/governance/FounderTrustDashboard.tsx` — Trust dashboard UI
-2. `__docs__/canonica/founder-trust-layer/` — 8 documentation files
-3. `_archive/chatgpt-review.md` — ChatGPT conversation review
-
-### Modified Files (3)
-
-1. `functions-canonica/src/canonica/canonicaNightly.ts` — Add trust metrics aggregation step
-2. `src/config/features.ts` — Add `ENABLE_CANONICA_TRUST_METRICS` flag
-3. `functions-canonica/src/constants/features.ts` — Add `ENABLE_CANONICA_TRUST_METRICS` CF flag
+2. `src/database/canonica/trustMetrics.ts` — One-read DAL for `platformSummary/trustMetrics_{tId}_{sId}`
+3. `src/types/canonica/index.ts` — `CanonicaTrustMetrics` types
+4. `functions-canonica/src/canonica/canonicaNightly.ts` — Trust metrics aggregation step
+5. `src/config/features.ts` — Frontend `ENABLE_CANONICA_TRUST_METRICS` flag
+6. `functions-canonica/src/constants/features.ts` — Cloud Functions `ENABLE_CANONICA_TRUST_METRICS` flag
+7. `__docs__/canonica/founder-trust-layer/` — Documentation set
+8. `_archive/chatgpt-review.md` — ChatGPT conversation review

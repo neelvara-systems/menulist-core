@@ -2,7 +2,7 @@
 
 **Project:** MenuListAi  
 **Created:** December 20, 2025  
-**Status:** Planning  
+**Status:** Planning + active legal page alignment notes
 **Priority:** P0 - Critical for Compliance
 
 ---
@@ -43,6 +43,9 @@ This document outlines the legal pages required for MenuListAi SaaS platform com
 | How we use data                     | Privacy Policy   | ✅     |
 | Data sharing                        | Privacy Policy   | ✅     |
 | Data security                       | Privacy Policy   | ✅     |
+| Staff account data disclosure       | Privacy Policy   | ✅     |
+| Owner-managed staff access duties   | Terms of Service | ✅     |
+| Role-based staff access controls    | Trust & Security | ✅     |
 | Privacy rights (GDPR)               | Privacy Policy   | ✅     |
 | No-refund policy                    | Refund Policy    | ✅     |
 | Subscription cancellation           | Refund Policy    | ✅     |
@@ -71,6 +74,15 @@ This document outlines the legal pages required for MenuListAi SaaS platform com
 | Terms of Service | Add explicit credits/usage terms section    | P0       |
 | Privacy Policy   | Add cookie details or link to Cookie Policy | P1       |
 | Footer           | Add links to all legal pages                | P1       |
+
+### May 19, 2026 Staff Access Alignment
+
+Staff management and roles/permissions are now reflected in the public legal/security pages:
+
+- Privacy Policy covers staff account identifiers, email/phone, Staff ID alias, role/store assignment, account status, reset/session metadata, authorized team access, and no stored plain-text passcodes.
+- Terms of Service covers owner responsibility for staff accounts, safe Staff ID/passcode sharing, accurate role/store assignment, and ending staff access when access should stop.
+- Trust & Security covers role-scoped access, Firebase/Google Auth handling, no stored plain-text passwords/passcodes, and owner reset/sign-out controls.
+- These updates are disclosure/alignment changes only. They do not claim GDPR certification, SOC 2 certification, HR/payroll/attendance coverage, or a DPA/SLA.
 
 ---
 
@@ -315,6 +327,7 @@ Add imports and routing for:
 | Data retention              | ⚠️     | Needs enhancement |
 | Cookie consent              | ❌     | MISSING           |
 | Data breach notification    | ✅     | Trust & Security  |
+| Staff access transparency   | ✅     | Privacy Policy, Terms of Service, Trust & Security |
 | DPA for processors          | ❌     | MISSING           |
 
 ### ePrivacy Directive (Cookie Law)

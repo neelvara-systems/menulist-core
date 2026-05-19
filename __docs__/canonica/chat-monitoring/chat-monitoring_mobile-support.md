@@ -1,32 +1,73 @@
-# Chat Monitoring — Mobile Support Assessment
+# Chat Monitoring - Mobile Support
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Mobile team, Product
-
----
-
-## 1. Feature Admission Test (4 Gates)
-
-| Gate | Question | Answer | Pass? |
-|------|----------|--------|:-----:|
-| **Frequency** | Used daily/multiple times per day? | No — admin checks dashboard 1-3 times/day | ⚠️ Partial |
-| **Speed** | Completes in <5 seconds? | No — browsing conversations, reading threads, adding notes takes minutes | ❌ |
-| **Touch** | Works with thumb-only? | No — 9 filter types, detail drawer, rich text notes, CSV export | ❌ |
-| **Value** | Needed away from desk? | Occasionally — admin might want to check a flagged conversation | ⚠️ Partial |
-
-**Result: 0 FULL PASS + 2 PARTIAL + 2 FAIL → Mobile UI is NOT required**
-
-Chat Monitoring is a complex admin dashboard with filtering, detail drawers, rich text notes, and analytics. It is inherently a desktop workflow. No mobile implementation needed.
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-19
+> **Audience:** Mobile team, Product, Platform Ops
 
 ---
 
-## 2. Justification
+## Mobile Decision
 
-- 9 filter types need desktop screen space
-- Conversation detail drawer (with full message thread + metadata + notes) needs desktop width
-- ROI Calculator has customizable inputs and statistic cards — desktop layout
-- Weekly Digest with narrative + highlights + recommendations — reading-intensive, desktop-optimized
-- TipTap rich text editor for internal notes — not mobile-friendly
-- CSV/Markdown export — desktop workflow
-- Platform admin only — not a customer-facing feature
+Chat Monitoring is available from the MenuList mobile More tab for `PLATFORM` users under:
+
+- More -> Canonica -> Chat Management
+- More -> Canonica -> Chat Insights
+- More -> Canonica -> Chat Backfill
+- More -> Canonica -> Chat Weekly Digest
+- More -> Canonica -> Chat ROI Calculator
+
+These routes are operational product screens, not overview cards. They render the same Canonica/platform templates as desktop inside `MobilePlatformInternalScreen`, with mobile shell constraints for card width, tables, drawers, modals, forms, and segmented controls.
+
+## Product Boundary
+
+MenuList is only the first client/test host for Canonica. The chat monitoring screens remain Canonica/platform operator workflows and must not hard-code MenuList-only product assumptions beyond the host route that exposes them in the MenuList More tab.
+
+## Mobile Scope
+
+Mobile support is required for emergency and lightweight operator use:
+
+- open and review conversation queues;
+- inspect chat analytics and freshness;
+- run a manual chat analytics backfill for a selected store;
+- review weekly digest output;
+- calculate or export ROI from chat analytics.
+
+Desktop remains the best environment for long filtering sessions, exports, and rich internal notes, but mobile must remain readable, navigable, and action-capable.
+
+## Backfill Mobile Contract
+
+Chat Backfill must use the platform store summary selector. Operators select the target store from `platformSummary/storesSummary`; the screen then calls the same `backfillAggregates` callable used by desktop. It must not silently use the logged-in user's default store for a platform recovery action.
+
+Firebase cost rules:
+
+- store summary options are cached in `PlatformGlobalDataProvider`;
+- no realtime listener is used for store selection;
+- backfill only runs after explicit confirmation;
+- the callable remains idempotent and skips days that already have reports.
+
+## UX Requirements
+
+- Back from any chat screen returns to More -> Canonica, not More -> Platform.
+- The desktop-tools icon may open the full desktop route for dense workflows.
+- Tables may scroll horizontally inside their own container, but the mobile page must not overflow horizontally.
+- Drawers and modals must use viewport width on narrow screens.
+- Destructive or expensive actions require confirmation.
+- Empty, loading, and error states must be explicit.
+
+## Test Cases
+
+1. Open More -> Canonica and confirm the Chat section contains all five chat routes.
+2. Open Chat Management and confirm the conversation list renders inside the mobile shell.
+3. Open Chat Insights and confirm analytics cards and freshness state render without horizontal page overflow.
+4. Open Chat Backfill, select a store, set days, and confirm the action opens the backfill confirmation.
+5. Confirm Chat Backfill refuses to run without a selected store.
+6. Open Chat Weekly Digest and confirm empty/loading/digest states are usable on mobile.
+7. Open Chat ROI Calculator and confirm inputs/actions remain reachable on mobile.
+8. Confirm Back from each route returns to More -> Canonica.
+
+## Version History
+
+| Date | Version | Change |
+| ---- | ------- | ------ |
+| 2026-05-19 | 1.1.0 | Updated stale desktop-only decision; Canonica chat operator screens are now mobile-accessible through the MenuList More tab and use the real product templates. |
+| 2026-03-02 | 1.0.0 | Initial assessment marked chat monitoring as desktop-only. |

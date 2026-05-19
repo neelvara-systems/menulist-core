@@ -31,6 +31,7 @@
 | Deactivate role                | `MobileRolesScreen` (confirmation)    | ✅     |
 | Add staff                      | `MobileUsersScreen`                   | ✅     |
 | Reset staff password/passcode    | `MobileUsersScreen`                   | ✅     |
+| Copy/share Staff ID + passcode   | `MobileUsersScreen` login popup       | ✅     |
 | Staff/owner change own password  | `MobileMoreScreen` → Account access   | ✅     |
 | Activate/deactivate staff      | `MobileUsersScreen`                   | ✅     |
 | Change staff role              | `MobileUsersScreen`                   | ✅     |
@@ -41,7 +42,7 @@
 ## DAL Parity
 
 - Uses same `/api/staff`, `/api/staff/password-reset`, and `/api/staff/roles` server contracts as desktop
-- Mobile add/reset supports email, phone, and Staff ID aliases. Owner reset shows a temporary passcode once.
+- Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once with copy actions, the native **Share** action when `navigator.share` is available, and an **Open WhatsApp Web** action that targets the staff phone number when one is saved.
 - Mobile self-service password change uses the shared `/api/auth/change-password` route from More → Account access. This works for password/passcode accounts when the current password/passcode is known.
 - Same `storeDetails.roles` data source
 - Same `PERMISSION_CATEGORIES_CONFIG` and `PERMISSION_LABELS` constants

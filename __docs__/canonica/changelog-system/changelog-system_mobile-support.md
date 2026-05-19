@@ -40,9 +40,13 @@ The changelog is a read-only browsing experience. The desktop timeline view work
 
 ## 4. Platform Admin on Mobile
 
-Changelog CRUD (create/edit) is **NOT required on mobile**:
-- TipTap rich text editor needs desktop
-- File upload + YouTube embed management needs desktop
-- KB article reference tree select needs desktop
+**Updated 2026-05-19:** Changelog CRUD is exposed to `PLATFORM` users from MenuList Mobile More -> Canonica -> Changelog.
 
-Only **owner-side browsing** would benefit from mobile optimization.
+The mobile route mounts the same platform Changelog template through `MobilePlatformInternalScreen`. It is a real product workflow with create, edit, delete, preview, related KB references, and pagination. Desktop remains better for long rich-text edits, but mobile must support emergency review and small operational changes.
+
+Mobile expectations:
+
+- list/search/preview must be usable on narrow screens;
+- Add/Edit modal must fit the viewport;
+- related article reference controls may scroll inside their own container;
+- Back returns to More -> Canonica.

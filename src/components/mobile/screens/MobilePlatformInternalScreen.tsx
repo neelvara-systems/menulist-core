@@ -26,7 +26,8 @@ export type MobilePlatformInternalScreenKey =
     | 'chatInsights'
     | 'chatBackfill'
     | 'chatWeeklyDigest'
-    | 'chatRoiCalculator';
+    | 'chatRoiCalculator'
+    | 'canonicaWidget';
 
 type MobilePlatformInternalScreenProps = {
     onBack: () => void;
@@ -69,6 +70,7 @@ const ChatInsights = dynamic(() => import('@template/platform/chatManagement/Cha
 const ChatBackfill = dynamic(() => import('@template/platform/admin/AnalyticsBackfill'), { loading: RouteLoading, ssr: false });
 const ChatWeeklyDigest = dynamic(() => import('@template/platform/chatManagement/WeeklyDigest'), { loading: RouteLoading, ssr: false });
 const ChatRoiCalculator = dynamic(() => import('@template/platform/chatManagement/ROICalculator'), { loading: RouteLoading, ssr: false });
+const CanonicaWidgetManagement = dynamic(() => import('@template/canonica/widgetManagement/CanonicaWidgetManagement'), { loading: RouteLoading, ssr: false });
 
 function PlatformTenantsRoute() {
     const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
@@ -78,6 +80,10 @@ function PlatformTenantsRoute() {
 function PlatformStoresRoute() {
     const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
     return <StoresDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />;
+}
+
+function CanonicaWidgetRoute() {
+    return <CanonicaWidgetManagement embeddedMobile />;
 }
 
 const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformScreenConfig> = {
@@ -196,6 +202,15 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         requiresCanonica: true,
         surface: 'Chat ROI Calculator',
         title: 'Chat ROI Calculator',
+    },
+    canonicaWidget: {
+        Component: CanonicaWidgetRoute,
+        desktopPath: '/canonica/widget',
+        description: 'Configure widget keys, install snippets, origins, appearance, and cache strategy.',
+        minWidth: 0,
+        requiresCanonica: true,
+        surface: 'Widget Management',
+        title: 'Widget Management',
     },
 };
 

@@ -11,7 +11,7 @@ import { httpsCallable } from 'firebase/functions';
  * - triggerAggregationManual: Manual aggregation trigger
  * - backfillAggregates: Historical data backfill
  * 
- * Security: All functions require owner role
+ * Security: manual backfill requires PLATFORM role.
  * Location: functions/src/
  */
 
@@ -57,7 +57,7 @@ export const triggerManualAggregation = async (daysToBackfill: number = 1): Prom
  * @param days - Number of days to backfill (default: 30)
  * @returns Promise with backfill results
  * 
- * Security: Requires owner role
+ * Security: Requires PLATFORM role
  * 
  * Usage:
  * ```typescript

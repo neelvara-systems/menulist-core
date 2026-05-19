@@ -114,6 +114,129 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
         setEditingRole(updated);
     };
 
+    const editRoleSheet = (
+        <Popup
+            bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
+            destroyOnClose
+            onMaskClick={isSaving ? undefined : () => setIsEditSheetOpen(false)}
+            position="bottom"
+            visible={isEditSheetOpen}
+        >
+            {editingRole ? (
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar
+                        backIcon={<LuX size={20} />}
+                        onBack={() => setIsEditSheetOpen(false)}
+                        right={(
+                            <Button color="primary" loading={isSaving} onClick={handleSaveRole} size="small">
+                                {t('save')}
+                            </Button>
+                        )}
+                    >
+                        {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? t('editRole') : t('newRole')}
+                    </NavBar>
+
+                    <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Card>
+                            <Flex gap={16} vertical>
+                                <Flex gap={6} vertical>
+                                    <Text strong>{t('roleName')}</Text>
+                                    <Text type="secondary">Use a clear staff-facing name like Cashier, Floor Manager, or Kitchen Lead.</Text>
+                                    <Input
+                                        onChange={(value) => setEditingRole({ ...editingRole, name: value })}
+                                        placeholder={t('roleNamePlaceholder')}
+                                        value={editingRole.name || ''}
+                                    />
+                                </Flex>
+
+                                <Flex gap={6} vertical>
+                                    <Text strong>{t('description')}</Text>
+                                    <Text type="secondary">Write what this role is responsible for so owners know when to assign it.</Text>
+                                    <TextArea
+                                        onChange={(value) => setEditingRole({ ...editingRole, description: value })}
+                                        placeholder={t('descriptionPlaceholder')}
+                                        rows={2}
+                                        value={editingRole.description || ''}
+                                    />
+                                </Flex>
+
+                                <Card size="small" style={{ backgroundColor: '#fafafa' }}>
+                                    <Flex align="center" justify="space-between">
+                                        <Text strong>{t('active')}</Text>
+                                        <Switch
+                                            checked={editingRole.active || false}
+                                            onChange={(value) => setEditingRole({ ...editingRole, active: value })}
+                                        />
+                                    </Flex>
+                                </Card>
+                            </Flex>
+                        </Card>
+
+                        <Title level={5} style={{ margin: 0 }}>
+                            {t('permissions')}
+                        </Title>
+                        <Text type="secondary">Turn on only the actions this role should be allowed to do inside the app.</Text>
+
+                        {PERMISSION_CATEGORIES_CONFIG.map((category, index) => {
+                            const allEnabled = category.permissions.every((permKey) => Boolean((editingRole.permissions as any)?.[permKey]));
+
+                            return (
+                                <Card
+                                    key={`${category.label}-${index}`}
+                                    size="small"
+                                    title={
+                                        <Flex align="center" justify="space-between">
+                                            <Text strong>{`${category.icon} ${category.label}`}</Text>
+                                            <Checkbox checked={allEnabled} onChange={(value) => toggleCategoryAll(category.permissions, value)}>
+                                                <Text>{t('all')}</Text>
+                                            </Checkbox>
+                                        </Flex>
+                                    }
+                                >
+                                    <List>
+                                        {category.permissions.map((permKey) => {
+                                            const isEnabled = Boolean((editingRole.permissions as any)?.[permKey]);
+                                            return (
+                                                <List.Item
+                                                    key={permKey}
+                                                    extra={(
+                                                        <span onClick={(event) => event.stopPropagation()}>
+                                                            <Switch checked={isEnabled} onChange={() => togglePermission(permKey)} />
+                                                        </span>
+                                                    )}
+                                                    onClick={() => togglePermission(permKey)}
+                                                    title={<Text>{PERMISSION_LABELS[permKey as PermissionKey] || permKey}</Text>}
+                                                />
+                                            );
+                                        })}
+                                    </List>
+                                </Card>
+                            );
+                        })}
+
+                        {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) && editingRole.id !== DEFAULT_ROLE_IDS.OWNER ? (
+                            <Button
+                                block
+                                color="danger"
+                                fill="outline"
+                                onClick={() => {
+                                    setIsEditSheetOpen(false);
+                                    setTimeout(() => handleDeleteRole(editingRole), 300);
+                                }}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuTrash2 size={14} />
+                                    <Text>{t('deleteThisRole')}</Text>
+                                </Flex>
+                            </Button>
+                        ) : null}
+                    </Flex>
+                </Flex>
+            ) : null}
+        </Popup>
+    );
+
     if (selectedRole) {
         return (
             <Flex style={{ height: '100%' }} vertical>
@@ -160,6 +283,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                         </Card>
                     ))}
                 </Flex>
+                {editRoleSheet}
             </Flex>
         );
     }
@@ -214,122 +338,7 @@ export default function MobileRolesScreen({ onBack }: MobileRolesScreenProps) {
                 )}
             </Flex>
 
-            <Popup
-                bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
-                destroyOnClose
-                onMaskClick={isSaving ? undefined : () => setIsEditSheetOpen(false)}
-                position="bottom"
-                visible={isEditSheetOpen}
-            >
-                {editingRole ? (
-                    <Flex style={{ height: '100%' }} vertical>
-                        <NavBar
-                            backIcon={<LuX size={20} />}
-                            onBack={() => setIsEditSheetOpen(false)}
-                            right={(
-                                <Button color="primary" loading={isSaving} onClick={handleSaveRole} size="small">
-                                    {t('save')}
-                                </Button>
-                            )}
-                        >
-                            {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? t('editRole') : t('newRole')}
-                        </NavBar>
-
-                        <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
-                            <Card>
-                                <Flex gap={16} vertical>
-                                    <Flex gap={6} vertical>
-                                        <Text strong>{t('roleName')}</Text>
-                                        <Text type="secondary">Use a clear staff-facing name like Cashier, Floor Manager, or Kitchen Lead.</Text>
-                                        <Input
-                                            onChange={(value) => setEditingRole({ ...editingRole, name: value })}
-                                            placeholder={t('roleNamePlaceholder')}
-                                            value={editingRole.name || ''}
-                                        />
-                                    </Flex>
-
-                                    <Flex gap={6} vertical>
-                                        <Text strong>{t('description')}</Text>
-                                        <Text type="secondary">Write what this role is responsible for so owners know when to assign it.</Text>
-                                        <TextArea
-                                            onChange={(value) => setEditingRole({ ...editingRole, description: value })}
-                                            placeholder={t('descriptionPlaceholder')}
-                                            rows={2}
-                                            value={editingRole.description || ''}
-                                        />
-                                    </Flex>
-
-                                    <Card size="small" style={{ backgroundColor: '#fafafa' }}>
-                                        <Flex align="center" justify="space-between">
-                                            <Text strong>{t('active')}</Text>
-                                            <Switch
-                                                checked={editingRole.active || false}
-                                                onChange={(value) => setEditingRole({ ...editingRole, active: value })}
-                                            />
-                                        </Flex>
-                                    </Card>
-                                </Flex>
-                            </Card>
-
-                            <Title level={5} style={{ margin: 0 }}>
-                                {t('permissions')}
-                            </Title>
-                            <Text type="secondary">Turn on only the actions this role should be allowed to do inside the app.</Text>
-
-                            {PERMISSION_CATEGORIES_CONFIG.map((category, index) => {
-                                const allEnabled = category.permissions.every((permKey) => Boolean((editingRole.permissions as any)?.[permKey]));
-
-                                return (
-                                    <Card
-                                        key={`${category.label}-${index}`}
-                                        size="small"
-                                        title={
-                                            <Flex align="center" justify="space-between">
-                                                <Text strong>{`${category.icon} ${category.label}`}</Text>
-                                                <Checkbox checked={allEnabled} onChange={(value) => toggleCategoryAll(category.permissions, value)}>
-                                                    <Text>{t('all')}</Text>
-                                                </Checkbox>
-                                            </Flex>
-                                        }
-                                    >
-                                        <List>
-                                            {category.permissions.map((permKey) => {
-                                                const isEnabled = Boolean((editingRole.permissions as any)?.[permKey]);
-                                                return (
-                                                    <List.Item
-                                                        key={permKey}
-                                                        extra={<Switch checked={isEnabled} onChange={() => togglePermission(permKey)} />}
-                                                        onClick={() => togglePermission(permKey)}
-                                                        title={<Text>{PERMISSION_LABELS[permKey as PermissionKey] || permKey}</Text>}
-                                                    />
-                                                );
-                                            })}
-                                        </List>
-                                    </Card>
-                                );
-                            })}
-
-                            {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) && editingRole.id !== DEFAULT_ROLE_IDS.OWNER ? (
-                                <Button
-                                    block
-                                    color="danger"
-                                    fill="outline"
-                                    onClick={() => {
-                                        setIsEditSheetOpen(false);
-                                        setTimeout(() => handleDeleteRole(editingRole), 300);
-                                    }}
-                                    size="large"
-                                >
-                                    <Flex align="center" gap={6} justify="center">
-                                        <LuTrash2 size={14} />
-                                        <Text>{t('deleteThisRole')}</Text>
-                                    </Flex>
-                                </Button>
-                            ) : null}
-                        </Flex>
-                    </Flex>
-                ) : null}
-            </Popup>
+            {editRoleSheet}
         </Flex>
     );
 }

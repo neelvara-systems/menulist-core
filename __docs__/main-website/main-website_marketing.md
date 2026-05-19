@@ -11,6 +11,10 @@
 
 > POS Sync note (May 18, 2026): POS Sync should be marketed on the main website as proof that MenuList can support serious operations, not as a standalone POS-integration category. The allowed wording is "approved menu changes can be sent as a signed full-menu snapshot to a connected store POS webhook." Avoid "works with any POS", "real-time sync", "seamless integration", and POS connector-suite claims until validated by customer/vendor proof.
 
+> Mobile owner operations note (May 19, 2026): Phone-browser/PWA owner management is a high-value SMB conversion proof because it removes the hidden fear that the owner needs a laptop or technical admin. On the Features page, it can be a dedicated Operations card. On the homepage, keep it as a short reassurance line near conversion CTAs. Avoid claiming perfect desktop/mobile parity for every advanced edge case.
+
+> Staff access note (May 19, 2026): Staff accounts, Staff ID/passcode login, role permissions, passcode reset, and owner force sign-out are valuable buyer proof for teams and multi-location operators. On the homepage, keep this as a concise operations reliability proof point. On the Features page, place it under Operations. Do not market it as HR, attendance, payroll, or workforce management.
+
 ---
 
 ## My Honest Take (Cascade's Strategic Analysis)

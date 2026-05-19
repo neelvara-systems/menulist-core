@@ -5,7 +5,7 @@
  * Deploys to the "canonica" Firebase project (separate from MenuList's ecomsai).
  * 
  * Exported Functions:
- * - canonicaNightly: Scheduled 8-step batch (drift, mutation, resolution, KPI, etc.)
+ * - canonicaNightly: Scheduled Canonica batch (drift, mutation, resolution, KPI, trust metrics, etc.)
  * - triggerCanonicaNightly: HTTPS manual trigger guarded by CRON_SECRET
  * 
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
@@ -41,7 +41,7 @@ const CANONICA_AI_OPTIONS = {
 
 // ═══════════════════════════════════════════════════════════════
 // CANONICA NIGHTLY SCHEDULER
-// 8-step batch: drift → resolution → mutation → KPI → fallback → impact → confidence → TTL
+// Batch: drift → resolution → mutation → KPI → trust metrics → fallback → impact → confidence → TTL
 // Runs daily at 3:00 AM UTC (offset from MenuList's 2:30 AM)
 // ═══════════════════════════════════════════════════════════════
 
