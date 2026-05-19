@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { evaluateTriggers } from '@lib/canonica/predictiveEngine';
 import { CanonicaContextSchema } from '@lib/validation/contextSchema';
-import { hashApiKey, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
+import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey, withPublicApiCors } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -35,6 +35,11 @@ const PredictiveHelpRequestSchema = z.object({
     entityHints: z.array(z.string().trim().min(1).max(120)).max(5).optional(),
     userId: z.string().trim().max(160).optional(),
 });
+const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
+
+export function OPTIONS(request: NextRequest) {
+    return handlePublicApiCorsPreflight(request);
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -63,6 +68,10 @@ export async function POST(request: NextRequest) {
         }
 
         const authResult = await validatePublicApiKey(apiKey, {
+            allowLegacyRawFallback: false,
+            cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
+            includeCanonicaWidgetApi: true,
+            preferCanonicaWidgetApi: true,
             includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
             preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
         });
@@ -74,6 +83,9 @@ export async function POST(request: NextRequest) {
             return new NextResponse(null, { status: 204 });
         }
         if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+            return new NextResponse(null, { status: 204 });
+        }
+        if (!hasPublicApiCredentialScope(credential, 'widget:predictive')) {
             return new NextResponse(null, { status: 204 });
         }
 
@@ -125,7 +137,7 @@ export async function POST(request: NextRequest) {
             return new NextResponse(null, { status: 204 });
         }
 
-        return NextResponse.json({ suggestion });
+        return withPublicApiCors(NextResponse.json({ suggestion }), request);
 
     } catch (error) {
         secureError('[Canonica Predictive Help] Error', error as Error);

@@ -17,7 +17,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { hashApiKey, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
+import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -28,6 +28,7 @@ const FeedbackRequestSchema = z.object({
     searchHistoryId: z.string().trim().min(1).max(180),
     isGood: z.boolean(),
 });
+const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
 export async function POST(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
@@ -63,6 +64,10 @@ export async function POST(request: NextRequest) {
         }
 
         const authResult = await validatePublicApiKey(apiKey, {
+            allowLegacyRawFallback: false,
+            cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
+            includeCanonicaWidgetApi: true,
+            preferCanonicaWidgetApi: true,
             includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
             preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
         });
@@ -76,6 +81,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
         if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+        }
+        if (!hasPublicApiCredentialScope(credential, 'widget:feedback')) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
         const tId = Number(storeData.tenantId || storeData.tId);

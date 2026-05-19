@@ -30,6 +30,8 @@ export const PERMISSION_USERS_ASSIGN_ROLES = 'canAssignRoles' as const;
 // 🏪 Store Management
 export const PERMISSION_STORE_MANAGE = 'canManageStore' as const;
 export const PERMISSION_STORE_ADD = 'canAddStores' as const;
+export const PERMISSION_PUBLIC_PRESENCE_MANAGE = 'canManagePublicPresence' as const;
+export const PERMISSION_INTEGRATIONS_MANAGE = 'canManageIntegrations' as const;
 
 // 🔗 Multi-Outlet (Feature #4C)
 export const PERMISSION_OUTLET_MANAGE = 'canManageOutlets' as const;
@@ -38,6 +40,8 @@ export const PERMISSION_OUTLET_SWITCH = 'canSwitchStores' as const;
 // 🍽️ Menu Management
 export const PERMISSION_MENU_MANAGE = 'canManageMenu' as const;
 export const PERMISSION_MENU_PUBLISH = 'canPublishMenu' as const;
+export const PERMISSION_MENU_SHARING_MANAGE = 'canManageMenuSharing' as const;
+export const PERMISSION_MENU_DESIGN_MANAGE = 'canManageMenuDesign' as const;
 
 // 🤖 AI Features
 export const PERMISSION_AI_EXTRACTION = 'canUseMenuExtraction' as const;
@@ -61,6 +65,10 @@ export const PERMISSION_ANALYTICS_EXPORT = 'canExportData' as const;
 // 💬 Customer
 export const PERMISSION_CUSTOMER_CHAT = 'canManageChat' as const;
 export const PERMISSION_CUSTOMER_DATA = 'canViewCustomerData' as const;
+export const PERMISSION_FEEDBACK_MANAGE = 'canManageFeedback' as const;
+
+// 📺 Screens
+export const PERMISSION_DIGITAL_SCREENS_MANAGE = 'canManageDigitalScreens' as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PERMISSIONS OBJECT - For programmatic access
@@ -76,12 +84,16 @@ export const PERMISSIONS = {
     // Store
     MANAGE_STORE: PERMISSION_STORE_MANAGE,
     ADD_STORES: PERMISSION_STORE_ADD,
+    MANAGE_PUBLIC_PRESENCE: PERMISSION_PUBLIC_PRESENCE_MANAGE,
+    MANAGE_INTEGRATIONS: PERMISSION_INTEGRATIONS_MANAGE,
     // Multi-Outlet
     MANAGE_OUTLETS: PERMISSION_OUTLET_MANAGE,
     SWITCH_STORES: PERMISSION_OUTLET_SWITCH,
     // Menu
     MANAGE_MENU: PERMISSION_MENU_MANAGE,
     PUBLISH_MENU: PERMISSION_MENU_PUBLISH,
+    MANAGE_MENU_SHARING: PERMISSION_MENU_SHARING_MANAGE,
+    MANAGE_MENU_DESIGN: PERMISSION_MENU_DESIGN_MANAGE,
     // AI
     USE_MENU_EXTRACTION: PERMISSION_AI_EXTRACTION,
     GENERATE_DESCRIPTIONS: PERMISSION_AI_DESCRIPTIONS,
@@ -100,6 +112,9 @@ export const PERMISSIONS = {
     // Customer
     MANAGE_CHAT: PERMISSION_CUSTOMER_CHAT,
     VIEW_CUSTOMER_DATA: PERMISSION_CUSTOMER_DATA,
+    MANAGE_FEEDBACK: PERMISSION_FEEDBACK_MANAGE,
+    // Screens
+    MANAGE_DIGITAL_SCREENS: PERMISSION_DIGITAL_SCREENS_MANAGE,
 } as const;
 
 export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -115,10 +130,14 @@ export const ALL_PERMISSIONS: PermissionKey[] = [
     PERMISSION_USERS_ASSIGN_ROLES,
     PERMISSION_STORE_MANAGE,
     PERMISSION_STORE_ADD,
+    PERMISSION_PUBLIC_PRESENCE_MANAGE,
+    PERMISSION_INTEGRATIONS_MANAGE,
     PERMISSION_OUTLET_MANAGE,
     PERMISSION_OUTLET_SWITCH,
     PERMISSION_MENU_MANAGE,
     PERMISSION_MENU_PUBLISH,
+    PERMISSION_MENU_SHARING_MANAGE,
+    PERMISSION_MENU_DESIGN_MANAGE,
     PERMISSION_AI_EXTRACTION,
     PERMISSION_AI_DESCRIPTIONS,
     PERMISSION_AI_IMAGES,
@@ -132,6 +151,8 @@ export const ALL_PERMISSIONS: PermissionKey[] = [
     PERMISSION_ANALYTICS_EXPORT,
     PERMISSION_CUSTOMER_CHAT,
     PERMISSION_CUSTOMER_DATA,
+    PERMISSION_FEEDBACK_MANAGE,
+    PERMISSION_DIGITAL_SCREENS_MANAGE,
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -149,11 +170,24 @@ export const PERMISSION_CATEGORIES = {
     },
     STORE: {
         label: '🏪 Store',
-        permissions: [PERMISSION_STORE_MANAGE, PERMISSION_STORE_ADD, PERMISSION_OUTLET_MANAGE, PERMISSION_OUTLET_SWITCH],
+        permissions: [
+            PERMISSION_STORE_MANAGE,
+            PERMISSION_PUBLIC_PRESENCE_MANAGE,
+            PERMISSION_INTEGRATIONS_MANAGE,
+            PERMISSION_STORE_ADD,
+            PERMISSION_OUTLET_MANAGE,
+            PERMISSION_OUTLET_SWITCH,
+        ],
     },
     MENU: {
         label: '🍽️ Menu',
-        permissions: [PERMISSION_MENU_MANAGE, PERMISSION_MENU_PUBLISH],
+        permissions: [
+            PERMISSION_MENU_MANAGE,
+            PERMISSION_MENU_PUBLISH,
+            PERMISSION_MENU_SHARING_MANAGE,
+            PERMISSION_MENU_DESIGN_MANAGE,
+            PERMISSION_DIGITAL_SCREENS_MANAGE,
+        ],
     },
     AI_FEATURES: {
         label: '🤖 AI Features',
@@ -173,7 +207,7 @@ export const PERMISSION_CATEGORIES = {
     },
     CUSTOMER: {
         label: '💬 Customer',
-        permissions: [PERMISSION_CUSTOMER_CHAT, PERMISSION_CUSTOMER_DATA],
+        permissions: [PERMISSION_CUSTOMER_CHAT, PERMISSION_FEEDBACK_MANAGE, PERMISSION_CUSTOMER_DATA],
     },
 } as const;
 
@@ -188,10 +222,14 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
     [PERMISSION_USERS_ASSIGN_ROLES]: 'Assign Roles',
     [PERMISSION_STORE_MANAGE]: 'Manage Store',
     [PERMISSION_STORE_ADD]: 'Add Stores',
+    [PERMISSION_PUBLIC_PRESENCE_MANAGE]: 'Manage Public Presence',
+    [PERMISSION_INTEGRATIONS_MANAGE]: 'Manage Integrations',
     [PERMISSION_OUTLET_MANAGE]: 'Manage Outlets',
     [PERMISSION_OUTLET_SWITCH]: 'Switch Stores',
     [PERMISSION_MENU_MANAGE]: 'Manage Menu',
     [PERMISSION_MENU_PUBLISH]: 'Publish Menu',
+    [PERMISSION_MENU_SHARING_MANAGE]: 'Manage Sharing & QR',
+    [PERMISSION_MENU_DESIGN_MANAGE]: 'Manage Menu Design',
     [PERMISSION_AI_EXTRACTION]: 'Use Menu Extraction',
     [PERMISSION_AI_DESCRIPTIONS]: 'Generate Descriptions',
     [PERMISSION_AI_IMAGES]: 'Generate Images',
@@ -204,5 +242,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
     [PERMISSION_ANALYTICS_VIEW]: 'View Analytics',
     [PERMISSION_ANALYTICS_EXPORT]: 'Export Data',
     [PERMISSION_CUSTOMER_CHAT]: 'Manage Chat',
+    [PERMISSION_FEEDBACK_MANAGE]: 'Manage Feedback',
     [PERMISSION_CUSTOMER_DATA]: 'View Customer Data',
+    [PERMISSION_DIGITAL_SCREENS_MANAGE]: 'Manage Digital Screens',
 };

@@ -8,7 +8,7 @@ export type StaffListResponse = {
 
 export type StaffMutationResponse = {
     success: boolean;
-    mode?: "new_user_created" | "existing_user_added_to_store" | "user_updated" | "store_mapping_removed" | "user_deactivated";
+    mode?: "new_user_created" | "existing_user_added_to_store" | "user_updated" | "store_mapping_removed" | "user_deactivated" | "session_revoked";
     user?: StaffUserSummary;
     userId?: string;
     email?: string;
@@ -32,6 +32,7 @@ export type StaffUserSummary = {
     displayEmail?: string;
     name?: string;
     active?: boolean;
+    authDisabled?: boolean;
     deleted?: boolean;
     isVerified?: boolean;
     tenantId: number;
@@ -54,6 +55,7 @@ export type StaffUserSummary = {
     staffLoginId?: string;
     loginUsername?: string;
     phoneUsername?: string;
+    sessionRevokedAt?: unknown;
 };
 
 export type StaffStoreMappingInput = {
@@ -114,6 +116,12 @@ export type RemoveStaffInput = {
 };
 
 export type ResetStaffPasswordInput = {
+    userId: string;
+    tenantId: number;
+    storeId: number;
+};
+
+export type ForceSignOutStaffInput = {
     userId: string;
     tenantId: number;
     storeId: number;

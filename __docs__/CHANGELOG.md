@@ -6,6 +6,27 @@
 
 ---
 
+## May 19, 2026 — Role Permission Set Hardening
+
+### Changed
+
+- **Permission set expanded to 29 production flags** — Added dedicated controls for public presence, integrations, menu sharing, menu design, feedback, and digital screens while preserving existing role fields.
+- **Desktop and mobile navigation now use shared permission requirements** — Restricted pages and mobile tabs/hubs are hidden or blocked based on normalized role permissions instead of scattered local checks.
+- **Protected APIs now enforce store role permissions** — Analytics, domain/subdomain, and POS sync routes now validate the current store role before serving protected owner data or mutation flows.
+- **Default roles are normalized safely** — Existing default owner/manager/staff roles receive new default permissions automatically, while custom roles keep missing new permissions denied.
+
+## May 19, 2026 — Canonica Widget Management
+
+### Added
+
+- **Canonica widget management added** — Platform users now have `/canonica/widget` for widget keys, install snippets, appearance, behavior, origin allowlists, context snippets, and desktop/mobile preview.
+- **Widget runtime config endpoint added** — Installed widget scripts can read saved dashboard settings through `/api/widget/config` without requiring script edits for every configuration change.
+
+### Changed
+
+- **Widget keys separated from public API keys** — Canonica widget credentials now use `canonicaWidgetApi` with widget scopes. Canonica public API routes continue to use `publicApi` and reject widget-only keys.
+- **Settings now points to widget management** — `/canonica/settings` stays available and routes users to the dedicated widget management surface instead of duplicating widget save logic.
+
 ## May 18, 2026 — Staff and Permissions Completion
 
 ### Changed

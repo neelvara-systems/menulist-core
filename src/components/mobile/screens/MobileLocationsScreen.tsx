@@ -52,7 +52,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
         [draftPolicy, policy],
     );
 
-    if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL) {
+    if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL || userPermissions?.canManageOutlets !== true) {
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <MobileSettingsScreenHeader
@@ -61,8 +61,8 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     title={t('title')}
                 />
                 <Flex align="center" gap={8} justify="center" style={{ flex: 1, padding: 24, textAlign: 'center' }} vertical>
-                    <Text strong>Locations / Branches / Outlets list is not available for this store.</Text>
-                    <Text type="secondary">This screen appears only for the main account when multi-location management is enabled.</Text>
+                    <Text strong>Locations are not available for this account.</Text>
+                    <Text type="secondary">This screen appears only when the role can manage locations.</Text>
                 </Flex>
             </Flex>
         );

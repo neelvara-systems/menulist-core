@@ -80,7 +80,9 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
             .map((hint) => sanitizeContextString(hint, 64))
             .filter((hint): hint is string => Boolean(hint));
     }
-    if (Object.keys(output).length === 0) return null;
+    const hasMeaningfulContext = ['feature', 'page', 'workflow', 'userRole', 'plan'].some((key) => Boolean(output[key]))
+        || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
+    if (!hasMeaningfulContext) return null;
 
     const payloadBytes = new TextEncoder().encode(JSON.stringify(output)).length;
     return payloadBytes <= MAX_CONTEXT_PAYLOAD_BYTES ? output : null;
@@ -218,6 +220,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             }
         };
         window.addEventListener('message', handler);
+        window.parent?.postMessage({ type: 'canonica-widget-ready' }, '*');
         return () => window.removeEventListener('message', handler);
     }, [clearConversation]);
 

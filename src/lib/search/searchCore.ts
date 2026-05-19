@@ -138,6 +138,24 @@ Try asking about another documented topic, or contact support if you need a conf
     imageProcessed: false,
 };
 
+const buildProductContextCacheToken = (productContext: CoreSearchInput['productContext']): string => {
+    if (!productContext) return 'none';
+
+    const stableContext = {
+        contextVersion: productContext.contextVersion || 1,
+        entityHints: Array.isArray(productContext.entityHints)
+            ? productContext.entityHints.map(String).sort()
+            : [],
+        feature: productContext.feature || '',
+        page: productContext.page || '',
+        plan: productContext.plan || '',
+        userRole: productContext.userRole || '',
+        workflow: productContext.workflow || '',
+    };
+
+    return hashString(JSON.stringify(stableContext));
+};
+
 /**
  * Core search pipeline — the single source of truth for Canonica knowledge retrieval.
  *
@@ -180,6 +198,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         aiProviderOperations: Array.from(aiProviderOperations),
         aiProviderUsed: aiProviderOperations.size > 0,
     });
+    const hasConversationHistory = Array.isArray(conversationHistory) && conversationHistory.length > 0;
 
     if (!Number.isFinite(Number(tId)) || !Number.isFinite(Number(sId)) || Number(tId) <= 0 || Number(sId) <= 0) {
         try {
@@ -358,7 +377,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                         const instantCacheKeyBase = imageCacheToken
                             ? `${normalizedTextQueryForKey}::IMAGE::${imageCacheToken}`
                             : normalizedTextQueryForKey;
-                        const instantCacheKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${instantCacheKeyBase}`;
+                        const instantCacheContextToken = buildProductContextCacheToken(productContext);
+                        const instantCacheMode = hasConversationHistory ? 'assistant' : 'qna';
+                        const instantCacheKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${instantCacheKeyBase}::CTX::${instantCacheContextToken}::MODE::${instantCacheMode}`;
 
                         const savedHistory = await addAiSearchHistoryServer({
                             query: searchQuery,
@@ -421,17 +442,22 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const cacheLookupKeyBase = imageCacheToken
         ? `${normalizedTextQuery}::IMAGE::${imageCacheToken}`
         : normalizedTextQuery;
+    const contextCacheToken = buildProductContextCacheToken(productContext);
+    const modeCacheToken = hasConversationHistory ? 'assistant' : 'qna';
+    const scopedCacheLookupKeyBase = `${cacheLookupKeyBase}::CTX::${contextCacheToken}::MODE::${modeCacheToken}`;
     const kbCacheState = await getKnowledgeBaseCacheState(tId, sId);
-    const cacheLookupKey = `${tId}:${sId}:${kbCacheState.version}:${cacheLookupKeyBase}`;
+    const cacheLookupKey = `${tId}:${sId}:${kbCacheState.version}:${scopedCacheLookupKeyBase}`;
 
     const cacheStart = Date.now();
     // Widget searches use a prefixed cache key to avoid collision, but hit same pipeline
     const effectiveCacheKey = `${EMBEDDING_CACHE_VERSION}:${mountContext === 'widget' ? `widget:${cacheLookupKey}` : cacheLookupKey}`;
 
-    // Cache lookup only for authenticated contexts (help_center has session for findCachedSearchByCacheKey)
-    // Widget skips session-based cache — uses embedding cache only
+    // Cache lookup only for stateless authenticated Q&A.
+    // Assistant-mode history and product context are part of the cache key so stale
+    // or context-crossed answers cannot bypass canonical retrieval.
+    // Widget skips shared search-history cache because feedback needs a per-answer record.
     let cachedResult: any = null;
-    if (mountContext === 'help_center' && uId) {
+    if (mountContext === 'help_center' && uId && !hasConversationHistory) {
         cachedResult = await findCachedSearchByCacheKeyServer(
             cacheLookupKey,
             { tId, sId, uId } as any

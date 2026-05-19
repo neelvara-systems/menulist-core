@@ -11,6 +11,13 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 const WIDGET_SCRIPT_ID = 'menulist-canonica-widget-test-script';
 const WIDGET_LAUNCHER_ID = 'canonica-widget-launcher';
 const WIDGET_CONTAINER_ID = 'canonica-widget-container';
+const WIDGET_KEY_CACHE_PREFIX = 'canonica-widget-test-key';
+
+type WidgetKeyPayload = {
+    apiKey: string;
+    keyPrefix?: string;
+    widgetScriptSrc?: string;
+};
 
 const normalizeContextPart = (value: string, fallback: string) => {
     const normalized = value
@@ -47,6 +54,50 @@ const cleanupWidgetDom = () => {
     delete widgetWindow.__canonicaWidget;
 };
 
+const getCachedWidgetKey = (cacheKey: string): WidgetKeyPayload | null => {
+    try {
+        const parsed = JSON.parse(window.sessionStorage.getItem(cacheKey) || 'null');
+        if (!parsed || typeof parsed.apiKey !== 'string' || !parsed.apiKey.startsWith('cn_')) return null;
+        return {
+            apiKey: parsed.apiKey,
+            keyPrefix: typeof parsed.keyPrefix === 'string' ? parsed.keyPrefix : undefined,
+            widgetScriptSrc: typeof parsed.widgetScriptSrc === 'string' ? parsed.widgetScriptSrc : undefined,
+        };
+    } catch {
+        return null;
+    }
+};
+
+const cacheWidgetKey = (cacheKey: string, payload: WidgetKeyPayload) => {
+    try {
+        window.sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+    } catch {
+        // Session cache is an optimization only; widget mounting still works without it.
+    }
+};
+
+const applyContextAttributes = (
+    script: HTMLScriptElement,
+    context: {
+        entityHints: string[];
+        feature: string;
+        page: string;
+        userRole?: string;
+        workflow: string;
+    },
+) => {
+    script.setAttribute('data-feature', context.feature);
+    script.setAttribute('data-page', context.page);
+    script.setAttribute('data-workflow', context.workflow);
+    script.setAttribute('data-entity-hints', context.entityHints.join(','));
+
+    if (context.userRole) {
+        script.setAttribute('data-user-role', context.userRole);
+    } else {
+        script.removeAttribute('data-user-role');
+    }
+};
+
 export default function MenuListCanonicaWidgetTestHost() {
     const pathname = usePathname();
     const { data: session, status } = useSession();
@@ -58,6 +109,7 @@ export default function MenuListCanonicaWidgetTestHost() {
         || (session?.user as any)?.productId
         || PRODUCT_IDS.MENULIST;
     const lastMountedStoreRef = useRef<string | number | null>(null);
+    const lastContextPageRef = useRef<string | null>(null);
 
     const shouldLoadWidget = Boolean(
         FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST
@@ -90,12 +142,14 @@ export default function MenuListCanonicaWidgetTestHost() {
         if (!shouldLoadWidget) {
             cleanupWidgetDom();
             lastMountedStoreRef.current = null;
+            lastContextPageRef.current = null;
             setScriptReady(false);
             return;
         }
 
         let cancelled = false;
         const storeKey = String(activeStoreId);
+        const keyCacheKey = `${WIDGET_KEY_CACHE_PREFIX}:${storeKey}:${window.location.origin}`;
         if (lastMountedStoreRef.current === storeKey && document.getElementById(WIDGET_SCRIPT_ID)) {
             return;
         }
@@ -106,16 +160,22 @@ export default function MenuListCanonicaWidgetTestHost() {
 
         const mountWidget = async () => {
             try {
-                const response = await fetch('/api/canonica/menulist-widget-test-key', {
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                    method: 'POST',
-                });
-                const data = await response.json().catch(() => null);
-                if (!response.ok || !data?.apiKey || cancelled) {
-                    if (!cancelled) {
-                        console.warn('[Canonica Widget Test Host] Unable to resolve widget key');
+                let data = getCachedWidgetKey(keyCacheKey);
+                if (!data) {
+                    const response = await fetch('/api/canonica/menulist-widget-test-key', {
+                        cache: 'no-store',
+                        credentials: 'same-origin',
+                        method: 'POST',
+                    });
+                    data = await response.json().catch(() => null);
+                    if (!response.ok || !data?.apiKey || cancelled) {
+                        if (!cancelled) {
+                            console.warn('[Canonica Widget Test Host] Unable to resolve widget key');
+                        }
+                        return;
                     }
+                    cacheWidgetKey(keyCacheKey, data);
+                } else if (cancelled) {
                     return;
                 }
 
@@ -131,13 +191,7 @@ export default function MenuListCanonicaWidgetTestHost() {
                 script.setAttribute('data-size', 'medium');
                 script.setAttribute('data-offset-y', '84');
                 script.setAttribute('data-history', 'session');
-                script.setAttribute('data-feature', productContext.feature);
-                script.setAttribute('data-page', productContext.page);
-                script.setAttribute('data-workflow', productContext.workflow);
-                script.setAttribute('data-entity-hints', productContext.entityHints.join(','));
-                if (productContext.userRole) {
-                    script.setAttribute('data-user-role', productContext.userRole);
-                }
+                applyContextAttributes(script, productContext);
                 script.onload = () => {
                     if (!cancelled) {
                         setScriptReady(true);
@@ -163,6 +217,7 @@ export default function MenuListCanonicaWidgetTestHost() {
             cancelled = true;
             cleanupWidgetDom();
             lastMountedStoreRef.current = null;
+            lastContextPageRef.current = null;
             setScriptReady(false);
         };
     }, [activeStoreId, shouldLoadWidget]);
@@ -171,6 +226,17 @@ export default function MenuListCanonicaWidgetTestHost() {
         if (!scriptReady || !shouldLoadWidget) return;
 
         const widget = (window as any).CanonicaWidget;
+        const script = document.getElementById(WIDGET_SCRIPT_ID);
+        if (script instanceof HTMLScriptElement) {
+            applyContextAttributes(script, productContext);
+        }
+
+        const previousPage = lastContextPageRef.current;
+        if (previousPage && previousPage !== productContext.page && widget?.clearHistory) {
+            widget.clearHistory();
+        }
+        lastContextPageRef.current = productContext.page;
+
         if (widget?.page) {
             widget.page(productContext);
         } else if (widget?.setContext) {

@@ -44,6 +44,11 @@ const getCanonicaAdminDb = () => {
     }
     return canonicaFirestoreAdmin;
 };
+const TRIGGER_INDEX_CACHE_TTL_MS = 60_000;
+const triggerIndexCache = new Map<string, {
+    expiresAt: number;
+    value: CanonicaPredictiveTriggerIndex | null;
+}>();
 
 const normalizeConditionValue = (value: string | undefined): string | undefined => {
     if (typeof value !== 'string') return undefined;
@@ -63,13 +68,26 @@ export async function loadTriggerIndex(
 ): Promise<CanonicaPredictiveTriggerIndex | null> {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) return null;
 
+    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const cached = triggerIndexCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.value;
+    }
+    if (cached) {
+        triggerIndexCache.delete(cacheKey);
+    }
+
     try {
         const snap = await getCanonicaAdminDb()
             .collection(PLATFORM_SUMMARY_COLLECTION)
             .doc(`predictiveTriggers_${tId}_${sId}`)
             .get();
-        if (!snap.exists) return null;
-        return snap.data() as CanonicaPredictiveTriggerIndex;
+        const value = snap.exists ? snap.data() as CanonicaPredictiveTriggerIndex : null;
+        triggerIndexCache.set(cacheKey, {
+            expiresAt: Date.now() + TRIGGER_INDEX_CACHE_TTL_MS,
+            value,
+        });
+        return value;
     } catch {
         return null;
     }
@@ -86,7 +104,7 @@ async function getActiveAnswersForEntityServer(
         .where('sId', '==', sId)
         .where('scope.entityIds', 'array-contains', entityId)
         .where('status', '==', 'active')
-        .limit(20)
+        .limit(1)
         .get();
 
     return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as CanonicaCanonicalAnswer));

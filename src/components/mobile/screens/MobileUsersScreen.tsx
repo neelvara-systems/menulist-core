@@ -1,11 +1,11 @@
 'use client'
 
-import { createStaffUser, fetchStaffUsers, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
+import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
-import { LuKeyRound, LuMail, LuPhone, LuPlus, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
+import { LuKeyRound, LuLogOut, LuMail, LuPhone, LuPlus, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -216,6 +216,26 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
         }
     };
 
+    const handleForceSignOut = async (user: UserDataType) => {
+        setIsUpdatingUser(true);
+        try {
+            const data = await forceSignOutStaffUser({
+                storeId: storeDetails?.storeId,
+                tenantId: storeDetails?.tenantId,
+                userId: user.id,
+            });
+            if (data.user) {
+                setUsersList(users.map((item: any) => item.id === user.id ? data.user : item));
+                setSelectedUser(data.user as any);
+            }
+            Toast.show({ content: 'Staff member signed out', duration: 1500 });
+        } catch (err: any) {
+            Toast.show({ content: err?.message || 'Could not sign out staff member', duration: 2000 });
+        } finally {
+            setIsUpdatingUser(false);
+        }
+    };
+
     const getUserRoleName = (user: UserDataType) => {
         const storeMapping = (user as any)?.stores?.find((store: any) => store.storeId === storeDetails?.storeId);
         if (!storeMapping?.role) return t('noRole');
@@ -357,6 +377,30 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                 <Flex align="center" gap={6} justify="center">
                                     <LuKeyRound size={14} />
                                     <Text>Reset password</Text>
+                                </Flex>
+                            </Button>
+
+                            <Button
+                                block
+                                disabled={(selectedUser as any).active === false}
+                                fill="outline"
+                                loading={isUpdatingUser}
+                                onClick={() => {
+                                    void Dialog.confirm({
+                                        cancelText: t('cancel'),
+                                        confirmText: 'Sign out',
+                                        content: 'This signs the staff member out on their devices. They can sign in again with their current details.',
+                                        onConfirm: async () => {
+                                            await handleForceSignOut(selectedUser);
+                                        },
+                                        title: 'Sign out staff?',
+                                    });
+                                }}
+                                size="large"
+                            >
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuLogOut size={14} />
+                                    <Text>Sign out staff</Text>
                                 </Flex>
                             </Button>
 

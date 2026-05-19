@@ -2,10 +2,11 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { ALL_PERMISSIONS, PERMISSIONS, PermissionKey } from "@constant/permissions";
 import { STAFF_EMAIL_DOMAIN } from "@constant/urls";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
-import { DEFAULT_ROLE_IDS, generateCustomRoleId } from "@data/shared/defaultRoles";
+import { createDefaultRoles, DEFAULT_ROLE_IDS, DEFAULT_ROLE_METADATA, generateCustomRoleId } from "@data/shared/defaultRoles";
 import { buildPhoneUsername, getDisplayEmail, isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
 import { authAdmin, firestoreAdmin, admin } from "@lib/firebase/firebaseAdmin";
-import { hasPermission } from "@lib/permissions/hasPermission";
+import { hasPermission, normalizeRolePermissions } from "@lib/permissions/hasPermission";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -21,6 +22,7 @@ import { z } from "zod";
 import type {
     CreateStaffInput,
     DeleteRoleInput,
+    ForceSignOutStaffInput,
     RemoveStaffInput,
     ResetStaffPasswordInput,
     RoleMutationResponse,
@@ -46,6 +48,11 @@ const optionalEmailSchema = z.string()
     .default("")
     .refine((value) => !value || z.string().email().safeParse(value).success, "Invalid email address");
 
+const optionalTrimmedStringSchema = (max: number) => z.preprocess((value) => {
+    if (value === undefined || value === null) return undefined;
+    return String(value);
+}, z.string().trim().max(max).optional());
+
 const StoreMappingSchema = z.object({
     storeId: z.number().int().positive(),
     name: z.string().trim().max(160).optional(),
@@ -54,30 +61,30 @@ const StoreMappingSchema = z.object({
 
 export const CreateStaffSchema = z.object({
     email: optionalEmailSchema,
-    name: z.string().trim().max(160).optional(),
+    name: optionalTrimmedStringSchema(160),
     tenantId: z.number().int().positive(),
     storeId: z.number().int().positive(),
-    storeName: z.string().trim().max(160).optional(),
-    role: z.string().trim().min(1).max(120).optional(),
-    countryCode: z.string().trim().max(8).optional(),
-    dialCode: z.string().trim().max(8).optional(),
-    phoneNumber: z.string().trim().max(32).optional(),
+    storeName: optionalTrimmedStringSchema(160),
+    role: optionalTrimmedStringSchema(120),
+    countryCode: optionalTrimmedStringSchema(8),
+    dialCode: optionalTrimmedStringSchema(8),
+    phoneNumber: optionalTrimmedStringSchema(32),
 });
 
 export const UpdateStaffSchema = z.object({
     userId: z.string().trim().min(1).max(160),
     tenantId: z.number().int().positive(),
-    name: z.string().trim().max(160).optional(),
+    name: optionalTrimmedStringSchema(160),
     active: z.boolean().optional(),
     storeId: z.number().int().positive().optional(),
     stores: z.array(StoreMappingSchema).min(1).max(25).optional(),
-    countryCode: z.string().trim().max(8).optional(),
-    dialCode: z.string().trim().max(8).optional(),
-    phoneNumber: z.string().trim().max(32).optional(),
+    countryCode: optionalTrimmedStringSchema(8),
+    dialCode: optionalTrimmedStringSchema(8),
+    phoneNumber: optionalTrimmedStringSchema(32),
     alternatePhoneNumber: z.object({
-        countryCode: z.string().trim().max(8).optional(),
-        dialCode: z.string().trim().max(8).optional(),
-        phoneNumber: z.string().trim().max(32).optional(),
+        countryCode: optionalTrimmedStringSchema(8),
+        dialCode: optionalTrimmedStringSchema(8),
+        phoneNumber: optionalTrimmedStringSchema(32),
     }).optional(),
 });
 
@@ -92,6 +99,8 @@ export const ResetStaffPasswordSchema = z.object({
     tenantId: z.number().int().positive(),
     storeId: z.number().int().positive(),
 });
+
+export const ForceSignOutStaffSchema = ResetStaffPasswordSchema;
 
 const RolePermissionsSchema = z.record(z.boolean()).transform((permissions) => {
     const normalized: Record<string, boolean> = {};
@@ -181,6 +190,98 @@ const getStaffDisplayEmail = (data: any) => (
         : getDisplayEmail(data?.email)
 );
 
+const serializeStaffTimestamp = (value: any) => {
+    if (!value) return undefined;
+    if (typeof value === "string" || typeof value === "number") return value;
+    if (typeof value.toDate === "function") return value.toDate().toISOString();
+    if (typeof value.toMillis === "function") return value.toMillis();
+    return undefined;
+};
+
+const syncStaffFirebaseAuthDisabledState = async (
+    data: any,
+    disabled: boolean,
+    context: Record<string, unknown>,
+) => {
+    const email = String(data?.email || "").toLowerCase().trim();
+    const firebaseUid = data?.firebaseUid ? String(data.firebaseUid) : "";
+    if (!firebaseUid && !email) return false;
+
+    try {
+        const firebaseUser = firebaseUid
+            ? await authAdmin.getUser(firebaseUid)
+            : await authAdmin.getUserByEmail(email);
+
+        if (firebaseUser.disabled !== disabled) {
+            await authAdmin.updateUser(firebaseUser.uid, { disabled });
+        }
+
+        return true;
+    } catch (error: any) {
+        if (error?.code === "auth/user-not-found") {
+            logger.warn("[staff] Firebase Auth user missing during staff access sync", {
+                ...context,
+                disabled,
+            });
+            return false;
+        }
+
+        throw error;
+    }
+};
+
+const revokeStaffFirebaseRefreshTokens = async (
+    data: any,
+    context: Record<string, unknown>,
+) => {
+    const email = String(data?.email || "").toLowerCase().trim();
+    const firebaseUid = data?.firebaseUid ? String(data.firebaseUid) : "";
+    if (!firebaseUid && !email) return false;
+
+    try {
+        const firebaseUser = firebaseUid
+            ? await authAdmin.getUser(firebaseUid)
+            : await authAdmin.getUserByEmail(email);
+
+        await authAdmin.revokeRefreshTokens(firebaseUser.uid);
+        return true;
+    } catch (error: any) {
+        if (error?.code === "auth/user-not-found") {
+            logger.warn("[staff] Firebase Auth user missing during staff token revocation", context);
+            return false;
+        }
+
+        throw error;
+    }
+};
+
+const buildSessionRevocationFields = (
+    session: any,
+    now: admin.firestore.Timestamp,
+    reason: string,
+) => sanitizeFirestoreValue({
+    authTokensRevokedAt: now,
+    sessionRevokedAt: now,
+    sessionRevokedBy: session?.uId || session?.user?.id,
+    sessionRevokedByEmail: session?.user?.email,
+    sessionRevokedReason: reason,
+});
+
+const revokeStaffSessions = async (
+    data: any,
+    session: any,
+    now: admin.firestore.Timestamp,
+    reason: string,
+    context: Record<string, unknown>,
+) => {
+    await revokeStaffFirebaseRefreshTokens(data, {
+        ...context,
+        reason,
+    });
+
+    return buildSessionRevocationFields(session, now, reason);
+};
+
 const generateDigits = (length: number) => {
     let output = "";
     while (output.length < length) {
@@ -223,6 +324,7 @@ const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
     return {
         id,
         active: data?.active !== false,
+        authDisabled: data?.authDisabled === true,
         alternatePhoneNumber: data?.alternatePhoneNumber,
         countryCode: data?.countryCode,
         createdVia: data?.createdVia,
@@ -238,6 +340,7 @@ const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
         platformRole: data?.platformRole || "USER",
         profileImage: data?.profileImage || data?.image || "",
         role: data?.role || "",
+        sessionRevokedAt: serializeStaffTimestamp(data?.sessionRevokedAt),
         staffAuthMode: getStaffAuthMode(data),
         staffLoginId: data?.staffLoginId || data?.loginUsername || "",
         storeId: Number(data?.storeId) || stores[0]?.storeId,
@@ -284,6 +387,57 @@ const fetchStoresForTenant = async (tenantId: number): Promise<StoreDataType[]> 
         .get();
 
     return snapshot.docs.map((doc) => doc.data() as StoreDataType);
+};
+
+const DEFAULT_ROLE_ID_VALUES = Object.values(DEFAULT_ROLE_IDS);
+
+const ensureDefaultRolesForStore = async (
+    store: StoreDataType,
+    actorEmail?: string,
+) => {
+    const currentRoles = Array.isArray(store?.roles) ? store.roles : [];
+    let changed = false;
+    const normalizedCurrentRoles = currentRoles.map((role) => {
+        const defaultMetadata = DEFAULT_ROLE_METADATA[role?.id as keyof typeof DEFAULT_ROLE_METADATA];
+        if (!defaultMetadata) return role;
+
+        const normalizedPermissions = normalizeRolePermissions(role.permissions, defaultMetadata.permissions);
+        const hasPermissionDrift = ALL_PERMISSIONS.some((permission) => (
+            role.permissions?.[permission] !== normalizedPermissions[permission]
+        ));
+
+        if (!hasPermissionDrift) return role;
+        changed = true;
+        return {
+            ...role,
+            permissions: normalizedPermissions,
+        };
+    });
+    const existingRoleIds = new Set(normalizedCurrentRoles.map((role) => role?.id).filter(Boolean));
+    const missingDefaults = DEFAULT_ROLE_ID_VALUES.filter((roleId) => !existingRoleIds.has(roleId));
+    if (!missingDefaults.length && !changed) return store;
+
+    const defaultRoles = createDefaultRoles(Number(store.storeId), actorEmail || "system")
+        .filter((role) => missingDefaults.includes(role.id as typeof DEFAULT_ROLE_ID_VALUES[number]));
+    const nextRoles = [...normalizedCurrentRoles, ...defaultRoles];
+
+    await firestoreAdmin.collection(STORES_COLLECTION).doc(String(store.storeId)).update(sanitizeFirestoreValue({
+        modifiedBy: actorEmail || "system",
+        modifiedOn: admin.firestore.Timestamp.now(),
+        roles: nextRoles,
+    }));
+
+    logger.info("[staff] Backfilled missing default roles for store", {
+        missingDefaults,
+        normalizedDefaultRoles: changed,
+        storeId: store.storeId,
+        tenantId: store.tenantId,
+    });
+
+    return {
+        ...store,
+        roles: nextRoles,
+    };
 };
 
 const getAuthority = async (session: any, tenantId: number, targetStoreIds: number[]) => {
@@ -359,10 +513,16 @@ const validateStoreMappings = async (
 
     const storeMap = await fetchStoresByIds(normalized.map((mapping) => mapping.storeId));
 
-    normalized.forEach((mapping) => {
-        const store = storeMap.get(mapping.storeId);
+    for (const mapping of normalized) {
+        let store = storeMap.get(mapping.storeId);
         if (!store || Number(store.tenantId) !== tenantId) {
             throw new Error("STORE_NOT_FOUND");
+        }
+
+        const roleExists = (store.roles || []).some((item: StoreRoleDataType) => item.id === mapping.role && item.active !== false);
+        if (!roleExists && DEFAULT_ROLE_ID_VALUES.includes(mapping.role as typeof DEFAULT_ROLE_ID_VALUES[number])) {
+            store = await ensureDefaultRolesForStore(store, "system");
+            storeMap.set(mapping.storeId, store);
         }
 
         const role = (store.roles || []).find((item: StoreRoleDataType) => item.id === mapping.role && item.active !== false);
@@ -371,7 +531,7 @@ const validateStoreMappings = async (
         }
 
         mapping.name = mapping.name || store.name || `Store ${mapping.storeId}`;
-    });
+    }
 
     return normalized as UserStoreMappingType[];
 };
@@ -501,11 +661,13 @@ export const listStaffUsers = async (
     }
 
     const docs = await getUsersForTenant(tenantId);
-    const storeOptionDocs = authority.isMaster
+    const rawStoreOptionDocs = authority.isMaster
         ? await fetchStoresForTenant(tenantId)
         : [await fetchStoreById(storeId)].filter(Boolean) as StoreDataType[];
-    const stores = storeOptionDocs
+    const storeOptionDocs = await Promise.all(rawStoreOptionDocs
         .filter((store): store is StoreDataType => Boolean(store && Number(store.tenantId) === tenantId))
+        .map((store) => ensureDefaultRolesForStore(store, session?.user?.email)));
+    const stores = storeOptionDocs
         .map(sanitizeStoreOption)
         .sort((a, b) => a.name.localeCompare(b.name));
     const users = docs
@@ -584,6 +746,9 @@ export const createStaffUser = async (
                 "EMAIL_OTHER_TENANT",
             );
         }
+        if (isPlatformEntityBlocked(existingData)) {
+            return jsonError("This staff member is blocked by MenuList support.", 403, "ACCOUNT_BLOCKED");
+        }
 
         const currentStores: UserStoreMappingType[] = Array.isArray(existingData.stores) ? existingData.stores : [];
         const alreadyHasStore = currentStores.some((store) => Number(store.storeId) === input.storeId);
@@ -594,8 +759,16 @@ export const createStaffUser = async (
         const nextStores = [...currentStores, stores[0]];
         const nextStoreIds = Array.from(new Set(nextStores.map((store) => Number(store.storeId))));
 
+        await syncStaffFirebaseAuthDisabledState(existingData, false, {
+            action: "staff-reactivate-on-store-add",
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            userId: existingDoc.id,
+        });
+
         await existingDoc.ref.update(sanitizeFirestoreValue({
             active: true,
+            authDisabled: false,
             deleted: false,
             deletedAt: null,
             modifiedBy: session?.user?.email,
@@ -608,6 +781,7 @@ export const createStaffUser = async (
         const updated = sanitizeStaffUser(existingDoc.id, {
             ...existingData,
             active: true,
+            authDisabled: false,
             deleted: false,
             deletedAt: null,
             storeId: existingData.storeId || input.storeId,
@@ -670,6 +844,7 @@ export const createStaffUser = async (
 
     const newUserDoc = sanitizeFirestoreValue({
         active: true,
+        authDisabled: false,
         countryCode: input.countryCode,
         createdBy: session?.user?.email,
         createdOn: now,
@@ -678,7 +853,7 @@ export const createStaffUser = async (
         dialCode: input.dialCode,
         email: loginEmail,
         firebaseUid,
-        isVerified: authMode === STAFF_AUTH_MODE_OWNER_PASSCODE,
+        isVerified: true,
         loginUsername: staffLoginId,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
@@ -847,13 +1022,22 @@ export const updateStaffUser = async (
         ? input.storeId
         : nextStoreIds[0] || existingData.storeId;
 
+    const now = admin.firestore.Timestamp.now();
+    const sessionRevocationFields = input.active === false
+        ? await revokeStaffSessions(existingData, session, now, "staff_deactivated", {
+            action: "staff-active-toggle",
+            tenantId: input.tenantId,
+            userId: input.userId,
+        })
+        : {};
     const updateData = sanitizeFirestoreValue({
         active: input.active,
         alternatePhoneNumber: input.alternatePhoneNumber,
+        authDisabled: input.active === undefined ? undefined : input.active === false || isPlatformEntityBlocked(existingData),
         countryCode: input.countryCode,
         dialCode: input.dialCode,
         modifiedBy: session?.user?.email,
-        modifiedOn: admin.firestore.Timestamp.now(),
+        modifiedOn: now,
         name: input.name,
         phoneNumber: input.phoneNumber,
         phoneUsername: input.phoneNumber !== undefined || input.dialCode !== undefined
@@ -862,7 +1046,16 @@ export const updateStaffUser = async (
         storeId: input.stores ? nextDefaultStoreId : input.storeId,
         storeIds: input.stores ? nextStoreIds : undefined,
         stores: input.stores ? nextStores : undefined,
+        ...sessionRevocationFields,
     });
+
+    if (input.active !== undefined) {
+        await syncStaffFirebaseAuthDisabledState(existingData, input.active === false || isPlatformEntityBlocked(existingData), {
+            action: "staff-active-toggle",
+            tenantId: input.tenantId,
+            userId: input.userId,
+        });
+    }
 
     await targetDoc.ref.update(updateData);
 
@@ -947,17 +1140,37 @@ export const removeStaffFromStore = async (
     const nextStores = currentStores.filter((store) => Number(store.storeId) !== input.storeId);
     const nextStoreIds = nextStores.map((store) => Number(store.storeId));
     const shouldDeactivate = nextStores.length === 0;
+    const now = admin.firestore.Timestamp.now();
+    const sessionRevocationFields = shouldDeactivate
+        ? await revokeStaffSessions(existingData, session, now, "staff_removed_from_last_store", {
+            action: "staff-remove-last-store",
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            userId: input.userId,
+        })
+        : {};
 
     const updateData = sanitizeFirestoreValue({
         active: shouldDeactivate ? false : existingData.active,
+        authDisabled: shouldDeactivate ? true : existingData.authDisabled,
         deleted: shouldDeactivate ? true : existingData.deleted === true ? false : existingData.deleted,
-        deletedAt: shouldDeactivate ? admin.firestore.Timestamp.now() : existingData.deletedAt ?? null,
+        deletedAt: shouldDeactivate ? now : existingData.deletedAt ?? null,
         modifiedBy: session?.user?.email,
-        modifiedOn: admin.firestore.Timestamp.now(),
+        modifiedOn: now,
         storeId: shouldDeactivate ? input.storeId : (nextStoreIds.includes(Number(existingData.storeId)) ? existingData.storeId : nextStoreIds[0]),
         storeIds: nextStoreIds,
         stores: nextStores,
+        ...sessionRevocationFields,
     });
+
+    if (shouldDeactivate) {
+        await syncStaffFirebaseAuthDisabledState(existingData, true, {
+            action: "staff-remove-last-store",
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            userId: input.userId,
+        });
+    }
 
     await targetDoc.ref.update(updateData);
 
@@ -1014,6 +1227,12 @@ export const requestStaffPasswordReset = async (
     if (!hasStoreAccess || existingData.deleted === true) {
         return jsonError("Staff member is not assigned to this store", 404, "STORE_MAPPING_NOT_FOUND");
     }
+    if (isPlatformEntityBlocked(existingData)) {
+        return jsonError("This staff member is blocked by MenuList support.", 403, "ACCOUNT_BLOCKED");
+    }
+    if (existingData.active === false) {
+        return jsonError("Activate this staff member before creating a new passcode.", 409, "STAFF_INACTIVE");
+    }
 
     const email = String(existingData.email || "").toLowerCase().trim();
     if (!email) {
@@ -1036,9 +1255,14 @@ export const requestStaffPasswordReset = async (
     const temporaryPasscode = generateStaffPasscode();
     const now = admin.firestore.Timestamp.now();
     await authAdmin.updateUser(firebaseUser.uid, {
+        disabled: false,
         password: temporaryPasscode,
     });
+    await authAdmin.revokeRefreshTokens(firebaseUser.uid);
     await targetDoc.ref.update(sanitizeFirestoreValue({
+        authDisabled: false,
+        authTokensRevokedAt: now,
+        isVerified: true,
         loginUsername: loginId,
         modifiedBy: session?.user?.email,
         modifiedOn: now,
@@ -1046,6 +1270,10 @@ export const requestStaffPasswordReset = async (
         passcodeResetBy: session?.uId || session?.user?.id,
         passwordResetRequestedAt: now,
         passwordResetRequestedBy: session?.uId || session?.user?.id,
+        sessionRevokedAt: now,
+        sessionRevokedBy: session?.uId || session?.user?.id,
+        sessionRevokedByEmail: session?.user?.email,
+        sessionRevokedReason: "staff_passcode_reset",
         staffLoginId: loginId,
     }));
 
@@ -1064,6 +1292,91 @@ export const requestStaffPasswordReset = async (
         staffAuthMode: getStaffAuthMode(existingData),
         staffLoginId: loginId,
         temporaryPasscode,
+        user: sanitizeStaffUser(input.userId, updatedSnapshot.data()),
+        userId: input.userId,
+    } satisfies StaffMutationResponse);
+};
+
+export const forceSignOutStaffUser = async (
+    request: NextRequest,
+    session: any,
+) => {
+    const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-force-signout");
+    if (rateLimit) return rateLimit;
+
+    const body = await request.json();
+    const validation = validateAPIInput(ForceSignOutStaffSchema, body);
+    if (!validation.success) {
+        const validationError = (validation as { success: false; error: string }).error;
+        logSecurity("Input Validation Failed - Staff Force Signout", session, request, { error: validationError }, "medium");
+        return jsonError("Invalid input", 400, "INVALID_INPUT");
+    }
+
+    const input = validation.data as ForceSignOutStaffInput;
+    const authority = await getAuthority(session, input.tenantId, [input.storeId]);
+    if (!authority?.canManageUsers) {
+        logSecurity("Authorization Failed - Staff Force Signout", session, request, input, "high");
+        return jsonError("Forbidden", 403, "FORBIDDEN");
+    }
+
+    try {
+        ensureNotSelfDestructive(session, input.userId);
+    } catch (error: any) {
+        if (error?.message === "SELF_UPDATE_BLOCKED") {
+            return jsonError("You cannot sign yourself out from here.", 409, "SELF_UPDATE_BLOCKED");
+        }
+        throw error;
+    }
+
+    const targetDoc = await firestoreAdmin.collection(USERS_COLLECTION).doc(input.userId).get();
+    if (!targetDoc.exists) {
+        return jsonError("Staff member not found", 404, "USER_NOT_FOUND");
+    }
+
+    const existingData = targetDoc.data() || {};
+    if (Number(existingData.tenantId) !== input.tenantId) {
+        logSecurity("Authorization Failed - Staff Force Signout Tenant Mismatch", session, request, {
+            requestedTenantId: input.tenantId,
+            targetTenantId: existingData.tenantId,
+            userId: input.userId,
+        }, "critical");
+        return jsonError("Forbidden", 403, "FORBIDDEN");
+    }
+
+    const currentStores: UserStoreMappingType[] = Array.isArray(existingData.stores) ? existingData.stores : [];
+    const hasStoreAccess = currentStores.some((store) => Number(store.storeId) === input.storeId);
+    if (!hasStoreAccess || existingData.deleted === true) {
+        return jsonError("Staff member is not assigned to this store", 404, "STORE_MAPPING_NOT_FOUND");
+    }
+    if (existingData.active === false) {
+        return jsonError("This staff member is already deactivated.", 409, "STAFF_INACTIVE");
+    }
+
+    const now = admin.firestore.Timestamp.now();
+    const sessionRevocationFields = await revokeStaffSessions(existingData, session, now, "owner_force_signout", {
+        action: "staff-force-signout",
+        tenantId: input.tenantId,
+        storeId: input.storeId,
+        userId: input.userId,
+    });
+
+    await targetDoc.ref.update(sanitizeFirestoreValue({
+        modifiedBy: session?.user?.email,
+        modifiedOn: now,
+        ...sessionRevocationFields,
+    }));
+
+    logger.info("[staff] Owner forced staff session signout", {
+        tenantId: input.tenantId,
+        storeId: input.storeId,
+        userId: input.userId,
+    });
+
+    const updatedSnapshot = await targetDoc.ref.get();
+    return NextResponse.json({
+        success: true,
+        message: "Staff member signed out.",
+        mode: "session_revoked",
         user: sanitizeStaffUser(input.userId, updatedSnapshot.data()),
         userId: input.userId,
     } satisfies StaffMutationResponse);

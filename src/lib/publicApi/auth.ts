@@ -119,7 +119,13 @@ export function logApiRequest(
  *
  * @returns Store data if valid key, null if invalid
  */
-export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetTestApi';
+export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetApi' | 'canonicaWidgetTestApi';
+export type PublicApiCredentialScope =
+    | 'public:read'
+    | 'widget:config'
+    | 'widget:search'
+    | 'widget:feedback'
+    | 'widget:predictive';
 
 export type PublicApiKeyValidationResult = {
     credential?: Record<string, any>;
@@ -129,11 +135,44 @@ export type PublicApiKeyValidationResult = {
 };
 
 export type PublicApiKeyValidationOptions = {
+    allowLegacyRawFallback?: boolean;
+    includeCanonicaWidgetApi?: boolean;
+    cacheTtlMs?: number;
     includeCanonicaWidgetTestApi?: boolean;
+    preferCanonicaWidgetApi?: boolean;
     preferCanonicaWidgetTestApi?: boolean;
 };
 
 const isCanonicaWidgetTestKey = (apiKey: string): boolean => /^cn_[a-f0-9]{64}$/i.test(apiKey);
+const MAX_VALIDATION_CACHE_TTL_MS = 30_000;
+const validationCache = new Map<string, {
+    expiresAt: number;
+    result: PublicApiKeyValidationResult;
+}>();
+
+const buildValidationCacheKey = (
+    keyHash: string,
+    options: {
+        allowLegacyRawFallback: boolean;
+        includeCanonicaWidgetApi: boolean;
+        includeCanonicaWidgetTestApi: boolean;
+        preferCanonicaWidgetApi: boolean;
+        preferCanonicaWidgetTestApi: boolean;
+    },
+) => [
+    keyHash,
+    options.allowLegacyRawFallback ? 'legacy' : 'hash-only',
+    options.includeCanonicaWidgetApi ? 'with-widget' : 'without-widget',
+    options.includeCanonicaWidgetTestApi ? 'with-widget-test' : 'public-only',
+    options.preferCanonicaWidgetApi ? 'prefer-widget' : 'prefer-non-widget',
+    options.preferCanonicaWidgetTestApi ? 'prefer-widget-test' : 'prefer-public',
+].join(':');
+
+const getValidationCacheTtl = (ttlMs: number | undefined): number => {
+    const ttl = Number(ttlMs || 0);
+    if (!Number.isFinite(ttl) || ttl <= 0) return 0;
+    return Math.min(ttl, MAX_VALIDATION_CACHE_TTL_MS);
+};
 
 export async function validatePublicApiKey(
     apiKey: string | null,
@@ -146,16 +185,45 @@ export async function validatePublicApiKey(
     const keyHash = hashApiKey(normalizedApiKey);
 
     let credentialSource: PublicApiCredentialSource = 'publicApi';
+    const allowLegacyRawFallback = options.allowLegacyRawFallback !== false;
+    const includeCanonicaWidgetApi = Boolean(options.includeCanonicaWidgetApi);
     const includeCanonicaWidgetTestApi = Boolean(options.includeCanonicaWidgetTestApi);
+    const preferCanonicaWidgetApi = Boolean(options.preferCanonicaWidgetApi && includeCanonicaWidgetApi);
     const preferCanonicaWidgetTestApi = Boolean(
         options.preferCanonicaWidgetTestApi
         && includeCanonicaWidgetTestApi
         && isCanonicaWidgetTestKey(normalizedApiKey)
     );
+    const cacheTtl = getValidationCacheTtl(options.cacheTtlMs);
+    const cacheKey = cacheTtl
+        ? buildValidationCacheKey(keyHash, {
+            allowLegacyRawFallback,
+            includeCanonicaWidgetApi,
+            includeCanonicaWidgetTestApi,
+            preferCanonicaWidgetApi,
+            preferCanonicaWidgetTestApi,
+        })
+        : '';
+
+    if (cacheKey) {
+        const cached = validationCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.result;
+        }
+        if (cached) {
+            validationCache.delete(cacheKey);
+        }
+    }
 
     const queryCanonicaWidgetTestApi = async () => db
         .collection(DB_COLLECTIONS.STORES)
         .where('canonicaWidgetTestApi.apiKeyHash', '==', keyHash)
+        .limit(1)
+        .get();
+
+    const queryCanonicaWidgetApi = async () => db
+        .collection(DB_COLLECTIONS.STORES)
+        .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
         .limit(1)
         .get();
 
@@ -164,12 +232,40 @@ export async function validatePublicApiKey(
         if (!widgetSnapshot.empty) {
             const doc = widgetSnapshot.docs[0];
             const storeData = doc.data();
-            return {
+            const result: PublicApiKeyValidationResult = {
                 credential: storeData.canonicaWidgetTestApi,
                 credentialSource: 'canonicaWidgetTestApi',
                 storeData,
                 storeId: doc.id,
             };
+            if (cacheKey && cacheTtl) {
+                validationCache.set(cacheKey, {
+                    expiresAt: Date.now() + cacheTtl,
+                    result,
+                });
+            }
+            return result;
+        }
+    }
+
+    if (preferCanonicaWidgetApi) {
+        const widgetSnapshot = await queryCanonicaWidgetApi();
+        if (!widgetSnapshot.empty) {
+            const doc = widgetSnapshot.docs[0];
+            const storeData = doc.data();
+            const result: PublicApiKeyValidationResult = {
+                credential: storeData.canonicaWidgetApi,
+                credentialSource: 'canonicaWidgetApi',
+                storeData,
+                storeId: doc.id,
+            };
+            if (cacheKey && cacheTtl) {
+                validationCache.set(cacheKey, {
+                    expiresAt: Date.now() + cacheTtl,
+                    result,
+                });
+            }
+            return result;
         }
     }
 
@@ -181,12 +277,22 @@ export async function validatePublicApiKey(
         .get();
 
     // Fallback: lookup by raw key (backward compat for pre-migration keys)
-    if (snapshot.empty) {
+    if (snapshot.empty && allowLegacyRawFallback) {
         snapshot = await db
             .collection(DB_COLLECTIONS.STORES)
             .where('publicApi.apiKey', '==', normalizedApiKey)
             .limit(1)
             .get();
+    }
+
+    if (
+        snapshot.empty
+        && includeCanonicaWidgetApi
+        && normalizedApiKey.startsWith('cn_')
+        && !preferCanonicaWidgetApi
+    ) {
+        snapshot = await queryCanonicaWidgetApi();
+        credentialSource = 'canonicaWidgetApi';
     }
 
     if (
@@ -206,10 +312,70 @@ export async function validatePublicApiKey(
 
     const doc = snapshot.docs[0];
     const storeData = doc.data();
-    return {
-        credential: credentialSource === 'publicApi' ? storeData.publicApi : storeData.canonicaWidgetTestApi,
+    const result: PublicApiKeyValidationResult = {
+        credential: credentialSource === 'publicApi'
+            ? storeData.publicApi
+            : credentialSource === 'canonicaWidgetApi'
+                ? storeData.canonicaWidgetApi
+                : storeData.canonicaWidgetTestApi,
         credentialSource,
         storeData,
         storeId: doc.id,
     };
+
+    if (cacheKey && cacheTtl) {
+        validationCache.set(cacheKey, {
+            expiresAt: Date.now() + cacheTtl,
+            result,
+        });
+    }
+
+    return result;
+}
+
+export function hasPublicApiCredentialScope(
+    credential: Record<string, any> | undefined,
+    requiredScope: PublicApiCredentialScope,
+): boolean {
+    if (!credential) return false;
+    if (Array.isArray(credential.scopes)) {
+        return credential.scopes.includes(requiredScope);
+    }
+
+    const purpose = typeof credential.purpose === 'string' ? credential.purpose : '';
+    if (requiredScope.startsWith('widget:')) {
+        return purpose === 'canonica_widget' || purpose === 'canonica_widget_test_host';
+    }
+
+    if (requiredScope === 'public:read') {
+        return purpose !== 'canonica_widget' && purpose !== 'canonica_widget_test_host';
+    }
+
+    return false;
+}
+
+export function buildPublicApiCorsHeaders(request: NextRequest): Record<string, string> {
+    const origin = normalizeRequestOrigin(request.headers.get('origin'));
+    if (!origin) return {};
+
+    return {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+        'Access-Control-Max-Age': '600',
+        'Vary': 'Origin',
+    };
+}
+
+export function withPublicApiCors(response: NextResponse, request: NextRequest): NextResponse {
+    const headers = buildPublicApiCorsHeaders(request);
+    Object.entries(headers).forEach(([key, value]) => response.headers.set(key, value));
+    return response;
+}
+
+export function handlePublicApiCorsPreflight(request: NextRequest): NextResponse {
+    return new NextResponse(null, {
+        status: 204,
+        headers: buildPublicApiCorsHeaders(request),
+    });
 }

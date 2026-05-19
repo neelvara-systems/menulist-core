@@ -41,6 +41,12 @@ export type UserDataType = {
 
     deleted: boolean;
     deletedAt: string;
+    authDisabled?: boolean;
+    authTokensRevokedAt?: any;
+    sessionRevokedAt?: any;
+    sessionRevokedBy?: string;
+    sessionRevokedByEmail?: string;
+    sessionRevokedReason?: string;
 
     email: string;
     displayEmail?: string;
@@ -53,6 +59,7 @@ export type UserDataType = {
     staffAuthMode?: "email" | "owner_passcode";
     staffLoginId?: string;
     phoneLoginEnabled?: boolean;
+    authIssuedAt?: number;
 
     alternatePhoneNumber?: {
         countryCode?: string;

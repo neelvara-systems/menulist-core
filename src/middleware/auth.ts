@@ -32,6 +32,15 @@ export type AuthenticatedHandler = (
     params?: any
 ) => Promise<NextResponse>;
 
+const getSessionAccessDeniedReason = (session: any): string | null => {
+    const user = session?.user || {};
+    if (user.deleted === true) return 'Deleted account attempted to access protected API';
+    if (user.active === false) return 'Inactive account attempted to access protected API';
+    if (user.isVerified === false) return 'Unverified account attempted to access protected API';
+    if (isPlatformEntityBlocked(user)) return 'Blocked account attempted to access protected API';
+    return null;
+};
+
 /**
  * Wraps API route handlers with authentication + CORS validation
  * 
@@ -89,16 +98,17 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                 );
             }
 
-            if (isPlatformEntityBlocked(session.user)) {
-                logger.security('Authorization Failed - Blocked Account', {
+            const sessionAccessDeniedReason = getSessionAccessDeniedReason(session);
+            if (sessionAccessDeniedReason) {
+                logger.security('Authorization Failed - Account Access Ended', {
                     ...buildSecurityContext(session, request),
                     endpoint: request.nextUrl.pathname,
-                    error: 'Blocked account attempted to access protected API',
+                    error: sessionAccessDeniedReason,
                     method: request.method,
                 }, 'high');
 
                 return NextResponse.json(
-                    { error: 'Forbidden', message: 'Account access is blocked' },
+                    { error: 'Forbidden', message: 'Account access has ended' },
                     { status: 403 }
                 );
             }

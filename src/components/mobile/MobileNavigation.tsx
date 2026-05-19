@@ -13,6 +13,7 @@ interface MobileNavigationProps {
     onTabChange: (tab: MobileTab) => void;
     feedbackCount?: number;
     onMoreTabLongPress?: () => void;
+    visibleTabs?: MobileTab[];
 }
 
 const tabs = [
@@ -22,7 +23,7 @@ const tabs = [
     { key: 'more' as MobileTab, title: 'More', icon: <LuMoreHorizontal size={20} /> },
 ];
 
-export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, onMoreTabLongPress }: MobileNavigationProps) {
+export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, onMoreTabLongPress, visibleTabs }: MobileNavigationProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,7 +72,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                     width: '100%',
                 }}
             >
-                {tabs.map((tab) => {
+                {tabs.filter((tab) => !visibleTabs || visibleTabs.includes(tab.key)).map((tab) => {
                     const isActive = activeTab === tab.key;
                     const isMoreTab = tab.key === 'more';
                     const tabButton = (

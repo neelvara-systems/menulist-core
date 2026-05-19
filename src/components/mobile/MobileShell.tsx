@@ -1,17 +1,19 @@
 'use client'
 
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
+import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ServerSidePageLoader from '../../app/loading';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowLeft, LuCreditCard } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
@@ -214,6 +216,7 @@ export default function MobileShell() {
         isMasterUser,
         setActiveStoreContext,
         tenantDetails,
+        userPermissions,
     } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const { data: session } = useSession();
@@ -244,6 +247,29 @@ export default function MobileShell() {
     const activeOutletName = activeOutletSummary
         ? getStoreContextName(activeOutletSummary, `Store ${activeStoreContext}`)
         : '';
+    const canUseTodayTab = hasAnyPermission(userPermissions, [
+        PERMISSIONS.MANAGE_MENU_SHARING,
+        PERMISSIONS.PUBLISH_MENU,
+        PERMISSIONS.MANAGE_MENU,
+    ]);
+    const canUseMenuTab = hasAnyPermission(userPermissions, [
+        PERMISSIONS.MANAGE_MENU,
+        PERMISSIONS.PUBLISH_MENU,
+        PERMISSIONS.USE_MENU_EXTRACTION,
+        PERMISSIONS.GENERATE_DESCRIPTIONS,
+        PERMISSIONS.GENERATE_IMAGES,
+    ]);
+    const canUseShareTab = hasAnyPermission(userPermissions, [
+        PERMISSIONS.MANAGE_MENU_SHARING,
+        PERMISSIONS.PUBLISH_MENU,
+    ]);
+    const canViewAnalytics = hasAnyPermission(userPermissions, [PERMISSIONS.VIEW_ANALYTICS]);
+    const visibleTabs: MobileTab[] = useMemo(() => [
+        ...(canUseTodayTab ? ['today' as MobileTab] : []),
+        ...(canUseMenuTab ? ['menu' as MobileTab] : []),
+        ...(canUseShareTab ? ['share' as MobileTab] : []),
+        'more',
+    ], [canUseMenuTab, canUseShareTab, canUseTodayTab]);
 
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
@@ -302,6 +328,7 @@ export default function MobileShell() {
     }, []);
 
     const handleTabChange = useCallback((tab: MobileTab) => {
+        if (!visibleTabs.includes(tab)) return;
         if (tab === activeTab) {
             if (tab === 'more' && moreScreen !== 'main') {
                 setMoreScreen('main');
@@ -320,13 +347,25 @@ export default function MobileShell() {
             setIsMoreRootScreen(true);
             setMoreScreen('main');
         }
-    }, [activeTab, moreScreen, scrollActiveScreenToTop]);
+    }, [activeTab, moreScreen, scrollActiveScreenToTop, visibleTabs]);
+
+    useEffect(() => {
+        if (!visibleTabs.includes(activeTab)) {
+            setActiveTab(visibleTabs[0] || 'more');
+        }
+    }, [activeTab, visibleTabs]);
 
     const handleOpenMenuTab = useCallback(() => {
+        if (!canUseMenuTab) {
+            setActiveTab('more');
+            setMoreScreen('main');
+            setIsMoreRootScreen(true);
+            return;
+        }
         setActiveTab('menu');
         setMoreScreen('main');
         setIsMoreRootScreen(true);
-    }, []);
+    }, [canUseMenuTab]);
 
     const handleOpenDesignEditor = useCallback(() => {
         setActiveTab('more');
@@ -342,12 +381,14 @@ export default function MobileShell() {
                 : todayScreen === 'history'
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
                     : (
-                        <MobileHoursScreen
-                            onOpenDashboard={() => setTodayScreen('dashboard')}
-                            onOpenHistory={() => setTodayScreen('history')}
-                            onOpenMenuTab={handleOpenMenuTab}
-                            onOpenShare={() => {
-                                setActiveTab('share');
+                    <MobileHoursScreen
+                            onOpenDashboard={() => {
+                                if (canViewAnalytics) setTodayScreen('dashboard');
+                            }}
+                        onOpenHistory={() => setTodayScreen('history')}
+                        onOpenMenuTab={handleOpenMenuTab}
+                        onOpenShare={() => {
+                                setActiveTab(canUseShareTab ? 'share' : 'more');
                                 setTodayScreen('main');
                             }}
                         />
@@ -470,6 +511,7 @@ export default function MobileShell() {
                     feedbackCount={0}
                     onTabChange={handleTabChange}
                     onMoreTabLongPress={emitDeploymentBadgeToggle}
+                    visibleTabs={visibleTabs}
                 />
             </Flex>
             </MobileProjectsProvider>

@@ -31,7 +31,11 @@
  *   data-size          (optional) "small" | "medium" | "large"
  *   data-offset-x      (optional) Horizontal offset in px (default: 20)
  *   data-offset-y      (optional) Vertical offset in px (default: 20)
+ *   data-z-index       (optional) Launcher z-index (default: 2147483646)
  *   data-history       (optional) "session" | "forget" (default: session, no persistent storage)
+ *   data-launcher-visibility (optional) "visible" | "manual" (default: visible)
+ *   data-mobile-visibility   (optional) "show" | "hide" (default: show)
+ *   data-use-remote-config   (optional) "false" disables dashboard config fetch
  */
 (function () {
     'use strict';
@@ -55,17 +59,37 @@
     if (!apiKey) { console.warn('[Canonica] Missing data-api-key attribute.'); return; }
 
     // ===== CONFIG =====
-    var position = script.getAttribute('data-position') || 'bottom-right';
-    var accentColor = script.getAttribute('data-accent-color') || '#6366f1';
-    var shape = script.getAttribute('data-shape') || 'rounded';
-    var display = script.getAttribute('data-display') || 'icon';
-    var label = script.getAttribute('data-label') || '?';
-    var size = script.getAttribute('data-size') || 'medium';
-    var offsetX = parseInt(script.getAttribute('data-offset-x') || '20', 10);
-    var offsetY = parseInt(script.getAttribute('data-offset-y') || '20', 10);
-    var historyMode = script.getAttribute('data-history') === 'forget' ? 'forget' : 'session';
+    var defaultConfig = {
+        position: 'bottom-right',
+        accentColor: '#6366f1',
+        shape: 'rounded',
+        display: 'icon',
+        label: '?',
+        size: 'medium',
+        offsetX: 20,
+        offsetY: 20,
+        zIndex: 2147483646,
+        historyMode: 'session',
+        launcherVisibility: 'visible',
+        mobileVisibility: 'show',
+    };
+    var explicitConfig = {};
+    var position = defaultConfig.position;
+    var accentColor = defaultConfig.accentColor;
+    var shape = defaultConfig.shape;
+    var display = defaultConfig.display;
+    var label = defaultConfig.label;
+    var size = defaultConfig.size;
+    var offsetX = defaultConfig.offsetX;
+    var offsetY = defaultConfig.offsetY;
+    var zIndex = defaultConfig.zIndex;
+    var historyMode = defaultConfig.historyMode;
+    var launcherVisibility = defaultConfig.launcherVisibility;
+    var mobileVisibility = defaultConfig.mobileVisibility;
+    var useRemoteConfig = script.getAttribute('data-use-remote-config') !== 'false';
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
+    var remoteConfigCacheTtlMs = 60000;
 
     // Size presets
     var sizes = {
@@ -73,11 +97,9 @@
         medium: { circle: 56, pill: 40, font: 20, iconFont: 16 },
         large: { circle: 64, pill: 48, font: 24, iconFont: 18 },
     };
-    var s = sizes[size] || sizes.medium;
-
     // Mobile detection
     var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (isMobile) { position = 'bottom-right'; }
+    var s = sizes[size] || sizes.medium;
 
     // ===== STATE =====
     var isOpen = false;
@@ -88,6 +110,106 @@
     var pendingSuggestion = null;
     var predictiveRequestTimer = null;
     var eventListeners = {};
+
+    function isValidChoice(value, allowed) {
+        return allowed.indexOf(value) !== -1;
+    }
+
+    function readNumberAttribute(name, fallback, min, max) {
+        if (!script.hasAttribute(name)) return undefined;
+        var value = parseInt(script.getAttribute(name) || '', 10);
+        if (!Number.isFinite(value)) return fallback;
+        return Math.max(min, Math.min(max, value));
+    }
+
+    function readScriptConfig() {
+        var config = {};
+        var value;
+
+        value = script.getAttribute('data-position');
+        if (script.hasAttribute('data-position') && isValidChoice(value, ['bottom-right', 'bottom-left', 'top-right', 'top-left'])) config.position = value;
+
+        value = script.getAttribute('data-accent-color');
+        if (script.hasAttribute('data-accent-color') && /^#[0-9a-fA-F]{6}$/.test(value || '')) config.accentColor = value;
+
+        value = script.getAttribute('data-shape');
+        if (script.hasAttribute('data-shape') && isValidChoice(value, ['rounded', 'pill'])) config.shape = value;
+
+        value = script.getAttribute('data-display');
+        if (script.hasAttribute('data-display') && isValidChoice(value, ['icon', 'text', 'icon-text'])) config.display = value;
+
+        value = script.getAttribute('data-label');
+        if (script.hasAttribute('data-label') && value && value.trim()) config.label = value.trim().slice(0, 24);
+
+        value = script.getAttribute('data-size');
+        if (script.hasAttribute('data-size') && isValidChoice(value, ['small', 'medium', 'large'])) config.size = value;
+
+        var offsetXAttr = readNumberAttribute('data-offset-x', defaultConfig.offsetX, 0, 200);
+        if (offsetXAttr !== undefined) config.offsetX = offsetXAttr;
+
+        var offsetYAttr = readNumberAttribute('data-offset-y', defaultConfig.offsetY, 0, 200);
+        if (offsetYAttr !== undefined) config.offsetY = offsetYAttr;
+
+        var zIndexAttr = readNumberAttribute('data-z-index', defaultConfig.zIndex, 1000, 2147483646);
+        if (zIndexAttr !== undefined) config.zIndex = zIndexAttr;
+
+        value = script.getAttribute('data-history');
+        if (script.hasAttribute('data-history') && isValidChoice(value, ['session', 'forget'])) config.historyMode = value;
+
+        value = script.getAttribute('data-launcher-visibility');
+        if (script.hasAttribute('data-launcher-visibility') && isValidChoice(value, ['visible', 'manual'])) config.launcherVisibility = value;
+
+        value = script.getAttribute('data-mobile-visibility');
+        if (script.hasAttribute('data-mobile-visibility') && isValidChoice(value, ['show', 'hide'])) config.mobileVisibility = value;
+
+        return config;
+    }
+
+    function sanitizeRemoteConfig(value) {
+        if (!value || typeof value !== 'object') return {};
+        var input = value;
+        var config = {};
+        if (isValidChoice(input.position, ['bottom-right', 'bottom-left', 'top-right', 'top-left'])) config.position = input.position;
+        if (/^#[0-9a-fA-F]{6}$/.test(input.accentColor || '')) config.accentColor = input.accentColor;
+        if (isValidChoice(input.shape, ['rounded', 'pill'])) config.shape = input.shape;
+        if (isValidChoice(input.display, ['icon', 'text', 'icon-text'])) config.display = input.display;
+        if (typeof input.label === 'string' && input.label.trim()) config.label = input.label.trim().slice(0, 24);
+        if (isValidChoice(input.size, ['small', 'medium', 'large'])) config.size = input.size;
+        if (Number.isFinite(input.offsetX)) config.offsetX = Math.max(0, Math.min(200, Math.floor(input.offsetX)));
+        if (Number.isFinite(input.offsetY)) config.offsetY = Math.max(0, Math.min(200, Math.floor(input.offsetY)));
+        if (Number.isFinite(input.zIndex)) config.zIndex = Math.max(1000, Math.min(2147483646, Math.floor(input.zIndex)));
+        if (isValidChoice(input.historyMode, ['session', 'forget'])) config.historyMode = input.historyMode;
+        if (isValidChoice(input.launcherVisibility, ['visible', 'manual'])) config.launcherVisibility = input.launcherVisibility;
+        if (isValidChoice(input.mobileVisibility, ['show', 'hide'])) config.mobileVisibility = input.mobileVisibility;
+        return config;
+    }
+
+    function applyConfig(config) {
+        var merged = {};
+        Object.keys(defaultConfig).forEach(function (key) {
+            merged[key] = explicitConfig[key] !== undefined
+                ? explicitConfig[key]
+                : config[key] !== undefined
+                    ? config[key]
+                    : defaultConfig[key];
+        });
+
+        position = isMobile ? 'bottom-right' : merged.position;
+        accentColor = merged.accentColor;
+        shape = merged.shape;
+        display = merged.display;
+        label = merged.label;
+        size = merged.size;
+        offsetX = merged.offsetX;
+        offsetY = merged.offsetY;
+        zIndex = merged.zIndex;
+        historyMode = merged.historyMode;
+        launcherVisibility = merged.launcherVisibility;
+        mobileVisibility = merged.mobileVisibility;
+        s = sizes[size] || sizes.medium;
+
+        updateWidgetChrome();
+    }
 
     function sanitizeContextString(value, maxLength) {
         if (typeof value !== 'string') return null;
@@ -119,7 +241,10 @@
                 .map(function (hint) { return sanitizeContextString(hint, 64); })
                 .filter(Boolean);
         }
-        if (!Object.keys(output).length) return null;
+        var hasMeaningfulContext = ['feature', 'page', 'workflow', 'userRole', 'plan'].some(function (key) {
+            return Boolean(output[key]);
+        }) || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
+        if (!hasMeaningfulContext) return null;
         return getPayloadByteLength(output) <= maxContextPayloadBytes ? output : null;
     }
 
@@ -189,17 +314,15 @@
         return label; // icon mode — label serves as icon text (? by default)
     }
 
-    function createLauncher() {
-        launcher = document.createElement('div');
-        launcher.id = 'canonica-widget-launcher';
-        launcher.setAttribute('role', 'button');
-        launcher.setAttribute('aria-label', 'Open help widget');
-        launcher.setAttribute('tabindex', '0');
+    function shouldHideLauncher() {
+        return launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
+    }
 
+    function getLauncherStyles() {
         var isPill = shape === 'pill';
         var baseStyles = {
             position: 'fixed',
-            display: 'flex',
+            display: shouldHideLauncher() ? 'none' : 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
@@ -207,11 +330,17 @@
             background: accentColor,
             color: '#ffffff',
             boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-            zIndex: '2147483646',
+            zIndex: String(zIndex),
             transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             userSelect: 'none',
             border: 'none',
+            width: '',
+            height: '',
+            padding: '',
+            borderRadius: '',
+            fontSize: '',
+            fontWeight: '700',
         };
 
         if (isPill) {
@@ -228,7 +357,34 @@
             baseStyles.fontWeight = '700';
         }
 
-        Object.assign(launcher.style, baseStyles, getPositionStyles());
+        return Object.assign(baseStyles, getPositionStyles());
+    }
+
+    function updateWidgetChrome() {
+        if (launcher) {
+            Object.assign(launcher.style, getLauncherStyles());
+            launcher.textContent = isOpen ? '✕' : getLauncherContent();
+            launcher.style.fontSize = isOpen ? (s.iconFont + 'px') : (shape === 'pill' ? s.iconFont : s.font) + 'px';
+        }
+        if (container) {
+            Object.assign(container.style, getContainerPosition());
+            container.style.zIndex = String(Math.min(zIndex + 1, 2147483647));
+            if (isMobile) {
+                container.style.left = '12px';
+                container.style.right = '12px';
+                container.style.width = 'auto';
+            }
+        }
+    }
+
+    function createLauncher() {
+        launcher = document.createElement('div');
+        launcher.id = 'canonica-widget-launcher';
+        launcher.setAttribute('role', 'button');
+        launcher.setAttribute('aria-label', 'Open help widget');
+        launcher.setAttribute('tabindex', '0');
+
+        Object.assign(launcher.style, getLauncherStyles());
 
         launcher.textContent = getLauncherContent();
 
@@ -268,7 +424,7 @@
             borderRadius: '16px',
             overflow: 'hidden',
             boxShadow: '0 8px 48px rgba(0,0,0,0.15)',
-            zIndex: '2147483647',
+            zIndex: String(Math.min(zIndex + 1, 2147483647)),
             display: 'none',
             transition: 'opacity 0.2s ease, transform 0.2s ease',
             opacity: '0',
@@ -290,16 +446,14 @@
         container.appendChild(iframe);
         document.body.appendChild(container);
 
-        iframe.addEventListener('load', function () {
-            sendContextToIframe();
-            sendSuggestionToIframe();
-        });
+        iframe.addEventListener('load', scheduleIframeSync);
     }
 
     // ===== OPEN / CLOSE =====
     function toggleWidget() { isOpen ? closeWidget() : openWidget(); }
 
     function openWidget() {
+        if (isMobile && mobileVisibility === 'hide') return;
         if (!container) createWidget();
         isOpen = true;
         container.style.display = 'block';
@@ -307,12 +461,12 @@
             container.style.opacity = '1';
             container.style.transform = 'translateY(0) scale(1)';
         });
-        launcher.textContent = '✕';
-        launcher.style.fontSize = (s.iconFont) + 'px';
+        if (launcher) {
+            launcher.textContent = '✕';
+            launcher.style.fontSize = (s.iconFont) + 'px';
+        }
         emitEvent('open', { context: productContext, historyMode: historyMode });
-        postToIframe({ type: 'canonica-widget-visibility', state: 'open', historyMode: historyMode });
-        sendContextToIframe();
-        sendSuggestionToIframe();
+        scheduleIframeSync();
     }
 
     function sendContextToIframe() {
@@ -325,14 +479,30 @@
         }
     }
 
+    function syncIframeState() {
+        if (isOpen) {
+            postToIframe({ type: 'canonica-widget-visibility', state: 'open', historyMode: historyMode });
+        }
+        sendContextToIframe();
+        sendSuggestionToIframe();
+    }
+
+    function scheduleIframeSync() {
+        syncIframeState();
+        window.setTimeout(syncIframeState, 100);
+        window.setTimeout(syncIframeState, 500);
+    }
+
     function closeWidget() {
         isOpen = false;
-        if (!container || !launcher) return;
+        if (!container) return;
         container.style.opacity = '0';
         container.style.transform = 'translateY(10px) scale(0.95)';
         setTimeout(function () { if (!isOpen) container.style.display = 'none'; }, 200);
-        launcher.textContent = getLauncherContent();
-        launcher.style.fontSize = (shape === 'pill' ? s.iconFont : s.font) + 'px';
+        if (launcher) {
+            launcher.textContent = getLauncherContent();
+            launcher.style.fontSize = (shape === 'pill' ? s.iconFont : s.font) + 'px';
+        }
         postToIframe({ type: 'canonica-widget-visibility', state: 'closed', historyMode: historyMode, clearHistory: historyMode === 'forget' });
         emitEvent('close', { historyMode: historyMode, cleared: historyMode === 'forget' });
     }
@@ -346,6 +516,7 @@
     window.addEventListener('message', function (e) {
         if (e.origin !== widgetHost) return;
         if (e.data && e.data.type === 'canonica-widget-close') { closeWidget(); }
+        if (e.data && e.data.type === 'canonica-widget-ready') { scheduleIframeSync(); }
     });
 
     // ===== PUBLIC API =====
@@ -353,13 +524,14 @@
         setContext: function (ctx) {
             var sanitizedContext = sanitizeContextPayload(ctx);
             productContext = sanitizedContext;
+            pendingSuggestion = null;
+            if (launcher) {
+                launcher.setAttribute('aria-label', 'Open help widget');
+                launcher.removeAttribute('title');
+                launcher.style.boxShadow = '0 4px 24px rgba(0,0,0,0.15)';
+            }
             if (!sanitizedContext) {
-                pendingSuggestion = null;
-                if (launcher) {
-                    launcher.setAttribute('aria-label', 'Open help widget');
-                    launcher.removeAttribute('title');
-                    launcher.style.boxShadow = '0 4px 24px rgba(0,0,0,0.15)';
-                }
+                sendSuggestionToIframe();
             }
             emitEvent('context', { context: sanitizedContext });
             sendContextToIframe();
@@ -413,8 +585,66 @@
         }, 250);
     }
 
+    function getRemoteConfigCacheKey() {
+        return 'canonica-widget-config:' + apiKey.slice(0, 14) + ':' + widgetHost;
+    }
+
+    function readCachedRemoteConfig() {
+        try {
+            if (!window.sessionStorage) return null;
+            var raw = window.sessionStorage.getItem(getRemoteConfigCacheKey());
+            if (!raw) return null;
+            var cached = JSON.parse(raw);
+            if (!cached || cached.expiresAt <= Date.now()) {
+                window.sessionStorage.removeItem(getRemoteConfigCacheKey());
+                return null;
+            }
+            return sanitizeRemoteConfig(cached.config);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function writeCachedRemoteConfig(config, ttlSeconds) {
+        try {
+            if (!window.sessionStorage) return;
+            window.sessionStorage.setItem(getRemoteConfigCacheKey(), JSON.stringify({
+                config: config,
+                expiresAt: Date.now() + Math.max(10, Math.min(300, ttlSeconds || 60)) * 1000,
+            }));
+        } catch (_) {}
+    }
+
+    function loadRemoteConfig() {
+        if (!useRemoteConfig || !window.fetch) return;
+
+        var cachedConfig = readCachedRemoteConfig();
+        if (cachedConfig && Object.keys(cachedConfig).length) {
+            applyConfig(cachedConfig);
+            return;
+        }
+
+        fetch(widgetHost + '/api/widget/config', {
+            method: 'GET',
+            headers: { 'X-API-Key': apiKey },
+        }).then(function (response) {
+            if (response.status !== 200) return null;
+            return response.json();
+        }).then(function (data) {
+            if (!data || !data.config) return;
+            var remoteConfig = sanitizeRemoteConfig(data.config);
+            writeCachedRemoteConfig(remoteConfig, data.cacheTtlSeconds || remoteConfigCacheTtlMs / 1000);
+            applyConfig(remoteConfig);
+        }).catch(function () {
+            // Dashboard config is optional. Script attributes keep the widget usable.
+        });
+    }
+
     // ===== INIT =====
+    explicitConfig = readScriptConfig();
+    applyConfig(explicitConfig);
     productContext = readInitialContextFromAttributes();
+    loadRemoteConfig();
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', createLauncher);

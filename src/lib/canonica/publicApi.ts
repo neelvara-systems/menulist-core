@@ -1,5 +1,5 @@
 import { FEATURE_FLAGS } from '@config/features';
-import { apiError, hashApiKey, isRequestOriginAllowed, logApiRequest, validatePublicApiKey } from '@lib/publicApi/auth';
+import { apiError, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, logApiRequest, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -49,7 +49,9 @@ export async function authenticateCanonicaPublicApi(
         };
     }
 
-    const result = await validatePublicApiKey(apiKey);
+    const result = await validatePublicApiKey(apiKey, {
+        allowLegacyRawFallback: false,
+    });
     if (!result) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
@@ -63,6 +65,9 @@ export async function authenticateCanonicaPublicApi(
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
     if (publicApi.purpose && !String(publicApi.purpose).startsWith('canonica')) {
+        return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
+    }
+    if (!hasPublicApiCredentialScope(publicApi, 'public:read')) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
 

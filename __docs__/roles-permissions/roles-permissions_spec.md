@@ -2,7 +2,7 @@
 
 **Feature:** Role-Based Access Control (RBAC)  
 **Status:** ✅ Staff CRUD + permissions wired end-to-end
-**Date:** May 18, 2026
+**Date:** May 19, 2026
 
 > **Scope:** Staff-level permissions (Layer 1). For chain-level outlet restrictions (Layer 2: OutletPolicy), see [Multi-Chain Permissions Spec](../multi-chain-permissions/multi-chain-permissions_spec.md).
 
@@ -45,17 +45,17 @@ Based on research from SaaS platforms (HubSpot, Square, Intercom) and POS system
 
 Simple true/false toggles organized by category:
 
-| Category       | Permissions                                                             |
-| -------------- | ----------------------------------------------------------------------- |
-| 💰 Billing     | `canAccessBilling`, `canManageSubscription`                             |
-| 👥 Users       | `canManageUsers`, `canAssignRoles`                                      |
-| 🏪 Store       | `canManageStore`, `canAddStores`, `canManageOutlets`, `canSwitchStores` |
-| 🍽️ Menu        | `canManageMenu`, `canPublishMenu`                                       |
-| 🤖 AI Features | `canUseMenuExtraction`, `canGenerateDescriptions`, `canGenerateImages`  |
-| 🎨 Branding    | `canOverrideTheme`, `canOverrideBrandIdentity`, `canOverrideLayout`     |
-| 🏗️ Content     | `canAddLocalCategories`, `canAddLocalItems`, `canOverridePrices`        |
-| 📊 Analytics   | `canViewAnalytics`, `canExportData`                                     |
-| 💬 Customer    | `canManageChat`, `canViewCustomerData`                                  |
+| Category       | Permissions                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 💰 Billing     | `canAccessBilling`, `canManageSubscription`                                                                                          |
+| 👥 Users       | `canManageUsers`, `canAssignRoles`                                                                                                   |
+| 🏪 Store       | `canManageStore`, `canManagePublicPresence`, `canManageIntegrations`, `canAddStores`, `canManageOutlets`, `canSwitchStores`          |
+| 🍽️ Menu        | `canManageMenu`, `canPublishMenu`, `canManageMenuSharing`, `canManageMenuDesign`, `canManageDigitalScreens`                          |
+| 🤖 AI Features | `canUseMenuExtraction`, `canGenerateDescriptions`, `canGenerateImages`                                                               |
+| 🎨 Branding    | `canOverrideTheme`, `canOverrideBrandIdentity`, `canOverrideLayout`                                                                  |
+| 🏗️ Content     | `canAddLocalCategories`, `canAddLocalItems`, `canOverridePrices`                                                                     |
+| 📊 Analytics   | `canViewAnalytics`, `canExportData`                                                                                                  |
+| 💬 Customer    | `canManageChat`, `canManageFeedback`, `canViewCustomerData`                                                                          |
 
 ### 2.2 Default Role Permissions
 
@@ -67,10 +67,14 @@ Simple true/false toggles organized by category:
 | `canAssignRoles`           |  ✅   |   ❌    |  ❌   |
 | `canManageStore`           |  ✅   |   ✅    |  ❌   |
 | `canAddStores`             |  ✅   |   ❌    |  ❌   |
+| `canManagePublicPresence`  |  ✅   |   ❌    |  ❌   |
+| `canManageIntegrations`    |  ✅   |   ❌    |  ❌   |
 | `canManageOutlets`         |  ✅   |   ❌    |  ❌   |
 | `canSwitchStores`          |  ✅   |   ✅    |  ❌   |
 | `canManageMenu`            |  ✅   |   ✅    |  ❌   |
 | `canPublishMenu`           |  ✅   |   ✅    |  ❌   |
+| `canManageMenuSharing`     |  ✅   |   ✅    |  ❌   |
+| `canManageMenuDesign`      |  ✅   |   ❌    |  ❌   |
 | `canUseMenuExtraction`     |  ✅   |   ❌    |  ❌   |
 | `canGenerateDescriptions`  |  ✅   |   ✅    |  ❌   |
 | `canGenerateImages`        |  ✅   |   ❌    |  ❌   |
@@ -83,7 +87,9 @@ Simple true/false toggles organized by category:
 | `canViewAnalytics`         |  ✅   |   ✅    |  ❌   |
 | `canExportData`            |  ✅   |   ❌    |  ❌   |
 | `canManageChat`            |  ✅   |   ✅    |  ✅   |
+| `canManageFeedback`        |  ✅   |   ✅    |  ❌   |
 | `canViewCustomerData`      |  ✅   |   ✅    |  ❌   |
+| `canManageDigitalScreens`  |  ✅   |   ✅    |  ❌   |
 
 ---
 
@@ -162,10 +168,12 @@ store.roles = [
 - Email staff keep global email uniqueness and receive a Firebase password setup email; staff can also use **Forgot password** on the sign-in page.
 - No-email staff receive an owner-issued Staff ID and one-time temporary passcode, backed by Firebase Auth with an internal login email.
 - Every staff user can have email, phone, and Staff ID login aliases on the same Firebase Auth account.
-- Owners reset staff access by creating a new temporary passcode shown once. Staff self-service reset remains email-based.
+- Owners reset staff access by creating a new temporary passcode shown once. The reset also signs out already-open staff sessions. Staff self-service reset remains email-based.
+- Owners can sign out a staff member without deactivating them. The staff member is logged out on the next dashboard access check and can sign in again with current credentials.
 - Existing same-tenant staff can be mapped to another store.
-- Staff updates use `PATCH /api/staff` with server-side role/store validation.
-- Removing staff uses `DELETE /api/staff` and removes only the selected store mapping; if no mappings remain, the user is deactivated and soft-deleted.
+- Staff updates use `PATCH /api/staff` with server-side role/store validation. Active/deactivated state is mirrored to Firebase Auth disabled state.
+- Removing staff uses `DELETE /api/staff` and removes only the selected store mapping; if no mappings remain, the user is deactivated, soft-deleted, signed out, and disabled in Firebase Auth.
+- Staff accounts are tenant-scoped. When a person leaves business A and joins business B, business A removes/deactivates the old account and business B creates a new staff account. Same personal email reuse across tenants remains blocked until a platform-managed transfer flow exists.
 
 ### 4.3 Permission Resolution ✅ FIXED
 
@@ -199,8 +207,9 @@ store.roles = [
 | `src/types/platform/roles.ts`             | Permission types (feature-flag style)          |
 | `src/data/defaultRoles.ts`                | Default role definitions (Owner/Manager/Staff) |
 | `src/data/rolesPermissionsInitialData.ts` | Permission labels & categories for UI          |
-| `src/lib/permissions/hasPermission.ts`    | Permission check utility                       |
-| `src/utils/store/permissions.ts`          | Permission resolution for sessionProvider      |
+| `src/lib/permissions/hasPermission.ts`    | Permission check and normalization utility     |
+| `src/lib/permissions/permissionRequirements.ts` | Desktop route and mobile screen permission requirements |
+| `src/lib/permissions/server.ts`           | Protected API permission guard                 |
 | `src/providers/sessionProvider.tsx`       | Global permission context                      |
 
 ### 5.2 Usage in Code
@@ -256,19 +265,26 @@ const { userPermissions } = useContext(PlatformGlobalDataContext);
 | Desktop staff flow                        | ✅ Done |
 | Mobile staff flow                         | ✅ Done |
 | Role editor server API                    | ✅ Done |
+| Desktop route guard for role permissions  | ✅ Done |
+| Mobile tab/screen permission filtering    | ✅ Done |
+| Protected analytics/domain/POS APIs       | ✅ Done |
 
 ## 7. Permission Set Decision
 
-The current 23 permissions remain the production baseline. No additional owner-facing toggles were added in May 2026 because the existing groups already cover the live product surfaces without making the role editor harder for a non-technical owner:
+The production baseline is now 29 permissions. The set stays feature-flag style, but six missing live surfaces now have explicit gates so owners do not have to over-grant broad store/menu access:
 
-- `canManageMenu` / `canPublishMenu` cover menu editing, QR/output operations, Today menu actions, and owner menu workflow.
-- `canManageStore` covers business settings, identity, hours, discovery setup, and public business configuration.
+- `canManageMenuSharing` covers Share, QR, output center, and Today sharing actions.
+- `canManageMenuDesign` covers customer-facing menu design controls.
+- `canManagePublicPresence` covers domain, SEO, Official Business Page, discovery setup, social links, and customer app branding.
+- `canManageFeedback` covers the guest feedback inbox and feedback settings.
+- `canManageDigitalScreens` covers TV/menu-board screen setup.
+- `canManageIntegrations` covers POS/webhook and external integration setup.
 - `canManageUsers` / `canAssignRoles` split staff lifecycle from role/store assignment.
-- `canManageChat` / `canViewCustomerData` cover feedback and customer interaction surfaces.
+- `canManageStore` remains for core business settings, hours, locale, and store profile details.
 - `canManageOutlets` / `canSwitchStores` cover chain and outlet management.
 
 New permissions should only be added when one existing permission would give clearly unsafe access to an unrelated workflow.
 
 ---
 
-**DOCUMENT STATUS:** ✅ Implemented — 23 Feature-Flag Permissions, 3 Default Roles, Single Role Per Store
+**DOCUMENT STATUS:** ✅ Implemented — 29 Feature-Flag Permissions, 3 Default Roles, Single Role Per Store

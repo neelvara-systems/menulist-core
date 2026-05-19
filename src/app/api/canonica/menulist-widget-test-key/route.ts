@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { hashApiKey, normalizeRequestOrigin } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -81,6 +82,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 keyPrefix,
                 productId: PRODUCT_IDS.CANONICA,
                 purpose: 'canonica_widget_test_host',
+                scopes: [...CANONICA_WIDGET_SCOPES],
                 sourceProductId: PRODUCT_IDS.MENULIST,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };

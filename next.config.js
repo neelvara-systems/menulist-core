@@ -73,11 +73,6 @@ const nextConfig = {
         ],
     },
     webpack(config, { isServer, dev, nextRuntime }) {
-        config.resolve.alias = {
-            ...config.resolve.alias,
-            'private-next-pages': path.join(__dirname, 'src/pages'),
-        };
-
         if (isServer) {
             config.externals = [
                 ...config.externals,
@@ -123,11 +118,10 @@ const nextConfig = {
         config.module.rules.push({ test: /\.svg$/, use: ['@svgr/webpack'] });
 
         // Keep server runtime chunk resolution aligned with Next's emitted
-        // files. In local dev, numeric chunks can still be required as
-        // sibling `./1234.js` files, so keep dev server chunks in the server
-        // root while preserving production's chunk subdirectory layout.
+        // files. Next 14 app-route/page-data collection resolves Node server
+        // chunks as sibling `./1234.js` files, including production builds.
         if (isServer && nextRuntime !== 'edge' && config.output) {
-            config.output.chunkFilename = dev ? '[name].js' : 'chunks/[name].js';
+            config.output.chunkFilename = '[name].js';
         }
 
         // Disable webpack cache where it is known to destabilize route builds:

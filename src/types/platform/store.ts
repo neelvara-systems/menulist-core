@@ -526,6 +526,21 @@ export type StoreDataType = {
         createdAt?: string;     // ISO 8601
         productId?: 'CN' | string;
         purpose?: 'canonica_widget' | string;
+        scopes?: string[];
+    };
+
+    /**
+     * Dedicated Canonica widget credential.
+     * Kept separate from `publicApi` so embeddable widget keys cannot authorize
+     * broader Canonica public API routes.
+     */
+    canonicaWidgetApi?: {
+        apiKeyHash?: string;
+        keyPrefix?: string;
+        createdAt?: string;
+        productId?: 'CN' | string;
+        purpose?: 'canonica_widget' | string;
+        scopes?: string[];
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -549,6 +564,10 @@ export type StoreDataType = {
         size?: 'small' | 'medium' | 'large';
         offsetX?: number;
         offsetY?: number;
+        zIndex?: number;
+        historyMode?: 'session' | 'forget';
+        launcherVisibility?: 'visible' | 'manual';
+        mobileVisibility?: 'show' | 'hide';
     };
 
     /**

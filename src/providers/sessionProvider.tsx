@@ -15,6 +15,7 @@ import {
     writeActiveStoreContextId,
 } from '@lib/multiOutlet/activeStoreContext';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
+import { getPermissionsForRole } from '@lib/permissions/hasPermission';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { ChangelogPage } from '@type/changelog';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
@@ -411,16 +412,17 @@ export default function SessionProvider({ children, session }: Props) {
             const userRole = authorityStoreDetails.roles?.find((r: any) => r.id === userRoleId);
 
             if (userRole?.permissions) {
+                const rolePermissions = getPermissionsForRole(userRoleId, authorityStoreDetails.roles || []);
                 // For outlet stores: apply master's outletPolicy to restrict permissions
                 // Master store's outletPolicy is the chain-wide gate for what outlets can do
                 const isMaster = Boolean(authorityStoreDetails.isMaster);
                 if (!isMaster && tenantDetails?.storesList?.length) {
                     const masterStore = tenantDetails.storesList.find((s: any) => s.isMaster);
                     const outletPolicy = masterStore?.storeDetails?.outletPolicy;
-                    setUserPermissions(applyOutletPolicy(userRole.permissions, outletPolicy, false));
+                    setUserPermissions(applyOutletPolicy(rolePermissions, outletPolicy, false));
                 } else {
                     // Master store or single store - direct permissions
-                    setUserPermissions(userRole.permissions);
+                    setUserPermissions(rolePermissions);
                 }
             }
         }

@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { hashApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -24,7 +25,7 @@ const RequestSchema = z.object({
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
-        if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
+        if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
             return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
         }
 
@@ -54,12 +55,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const keyPrefix = apiKey.slice(0, 7);
 
             await storeRef.update({
-                publicApi: {
+                canonicaWidgetApi: {
                     apiKeyHash: hashApiKey(apiKey),
                     keyPrefix,
                     createdAt: new Date().toISOString(),
                     productId: 'CN',
                     purpose: 'canonica_widget',
+                    scopes: [...CANONICA_WIDGET_SCOPES],
                 },
             });
 
@@ -67,9 +69,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ apiKey, keyPrefix });
         }
 
-        await storeRef.update({
-            publicApi: admin.firestore.FieldValue.delete(),
-        });
+        const revokePayload: Record<string, any> = {
+            canonicaWidgetApi: admin.firestore.FieldValue.delete(),
+        };
+        const storeSnap = await storeRef.get();
+        const publicApiPurpose = storeSnap.exists ? storeSnap.data()?.publicApi?.purpose : null;
+        if (publicApiPurpose === 'canonica_widget') {
+            revokePayload.publicApi = admin.firestore.FieldValue.delete();
+        }
+
+        await storeRef.update(revokePayload);
 
         secureLog('[Canonica Widget] Key revoked', { storeId });
         return NextResponse.json({ success: true });

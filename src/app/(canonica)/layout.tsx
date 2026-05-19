@@ -1,6 +1,7 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import CanonicaDashboardLayout from '@/components/canonica/CanonicaDashboardLayout'
 import { authOptions } from '@lib/auth'
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
 import { ReduxStoreProvider } from '@providers/reduxProvider'
@@ -23,6 +24,9 @@ export default async function CanonicaLayout({ children }: { children: React.Rea
     const session = await getServerSession(authOptions);
     if (!session) {
         redirect("/signin");
+    }
+    if (session.user?.active === false || (session.user as any)?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
+        redirect("/unauthorized");
     }
 
     const locale = await getLocale();

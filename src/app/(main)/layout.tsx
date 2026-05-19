@@ -2,6 +2,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry'
 import AntdLayoutWrapper from '@antdComponent/layoutWrapper'
 import { authOptions } from '@lib/auth'
 import { APP_THEME_COLOR } from '@constant/common'
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
 import { ReduxStoreProvider } from '@providers/reduxProvider'
@@ -12,6 +13,7 @@ import { getServerSession } from 'next-auth'
 import { getLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import SessionExpiryMonitor from '../../components/auth/SessionExpiryMonitor'
+import OwnerPermissionGuard from '../../components/auth/OwnerPermissionGuard'
 import MenuListCanonicaWidgetTestHost from '../../components/canonica/MenuListCanonicaWidgetTestHost'
 import OwnerAppUpdatePrompt from '../../components/common/OwnerAppUpdatePrompt'
 
@@ -49,6 +51,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
     console.log("No session found in MainLayout, redirecting to signin");
     redirect("/signin");
   }
+  if (session.user?.active === false || (session.user as any)?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
+    redirect("/unauthorized");
+  }
 
   // Get locale for internationalization
   const locale = await getLocale();
@@ -63,7 +68,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
             <OwnerAppUpdatePrompt />
             <NoSSRProvider>
               <AntdLayoutWrapper>
-                {children}
+                <OwnerPermissionGuard>
+                  {children}
+                </OwnerPermissionGuard>
               </AntdLayoutWrapper>
               <MenuListCanonicaWidgetTestHost />
             </NoSSRProvider>

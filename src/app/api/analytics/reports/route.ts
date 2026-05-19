@@ -1,8 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getAnalyticsReport, getRealTimeUsers } from '@lib/analytics/server/index';
+import { PERMISSIONS } from '@constant/permissions';
+import { requireAnyStorePermission } from '@lib/permissions/server';
+import { withAuth } from '../../../../middleware/auth';
 
-export async function GET(request: Request) {
+export const GET = withAuth(async (request, session) => {
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Analytics reports');
+    if (permissionError) return permissionError;
+
     try {
         const { searchParams } = new URL(request.url);
         const rawPropertyId = searchParams.get('propertyId');
@@ -30,4 +36,4 @@ export async function GET(request: Request) {
             { status: error.code === 7 ? 403 : 500 }
         );
     }
-}
+});

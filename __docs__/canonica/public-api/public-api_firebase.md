@@ -1,7 +1,7 @@
 # Canonica Public API — Firebase & Cost Notes
 
 > **Status:** Implemented
-> **Last Updated:** 2026-05-16
+> **Last Updated:** 2026-05-19
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Collection | Operation | Endpoint | Notes |
 | --- | --- | --- | --- |
-| `stores` | Read | All endpoints | API-key hash lookup through `validatePublicApiKey()` |
+| `stores` | Read | All endpoints | API-key hash lookup through `validatePublicApiKey()`; Canonica public APIs read only `publicApi` credentials, skip widget credential sources, and skip the legacy raw-key fallback query |
 | `canonica_entitySearchIndex` | Read | Answers | Capped search index read by tenant/store |
 | `canonica_releases` | Read | Answers | Latest active release when request does not include `currentVersion` |
 | `canonica_canonicalAnswers` | Read | Answers | Active answers for matched entities |
@@ -22,11 +22,13 @@
 
 | Endpoint | Normal reads | Normal writes | Notes |
 | --- | ---: | ---: | --- |
-| Answers | 2-5 reads | 0 | Key lookup + entity index + optional latest release + answer queries |
-| Entities | 2 reads to capped page | 0 | Key lookup + capped entity registry query |
-| Signals | 1 read | 1 write | Key lookup + append-only signal event |
+| Answers | 2-5 reads | 0 | Hash-only key lookup + entity index + optional latest release + answer queries |
+| Entities | 2 reads to capped page | 0 | Hash-only key lookup + capped entity registry query |
+| Signals | 1 read | 1 write | Hash-only key lookup + append-only signal event |
 
 All endpoints are rate-limited per API key before expensive work starts.
+
+Widget-only credentials live under `stores.canonicaWidgetApi` and are not used by these public API endpoints. This avoids broader API authorization from embeddable widget keys while preserving a single store-document lookup pattern.
 
 ---
 
@@ -49,4 +51,3 @@ The routes intentionally reuse existing tenant/store query patterns.
 | Canonical answers disabled | `503 CANONICAL_ANSWERS_DISABLED` |
 | Signal mutation disabled | `503 SIGNAL_MUTATION_DISABLED` |
 | Internal Firestore/API error | `500 INTERNAL_ERROR` with secure server log |
-

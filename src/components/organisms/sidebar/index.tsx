@@ -5,6 +5,7 @@ import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_ME
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
+import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import ClientOnlyProvider from '@providers/clientOnlyProvider';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMode, toggleSidbar } from '@reduxSlices/clientThemeConfig';
@@ -43,40 +44,16 @@ const SidebarComponent = () => {
         { label: 'Support', route: 'dashboard-help', icon: <TbPhoneCalling /> },
     ]
 
-    const canShowNavForPermissions = (nav: NavItemType) => {
-        if (!userPermissions) return true;
-        if (nav.route === NAVIGARIONS_ROUTINGS.BILLING || nav.route === NAVIGARIONS_ROUTINGS.TRANSACTIONS) {
-            return userPermissions.canAccessBilling !== false;
-        }
-        if (nav.route === NAVIGARIONS_ROUTINGS.USERS) {
-            return userPermissions.canManageUsers !== false;
-        }
-        if (nav.route === NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS) {
-            return userPermissions.canManageStore !== false;
-        }
-        if (nav.route === NAVIGARIONS_ROUTINGS.DASHBOARD) {
-            return userPermissions.canViewAnalytics !== false;
-        }
-        if (nav.route === NAVIGARIONS_ROUTINGS.FEEDBACK) {
-            return userPermissions.canManageChat !== false || userPermissions.canViewCustomerData !== false;
-        }
-        if (
-            nav.route === NAVIGARIONS_ROUTINGS.PROJECTS
-            || nav.route === NAVIGARIONS_ROUTINGS.TODAY
-            || nav.route === NAVIGARIONS_ROUTINGS.USE_MENULIST
-            || nav.route === NAVIGARIONS_ROUTINGS.QR_CODE
-        ) {
-            return userPermissions.canManageMenu !== false || userPermissions.canPublishMenu !== false;
-        }
-        return true;
-    }
+    const canShowNavForPermissions = (nav: NavItemType) => (
+        satisfiesPermissionRequirement(userPermissions, getPermissionRequirementForPath(nav.route))
+    )
 
     useEffect(() => {
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {
             // Hide Locations for non-master users or when feature is disabled
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
-                return isMasterUser && FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL && userPermissions?.canManageOutlets !== false;
+                return isMasterUser && FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL && userPermissions?.canManageOutlets === true;
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD

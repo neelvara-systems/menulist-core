@@ -48,7 +48,7 @@ export const OUTLET_POLICY_CATEGORIES: PolicyCategory[] = [
         description: 'Credit-consuming AI tools (affects your billing)',
         items: [
             { key: 'canUseMenuExtraction', label: 'Menu Extraction', description: 'Outlets can run AI menu extraction from images' },
-            { key: 'canGenerateDescriptions', label: 'AI Descriptions', description: 'Outlets can generate AI-powered item descriptions' },
+            { key: 'canGenerateDescriptions', label: 'Descriptions', description: 'Outlets can generate item descriptions' },
             { key: 'canGenerateImages', label: 'AI Images', description: 'Outlets can generate AI item images' },
         ],
     },

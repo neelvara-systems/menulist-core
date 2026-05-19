@@ -1,4 +1,5 @@
 import { ALL_PERMISSIONS, PermissionKey } from "@constant/permissions";
+import { DEFAULT_ROLE_METADATA } from "@data/defaultRoles";
 import { RolePermissions, StoreRoleDataType } from "@type/platform/roles";
 
 /**
@@ -23,6 +24,34 @@ import { RolePermissions, StoreRoleDataType } from "@type/platform/roles";
 // CORE PERMISSION CHECK
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const getEmptyPermissions = (): RolePermissions => {
+    const empty: RolePermissions = {};
+    ALL_PERMISSIONS.forEach(key => { empty[key] = false; });
+    return empty;
+};
+
+const getDefaultPermissionsForRole = (roleId: string | undefined): RolePermissions | undefined => {
+    if (!roleId) return undefined;
+    return DEFAULT_ROLE_METADATA[roleId as keyof typeof DEFAULT_ROLE_METADATA]?.permissions;
+};
+
+export function normalizeRolePermissions(
+    permissions: RolePermissions | undefined,
+    fallbackPermissions?: RolePermissions,
+): RolePermissions {
+    const normalized: RolePermissions = {};
+
+    ALL_PERMISSIONS.forEach((key) => {
+        if (permissions && Object.prototype.hasOwnProperty.call(permissions, key)) {
+            normalized[key] = permissions[key] === true;
+        } else {
+            normalized[key] = fallbackPermissions?.[key] === true;
+        }
+    });
+
+    return normalized;
+}
+
 /**
  * Check if a user has a specific permission based on their single role
  * 
@@ -46,8 +75,13 @@ export function hasPermission(
     // No valid role = no permission
     if (!userRole) return false;
 
+    const permissions = normalizeRolePermissions(
+        userRole.permissions,
+        getDefaultPermissionsForRole(userRole.id),
+    );
+
     // Direct boolean check - single role, no strategy needed
-    return userRole.permissions[permission] === true;
+    return permissions[permission] === true;
 }
 
 /**
@@ -63,10 +97,7 @@ export function getPermissionsForRole(
     storeRoles: StoreRoleDataType[]
 ): RolePermissions {
     if (!userRoleId) {
-        // Return all permissions as false
-        const empty: RolePermissions = {};
-        ALL_PERMISSIONS.forEach(key => { empty[key] = false; });
-        return empty;
+        return getEmptyPermissions();
     }
 
     // Find user's role definition
@@ -74,14 +105,16 @@ export function getPermissionsForRole(
         role => role.active && role.id === userRoleId
     );
 
-    if (!userRole?.permissions) {
-        const empty: RolePermissions = {};
-        ALL_PERMISSIONS.forEach(key => { empty[key] = false; });
-        return empty;
+    if (!userRole) {
+        return getEmptyPermissions();
     }
 
-    // Return role's permissions directly - no resolution needed
-    return { ...userRole.permissions };
+    // Return normalized permissions so legacy default roles receive newly added
+    // default flags while custom roles keep missing flags denied.
+    return normalizeRolePermissions(
+        userRole.permissions,
+        getDefaultPermissionsForRole(userRole.id),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

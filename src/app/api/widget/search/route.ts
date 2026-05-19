@@ -18,7 +18,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { recordAiOperation } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import { hashApiKey, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
+import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -29,6 +29,7 @@ import { z } from 'zod';
 const MAX_QUERY_LENGTH = 500;
 const MAX_WIDGET_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_WIDGET_IMAGE_BASE64_LENGTH = Math.ceil((MAX_WIDGET_IMAGE_BYTES * 4) / 3) + 100;
+const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 const ALLOWED_WIDGET_IMAGE_MIME_TYPES = new Set([
     'image/jpeg',
     'image/png',
@@ -91,6 +92,10 @@ export async function POST(request: NextRequest) {
         }
 
         const authResult = await validatePublicApiKey(apiKey, {
+            allowLegacyRawFallback: false,
+            cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
+            includeCanonicaWidgetApi: true,
+            preferCanonicaWidgetApi: true,
             includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
             preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
         });
@@ -104,6 +109,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
         if (credential.purpose && !String(credential.purpose).startsWith('canonica')) {
+            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+        }
+        if (!hasPublicApiCredentialScope(credential, 'widget:search')) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
         }
         const tId = Number(storeData.tenantId || storeData.tId);

@@ -22,6 +22,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getCanonicaBetaPlan, getCanonicaPlanById } from '@data/canonica/plans';
 import { createInitialSubscription } from '@database/subscriptions/server';
+import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { createTenantStoreInTransaction, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -270,12 +271,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // 7. Generate API key for the widget
         const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
         await db.collection(DB_COLLECTIONS.STORES).doc(String(result.storeId)).update({
-            publicApi: {
+            canonicaWidgetApi: {
                 apiKeyHash: hashApiKey(apiKey),
                 keyPrefix: apiKey.slice(0, 7),
                 createdAt: new Date().toISOString(),
                 productId: 'CN',
                 purpose: 'canonica_widget',
+                scopes: [...CANONICA_WIDGET_SCOPES],
             },
         });
 

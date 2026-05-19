@@ -1,10 +1,10 @@
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
-import { Button, Flex, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { Button, Flex, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { Fragment, memo, useContext } from "react";
-import { LuEye, LuKeyRound, LuPen, LuTrash2, LuUser } from "react-icons/lu";
+import { LuEye, LuKeyRound, LuLogOut, LuPen, LuTrash2, LuUser } from "react-icons/lu";
 const { Text } = Typography;
 
-function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onResetPassword, staffStores = [], usersList }) {
+function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, staffStores = [], usersList }) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const safeUsersList = Array.isArray(usersList) ? usersList : [];
@@ -104,6 +104,24 @@ function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEd
                             shape="circle"
                             icon={<LuKeyRound />}
                         />
+                    </Popconfirm>
+                    <Popconfirm
+                        cancelText="Cancel"
+                        okText="Sign out"
+                        onConfirm={(event) => {
+                            event?.stopPropagation?.();
+                            onForceSignOut(record);
+                        }}
+                        title="Sign this staff member out on their devices?"
+                    >
+                        <Tooltip title="Sign out staff">
+                            <Button
+                                disabled={!canManageUsers || record?.active === false}
+                                onClick={(event) => event.stopPropagation()}
+                                shape="circle"
+                                icon={<LuLogOut />}
+                            />
+                        </Tooltip>
                     </Popconfirm>
                     <Popconfirm
                         cancelText="Cancel"

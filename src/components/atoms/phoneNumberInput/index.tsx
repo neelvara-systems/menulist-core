@@ -23,15 +23,16 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({ countryCode, phoneN
         }
     };
 
-    const formatPhoneNumber = (number: string, country: string) => {
+    const formatPhoneNumber = (number: string | number | null | undefined, country: string) => {
         try {
-            if (!number) return number;
+            if (!number) return '';
+            const normalizedNumber = String(number);
             // Remove all non-digit characters for consistent formatting
-            const digitsOnly = number.replace(/\D/g, '');
+            const digitsOnly = normalizedNumber.replace(/\D/g, '');
             const phoneNumber = parsePhoneNumberWithError(digitsOnly, country as CountryCode);
             return phoneNumber?.formatNational() || digitsOnly;
         } catch (error) {
-            return number;
+            return number ? String(number) : '';
         }
     };
 

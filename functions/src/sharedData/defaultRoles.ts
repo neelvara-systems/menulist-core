@@ -25,10 +25,14 @@ export type RolePermissions = {
     canAssignRoles?: boolean;
     canManageStore?: boolean;
     canAddStores?: boolean;
+    canManagePublicPresence?: boolean;
+    canManageIntegrations?: boolean;
     canManageOutlets?: boolean;
     canSwitchStores?: boolean;
     canManageMenu?: boolean;
     canPublishMenu?: boolean;
+    canManageMenuSharing?: boolean;
+    canManageMenuDesign?: boolean;
     canUseMenuExtraction?: boolean;
     canGenerateDescriptions?: boolean;
     canGenerateImages?: boolean;
@@ -41,7 +45,9 @@ export type RolePermissions = {
     canViewAnalytics?: boolean;
     canExportData?: boolean;
     canManageChat?: boolean;
+    canManageFeedback?: boolean;
     canViewCustomerData?: boolean;
+    canManageDigitalScreens?: boolean;
 };
 
 export type StoreRoleDataType = {
@@ -79,10 +85,14 @@ const OWNER_PERMISSIONS: RolePermissions = {
     canAssignRoles: true,
     canManageStore: true,
     canAddStores: true,
+    canManagePublicPresence: true,
+    canManageIntegrations: true,
     canManageOutlets: true,
     canSwitchStores: true,
     canManageMenu: true,
     canPublishMenu: true,
+    canManageMenuSharing: true,
+    canManageMenuDesign: true,
     canUseMenuExtraction: true,
     canGenerateDescriptions: true,
     canGenerateImages: true,
@@ -95,7 +105,9 @@ const OWNER_PERMISSIONS: RolePermissions = {
     canViewAnalytics: true,
     canExportData: true,
     canManageChat: true,
+    canManageFeedback: true,
     canViewCustomerData: true,
+    canManageDigitalScreens: true,
 };
 
 const MANAGER_PERMISSIONS: RolePermissions = {
@@ -105,10 +117,14 @@ const MANAGER_PERMISSIONS: RolePermissions = {
     canAssignRoles: false,
     canManageStore: true,
     canAddStores: false,
+    canManagePublicPresence: false,
+    canManageIntegrations: false,
     canManageOutlets: false,
     canSwitchStores: true,
     canManageMenu: true,
     canPublishMenu: true,
+    canManageMenuSharing: true,
+    canManageMenuDesign: false,
     canUseMenuExtraction: false,
     canGenerateDescriptions: true,
     canGenerateImages: false,
@@ -121,7 +137,9 @@ const MANAGER_PERMISSIONS: RolePermissions = {
     canViewAnalytics: true,
     canExportData: false,
     canManageChat: true,
+    canManageFeedback: true,
     canViewCustomerData: true,
+    canManageDigitalScreens: true,
 };
 
 const STAFF_PERMISSIONS: RolePermissions = {
@@ -131,10 +149,14 @@ const STAFF_PERMISSIONS: RolePermissions = {
     canAssignRoles: false,
     canManageStore: false,
     canAddStores: false,
+    canManagePublicPresence: false,
+    canManageIntegrations: false,
     canManageOutlets: false,
     canSwitchStores: false,
     canManageMenu: false,
     canPublishMenu: false,
+    canManageMenuSharing: false,
+    canManageMenuDesign: false,
     canUseMenuExtraction: false,
     canGenerateDescriptions: false,
     canGenerateImages: false,
@@ -147,7 +169,9 @@ const STAFF_PERMISSIONS: RolePermissions = {
     canViewAnalytics: false,
     canExportData: false,
     canManageChat: true,
+    canManageFeedback: false,
     canViewCustomerData: false,
+    canManageDigitalScreens: false,
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -157,12 +181,12 @@ const STAFF_PERMISSIONS: RolePermissions = {
 export const DEFAULT_ROLE_METADATA = {
     [DEFAULT_ROLE_IDS.OWNER]: {
         name: 'Owner',
-        description: 'Full access to all features including billing, AI, and store management',
+        description: 'Full access to all features including billing, staff, public presence, and store management',
         permissions: OWNER_PERMISSIONS,
     },
     [DEFAULT_ROLE_IDS.MANAGER]: {
         name: 'Manager',
-        description: 'Manage store operations, menu, and staff. No billing or AI credits access',
+        description: 'Manage daily operations, menu, staff, feedback, analytics, and screens. No billing, integrations, or public identity changes',
         permissions: MANAGER_PERMISSIONS,
     },
     [DEFAULT_ROLE_IDS.STAFF]: {

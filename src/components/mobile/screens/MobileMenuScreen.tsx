@@ -515,9 +515,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         };
     }, [isMasterUser, menuData?.masterProjectId, userPermissions]);
 
-    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction !== false;
-    const canAddLocalItems = userPermissions?.canAddLocalItems !== false;
-    const canAddLocalCategories = userPermissions?.canAddLocalCategories !== false;
+    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true && userPermissions?.canManageMenu === true;
+    const canAddLocalItems = userPermissions?.canAddLocalItems === true && userPermissions?.canManageMenu === true;
+    const canAddLocalCategories = userPermissions?.canAddLocalCategories === true && userPermissions?.canManageMenu === true;
 
     const getPersistableMenuProject = useCallback((project: any) => {
         if (!project?.masterProjectId) return project;

@@ -11,8 +11,10 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { getProjectData } from "@database/projects";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -34,6 +36,14 @@ export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
         return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
     }
+
+    const permissionError = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU],
+        "POS delivery",
+    );
+    if (permissionError) return permissionError;
 
     const body = await request.json();
     const validation = validateAPIInput(schema, body);

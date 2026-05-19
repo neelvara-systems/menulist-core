@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { admin } from "@lib/firebase/firebaseAdmin";
+import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { logger } from "@lib/monitoring/logger";
 import { buildPlatformBlockDetails } from "@lib/platform/entityBlock";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -65,6 +66,47 @@ function revalidateStorePublicCache(storeId: string | number) {
     revalidateTag(`menu-store-${storeId}`);
     revalidateTag(`store-${storeId}`);
     revalidateTag('client-stores');
+}
+
+async function syncUserBlockAuthState({
+    blocked,
+    entity,
+    reason,
+}: {
+    blocked: boolean;
+    entity: Record<string, any>;
+    reason: string;
+}) {
+    const firebaseUid = entity?.firebaseUid ? String(entity.firebaseUid) : "";
+    const email = String(entity?.email || "").toLowerCase().trim();
+    if (!firebaseUid && !email) return { authDisabled: blocked, authSynced: false };
+
+    try {
+        const firebaseUser = firebaseUid
+            ? await authAdmin.getUser(firebaseUid)
+            : await authAdmin.getUserByEmail(email);
+        const shouldDisable = blocked || entity.active === false || entity.deleted === true || entity.isVerified === false;
+
+        if (firebaseUser.disabled !== shouldDisable) {
+            await authAdmin.updateUser(firebaseUser.uid, { disabled: shouldDisable });
+        }
+        if (blocked) {
+            await authAdmin.revokeRefreshTokens(firebaseUser.uid);
+        }
+
+        return { authDisabled: shouldDisable, authSynced: true };
+    } catch (error: any) {
+        if (error?.code === "auth/user-not-found") {
+            logger.warn("[platform] Firebase Auth user missing during user block sync", {
+                blocked,
+                reason,
+                userId: entity?.id,
+            });
+            return { authDisabled: blocked, authSynced: false };
+        }
+
+        throw error;
+    }
 }
 
 export const POST = withPlatformAuth(async (request: NextRequest, session) => {
@@ -155,16 +197,35 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
         });
     }
 
-    await docRef.update({
+    const now = admin.firestore.Timestamp.now();
+    const authSync = await syncUserBlockAuthState({
+        blocked,
+        entity: existingEntity,
+        reason,
+    });
+    const updateData: Record<string, any> = {
+        authDisabled: authSync.authDisabled,
         blocked,
         blockDetails,
-    });
+        modifiedOn: now,
+    };
+    if (blocked) {
+        updateData.authTokensRevokedAt = now;
+        updateData.sessionRevokedAt = now;
+        if (session?.uId || session?.user?.id) updateData.sessionRevokedBy = session?.uId || session?.user?.id;
+        if (session?.user?.email) updateData.sessionRevokedByEmail = session.user.email;
+        updateData.sessionRevokedReason = "platform_user_block";
+    }
+
+    await docRef.update(updateData);
 
     return NextResponse.json({
         entity: {
             ...existingEntity,
+            authDisabled: authSync.authDisabled,
             blocked,
             blockDetails,
+            modifiedOn: now,
         },
         success: true,
     });

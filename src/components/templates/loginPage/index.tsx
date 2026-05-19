@@ -53,6 +53,23 @@ function LoginPage() {
   const { token } = theme.useToken();
   const isDarkMode = useAppSelector(getDarkModeState)
 
+  const getPostLoginRedirect = () => {
+    const callbackUrl = searchParams?.get('callbackUrl');
+    if (!callbackUrl) return CLIENT_DASHBOARD_ROUTING;
+
+    try {
+      if (callbackUrl.startsWith('/')) return callbackUrl;
+      const parsedUrl = new URL(callbackUrl, window.location.origin);
+      if (parsedUrl.origin === window.location.origin) {
+        return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+      }
+    } catch {
+      return CLIENT_DASHBOARD_ROUTING;
+    }
+
+    return CLIENT_DASHBOARD_ROUTING;
+  };
+
   // Claim account flow (messaging onboarding → Google account linking OR email/password setup)
   const [claimInfo, setClaimInfo] = useState<{ businessName: string; phone: string | null } | null>(null);
   const [claimProcessing, setClaimProcessing] = useState(false);
@@ -329,7 +346,7 @@ function LoginPage() {
       }
 
       dispatch(stopLoader(requestId))
-      router.push(HOME_ROUTING)
+      router.push(getPostLoginRedirect())
     } catch (error) {
       dispatch(stopLoader(requestId))
       dispatch(showErrorToast("An error occurred during sign in"));

@@ -19,6 +19,8 @@ export type RolePermissions = {
     // 🏪 Store Management  
     canManageStore?: boolean;          // Edit store settings, hours, info
     canAddStores?: boolean;            // Add new outlet stores (multi-chain)
+    canManagePublicPresence?: boolean; // Edit public page, domain, SEO, discovery, customer app
+    canManageIntegrations?: boolean;   // Manage POS/webhook and external integrations
 
     // 🔗 Multi-Outlet (Feature #4C)
     canManageOutlets?: boolean;        // Create/deactivate outlets, manage Chain Control Panel
@@ -27,6 +29,8 @@ export type RolePermissions = {
     // 🍽️ Menu Management
     canManageMenu?: boolean;           // Edit menu items, categories, prices
     canPublishMenu?: boolean;          // Publish menu changes live
+    canManageMenuSharing?: boolean;    // Manage share links, QR, print/download output
+    canManageMenuDesign?: boolean;     // Edit menu design and customer-facing presentation
 
     // 🤖 AI Features (Credit-consuming)
     canUseMenuExtraction?: boolean;    // Run AI menu extraction
@@ -49,7 +53,11 @@ export type RolePermissions = {
 
     // 💬 Customer Interactions
     canManageChat?: boolean;           // View/respond to customer chats
+    canManageFeedback?: boolean;       // View/respond to guest feedback
     canViewCustomerData?: boolean;     // View customer information
+
+    // 📺 Digital Screens
+    canManageDigitalScreens?: boolean; // Configure TV/menu-board screens
 };
 
 // NOTE: Permission keys and categories moved to src/constants/permissions.ts

@@ -1,6 +1,7 @@
 import type {
     CreateStaffInput,
     DeleteRoleInput,
+    ForceSignOutStaffInput,
     RemoveStaffInput,
     ResetStaffPasswordInput,
     RoleMutationResponse,
@@ -60,6 +61,14 @@ export const removeStaffFromStore = async (payload: RemoveStaffInput) => {
 
 export const requestStaffPasswordReset = async (payload: ResetStaffPasswordInput) => {
     return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff/password-reset", {
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+    }));
+};
+
+export const forceSignOutStaffUser = async (payload: ForceSignOutStaffInput) => {
+    return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff/force-signout", {
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",

@@ -1,6 +1,6 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** May 18, 2026 (v3 — mobile wired to server APIs)
+**Last Updated:** May 19, 2026 (v4 — mobile permission gates wired)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage roles and permissions from phone
 
 ---
@@ -35,6 +35,8 @@
 | Activate/deactivate staff      | `MobileUsersScreen`                   | ✅     |
 | Change staff role              | `MobileUsersScreen`                   | ✅     |
 | Remove staff from store        | `MobileUsersScreen`                   | ✅     |
+| Filter bottom tabs by role     | `MobileShell` + `MobileNavigation`    | ✅     |
+| Filter More sub-screens by role | `MobileMoreScreen`                   | ✅     |
 
 ## DAL Parity
 
@@ -43,20 +45,22 @@
 - Mobile self-service password change uses the shared `/api/auth/change-password` route from More → Account access. This works for password/passcode accounts when the current password/passcode is known.
 - Same `storeDetails.roles` data source
 - Same `PERMISSION_CATEGORIES_CONFIG` and `PERMISSION_LABELS` constants
+- Same route/screen permission taxonomy as desktop via `src/lib/permissions/permissionRequirements.ts`
 - Same `StoreRoleDataType` type
 - Same `RolesPermissionInitialData` defaults for new roles
 
 ## Key Files
 
-| Purpose              | Path                                                            |
-| -------------------- | --------------------------------------------------------------- |
-| Mobile roles screen  | `src/components/mobile/screens/MobileRolesScreen.tsx`           |
-| Mobile staff screen  | `src/components/mobile/screens/MobileUsersScreen.tsx`           |
-| Mobile account access | `src/components/mobile/screens/MobileMoreScreen.tsx`           |
-| Desktop equivalent   | `src/components/templates/main-app/users/permissions/index.tsx` |
-| Permission constants | `src/data/rolesPermissionsInitialData.ts`                       |
-| Role types           | `src/types/platform/roles.ts`                                   |
+| Purpose               | Path                                                            |
+| --------------------- | --------------------------------------------------------------- |
+| Mobile roles screen   | `src/components/mobile/screens/MobileRolesScreen.tsx`           |
+| Mobile staff screen   | `src/components/mobile/screens/MobileUsersScreen.tsx`           |
+| Mobile account access | `src/components/mobile/screens/MobileMoreScreen.tsx`            |
+| Mobile shell gates    | `src/components/mobile/MobileShell.tsx`                         |
+| Desktop equivalent    | `src/components/templates/main-app/users/permissions/index.tsx` |
+| Permission constants  | `src/data/rolesPermissionsInitialData.ts`                       |
+| Role types            | `src/types/platform/roles.ts`                                   |
 
 ## RBAC Enforcement (Inherited)
 
-Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store checks, `canManageUsers`, `canAssignRoles`, role validation, and last-owner protection.
+Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store checks, `canManageUsers`, `canAssignRoles`, role validation, and last-owner protection. Mobile also hides unavailable bottom tabs and More sub-screens before navigation; direct hash/sub-screen access falls back to More with a short unavailable message.

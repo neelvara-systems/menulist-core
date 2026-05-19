@@ -17,10 +17,14 @@ const RolesPermissionInitialData: RolePermissions = {
     canAssignRoles: true,
     canManageStore: true,
     canAddStores: true,
+    canManagePublicPresence: true,
+    canManageIntegrations: true,
     canManageOutlets: true,
     canSwitchStores: true,
     canManageMenu: true,
     canPublishMenu: true,
+    canManageMenuSharing: true,
+    canManageMenuDesign: true,
     canUseMenuExtraction: true,
     canGenerateDescriptions: true,
     canGenerateImages: true,
@@ -33,7 +37,9 @@ const RolesPermissionInitialData: RolePermissions = {
     canViewAnalytics: true,
     canExportData: true,
     canManageChat: true,
+    canManageFeedback: true,
     canViewCustomerData: true,
+    canManageDigitalScreens: true,
 };
 
 export default RolesPermissionInitialData;
@@ -104,10 +110,14 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
     canAssignRoles: 'Assign Roles',
     canManageStore: 'Edit Store Settings',
     canAddStores: 'Add New Stores',
+    canManagePublicPresence: 'Manage Public Presence',
+    canManageIntegrations: 'Manage Integrations',
     canManageOutlets: 'Manage Outlets',
     canSwitchStores: 'Switch Between Stores',
     canManageMenu: 'Edit Menu Items',
     canPublishMenu: 'Publish Menu Changes',
+    canManageMenuSharing: 'Manage Sharing & QR',
+    canManageMenuDesign: 'Manage Menu Design',
     canUseMenuExtraction: 'Use AI Menu Extraction',
     canGenerateDescriptions: 'Generate AI Descriptions',
     canGenerateImages: 'Generate AI Images',
@@ -120,7 +130,9 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
     canViewAnalytics: 'View Analytics',
     canExportData: 'Export Data',
     canManageChat: 'Manage Customer Chats',
+    canManageFeedback: 'Manage Guest Feedback',
     canViewCustomerData: 'View Customer Data',
+    canManageDigitalScreens: 'Manage Digital Screens',
 };
 
 // NOTE: Permission strategies removed - single role per store makes them unnecessary

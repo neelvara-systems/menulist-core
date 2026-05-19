@@ -1,7 +1,7 @@
 # Guide: Adding New Permissions
 
 > **Audience:** Developers  
-> **Last Updated:** May 18, 2026
+> **Last Updated:** May 19, 2026
 
 ---
 
@@ -17,7 +17,9 @@ When adding a new permission, update these files **in order**:
 | 4    | `src/data/rolesPermissionsInitialData.ts`  | Add to initialData array with label, category, and description (for UI display)                 |
 | 5    | `src/lib/permissions/applyOutletPolicy.ts` | **If OutletPolicy-relevant:** Add mapping from OutletPolicy flag → RolePermission key           |
 | 6    | `functions/src/sharedData/defaultRoles.ts` | Copy `src/data/shared/defaultRoles.ts` byte-for-byte                                            |
-| 7    | Test                                       | Verify permission works in UI and `npx tsc --noEmit --incremental false` passes                 |
+| 7    | `src/lib/permissions/permissionRequirements.ts` | If it gates a route or major screen, add the route/screen requirement                      |
+| 8    | API route guard                           | If it protects server-side work, use `requireAnyStorePermission()` in the protected API route    |
+| 9    | Test                                      | Verify permission works in UI and `npx tsc --noEmit --incremental false` passes                 |
 
 ---
 
@@ -152,24 +154,7 @@ Group permissions logically:
 
 ## Migration Note
 
-For existing stores, new permissions default to `undefined` (treated as `false`). If you need to grant the new permission to existing roles, you'll need a migration script:
-
-```typescript
-// Example migration (run once)
-async function migrateNewPermission() {
-  const stores = await getAllStores();
-  for (const store of stores) {
-    const updatedRoles = store.roles.map((role) => ({
-      ...role,
-      permissions: {
-        ...role.permissions,
-        canManageOrders: role.name === "Owner" || role.name === "Manager",
-      },
-    }));
-    await updateStore(store.storeId, { roles: updatedRoles });
-  }
-}
-```
+For existing stores, new permissions default to `false` for custom roles. Default roles are normalized from `DEFAULT_ROLE_METADATA` during staff/role server flows, so Owner/Manager/Staff receive the new default value without a separate migration script. Use a one-off migration only when custom roles must receive a newly added permission automatically.
 
 ---
 

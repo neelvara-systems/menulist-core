@@ -1,7 +1,7 @@
 'use client'
 
 import TextElement from "@antdComponent/textElement";
-import { fetchStaffUsers, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
+import { fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
 import type { StaffStoreOption } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -181,6 +181,27 @@ function UsersListPage() {
         }
     }
 
+    const onForceSignOut = async (user) => {
+        if (!user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        try {
+            const data = await forceSignOutStaffUser({
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                userId: user.id,
+            });
+            if (data.user) {
+                const nextUsers = getSafeUsersList(usersList).map((item: any) => item.id === user.id ? data.user : item);
+                resetFilters(nextUsers);
+                if (userDetailsModal.active && userDetailsModal.data?.id === user.id) {
+                    setUserDetailsModal({ ...userDetailsModal, data: data.user });
+                }
+            }
+            dispatch(showSuccessToast("Staff member signed out"));
+        } catch (err: any) {
+            dispatch(showErrorToast(err?.message || "Could not sign out staff member"));
+        }
+    }
+
     return (
         <Flex vertical gap={30}>
 
@@ -224,6 +245,7 @@ function UsersListPage() {
                             onClickUserDetails={(data) => setUserDetailsModal({ active: true, data })}
                             onDeleteUser={onDeleteUser}
                             onEditUser={(user) => setUserFormModal({ active: true, data: user })}
+                            onForceSignOut={onForceSignOut}
                             onResetPassword={onResetPassword}
                             staffStores={staffStores}
                             usersList={filteredUsersList}

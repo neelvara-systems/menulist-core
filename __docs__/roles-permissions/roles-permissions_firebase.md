@@ -2,7 +2,7 @@
 
 **Feature:** Staff-Level RBAC (Layer 1)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 18, 2026
+**Last Updated:** May 19, 2026
 **Priority:** LOW — Role checks use cached session data. Only role CRUD triggers writes.
 
 > **Scope:** This doc covers Firebase ops for role definitions and user role assignments. For OutletPolicy (Layer 2) ops, see [Multi-Chain Permissions Firebase](../multi-chain-permissions/multi-chain-permissions_firebase.md).
@@ -14,8 +14,8 @@
 - **Collections Used:** `stores` (role definitions in `roles[]` array), `users` (role assignment in `stores[].role`)
 - **Storage Buckets:** None
 - **Cloud Functions:** None
-- **API Routes:** `GET/POST/PATCH/DELETE /api/staff`, `POST /api/staff/password-reset`, `POST/PATCH/DELETE /api/staff/roles`
-- **Estimated Monthly Cost:** **₹0.00 to ₹1/month for typical SMB use** — role checks stay in-memory; staff/role admin screens are rare owner actions
+- **API Routes:** `GET/POST/PATCH/DELETE /api/staff`, `POST /api/staff/password-reset`, `POST /api/staff/force-signout`, `GET /api/auth/access-status`, `POST/PATCH/DELETE /api/staff/roles`, plus owner permission guards on analytics, domain/subdomain, and POS sync APIs
+- **Estimated Monthly Cost:** **₹0.00 to ₹2/month for typical SMB use** — role checks stay in-memory; staff/role admin screens are rare owner actions; authenticated dashboard sessions run a lightweight access check while visible
 
 ---
 
@@ -23,7 +23,7 @@
 
 | Data                                  | Location                       | Size                      | Notes                                                                                                           |
 | ------------------------------------- | ------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Role definitions (3 default + custom) | `stores/{storeId}.roles[]`     | ~2KB per role × 3–5 roles | Array of `StoreRoleDataType`, each with `id`, `name`, `description`, `active`, `permissions` (23 boolean flags) |
+| Role definitions (3 default + custom) | `stores/{storeId}.roles[]`     | ~2KB per role × 3–5 roles | Array of `StoreRoleDataType`, each with `id`, `name`, `description`, `active`, `permissions` (29 boolean flags) |
 | User's role assignment per store      | `users/{userId}.stores[].role` | ~20 bytes per store       | Role ID string (e.g., `"owner"`, `"manager"`, `"staff"`, `"custom-{ts}"`)                                       |
 
 ---
@@ -37,6 +37,7 @@
 | Resolve user role + permissions | — | Session load | Per login/refresh | 0 incremental | `sessionProvider` uses loaded store/session data. |
 | Permission check in UI | — | Any gated feature access | Per feature | 0 | `userPermissions` context set once at session load. |
 | Staff list | `users`, `stores` | Staff screen open | Rare | Tenant users + store docs | Server API reads tenant users and relevant store role definitions because `users` is server-only for cross-user reads. |
+| Legacy default-role repair | `stores/{storeId}` | Staff screen open/create on an old store missing default roles or missing permission keys on existing default roles | One time per legacy store | 1 store | Appends missing `owner` / `manager` / `staff` role definitions and normalizes missing default-role permission keys before staff role validation. |
 | Role save validation | `stores`, `users` | Role create/update/deactivate | Rare | 1 store + tenant users when deactivating | Used to validate role and prevent deactivating a role assigned to active staff. |
 
 ### Writes
@@ -44,23 +45,26 @@
 | Operation                        | Collection         | Trigger                                        | Frequency     | Docs Written | Fields                                | Notes                                                                                                                                                                                     |
 | -------------------------------- | ------------------ | ---------------------------------------------- | ------------- | ------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Create default roles (new store) | `stores/{storeId}` | Store creation (onboarding or outlet creation) | Per new store | 0            | —                                     | Roles array is part of the store doc write. `createDefaultRoles()` generates the array in-memory; it's written as part of `addStore()` or outlet creation transaction. No separate write. |
-| Update role definition           | `stores/{storeId}` | Admin edits role permissions                   | Very rare     | 1            | `roles[]` (merge update on store doc) | Owner changes a role's 23 permission flags via Team Management UI.                                                                                                                        |
+| Update role definition           | `stores/{storeId}` | Admin edits role permissions                   | Very rare     | 1            | `roles[]` (merge update on store doc) | Owner changes a role's 29 permission flags via Team Management UI.                                                                                                                        |
 | Create custom role               | `stores/{storeId}` | Admin adds new role                            | Very rare     | 1            | `roles[]` (array append on store doc) | New `StoreRoleDataType` with `id: "custom-{timestamp}"`.                                                                                                                                  |
+| Backfill/normalize default roles | `stores/{storeId}` | Staff list/create on a legacy store            | One time      | 1            | `roles[]`                             | Adds missing default role IDs and fills missing permission keys on existing default roles. Does not overwrite custom roles or reactivate intentionally inactive default IDs. |
 | Assign role to user              | `users/{userId}`   | Admin changes user's role                      | Very rare     | 1            | `stores[].role`                       | Updates the role ID on the user's store entry.                                                                                                                                            |
 | Create user with role            | `users/{userId}`   | New user signup/invite                         | Per signup    | 1            | `stores[].role` (+ other user fields) | Role set during user creation. Part of user doc write.                                                                                                                                    |
-| Update staff profile/mapping     | `users/{userId}`   | Owner edits staff                              | Rare          | 1            | Profile fields, `active`, `stores[]`, `storeIds[]`, `storeId` | Server validates tenant/store/role before writing. |
-| Reset staff password/passcode    | `users/{userId}`   | Owner resets staff password or new staff setup | Rare          | 1            | `passwordResetRequestedAt`, `passcodeResetAt`, `staffLoginId`, `loginUsername` | Owner reset updates Firebase Auth password and returns a temporary passcode once. MenuList stores only reset metadata, never the passcode. |
-| Remove staff from store          | `users/{userId}`   | Owner removes staff                            | Rare          | 1            | `stores[]`, `storeIds[]`, `active`, `deleted`, `deletedAt` | If no store mappings remain, the user is deactivated and soft-deleted. |
+| Update staff profile/mapping     | `users/{userId}`   | Owner edits staff                              | Rare          | 1            | Profile fields, `active`, `stores[]`, `storeIds[]`, `storeId`, `sessionRevokedAt`, `authDisabled` | Server validates tenant/store/role before writing. Deactivation revokes sessions and is mirrored to Firebase Auth disabled state. |
+| Reset staff password/passcode    | `users/{userId}`   | Owner resets staff password or new staff setup | Rare          | 1            | `passwordResetRequestedAt`, `passcodeResetAt`, `staffLoginId`, `loginUsername`, `sessionRevokedAt`, `authTokensRevokedAt` | Owner reset updates Firebase Auth password, revokes existing sessions, and returns a temporary passcode once. MenuList stores only reset metadata, never the passcode. |
+| Force sign out staff             | `users/{userId}`   | Owner signs out active staff                   | Rare          | 1            | `sessionRevokedAt`, `sessionRevokedBy`, `sessionRevokedReason`, `authTokensRevokedAt` | Firebase Auth refresh tokens are revoked. The account stays enabled, so staff can sign in again with current credentials. |
+| Remove staff from store          | `users/{userId}`   | Owner removes staff                            | Rare          | 1            | `stores[]`, `storeIds[]`, `active`, `deleted`, `deletedAt`, `sessionRevokedAt`, `authDisabled` | If no store mappings remain, the user is deactivated, soft-deleted, signed out, and disabled in Firebase Auth. |
+| Session access check             | `users`, `tenants`, `stores` | Authenticated dashboard focus/interval check | While dashboard is open | 1 user + tenant/store docs when present | None | `GET /api/auth/access-status` is no-store. It catches revoked sessions, deleted/inactive users, direct user blocks, tenant blocks, and store blocks. |
 
 ### Deletes
 
-None — roles are deactivated (`active: false`), never hard-deleted. Staff users are soft-deleted only when the last store mapping is removed; Firebase Auth accounts are not hard-deleted by the owner UI.
+None — roles are deactivated (`active: false`), never hard-deleted. Staff users are soft-deleted only when the last store mapping is removed; Firebase Auth accounts are disabled and refresh tokens are revoked for blocked/deactivated access but not hard-deleted by the owner UI.
 
 ---
 
 ## Cost Estimate
 
-Typical SMB estimate: **₹0.00 to ₹1/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management, and writes happen only on rare staff or role changes.
+Typical SMB estimate: **₹0.00 to ₹2/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management, writes happen only on rare staff or role changes, and the access-status check is a small authenticated-dashboard safety read while the app is visible.
 
 ---
 

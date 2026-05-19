@@ -1,6 +1,6 @@
 # Roles & Permissions — Help Documentation
 
-**Last Updated:** May 18, 2026
+**Last Updated:** May 19, 2026
 
 ## Quick Summary
 
@@ -12,10 +12,10 @@ Roles control what each team member can see and do in your MenuList dashboard. E
 
 | Role        | Access Level | Key Capabilities                                                                              |
 | ----------- | ------------ | --------------------------------------------------------------------------------------------- |
-| **Owner**   | Full access  | Billing, user management, all features, branding, analytics, store management                 |
-| **Manager** | Operations   | Menu editing, publishing, prices, availability, analytics, team chat — no billing or branding |
+| **Owner**   | Full access  | Billing, staff, roles, public presence, integrations, menu, analytics, and store management   |
+| **Manager** | Operations   | Menu, publishing, sharing, feedback, analytics, staff, and screens — no billing or public identity changes |
 | **Staff**   | Minimal      | Customer chat only                                                                            |
-| **Custom**  | Configurable | Owner creates custom roles with specific permissions (23 toggles)                             |
+| **Custom**  | Configurable | Owner creates custom roles with specific permissions (29 toggles)                             |
 
 ---
 
@@ -58,7 +58,7 @@ Owners can reset staff access, but MenuList does not show the existing password.
 1. Go to **Users** → **Roles**
 2. Click **Add Role**
 3. Name the role (e.g., "Kitchen Manager")
-4. Toggle the 23 permissions on/off as needed
+4. Toggle the 29 permissions on/off as needed
 5. Save — the new role is now available for assignment
 
 ### How to remove a team member

@@ -13,7 +13,9 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/url-routing-architecture/README.md
  */
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -62,6 +64,9 @@ async function vercelFetch(path: string, options: RequestInit = {}) {
  * POST /api/domain — Add custom domain to Vercel project + store in Firestore
  */
 export const POST = withAuth(async (request: NextRequest, session) => {
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
+    if (permissionError) return permissionError;
+
     const { tId: tenantId, sId: storeId } = session;
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
@@ -150,6 +155,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
  * GET /api/domain — Check domain verification status
  */
 export const GET = withAuth(async (request: NextRequest, session) => {
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
+    if (permissionError) return permissionError;
+
     const { tId: tenantId, sId: storeId } = session;
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
@@ -204,6 +212,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
  * DELETE /api/domain — Remove custom domain from Vercel + Firestore
  */
 export const DELETE = withAuth(async (request: NextRequest, session) => {
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Custom domain");
+    if (permissionError) return permissionError;
+
     const { tId: tenantId, sId: storeId } = session;
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });

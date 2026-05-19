@@ -1,11 +1,13 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { PERMISSIONS } from '@constant/permissions';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -79,7 +81,7 @@ interface MobileShareScreenProps {
 export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScreenProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
@@ -97,6 +99,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         () => getStoreContextName(storeDetails as any, t('yourBusiness')),
         [storeDetails, t]
     );
+    const canManageSharing = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU]);
 
     const data = useMemo<ShareData | null>(() => {
         if (!storeDetails) return null;
@@ -204,6 +207,16 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             Toast.show({ content: t('couldNotCopy'), duration: 1500 });
         }
     };
+
+    if (!canManageSharing) {
+        return (
+            <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24, textAlign: 'center' }} vertical>
+                <LuShield color={token.colorTextQuaternary} size={36} />
+                <Title level={4} style={{ margin: 0 }}>Sharing is not available for your role</Title>
+                <Text type="secondary">Ask the owner to update your role if you need sharing or QR access.</Text>
+            </Flex>
+        );
+    }
 
     if (loadingProjects && !data) {
         return (

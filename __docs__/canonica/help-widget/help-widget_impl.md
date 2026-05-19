@@ -1,7 +1,7 @@
 # Canonica Help Widget — Implementation Blueprint
 
-> **Version:** 2.2.1
-> **Last Updated:** 2026-05-12
+> **Version:** 2.4.0
+> **Last Updated:** 2026-05-19
 > **Audience:** Developers
 > **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context)
 > **Source:** Codebase audit + ChatGPT review + industry research
@@ -34,9 +34,11 @@ CoreSearchResult → formatted for widget
 src/lib/search/searchCore.ts              # Canonical search pipeline (shared)
 src/lib/search/types.ts                   # Shared types (CoreSearchInput, CoreSearchResult)
 src/app/api/widget/search/route.ts        # Thin auth wrapper (API key → coreSearch)
+src/app/api/widget/config/route.ts        # Public runtime config lookup for loader script
 src/app/widget/[apiKey]/page.tsx           # Widget iframe page (server component)
 src/app/widget/[apiKey]/WidgetClient.tsx   # Widget chat UI (client, zero deps)
 src/lib/publicApi/auth.ts                 # validatePublicApiKey() (reused)
+src/lib/canonica/widgetConfig.ts          # Shared widget config schema/defaults/embed builder
 src/lib/validation/contextSchema.ts       # CanonicaContextSchema (Zod, reused)
 src/config/features.ts                     # ENABLE_CANONICA_WIDGET flag
 public/widget/canonica-widget.js           # Embed script (vanilla JS, ~4KB)
@@ -50,11 +52,14 @@ src/app/widget/[apiKey]/WidgetClient.tsx   # Session memory, feedback, image upl
 src/app/api/widget/search/route.ts        # Origin allowlist, conversation history, server-side image validation
 src/app/api/widget/feedback/route.ts      # Feedback endpoint with tenant-scoped searchHistory ownership check
 src/app/api/canonica/widget-key/route.ts  # Hash-only widget key generate/revoke endpoint
+src/app/api/canonica/widget-config/route.ts # Protected dashboard load/save endpoint
 src/app/api/canonica/menulist-widget-test-key/route.ts  # MenuList-as-client test key adapter
 src/app/(canonica)/canonica/settings/page.tsx  # Thin page wrapper (dynamic import of template)
-src/components/templates/canonica/CanonicaSettings.tsx  # Widget config UI (9 attributes + origin allowlist + embed code generator + live preview + setup progress)
+src/app/(canonica)/canonica/widget/page.tsx    # Dedicated widget management route
+src/components/templates/canonica/CanonicaSettings.tsx  # Workspace settings entry point, links to widget management
+src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx  # Widget management UI
 src/components/canonica/MenuListCanonicaWidgetTestHost.tsx  # Temporary MenuList external-client host
-src/types/platform/store.ts               # MODIFY: added widgetConfig + widgetAllowedOrigins fields
+src/types/platform/store.ts               # MODIFY: added canonicaWidgetApi + widgetConfig + widgetAllowedOrigins fields
 ```
 
 ---
@@ -81,7 +86,8 @@ Thin auth wrapper. Responsibilities:
 
 - Feature flag gate (`ENABLE_CANONICA_WIDGET`)
 - API key rate limiting by hash before Firestore auth lookup
-- API key authentication (`validatePublicApiKey()`), with `ml_`/`cn_` key-shape rejection before Firestore lookup
+- API key authentication (`validatePublicApiKey()`), with non-`cn_` key-shape rejection before Firestore lookup
+- Hash-only Canonica key validation: widget routes disable legacy raw-key fallback and use a short positive auth cache to avoid repeated `stores` reads during rapid widget search/predictive/feedback calls
 - Positive `tId/sId` workspace validation before body parsing, image handling, or retrieval
 - Origin allowlist check (v2): configured origins are normalized; missing or unlisted `Origin` is rejected
 - Context validation via `CanonicaContextSchema`
@@ -101,7 +107,11 @@ v2 additions:
 - `data-label`: Custom text for launcher
 - `data-size`: `small`, `medium`, `large`
 - `data-offset-x`, `data-offset-y`: Edge offset in pixels
+- `data-z-index`: Launcher stacking context
 - `data-history`: `session` (default) or `forget`
+- `data-launcher-visibility`: `visible` or `manual`
+- `data-mobile-visibility`: `show` or `hide`
+- `data-use-remote-config`: set to `false` to opt out of dashboard config lookup
 - `data-feature`, `data-page`, `data-workflow`, `data-entity-hints`, `data-user-role`, `data-plan`: optional mount-time context attributes for products that cannot call the SDK before the widget script initializes
 
 v2 JavaScript API (exposed on `window.CanonicaWidget`):
@@ -117,9 +127,19 @@ v2 JavaScript API (exposed on `window.CanonicaWidget`):
 
 Context is normalized and size-limited before it leaves the host page, then passed from host page → embed script → iframe via `postMessage` → WidgetClient state → API request body.
 
+The iframe sends `canonica-widget-ready` after its message listener mounts. The loader responds by resending current visibility, context, and pending suggestion state. The loader also retries this sync shortly after iframe load/open so mount-time context is not lost if the React iframe hydrates after the native iframe `load` event.
+
 When `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is enabled, `page()/setContext()` also calls `POST /api/canonica/predictive-help` only when a valid context payload is present. A returned suggestion is held in memory, indicated on the launcher, and delivered into the iframe as a proactive assistant message. No raw page events are stored.
 
 Global security headers keep `frame-ancestors 'none'` for the app by default. `/widget/*` is the explicit exception: middleware omits `X-Frame-Options` and allows HTTPS/localhost frame ancestors so the embeddable iframe can render. API calls still enforce API-key auth, rate limits, and the per-store origin allowlist.
+
+The loader reads saved dashboard config with `GET /api/widget/config` unless `data-use-remote-config="false"` is present. Merge order is:
+
+```
+defaults → remote dashboard config → explicit script attributes
+```
+
+This keeps already-installed scripts centrally manageable while preserving per-environment script overrides. Runtime config is cached in browser `sessionStorage` and on the server for short TTLs. It uses no realtime listeners and performs no page-load writes.
 
 ### 3.3.1 MenuList-as-Client Test Host
 
@@ -127,10 +147,41 @@ Global security headers keep `frame-ancestors 'none'` for the app by default. `/
 
 - `MenuListCanonicaWidgetTestHost` requests `POST /api/canonica/menulist-widget-test-key`.
 - The route derives a deterministic per-store `cn_*` key from `NEXTAUTH_SECRET`, stores only `hashApiKey(apiKey)` under `stores/{sId}.canonicaWidgetTestApi`, and returns the raw key to the current authenticated page.
-- The host injects `/widget/canonica-widget.js` with the returned key, `data-history="session"`, and sanitized mount-time context attributes. The public script creates the same launcher and iframe used by external products.
+- The host injects `/widget/canonica-widget.js` with the returned key, `data-history="session"`, and sanitized mount-time context attributes. The public script creates the same launcher and iframe used by external products. On route changes, the adapter mirrors the latest context back onto the script `data-*` attributes before calling the SDK.
 - Context is limited to sanitized MenuList page/workflow hints such as `menulist_projects_home`; no MenuList tenant/store/user IDs are sent as product context.
+- When the MenuList route page key changes, the adapter calls `clearHistory()` before `page(nextContext)` so old feature/page conversation history cannot contaminate the new page context. Close/open on the same page still preserves the page session.
+- The host stores the deterministic test key in same-tab `sessionStorage` after the server route has written/verified the hashed key and origin allowlist, so remounts in the same tab do not keep re-reading the store document.
 - Widget runtime routes explicitly opt in to this test credential source for predictive help, widget search, and widget feedback only. Shared public API validation defaults to normal `publicApi` credentials, so this temporary key cannot authorize unrelated MenuList or Canonica public API routes.
 - The deterministic test key shape is `cn_` plus a 64-character HMAC digest. Widget routes prefer the `canonicaWidgetTestApi` lookup for that shape in test mode, avoiding repeated failed `publicApi` lookups during local integration testing.
+
+### 3.3.2 Widget Management Console
+
+`/canonica/widget` is the single source of truth for widget management:
+
+- Key create/regenerate/revoke through `POST /api/canonica/widget-key`.
+- Config load/save through `GET`/`PUT /api/canonica/widget-config`.
+- Install snippets generated from `src/lib/canonica/widgetConfig.ts`.
+- Origin allowlist management.
+- Context-aware route snippet examples.
+- Desktop/mobile preview.
+
+Management saves write only on explicit Save. Color, layout, origin, and behavior edits stay in local React state until saved.
+
+### 3.3.3 Credential Separation
+
+Widget credentials use `stores/{sId}.canonicaWidgetApi`:
+
+```json
+{
+  "apiKeyHash": "sha256...",
+  "keyPrefix": "cn_abcd",
+  "productId": "CN",
+  "purpose": "canonica_widget",
+  "scopes": ["widget:config", "widget:search", "widget:feedback", "widget:predictive"]
+}
+```
+
+`publicApi` remains reserved for Canonica public API credentials. `validatePublicApiKey()` supports both credential sources, but each route explicitly opts into only the sources and scopes it accepts. Legacy widget keys still stored under `publicApi.purpose = "canonica_widget"` remain accepted by widget runtime routes, but they no longer authorize Canonica public API routes.
 
 ### 3.4 Widget Client (`src/app/widget/[apiKey]/WidgetClient.tsx`)
 
@@ -232,6 +283,36 @@ Response: { "success": true }
 Errors: 401, 400, 404 (flag OFF or search history not owned by this workspace), 429, 500
 ```
 
+### 4.3 Runtime Config (New)
+
+```
+GET /api/widget/config
+Headers: X-API-Key: {apiKey}, Origin: {hostDomain}
+
+Response:
+{
+  "schemaVersion": "canonica.widget.v1",
+  "cacheTtlSeconds": 60,
+  "configVersion": 3,
+  "config": {
+    "position": "bottom-right",
+    "accentColor": "#6366f1",
+    "shape": "rounded",
+    "display": "icon",
+    "label": "?",
+    "size": "medium",
+    "offsetX": 20,
+    "offsetY": 20,
+    "zIndex": 2147483646,
+    "historyMode": "session",
+    "launcherVisibility": "visible",
+    "mobileVisibility": "show"
+  }
+}
+```
+
+Only public display/runtime fields are returned. Origins, credential data, tenant IDs, and store IDs are never returned.
+
 ---
 
 ## 5. Origin Allowlist (v2)
@@ -246,6 +327,8 @@ Check in widget search, widget feedback, and predictive-help routes:
 4. If `widgetAllowedOrigins` is empty/undefined → allow all origins (backward compatible)
 
 This prevents API key scraping abuse without breaking existing deployments.
+
+`GET /api/widget/config` follows the same allowlist but treats same-origin loader requests as `request.nextUrl.origin` when browsers omit the `Origin` header for a same-origin GET. Cross-origin embeds still use the browser-supplied `Origin` header.
 
 ---
 
@@ -414,7 +497,8 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, MenuList external-client context wiring, and stale async response guard in the iframe client. |
+| 2026-05-19 | 2.3.1   | Widget Firebase cost hardening: hash-only Canonica auth path, 15-second positive widget auth cache, 60-second predictive trigger index cache, same-tab MenuList test-key cache, and context-scoped search cache keys. |
+| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, iframe ready handshake, MenuList external-client context wiring, page-change history reset, and stale async response guard in the iframe client. |
 | 2026-05-12 | 2.2.1   | Public endpoint cost/security hardening: malformed key short-circuit before Firestore lookup, hash-based rate-limit keys before auth lookup, positive workspace validation, and tenant-filtered vector-search/index documentation. |
 | 2026-05-12 | 2.2.0   | Runtime contract hardening: hash-only widget keys, Canonica-specific key endpoint, tenant-scoped search history feedback, server-side widget image validation, guided workflow rendering, predictive suggestion delivery, and tenant-scoped KB category docs. |
 | 2026-03-09 | 2.1.0   | Settings page refactored: 520-line inline page → thin wrapper + CanonicaSettings template. Feature Status card removed (exposed internal flags). Sidebar now filters nav by feature flags. Governance useMemo deps fixed. Setup progress guide added to settings. |

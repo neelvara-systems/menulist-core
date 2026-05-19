@@ -9,9 +9,11 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/url-routing-architecture/README.md
  */
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { isReservedSubdomain } from "@constant/reservedSlugs";
 import { getMenuUrl } from "@constant/urls";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { slugify } from "@lib/utils/slugify";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
@@ -20,7 +22,10 @@ import { withAuth } from "../../../../middleware/auth";
 const MIN_SUBDOMAIN_LENGTH = 3;
 const MAX_SUBDOMAIN_LENGTH = 63; // DNS label max
 
-export const GET = withAuth(async (request: NextRequest) => {
+export const GET = withAuth(async (request: NextRequest, session) => {
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_PUBLIC_PRESENCE], "Subdomain");
+    if (permissionError) return permissionError;
+
     const { searchParams } = new URL(request.url);
     const rawSubdomain = searchParams.get('subdomain');
 

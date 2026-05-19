@@ -34,6 +34,7 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
 declare module "next-auth" {
     interface Session extends DefaultSession {
         user: UserDataType & DefaultSession["user"]
+        authIssuedAt?: number;
     }
 }
 
@@ -41,6 +42,7 @@ declare module "next-auth/jwt" {
     interface JWT {
         id: string;
         credits: number;
+        sessionIssuedAt?: number;
     }
 }
 
@@ -191,6 +193,11 @@ export const authOptions: NextAuthOptions = {
 
             const email = token?.email || user?.email;
             if (!email) return null;
+            if (user && typeof token.sessionIssuedAt !== 'number') {
+                token.sessionIssuedAt = Math.floor(Date.now() / 1000);
+            } else if (typeof token.sessionIssuedAt !== 'number' && typeof token.iat === 'number') {
+                token.sessionIssuedAt = token.iat;
+            }
 
             const forceRefresh = trigger === "update";
             const safeDbUser = await getAuthSessionUserContext(email, forceRefresh);
@@ -243,16 +250,21 @@ export const authOptions: NextAuthOptions = {
                     image: (dbUser as any).image, // Optional from OAuth
                     isVerified: dbUser.isVerified,
                     active: dbUser.active,
+                    authDisabled: (dbUser as any).authDisabled,
+                    authIssuedAt: typeof token?.sessionIssuedAt === 'number' ? token.sessionIssuedAt : token?.iat,
                     blocked: dbUser.blocked,
                     blockDetails: dbUser.blockDetails,
+                    deleted: (dbUser as any).deleted,
                     tenantId: dbUser.tenantId,
                     storeId: dbUser.storeId,
                     pId: (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     productId: (dbUser as any).productId || (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     platformRole: dbUser.platformRole,
                     role: sessionStoreRole || '',
+                    sessionRevokedAt: (dbUser as any).sessionRevokedAt,
                     stores: dbUser.stores
                 };
+                session.authIssuedAt = typeof token?.sessionIssuedAt === 'number' ? token.sessionIssuedAt : token?.iat;
                 session.platformRole = dbUser.platformRole || "USER";
                 session.pId = (dbUser as any).pId || DEFAULT_PRODUCT_ID;
                 session.tId = dbUser.tenantId;
@@ -481,8 +493,10 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         image: sanitized.image,
         isVerified: sanitized.isVerified,
         active: sanitized.active,
+        authDisabled: sanitized.authDisabled,
         blocked: sanitized.blocked,
         blockDetails: sanitized.blockDetails,
+        deleted: sanitized.deleted,
         tenantId: sanitized.tenantId,
         storeId: sanitized.storeId,
         pId: normalizeAuthProductId(sanitized.pId)
@@ -500,6 +514,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         phoneNumber: sanitized.phoneNumber,
         phoneUsername: sanitized.phoneUsername,
         phoneLoginEnabled: sanitized.phoneLoginEnabled,
+        sessionRevokedAt: serializeAuthTimestamp(sanitized.sessionRevokedAt),
         // Keep only what we actually use for role derivation
         stores: Array.isArray(sanitized.stores)
             ? sanitized.stores.map((s: any) => ({
@@ -509,6 +524,17 @@ const getDatabaseUserForSession = (dbUser: any): any => {
             : [],
     };
 }
+
+const serializeAuthTimestamp = (value: any): string | number | undefined => {
+    if (!value) return undefined;
+    if (typeof value === 'string' || typeof value === 'number') return value;
+    if (typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value._seconds === 'number') {
+        return new Date((value._seconds * 1000) + Math.floor((value._nanoseconds || 0) / 1_000_000)).toISOString();
+    }
+    return undefined;
+};
 
 const cloneAuthSessionUserContext = (user: any): any => ({
     ...user,

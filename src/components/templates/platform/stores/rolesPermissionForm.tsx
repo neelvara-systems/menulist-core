@@ -1,5 +1,5 @@
 import Saperator from "@atoms/Saperator";
-import { PermissionKey } from "@constant/permissions";
+import { ALL_PERMISSIONS, PermissionKey } from "@constant/permissions";
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from "@data/rolesPermissionsInitialData";
 import { RolePermissions } from "@type/platform/roles";
 import { removeObjRef } from "@util/utils";
@@ -30,8 +30,8 @@ function RolesPermissionForm({ userPermissions, updatePermissions }: RolesPermis
 
     const onToggleAll = (value: boolean) => {
         const newPermissions = removeObjRef(userPermissions);
-        Object.keys(newPermissions).forEach((pKey) => {
-            newPermissions[pKey as PermissionKey] = value;
+        ALL_PERMISSIONS.forEach((pKey) => {
+            newPermissions[pKey] = value;
         });
         updatePermissions(newPermissions);
     };
@@ -41,7 +41,7 @@ function RolesPermissionForm({ userPermissions, updatePermissions }: RolesPermis
     };
 
     const isAllEnabled = () => {
-        return Object.values(userPermissions).every((v) => v === true);
+        return ALL_PERMISSIONS.every((pKey) => userPermissions[pKey] === true);
     };
 
     return (

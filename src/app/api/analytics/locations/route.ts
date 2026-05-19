@@ -1,6 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
-import { NextResponse } from 'next/server';
+import { PERMISSIONS } from '@constant/permissions';
+import { requireAnyStorePermission } from '@lib/permissions/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '../../../../middleware/auth';
 
 const analyticsClient = new BetaAnalyticsDataClient({
     credentials: {
@@ -9,7 +12,10 @@ const analyticsClient = new BetaAnalyticsDataClient({
     }
 });
 
-export async function GET(request: Request) {
+export const GET = withAuth(async (request: NextRequest, session) => {
+    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.VIEW_ANALYTICS], 'Location analytics');
+    if (permissionError) return permissionError;
+
     try {
         const { searchParams } = new URL(request.url);
         const propertyId = searchParams.get('propertyId');
@@ -41,4 +47,4 @@ export async function GET(request: Request) {
         console.error('Location Analytics Error:', error);
         return NextResponse.json({ error: 'Failed to fetch location analytics' }, { status: 500 });
     }
-}
+});
