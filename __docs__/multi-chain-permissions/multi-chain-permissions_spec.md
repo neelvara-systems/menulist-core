@@ -2,8 +2,12 @@
 
 > **Feature:** #4B — Multi-Chain Permissions  
 > **Status:** ✅ Implemented  
-> **Last Updated:** February 12, 2026  
+> **Last Updated:** May 19, 2026
 > **ICP:** Premium SMB Groups (2–10 stores)
+
+---
+
+> **May 19, 2026 audit note:** Policy writes are server-owned through `/api/outlets/policy`, active store Firebase claims are refreshed during HQ/outlet switching, linked outlet menu saves enforce disabled policy flags through `/api/projects/outlet-save`, and linked outlet AI description/image APIs enforce policy before provider calls instead of relying only on desktop/mobile controls.
 
 ---
 

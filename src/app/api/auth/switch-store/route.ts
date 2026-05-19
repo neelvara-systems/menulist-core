@@ -7,7 +7,9 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { grantUserStoreAccess } from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { NextResponse } from "next/server";
@@ -31,6 +33,15 @@ export const POST = withAuth(async (request, session) => {
         const v = validateAPIInput(schema, body);
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { targetStoreId } = v.data;
+
+        const rateLimit = await checkRateLimit({
+            key: `switch-store:${session.uId || session.user?.id}`,
+            limit: 60,
+            window: 60,
+        });
+        if (!rateLimit.allowed) {
+            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        }
 
         const db = admin.firestore();
         const callerStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get();
@@ -58,6 +69,17 @@ export const POST = withAuth(async (request, session) => {
         if (targetStore.active === false) {
             return NextResponse.json({ error: "Store is inactive" }, { status: 400 });
         }
+
+        const currentStoreRole = Array.isArray(session.user?.stores)
+            ? session.user.stores.find((store: any) => Number(store?.storeId) === Number(currentStoreId))?.role
+            : undefined;
+        await grantUserStoreAccess(
+            db,
+            session.uId || session.user?.id,
+            Number(targetStoreId),
+            targetStore.name || `Store ${targetStoreId}`,
+            currentStoreRole || session.role || session.user?.role,
+        );
 
         return NextResponse.json({
             success: true,

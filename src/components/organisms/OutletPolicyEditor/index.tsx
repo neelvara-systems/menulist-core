@@ -17,7 +17,7 @@ import { updateOutletPolicy } from '@database/multiOutlet';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { Card, Divider, message, Space, Switch, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
-import { HiOutlineInformationCircle } from 'react-icons/hi';
+import { LuInfo } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 
@@ -64,7 +64,7 @@ export default function OutletPolicyEditor({
                 <Space>
                     <span>Outlet Policy</span>
                     <Tooltip title="Controls what all outlet stores can do. Changes apply immediately on next outlet login.">
-                        <HiOutlineInformationCircle style={{ color: '#8c8c8c', cursor: 'help' }} />
+                        <LuInfo style={{ color: '#8c8c8c', cursor: 'help' }} />
                     </Tooltip>
                 </Space>
             }

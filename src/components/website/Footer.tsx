@@ -3,7 +3,8 @@
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { LuArrowRight, LuBadgeCheck, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin, LuShieldCheck } from 'react-icons/lu';
-import LogoMark from './shared/LogoMark';
+import BrandWordmark from './shared/BrandWordmark';
+import FooterVeilCanvas from './shared/FooterVeilCanvas';
 import WebsiteButton from './shared/WebsiteButton';
 
 const productLinks = [
@@ -51,6 +52,7 @@ export default function Footer() {
 
   return (
     <footer id="site-footer" className="ws-footer-revenue">
+      <FooterVeilCanvas />
       <div className="ws-container">
         <section className="ws-footer-cta" aria-labelledby="footer-cta-title">
           <div>
@@ -82,9 +84,12 @@ export default function Footer() {
 
         <div className="ws-footer-main">
           <div className="ws-footer-brand">
-            <Link href="/" className="ws-footer-logo" aria-label="MenuList home">
-              <LogoMark height={24} />
-              <span>MenuList</span>
+            <Link href="/" className="ws-footer-logo" aria-label="MenuList AI home">
+              <BrandWordmark
+                className="ws-brand-wordmark"
+                iconHeight={24}
+                textClassName="ws-brand-wordmark__text ws-brand-gradient-text"
+              />
             </Link>
             <p>{t('Footer.tagline')}</p>
             <p className="ws-footer-source-line">{t('Footer.sourceLine')}</p>

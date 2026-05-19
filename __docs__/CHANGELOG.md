@@ -13,12 +13,14 @@
 - **Locations access now handles legacy premium stores** — Mobile and desktop Locations use the same master-location gate, so a safe one-store tenant without an old `isMaster` flag can manage locations and be repaired server-side during first outlet creation or policy save.
 - **Outlet policy updates moved server-side** — Desktop and mobile policy controls now save through a protected API route with tenant access, role permission, master-store validation, legacy repair, and public cache invalidation.
 - **Outlet permission enforcement tightened** — Outlet sessions load the master policy when needed and fall back to default-safe outlet restrictions instead of treating a missing hydrated policy as unrestricted access.
+- **Linked outlet menu saves moved behind a server contract** — Mobile and desktop linked outlet editors now save only local `L_I_` / `L_C_` records plus allowed overrides through `/api/projects/outlet-save`, with server-side policy enforcement before Firebase writes.
 
 ### Fixed
 
 - **Outlet mutation integrity hardened** — Outlet creation now reverts local subscription quantity on later failure and only releases creation locks it acquired; outlet deactivation updates store, tenant list, and summary atomically.
 - **Store switching and rename consistency corrected** — Store IDs are normalized across switch/deactivate paths, inactive stores cannot be switched into, and outlet rename now keeps `tenants/{tenantId}.storesList` aligned with the store doc and summary.
 - **Mobile Locations locale coverage completed** — All active locale packs now include the `MobileLocations` keys used by the mobile Locations screen.
+- **HQ/outlet Firebase Auth claims stay aligned** — Switching between outlet and HQ refreshes Firebase custom claims for the active store before editor reads, preventing permission errors and preventing outlet-only records from appearing in the master project.
 
 ## May 19, 2026 — Owner PWA Shortcuts
 
@@ -31,7 +33,7 @@
 
 ### Changed
 
-- **Staff login details are easier to share** — One-time Staff ID/passcode popups now support copying Staff ID, copying passcode, copying both details, native browser sharing when available, and opening WhatsApp Web with a prefilled login message. When the staff phone number is saved, WhatsApp Web opens directly for that number.
+- **Staff login details are easier to share** — One-time Staff ID/passcode popups now use a closeable mobile sheet, row-level copy icons for Staff ID and passcode, equal-width WhatsApp and Share actions, and `wa.me` sharing that targets the staff phone number when one is saved.
 - **Permission set expanded to 29 production flags** — Added dedicated controls for public presence, integrations, menu sharing, menu design, feedback, and digital screens while preserving existing role fields.
 - **Desktop and mobile navigation now use shared permission requirements** — Restricted pages and mobile tabs/hubs are hidden or blocked based on normalized role permissions instead of scattered local checks.
 - **Protected APIs now enforce store role permissions** — Analytics, domain/subdomain, and POS sync routes now validate the current store role before serving protected owner data or mutation flows.

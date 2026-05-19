@@ -9,6 +9,7 @@
 import AddOutletModal from '@organisms/AddOutletModal';
 import OutletPolicyEditor from '@organisms/OutletPolicyEditor';
 import OutletRenameModal from '@organisms/OutletRenameModal';
+import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
@@ -58,6 +59,7 @@ export default function LocationsPage() {
     const storesList = tenantDetails?.storesList || [];
     const outletCount = storesList.filter((s) => !s.isMaster).length;
     const activeCount = storesList.filter((s: any) => s.active !== false).length;
+    const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
 
     // Billing summary
     const amount = activeSubscription?.amount || 0;
@@ -66,6 +68,7 @@ export default function LocationsPage() {
 
     const handleSwitchStore = async (targetStoreId: number) => {
         if (Number(targetStoreId) === Number(storeDetails?.storeId)) {
+            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
             setActiveStoreContext(null);
             return;
         }
@@ -80,6 +83,7 @@ export default function LocationsPage() {
                 message.error('Store switch failed');
                 return;
             }
+            await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
         } catch {
             message.error('Store switch failed');
@@ -117,6 +121,7 @@ export default function LocationsPage() {
                         }
                         : previous);
                     if (Number(activeStoreContext) === Number(outletStoreId)) {
+                        if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
                         setActiveStoreContext(null);
                     }
                     message.success('Outlet deactivated');

@@ -14,7 +14,7 @@
 | **Touch** | ✅ PASS | 15 flags are grouped into cards with native switches and sticky Save/Reset |
 | **Value** | ✅ PASS | Outlet rules directly control what outlet teams can edit on mobile and desktop |
 
-**Decision:** Mobile management is supported through `MobileLocationsScreen`. OutletPolicy enforcement remains shared through `applyOutletPolicy()` and editor-level policy checks.
+**Decision:** Mobile management is supported through `MobileLocationsScreen`. OutletPolicy enforcement remains shared through `applyOutletPolicy()`, editor-level policy checks, linked outlet save validation, and AI API policy checks.
 
 ---
 
@@ -38,3 +38,4 @@
 - Legacy single-store tenants with no `isMaster` flag are treated as master candidates in UI and are repaired server-side during first outlet creation or policy save.
 - Outlet users still cannot manage chain policy. `applyOutletPolicy()` forces outlet users away from chain-management and billing permissions.
 - If an outlet session starts before the master policy is hydrated, `sessionProvider` loads the master store once and `applyOutletPolicy()` uses `DEFAULT_OUTLET_POLICY` as a safe fallback.
+- Hidden mobile AI/override actions are backed by server checks: `/api/projects/outlet-save` rejects disabled linked-save changes, and description/image API routes reject disabled linked outlet generation requests before provider calls.

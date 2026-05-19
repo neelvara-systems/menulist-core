@@ -1175,30 +1175,28 @@ const ApplyPreviewSchema = z.object({
 
 ---
 
-## Part 8: 40 Multi-Outlet Test Cases Summary
+## Part 8: Multi-Outlet Test Cases Summary
 
 **Reference:** `multi-outlet-consistency_test-cases.md`
 
-### 8.1 Status Summary from ChatGPT Review
+### 8.1 Current Status Summary
 
 | Status         | Count | Description                            |
 | -------------- | ----- | -------------------------------------- |
-| ✅ HANDLED     | 32    | Fully implemented in codebase          |
-| ⚠️ PARTIAL     | 6     | Partially implemented, needs attention |
-| ❌ NOT HANDLED | 1     | Not implemented, needs work            |
-| 🔒 BY DESIGN   | 1     | Intentionally not implemented          |
+| ✅ HANDLED     | 126   | Fully implemented in codebase          |
+| ⚠️ PARTIAL     | 5     | Partially implemented, needs attention |
+| 🔒 BY DESIGN   | 14    | Intentionally deferred/rejected        |
 
-### 8.2 Critical Gaps Identified
+### 8.2 Current Gaps / Decisions
 
 | Case #  | Issue                                                              | Status         | Action Required                                        |
 | ------- | ------------------------------------------------------------------ | -------------- | ------------------------------------------------------ |
-| Case 21 | No enforcement that every outlet project MUST have masterProjectId | ⚠️ PARTIAL     | Add validation on publish                              |
 | Case 29 | No explicit "item not found" fallback in B2C                       | ⚠️ PARTIAL     | Verify B2C handles gracefully                          |
-| Case 31 | Re-extraction could generate new IDs (ID instability)              | ⚠️ PARTIAL     | **Add ID mapping layer or block re-extract on master** |
-| Case 40 | Missing validation on publish for masterProjectId                  | ⚠️ PARTIAL     | Add masterProjectId check on publish                   |
-| T8      | No role-based check for outlet manager editing master              | ⚠️ PARTIAL     | Add role check in DAL                                  |
-| T35     | No linked outlet index                                             | ❌ NOT HANDLED | Create index if needed                                 |
-| T38/T39 | No explicit price/payload validation in override                   | ⚠️ PARTIAL     | Add Zod validation                                     |
+| Case 31 | Re-extraction could generate new IDs when matching fails           | ⚠️ PARTIAL     | Monitor production; add mapping only if evidence justifies the cost |
+| Case 82 | No explicit ID mapping layer                                       | ⚠️ PARTIAL     | Same tracked risk as Case 31                           |
+| T32/T33 | Outlet staleness markers are isolated but not propagated           | ⚠️ PARTIAL     | Add dedicated staleness integration only if owners need it |
+
+Resolved May 19, 2026: linked project publish validation, outlet manager master protection, linked outlet lookup, override price/payload validation, AI API policy enforcement, and theme/brand/layout policy enforcement.
 
 ### 8.3 Case 31 — The #1 Silent Killer
 
@@ -1227,13 +1225,13 @@ const ApplyPreviewSchema = z.object({
 | Category                                  | Tests   | Status                 |
 | ----------------------------------------- | ------- | ---------------------- |
 | A) Feature Flag & Backwards Compatibility | T1-T5   | ✅ All passing         |
-| B) Master Project Rules                   | T6-T10  | ⚠️ T8 partial          |
+| B) Master Project Rules                   | T6-T10  | ✅ All passing         |
 | C) Linking & Chain Consistency            | T11-T15 | ✅ All passing         |
 | D) Resolver Correctness                   | T16-T21 | ✅ All passing         |
 | E) Overrides                              | T22-T27 | ✅ All passing         |
 | F) Multi-Project Support                  | T28-T30 | ✅ All passing         |
-| G) Pricing Integrity & Staleness          | T31-T35 | ⚠️ T32,T33,T35 partial |
-| H) Security & Abuse                       | T36-T40 | ⚠️ T38,T39 partial     |
+| G) Pricing Integrity & Staleness          | T31-T35 | ⚠️ T32,T33 partial     |
+| H) Security & Abuse                       | T36-T40 | ✅ All passing         |
 
 ---
 
@@ -1243,11 +1241,11 @@ const ApplyPreviewSchema = z.object({
 
 | #   | Invariant                               | Status         | Action                  |
 | --- | --------------------------------------- | -------------- | ----------------------- |
-| A   | Chain tenants always have master        | ⚠️ PARTIAL     | Add publish enforcement |
+| A   | Linked outlet projects always have master | ✅ HANDLED     | Outlet creation seeds links; publish validates master |
 | B   | Master cannot link to another master    | ✅ HANDLED     | Implicit by design      |
 | C   | Outlet override never edits master data | ✅ HANDLED     | Separate documents      |
 | D   | IDs must never collide                  | ✅ HANDLED     | L*I*/L*C* prefixes      |
-| E   | Re-extraction preserves IDs             | ❌ NOT HANDLED | Add ID stability        |
+| E   | Re-extraction preserves IDs             | ⚠️ PARTIAL     | Matching preserves IDs when matched; explicit mapping layer deferred |
 
 ### 10.2 Write Operations Status
 
@@ -1561,7 +1559,7 @@ const isFirstExtraction = !hasExistingMenu;
 | File                                | Purpose                         | Status         |
 | ----------------------------------- | ------------------------------- | -------------- |
 | `src/hooks/useMenuProcessingJob.ts` | Local job real-time listener    | ✅ Existing    |
-| `src/hooks/useMasterJobStatus.ts`   | Master job listener for outlets | ✅ Implemented |
+| `src/hooks/useMasterJobStatus.ts`   | Bounded server-validated master job polling for outlets | ✅ Implemented |
 
 ---
 
@@ -1662,15 +1660,15 @@ Result: ✅ Review always shown, handles master/local complexity
 ```
 User Action: Outlet user tries to access project while master is extracting
 Expected Flow:
-1. useMasterJobStatus(masterProjectId) detects active master job
+1. `useMasterJobStatus(masterProjectId)` asks `/api/projects/master-job-status` for active master job state
 2. isMasterJobActive=true
 3. ExtractionJobBlockingOverlay shows:
    - "Master Menu Update in Progress"
    - No cancel button (not their job)
-4. Master job completes → listener updates → overlay hides automatically
+4. Master job completes → next bounded poll updates state → overlay hides automatically
 5. Outlet can now use project normally
 
-Result: ✅ Outlet blocked, auto-unblocks, no refresh needed
+Result: ✅ Outlet blocked, auto-unblocks after the next poll, no manual refresh needed
 ```
 
 ---
@@ -1693,15 +1691,15 @@ Result: ✅ Outlet blocked, auto-unblocks, no refresh needed
 
 **Major Changes in v3.6:**
 
-- **REMOVED extractionLock System**: After analysis, replaced with simpler real-time job listener approach
-  - Real-time job listeners already provide live status (not stale)
+- **REMOVED extractionLock System**: After analysis, replaced with bounded job-status polling
+  - Server route validates the outlet user's access before reading master job status
   - UI is blocked when job is running anyway
   - Saves Firebase doc size and extra reads
 - **Master Job Listening**: Added `useMasterJobStatus` hook for outlet projects
-  - Listens to master project's active jobs in real-time
+  - Polls the authenticated master job status route for active jobs
   - Automatically blocks outlet UI when master job is running
   - No extra Firestore fields needed on project documents
-  - Unblocks automatically when master job completes (no refresh needed)
+  - Unblocks automatically after the next poll when master job completes
 - **Linked Outlet First Extraction**: Still requires review (safety for master/local/override complexity)
 - **Similarity Threshold**: Lowered from 0.95 to **0.90** with warning band at 0.90-0.95 (low confidence)
 - **Category Constraint**: Changed from hard gate to **tie-breaker** (+0.05 bonus for same-category matches)

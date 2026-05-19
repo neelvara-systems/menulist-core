@@ -3,6 +3,7 @@ import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import { enqueueImageGenerationTask } from '@lib/google/cloudTask';
 import { logger } from '@lib/monitoring/logger';
+import { getLinkedOutletPolicyBlockReason } from '@lib/multiOutlet/serverOutletPolicy';
 import { checkBatchOperationLimit } from '@lib/rateLimit/helpers';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { buildSecurityContext } from '@lib/security/securityContext';
@@ -58,6 +59,22 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { generationConfig, projectId, itemsList, businessType, jobId } = rawData as GenerateImageViaApiPayloadBatchType;
+
+        const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
+            action: "image",
+            itemIds: itemsList.map((item) => item?.id ? String(item.id) : "").filter(Boolean),
+            projectId,
+            session,
+        });
+        if (outletPolicyBlockReason) {
+            logger.security('Outlet Policy Violation - Batch Image Generation API', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/image-generation/batch-trigger',
+                projectId,
+                reason: outletPolicyBlockReason,
+            }, 'medium');
+            return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
+        }
 
         await writeLogEntry({ logFileName: LOG_FILE, userId: userId, projectId: projectId, logType: 'BATCH_GENERATION_TASK_STARTED', error: null, data: { generationConfig, projectId, itemsList, jobId } });
 

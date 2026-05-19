@@ -5,7 +5,7 @@
 **Status:** ✅ Production Ready  
 **Priority:** P0 (Feature #4 — LOCKED)  
 **Original Date:** January 20, 2026  
-**Last Reviewed:** February 13, 2026  
+**Last Reviewed:** May 19, 2026
 **Author:** Lead Architect  
 **Target ICP:** Premium SMB Groups (2–10 stores)
 
@@ -16,6 +16,8 @@
 > - **Outlet Policy (15 flags):** HQ controls what outlets can do — see [multi-chain-permissions/](../multi-chain-permissions/)
 > - **Staff Roles (23 permissions):** Role-based access control — see [roles-permissions/](../roles-permissions/)
 > - **Master Updates Awareness (#4.1):** Signal doc pattern for operational change detection — see [master-updates-awareness_impl.md](./master-updates-awareness_impl.md)
+
+> **Final Verification Note (May 19, 2026):** Actual Chrome + Firebase QA verified mobile and desktop outlet menu editing with local-only `L_I_` / `L_C_` records, HQ/outlet switching, Firebase Auth claim refresh, and master-store isolation. Linked outlet saves now route through `/api/projects/outlet-save`, which enforces local ID prefixes and disabled OutletPolicy flags server-side before writing.
 
 ---
 

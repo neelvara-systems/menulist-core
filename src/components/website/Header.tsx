@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LuArrowRight, LuFileText, LuLayoutGrid, LuLogOut, LuMapPin, LuMenu, LuUser, LuX, LuZap } from 'react-icons/lu';
-import LogoMark from './shared/LogoMark';
+import BrandWordmark from './shared/BrandWordmark';
 import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
 
 const navItemKeys = [
@@ -46,8 +46,11 @@ export default function Header() {
       <header className="ws-header" style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--ws-border-default)' }}>
         <nav className="ws-container ws-header__nav" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem', padding: '0 var(--ws-space-6)' }}>
           <Link href="/" className="ws-header__brand" style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', textDecoration: 'none', color: 'var(--ws-text-primary)' }}>
-            <LogoMark height={26} />
-            <span style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: 0 }}>MenuList</span>
+            <BrandWordmark
+              className="ws-brand-wordmark"
+              iconHeight={26}
+              textClassName="ws-brand-wordmark__text ws-brand-gradient-text"
+            />
           </Link>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-8)' }} className="ws-desktop-nav">

@@ -18,7 +18,7 @@ import MenuListCanonicaWidgetTestHost from '../../components/canonica/MenuListCa
 import OwnerAppUpdatePrompt from '../../components/common/OwnerAppUpdatePrompt'
 
 export const metadata: Metadata = {
-  title: 'Menulist Ai Dashboard Main',
+  title: 'MenuList AI Dashboard Main',
   description: 'The everything app',
   generator: `
   

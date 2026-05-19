@@ -444,7 +444,7 @@ function ProjectsPage() {
     const {
         isMasterJobActive,
         blockingMessage: masterBlockingMessage,
-    } = useMasterJobStatus(masterProjectId);
+    } = useMasterJobStatus(masterProjectId, activeProject?.projectId || null);
 
     // State for extraction review screen
     const [showReviewScreen, setShowReviewScreen] = useState(false);

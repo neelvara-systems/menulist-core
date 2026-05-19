@@ -2,7 +2,9 @@
 
 **Feature:** #4B — Multi-Chain Permissions  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 13, 2026
+**Last Updated:** May 19, 2026
+
+> **May 19, 2026 review:** The sales positioning remains accurate after server-owned policy writes, active-store claim refresh, and server-side linked outlet save enforcement were verified. The correct claim is still "guardrails you set", not approval workflows or surveillance.
 
 ---
 

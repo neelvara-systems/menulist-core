@@ -7,6 +7,7 @@
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { logger } from '@lib/monitoring/logger';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
@@ -18,6 +19,7 @@ export default function StoreSwitcher() {
         useContext(PlatformGlobalDataContext);
 
     const activeStoresList = tenantDetails?.storesList?.filter((store: any) => store.active !== false) || [];
+    const masterStoreId = Number(activeStoresList.find((store: any) => store?.isMaster === true)?.storeId || storeDetails?.storeId || 0);
 
     // Only show for master users with canSwitchStores permission and more than one active store.
     if (!isMasterUser || activeStoresList.length <= 1 || !userPermissions?.canSwitchStores) return null;
@@ -41,6 +43,7 @@ export default function StoreSwitcher() {
 
     const handleSwitch = async (targetStoreId: number) => {
         if (Number(targetStoreId) === Number(storeDetails?.storeId)) {
+            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
             setActiveStoreContext(null);
             return;
         }
@@ -51,6 +54,7 @@ export default function StoreSwitcher() {
                 body: JSON.stringify({ targetStoreId }),
             });
             if (res.ok) {
+                await refreshFirebaseAuthClaims(targetStoreId);
                 setActiveStoreContext(targetStoreId);
             }
         } catch (e) {

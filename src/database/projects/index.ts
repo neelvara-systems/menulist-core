@@ -840,6 +840,28 @@ const runUpdateProject = async (data: Partial<Project>) => {
         }
     }
 
+    if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.projectId && data.masterProjectId) {
+        const response = await fetch('/api/projects/outlet-save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            body: JSON.stringify({ project: data }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(result.error || `Linked outlet save failed: ${response.status}`);
+        }
+
+        const updateData = result.project || data;
+        await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");
+        if (data.projectId) {
+            detectAndLogChanges(data.projectId, oldProject, data);
+        }
+
+        return updateData;
+    }
+
     const updateData = await requestBodyComposer(data);
     await setDoc(await getDataDocRef(data.projectId), updateData, {
         merge: true,

@@ -7,6 +7,7 @@ import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
 import { getImageAsBase64 } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { checkExpensiveAILimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
@@ -112,6 +113,22 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const { generationConfig, projectId, fileId, itemDetails, businessType } = rawData as EditImageViaApiPayloadType;
+
+        const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
+            action: "image",
+            itemIds: itemDetails?.id ? [String(itemDetails.id)] : [],
+            projectId,
+            session,
+        });
+        if (outletPolicyBlockReason) {
+            logger.security('Outlet Policy Violation - Image Editing API', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/image-editing',
+                projectId,
+                reason: outletPolicyBlockReason,
+            }, 'medium');
+            return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
+        }
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(

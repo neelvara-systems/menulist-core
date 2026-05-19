@@ -1,8 +1,9 @@
 'use client'
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { FEATURE_FLAGS } from '@config/features';
-import { EMPTY_ERROR, LOGO_SMALL } from "@constant/common";
+import { EMPTY_ERROR } from "@constant/common";
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
+import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import { useAppSelector } from "@hook/useAppSelector";
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
@@ -17,6 +18,8 @@ import { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { LuMoon, LuSun } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
+import AuthParticleFlowBackground from './AuthParticleFlowBackground';
+import AuthTriangulatedBackground from './AuthTriangulatedBackground';
 import styles from './loginPage.module.scss';
 
 const validateEmail = (email: string) => {
@@ -361,16 +364,37 @@ function LoginPage() {
     required: "'${name}' is required!",
     // ...
   };
+  const renderBrandIntro = (
+    statusText: string,
+    statusColor: string,
+    subHeading: string,
+    subHeadingColor: string,
+  ) => (
+    <>
+      <BrandWordmark
+        showText={false}
+        iconHeight={44}
+        className={styles.cardLogoMark}
+      />
+      <h3 className={`${styles.heading}`} style={{ color: statusColor }}>{statusText}</h3>
+      <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>
+        <BrandWordmark
+          showLogo={false}
+          textClassName={styles.brandTitleText}
+        />
+      </h1>
+      <div className={styles.subHeading} style={{ color: subHeadingColor }}>{subHeading}</div>
+    </>
+  );
 
   return <div className={styles.loginPageWrap}
     style={{
       background: token.colorBgBase,
       backgroundImage: `radial-gradient(circle at 10px 10px, ${token.colorTextDisabled} 1px, transparent 0)`,
     }}>
+    <AuthTriangulatedBackground darkMode={isDarkMode} />
+    <AuthParticleFlowBackground darkMode={isDarkMode} />
     <Space className={styles.headerWrap} align="center">
-      <div className={styles.itemWrap}>
-        <img src={LOGO_SMALL} />
-      </div>
       <Button
         icon={isDarkMode ? <LuSun /> : <LuMoon />}
         size="large"
@@ -383,35 +407,43 @@ function LoginPage() {
     <div className={styles.bodyWrap} style={{
       // background: "url(assets/images/loginPage/login_screen_bg.png)"
     }}>
-      <div className={styles.bgWrap}></div>
       <div className={styles.bodyContent}>
         <div className={styles.rightContent}>
           <div className={styles.formWrap}
             style={{
               // background: token.colorBgBase,
               // backgroundImage: `radial-gradient(circle at 10px 10px, ${token.colorTextDisabled} 1px, transparent 0)`,
-              borderColor: token.colorBorder,
-              background: `linear-gradient(0deg,rgba(186,207,247,.04),rgba(186,207,247,.04)), ${token.colorBgBase}`,
-              boxShadow: `inset 0 1px 1px 0 rgba(216,236,248,.2), inset 0 24px 48px 0 rgba(168,216,245,.06), 0 16px 32px rgba(0,0,0,.3)`,
+              borderColor: isDarkMode ? 'rgba(92, 230, 218, 0.2)' : 'rgba(60, 126, 150, 0.22)',
+              background: isDarkMode
+                ? 'linear-gradient(180deg, rgba(11, 17, 26, 0.96) 0%, rgba(5, 9, 16, 0.94) 100%)'
+                : 'linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(247, 252, 255, 0.9) 100%)',
+              boxShadow: isDarkMode
+                ? 'inset 0 1px 0 rgba(172, 246, 239, 0.12), inset 0 24px 60px rgba(40, 190, 180, 0.04), 0 24px 70px rgba(0, 0, 0, 0.5)'
+                : 'inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 24px 60px rgba(80, 170, 200, 0.05), 0 24px 70px rgba(21, 79, 110, 0.18)',
+              backdropFilter: 'blur(18px) saturate(1.08)',
+              WebkitBackdropFilter: 'blur(18px) saturate(1.08)',
             }}>
             {claimInfo && !claimSetupSuccess ? (
-              <>
-                <h3 className={`${styles.heading}`} style={{ color: token.colorTextLabel }}>Welcome, {claimInfo.businessName}!</h3>
-                <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>Menulist Ai</h1>
-                <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>Set up your account to manage your digital menu</div>
-              </>
+              renderBrandIntro(
+                `Welcome, ${claimInfo.businessName}!`,
+                token.colorTextLabel,
+                'Set up your account to manage your digital menu',
+                token.colorTextHeading,
+              )
             ) : claimSetupSuccess ? (
-              <>
-                <h3 className={`${styles.heading}`} style={{ color: token.colorSuccess }}>Account created!</h3>
-                <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>Menulist Ai</h1>
-                <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>You can now log in with {claimSetupLoginLabel} below</div>
-              </>
+              renderBrandIntro(
+                'Account created!',
+                token.colorSuccess,
+                `You can now log in with ${claimSetupLoginLabel} below`,
+                token.colorTextHeading,
+              )
             ) : (
-              <>
-                <h3 className={`${styles.heading}`} style={{ color: token.colorTextLabel }}>Welcome to</h3>
-                <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>Menulist Ai</h1>
-                <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>Take your business beyond the four walls</div>
-              </>
+              renderBrandIntro(
+                'Welcome to',
+                token.colorTextLabel,
+                'Take your business beyond the four walls',
+                token.colorTextHeading,
+              )
             )}
             {/* ━━━ CLAIM FLOW: Email/Password Setup Form ━━━ */}
             {claimInfo && showClaimEmailSetup && !claimSetupSuccess ? (

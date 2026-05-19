@@ -2,22 +2,48 @@
 
 > **Status:** ✅ Production Ready  
 > **Original Date:** 2026-01-22  
-> **Last Reviewed:** 2026-02-13  
+> **Last Reviewed:** 2026-05-19
+
 > **Source:** ChatGPT Deep Analysis + Codebase Cross-Check  
 > **Purpose:** Comprehensive test matrix for stability and scalability
 
-> **Post-Implementation Note (Feb 13, 2026):** The 124 test cases below cover the core multi-outlet feature (master/outlet linking, overrides, AI extraction). The following areas were added during implementation and need test case expansion in a future session:
+> **Post-Implementation Note (Feb 13, 2026; line-audited May 19, 2026):** This file now covers 90 numbered scenario cases, 40 QA matrix rows, the Firestore write contract, and deferred/by-design governance decisions for the core multi-outlet feature (master/outlet linking, overrides, AI extraction). The earlier "124 test cases" wording was stale because later chain-permission cases were appended without updating the count.
 >
 > - **Store Onboarding (Feature #4C):** Outlet creation/deactivation, billing, Chain Control Panel — see [store-onboarding/](./store-onboarding/)
 > - **Outlet Policy (15 flags):** Policy enforcement, `applyOutletPolicy()` — see [multi-chain-permissions/](../multi-chain-permissions/)
 > - **Staff Roles (23 permissions):** Permission resolution, `hasPermission()` — see [roles-permissions/](../roles-permissions/)
 > - **Master Updates Awareness (#4.1):** Signal doc, operational change detection — see [master-updates-awareness_impl.md](./master-updates-awareness_impl.md)
 
+> **Live Chrome/Firebase QA (May 19, 2026):** Verified the end-to-end add/switch/edit/isolation flow on actual Firebase data with QA tenant `39`, master store `39`, outlet store `40`, master project `39-mpctee7o-39`, and outlet project `39-mpcthm9t-40`.
+>
+> - Created/accessed outlet through owner UI and confirmed creator user access includes both stores.
+> - Added outlet local item `Outlet Test Chaat` and category `Outlet Specials`; Firestore stored `L_I_1779208870629_nhfqsp` and `L_C_1779209396986_b0rb6j` only in the outlet project.
+> - Switched back to HQ and refreshed; HQ project showed `Master Mains` / `Master Thali` only, with no outlet local item/category reflected.
+> - Switched back to outlet from desktop Locations and mobile Locations; outlet editor resolved master item + outlet local item while saving only local records.
+> - Confirmed the desktop outlet project editor no longer logs master job listener permission errors; master job status now uses `/api/projects/master-job-status`.
+> - Confirmed no Next image missing-src error when linked projects have extracted data but no source image URL; desktop editor shows a safe placeholder.
+> - Final server audit added the missing negative-path check: `/api/projects/outlet-save` now rejects disabled policy changes for price, availability, description, image, language additions, local item/category additions, and project deactivation before writing Firebase.
+> - Follow-up line audit added strict server validation for linked outlet override payloads: extra override fields and invalid price strings are rejected before Firebase writes.
+> - Follow-up policy audit also added server-side checks for linked outlet description/image generation, theme/brand/layout changes, and extraction job store scoping.
+
+---
+
+## May 19, 2026 Line-by-Line Audit Result
+
+| Area | Result |
+| ---- | ------ |
+| Numbered cases | ✅ Cases 1-90 re-read and checked against current runtime. Remaining partial items are Case 29 (customer item fallback polish), Case 31/82 (explicit ID mapping layer), and by-design/deferred items called out below. |
+| QA matrix | ✅ T8, T35, T38, and T39 were corrected from stale partial/missing states after server route and Firestore checks were verified/fixed. |
+| Desktop surfaces | ✅ Locations, Projects, linked editor, store customization, item/category modals, and public menu resolution use shared linked-outlet contracts. |
+| Mobile surfaces | ✅ Mobile Locations, project selector, menu editor, upload/review, item/category sheets, description/image sheets, and linked save path follow the same contracts. |
+| Server/Firebase | ✅ `/api/projects/outlet-save`, `/api/projects/master-job-status`, `/api/outlets/*`, AI description/image APIs, and Firestore rules now cover direct-bypass cases before writes or provider calls. |
+| Runtime evidence | ✅ Chrome/Firebase QA used tenant `39`, master store `39`, outlet store `40`, master project `39-mpctee7o-39`, and outlet project `39-mpcthm9t-40`; outlet local IDs stayed isolated from master after refresh and switching. |
+
 ---
 
 ## Executive Summary
 
-This document captures **40 real-world multi-outlet scenarios** and a **QA test matrix (40 tests)** to ensure the multi-outlet feature is production-ready. Each scenario is reviewed against the current codebase implementation.
+This document captures **90 real-world multi-outlet scenarios**, a **QA test matrix (40 tests)**, and the Firestore write contract to ensure the multi-outlet feature is production-ready. Each scenario is reviewed against the current codebase implementation.
 
 **Legend:**
 
@@ -111,7 +137,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | **Resolution Rule** | Name from master (locked), price from override                |
 | **Status**          | ✅ HANDLED                                                    |
 | **Evidence**        | `masterUtils.ts:21-29` — `LOCKED_ITEM_FIELDS` includes `name` |
-| **Notes**           | Override only contains price/available/active, not name       |
+| **Notes**           | Override contains only policy-allowed outlet fields, not name |
 
 #### Case 8: Master changes category structure (moves item to another category)
 
@@ -207,10 +233,10 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 
 | Aspect              | Detail                                                    |
 | ------------------- | --------------------------------------------------------- |
-| **Resolution Rule** | Description is locked. Outlet cannot modify               |
-| **Status**          | ✅ HANDLED                                                |
-| **Evidence**        | `masterUtils.ts:23` — `description` in LOCKED_ITEM_FIELDS |
-| **Notes**           | Outlet can add local-only variant if needed               |
+| **Resolution Rule** | Description is locked by default; allowed only when `outletPolicy.descriptionOverride=true` |
+| **Status**          | ✅ HANDLED                                                                        |
+| **Evidence**        | `Editor.tsx` and `MobileMenuScreen.tsx` preserve description overrides only when policy allows; `/api/projects/outlet-save` rejects disabled description changes |
+| **Notes**           | Outlet can add a local-only variant if policy allows local items                  |
 
 #### Case 17: Outlet marks inherited item unavailable, master later marks it available
 
@@ -254,11 +280,10 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 
 | Aspect              | Detail                                                                |
 | ------------------- | --------------------------------------------------------------------- |
-| **Resolution Rule** | Chain must always have master. Every published project must be linked |
-| **Status**          | ⚠️ PARTIAL                                                            |
-| **Evidence**        | `multiOutlet/index.ts:82-87` — Single-file constraint enforced        |
-| **Gap**             | No enforcement that every outlet project MUST have masterProjectId    |
-| **Action**          | Add validation on publish to require masterProjectId                  |
+| **Resolution Rule** | Linked outlet projects must have a live master; independent local projects are allowed only through policy |
+| **Status**          | ✅ HANDLED                                                            |
+| **Evidence**        | `publishProject()` validates existing `masterProjectId`; `allowLocalProjects` controls separate local-project creation |
+| **Notes**           | The old "every published project must be linked" wording conflicted with Case 61 |
 
 #### Case 22: Master has multiple projects (Lunch master + Dinner master)
 
@@ -378,8 +403,8 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | ------------------- | ------------------------------------------------------- |
 | **Resolution Rule** | Server-side enforcement required                        |
 | **Status**          | ✅ HANDLED                                              |
-| **Evidence**        | `masterUtils.ts:99-117` — `validateInheritedItemEdit()` |
-| **Notes**           | Must be called in API routes                            |
+| **Evidence**        | `/api/projects/outlet-save` rejects invalid local IDs, disabled policy overrides, invalid prices, and extra override fields before Admin SDK writes; Firestore rules block direct linked-project `files[]` writes |
+| **Notes**           | UI helpers still prevent unsafe edits early, but server validation is the enforcement boundary |
 
 #### Case 35: HQ edits master while outlet manager edits overrides (concurrency)
 
@@ -421,18 +446,17 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | **Resolution Rule** | Max 1 read per render (master only). Store data passed from React state     |
 | **Status**          | ✅ HANDLED                                                                  |
 | **Evidence**        | `resolveProject.ts:84-87` — Accepts storeProject param, only fetches master |
-| **Gap**             | No explicit master caching layer                                            |
-| **Notes**           | 0 reads if not linked, 1 read if linked (master fetch only)                 |
+| **Gap**             | None                                                                        |
+| **Notes**           | 0 reads if not linked, 1 read if linked, cached for 30 seconds per master project |
 
 #### Case 40: New outlet with empty menu must link to master
 
 | Aspect              | Detail                                         |
 | ------------------- | ---------------------------------------------- |
-| **Resolution Rule** | Cannot publish until linked                    |
-| **Status**          | ⚠️ PARTIAL                                     |
-| **Evidence**        | No publish-time validation for masterProjectId |
-| **Gap**             | Missing validation on publish                  |
-| **Action**          | Add `masterProjectId` check on project publish |
+| **Resolution Rule** | Outlet creation seeds linked inherited projects from master menus; linked publishes validate the master exists |
+| **Status**          | ✅ HANDLED                                     |
+| **Evidence**        | `/api/outlets/create` creates outlet projects with `masterProjectId`; `publishProject()` blocks broken master links |
+| **Gap**             | None                                           |
 
 #### Case 41: Customer views linked store's public menu
 
@@ -448,7 +472,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 
 ---
 
-## Part 2: QA Test Matrix (41 Tests)
+## Part 2: QA Test Matrix (40 Tests)
 
 ### A) Feature Flag & Backwards Compatibility (T1-T5)
 
@@ -466,7 +490,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | --- | ----------------------------------------- | -------------------- | ------ | -------------------------------------------------------- |
 | T6  | Mark project as master                    | `isMaster` field set | ✅     | `multiOutlet/index.ts:56-129` — `setProjectAsMaster()`   |
 | T7  | Master cannot link to another master      | Reject               | ✅     | Implicit - master has no masterProjectId                 |
-| T8  | Outlet manager cannot edit master         | 403 reject           | ⚠️     | No role-based check in DAL                               |
+| T8  | Outlet manager cannot edit master         | 403 reject           | ✅     | Store-scoped auth claims + `requireAnyStorePermissionForStoreData()` on linked save/status routes |
 | T9  | Master deletion blocked if outlets linked | Block with error     | ✅     | `projects/index.ts:719-728` — `hasLinkedOutlets()` check |
 | T10 | Master edits log MOL                      | Event emitted        | ✅     | `projects/index.ts:409-430` — MASTER_MENU_UPDATED event  |
 
@@ -477,7 +501,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | T11 | Link outlet to master           | masterProjectId saved | ✅     | `linkStoreToMaster()`                            |
 | T12 | Linking validates master exists | Reject if not found   | ✅     | `multiOutlet/index.ts:72-80`                     |
 | T13 | Cross-tenant linking blocked    | Reject                | ✅     | `multiOutlet/index.ts:66-69`                     |
-| T14 | Chain must have master enforced | Block publish         | ✅     | `projects/index.ts:496-517` — Publish validation |
+| T14 | Linked project master enforced  | Block broken publish  | ✅     | `publishProject()` validates the referenced master project before publish |
 | T15 | Outlet cannot unlink itself     | Reject                | ✅     | `ENABLE_UNLINK_FROM_MASTER` flag                 |
 
 ### D) Resolver Correctness (T16-T21)
@@ -488,7 +512,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | T17 | Local-only items appear only at outlet | Isolation                       | ✅     | `resolveProject.ts:166-170`                                  |
 | T18 | Inheritance states correct             | inherited/overridden/local-only | ✅     | `resolveProject.ts:200-217`                                  |
 | T19 | Category ordering override applies     | Sorted correctly                | ✅     | `resolveProject.ts:191-197`                                  |
-| T20 | Forbidden edits blocked                | Write rejected                  | ✅     | `validateInheritedItemEdit()`                                |
+| T20 | Forbidden edits blocked                | Write rejected                  | ✅     | `/api/projects/outlet-save` policy/local-ID/schema validation |
 | T21 | Resolver handles missing master        | Fail-safe                       | ✅     | `resolveProject.ts:115-129` — Graceful fallback with warning |
 
 ### E) Overrides (T22-T27)
@@ -518,7 +542,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | T32 | Outlet override marks only that outlet stale        | Correct isolation | ⚠️     | Partial - no staleness propagation                |
 | T33 | Local-only item change marks only that outlet stale | Correct isolation | ⚠️     | No staleness integration                          |
 | T34 | No extra writes on read-time resolution             | Zero writes       | ✅     | Resolver is read-only                             |
-| T35 | Linked outlet index updates correctly               | Index accurate    | ❌     | No linked outlet index                            |
+| T35 | Linked outlet lookup remains accurate               | Query accurate    | ✅     | `getLinkedOutletStoreIds()` queries current tenant stores only when needed |
 
 ### H) Security & Abuse (T36-T40)
 
@@ -526,8 +550,8 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | --- | ---------------------------------------------- | ------------------- | ------ | ---------------------------------------- |
 | T36 | Outlet cannot override another store's project | Reject              | ✅     | Session-based sId check                  |
 | T37 | Cross-tenant read of master blocked            | Reject/null         | ✅     | Tenant validation                        |
-| T38 | Price validation enforced                      | Reject bad format   | ⚠️     | No explicit price validation in override |
-| T39 | Override payload must be strict schema         | Reject extra fields | ⚠️     | No Zod schema validation                 |
+| T38 | Price validation enforced                      | Reject bad format   | ✅     | `/api/projects/outlet-save` uses `isValidPrice()` in override schema |
+| T39 | Override payload must be strict schema         | Reject extra fields | ✅     | `/api/projects/outlet-save` uses strict Zod override schemas |
 | T40 | MOL logging never blocks user actions          | Fire-and-forget     | ✅     | `molEvents.ts:50-57`                     |
 
 ---
@@ -538,7 +562,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 
 | #   | Invariant                               | Status     | Evidence               |
 | --- | --------------------------------------- | ---------- | ---------------------- |
-| A   | Chain tenants always have master        | ⚠️ PARTIAL | No publish enforcement |
+| A   | Linked outlet projects always have master | ✅       | Outlet creation seeds `masterProjectId`; publish blocks missing/deleted masters |
 | B   | Master cannot link to another master    | ✅         | Implicit by design     |
 | C   | Outlet override never edits master data | ✅         | Separate documents     |
 | D   | IDs must never collide                  | ✅         | `L_I_`/`L_C_` prefixes |
@@ -571,7 +595,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | ~~No publish validation for masterProjectId~~ | ~~HIGH~~   | ✅ FIXED                        | `projects/index.ts`    |
 | ~~No master deletion protection~~             | ~~HIGH~~   | ✅ FIXED                        | `projects/index.ts`    |
 | ~~No pricing staleness propagation~~          | ~~MEDIUM~~ | ✅ ADDRESSED (InheritanceBadge) | N/A                    |
-| No price validation in override               | MEDIUM     | Add Zod schema                  | `multiOutlet/index.ts` |
+| ~~No price validation in override~~           | ~~MEDIUM~~ | ✅ FIXED                        | `/api/projects/outlet-save` |
 
 ### Recommended Additions (P1)
 
@@ -580,7 +604,7 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 | ~~`clearAllOverrides()` function~~ | Add bulk reset capability                  | ✅ FIXED   |
 | Master ID stability on re-extract  | Add mapping layer or block re-extract      | ⚠️ PENDING |
 | ~~`getLinkedOutlets()` function~~  | Add query to find outlets linked to master | ✅ FIXED   |
-| Zod validation on override payload | Reject extra/invalid fields                | ⚠️ PENDING |
+| ~~Zod validation on override payload~~ | Reject extra/invalid fields                | ✅ FIXED |
 
 ### By Design (No Action)
 
@@ -594,14 +618,14 @@ This document captures **40 real-world multi-outlet scenarios** and a **QA test 
 
 ## Part 5: Test Checklist Summary
 
-### Implementation Coverage
+### Implementation Coverage (May 19, 2026 Line Audit)
 
-| Category          | Total  | ✅ Handled   | ⚠️ Partial   | ❌ Missing |
-| ----------------- | ------ | ------------ | ------------ | ---------- |
-| Scenarios (1-40)  | 40     | 33           | 5            | 2          |
-| QA Tests (T1-T40) | 40     | 30           | 7            | 3          |
-| Write Operations  | 11     | 10           | 1            | 0          |
-| **Overall**       | **91** | **73 (80%)** | **13 (14%)** | **5 (5%)** |
+| Category                  | Total   | ✅ Handled | ⚠️ Partial | 🔒 Deferred/Rejected/By Design |
+| ------------------------- | ------- | ---------- | ---------- | ------------------------------ |
+| Numbered cases (1-90)     | 90      | 75         | 3          | 12                             |
+| QA Tests (T1-T40)         | 40      | 37         | 2          | 1                              |
+| Write Operations          | 15      | 14         | 0          | 1                              |
+| **Overall tracked rows**  | **145** | **126**    | **5**      | **14**                         |
 
 ### Release Blockers
 
@@ -692,15 +716,15 @@ if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.masterProjectId) {
 
 ---
 
-### T8 — Role-Based Master Protection 🔒 DEFERRED
+### T8 — Role-Based Master Protection ✅ HANDLED FOR MENU FLOW
 
 **Problem:** Outlet managers could potentially edit master project data if they have access.
 
-**Current State:** No role-based check in DAL functions.
+**Current State:** The production menu path is store-scoped. Linked outlet saves go through `/api/projects/outlet-save`, which uses `withAuth()`, tenant access validation, `requireAnyStorePermissionForStoreData()`, and the caller/current-store check before Admin SDK writes. Direct linked-project client writes are further constrained by Firestore rules.
 
-**Decision:** DEFERRED until role-based access control (RBAC) is fully implemented across the platform. This is a security enhancement, not a data integrity issue.
+**Decision:** Handled for current menu editing. Broader RBAC refinements remain part of the platform permissions roadmap, but this is no longer a multi-outlet menu integrity gap.
 
-**Priority:** P2 — Implement after RBAC foundation is ready
+**Priority:** None for this feature; monitor with the roles-permissions roadmap.
 
 ---
 
@@ -803,7 +827,7 @@ With `masterPrice` prop, tooltip shows: `"(Master price: $X)"`
 
 ---
 
-### T35 — Master "Forced Push" to Outlets
+### Deferred Request — Master "Forced Push" to Outlets
 
 **Problem:** HQ wants to push a change to ALL outlets, overriding their local overrides.
 
@@ -886,7 +910,9 @@ export const forcePushToOutlets = async (
 
 ## Part 7: Updated Implementation Summary
 
-### Final Status After Jan 22, 2026 Fixes
+### Historical Snapshot After Jan 22, 2026 Fixes
+
+This snapshot is retained for audit history. The current line-audited status is the May 19, 2026 coverage table above and the final summary in Part 11.
 
 | Category          | Total  | ✅ Handled   | ⚠️ Partial | 🔒 Deferred |
 | ----------------- | ------ | ------------ | ---------- | ----------- |
@@ -904,14 +930,14 @@ export const forcePushToOutlets = async (
 | T14 — Publish validation        | ✅ FIXED |
 | Local-only DAL functions        | ✅ FIXED |
 
-### Deferred Items (Non-Blockers)
+### Deferred/Resolved Items (Non-Blockers)
 
 | Item                              | Reason                           | Priority |
 | --------------------------------- | -------------------------------- | -------- |
-| T8 — Role-based master protection | Awaiting RBAC implementation     | P2       |
+| T8 — Role-based master protection | Resolved for linked menu save/status routes; broad staff RBAC remains under roles-permissions | Done     |
 | T27 — Override limit per outlet   | No business need                 | P3       |
 | T32 — Orphaned category detection | Edge case, post-RBAC             | P2       |
-| T35 — Master forced push          | Violates "outlet wins" principle | P3       |
+| T35 — Linked outlet lookup        | Resolved with current tenant-scoped linked outlet lookup | Done     |
 | T38 — Bulk override templates     | Nice-to-have                     | P3       |
 | T40 — Full diff view              | UI enhancement                   | P2       |
 
@@ -955,7 +981,7 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 | **Risk**            | Outlet edits while master SSOT is unstable → data corruption            |
 | **Resolution Rule** | Block outlet when `isMasterJobActive = true`                            |
 | **Status**          | ✅ HANDLED                                                              |
-| **Evidence**        | `useMasterJobStatus.ts:1-98` — Real-time listener for master job status |
+| **Evidence**        | `useMasterJobStatus.ts` calls `/api/projects/master-job-status`; the API validates tenant/store access before checking active jobs |
 | **Notes**           | `ExtractionJobBlockingOverlay` shows "Master menu update in progress"   |
 
 #### Case 43: Outlet opens different project while master review pending (same chain)
@@ -965,7 +991,7 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 | **Scenario** | Master has pending review for Project P1, outlet opens P2       |
 | **Expected** | P2 is allowed — lock is per-project, not per-tenant             |
 | **Status**   | ✅ HANDLED                                                      |
-| **Evidence** | `useMasterJobStatus` only listens to specific `masterProjectId` |
+| **Evidence** | `useMasterJobStatus` polls only the specific `masterProjectId` and optional outlet project |
 
 #### Case 44: Outlet tries to publish while master review pending
 
@@ -994,7 +1020,7 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 | **Expected** | Job becomes `cancelled`, lock removed, outlets regain access |
 | **Status**   | ✅ HANDLED                                                   |
 | **Evidence** | `discardExtractionChanges()` sets job status to `cancelled`  |
-| **Notes**    | `useMasterJobStatus` auto-detects status change, unblocks UI |
+| **Notes**    | `useMasterJobStatus` re-checks status every 15 seconds and unblocks UI when the master job clears |
 
 #### Case 47: Master approves review (Save)
 
@@ -1245,30 +1271,32 @@ When AI extraction runs on a master project, outlets must be blocked until revie
 
 ---
 
-## Part 9: Updated Test Summary (Jan 25, 2026)
+## Part 9: Chain-Extraction Snapshot (Jan 25, 2026)
+
+This section records the chain-extraction audit before the chain-permission cases were appended. Use Part 11 for current full-file totals.
 
 ### Final Implementation Coverage
 
 | Category                 | Total   | ✅ Handled    | ⚠️ Partial | 🔒 Deferred/Rejected |
 | ------------------------ | ------- | ------------- | ---------- | -------------------- |
-| Scenarios (1-41)         | 41      | 35            | 4          | 2                    |
+| Base scenarios in this snapshot (1-41) | 41      | 35            | 4          | 2                    |
 | Chain Extraction (42-69) | 28      | 23            | 0          | 5                    |
 | QA Tests (T1-T40)        | 40      | 33            | 2          | 5                    |
 | Write Operations         | 15      | 14            | 0          | 1                    |
-| **Overall**              | **124** | **105 (85%)** | **6 (5%)** | **13 (10%)**         |
+| **Scoped rows in this snapshot** | **124** | **105 (85%)** | **6 (5%)** | **13 (10%)** |
 
 ### New Components Added (Jan 25, 2026)
 
 | Component                      | Purpose                                  | File                                                  |
 | ------------------------------ | ---------------------------------------- | ----------------------------------------------------- |
-| `useMasterJobStatus`           | Real-time listener for master job status | `src/hooks/useMasterJobStatus.ts`                     |
+| `useMasterJobStatus`           | Bounded authenticated polling for master job status | `src/hooks/useMasterJobStatus.ts` + `/api/projects/master-job-status` |
 | `ExtractionJobBlockingOverlay` | Hard-block UI when job active            | `src/components/.../ExtractionJobBlockingOverlay.tsx` |
 
 ### Key Design Decisions
 
 | Decision                      | Resolution                                | Rationale                         |
 | ----------------------------- | ----------------------------------------- | --------------------------------- |
-| Master lock inheritance       | Real-time listener (`useMasterJobStatus`) | No Firestore field, no stale data |
+| Master lock inheritance       | Server-validated polling (`useMasterJobStatus`) | No outlet-side direct listener against master job docs |
 | Orphan override validation    | Handle at read-time, not write-time       | Extra read = cost + latency       |
 | Multi-reviewer lock           | Last write wins                           | Complexity vs value tradeoff      |
 | Category matching             | Tie-breaker bonus, not hard gate          | Handles slight name variations    |
@@ -1295,20 +1323,20 @@ These cases cover permission enforcement, Firestore security rules, similarity m
 | Aspect              | Detail                                                                               |
 | ------------------- | ------------------------------------------------------------------------------------ |
 | **ChatGPT Concern** | Outlet can trigger extraction/description/image gen via API even if UI hides buttons |
-| **Status**          | ⚠️ PARTIAL                                                                           |
-| **Evidence**        | Types exist: `StorePermissions` in `multiOutlet.types.ts:136-144`                    |
-| **Gap**             | Server-side enforcement NOT implemented in API routes                                |
-| **Priority**        | P1 — Not blocking for launch if store managers are trusted                           |
+| **Status**          | ✅ HANDLED                                                                           |
+| **Evidence**        | Description and image APIs call `getLinkedOutletPolicyBlockReason()` before AI capacity/provider calls; extraction job creation is store-token scoped in Firestore rules |
+| **Gap**             | None for current production AI menu actions                                          |
+| **Priority**        | Done                                                                                 |
 
 #### Case 71: Outlet changes theme/branding/layout → brand breaks
 
 | Aspect              | Detail                                                                     |
 | ------------------- | -------------------------------------------------------------------------- |
 | **ChatGPT Concern** | Outlet modifies theme/colors/logo → brand inconsistency                    |
-| **Status**          | ⚠️ PARTIAL                                                                 |
-| **Evidence**        | Types exist: `canOverrideTheme/canOverrideBrandIdentity/canOverrideLayout` |
-| **Gap**             | UI enforcement NOT implemented (editor not disabled based on permissions)  |
-| **Priority**        | P1 — Defer to post-launch                                                  |
+| **Status**          | ✅ HANDLED                                                                 |
+| **Evidence**        | `/api/projects/outlet-save` rejects theme, brand, and layout config changes when the matching policy flag is disabled |
+| **Gap**             | None for linked outlet project saves                                       |
+| **Priority**        | Done                                                                       |
 
 #### Case 72: Outlet edits master-linked project via direct Firestore write
 
@@ -1504,32 +1532,34 @@ These cases cover permission enforcement, Firestore security rules, similarity m
 
 ---
 
-## Part 11: Updated Test Summary (Jan 26, 2026)
+## Part 11: Updated Test Summary (Line-Audited May 19, 2026)
 
 ### Final Implementation Coverage
 
-| Category                 | Total   | ✅ Handled    | ⚠️ Partial | 🔒 Deferred/Rejected |
-| ------------------------ | ------- | ------------- | ---------- | -------------------- |
-| Scenarios (1-41)         | 41      | 35            | 4          | 2                    |
-| Chain Extraction (42-69) | 28      | 23            | 0          | 5                    |
-| Chain Permission (70-90) | 21      | 13            | 3          | 5                    |
-| QA Tests (T1-T40)        | 40      | 33            | 2          | 5                    |
-| Write Operations         | 15      | 14            | 0          | 1                    |
-| **Overall**              | **145** | **118 (81%)** | **9 (6%)** | **18 (12%)**         |
+| Category                  | Total   | ✅ Handled | ⚠️ Partial | 🔒 Deferred/Rejected/By Design |
+| ------------------------- | ------- | ---------- | ---------- | ------------------------------ |
+| Numbered cases (1-90)     | 90      | 75         | 3          | 12                             |
+| QA Tests (T1-T40)         | 40      | 37         | 2          | 1                              |
+| Write Operations          | 15      | 14         | 0          | 1                              |
+| **Overall tracked rows**  | **145** | **126**    | **5**      | **14**                         |
 
-### New Security Rules Added (Jan 26, 2026)
+### Security Rules and Server Guards
 
-| Rule                    | Purpose                                       | File              |
-| ----------------------- | --------------------------------------------- | ----------------- |
-| `isValidOutletUpdate()` | Block outlet writes to `files[]` & `masterId` | `firestore.rules` |
+| Guard | Purpose | File |
+| ----- | ------- | ---- |
+| `isValidOutletUpdate()` | Block outlet writes to `files[]` and `masterId` | `firestore.rules` |
+| `menuImageProcessingJobs.sId` create guard | Prevent client-created extraction jobs under another store's id | `firestore.rules` |
+| `/api/projects/outlet-save` strict schema | Reject extra override fields and invalid prices before Firebase writes | `src/app/api/projects/outlet-save/route.ts` |
+| Linked outlet AI policy guard | Block disabled outlet description/image generation before provider calls | `src/lib/multiOutlet/serverOutletPolicy.ts` |
+| Linked outlet design policy guard | Block disabled theme, brand, and layout changes before Firebase writes | `src/app/api/projects/outlet-save/route.ts` |
 
-### Partial Items Requiring P1 Attention
+### Partial Items Requiring Attention
 
-| Case | Description                    | Gap                              |
-| ---- | ------------------------------ | -------------------------------- |
-| 70   | AI tool permission enforcement | Server-side checks not in routes |
-| 71   | Theme/branding lock            | UI not disabled based on perms   |
-| 82   | Master ID stability            | No explicit mapping layer        |
+| Item | Description | Gap |
+| ---- | ----------- | --- |
+| Case 29 | Local-only item deleted after QR references exist | Customer-facing fallback polish still needs explicit verification |
+| Case 31 / 82 | Master ID stability during re-extraction | Matching preserves IDs when matched; explicit mapping layer remains deferred until production evidence justifies the cost |
+| T32 / T33 | Outlet staleness markers | Isolation is correct; no dedicated staleness propagation integration yet |
 
 ---
 
@@ -1585,9 +1615,9 @@ All spec requirements verified against implementation:
 
 | Blocker                 | ChatGPT Claim                  | Actual Status                           | Decision        |
 | ----------------------- | ------------------------------ | --------------------------------------- | --------------- |
-| Case 70: Server guard   | API needs permission check     | LOW risk — Firestore rules block        | Skip            |
-| Case 71: UI permissions | Buttons not disabled           | UX polish only                          | Defer P1        |
-| Case 82: ID stability   | IDs change on re-extract       | **FALSE** — Comparison engine preserves | Already handled |
+| Case 70: Server guard   | API needs permission check     | Fixed — AI menu APIs enforce outlet policy before provider calls | Done            |
+| Case 71: UI permissions | Buttons not disabled           | Fixed at write boundary — linked outlet saves reject disabled theme/brand/layout changes | Done            |
+| Case 82: ID stability   | IDs change on re-extract       | Matching preserves IDs when matched; explicit mapping layer remains deferred | Partial / monitored |
 | Price validation        | Overrides not validated        | **FALSE** — `isValidPrice()` used       | Already handled |
 | Master lock             | Outlets edit during master job | **FALSE** — `useMasterJobStatus` blocks | Already handled |
 

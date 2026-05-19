@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
+import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
@@ -217,6 +218,7 @@ export default function MobileShell() {
         activeSubscriptionLoading,
         isMasterUser,
         setActiveStoreContext,
+        storeDetails,
         tenantDetails,
         userPermissions,
     } = useContext(PlatformGlobalDataContext);
@@ -232,6 +234,7 @@ export default function MobileShell() {
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
     const [isOffline, setIsOffline] = useState(false);
+    const [isReturningToHq, setIsReturningToHq] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
@@ -246,9 +249,28 @@ export default function MobileShell() {
     const activeOutletSummary = isMasterUser && activeStoreContext
         ? tenantDetails?.storesList?.find((store: any) => store.storeId === activeStoreContext)
         : null;
+    const masterStoreSummary = tenantDetails?.storesList?.find((store: any) => store?.isMaster === true) || null;
+    const masterStoreId = Number(
+        masterStoreSummary?.storeId
+        || (session?.user as any)?.storeId
+        || storeDetails?.storeId
+        || 0
+    );
     const activeOutletName = activeOutletSummary
         ? getStoreContextName(activeOutletSummary, `Store ${activeStoreContext}`)
         : '';
+    const handleReturnToHq = useCallback(async () => {
+        if (isReturningToHq) return;
+        setIsReturningToHq(true);
+        try {
+            if (masterStoreId) {
+                await refreshFirebaseAuthClaims(masterStoreId);
+            }
+            setActiveStoreContext(null);
+        } finally {
+            setIsReturningToHq(false);
+        }
+    }, [isReturningToHq, masterStoreId, setActiveStoreContext]);
     const canUseTodayTab = hasAnyPermission(userPermissions, [
         PERMISSIONS.MANAGE_MENU_SHARING,
         PERMISSIONS.PUBLISH_MENU,
@@ -490,7 +512,8 @@ export default function MobileShell() {
                         </Flex>
                         <Button
                             fill="outline"
-                            onClick={() => setActiveStoreContext(null)}
+                            loading={isReturningToHq}
+                            onClick={() => void handleReturnToHq()}
                             size="small"
                             style={{ minHeight: 36 }}
                         >

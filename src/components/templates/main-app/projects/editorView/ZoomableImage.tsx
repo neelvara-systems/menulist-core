@@ -11,7 +11,7 @@ const ZOOM_HINT_SHOWN_KEY = 'zoomableImage_hintShown';
 
 interface ZoomableImageProps {
     isLoading: boolean;
-    src: string;
+    src?: string | null;
     alt: string;
     retryTranslations: any
     retryDescription: any
@@ -22,6 +22,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
     const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const [showZoomHint, setShowZoomHint] = useState(false);
+    const hasImage = typeof src === 'string' && src.trim().length > 0;
 
     useEffect(() => {
         // next/image renders an img tag, we can target it within the container
@@ -34,7 +35,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
     // Show first-time zoom hint
     useEffect(() => {
         const hintShown = localStorage.getItem(ZOOM_HINT_SHOWN_KEY);
-        if (!hintShown) {
+        if (hasImage && !hintShown) {
             setShowZoomHint(true);
             // Auto-hide after 5 seconds
             const timer = setTimeout(() => {
@@ -43,7 +44,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
             }, 5000);
             return () => clearTimeout(timer);
         }
-    }, []);
+    }, [hasImage]);
 
     const [zoom, setZoom] = useState(1);
     const [isDragging, setIsDragging] = useState(false);
@@ -221,7 +222,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                 tabIndex={0}
             >
                 {/* First-time zoom hint */}
-                {showZoomHint && !isLoading && (
+                {showZoomHint && hasImage && !isLoading && (
                     <div
                         style={{
                             position: 'absolute',
@@ -264,92 +265,114 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                     }}>
                     <Spin size="large" />
                 </div>}
-                <div style={{
-                    position: 'relative',
-                    width: '100%',
-                    minWidth: 300,
-                    height: 400, // Set a fixed height or use aspect-ratio if known
-                    transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
-                    transformOrigin: '0 0',
-                    transition: isDragging ? 'none' : 'transform 0.3s ease-out',
-                    pointerEvents: 'none'
-                }}>
-                    <Image
-                        src={src}
-                        alt={alt}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        style={{
-                            objectFit: 'contain',
-                        }}
-                        draggable={false}
-                    />
-                </div>
-                <Flex
-                    gap={4}
-                    style={{
-                        position: 'absolute',
-                        bottom: 10,
-                        right: 10,
-                        background: token.colorBgContainer,
-                        padding: '4px 8px',
-                        borderRadius: 8,
-                        boxShadow: token.boxShadowSecondary,
-                        zIndex: 9,
-                        opacity: 0.9,
-                        backdropFilter: 'blur(8px)',
-                        transition: 'opacity 0.3s ease'
-                    }}
-                    className="zoom-controls"
-                >
-                    <Tooltip title="Zoom out (-)">
-                        <Button
-                            type="text"
-                            icon={<LuMinus />}
-                            onClick={handleZoomOut}
-                            size="small"
-                            disabled={zoom <= 1}
-                        />
-                    </Tooltip>
-                    <Tooltip title="Click to reset zoom">
-                        <span
-                            onClick={handleResetZoom}
-                            style={{
-                                color: token.colorTextSecondary,
-                                minWidth: 50,
-                                textAlign: 'center',
-                                borderLeft: `1px solid ${token.colorBorder}`,
-                                borderRight: `1px solid ${token.colorBorder}`,
-                                cursor: zoom > 1 ? 'pointer' : 'default',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '0 4px'
-                            }}
-                        >
-                            {Math.round(zoom * 100)}%
-                        </span>
-                    </Tooltip>
-                    <Tooltip title="Zoom in (+)">
-                        <Button
-                            type="text"
-                            icon={<LuPlus />}
-                            onClick={handleZoomIn}
-                            size="small"
-                            disabled={zoom >= 4}
-                        />
-                    </Tooltip>
-                    {zoom > 1 && (
-                        <Tooltip title="Reset zoom (0)">
-                            <Button
-                                type="text"
-                                icon={<LuRotateCcw size={14} />}
-                                onClick={handleResetZoom}
-                                size="small"
+                {hasImage ? (
+                    <>
+                        <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            minWidth: 300,
+                            height: 400, // Set a fixed height or use aspect-ratio if known
+                            transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
+                            transformOrigin: '0 0',
+                            transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+                            pointerEvents: 'none'
+                        }}>
+                            <Image
+                                src={src.trim()}
+                                alt={alt}
+                                fill
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                style={{
+                                    objectFit: 'contain',
+                                }}
+                                draggable={false}
                             />
-                        </Tooltip>
-                    )}
-                </Flex>
+                        </div>
+                        <Flex
+                            gap={4}
+                            style={{
+                                position: 'absolute',
+                                bottom: 10,
+                                right: 10,
+                                background: token.colorBgContainer,
+                                padding: '4px 8px',
+                                borderRadius: 8,
+                                boxShadow: token.boxShadowSecondary,
+                                zIndex: 9,
+                                opacity: 0.9,
+                                backdropFilter: 'blur(8px)',
+                                transition: 'opacity 0.3s ease'
+                            }}
+                            className="zoom-controls"
+                        >
+                            <Tooltip title="Zoom out (-)">
+                                <Button
+                                    type="text"
+                                    icon={<LuMinus />}
+                                    onClick={handleZoomOut}
+                                    size="small"
+                                    disabled={zoom <= 1}
+                                />
+                            </Tooltip>
+                            <Tooltip title="Click to reset zoom">
+                                <span
+                                    onClick={handleResetZoom}
+                                    style={{
+                                        color: token.colorTextSecondary,
+                                        minWidth: 50,
+                                        textAlign: 'center',
+                                        borderLeft: `1px solid ${token.colorBorder}`,
+                                        borderRight: `1px solid ${token.colorBorder}`,
+                                        cursor: zoom > 1 ? 'pointer' : 'default',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '0 4px'
+                                    }}
+                                >
+                                    {Math.round(zoom * 100)}%
+                                </span>
+                            </Tooltip>
+                            <Tooltip title="Zoom in (+)">
+                                <Button
+                                    type="text"
+                                    icon={<LuPlus />}
+                                    onClick={handleZoomIn}
+                                    size="small"
+                                    disabled={zoom >= 4}
+                                />
+                            </Tooltip>
+                            {zoom > 1 && (
+                                <Tooltip title="Reset zoom (0)">
+                                    <Button
+                                        type="text"
+                                        icon={<LuRotateCcw size={14} />}
+                                        onClick={handleResetZoom}
+                                        size="small"
+                                    />
+                                </Tooltip>
+                            )}
+                        </Flex>
+                    </>
+                ) : (
+                    <Flex
+                        align="center"
+                        justify="center"
+                        vertical
+                        gap={8}
+                        style={{
+                            border: `1px dashed ${token.colorBorder}`,
+                            borderRadius: 8,
+                            color: token.colorTextSecondary,
+                            height: 400,
+                            minWidth: 300,
+                            width: '100%',
+                        }}
+                    >
+                        <LuInfo size={22} />
+                        <Text type="secondary">No source image saved for this file.</Text>
+                    </Flex>
+                )}
             </div>
             <Flex gap={10}>
                 <Tooltip title="This will improve translations for all items from this menu image">

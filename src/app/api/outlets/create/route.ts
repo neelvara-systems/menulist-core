@@ -11,9 +11,10 @@ import { resolveBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
-import { createDefaultRoles } from "@data/defaultRoles";
+import { createDefaultRoles, getOwnerRoleId } from "@data/defaultRoles";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -166,6 +167,8 @@ export const POST = withAuth(async (request, session) => {
         const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/summary`);
         const result = await db.runTransaction(async (tx) => {
             const summary = await tx.get(summaryRef);
+            const userRef = session.uId ? db.doc(`${DB_COLLECTIONS.USERS}/${session.uId}`) : null;
+            const userSnap = userRef ? await tx.get(userRef) : null;
             const newStoreId = (summary.data()?.stores?.count || 0) + 1;
             const storeKey = outletName.toLowerCase().replaceAll(" ", "_");
             // URL Routing Architecture — ADR-1: Auto-generate outletSlug for path routing
@@ -263,6 +266,13 @@ export const POST = withAuth(async (request, session) => {
                 }],
                 outletCreationLock: false,
             });
+
+            const userAccessUpdate = userSnap
+                ? buildUserStoreAccessUpdate(userSnap.data(), newStoreId, outletName, getOwnerRoleId(newStoreId))
+                : null;
+            if (userRef && userAccessUpdate) {
+                tx.set(userRef, userAccessUpdate, { merge: true });
+            }
 
             // Update platform summary counts
             tx.update(summaryRef, { 'stores.count': newStoreId });

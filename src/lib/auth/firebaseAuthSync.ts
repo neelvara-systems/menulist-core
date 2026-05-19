@@ -1,5 +1,6 @@
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
+import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
 
 type FirebaseAuthSyncResult = {
@@ -107,7 +108,10 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     const response = await fetch("/api/auth/set-claims", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(canRefreshCurrentUser && currentUser ? { uid: currentUser.uid } : {}),
+        body: JSON.stringify({
+            ...(canRefreshCurrentUser && currentUser ? { uid: currentUser.uid } : {}),
+            targetStoreId: Number(storeId),
+        }),
     });
 
     if (!response.ok) {
@@ -143,12 +147,56 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     return { ready: true, claims: refreshedToken?.claims };
 }
 
+export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): Promise<FirebaseAuthSyncResult> {
+    if (typeof window === "undefined") return { ready: true };
+    if (!firebaseAuth?.currentUser) return { ready: false };
+
+    const response = await fetch("/api/auth/set-claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            uid: firebaseAuth.currentUser.uid,
+            ...(targetStoreId ? { targetStoreId } : {}),
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to refresh Firebase Auth claims: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.customToken) {
+        await runFirebaseAuthNetworkOperation(
+            'custom-token sign-in',
+            () => signInWithCustomToken(firebaseAuth, data.customToken),
+        );
+    } else {
+        await runFirebaseAuthNetworkOperation(
+            'current-user token refresh',
+            () => firebaseAuth.currentUser!.getIdToken(true),
+        );
+    }
+
+    await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+
+    const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
+        'current-user token result refresh',
+        () => firebaseAuth.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
+    );
+
+    return { ready: true, claims: refreshedToken?.claims };
+}
+
 export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuthSyncResult> {
-    const tenantId = getSessionTenantId(session);
-    const storeId = getSessionStoreId(session);
+    const effectiveSession = typeof window === "undefined"
+        ? session
+        : applyActiveStoreContextToSession(session);
+    const tenantId = getSessionTenantId(effectiveSession);
+    const storeId = getSessionStoreId(effectiveSession);
     const currentUid = firebaseAuth?.currentUser?.uid || "none";
     const nextKey = [
-        session?.user?.email || "no-email",
+        effectiveSession?.user?.email || "no-email",
         tenantId ?? "no-tenant",
         storeId ?? "no-store",
         currentUid,
@@ -159,7 +207,7 @@ export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuth
     }
 
     syncRequestKey = nextKey;
-    syncRequest = runFirebaseAuthSync(session).finally(() => {
+    syncRequest = runFirebaseAuthSync(effectiveSession).finally(() => {
         syncRequest = null;
         syncRequestKey = "";
     });

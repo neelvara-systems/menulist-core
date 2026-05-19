@@ -5,8 +5,10 @@
 **Audience:** Sales / Founder-led calls / Website copy  
 **Tone:** Premium, calm, infrastructure-grade  
 **Rules:** No hype • No "AI" language • No over-explaining • Outcome-first  
-**Last Updated:** February 13, 2026  
+**Last Updated:** May 19, 2026
 **Author:** Lead Architect
+
+> **May 19, 2026 review:** Sales claims remain accurate after live Chrome + Firebase verification. The important customer-facing promise is unchanged: outlet local changes stay local, master menu data stays protected, and HQ switching does not show outlet-only items/categories.
 
 ---
 

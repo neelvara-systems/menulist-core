@@ -33,13 +33,19 @@ export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneN
         message.error(`Could not copy ${label.toLowerCase()}`);
     };
 
-    const shareOnWhatsAppWeb = () => {
+    const shareOnWhatsAppWeb = async () => {
         const opened = openWhatsAppWebShare(details);
         if (opened) {
-            message.success('WhatsApp Web opened');
+            const copied = await copyTextToClipboard(fullText);
+            message.success(copied ? 'WhatsApp opened. Login details copied too.' : 'WhatsApp opened');
             return;
         }
-        message.error('Could not open WhatsApp Web');
+        const copied = await copyTextToClipboard(fullText);
+        if (copied) {
+            message.success('Login details copied. Paste them in WhatsApp.');
+            return;
+        }
+        message.error('Could not open WhatsApp');
     };
 
     const shareFromDevice = async () => {
@@ -72,8 +78,8 @@ export default function StaffLoginDetailsContent({ countryCode, dialCode, phoneN
                         Share
                     </Button>
                 ) : null}
-                <Button icon={<LuSend />} onClick={shareOnWhatsAppWeb} type="primary">
-                    Open WhatsApp Web
+                <Button icon={<LuSend />} onClick={() => void shareOnWhatsAppWeb()} type="primary">
+                    WhatsApp
                 </Button>
             </Space>
             <Text type="secondary">They can log in from the normal sign-in page.</Text>

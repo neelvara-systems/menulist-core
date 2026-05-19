@@ -3,6 +3,7 @@
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
 **Last Reviewed:** May 19, 2026
+
 **Verified By:** Cascade AI Assistant  
 **Status:** ✅ Production Ready
 
@@ -11,6 +12,10 @@
 > **Note (May 13, 2026):** Desktop and mobile menu data handling were re-audited against linked outlet behavior. Linked outlet extraction now compares against the master menu, editor display resolves master + local records, save paths strip resolved master records before persistence, shared description/image flows accept outlet-aware persistence callbacks, mobile/desktop project create/duplicate/deactivate/reset paths honor OutletPolicy, and linked reset clears local files plus overrides to return to inherited master state.
 >
 > **Note (May 19, 2026):** Final review + production audit found and fixed additional store-context hardening: shared desktop/mobile Locations gates, legacy single-store master repair, server-owned OutletPolicy writes, atomic outlet deactivation, tenant `storesList` sync during outlet rename, normalized store ID comparisons, inactive-store switch rejection, safe outlet-create lock handling, local subscription quantity rollback on creation failure, and complete `MobileLocations` locale coverage.
+>
+> **Note (May 19, 2026 — Chrome/Firebase QA):** Actual browser testing against QA tenant `39` verified mobile and desktop outlet menu saves, local IDs `L_I_1779208870629_nhfqsp` / `L_C_1779209396986_b0rb6j`, HQ/outlet switching, master data isolation, server-backed master-job status, safe no-image rendering, and server-side enforcement for disabled linked-outlet policy changes.
+>
+> **Note (May 19, 2026 — test-case line audit):** `multi-outlet-consistency_test-cases.md` was re-read as the contract: 90 numbered cases, 40 QA rows, write invariants, and deferred/by-design sections. The audit closed the remaining policy/security rows by adding strict linked-outlet override schemas, invalid-price rejection, server-side AI description/image policy checks, theme/brand/layout policy checks on linked saves, and store-token matching for extraction job creation.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -20,9 +25,9 @@
 | End-to-end flow | ✅ Disposable Firebase tenant/store/subscription test covered policy save, legacy master repair, outlet creation, subscription quantity update, store switch, refresh/navigation proof, and cleanup. |
 | Failure simulation | ✅ Outlet creation now only releases locks it acquired and reverts internal subscription quantity if later creation steps fail. |
 | Data integrity | ✅ Outlet deactivation is a Firestore transaction across store, tenant list, and summary. Outlet rename also updates tenant `storesList`. |
-| Security | ✅ Outlet policy/create/deactivate/rename require role permission and master context on the server; switching requires `SWITCH_STORES` and rejects inactive stores. |
+| Security | ✅ Outlet policy/create/deactivate/rename require role permission and master context on the server; switching requires `SWITCH_STORES` and rejects inactive stores; linked outlet menu saves and AI description/image APIs enforce OutletPolicy server-side. |
 | Mobile parity | ✅ Mobile More and Mobile Locations expose Locations for safe legacy premium single-store tenants and show policy before the first outlet. |
-| Firebase cost | ✅ Normal path adds no polling. Outlet sessions may add one master-store read only when policy is not already hydrated. |
+| Firebase cost | ✅ Normal path adds no polling. Outlet sessions may add one master-store read only when policy is not already hydrated; linked outlet AI requests add 1 project read + 1 master-store read before provider calls so disabled actions fail before AI spend. |
 | Verification commands | ✅ `npx tsc --noEmit --incremental false`; ✅ `npm run lint -- --max-warnings=0`; ✅ `git diff --check` on touched files. |
 
 **Live Firebase test (May 19, 2026):** Disposable tenant `910884561`, master store `37`, outlet store `38`, user, and subscription were created against the configured Firebase project. The test verified policy save, legacy master promotion, outlet create, outlet rename, switch-store, outlet deactivation, inactive-store switch rejection, subscription quantity returning to `1`, and cleanup (`cleanupExists false,false,false,false,false`).
@@ -31,11 +36,11 @@
 
 ---
 
-## 1. Executive Summary
+## 1. Historical February Field-Level Audit
 
-The multi-outlet consistency feature has been reviewed comprehensively against the specification (`multi-outlet-consistency_spec.md`) and implementation plan (`multi-outlet-consistency_impl.md`).
+The February 5 field-level audit below is preserved for traceability. Current May 19 production readiness is recorded in the audit table above and the live Firebase QA note.
 
-**Overall Status:** 85% Complete
+**Historical Status at February 5:** 85% Complete
 
 - Core field locking for inherited items: ✅ Complete
 - Allowed override fields for outlets: ⚠️ Mostly Complete (1 gap)

@@ -7,7 +7,7 @@
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
 **Default:** OFF (`ENABLE_MULTI_OUTLET: false`)  
 **Original Date:** January 19, 2026  
-**Last Reviewed:** February 13, 2026  
+**Last Reviewed:** May 19, 2026
 **Author:** Lead Architect
 
 > **Post-Implementation Notes (Feb 13, 2026):** This blueprint was the original technical plan. The core architecture below remains accurate. The following were added during implementation and have their own dedicated docs:
@@ -19,6 +19,7 @@
 > - **Signal doc pattern (#4.1):** `masterOperationalState/{projectId}` — see [master-updates-awareness_impl.md](./master-updates-awareness_impl.md)
 > - **Project propagation:** `propagateNewProjectToOutlets()` — see [propagation.ts](../../src/database/multiOutlet/propagation.ts)
 > - **Firebase cost tracking:** see [multi-outlet-consistency_firebase.md](./multi-outlet-consistency_firebase.md)
+> - **May 19, 2026 hardening:** linked outlet editor saves now use `/api/projects/outlet-save` for server-side tenant/store validation, local-only menu persistence, OutletPolicy enforcement, and public cache invalidation. Desktop master extraction status uses `/api/projects/master-job-status` instead of a direct outlet-client listener on master job documents.
 
 ---
 

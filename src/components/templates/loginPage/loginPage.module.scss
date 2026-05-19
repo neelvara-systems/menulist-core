@@ -2,55 +2,80 @@
 .loginPageWrap {
   width: 100vw;
   height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
   // background-image: radial-gradient(circle at 10px 10px, #5f5f5f 1px, black 0);
   background-size: 10px 10px !important;
+  .triangulatedBgCanvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+  }
+  .particleFlowCanvas {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+  }
+  .particleFlowCanvasDark {
+    opacity: 0.86;
+    mix-blend-mode: screen;
+  }
+  .particleFlowCanvasLight {
+    opacity: 0.84;
+    mix-blend-mode: normal;
+  }
   .headerWrap {
+    position: fixed;
+    top: 30px;
+    right: 30px;
     height: auto;
-    padding: 20px;
+    padding: 0;
     display: flex;
-    justify-content: space-between;
-    .itemWrap {
-      width: auto;
-      height: auto;
-      img {
-        width: auto;
-        height: 50px;
-      }
+    justify-content: flex-end;
+    z-index: 4;
+    :global(.ant-btn) {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(15, 60, 90, 0.16);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
   }
   .bodyWrap {
-    height: auto;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: auto;
     position: relative;
-    background-repeat: no-repeat !important;
-    background-size: auto !important;
-    height: auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: auto;
-    position: relative;
+    z-index: 2;
     background-repeat: no-repeat !important;
     background-size: 500px !important;
     background-position-y: 100px !important;
     background-position: left;
-    height: calc(100vh - 99px);
+    box-sizing: border-box;
+    min-height: 100vh;
+    height: auto;
+    padding: 24px;
 
     .bodyContent {
       display: flex;
-      justify-content: space-evenly;
+      justify-content: center;
       align-items: center;
       width: 100%;
+      position: relative;
+      z-index: 2;
       .rightContent {
         min-width: 0;
         max-width: 500px;
-        width: 100%;
-        padding: 10px;
+        width: min(100%, 500px);
+        padding: 0;
         .formWrap {
           @include flexCenterCol;
           width: 100%;
@@ -61,13 +86,35 @@
           // filter: drop-shadow(5px 6px 4px rgba(0, 0, 0, 0.3));
           box-shadow: var(--card-shadow);
           border-radius: 15px !important;
-          background-image: radial-gradient(
-            circle at 10px 10px,
-            #2f344ebf 1px,
-            black 0
-          );
-          background-size: 15px 15px !important;
+          position: relative;
+          overflow: hidden;
           padding: 30px 45px;
+          &::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border-radius: inherit;
+            background:
+              radial-gradient(circle at 20% 0%, rgba(48, 196, 184, 0.13), transparent 32%),
+              radial-gradient(circle at 88% 12%, rgba(22, 119, 255, 0.12), transparent 34%);
+            opacity: 0.8;
+          }
+          > * {
+            position: relative;
+            z-index: 1;
+          }
+          .cardLogoMark {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 72px;
+            height: 48px;
+            margin: 0 auto 8px;
+          }
+          .brandTitleText {
+            display: inline;
+          }
           .heading {
             font-weight: 500;
             margin-top: 0;
@@ -77,9 +124,10 @@
               font-weight: 700;
               // padding: 0 10px;
               background-image: linear-gradient(
-                to right,
-                #30c4b8 30%,
-                #1677ff 85%
+                90deg,
+                #2fd0c5 0%,
+                #28ade8 48%,
+                #2478ff 100%
               );
               -webkit-text-fill-color: transparent;
               -webkit-background-clip: text;
@@ -133,61 +181,18 @@
       color: red;
       margin-top: -20px;
     }
-    .bgWrap {
-      z-index: 10;
-      pointer-events: none;
-      position: absolute;
-      bottom: -250px;
-      left: 50%;
-      transform: translateX(-50%) scale(1.5);
-      width: 100vw;
-      height: 100vh;
-      opacity: 0.2;
-      filter: blur(100px);
-      will-change: transform;
-      animation-timeline: auto;
-      animation-range-start: normal;
-      animation-range-end: normal;
-      background: linear-gradient(
-          135deg,
-          rgb(114, 46, 209) 0%,
-          rgb(22, 119, 255) 30%,
-          rgba(245, 34, 224, 0.519) 70%,
-          rgb(19, 194, 194) 100%,
-          rgb(114, 46, 209) 0%,
-          rgb(22, 119, 255) 30%,
-          rgba(245, 34, 224, 0.519) 70%,
-          rgb(19, 194, 194) 100%,
-          var(--primary-color-alpha)
-        )
-        0% 0% / 200% 200%;
-      animation: 50s ease 0s infinite normal none running glow;
-    }
-  }
-
-  @keyframes glow {
-    0% {
-      background-position: 0px -100%;
-    }
-
-    50% {
-      background-position: 200% 50%;
-    }
-
-    100% {
-      background-position: 0px -100%;
-    }
   }
 
   // Tablet and below
   @media screen and (max-width: 1024px) {
     .bodyWrap {
       height: auto;
-      min-height: calc(100vh - 99px);
+      min-height: 100vh;
+      padding: 72px 20px 32px;
       .bodyContent {
         flex-direction: column;
         .rightContent {
-          padding: 0 20px 20px;
+          padding: 0;
           transform: unset;
           .formWrap {
             padding: 20px;
@@ -215,10 +220,19 @@
 
   // Mobile phones
   @media screen and (max-width: 480px) {
+    .particleFlowCanvasDark {
+      opacity: 0.72;
+    }
+    .particleFlowCanvasLight {
+      opacity: 0.66;
+    }
     .headerWrap {
-      padding: 12px 16px;
-      .itemWrap img {
-        height: 36px;
+      top: 16px;
+      right: 16px;
+      :global(.ant-btn) {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
       }
     }
     .bodyWrap {

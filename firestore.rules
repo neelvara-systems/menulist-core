@@ -852,23 +852,34 @@ service cloud.firestore {
       // Users can only read their own jobs
       // Platform admins can read all jobs (for extraction monitoring dashboard)
       allow read: if isAuthenticated()
-                  && (resource.data.uId == request.auth.uid || isPlatformAdmin());
+                  && (
+                    resource.data.uId == request.auth.uid
+                    || resource.data.uId == request.auth.token.uId
+                    || isPlatformAdmin()
+                  );
       
       // Create: Must include tenant context, match user's tenant, and start as pending
       // Security: Validates tId/sId match authenticated user's claims
       //           to prevent cross-tenant project injection via crafted projectId
       allow create: if isAuthenticated()
-                    && request.resource.data.uId == request.auth.uid
+                    && (
+                      request.resource.data.uId == request.auth.uid
+                      || request.resource.data.uId == request.auth.token.uId
+                    )
                     && request.resource.data.status == 'pending'
                     && request.resource.data.tId is string
                     && request.resource.data.sId is string
                     && request.resource.data.tId == string(request.auth.token.tenantId)
+                    && request.resource.data.sId == string(request.auth.token.storeId)
                     && request.resource.data.projectId is string;
       
       // Update: Only allow cancellation from client
       // pending → cancelled or processing → cancelling
       allow update: if isAuthenticated()
-                    && resource.data.uId == request.auth.uid
+                    && (
+                      resource.data.uId == request.auth.uid
+                      || resource.data.uId == request.auth.token.uId
+                    )
                     && (
                       (
                         request.resource.data.status == 'cancelling'

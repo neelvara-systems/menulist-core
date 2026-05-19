@@ -26,14 +26,14 @@ export const buildStaffLoginDetailsText = ({
     `Sign in: ${signInUrl}`,
 ].join('\n');
 
-export const buildWhatsAppWebShareUrl = (details: StaffLoginDetailsShareInput) => {
+export const buildWhatsAppShareUrl = (details: StaffLoginDetailsShareInput) => {
     const phoneParam = buildWhatsAppPhoneParam(details);
+    const baseUrl = phoneParam ? `https://wa.me/${phoneParam}` : 'https://wa.me/';
 
-    return `https://web.whatsapp.com/send?${[
-        phoneParam ? `phone=${phoneParam}` : '',
-        `text=${encodeURIComponent(buildStaffLoginDetailsText(details))}`,
-    ].filter(Boolean).join('&')}`;
+    return `${baseUrl}?text=${encodeURIComponent(buildStaffLoginDetailsText(details))}`;
 };
+
+export const buildWhatsAppWebShareUrl = buildWhatsAppShareUrl;
 
 export const isNativeStaffShareAvailable = () => (
     typeof navigator !== 'undefined'
@@ -118,7 +118,7 @@ export async function copyTextToClipboard(text: string) {
 export function openWhatsAppWebShare(details: StaffLoginDetailsShareInput) {
     if (typeof window === 'undefined') return false;
 
-    const popup = window.open(buildWhatsAppWebShareUrl(details), '_blank', 'noopener,noreferrer');
+    const popup = window.open(buildWhatsAppShareUrl(details), '_blank', 'noopener,noreferrer');
     if (popup) popup.opener = null;
     return Boolean(popup);
 }

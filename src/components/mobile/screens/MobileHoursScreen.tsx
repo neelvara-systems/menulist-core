@@ -154,12 +154,18 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
-    const menuUrl = generateProjectUrl(
-        storeDetails?.subdomain,
-        storeDetails?.customDomain,
-        undefined,
-        true
-    );
+    const menuUrl = useMemo(() => {
+        if (!storeDetails?.subdomain && !storeDetails?.customDomain) {
+            return '';
+        }
+
+        return generateProjectUrl(
+            storeDetails.subdomain,
+            storeDetails.customDomain,
+            undefined,
+            true
+        );
+    }, [storeDetails?.customDomain, storeDetails?.subdomain]);
 
     useEffect(() => {
         if (!storeDetails?.storeId) return;

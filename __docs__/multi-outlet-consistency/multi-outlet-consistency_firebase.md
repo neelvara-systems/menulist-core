@@ -3,6 +3,7 @@
 **Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
 **Status:** ✅ Production Ready  
 **Last Updated:** May 19, 2026
+
 **Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
 
 > **Scope:** This doc covers menu consistency ops (signal docs, merge resolution, MOL events) and outlet creation/deactivation transactions. For OutletPolicy editor ops (`updateOutletPolicy`), see [Multi-Chain Permissions Firebase](../multi-chain-permissions/multi-chain-permissions_firebase.md). For base store CRUD ops (`addStore`, `updateStore`, summary syncs), see [Stores Management Firebase](../stores-management/stores-management_firebase.md).
@@ -11,7 +12,7 @@
 
 ## Summary
 
-- **Collections Used:** `projects/{tId}/{sId}`, `masterOperationalState/{projectId}`, `stores`, `tenants`, `subscriptions`, `platformSummary`, `multiOutletEvents/{tId}/{sId}`
+- **Collections Used:** `projects/{tId}/{sId}`, `masterOperationalState/{projectId}`, `menuImageProcessingJobs`, `stores`, `tenants`, `users`, `subscriptions`, `platformSummary`, `multiOutletEvents/{tId}/{sId}`
 - **Storage Buckets:** None (shared via project data)
 - **Cloud Functions:** None (client-side resolution + real-time listeners)
 - **External APIs:** Razorpay Subscriptions API (quantity updates)
@@ -28,6 +29,8 @@
 | Load master project        | `projects/{tId}/{sId}/{masterProjectId}`   | Outlet editor opens        | Per editor session         | 1            | Direct doc | Reads master project for merge resolution. File: `src/lib/multiOutlet/index.ts`                      |
 | Resolve project for render | `projects/{tId}/{sId}/{masterProjectId}`   | Customer views outlet menu | Per menu view (cached 60s) | 1            | Direct doc | `resolveProjectForRender()` merges master + outlet. File: `src/app/_client/[[...slug]]/page.tsx:216` |
 | Listen to signal doc       | `masterOperationalState/{masterProjectId}` | Outlet editor open         | Real-time (onSnapshot)     | 1 per change | Direct doc | `onSnapshot` listener for `operationalVersion` changes. Fires when master saves operational changes. |
+| Read master job status     | `menuImageProcessingJobs` + linked outlet project guard | Desktop outlet project editor | Every 15s while outlet editor is open | 0-2 | Query capped at 1 | `/api/projects/master-job-status` validates session, tenant, store permission, and linked outlet project before querying active master extraction jobs. No Upstash rate-limit call because this is a read-only polling endpoint; avoids an external network dependency per poll. |
+| Enforce linked-outlet AI policy | `projects/{tId}/{sId}/{projectId}` + `stores/{masterStoreId}` | Description/image API request from linked outlet | Per linked outlet AI request | 0-2 | Direct docs | `getLinkedOutletPolicyBlockReason()` checks the project linkage and master `outletPolicy` before AI capacity/provider calls. Single-store and master-store requests add no extra read. |
 | Load store config          | `stores/{storeId}`                         | Multi-outlet setup         | Per setup                  | 1            | Direct doc | Check `isMaster` flag, linked outlets.                                                               |
 
 ### Writes
@@ -36,7 +39,7 @@
 | ----------------------------- | ------------------------------------------ | --------------------------------------------- | --------------------------- | ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Increment operational version | `masterOperationalState/{masterProjectId}` | Master saves with item/price/category changes | Per master operational save | 1            | operationalVersion (atomic increment), lastUpdatedAt | Only fires for operational changes (items, prices, categories), NOT UI config. File: `src/database/projects/index.ts:451-468`                     |
 | Log MOL event                 | `multiOutletEvents/{tId}/{sId}`            | Any menu edit (master, outlet, standalone)    | Per save                    | 1            | Event type, metadata, actor                          | `logMultiOutletEvent()`. Tracks MASTER_MENU_UPDATED, OUTLET_MENU_UPDATED, STANDALONE_MENU_UPDATED. File: `src/database/projects/index.ts:489-529` |
-| Save outlet overrides         | `projects/{tId}/{sId}/{outletProjectId}`   | Outlet saves local changes                    | Per outlet save             | 1            | Merge update with overrides                          | Local price adjustments, availability toggles.                                                                                                    |
+| Save outlet local data/overrides | `projects/{tId}/{sId}/{outletProjectId}` | Outlet saves local changes | Per outlet save | 1 | Local `L_I_` / `L_C_` records, policy-allowed overrides | Linked outlet saves route through `/api/projects/outlet-save`; server rejects copied master records, invalid override payloads/prices, and disabled OutletPolicy changes before writing. |
 
 ### Deletes
 
@@ -55,6 +58,11 @@
 - **Operational change detection**: `detectOperationalChange()` compares old vs new project. Only triggers signal write for actual item/price/category changes, not UI config saves.
 - **Client-side merge cache**: `invalidateMasterCache()` clears in-memory cache on master save.
 - **Vercel cache**: Customer-facing resolution cached 60s via `unstable_cache`.
+- **Server-backed master job status**: desktop outlet editor no longer opens a cross-store client Firestore listener against master jobs. It calls one authenticated, capped Admin read and fails open, preventing outlet Firebase claims from needing broader rules.
+- **Linked outlet save server route**: outlet editor persists only local records and overrides, so inherited master records are not copied into every outlet project. This keeps outlet documents smaller and prevents future master updates from becoming write amplification.
+- **Server-side OutletPolicy enforcement**: `/api/projects/outlet-save` rejects disabled price, availability, description, image, language-addition, local item/category, project-deactivation, theme, brand, and layout changes before the project write. Existing disabled overrides can remain unchanged or be removed back toward master values.
+- **AI spend guard before provider calls**: Linked outlet description/image APIs read the linked project and master store policy first. Disabled actions return `403` before Gemini/Imagen calls or AI-capacity consumption.
+- **Extraction job tenant/store guard**: Firestore rules require `menuImageProcessingJobs.sId` to match the authenticated Firebase token `storeId`, so an outlet cannot queue extraction jobs under another store's ID.
 
 ### Warnings: Expensive Patterns
 
@@ -110,6 +118,7 @@ Assumption for INR estimate: ₹83/USD.
 | Get storesList (deactivate)  | `tenants/{tId}`                | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:45` |
 | Check isMaster (switch)      | `stores/{sId}`                 | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:29`  |
 | Get storesList (switch)      | `tenants/{tId}`                | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:34`  |
+| Repair user outlet access    | `users/{uId}`                  | POST /api/auth/switch-store  | 1         | Switch-store grants/repairs `users.stores[]` + `storeIds[]` so existing outlets remain accessible after refresh. |
 | Read outlet for rename       | `stores/{outletSId}`           | POST /api/outlets/rename     | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Read tenant list for rename  | `tenants/{tId}`                | POST /api/outlets/rename tx  | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Outlet sub fallback          | `tenants/{tId}`                | Outlet loads billing         | 1         | `src/database/subscriptions/index.ts:127`    |
@@ -129,6 +138,8 @@ Assumption for INR estimate: ₹83/USD.
 | Update store count (in tx)     | `platformSummary/summary`              | POST /api/outlets/create     | 1                    | `route.ts:155`                            |
 | Create outlet projects (in tx) | `projects/{tId}/{newSId}/{id}`         | POST /api/outlets/create     | N per master project | `route.ts:164`                            |
 | Sync project summaries (in tx) | `platformSummary/projects_{newSId}`    | POST /api/outlets/create     | N per master project | `route.ts:179`                            |
+| Grant creator outlet access    | `users/{uId}`                          | POST /api/outlets/create     | 1                    | Creator user doc receives outlet `stores[]` mapping and `storeIds[]` entry inside the creation transaction. |
+| Repair switch outlet access    | `users/{uId}`                          | POST /api/auth/switch-store  | 0-1                  | Existing demo/legacy users are repaired when switching to an outlet they own. |
 | Revert sub quantity (error)    | `subscriptions/{subId}`                | Creation failure after quantity update | 1          | `src/app/api/outlets/create/route.ts`     |
 | Release acquired lock (error)  | `tenants/{tId}`                        | Creation failure after lock acquired | 1              | `src/app/api/outlets/create/route.ts`     |
 | Deactivate outlet (in tx)      | `stores/{outletSId}`                   | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |

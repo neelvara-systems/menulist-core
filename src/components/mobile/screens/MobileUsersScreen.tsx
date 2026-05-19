@@ -1,17 +1,47 @@
 'use client'
 
 import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
-import { buildStaffLoginDetailsText, copyTextToClipboard, isNativeStaffShareAvailable, openWhatsAppWebShare, shareStaffLoginDetails } from '@lib/staffManagement/shareLoginDetails';
+import { buildStaffLoginDetailsText, copyTextToClipboard, openWhatsAppWebShare, shareStaffLoginDetails, type StaffLoginDetailsShareInput } from '@lib/staffManagement/shareLoginDetails';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
-import { LuCopy, LuKeyRound, LuLogOut, LuMail, LuPhone, LuPlus, LuSend, LuShare2, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
+import { LuCopy, LuKeyRound, LuLogOut, LuMail, LuMessageCircle, LuPhone, LuPlus, LuShare2, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileUsersScreenProps {
     onBack: () => void;
+}
+
+type StaffLoginDetailsPopupState = StaffLoginDetailsShareInput & {
+    title: string;
+};
+
+function StaffLoginCopyRow({
+    label,
+    onCopy,
+    value,
+}: {
+    label: string;
+    onCopy: () => void;
+    value: string;
+}) {
+    return (
+        <Flex align="center" justify="space-between" style={{ gap: 12, minHeight: 50 }}>
+            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                <Text type="secondary">{label}</Text>
+                <Text strong copyable={false} ellipsis style={{ fontSize: 17 }}>{value}</Text>
+            </Flex>
+            <Button
+                fill="none"
+                onClick={onCopy}
+                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
+            >
+                <LuCopy size={18} />
+            </Button>
+        </Flex>
+    );
 }
 
 function StaffLoginDetailsPanel({
@@ -27,58 +57,58 @@ function StaffLoginDetailsPanel({
     staffLoginId: string;
     temporaryPasscode: string;
 }) {
-    const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const details = { countryCode, dialCode, phoneNumber, staffLoginId, temporaryPasscode };
     const fullText = buildStaffLoginDetailsText(details);
-
-    useEffect(() => {
-        setSupportsNativeShare(isNativeStaffShareAvailable());
-    }, []);
 
     const copyValue = async (value: string, label: string) => {
         const copied = await copyTextToClipboard(value);
         Toast.show({ content: copied ? `${label} copied` : `Could not copy ${label.toLowerCase()}`, duration: 1500 });
     };
 
-    const shareOnWhatsAppWeb = () => {
+    const shareOnWhatsApp = async () => {
         const opened = openWhatsAppWebShare(details);
+        const copied = await copyTextToClipboard(fullText);
         Toast.show({
-            content: opened ? 'WhatsApp Web opened' : 'Could not open WhatsApp Web',
-            duration: 1500,
+            content: opened
+                ? copied ? 'WhatsApp opened. Login details copied too.' : 'WhatsApp opened'
+                : copied ? 'Login details copied. Paste them in WhatsApp.' : 'Could not open WhatsApp',
+            duration: 1800,
         });
     };
 
     const shareFromDevice = async () => {
         const result = await shareStaffLoginDetails(details);
         if (result === 'cancelled') return;
+        if (result !== 'shared') {
+            const copied = await copyTextToClipboard(fullText);
+            Toast.show({
+                content: copied ? 'Login details copied' : 'Could not share login details',
+                duration: 1500,
+            });
+            return;
+        }
         Toast.show({
-            content: result === 'shared' ? 'Share sheet opened' : 'Could not share login details',
+            content: 'Share sheet opened',
             duration: 1500,
         });
     };
 
     return (
-        <Flex gap={10} vertical>
+        <Flex gap={14} vertical>
             <Text>Share these details with the staff member. This passcode is shown once.</Text>
-            <Text strong>Staff ID: {staffLoginId}</Text>
-            <Text strong>Passcode: {temporaryPasscode}</Text>
-            <Flex gap={8} style={{ marginTop: 4 }} vertical>
-                <Button block fill="outline" icon={<LuCopy size={16} />} onClick={() => void copyValue(staffLoginId, 'Staff ID')}>
-                    Copy Staff ID
+            <Card>
+                <Flex gap={6} vertical>
+                    <StaffLoginCopyRow label="Staff ID" onCopy={() => void copyValue(staffLoginId, 'Staff ID')} value={staffLoginId} />
+                    <div style={{ borderTop: '1px solid #f1f5f9' }} />
+                    <StaffLoginCopyRow label="Passcode" onCopy={() => void copyValue(temporaryPasscode, 'Passcode')} value={temporaryPasscode} />
+                </Flex>
+            </Card>
+            <Flex gap={8}>
+                <Button block icon={<LuMessageCircle size={16} />} onClick={() => void shareOnWhatsApp()} size="large">
+                    WhatsApp
                 </Button>
-                <Button block fill="outline" icon={<LuCopy size={16} />} onClick={() => void copyValue(temporaryPasscode, 'Passcode')}>
-                    Copy passcode
-                </Button>
-                <Button block fill="outline" icon={<LuCopy size={16} />} onClick={() => void copyValue(fullText, 'Login details')}>
-                    Copy both
-                </Button>
-                {supportsNativeShare ? (
-                    <Button block fill="outline" icon={<LuShare2 size={16} />} onClick={() => void shareFromDevice()}>
-                        Share
-                    </Button>
-                ) : null}
-                <Button block icon={<LuSend size={16} />} onClick={shareOnWhatsAppWeb}>
-                    Open WhatsApp Web
+                <Button block fill="outline" icon={<LuShare2 size={16} />} onClick={() => void shareFromDevice()} size="large">
+                    Share
                 </Button>
             </Flex>
         </Flex>
@@ -97,6 +127,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
     const [isUpdatingUser, setIsUpdatingUser] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserDataType | null>(null);
+    const [staffLoginDetails, setStaffLoginDetails] = useState<StaffLoginDetailsPopupState | null>(null);
     const [staffStores, setStaffStores] = useState<any[]>([]);
 
     const users: UserDataType[] = usersList || [];
@@ -156,17 +187,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
             setUsersList([...users, data.user]);
             if (data.temporaryPasscode && data.staffLoginId) {
-                void Dialog.alert({
-                    confirmText: 'Done',
-                    content: (
-                        <StaffLoginDetailsPanel
-                            countryCode={(data.user as any)?.countryCode || defaultStaffCountryCode}
-                            dialCode={(data.user as any)?.dialCode || defaultStaffDialCode}
-                            phoneNumber={(data.user as any)?.phoneNumber || newUserPhone}
-                            staffLoginId={data.staffLoginId}
-                            temporaryPasscode={data.temporaryPasscode}
-                        />
-                    ),
+                setStaffLoginDetails({
+                    countryCode: (data.user as any)?.countryCode || defaultStaffCountryCode,
+                    dialCode: (data.user as any)?.dialCode || defaultStaffDialCode,
+                    phoneNumber: (data.user as any)?.phoneNumber || newUserPhone,
+                    staffLoginId: data.staffLoginId,
+                    temporaryPasscode: data.temporaryPasscode,
                     title: 'Staff login details',
                 });
                 Toast.show({ content: 'Staff ID and passcode created', duration: 1800 });
@@ -272,17 +298,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 setSelectedUser(data.user as any);
             }
             if (data.temporaryPasscode && data.staffLoginId) {
-                void Dialog.alert({
-                    confirmText: 'Done',
-                    content: (
-                        <StaffLoginDetailsPanel
-                            countryCode={(data.user as any)?.countryCode || (user as any)?.countryCode || defaultStaffCountryCode}
-                            dialCode={(data.user as any)?.dialCode || (user as any)?.dialCode || defaultStaffDialCode}
-                            phoneNumber={(data.user as any)?.phoneNumber || (user as any)?.phoneNumber}
-                            staffLoginId={data.staffLoginId}
-                            temporaryPasscode={data.temporaryPasscode}
-                        />
-                    ),
+                setStaffLoginDetails({
+                    countryCode: (data.user as any)?.countryCode || (user as any)?.countryCode || defaultStaffCountryCode,
+                    dialCode: (data.user as any)?.dialCode || (user as any)?.dialCode || defaultStaffDialCode,
+                    phoneNumber: (data.user as any)?.phoneNumber || (user as any)?.phoneNumber,
+                    staffLoginId: data.staffLoginId,
+                    temporaryPasscode: data.temporaryPasscode,
                     title: 'New staff passcode',
                 });
                 Toast.show({ content: 'Temporary passcode created', duration: 1500 });
@@ -531,6 +552,39 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                     <Text>Remove from store</Text>
                                 </Flex>
                             </Button>
+                        </Flex>
+                    </Flex>
+                ) : null}
+            </Popup>
+
+            <Popup bodyStyle={{ maxHeight: '78vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setStaffLoginDetails(null)} visible={!!staffLoginDetails} zIndex={2800}>
+                {staffLoginDetails ? (
+                    <Flex style={{ height: '100%' }} vertical>
+                        <Flex
+                            align="center"
+                            justify="space-between"
+                            style={{
+                                borderBottom: '1px solid #f1f5f9',
+                                padding: '14px 12px 10px 16px',
+                            }}
+                        >
+                            <Title level={4} style={{ margin: 0 }}>{staffLoginDetails.title}</Title>
+                            <Button
+                                fill="none"
+                                onClick={() => setStaffLoginDetails(null)}
+                                style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
+                            >
+                                <LuX size={20} />
+                            </Button>
+                        </Flex>
+                        <Flex gap={12} style={{ overflowY: 'auto', padding: 16 }} vertical>
+                            <StaffLoginDetailsPanel
+                                countryCode={staffLoginDetails.countryCode}
+                                dialCode={staffLoginDetails.dialCode}
+                                phoneNumber={staffLoginDetails.phoneNumber}
+                                staffLoginId={staffLoginDetails.staffLoginId}
+                                temporaryPasscode={staffLoginDetails.temporaryPasscode}
+                            />
                         </Flex>
                     </Flex>
                 ) : null}

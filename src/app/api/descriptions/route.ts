@@ -7,6 +7,7 @@ import { checkAICapacity, consumeAICapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
@@ -98,6 +99,22 @@ export const POST = withAuth(async (request, session) => {
                 }, 'critical');
                 return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
             }
+        }
+
+        const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
+            action: "description",
+            itemIds: itemsList.map((item) => item.id).filter(Boolean),
+            projectId,
+            session,
+        });
+        if (outletPolicyBlockReason) {
+            logger.security('Outlet Policy Violation - Description API', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/descriptions',
+                projectId,
+                reason: outletPolicyBlockReason,
+            }, 'medium');
+            return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
 
         // Map validated action to expected prompt action type

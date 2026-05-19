@@ -20,6 +20,7 @@
   --ws-brand-primary: #1e40af;
   --ws-brand-secondary: #2563eb;
   --ws-brand-light: #dbeafe;
+  --ws-brand-gradient: linear-gradient(90deg, #2fd0c5 0%, #28ade8 48%, #2478ff 100%);
 
   /* CTA */
   --ws-cta-default: #2563eb;
@@ -188,6 +189,32 @@
   text-align: center;
 }
 
+.ws-brand-gradient-text {
+  color: var(--ws-brand-secondary);
+  background: var(--ws-brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ws-brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ws-brand-wordmark__text {
+  display: inline-block;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
 /* ============================================
    Typography
    ============================================ */
@@ -249,10 +276,11 @@
 
 .ws-highlight,
 .ws-headline__highlight {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: var(--ws-brand-secondary);
+  background: var(--ws-brand-gradient);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-weight: inherit;
 }
 
@@ -1775,10 +1803,24 @@
   background: #0f172a;
   color: #fff;
   overflow: hidden;
+  position: relative;
+  isolation: isolate;
 }
 
 .ws-footer-revenue .ws-container {
   padding: var(--ws-space-16) var(--ws-space-6) var(--ws-space-8);
+  position: relative;
+  z-index: 1;
+}
+
+.ws-footer-veil-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.38;
 }
 
 .ws-footer-cta {
@@ -1888,7 +1930,7 @@
   text-decoration: none;
 }
 
-.ws-footer-logo span {
+.ws-footer-logo .ws-brand-wordmark__text {
   font-size: 1.2rem;
   font-weight: 700;
 }

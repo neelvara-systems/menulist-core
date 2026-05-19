@@ -3,6 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
+import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -100,6 +101,8 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
             return;
         }
         if (Number(storeId) === Number(storeDetails?.storeId)) {
+            const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
+            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
             setActiveStoreContext(null);
             return;
         }
@@ -110,6 +113,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 body: JSON.stringify({ targetStoreId: storeId }),
             });
             if (res.ok) {
+                await refreshFirebaseAuthClaims(storeId);
                 setActiveStoreContext(storeId);
                 Toast.show({ content: t('switchedStore'), duration: 1500 });
             }
@@ -152,6 +156,8 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 }
                 : previous);
             if (Number(activeStoreContext) === Number(outletStoreId)) {
+                const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
+                if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
                 setActiveStoreContext(null);
             }
             Toast.show({ content: t('outletDeactivated'), duration: 1500 });

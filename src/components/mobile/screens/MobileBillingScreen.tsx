@@ -5,6 +5,7 @@ import { aiEnhancementPacksList, getB2CPlansList } from '@data/PlatformPlansList
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import usePaymentHandler from '@hook/usePaymentHandler';
+import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
@@ -48,6 +49,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const tenantStoresList = tenantDetails?.storesList || [];
     const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
+    const masterStoreId = Number(tenantStoresList.find((store: any) => store?.isMaster === true)?.storeId || session?.user?.storeId || storeDetails?.storeId || 0);
     const canSwitchBillingStore = Boolean(isMasterUser && userPermissions?.canSwitchStores && tenantStoresList.length > 1);
     const selectedStore = useMemo(
         () => tenantStoresList.find((store: any) => Number(store.storeId) === billingStoreId),
@@ -260,6 +262,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const handleBillingStoreChange = async (targetStoreId: number) => {
         if (targetStoreId === Number(storeDetails?.storeId || session?.user?.storeId)) {
+            if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
             setActiveStoreContext(null);
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });
@@ -276,6 +279,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || 'Failed to switch store');
             }
+            await refreshFirebaseAuthClaims(targetStoreId);
             setActiveStoreContext(targetStoreId);
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });

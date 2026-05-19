@@ -44,7 +44,7 @@
 ## DAL Parity
 
 - Uses same `/api/staff`, `/api/staff/password-reset`, and `/api/staff/roles` server contracts as desktop
-- Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once with copy actions, the native **Share** action when `navigator.share` is available, and an **Open WhatsApp Web** action that targets the staff phone number when one is saved.
+- Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once in a closeable mobile sheet with row-level copy icons, equal-width **WhatsApp** and **Share** actions, and a `wa.me` share link that targets the staff phone number when one is saved.
 - Mobile self-service password change uses the shared `/api/auth/change-password` route from the signed-in profile screen. The old top-level More row is intentionally removed because account access is a rare profile action, not a daily settings action.
 - Mobile signed-in profile edit uses `/api/auth/update-profile` for the current user's name, display/contact email, and phone fields. This does not change the Firebase Auth login email; password/passcode changes stay under Account access.
 - Same `storeDetails.roles` data source

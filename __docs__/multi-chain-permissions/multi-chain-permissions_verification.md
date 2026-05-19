@@ -12,6 +12,9 @@
 | Authorization | ✅ Policy writes require authenticated tenant access, `MANAGE_OUTLETS`, and master or safe legacy single-store eligibility. |
 | Legacy repair | ✅ A one-store tenant with no master can be promoted only by the server after proving there is exactly one store and no existing master. |
 | Outlet enforcement | ✅ `applyOutletPolicy()` strips chain/billing permissions for non-master stores and falls back to `DEFAULT_OUTLET_POLICY` when a master policy is not hydrated. |
+| Linked outlet save enforcement | ✅ `/api/projects/outlet-save` rejects disabled price, availability, description, image, language-addition, local item/category, project-deactivation, theme, brand, and layout changes before the outlet project write. |
+| Linked outlet AI enforcement | ✅ Description/image API routes call `getLinkedOutletPolicyBlockReason()` before AI capacity/provider calls, blocking direct API bypasses of disabled outlet policies. |
+| Extraction job store guard | ✅ Firestore rules require client-created `menuImageProcessingJobs.sId` to match the active Firebase token store. |
 | Mobile parity | ✅ Mobile Locations uses the same policy categories and server path as desktop, with sticky Save/Reset controls. |
 | Firebase cost | ✅ Permission resolution stays in-memory. Outlet sessions may add one master-store read only when the master policy is missing from session context. |
 | Verification commands | ✅ `npx tsc --noEmit --incremental false`; ✅ `npm run lint -- --max-warnings=0`; ✅ `git diff --check` on touched files. |

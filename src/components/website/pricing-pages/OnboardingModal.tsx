@@ -39,7 +39,7 @@ const SectionHeading = ({ text, highlightedText, as: Tag = 'h2', subheading }) =
             >
                 {parts.map((part, index) =>
                     part.toLowerCase() === highlightedText.toLowerCase() ? (
-                        <span key={index} className="font-black text-3xl md:text-4xl lg:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                        <span key={index} className="font-black text-3xl md:text-4xl lg:text-4xl ws-brand-gradient-text">
                             {part}
                         </span>
                     ) : (

@@ -24,7 +24,8 @@ const setClaimsSchema = z.object({
     uid: z.string().optional().refine(
         val => !val || /^[a-zA-Z0-9_-]+$/.test(val),
         'Invalid UID format'
-    )
+    ),
+    targetStoreId: z.number().int().positive().optional(),
 });
 
 async function readSetClaimsBody(request: NextRequest): Promise<unknown | null> {
@@ -91,6 +92,20 @@ const getStoreIdsClaim = (dbUser: any): string[] => {
     return Array.from(new Set(storeIds));
 };
 
+const canAccessStore = (dbUser: any, targetStoreId: number): boolean => {
+    const storeIds = getStoreIdsClaim(dbUser);
+    return storeIds.some((storeId) => Number(storeId) === Number(targetStoreId));
+};
+
+const resolveClaimStoreId = (dbUser: any, targetStoreId?: number): number => {
+    const baseStoreId = Number(dbUser?.storeId);
+    if (!targetStoreId || Number(targetStoreId) === baseStoreId) {
+        return baseStoreId;
+    }
+
+    return Number(targetStoreId);
+};
+
 const hasTenantAdminClaim = (role: unknown, platformRole: unknown): boolean => {
     const normalizedRole = String(role || '').toLowerCase();
     const normalizedPlatformRole = String(platformRole || '').toUpperCase();
@@ -151,12 +166,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        let { uid } = validation.data;
+        let { uid, targetStoreId } = validation.data;
+        if (targetStoreId && !canAccessStore(dbUser, targetStoreId)) {
+            secureLog('[Auth] Rejected set-claims store switch outside user stores', {
+                requestedStoreId: targetStoreId,
+                userId: dbUser.id,
+            });
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        const claimStoreId = resolveClaimStoreId(dbUser, targetStoreId);
 
         // Get user's current-store role. Older/platform records may still carry
         // a top-level role, so keep that as the compatibility fallback.
         const storeRole = Array.isArray(dbUser.stores)
-            ? dbUser.stores.find((store: any) => store.storeId === dbUser.storeId)?.role
+            ? dbUser.stores.find((store: any) => Number(store.storeId) === claimStoreId)?.role
             : undefined;
         const userRole = storeRole || dbUser.role;
         const productId = normalizeProductId(dbUser.pId || dbUser.productId);
@@ -166,7 +189,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             role: userRole || 'OWNER',
             platformRole: dbUser.platformRole || 'USER',
             tenantId: String(dbUser.tenantId),
-            storeId: String(dbUser.storeId),
+            storeId: String(claimStoreId),
             uId: dbUser.id,
             admin: hasTenantAdminClaim(userRole, dbUser.platformRole),
             storeIds: getStoreIdsClaim(dbUser),
@@ -180,6 +203,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // If UID provided, set claims on existing user
         if (uid) {
             await authAdmin.setCustomUserClaims(uid, customClaims);
+            const customToken = await authAdmin.createCustomToken(uid, customClaims);
 
             secureLog('[Auth] Custom claims set for existing Firebase user', {
                 uid,
@@ -192,6 +216,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             return NextResponse.json({
                 success: true,
+                customToken,
                 claims: customClaims,
                 canonicaCustomToken,
             });

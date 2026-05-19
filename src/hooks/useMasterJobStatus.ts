@@ -6,16 +6,14 @@
  * For outlet projects: Listens to the master project's active extraction job.
  * When master job is running, outlet UI should be blocked.
  * 
- * This replaces the extractionLock approach with a simpler real-time listener.
+ * This replaces the extractionLock approach with a bounded server status check.
  * Benefits:
  * - No extra Firestore fields on project documents
- * - Real-time updates (no refresh needed)
- * - Zero extra reads for "lock checking"
+ * - No direct outlet client listener against master-side job documents
+ * - Capped polling through an authenticated route
  */
 
-import { DB_COLLECTIONS } from '@constant/database';
-import { firebaseClient } from '@lib/firebase/firebaseClient';
-import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
+import { logger } from '@lib/monitoring/logger';
 import { useEffect, useState } from 'react';
 
 export interface MasterJobStatus {
@@ -38,9 +36,13 @@ export interface MasterJobStatus {
  * If master has an active job, the outlet UI should show a blocking message.
  * 
  * @param masterProjectId - The master project ID (null if not an outlet)
+ * @param outletProjectId - The linked outlet project ID, used for server-side access validation
  * @returns Master job status for UI blocking
  */
-export function useMasterJobStatus(masterProjectId: string | null): MasterJobStatus {
+export function useMasterJobStatus(
+    masterProjectId: string | null,
+    outletProjectId?: string | null,
+): MasterJobStatus {
     const [status, setStatus] = useState<MasterJobStatus>({
         isMasterJobActive: false,
         isLoading: true,
@@ -53,51 +55,71 @@ export function useMasterJobStatus(masterProjectId: string | null): MasterJobSta
             return;
         }
 
-        // Query for active jobs on master project
-        // Active = pending, processing, or preview_ready
-        const q = query(
-            collection(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS),
-            where('projectId', '==', masterProjectId),
-            where('status', 'in', ['pending', 'processing', 'preview_ready']),
-            limit(1)
-        );
+        let cancelled = false;
+        let hasLoaded = false;
+        let abortController: AbortController | null = null;
 
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                if (!snapshot.empty) {
-                    const jobDoc = snapshot.docs[0];
-                    const jobData = jobDoc.data();
-                    const jobStatus = jobData.status as 'pending' | 'processing' | 'preview_ready';
+        const fetchStatus = async () => {
+            abortController?.abort();
+            abortController = new AbortController();
 
-                    let blockingMessage = 'Master menu is being updated. Please wait.';
-                    if (jobStatus === 'preview_ready') {
-                        blockingMessage = 'Master menu changes are pending review. Please wait or contact the master outlet.';
-                    }
+            try {
+                const params = new URLSearchParams({ masterProjectId });
+                if (outletProjectId) params.set('outletProjectId', outletProjectId);
 
-                    setStatus({
-                        isMasterJobActive: true,
-                        masterJobStatus: jobStatus,
-                        masterJobId: jobDoc.id,
-                        blockingMessage,
-                        isLoading: false,
-                    });
-                } else {
-                    setStatus({
-                        isMasterJobActive: false,
-                        isLoading: false,
-                    });
+                const response = await fetch(`/api/projects/master-job-status?${params.toString()}`, {
+                    cache: 'no-store',
+                    signal: abortController.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Status request failed with ${response.status}`);
                 }
-            },
-            (error) => {
-                console.error('[useMasterJobStatus] Listener error:', error);
+
+                const data = await response.json();
+                if (cancelled) return;
+
+                const jobStatus = data.masterJobStatus as 'pending' | 'processing' | 'preview_ready' | undefined;
+                let blockingMessage = 'Master menu is being updated. Please wait.';
+                if (jobStatus === 'preview_ready') {
+                    blockingMessage = 'Master menu changes are pending review. Please wait or contact the master outlet.';
+                }
+
+                setStatus({
+                    isMasterJobActive: data.isMasterJobActive === true,
+                    masterJobStatus: jobStatus,
+                    masterJobId: data.masterJobId,
+                    blockingMessage: data.isMasterJobActive === true ? blockingMessage : undefined,
+                    isLoading: false,
+                });
+                hasLoaded = true;
+            } catch (error: any) {
+                if (cancelled || error?.name === 'AbortError') return;
+
+                logger.warn('[useMasterJobStatus] Status check failed', {
+                    masterProjectId,
+                    outletProjectId,
+                    error: error?.message || String(error),
+                });
                 // On error, don't block - fail open
                 setStatus({ isMasterJobActive: false, isLoading: false });
+                hasLoaded = true;
             }
-        );
+        };
 
-        return () => unsubscribe();
-    }, [masterProjectId]);
+        if (!hasLoaded) {
+            setStatus((current) => ({ ...current, isLoading: true }));
+        }
+        void fetchStatus();
+
+        const intervalId = window.setInterval(fetchStatus, 15 * 1000);
+
+        return () => {
+            cancelled = true;
+            abortController?.abort();
+            window.clearInterval(intervalId);
+        };
+    }, [masterProjectId, outletProjectId]);
 
     return status;
 }
