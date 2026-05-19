@@ -2126,10 +2126,10 @@
             "bottomTagline": "অফিসিয়াল মেনু পেজ। খুঁজে পাওয়ার জন্য তৈরি।"
         },
         "Hero": {
-            "titlePart1": "আপনার মেনু আপলোড করুন। ",
-            "titleHighlight": "অফিসিয়াল মেনু অনলাইনে পান।",
+            "titlePart1": "আপনার মেনু আপলোড করুন।",
+            "titleHighlight": "আপনার অফিসিয়াল মেনু অনলাইনে প্রকাশ করুন।",
             "titlePart2": "",
-            "subtitle": "আপনি যে মেনু এখন ব্যবহার করেন, সেখান থেকেই শুরু করুন। MenuList আপনার লাইভ মেনু, অফিসিয়াল পেজ, QR মেনু, customer app, web link এবং PDF এক জায়গা থেকে প্রস্তুত করে।",
+            "subtitle": "আপনি যে মেনু এখন ব্যবহার করেন, সেখান থেকেই শুরু করুন। MenuList সেটিকে live menu, official page, QR menu, web link, customer view এবং PDF-এ বদলে দেয়, সব এক জায়গা থেকে।",
             "cta": "মেনু আপলোড করুন →",
             "caption": "শুরু করা ফ্রি। প্রকাশের আগে আপনি রিভিউ করবেন।",
             "surfaceQrMenu": "QR মেনু",
@@ -2140,9 +2140,9 @@
             "surfaceCustomerApp": "Customer App",
             "eyebrow": "টেকনিক্যাল সেটআপ নেই",
             "secondaryCta": "গ্রাহক কী দেখবে দেখুন",
-            "proof0": "লাইভ মেনু এবং অফিসিয়াল পেজ",
-            "proof1": "প্রকাশের আগে আপনার অনুমোদন",
-            "proof2": "QR, link, app এবং PDF একই মেনু ব্যবহার করে",
+            "proof0": "প্রকাশের আগে রিভিউ",
+            "proof1": "QR এবং web link অন্তর্ভুক্ত",
+            "proof2": "ডেস্কটপ দরকার নেই",
             "visualLabel": "MenuList লাইভ মেনু এবং অফিসিয়াল পেজ প্রিভিউ"
         },
         "Problem": {

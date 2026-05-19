@@ -2,7 +2,7 @@
 
 **Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 19, 2026
+**Last Updated:** May 20, 2026
 
 **Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
 
@@ -39,7 +39,7 @@
 | ----------------------------- | ------------------------------------------ | --------------------------------------------- | --------------------------- | ------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Increment operational version | `masterOperationalState/{masterProjectId}` | Master saves with item/price/category changes | Per master operational save | 1            | operationalVersion (atomic increment), lastUpdatedAt | Only fires for operational changes (items, prices, categories), NOT UI config. File: `src/database/projects/index.ts:451-468`                     |
 | Log MOL event                 | `multiOutletEvents/{tId}/{sId}`            | Any menu edit (master, outlet, standalone)    | Per save                    | 1            | Event type, metadata, actor                          | `logMultiOutletEvent()`. Tracks MASTER_MENU_UPDATED, OUTLET_MENU_UPDATED, STANDALONE_MENU_UPDATED. File: `src/database/projects/index.ts:489-529` |
-| Save outlet local data/overrides | `projects/{tId}/{sId}/{outletProjectId}` | Outlet saves local changes | Per outlet save | 1 | Local `L_I_` / `L_C_` records, policy-allowed overrides | Linked outlet saves route through `/api/projects/outlet-save`; server rejects copied master records, invalid override payloads/prices, and disabled OutletPolicy changes before writing. |
+| Save outlet local data/overrides | `projects/{tId}/{sId}/{outletProjectId}` | Outlet saves local changes | Per outlet save | 1 | Local `L_I_` / `L_C_` records, policy-allowed overrides, `outletLocalState` | Linked outlet saves route through `/api/projects/outlet-save`; server rejects copied master records, invalid override payloads/prices, and disabled OutletPolicy changes before writing. `outletLocalState` is stamped in the same write, so there is no extra Firebase write. |
 
 ### Deletes
 
@@ -60,6 +60,8 @@
 - **Vercel cache**: Customer-facing resolution cached 60s via `unstable_cache`.
 - **Server-backed master job status**: desktop outlet editor no longer opens a cross-store client Firestore listener against master jobs. It calls one authenticated, capped Admin read and fails open, preventing outlet Firebase claims from needing broader rules.
 - **Linked outlet save server route**: outlet editor persists only local records and overrides, so inherited master records are not copied into every outlet project. This keeps outlet documents smaller and prevents future master updates from becoming write amplification.
+- **Outlet-local state piggybacks on existing writes**: `outletLocalState.localVersion`, `lastLocalChangeAt`, `lastLocalChangeBy`, and `lastLocalChangeReason` are written only when the outlet project already saves local data/overrides. No master fan-out and no additional write operation.
+- **Stable extraction ID aliases**: `extractionIdAliases` are stored on the existing item/category during approved extraction saves. This avoids copying or remapping outlet overrides and keeps future matching client-side.
 - **Server-side OutletPolicy enforcement**: `/api/projects/outlet-save` rejects disabled price, availability, description, image, language-addition, local item/category, project-deactivation, theme, brand, and layout changes before the project write. Existing disabled overrides can remain unchanged or be removed back toward master values.
 - **AI spend guard before provider calls**: Linked outlet description/image APIs read the linked project and master store policy first. Disabled actions return `403` before Gemini/Imagen calls or AI-capacity consumption.
 - **Extraction job tenant/store guard**: Firestore rules require `menuImageProcessingJobs.sId` to match the authenticated Firebase token `storeId`, so an outlet cannot queue extraction jobs under another store's ID.

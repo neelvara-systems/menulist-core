@@ -269,6 +269,22 @@ export interface ProjectOverrides {
 /** Job mode for tracking extraction type */
 export type ExtractionJobMode = 'SINGLE_STORE' | 'MASTER_PROJECT' | 'OUTLET_LINKED';
 
+export type OutletLocalChangeReason =
+    | 'outlet_save'
+    | 'extraction_apply'
+    | 'override_apply';
+
+export interface OutletLocalState {
+    /** Outlet-local monotonically increasing revision. Lives only on the outlet project. */
+    localVersion?: number;
+    /** Last outlet-local menu/override change timestamp. */
+    lastLocalChangeAt?: Timestamp;
+    /** User ID responsible for the last outlet-local change. */
+    lastLocalChangeBy?: string;
+    /** Runtime path that created the latest outlet-local change. */
+    lastLocalChangeReason?: OutletLocalChangeReason;
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // SPECIAL MENU SWITCHING TYPES (Feature: Temporary Menu Override)
 // @see __docs__/special-menu-switching/special-menu-switching_impl.md
@@ -359,6 +375,9 @@ export interface Project {
 
     /** Store-specific overrides for inherited items/categories/attributes */
     overrides?: ProjectOverrides;
+
+    /** Per-outlet local staleness marker. Never written on the master project. */
+    outletLocalState?: OutletLocalState;
 
     /**
      * Per-outlet snapshot of master menu at last acknowledgment (Feature #4.1)

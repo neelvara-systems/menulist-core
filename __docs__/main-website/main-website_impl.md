@@ -65,7 +65,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Default metadata (from layout):**
 - Title: `MenuList - Upload Your Menu Online`
-- Description: `Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.`
+- Description: `Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source.`
 - OG image: `/images/website/menulist-og-official-source.png`
 - Backward-compatible OG copy: `/og-image.png`
 - Robots: index, follow (full crawling enabled)

@@ -32,9 +32,23 @@ import {
     ItemOverride,
     ProjectOverrides,
 } from "@template/main-app/projects/types/project.types";
-import { deleteField, doc, getDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, getDoc, increment, Timestamp, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PROJECTS;
+
+function withOutletLocalState<T extends Record<string, unknown>>(
+    updateData: T,
+    actorUserId: string,
+    reason: "override_apply" | "outlet_save" | "extraction_apply" = "override_apply",
+): T {
+    return {
+        ...updateData,
+        "outletLocalState.localVersion": increment(1),
+        "outletLocalState.lastLocalChangeAt": Timestamp.now(),
+        "outletLocalState.lastLocalChangeBy": actorUserId || "unknown",
+        "outletLocalState.lastLocalChangeReason": reason,
+    };
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // MASTER PROJECT OPERATIONS
@@ -610,9 +624,9 @@ export const applyItemOverride = async (
             const oldOverride = storeData.overrides?.items?.[itemId];
 
             // Write override
-            const updateData = replaceUndefined({
+            const updateData = withOutletLocalState(replaceUndefined({
                 [`overrides.items.${itemId}`]: override,
-            });
+            }), session.uId);
 
             await updateDoc(storeRef, updateData);
             await revalidatePublicClientCacheForProject(storeProjectId, "applyItemOverride");
@@ -666,9 +680,9 @@ export const applyCategoryOverride = async (
                 storeProjectId,
             );
 
-            const updateData = replaceUndefined({
+            const updateData = withOutletLocalState(replaceUndefined({
                 [`overrides.categories.${categoryId}`]: override,
-            });
+            }), session.uId);
 
             await updateDoc(storeRef, updateData);
             await revalidatePublicClientCacheForProject(storeProjectId, "applyCategoryOverride");
@@ -709,12 +723,12 @@ export const removeItemOverride = async (
             // Remove the item override
             const { [itemId]: removed, ...remainingItems } = currentOverrides.items;
 
-            const updateData = replaceUndefined({
+            const updateData = withOutletLocalState(replaceUndefined({
                 overrides: {
                     ...currentOverrides,
                     items: remainingItems,
                 },
-            });
+            }), session.uId);
 
             await updateDoc(storeRef, updateData);
             await revalidatePublicClientCacheForProject(storeProjectId, "removeItemOverride");
@@ -756,12 +770,12 @@ export const removeCategoryOverride = async (
             const { [categoryId]: removed, ...remainingCategories } =
                 currentOverrides.categories;
 
-            const updateData = replaceUndefined({
+            const updateData = withOutletLocalState(replaceUndefined({
                 overrides: {
                     ...currentOverrides,
                     categories: remainingCategories,
                 },
-            });
+            }), session.uId);
 
             await updateDoc(storeRef, updateData);
             await revalidatePublicClientCacheForProject(storeProjectId, "removeCategoryOverride");
@@ -861,9 +875,9 @@ export const clearAllOverrides = async (storeProjectId: string) => {
             );
 
             // Reset overrides to empty (preserves local-only items in extractedData)
-            const updateData = replaceUndefined({
+            const updateData = withOutletLocalState(replaceUndefined({
                 overrides: createEmptyOverrides(),
-            });
+            }), session.uId);
 
             await updateDoc(storeRef, updateData);
             await revalidatePublicClientCacheForProject(storeProjectId, "clearAllOverrides");

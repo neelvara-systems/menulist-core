@@ -24,6 +24,7 @@ import type {
     PreviewIgnoredRow,
     PreviewItemRow,
     PreviewWarningRow,
+    StableIdAliases,
 } from './comparisonEngine.types';
 import { getNormalizedNameFromObject, normalizeName } from './normalize';
 import { generateLocalCategoryId, generateLocalItemId } from './redistribute';
@@ -36,6 +37,31 @@ import { isValidPrice } from './validation';
 
 const DEFAULT_SIMILARITY_THRESHOLD = MATCH_THRESHOLDS.SIMILARITY_THRESHOLD;
 const DEFAULT_WEAK_MATCH_THRESHOLD = MATCH_THRESHOLDS.WEAK_MATCH_THRESHOLD;
+
+function createStableIdAliases(): StableIdAliases {
+    return {
+        categoryAliases: [],
+        itemAliases: [],
+    };
+}
+
+function mergeStableIdAliases(target: StableIdAliases, source?: StableIdAliases): StableIdAliases {
+    if (!source) return target;
+    target.categoryAliases.push(...source.categoryAliases);
+    target.itemAliases.push(...source.itemAliases);
+    return target;
+}
+
+function hasExtractionIdAlias(entity: { extractionIdAliases?: string[] }, extractedId: string): boolean {
+    return Array.isArray(entity.extractionIdAliases) && entity.extractionIdAliases.includes(extractedId);
+}
+
+function needsExtractionIdAlias(
+    entity: { id: string; extractionIdAliases?: string[] },
+    extractedId: string,
+): boolean {
+    return Boolean(extractedId) && entity.id !== extractedId && !hasExtractionIdAlias(entity, extractedId);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DEDUPLICATION
@@ -116,6 +142,19 @@ function matchCategory(
 ): MatchResult {
     const extractedName = getNormalizedNameFromObject(extracted.name, primaryLang);
 
+    // Re-extraction can generate fresh candidate IDs for the same menu entity.
+    // Persisted aliases keep master/outlet override keys stable across future runs.
+    for (const existing of existingCategories) {
+        if (existing.id === extracted.id || hasExtractionIdAlias(existing, extracted.id)) {
+            return {
+                matched: true,
+                existingId: existing.id,
+                score: 1.0,
+                matchType: 'exact',
+            };
+        }
+    }
+
     // Try exact match first
     for (const existing of existingCategories) {
         const existingName = getNormalizedNameFromObject(existing.name, primaryLang);
@@ -181,6 +220,19 @@ function matchItem(
     // Separate items by category
     const itemsInCategory = existingItems.filter(item => item.category === targetCategoryId);
     const itemsOutsideCategory = existingItems.filter(item => item.category !== targetCategoryId);
+
+    for (const existing of existingItems) {
+        if (existing.id === extracted.id || hasExtractionIdAlias(existing, extracted.id)) {
+            return {
+                matched: true,
+                existingId: existing.id,
+                score: 1.0,
+                matchType: 'exact',
+                isMasterItem: isMasterPool,
+                isLocalItem: isLocalPool,
+            };
+        }
+    }
 
     let bestMatch: { id: string; score: number; matchType: 'exact' | 'strong' | 'weak' | 'no_match'; inSameCategory: boolean } | null = null;
 
@@ -284,10 +336,12 @@ function processItemsSingleOrMaster(
     warnings: PreviewWarningRow[];
     unchangedCount: number;
     stats: Partial<ComparisonStats>;
+    stableIdAliases: StableIdAliases;
 } {
     const newItems: PreviewItemRow[] = [];
     const updatedItems: PreviewItemRow[] = [];
     const warnings: PreviewWarningRow[] = [];
+    const stableIdAliases = createStableIdAliases();
     let unchangedCount = 0;
     let matchedCount = 0;
     let invalidPrices = 0;
@@ -306,6 +360,13 @@ function processItemsSingleOrMaster(
         if (match.matched && match.existingId) {
             matchedCount++;
             const existing = existingItems.find(i => i.id === match.existingId)!;
+            if (match.matchType !== 'weak' && needsExtractionIdAlias(existing, extracted.id)) {
+                stableIdAliases.itemAliases.push({
+                    itemId: existing.id,
+                    extractedItemId: extracted.id,
+                    targetFileUid: existing.fileUid || '',
+                });
+            }
 
             // Check for changes
             const changes: PreviewItemRow['changes'] = {};
@@ -340,6 +401,7 @@ function processItemsSingleOrMaster(
                     warnings: itemWarnings.length > 0 ? itemWarnings : undefined,
                     approved: true,
                     targetCategoryId: categoryIdMap.get(extracted.categoryId) || extracted.categoryId,
+                    targetFileUid: existing.fileUid,
                 });
             } else {
                 unchangedCount++;
@@ -386,6 +448,7 @@ function processItemsSingleOrMaster(
             invalidPrices,
             weakMatches,
         },
+        stableIdAliases,
     };
 }
 
@@ -412,11 +475,13 @@ function processItemsOutletLinked(
     warnings: PreviewWarningRow[];
     unchangedCount: number;
     stats: Partial<ComparisonStats>;
+    stableIdAliases: StableIdAliases;
 } {
     const newItems: PreviewItemRow[] = [];
     const updatedItems: PreviewItemRow[] = [];
     const overrideSuggestions: PreviewItemRow[] = [];
     const warnings: PreviewWarningRow[] = [];
+    const stableIdAliases = createStableIdAliases();
     let unchangedCount = 0;
     let matchedCount = 0;
     let overrideCount = 0;
@@ -478,6 +543,13 @@ function processItemsOutletLinked(
         if (localMatch.matched && localMatch.existingId) {
             matchedCount++;
             const localItem = localOnlyItems.find(i => i.id === localMatch.existingId)!;
+            if (localMatch.matchType !== 'weak' && needsExtractionIdAlias(localItem, extracted.id)) {
+                stableIdAliases.itemAliases.push({
+                    itemId: localItem.id,
+                    extractedItemId: extracted.id,
+                    targetFileUid: localItem.fileUid || '',
+                });
+            }
 
             // For local items, full update is allowed
             const changes: PreviewItemRow['changes'] = {};
@@ -512,6 +584,7 @@ function processItemsOutletLinked(
                     approved: true,
                     isLocalOnly: true,
                     targetCategoryId: categoryIdMap.get(extracted.categoryId) || extracted.categoryId,
+                    targetFileUid: localItem.fileUid,
                 });
             } else {
                 unchangedCount++;
@@ -561,6 +634,7 @@ function processItemsOutletLinked(
             invalidPrices,
             weakMatches,
         },
+        stableIdAliases,
     };
 }
 
@@ -578,7 +652,8 @@ function buildApplyPlan(
     newItems: PreviewItemRow[],
     updatedItems: PreviewItemRow[],
     overrideSuggestions: PreviewItemRow[],
-    primaryLang: string
+    primaryLang: string,
+    stableIdAliases?: StableIdAliases,
 ): ApplyPlan {
     const plan: ApplyPlan = { mode };
 
@@ -586,6 +661,7 @@ function buildApplyPlan(
         plan.projectMutations = {
             upsertCategories: [],
             upsertItems: [],
+            stableIdAliases,
         };
 
         // Approved new categories
@@ -647,6 +723,7 @@ function buildApplyPlan(
             upsertLocalCategories: [],
             upsertLocalItems: [],
             applyOverrides: [],
+            stableIdAliases,
         };
 
         // New local-only categories
@@ -761,6 +838,7 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
     // Step 2: Process categories
     const newCategories: PreviewCategoryRow[] = [];
     const updatedCategories: PreviewCategoryRow[] = [];
+    const stableIdAliases = createStableIdAliases();
     const categoryIdMap = new Map<string, string>(); // extractedId -> existingId
 
     const existingCategories = mode === 'OUTLET_LINKED' && masterProject
@@ -776,6 +854,13 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
 
             // Check for changes
             const existing = existingCategories.find(c => c.id === match.existingId)!;
+            if (match.matchType !== 'weak' && needsExtractionIdAlias(existing, extractedCat.id)) {
+                stableIdAliases.categoryAliases.push({
+                    categoryId: existing.id,
+                    extractedCategoryId: extractedCat.id,
+                    targetFileUid: existing.fileUid || '',
+                });
+            }
             const hasNameChange = getNormalizedNameFromObject(extractedCat.name, primaryLang) !==
                 getNormalizedNameFromObject(existing.name, primaryLang);
             const hasOrderChange = extractedCat.orderIndex !== existing.orderIndex;
@@ -796,6 +881,7 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
                         ? [`Weak match (${Math.round(match.score * 100)}%)`]
                         : undefined,
                     approved: true,
+                    targetFileUid: existing.fileUid,
                 });
 
                 if (match.matchType === 'weak') {
@@ -844,6 +930,7 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         overrideSuggestions = result.overrideSuggestions;
         warnings = result.warnings;
         unchangedCount = result.unchangedCount;
+        mergeStableIdAliases(stableIdAliases, result.stableIdAliases);
         Object.assign(stats, result.stats);
     } else {
         const result = processItemsSingleOrMaster(
@@ -858,6 +945,7 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         updatedItems = result.updatedItems;
         warnings = result.warnings;
         unchangedCount = result.unchangedCount;
+        mergeStableIdAliases(stableIdAliases, result.stableIdAliases);
         Object.assign(stats, result.stats);
     }
 
@@ -869,7 +957,8 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         newItems,
         updatedItems,
         overrideSuggestions,
-        primaryLang
+        primaryLang,
+        stableIdAliases,
     );
 
     console.log('[ComparisonEngine] Comparison complete', {
@@ -897,6 +986,7 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         applyPlan,
         stats,
         primaryLang,
+        stableIdAliases,
     };
 }
 
@@ -915,7 +1005,8 @@ export function updateApplyPlan(
         output.preview.newItems,
         output.preview.updatedItems,
         output.preview.overrideSuggestions,
-        output.primaryLang
+        output.primaryLang,
+        output.stableIdAliases,
     );
 }
 

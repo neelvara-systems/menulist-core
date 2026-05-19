@@ -87,8 +87,8 @@ export default function Footer() {
             <Link href="/" className="ws-footer-logo" aria-label="MenuList AI home">
               <BrandWordmark
                 className="ws-brand-wordmark"
-                iconHeight={24}
-                textClassName="ws-brand-wordmark__text ws-brand-gradient-text"
+                iconHeight={26}
+                textClassName="ws-brand-wordmark__text"
               />
             </Link>
             <p>{t('Footer.tagline')}</p>

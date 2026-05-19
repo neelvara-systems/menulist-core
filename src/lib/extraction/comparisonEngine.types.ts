@@ -58,6 +58,7 @@ export interface ExistingCategory {
     orderIndex?: number;
     active?: boolean;
     fileUid?: string; // Which file this category belongs to
+    extractionIdAliases?: string[]; // Prior/new extraction IDs that resolve to this stable category ID
 }
 
 /**
@@ -79,6 +80,20 @@ export interface ExistingItem {
     }>;
     tags?: string[];
     fileUid?: string; // Which file this item belongs to
+    extractionIdAliases?: string[]; // Prior/new extraction IDs that resolve to this stable item ID
+}
+
+export interface StableIdAliases {
+    categoryAliases: Array<{
+        categoryId: string;
+        extractedCategoryId: string;
+        targetFileUid: string;
+    }>;
+    itemAliases: Array<{
+        itemId: string;
+        extractedItemId: string;
+        targetFileUid: string;
+    }>;
 }
 
 /**
@@ -261,6 +276,7 @@ export interface ApplyPlan {
             patch?: Partial<ExistingItem>;
             targetFileUid: string;
         }>;
+        stableIdAliases?: StableIdAliases;
     };
 
     /** For OUTLET_LINKED: outlet-specific mutations */
@@ -279,6 +295,7 @@ export interface ApplyPlan {
             masterCategoryId: string;
             patch: Partial<CategoryOverride>;
         }>;
+        stableIdAliases?: StableIdAliases;
     };
 }
 
@@ -334,6 +351,9 @@ export interface ComparisonEngineOutput {
 
     /** Primary language used for comparison */
     primaryLang: string;
+
+    /** Hidden ID mappings persisted with approved saves to preserve outlet overrides across re-extraction */
+    stableIdAliases?: StableIdAliases;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

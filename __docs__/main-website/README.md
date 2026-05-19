@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.8 (Canonical Website Default)
+**Version:** 3.4.9 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 19, 2026
+**Last Updated:** May 20, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.8** | **Canonical Website Default** | **"Upload your menu. Get your official menu online."** | **ACTIVE** |
+| **3.4.9** | **Canonical Website Default** | **"Upload your menu. Publish your official menu online."** | **ACTIVE** |
 
-Version 3.4.8 keeps the upload-first promise, the owner reassurance helpers, search/AI discovery proof, and low-prominence POS Sync operations proof. It also surfaces staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out as operations proof for teams. The Features page now carries dedicated owner-phone and staff-access operations cards grounded in shipped owner surfaces. Privacy, Terms, and Trust & Security now explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
+Version 3.4.9 keeps the upload-first promise, shifts the hero action language from "get" to owner-controlled "publish", uses a solid website wordmark with the gradient reserved for the mark and headline accents, and turns the first hero trust points into a compact high-contrast proof strip. It also keeps search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out as operations proof for teams. The Features page carries dedicated owner-phone and staff-access operations cards grounded in shipped owner surfaces. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -283,7 +283,7 @@ Protected scope:
 | Visual direction | Direction A — Official Source Authority                       | Calm, credible, product-led                           |
 | Tone             | Premium calm, operationally clear, low hype                   | Supports trust and owner comprehension                |
 | CTA              | "Upload your menu →"                                          | Matches the non-technical owner action and routes to `/create-menu` |
-| Hero message     | "Upload your menu. Get your official menu online."            | Explains the transformation before infrastructure depth |
+| Hero message     | "Upload your menu. Publish your official menu online."        | Explains the owner-controlled transformation before infrastructure depth |
 | Homepage shape   | 16 focused sections plus sticky CTA                           | Adds a whole-page revenue path while preserving official-source discipline |
 | Proof strategy   | Public output, customer browse proof, deployment surfaces      | Shows value through believable product evidence       |
 | Protected scope  | Pricing/payment/auth/onboarding logic untouched               | Avoids breaking production billing and subscription flows |
@@ -420,6 +420,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.9 | May 20, 2026 | Polished the mobile hero and brand lockup: solid website wordmark text, gradient retained in the mark and headline accent, "Publish your official menu online" hero copy, and a compact higher-contrast proof strip. |
 | 3.4.8 | May 19, 2026 | Aligned Privacy Policy, Terms of Service, and Trust & Security with owner-managed staff access, role-scoped permissions, passcode reset metadata, and session revocation. |
 | 3.4.7 | May 19, 2026 | Added staff access control as homepage/features/FAQ operations proof without changing staff/auth runtime. |
 | 3.4.6 | May 19, 2026 | Added a dedicated Features page Operations card for phone-browser/PWA owner management without changing mobile runtime. |

@@ -2,11 +2,9 @@
 
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuBadgeCheck, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuRefreshCw, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
+import { LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
-import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
-import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const surfaceKeys = [
   { key: 'surfaceOfficialPage', icon: LuLayoutGrid },
@@ -32,14 +30,12 @@ export default function HeroSection() {
         <div className="ws-hero-official__grid">
           <div className="ws-hero-official__copy">
             <p className="ws-hero-eyebrow">{t('Hero.eyebrow')}</p>
-            <WebsiteHeadline
-              as="h1"
-              parts={[
-                { text: t('Hero.titlePart1') },
-                { text: t('Hero.titleHighlight'), highlight: true },
-                { text: t('Hero.titlePart2') },
-              ]}
-            />
+            <WebsiteHeadline as="h1">
+              {t('Hero.titlePart1')}
+              <br className="ws-hero-title-break" />
+              <span className="ws-headline__highlight">{t('Hero.titleHighlight')}</span>
+              {t('Hero.titlePart2')}
+            </WebsiteHeadline>
 
             <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '620px' }}>
               {t('Hero.subtitle')}
@@ -58,11 +54,8 @@ export default function HeroSection() {
               {t('Hero.caption')}
             </p>
 
-            <WebsiteMobileSupportHint text={t('Hero.mobileSupport')} />
-            <WebsiteOwnerApprovalHint />
-
             <div className="ws-hero-official__proof">
-              {[LuBadgeCheck, LuShieldCheck, LuRefreshCw].map((Icon, index) => (
+              {[LuShieldCheck, LuQrCode, LuSmartphone].map((Icon, index) => (
                 <div key={index} className="ws-hero-proof-item">
                   <Icon size={16} />
                   <span>{t(`Hero.proof${index}`)}</span>

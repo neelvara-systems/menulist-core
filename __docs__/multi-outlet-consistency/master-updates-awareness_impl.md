@@ -9,6 +9,8 @@
 **Date:** January 2026  
 **Author:** Cascade (Codebase Authority)
 
+> **May 20, 2026 mobile parity update:** The same awareness contract is now available in mobile menu editing through `MobileMasterUpdateNotice`, using `useMasterUpdateAwareness`, `buildSummaryText()`, the persisted `masterSnapshot`, "Got it" acknowledgment, and reopenable "Last changes" history.
+
 ---
 
 ## 0. Problem Statement

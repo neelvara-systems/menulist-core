@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** May 19, 2026 (v5 — actual mobile/desktop Chrome + Firebase transaction verification + server policy hardening)
+**Last Updated:** May 20, 2026 (v6 — mobile master-update review parity + outlet-local state markers)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -27,6 +27,7 @@
 | Add new outlet                   | `MobileLocationsScreen` → `/api/outlets/create`    | ✅     |
 | Proration display                | `MobileLocationsScreen` → `calculateProration`     | ✅     |
 | Outlet Policy (15 toggles)       | `MobileLocationsScreen` → `updateOutletPolicy` → `/api/outlets/policy` | ✅     |
+| Master update review/history     | `MobileMasterUpdateNotice` → `useMasterUpdateAwareness` | ✅     |
 
 ## DAL Parity
 
@@ -34,6 +35,8 @@
 - Uses `/api/projects/outlet-save` for linked outlet menu saves, matching desktop persistence: mobile resolves master + outlet local data for display but saves only local `L_I_` / `L_C_` records and overrides.
 - `/api/projects/outlet-save` enforces OutletPolicy server-side for price, availability, description, image, language additions, local items/categories, project deactivation, theme, brand, and layout changes, so mobile controls are not the only protection.
 - Linked outlet AI description/image APIs also enforce OutletPolicy server-side before provider calls, so hidden mobile actions cannot be bypassed by direct API requests.
+- Mobile menu now shows the same master-update awareness contract as desktop: current diff, outlet impact notes, "Got it" acknowledgment, and "Last changes" history.
+- Linked outlet local saves, direct overrides, and extraction apply stamp `outletLocalState` only on the outlet project, so mobile local work is observable without writing master data.
 - Same `updateOutletPolicy` DAL function, now server-owned for policy writes
 - Same `OutletPolicy` type and `DEFAULT_OUTLET_POLICY`
 - Same `calculateProration` utility

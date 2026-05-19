@@ -51,6 +51,7 @@ import { generateMenuFileUid } from '../../templates/main-app/projects/utils';
 import { clearStaleCategoryTranslations, clearStaleTranslations, translateCategory } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, DotLoading, Empty, Flex, FloatingBubble, List, Popup, ProgressBar, PullToRefresh, Result, SearchBar, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
+import MobileMasterUpdateNotice from '../components/MobileMasterUpdateNotice';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
@@ -595,6 +596,30 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
         if (!updatedProject?.projectId) return;
         upsertCachedProject(updatedProject);
     }, [upsertCachedProject]);
+
+    const applyMasterUpdateAwarenessSnapshot = useCallback((updates: Partial<Project>) => {
+        const mergeUpdates = (project: any) => (
+            project ? removeObjRef({ ...project, ...updates }) : project
+        );
+
+        const nextRawProject = mergeUpdates(rawMenuProjectRef.current);
+        if (nextRawProject) {
+            rawMenuProjectRef.current = nextRawProject;
+        }
+
+        const nextPersistedProject = mergeUpdates(persistedMenuRef.current);
+        if (nextPersistedProject) {
+            persistedMenuRef.current = nextPersistedProject;
+            persistedLocalSnapshotRef.current = JSON.stringify(nextPersistedProject);
+            replaceProjectInList(nextPersistedProject);
+        }
+
+        setMenuData((current: any) => {
+            const nextProject = mergeUpdates(current);
+            menuDataRef.current = nextProject;
+            return nextProject;
+        });
+    }, [replaceProjectInList]);
 
     const updateProjectImageInMobileCache = useCallback((projectId: string, projectImage: string) => {
         const summaryFromCache = selectedProjectSummary?.projectId === projectId
@@ -3041,6 +3066,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor }: MobileMenuScree
             <PullToRefresh onRefresh={handleRefresh}>
                 <Flex gap={16} style={{ padding: 16 }} vertical>
                     <div ref={menuContentTopRef} />
+                    <MobileMasterUpdateNotice
+                        onProjectUpdate={applyMasterUpdateAwarenessSnapshot}
+                        project={menuData}
+                    />
                     {isFirstRunProject ? (
                         <Card
                             style={{

@@ -41,7 +41,7 @@
   --brand-primary: #1e40af; /* Primary brand color (blue-800) */
   --brand-secondary: #2563eb; /* Interactive elements (blue-600) */
   --brand-light: #dbeafe; /* Subtle brand backgrounds (blue-100) */
-  --brand-gradient: linear-gradient(90deg, #2fd0c5 0%, #28ade8 48%, #2478ff 100%); /* Brand wordmark/accent only */
+  --brand-gradient: linear-gradient(90deg, #2fd0c5 0%, #28ade8 48%, #2478ff 100%); /* Brand mark/accent only */
 
   /* CTA */
   --cta-default: #2563eb; /* Button default (blue-600) */
@@ -73,9 +73,10 @@
 
 Brand gradient rule:
 
-- Use `--brand-gradient` only for the MenuList wordmark, auth-page product title, and deliberate headline highlight spans.
-- Do not apply the gradient to body copy, full headings, CTA buttons, cards, icons, or page backgrounds.
+- Use `--brand-gradient` only for the MenuList mark, auth-page product title, and deliberate headline highlight spans.
+- Do not apply the gradient to website wordmark text, body copy, full headings, CTA buttons, cards, icons, or page backgrounds.
 - Brand display surfaces should render through `src/components/website/shared/BrandWordmark.tsx`; the canonical display name is `MenuList AI`.
+- Website header/footer wordmark text is solid and inherits the surface text color; the logo mark carries the gradient.
 - Keep body copy as `MenuList` unless the context explicitly names the AI/product platform identity.
 
 ### 2.3 Contrast Verification
@@ -301,7 +302,7 @@ no shadow on scroll
 ### 5.5 Brand Mark
 
 - Website brand marks must render through `src/components/website/shared/LogoMark.tsx`.
-- Website brand wordmarks must render through `src/components/website/shared/BrandWordmark.tsx` so the text, casing, and gradient stay centralized.
+- Website brand wordmarks must render through `src/components/website/shared/BrandWordmark.tsx` so the text, casing, and logo mark stay centralized.
 - `LogoMark.tsx` must stay aligned with the official MenuList app icon in `public/icons/android-chrome-512x512.png` and the icon-only geometry in `src/components/atoms/animatedVerticalLogo/index.tsx`.
 - Do not create one-off logo SVGs for the website header, footer, CTA blocks, or supporting pages.
 - Do not overwrite files under `public/icons/` for website presentation changes; those files remain the app/PWA icon source.

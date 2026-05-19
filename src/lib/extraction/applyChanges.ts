@@ -131,6 +131,53 @@ function upsertById(target: any[], entries: any[]) {
     }
 }
 
+function appendExtractionIdAlias(entry: any, extractedId: string) {
+    if (!entry?.id || !extractedId || entry.id === extractedId) return;
+    const aliases = Array.isArray(entry.extractionIdAliases)
+        ? entry.extractionIdAliases.filter((alias: unknown): alias is string => typeof alias === 'string' && alias.length > 0)
+        : [];
+    if (!aliases.includes(extractedId)) {
+        entry.extractionIdAliases = Array.from(new Set([...aliases, extractedId])).slice(-25);
+    }
+}
+
+function applyStableIdAliases(files: any[], aliases?: {
+    categoryAliases?: Array<{ categoryId: string; extractedCategoryId: string; targetFileUid?: string }>;
+    itemAliases?: Array<{ itemId: string; extractedItemId: string; targetFileUid?: string }>;
+}) {
+    let applied = false;
+
+    for (const alias of aliases?.categoryAliases || []) {
+        if (!alias.categoryId || !alias.extractedCategoryId) continue;
+        const candidateFiles = alias.targetFileUid
+            ? files.filter((file) => file?.uid === alias.targetFileUid)
+            : files;
+        for (const file of candidateFiles) {
+            const category = file?.extractedData?.data?.categories?.find((entry: any) => entry?.id === alias.categoryId);
+            if (!category) continue;
+            appendExtractionIdAlias(category, alias.extractedCategoryId);
+            applied = true;
+            break;
+        }
+    }
+
+    for (const alias of aliases?.itemAliases || []) {
+        if (!alias.itemId || !alias.extractedItemId) continue;
+        const candidateFiles = alias.targetFileUid
+            ? files.filter((file) => file?.uid === alias.targetFileUid)
+            : files;
+        for (const file of candidateFiles) {
+            const item = file?.extractedData?.data?.items?.find((entry: any) => entry?.id === alias.itemId);
+            if (!item) continue;
+            appendExtractionIdAlias(item, alias.extractedItemId);
+            applied = true;
+            break;
+        }
+    }
+
+    return applied;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -268,8 +315,12 @@ export async function applyExtractionChanges(
                 }
             }
 
+            const aliasApplied = applyStableIdAliases(files, mutations.stableIdAliases);
+
             // Collect modified files into payload
-            updatePayload.files = files;
+            if (aliasApplied || stats.categoriesAdded || stats.categoriesUpdated || stats.itemsAdded || stats.itemsUpdated) {
+                updatePayload.files = files;
+            }
 
         } else if (applyPlan.mode === 'OUTLET_LINKED') {
             // ═══════════════════════════════════════════════════════════
@@ -303,6 +354,8 @@ export async function applyExtractionChanges(
                 stats.itemsAdded = mutations.upsertLocalItems.length;
             }
 
+            applyStableIdAliases(files, mutations.stableIdAliases);
+
             // Collect modified files into payload
             updatePayload.files = files;
 
@@ -329,6 +382,21 @@ export async function applyExtractionChanges(
                         updatedAt: now,
                     };
                 }
+            }
+
+            if (
+                stats.categoriesAdded > 0
+                || stats.itemsAdded > 0
+                || stats.overridesApplied > 0
+                || (mutations.applyCategoryOverrides?.length || 0) > 0
+                || (mutations.stableIdAliases?.categoryAliases?.length || 0) > 0
+                || (mutations.stableIdAliases?.itemAliases?.length || 0) > 0
+            ) {
+                const previousLocalState = projectData.outletLocalState || {};
+                updatePayload['outletLocalState.localVersion'] = Number(previousLocalState.localVersion || 0) + 1;
+                updatePayload['outletLocalState.lastLocalChangeAt'] = now;
+                updatePayload['outletLocalState.lastLocalChangeBy'] = session.uId || session.user?.id || 'unknown';
+                updatePayload['outletLocalState.lastLocalChangeReason'] = 'extraction_apply';
             }
         }
 

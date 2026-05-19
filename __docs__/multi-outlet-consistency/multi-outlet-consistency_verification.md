@@ -2,7 +2,7 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
-**Last Reviewed:** May 19, 2026
+**Last Reviewed:** May 20, 2026
 
 **Verified By:** Cascade AI Assistant  
 **Status:** ✅ Production Ready
@@ -16,6 +16,8 @@
 > **Note (May 19, 2026 — Chrome/Firebase QA):** Actual browser testing against QA tenant `39` verified mobile and desktop outlet menu saves, local IDs `L_I_1779208870629_nhfqsp` / `L_C_1779209396986_b0rb6j`, HQ/outlet switching, master data isolation, server-backed master-job status, safe no-image rendering, and server-side enforcement for disabled linked-outlet policy changes.
 >
 > **Note (May 19, 2026 — test-case line audit):** `multi-outlet-consistency_test-cases.md` was re-read as the contract: 90 numbered cases, 40 QA rows, write invariants, and deferred/by-design sections. The audit closed the remaining policy/security rows by adding strict linked-outlet override schemas, invalid-price rejection, server-side AI description/image policy checks, theme/brand/layout policy checks on linked saves, and store-token matching for extraction job creation.
+>
+> **Note (May 20, 2026 — completion hardening):** Remaining partial rows were closed in code: public deleted-item links fall back cleanly, master/local re-extraction persists `extractionIdAliases`, outlet-only local changes stamp `outletLocalState`, and mobile now exposes master-update review/history/acknowledge parity through `MobileMasterUpdateNotice`.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -30,6 +32,15 @@
 | Firebase cost | ✅ Normal path adds no polling. Outlet sessions may add one master-store read only when policy is not already hydrated; linked outlet AI requests add 1 project read + 1 master-store read before provider calls so disabled actions fail before AI spend. |
 | Verification commands | ✅ `npx tsc --noEmit --incremental false`; ✅ `npm run lint -- --max-warnings=0`; ✅ `git diff --check` on touched files. |
 
+## May 20, 2026 Completion Hardening
+
+| Area | Result |
+| ---- | ------ |
+| Public deleted-item fallback | ✅ Query-param and legacy `/item/...` links now return to the menu and show "This item is no longer available." |
+| Extraction ID stability | ✅ The comparison engine matches `extractionIdAliases`; apply writes persist aliases without replacing stable IDs. |
+| Outlet-local state | ✅ Linked saves, direct overrides, and extraction apply stamp `outletLocalState` only on the outlet project in the existing write. |
+| Mobile master updates | ✅ `MobileMasterUpdateNotice` mirrors desktop master-update review, history, and acknowledge flow. |
+
 **Live Firebase test (May 19, 2026):** Disposable tenant `910884561`, master store `37`, outlet store `38`, user, and subscription were created against the configured Firebase project. The test verified policy save, legacy master promotion, outlet create, outlet rename, switch-store, outlet deactivation, inactive-store switch rejection, subscription quantity returning to `1`, and cleanup (`cleanupExists false,false,false,false,false`).
 
 **Residual infrastructure note:** Local route tests still showed Upstash DNS failures for rate-limit checks (`prepared-ant-28434.upstash.io ENOTFOUND`). The route fallback allowed requests, so feature behavior was verified, but deployed rate-limit connectivity should be checked as part of release environment validation.
@@ -38,7 +49,7 @@
 
 ## 1. Historical February Field-Level Audit
 
-The February 5 field-level audit below is preserved for traceability. Current May 19 production readiness is recorded in the audit table above and the live Firebase QA note.
+The February 5 field-level audit below is preserved for traceability. Current May 20 production readiness is recorded in the audit tables above and the live Firebase QA note.
 
 **Historical Status at February 5:** 85% Complete
 

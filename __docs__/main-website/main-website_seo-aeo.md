@@ -31,7 +31,7 @@
 
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homepage       | Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source. |
+| Homepage       | Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source for your public menu, official page, QR assets, customer app, PDF, and web link.   |
 | Pricing        | Choose the right MenuList plan for your business. Free to start. Upgrade for more surfaces, multi-language support, and multi-location management.                  |

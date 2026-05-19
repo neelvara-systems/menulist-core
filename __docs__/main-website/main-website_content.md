@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 19, 2026
+**Last Updated:** May 20, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -56,24 +56,24 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Headline:**
 
-> Upload your menu. Get your official menu online.
+> Upload your menu. Publish your official menu online.
 
 **Subline:**
 
-> Start with the menu you already use. MenuList prepares your live menu, official page, QR menu, customer app, web link, and PDF from one place you control.
+> Start with the menu you already use. MenuList turns it into a live menu, official page, QR menu, web link, customer view, and PDF from one place you control.
 
 **Primary CTA:** Upload your menu →
 **Secondary CTA:** See what customers see (`#public-proof`)
 **Micro-trust line:** Free to start. You review before publishing.
 
-**Phone workflow line:** No desktop required — update and publish your menu from a phone browser or the MenuList PWA.
+**Proof strip:** Review before publishing · QR and web link included · No desktop required
 
 **Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and Customer App.
 
 **Notes:**
 
 - Direction A: No-tech owner action first, official-source proof second.
-- Hero must communicate upload → review → official online menu in under 5 seconds.
+- Hero must communicate upload → review → publish official online menu in under 5 seconds.
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
 
 ---
@@ -1178,7 +1178,7 @@ These lines are intentionally short. They answer two high-friction SMB owner dou
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Homepage       | MenuList - Upload Your Menu Online | Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source. |
+| Homepage       | MenuList - Upload Your Menu Online | Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source. |
 | Product        | How MenuList Works — One Menu, Everywhere              | See how MenuList keeps your menu correct across QR, official pages, screens, web links, and print outputs from one approved source.         |
 | Multi-Location | MenuList for Chains & Multi-Location Businesses        | Manage menus across all your locations from one place. Master menu, per-location control, instant sync.                                    |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |

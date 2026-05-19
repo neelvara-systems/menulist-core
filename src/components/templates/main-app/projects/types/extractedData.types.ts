@@ -30,6 +30,7 @@ export interface ExtractedDataCategory {
     id: string;
     active: boolean;
     name: { [key: string]: string }; // Language code keys
+    extractionIdAliases?: string[]; // Keeps category identity stable across re-extraction
     icon?: string; // Optional category icon, e.g. "lu:LuPizza" or "emoji:🍕"
     images?: UserUploadedFileType[];
     timeSlots?: CategoryTimeSlot[]; // Time-based visibility with preset support
@@ -67,6 +68,7 @@ export type ItemDecisionFacts = Record<string, DecisionFactEntry>;
 
 export interface ExtractedDataItem {
     id: string;
+    extractionIdAliases?: string[]; // Keeps item identity stable across re-extraction and outlet overrides
     attributes?: ExtractedDataAttribute[];
     category: string;
     name: { [key: string]: string };

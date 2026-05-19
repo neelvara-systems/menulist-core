@@ -2126,10 +2126,10 @@
             "bottomTagline": "అధికారిక మెనూ పేజీలు. కనుగొనబడేందుకు నిర్మించబడ్డాయి."
         },
         "Hero": {
-            "titlePart1": "మీ మెనూను అప్‌లోడ్ చేయండి. ",
-            "titleHighlight": "అధికారిక మెనూను ఆన్‌లైన్‌లో పొందండి.",
+            "titlePart1": "మీ మెనూను అప్‌లోడ్ చేయండి.",
+            "titleHighlight": "మీ అధికారిక మెనూను ఆన్‌లైన్‌లో ప్రచురించండి.",
             "titlePart2": "",
-            "subtitle": "మీరు ఇప్పటికే ఉపయోగిస్తున్న మెనూతో ప్రారంభించండి. MenuList మీ live menu, official page, QR menu, customer app, web link మరియు PDF-ను మీరు నియంత్రించే ఒకే చోటు నుంచి సిద్ధం చేస్తుంది.",
+            "subtitle": "మీరు ఇప్పటికే ఉపయోగిస్తున్న మెనూతో ప్రారంభించండి. MenuList దాన్ని live menu, official page, QR menu, web link, customer view మరియు PDF‌గా మీరు నియంత్రించే ఒకే చోటు నుంచి మార్చుతుంది.",
             "cta": "మెనూ అప్‌లోడ్ చేయండి →",
             "caption": "ప్రారంభం ఉచితం. ప్రచురించే ముందు మీరు రివ్యూ చేస్తారు.",
             "surfaceQrMenu": "QR మెనూ",
@@ -2140,9 +2140,9 @@
             "surfaceCustomerApp": "Customer App",
             "eyebrow": "టెక్నికల్ సెటప్ లేదు",
             "secondaryCta": "కస్టమర్లు ఏమి చూస్తారో చూడండి",
-            "proof0": "Live menu మరియు official page",
-            "proof1": "ప్రచురించే ముందు మీ అనుమతి",
-            "proof2": "QR, links, app మరియు PDF అదే మెనూను ఉపయోగిస్తాయి",
+            "proof0": "ప్రచురించే ముందు రివ్యూ",
+            "proof1": "QR మరియు web link ఉన్నాయి",
+            "proof2": "డెస్క్‌టాప్ అవసరం లేదు",
             "visualLabel": "MenuList live menu మరియు official page preview"
         },
         "Problem": {

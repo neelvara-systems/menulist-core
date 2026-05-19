@@ -74,6 +74,13 @@ const parseProjectId = (projectId: string): { tId: number; sId: number } | null 
 const sanitizeForFirestore = (value: any): any => {
     if (value === undefined) return null;
     if (value === null) return null;
+    if (
+        typeof value === "object"
+        && typeof value.toDate === "function"
+        && typeof value.toMillis === "function"
+    ) {
+        return value;
+    }
     if (Array.isArray(value)) return value.map(sanitizeForFirestore);
     if (typeof value !== "object") return value;
 
@@ -213,6 +220,13 @@ const hasAddedProjectLanguage = (nextProject: any, previousProject: any) => {
     const previousLanguages = new Set(normalizeLanguageCodes(previousProject?.languages));
     return nextLanguages.some((code) => !previousLanguages.has(code));
 };
+
+const hasOutletLocalMutation = (nextProject: any, previousProject: any) => (
+    !valuesMatch(nextProject?.files, previousProject?.files)
+    || !valuesMatch(nextProject?.overrides, previousProject?.overrides)
+    || hasChangedDefinedField(asSafeRecord(nextProject), asSafeRecord(previousProject), "active")
+    || hasChangedDefinedField(asSafeRecord(nextProject), asSafeRecord(previousProject), "outletStatus")
+);
 
 const getOutletPolicyViolation = (
     nextProject: any,
@@ -409,6 +423,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: "Project deactivation is disabled for this outlet" }, { status: 403 });
         }
 
+        const localMutationAt = admin.firestore.Timestamp.now();
+        const localMutationDetected = hasOutletLocalMutation(project, existingProject);
+        const previousOutletLocalState = asSafeRecord(existingProject?.outletLocalState);
+
         const safeProject = sanitizeForFirestore({
             ...project,
             projectId: existingProject.projectId || project.projectId,
@@ -421,7 +439,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             role: session.role || session.user?.role,
             uId: session.uId || session.user?.id,
             modifiedBy: session.user?.name || session.user?.email || "system",
-            modifiedOn: admin.firestore.Timestamp.now(),
+            modifiedOn: localMutationAt,
+            ...(localMutationDetected ? {
+                outletLocalState: {
+                    ...previousOutletLocalState,
+                    localVersion: Number(previousOutletLocalState.localVersion || 0) + 1,
+                    lastLocalChangeAt: localMutationAt,
+                    lastLocalChangeBy: session.uId || session.user?.id || "unknown",
+                    lastLocalChangeReason: "outlet_save",
+                },
+            } : {}),
         });
 
         await existingProjectSnap.ref.set(safeProject, { merge: true });

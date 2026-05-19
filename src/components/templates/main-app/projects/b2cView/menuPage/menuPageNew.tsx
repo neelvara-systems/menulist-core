@@ -1369,9 +1369,9 @@ function MenuPageNew({
         }
 
         if (!item || item.available === false || item.active === false) {
-            setLinkNotice('Item not available');
+            setLinkNotice('This item is no longer available');
             window.setTimeout(() => setLinkNotice(null), 2600);
-            if (canonicalItemId) {
+            if (canonicalItemId || legacyUrlSegment) {
                 window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
             }
             return;

@@ -1183,20 +1183,20 @@ const ApplyPreviewSchema = z.object({
 
 | Status         | Count | Description                            |
 | -------------- | ----- | -------------------------------------- |
-| ✅ HANDLED     | 126   | Fully implemented in codebase          |
-| ⚠️ PARTIAL     | 5     | Partially implemented, needs attention |
-| 🔒 BY DESIGN   | 14    | Intentionally deferred/rejected        |
+| ✅ HANDLED     | 132   | Fully implemented in codebase          |
+| ⚠️ PARTIAL     | 0     | No partial rows remain after May 20 pass |
+| 🔒 BY DESIGN   | 13    | Intentionally deferred/rejected        |
 
 ### 8.2 Current Gaps / Decisions
 
 | Case #  | Issue                                                              | Status         | Action Required                                        |
 | ------- | ------------------------------------------------------------------ | -------------- | ------------------------------------------------------ |
-| Case 29 | No explicit "item not found" fallback in B2C                       | ⚠️ PARTIAL     | Verify B2C handles gracefully                          |
-| Case 31 | Re-extraction could generate new IDs when matching fails           | ⚠️ PARTIAL     | Monitor production; add mapping only if evidence justifies the cost |
-| Case 82 | No explicit ID mapping layer                                       | ⚠️ PARTIAL     | Same tracked risk as Case 31                           |
-| T32/T33 | Outlet staleness markers are isolated but not propagated           | ⚠️ PARTIAL     | Add dedicated staleness integration only if owners need it |
+| Case 29 | Deleted local item direct links                                    | ✅ HANDLED     | Public menu clears query and legacy item URLs and shows a calm unavailable notice |
+| Case 31 | Re-extraction could generate new IDs when matching succeeds        | ✅ HANDLED     | Accepted matches persist `extractionIdAliases` without replacing stable IDs |
+| Case 82 | No explicit ID mapping layer                                       | ✅ HANDLED     | `comparisonEngine.ts` matches aliases before similarity; `applyChanges.ts` persists aliases |
+| T32/T33 | Outlet staleness markers are isolated but not propagated           | ✅ HANDLED     | `outletLocalState` stamps only the outlet project on local saves/overrides/extraction |
 
-Resolved May 19, 2026: linked project publish validation, outlet manager master protection, linked outlet lookup, override price/payload validation, AI API policy enforcement, and theme/brand/layout policy enforcement.
+Resolved May 19-20, 2026: linked project publish validation, outlet manager master protection, linked outlet lookup, override price/payload validation, AI API policy enforcement, theme/brand/layout policy enforcement, B2C missing-item fallback, stable extraction ID aliases, and outlet-local state markers.
 
 ### 8.3 Case 31 — The #1 Silent Killer
 
@@ -1206,13 +1206,14 @@ Resolved May 19, 2026: linked project publish validation, outlet manager master 
 
 **Problem:** If master item IDs change during re-extraction, all outlet overrides referencing those IDs become orphans (ignored).
 
-**Resolution Options:**
+**Implemented Resolution:**
 
-1. Add ID mapping layer during re-extraction
-2. Block re-extract on master projects entirely
-3. Implement ID stability guarantee in extraction
+1. The comparison engine checks `extractionIdAliases` before name similarity.
+2. When a strong/exact re-extraction match is accepted, the apply plan carries a hidden stable ID alias.
+3. `applyExtractionChanges()` persists the new extracted candidate ID on the existing item/category.
+4. Outlet overrides continue to reference the stable master/local ID.
 
-**Recommendation:** Block re-extract on master projects (simplest, safest)
+**Decision:** Keep master re-extraction available and preserve stable IDs through the alias layer instead of blocking the owner workflow.
 
 ---
 
@@ -1230,7 +1231,7 @@ Resolved May 19, 2026: linked project publish validation, outlet manager master 
 | D) Resolver Correctness                   | T16-T21 | ✅ All passing         |
 | E) Overrides                              | T22-T27 | ✅ All passing         |
 | F) Multi-Project Support                  | T28-T30 | ✅ All passing         |
-| G) Pricing Integrity & Staleness          | T31-T35 | ⚠️ T32,T33 partial     |
+| G) Pricing Integrity & Staleness          | T31-T35 | ✅ All passing         |
 | H) Security & Abuse                       | T36-T40 | ✅ All passing         |
 
 ---
@@ -1245,7 +1246,7 @@ Resolved May 19, 2026: linked project publish validation, outlet manager master 
 | B   | Master cannot link to another master    | ✅ HANDLED     | Implicit by design      |
 | C   | Outlet override never edits master data | ✅ HANDLED     | Separate documents      |
 | D   | IDs must never collide                  | ✅ HANDLED     | L*I*/L*C* prefixes      |
-| E   | Re-extraction preserves IDs             | ⚠️ PARTIAL     | Matching preserves IDs when matched; explicit mapping layer deferred |
+| E   | Re-extraction preserves IDs             | ✅ HANDLED     | `extractionIdAliases` preserves stable IDs across accepted matches |
 
 ### 10.2 Write Operations Status
 
@@ -1409,7 +1410,7 @@ if (isPreviewReady) {
 
 | #   | Task                                   | File                                          | Line     | Status  |
 | --- | -------------------------------------- | --------------------------------------------- | -------- | ------- |
-| 5.1 | Block re-extraction on master projects | `functions/src/logic/processMenuImagesJob.ts` | 88-112   | ⬜ TODO |
+| 5.1 | Preserve stable IDs on master re-extraction | `comparisonEngine.ts` + `applyChanges.ts` | Client apply path | ✅ DONE |
 | 5.2 | Detect first-time vs re-upload         | `functions/src/logic/processMenuImagesJob.ts` | 151-157  | ⬜ TODO |
 | 5.3 | Add TTL check for `awaiting_review`    | `functions/src/scheduled/menuJobCleanup.ts`   | EXISTING | ⬜ TODO |
 
@@ -1446,7 +1447,7 @@ const isFirstExtraction = !hasExistingMenu;
 | D2  | Outlet override NEVER auto-removed                | "Destroys local autonomy and causes silent pricing damage"                     | ChatGPT                    |
 | D3  | ~~90% similarity threshold~~ **95% threshold**    | More conservative for day one with 3+ year freeze                              | Cascade Jan 2026           |
 | D4  | 24-hour TTL for unapproved jobs                   | Prevent stale preview data accumulation                                        | ChatGPT                    |
-| D5  | Block re-extract on master projects               | Simplest solution to ID stability problem                                      | ChatGPT + Cascade          |
+| D5  | Preserve stable IDs instead of blocking master re-extract | Alias mapping keeps owner flow available while protecting outlet overrides | May 20 implementation      |
 | D6  | Zod validation only on write gates                | "Not everywhere. Only the write gates"                                         | ChatGPT                    |
 | D7  | ~~Server generates preview, client approves~~     | ~~DEPRECATED - replaced by D8~~                                                | ~~ChatGPT~~                |
 | D8  | **Client-side comparison**                        | Merge happens on client, not server. Simpler architecture.                     | Cascade Jan 2026           |

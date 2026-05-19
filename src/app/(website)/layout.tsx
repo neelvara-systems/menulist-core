@@ -13,7 +13,7 @@ import { PLATFORM_URL } from '@constant/urls';
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || PLATFORM_URL;
 
 const siteTitle = 'MenuList - Upload Your Menu Online';
-const siteDescription = 'Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.';
+const siteDescription = 'Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source.';
 const siteImage = '/images/website/menulist-og-official-source.png';
 
 export const metadata: Metadata = {

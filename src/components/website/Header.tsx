@@ -48,8 +48,8 @@ export default function Header() {
           <Link href="/" className="ws-header__brand" style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)', textDecoration: 'none', color: 'var(--ws-text-primary)' }}>
             <BrandWordmark
               className="ws-brand-wordmark"
-              iconHeight={26}
-              textClassName="ws-brand-wordmark__text ws-brand-gradient-text"
+              iconHeight={28}
+              textClassName="ws-brand-wordmark__text"
             />
           </Link>
 
