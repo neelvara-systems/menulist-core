@@ -60,7 +60,7 @@ const getObpMenuInfo = unstable_cache(
         const empty: ObpMenuInfo = { hasMenu: false, defaultSlug: undefined, projects: [] };
         try {
             const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                 .doc(`projects_${storeId}`)
                 .get();
             if (!summarySnap.exists) return empty;
@@ -126,7 +126,7 @@ const countActiveStoresForTenant = unstable_cache(
     async (tenantId: number): Promise<number> => {
         try {
             const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                 .doc("storesSummary")
                 .get();
             if (!summarySnap.exists) return 1;

@@ -17,8 +17,10 @@ export const DB_COLLECTIONS = {
 
     // Knowledge Base collections (live in Canonica Firestore)
     // Required by Founder Onboarding Bootstrap (Step 12)
+    KB_CATEGORIES: 'kb_categories',
     KB_ARTICLES: 'kb_articles',
     KB_GENERATION_JOBS: 'kb_generation_jobs',
+    MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
 
     // Canonica — Support Knowledge Control Plane
     // These collections live in CANONICA Firestore (separate project)

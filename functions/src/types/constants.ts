@@ -4,14 +4,16 @@
  * Collection names and shared constants.
  */
 
+import { DB_COLLECTIONS } from "../constants/database";
+
 // ═══════════════════════════════════════════════════════════════════════════
 // COLLECTION NAMES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const INGESTION_JOB_COLLECTION = "kb_generation_jobs";
-export const KB_CATEGORIES_COLLECTION = "kb_categories";
-export const KB_ARTICLES_COLLECTION = "kb_articles";
-export const MENU_IMAGE_PROCESSING_JOBS_COLLECTION = "menuImageProcessingJobs";
+export const INGESTION_JOB_COLLECTION = DB_COLLECTIONS.KB_GENERATION_JOBS;
+export const KB_CATEGORIES_COLLECTION = DB_COLLECTIONS.KB_CATEGORIES;
+export const KB_ARTICLES_COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
+export const MENU_IMAGE_PROCESSING_JOBS_COLLECTION = DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AI CONFIGURATION

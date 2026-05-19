@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const projectRef = firestoreAdmin
-            .collection('projects')
+            .collection(DB_COLLECTIONS.PROJECTS)
             .doc(String(data.tId))
             .collection(String(data.sId))
             .doc(data.projectId);

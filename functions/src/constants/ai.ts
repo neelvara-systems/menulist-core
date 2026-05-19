@@ -10,6 +10,7 @@
  */
 
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
+import { DB_COLLECTIONS } from "./database";
 
 // ═══════════════════════════════════════════════════════════════
 // MODEL CONFIGURATION
@@ -80,7 +81,7 @@ export const CHARGE_PER_CREDIT = 100; // paise
 // FIRESTORE COLLECTIONS
 // ═══════════════════════════════════════════════════════════════
 
-export const AI_OPERATIONS_COLLECTION = 'MENULIST_AI_OPERATIONS';
+export const AI_OPERATIONS_COLLECTION = DB_COLLECTIONS.MENULIST_AI_EXTRACTION_OPERATIONS;
 
 // ═══════════════════════════════════════════════════════════════
 // CIRCUIT BREAKER CONFIG

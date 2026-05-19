@@ -329,9 +329,8 @@ export const logFeedbackMOLEvent = async (
             timestamp: Timestamp.now(),
         };
 
-        // Log to guestFeedback collection with event type prefix
-        // Uses same collection for simplicity - events have 'type: feedback_event'
-        const eventsRef = collection(firebaseClient, 'feedbackEvents');
+        // Log to the internal feedbackEvents collection with event type prefix.
+        const eventsRef = collection(firebaseClient, DB_COLLECTIONS.FEEDBACK_EVENTS);
         await addDoc(eventsRef, {
             type: 'feedback_event',
             ...event,

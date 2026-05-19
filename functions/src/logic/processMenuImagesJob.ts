@@ -17,6 +17,7 @@
 
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
+import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { normalizeBusinessCategory, resolveBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
@@ -478,7 +479,7 @@ export async function processMenuImagesJobLogic(
                 });
 
                 // Verify the project was actually updated
-                const projectVerifyRef = firestoreAdmin.collection('projects').doc(String(job.tId)).collection(String(job.sId)).doc(job.projectId);
+                const projectVerifyRef = firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(String(job.tId)).collection(String(job.sId)).doc(job.projectId);
                 const verifyDoc = await projectVerifyRef.get();
                 logger.info(`[processMenuImagesJob] === VERIFY PROJECT UPDATE ===`, {
                     jobId,

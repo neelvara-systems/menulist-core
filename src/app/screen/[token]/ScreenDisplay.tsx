@@ -13,6 +13,7 @@
  */
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { DB_COLLECTIONS } from "@constant/database";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
@@ -173,7 +174,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
         const docId = `campaigns_${storeId}`;
         console.log(`[Screen] Setting up doc listener: platformSummary/${docId}`);
 
-        const docRef = doc(firebaseClient, 'platformSummary', docId);
+        const docRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, docId);
 
         const unsubscribe = onSnapshot(docRef,
             (snapshot) => {

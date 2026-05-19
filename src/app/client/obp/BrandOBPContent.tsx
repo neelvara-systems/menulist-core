@@ -72,7 +72,7 @@ const mapSummaryStoreToOutlet = (storeId: string, data: any): OutletInfo => ({
 const getSummaryOutletsForTenant = unstable_cache(
     async (tenantId: number): Promise<OutletInfo[] | null> => {
         const summarySnap = await firestoreAdmin
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc("storesSummary")
             .get();
         if (!summarySnap.exists) return null;

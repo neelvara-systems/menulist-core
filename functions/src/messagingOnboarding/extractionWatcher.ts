@@ -395,7 +395,7 @@ async function cleanupTempProject(sessionId: string): Promise<void> {
     const parts = tempProjectId.split("-");
     const tId = parts[0]; // "msg"
     const sId = parts[parts.length - 1]; // sessionId
-    await db.collection("projects").doc(tId).collection(sId).doc(tempProjectId).delete();
+    await db.collection(DB_COLLECTIONS.PROJECTS).doc(tId).collection(sId).doc(tempProjectId).delete();
     logger.info("[ExtractionWatcher] Cleaned up temp project", {
       tempProjectId,
       path: `projects/${tId}/${sId}/${tempProjectId}`,

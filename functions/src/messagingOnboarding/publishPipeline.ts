@@ -164,7 +164,7 @@ export async function executePublish(
   // Execute atomic transaction
   const result = await db.runTransaction(async (transaction) => {
     // Read platform summary (with lock)
-    const platformSummaryRef = db.collection("platformSummary").doc("summary");
+    const platformSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc("summary");
     const platformSummary = await transaction.get(platformSummaryRef);
 
     if (!platformSummary.exists) {
@@ -182,7 +182,7 @@ export async function executePublish(
     const schedulerHour = computeSchedulerHour(currencyInfo.timezone, businessDayEndTime);
 
     // Create Tenant (§8.2.1)
-    const tenantRef = db.collection("tenants").doc(String(newTenantId));
+    const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(String(newTenantId));
     transaction.set(tenantRef, {
       name: businessName,
       businessType: finalBusinessType,
@@ -205,7 +205,7 @@ export async function executePublish(
     });
 
     // Create Store (§8.2.1)
-    const storeRef = db.collection("stores").doc(String(newStoreId));
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(newStoreId));
     const defaultRoles = createDefaultRoles(newStoreId, generatedEmail);
 
     transaction.set(storeRef, {
@@ -242,7 +242,7 @@ export async function executePublish(
 
     // Sync to storesSummary
     const storesSummaryRef = db
-      .collection("platformSummary")
+      .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
       .doc("storesSummary");
     transaction.set(
       storesSummaryRef,
@@ -264,7 +264,7 @@ export async function executePublish(
     );
 
     // Create User (§8.2.1 — CREATED, not updated)
-    const userRef = db.collection("users").doc();
+    const userRef = db.collection(DB_COLLECTIONS.USERS).doc();
     const userId = userRef.id;
 
     transaction.set(userRef, {
@@ -298,7 +298,7 @@ export async function executePublish(
 
     // Create Project with extracted menu data
     const projectId = `${newTenantId}-default-${newStoreId}`;
-    const projectRef = db.collection("projects").doc(projectId);
+    const projectRef = db.collection(DB_COLLECTIONS.PROJECTS).doc(projectId);
 
     // Build files array from extracted data
     const files = session.uploads

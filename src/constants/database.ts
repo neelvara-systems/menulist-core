@@ -7,6 +7,7 @@ export const DB_COLLECTIONS = {
     APPLICATION_LOGS: "applicationLogs",
     ERROR_LOGS: "errorLogs",
     MENULIST_AI_OPERATIONS: "menulistAiOperations",
+    MENULIST_AI_EXTRACTION_OPERATIONS: "MENULIST_AI_OPERATIONS", // Cloud Functions extraction audit collection
     COMMON: "common", //contains both ecomsai and craftbuilder data
     BLOGS: "blogs",
     PRICING_PLANS: "pricingPlans",
@@ -15,6 +16,8 @@ export const DB_COLLECTIONS = {
     PAYMENT_TRANSACTIONS: "payment_transactions",
     TOPUPS: "topups",
     ANALYTICS: "analytics",
+    INSIGHTS: "insights",
+    AI: "ai",
     //users collections
     USERS: "users",
     SHIFTS: "shifts",
@@ -80,6 +83,7 @@ export const DB_COLLECTIONS = {
     // Guest Feedback (Internal Feedback System)
     // @see __docs__/projects/internal-feedback-system/
     GUEST_FEEDBACK: "guestFeedback", // Public guest feedback (anonymous)
+    FEEDBACK_EVENTS: "feedbackEvents", // Internal MOL-style feedback event log
 
     // Integrations (Feature #3: GBP Sync)
     // Path: tenants/{tId}/integrations/gbp/{sId}
@@ -93,6 +97,7 @@ export const DB_COLLECTIONS = {
     // POS Webhook Sync (Menu Snapshot Broadcast)
     // @see __docs__/pos-webhook-sync/pos-webhook-sync_impl.md
     POS_DELIVERY_QUEUE: "posDeliveryQueue",
+    POS_DELIVERY_LOGS: "posDeliveryLogs",
 
     // Messaging Onboarding (Zero-Friction SMB Acquisition Engine)
     // @see __docs__/messaging-onboarding/
@@ -112,6 +117,10 @@ export const DB_COLLECTIONS = {
     // Doc ID: {sId} — one doc per store
     // @see __docs__/compliance-pages/
     COMPLIANCE_PAGES: "compliancePages",
+
+    // Public routing admin audit
+    // @see __docs__/client-menu/PUBLIC-ROUTING-DOCTRINE.md
+    SUBDOMAIN_RENAME_LOG: "subdomainRenameLog",
 
     // Operational Infrastructure (System Strengthening)
     // @see __docs__/cost-self-protection/

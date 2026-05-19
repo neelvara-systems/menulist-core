@@ -332,10 +332,10 @@ export async function getExtractionQualityMetrics(
  */
 export async function getExtractionCostMetrics(): Promise<ExtractionCostMetrics> {
     try {
-        // NOTE: The CF writes to 'MENULIST_AI_OPERATIONS' (uppercase, top-level, no tenant scope).
+        // NOTE: The CF writes to DB_COLLECTIONS.MENULIST_AI_EXTRACTION_OPERATIONS (uppercase, top-level, no tenant scope).
         // The frontend DAL (aiOperations/index.tsx) writes to 'menulistAiOperations/{tId}/{sId}' (camelCase, subcollection).
         // This monitor reads from the CF collection for extraction cost tracking.
-        const opsRef = collection(firebaseClient, 'MENULIST_AI_OPERATIONS');
+        const opsRef = collection(firebaseClient, DB_COLLECTIONS.MENULIST_AI_EXTRACTION_OPERATIONS);
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 

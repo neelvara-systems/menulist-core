@@ -233,7 +233,7 @@ async function saveWeeklyNarrative(narrative: WeeklyNarrative): Promise<void> {
     .doc(narrative.tId)
     .collection(DB_COLLECTIONS.STORES)
     .doc(narrative.sId)
-    .collection('ai')
+    .collection(DB_COLLECTIONS.AI)
     .doc('weekly');
 
   await docRef.set(narrative, { merge: true });

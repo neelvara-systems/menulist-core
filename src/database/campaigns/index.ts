@@ -716,7 +716,7 @@ export const getScreenDataByToken = async (token: string): Promise<{
         try {
             const summaryRef = doc(
                 firebaseClient,
-                DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+                DB_COLLECTIONS.PLATFORM_SUMMARY,
                 `projects_${storeId}`,
             );
             const summarySnap = await getDoc(summaryRef);
@@ -894,7 +894,7 @@ export const getMenuItemsForScreen = async (
 
         const summaryRef = doc(
             firebaseClient,
-            DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary',
+            DB_COLLECTIONS.PLATFORM_SUMMARY,
             `projects_${storeId}`,
         );
         const summarySnap = await getDoc(summaryRef);

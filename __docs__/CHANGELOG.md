@@ -6,6 +6,12 @@
 
 ---
 
+## May 19, 2026 — Owner PWA Shortcuts
+
+### Added
+
+- **Owner app shortcuts added** — Installed owner PWAs now expose Today, Menu, Share & QR, and Feedback shortcuts from the app icon, using existing owner routes and mobile navigation so role permissions still apply.
+
 ## May 19, 2026 — Role Permission Set Hardening
 
 ### Changed

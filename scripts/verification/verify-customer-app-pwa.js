@@ -102,6 +102,20 @@ function verifyOwnerAuthManifest() {
   assert(ownerManifest.start_url === '/dashboard', 'owner manifest start_url must be /dashboard');
   assert(ownerManifest.display === 'standalone', 'owner manifest display must be standalone');
   assert(Array.isArray(ownerManifest.icons), 'owner manifest icons must be an array');
+  const expectedOwnerShortcuts = [
+    ['Today', '/today#mobile/today'],
+    ['Menu', '/projects#mobile/menu'],
+    ['Share & QR', '/use-menulist#mobile/share'],
+    ['Feedback', '/feedback#mobile/more/feedback'],
+  ];
+  assert(Array.isArray(ownerManifest.shortcuts), 'owner manifest shortcuts must be an array');
+  assert(ownerManifest.shortcuts.length === expectedOwnerShortcuts.length, 'owner manifest shortcuts count changed');
+  for (const [index, [name, url]] of expectedOwnerShortcuts.entries()) {
+    const shortcut = ownerManifest.shortcuts[index];
+    assert(shortcut?.name === name, `owner manifest shortcut ${index} must be ${name}`);
+    assert(shortcut?.url === url, `owner manifest shortcut ${name} must launch ${url}`);
+    assert(shortcut.url.startsWith('/'), `owner manifest shortcut ${name} must stay in manifest scope`);
+  }
   for (const icon of ownerManifest.icons) {
     assert(icon.src, 'owner manifest icon must include src');
     assert(fs.existsSync(path.join(ROOT, 'public', icon.src)), `owner manifest icon file missing: ${icon.src}`);

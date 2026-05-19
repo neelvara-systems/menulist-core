@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import getActiveSession from '@lib/auth/getActiveSession';
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // Query chatAnalytics for the last 7 days
     const snapshot = await firestoreAdmin
-      .collection('chatAnalytics')
+      .collection(DB_COLLECTIONS.CHAT_ANALYTICS)
       .where('tId', '==', tId)
       .where('sId', '==', sId)
       .where('date', '>=', weekStart)
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
 
     const prevSnapshot = await firestoreAdmin
-      .collection('chatAnalytics')
+      .collection(DB_COLLECTIONS.CHAT_ANALYTICS)
       .where('tId', '==', tId)
       .where('sId', '==', sId)
       .where('date', '>=', prevWeekStart.toISOString().split('T')[0])
@@ -185,11 +186,11 @@ Generate a JSON response with:
     };
 
     await firestoreAdmin
-      .collection('insights')
+      .collection(DB_COLLECTIONS.INSIGHTS)
       .doc(tId)
-      .collection('stores')
+      .collection(DB_COLLECTIONS.STORES)
       .doc(sId)
-      .collection('ai')
+      .collection(DB_COLLECTIONS.AI)
       .doc('weekly')
       .set(narrative, { merge: true });
 

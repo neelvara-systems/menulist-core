@@ -52,7 +52,7 @@ async function validateAnalyticsTarget(
     if (RESERVED_PROJECT_IDS.has(projectId)) return true;
 
     const summarySnap = await firestoreAdmin
-        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(`projects_${storeId}`)
         .get();
     if (!summarySnap.exists) return false;

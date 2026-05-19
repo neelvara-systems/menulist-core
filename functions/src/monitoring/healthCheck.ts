@@ -137,9 +137,9 @@ async function checkAIService(tId: string, sId: string): Promise<HealthMetric> {
     const recentOps = await db
       .collection(DB_COLLECTIONS.INSIGHTS)
       .doc(tId)
-      .collection('stores')
+      .collection(DB_COLLECTIONS.STORES)
       .doc(sId)
-      .collection('ai')
+      .collection(DB_COLLECTIONS.AI)
       .limit(1)
       .get();
 
@@ -175,9 +175,9 @@ async function checkKBCoverage(tId: string, sId: string): Promise<HealthMetric> 
     const kbSnapshot = await db
       .collection(DB_COLLECTIONS.TENANTS)
       .doc(tId)
-      .collection('stores')
+      .collection(DB_COLLECTIONS.STORES)
       .doc(sId)
-      .collection('knowledgeBase')
+      .collection(DB_COLLECTIONS.KNOWLEDGE_BASE)
       .count()
       .get();
 

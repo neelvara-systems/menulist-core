@@ -37,7 +37,7 @@ async function getStoreLevelStartUrl(store: any): Promise<string> {
     if (!store?.storeId) return '/';
     try {
         const snap = await firestoreAdmin
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`projects_${store.storeId}`)
             .get();
         if (!snap.exists) return '/';

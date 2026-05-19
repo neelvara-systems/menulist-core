@@ -158,7 +158,7 @@ All mobile screens write data in **identical format** to desktop:
 ## PWA End-to-End Support Status
 
 - **Service worker:** `next-pwa` v5.6.0 configured
-- **Manifest:** `public/manifest.json` with proper icons, orientation, start_url
+- **Manifest:** `public/manifest.json` with proper icons, orientation, start_url, and owner shortcuts for Today, Menu, Share & QR, and Feedback
 - **Offline banner:** Implemented in `MobileShell.tsx`
 - **Desktop switch:** "Switch to Desktop" in More screen (sets `localStorage.forceDesktopMode`)
 - **Return banner:** "Return to Mobile" shown when mobile user is in forced desktop mode

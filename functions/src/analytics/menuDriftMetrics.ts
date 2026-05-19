@@ -193,7 +193,7 @@ async function processProjectDriftMetrics(
         .doc(tId)
         .collection(sId)
         .doc(projectId)
-        .collection('metrics');
+        .collection(DB_COLLECTIONS.METRICS);
 
     for (const [itemId, changes] of changesByItem.entries()) {
         // Count by change type

@@ -170,13 +170,13 @@ export const POST = withAuth(async (request, session) => {
         await db
             .collection(DB_COLLECTIONS.STORES)
             .doc(String(storeId))
-            .collection('posDeliveryLogs')
+            .collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)
             .add(logEntry);
 
         const logsSnapshot = await db
             .collection(DB_COLLECTIONS.STORES)
             .doc(String(storeId))
-            .collection('posDeliveryLogs')
+            .collection(DB_COLLECTIONS.POS_DELIVERY_LOGS)
             .orderBy('sentAt', 'desc')
             .offset(20)
             .get();

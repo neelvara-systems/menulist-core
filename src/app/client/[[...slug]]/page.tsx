@@ -184,7 +184,7 @@ async function getProjectBySlugOrDefault(
     // Read projectsSummary (1 read) — contains slug, previousSlugs, name, isDefault
     // This is the primary source for URL routing data (URL Routing Architecture — ADR-3)
     const summarySnap = await firestoreAdmin
-        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(`projects_${storeId}`)
         .get();
     // Handles both storage formats: nested `{ projects: { id: {...} } }`
@@ -449,7 +449,7 @@ const getMenuAliasCanonicalSlug = unstable_cache(
     async (storeId: number): Promise<string | null> => {
         try {
             const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || "platformSummary")
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                 .doc(`projects_${storeId}`)
                 .get();
             if (!summarySnap.exists) return null;

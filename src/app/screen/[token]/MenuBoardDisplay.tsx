@@ -19,6 +19,7 @@
  */
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { DB_COLLECTIONS } from "@constant/database";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { MenuItemForSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
@@ -204,7 +205,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     useEffect(() => {
         if (!storeId) return;
 
-        const docRef = doc(firebaseClient, 'platformSummary', `campaigns_${storeId}`);
+        const docRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `campaigns_${storeId}`);
         const unsubscribe = onSnapshot(docRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data();

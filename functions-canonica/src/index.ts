@@ -25,6 +25,7 @@ import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runCanonicaNightly } from './canonica/canonicaNightly';
 import { assertCanonicaPlatformCallable } from './callableAuth';
+import { DB_COLLECTIONS } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
 import { processEvent } from './integrations/eventProcessor';
 import { IntegrationEvent } from './integrations/types';
@@ -117,7 +118,7 @@ export const triggerCanonicaNightly = onRequest(
 
 export const processIntegrationEvent = onDocumentCreated(
     {
-        document: 'canonica_integrationEvents/{eventId}',
+        document: `${DB_COLLECTIONS.CANONICA_INTEGRATION_EVENTS}/{eventId}`,
         timeoutSeconds: 60,
         memory: '256MiB',
         maxInstances: 5,

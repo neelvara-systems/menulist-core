@@ -112,7 +112,7 @@ const getProjectsForSitemap = unstable_cache(
     async (storeId: string): Promise<ProjectSitemapEntry[]> => {
         try {
             const snap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                 .doc(`projects_${storeId}`)
                 .get();
             if (!snap.exists) return [];
@@ -139,7 +139,7 @@ const getOutletsForSitemap = unstable_cache(
     async (tenantId: number, masterStoreId: string): Promise<OutletSitemapEntry[]> => {
         try {
             const summarySnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY || 'platformSummary')
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
                 .doc('storesSummary')
                 .get();
             if (summarySnap.exists) {

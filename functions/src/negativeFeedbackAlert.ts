@@ -2,6 +2,7 @@
 // TODO: Update to Firebase Functions v2 API before using this file
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { DB_COLLECTIONS } from './constants/database';
 
 /**
  * REAL-TIME ALERT: Negative Feedback Trigger
@@ -22,7 +23,7 @@ import * as admin from 'firebase-admin';
  */
 
 export const onNegativeFeedback = functions.firestore
-    .document('chatSessions/{sessionId}')
+    .document(`${DB_COLLECTIONS.CHAT_SESSIONS}/{sessionId}`)
     .onUpdate(async (change: any, context: any) => {
         const before = change.before.data();
         const after = change.after.data();
@@ -192,7 +193,7 @@ async function sendEmailAlert(data: any) {
 async function logToFirestore(data: any) {
     try {
         await admin.firestore()
-            .collection('negativeFeedbackAlerts')
+            .collection(DB_COLLECTIONS.NEGATIVE_FEEDBACK_ALERTS)
             .add({
                 ...data,
                 createdOn: admin.firestore.FieldValue.serverTimestamp(),

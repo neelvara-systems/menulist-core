@@ -550,14 +550,25 @@ After mobile UI is complete:
 {
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/projects",
+  "start_url": "/dashboard",
   "theme_color": "#1677ff",
   "background_color": "#ffffff",
   "shortcuts": [
     {
-      "name": "Edit Menu",
-      "url": "/projects",
-      "icon": "icons/menu-shortcut.png"
+      "name": "Today",
+      "url": "/today#mobile/today"
+    },
+    {
+      "name": "Menu",
+      "url": "/projects#mobile/menu"
+    },
+    {
+      "name": "Share & QR",
+      "url": "/use-menulist#mobile/share"
+    },
+    {
+      "name": "Feedback",
+      "url": "/feedback#mobile/more/feedback"
     }
   ]
 }

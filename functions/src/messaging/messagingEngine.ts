@@ -109,8 +109,8 @@ interface StoreInfo {
 async function getStoreInfo(storeId: string, tenantId: string): Promise<StoreInfo | null> {
   try {
     const storeDoc = await db
-      .collection('tenants').doc(tenantId)
-      .collection('stores').doc(storeId)
+      .collection(DB_COLLECTIONS.TENANTS).doc(tenantId)
+      .collection(DB_COLLECTIONS.STORES).doc(storeId)
       .get();
 
     if (!storeDoc.exists) return null;

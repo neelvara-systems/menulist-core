@@ -43,7 +43,7 @@ export async function logOnboardingEvent(params: {
       ? now.toMillis() - params.sessionCreatedAt.toMillis()
       : 0;
 
-    const eventId = db.collection("_").doc().id;
+    const eventId = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS).doc().id;
 
     const event: MsgOnboardingEvent = {
       eventId,

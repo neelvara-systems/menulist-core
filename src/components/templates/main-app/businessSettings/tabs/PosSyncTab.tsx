@@ -99,7 +99,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 firebaseClient,
                 DB_COLLECTIONS.STORES,
                 String(storeId),
-                'posDeliveryLogs',
+                DB_COLLECTIONS.POS_DELIVERY_LOGS,
             );
             const q = query(logsRef, orderBy('sentAt', 'desc'), limit(20));
             const snapshot = await getDocs(q);

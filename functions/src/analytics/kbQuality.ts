@@ -206,7 +206,7 @@ export async function processKBQualityForAllStores(): Promise<void> {
       const storesSnapshot = await db
         .collection(DB_COLLECTIONS.TENANTS)
         .doc(tId)
-        .collection('stores')
+        .collection(DB_COLLECTIONS.STORES)
         .get();
 
       for (const storeDoc of storesSnapshot.docs) {
@@ -263,9 +263,9 @@ async function fetchKBArticles(tId: string, sId: string): Promise<KBArticle[]> {
     const kbSnapshot = await db
       .collection(DB_COLLECTIONS.TENANTS)
       .doc(tId)
-      .collection('stores')
+      .collection(DB_COLLECTIONS.STORES)
       .doc(sId)
-      .collection('knowledgeBase')
+      .collection(DB_COLLECTIONS.KNOWLEDGE_BASE)
       .get();
 
     return kbSnapshot.docs.map(doc => ({

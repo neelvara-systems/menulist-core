@@ -16,6 +16,32 @@
     "food",
     "productivity"
   ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "description": "Update today's hours and status",
+      "url": "/today#mobile/today"
+    },
+    {
+      "name": "Menu",
+      "short_name": "Menu",
+      "description": "Update menu items and availability",
+      "url": "/projects#mobile/menu"
+    },
+    {
+      "name": "Share & QR",
+      "short_name": "Share",
+      "description": "Open menu links and QR codes",
+      "url": "/use-menulist#mobile/share"
+    },
+    {
+      "name": "Feedback",
+      "short_name": "Feedback",
+      "description": "Open customer feedback",
+      "url": "/feedback#mobile/more/feedback"
+    }
+  ],
   "icons": [
     {
       "src": "icons/icon-72x72.png",

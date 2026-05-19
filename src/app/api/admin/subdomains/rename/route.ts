@@ -180,7 +180,7 @@ export const POST = withAuth(
 
             // Transaction: update the store and write the audit record in
             // one atomic batch so the two documents never drift.
-            const auditRef = db.collection('subdomainRenameLog').doc();
+            const auditRef = db.collection(DB_COLLECTIONS.SUBDOMAIN_RENAME_LOG).doc();
             await db.runTransaction(async (tx) => {
                 tx.update(storeRef, {
                     subdomain: proposed,

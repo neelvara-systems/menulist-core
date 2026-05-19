@@ -31,13 +31,17 @@ export const DB_COLLECTIONS = {
     DECISION_BLOCKS: 'decisionBlocks',          // Precomputed decision block candidates
 
     // AI & Intelligence
+    MENULIST_AI_EXTRACTION_OPERATIONS: 'MENULIST_AI_OPERATIONS', // Gemini extraction audit collection
     INSIGHTS: 'insights',                       // AI-generated insights (feedback, weekly narrative)
+    AI: 'ai',                                   // Nested AI insight subcollection
     AI_SEARCH_HISTORY: 'aiSearchHistory',       // AI search query history
     QUERY_EMBEDDINGS: 'queryEmbeddings',        // Cached vector embeddings
     MENU_INTELLIGENCE: 'menuIntelligence',      // Continuous Menu Intelligence state (per-project)
     OWNER_CONTROL_USAGE: 'ownerControlUsage',   // Authority Maturation tracking (owner control usage)
+    MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
 
     // Knowledge Base
+    KNOWLEDGE_BASE: 'knowledgeBase',
     KB_CATEGORIES: 'kb_categories',
     KB_ARTICLES: 'kb_articles',
     KB_SECTIONS: 'kb_sections',
@@ -54,6 +58,7 @@ export const DB_COLLECTIONS = {
     // Menu Observation Layer (MOL v0)
     MENU_CHANGE_LOG: 'menuChangeLog',           // Immutable menu change history
     MENU_ITEM_STATE: 'menuItemState',           // Denormalized item state + drift metrics
+    METRICS: 'metrics',                         // Nested menu item metrics subcollection
 
     // Canonical Truth Infrastructure — Menu Snapshots
     // Immutable point-in-time menu state on every publish

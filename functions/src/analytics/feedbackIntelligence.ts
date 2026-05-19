@@ -168,7 +168,7 @@ async function saveFeedbackIntelligence(intelligence: FeedbackIntelligence): Pro
     .doc(intelligence.tId)
     .collection(DB_COLLECTIONS.STORES)
     .doc(intelligence.sId)
-    .collection('ai')
+    .collection(DB_COLLECTIONS.AI)
     .doc('feedback');
 
   await docRef.set(intelligence, { merge: true });
