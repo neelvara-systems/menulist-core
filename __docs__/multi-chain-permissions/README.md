@@ -2,8 +2,8 @@
 
 > **Feature:** #4B — Multi-Chain Permissions  
 > **Status:** ✅ Implemented  
-> **Last Updated:** February 13, 2026  
-> **Version:** 2.1
+> **Last Updated:** May 19, 2026
+> **Version:** 2.2
 
 > **Scope:** This folder documents the **two-layer permission model** (roles + outlet policy) and their interaction. For Layer 1 details (staff-level RBAC, default roles, `hasPermission()` utility), see [Roles & Permissions](../roles-permissions/). This folder focuses on Layer 2 (OutletPolicy) and the intersection model.
 
@@ -17,6 +17,8 @@
 | **Developers**         | [\_impl.md](./multi-chain-permissions_impl.md)           | Technical blueprint, types, enforcement |
 | **Sales / Marketing**  | [\_marketing.md](./multi-chain-permissions_marketing.md) | Pitch deck, messaging                   |
 | **Firebase Costs**     | [\_firebase.md](./multi-chain-permissions_firebase.md)   | All Firestore reads/writes              |
+| **Mobile Support**     | [\_mobile-support.md](./multi-chain-permissions_mobile-support.md) | Mobile outlet-policy management and enforcement |
+| **Verification**       | [\_verification.md](./multi-chain-permissions_verification.md) | Final review and production audit notes |
 | **Website Copy**       | [\_website.md](./multi-chain-permissions_website.md)     | Landing page content                    |
 | **Help Article**       | [\_helpdoc.md](./multi-chain-permissions_helpdoc.md)     | Customer help documentation             |
 
@@ -111,7 +113,7 @@ User tries action (e.g., "Generate AI Image")
 | **Default roles**          | `src/data/defaultRoles.ts`                          |
 | **Permission labels (UI)** | `src/data/rolesPermissionsInitialData.ts`           |
 | **applyOutletPolicy()**    | `src/lib/permissions/applyOutletPolicy.ts`          |
-| **Session integration**    | `src/providers/sessionProvider.tsx` (lines 154–180) |
+| **Session integration**    | `src/providers/sessionProvider.tsx`                 |
 | **Feature flags**          | `src/config/features.ts`                            |
 
 ---

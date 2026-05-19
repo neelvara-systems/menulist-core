@@ -5,7 +5,9 @@ export const dynamic = 'force-dynamic';
  */
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { NextResponse } from "next/server";
@@ -32,15 +34,29 @@ export const POST = withAuth(async (request, session) => {
 
         const db = admin.firestore();
         const callerStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`).get();
+        const callerStore = callerStoreSnap.data();
+        const permissionError = requireAnyStorePermissionForStoreData(
+            request,
+            session,
+            callerStore,
+            [PERMISSIONS.SWITCH_STORES],
+            "Store switching",
+            Number(currentStoreId),
+            Number(tenantId),
+        );
+        if (permissionError) return permissionError;
         if (!callerStoreSnap.exists || !callerStoreSnap.data()?.isMaster) {
             return NextResponse.json({ error: "Only master users can switch" }, { status: 403 });
         }
 
         const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
         const storesList = tenantSnap.data()?.storesList || [];
-        const targetStore = storesList.find((s: any) => s.storeId === targetStoreId);
+        const targetStore = storesList.find((s: any) => Number(s.storeId) === Number(targetStoreId));
         if (!targetStore) {
             return NextResponse.json({ error: "Store not in tenant" }, { status: 404 });
+        }
+        if (targetStore.active === false) {
+            return NextResponse.json({ error: "Store is inactive" }, { status: 400 });
         }
 
         return NextResponse.json({

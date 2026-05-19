@@ -308,6 +308,14 @@ export const FEATURE_FLAGS = {
     SOCIAL_CONTENT_ENABLED: true, // Master toggle - set to true when ready
 
     /**
+     * Enable Past Activity history flow
+     *
+     * true: Show historical today actions in desktop and mobile
+     * false: Hide all Past Activity entry points and block direct history routes
+     */
+    ENABLE_PAST_ACTIVITY_HISTORY: false,
+
+    /**
      * Smart Distribution Mode
      *
      * Controls how platform/surface recommendations are made

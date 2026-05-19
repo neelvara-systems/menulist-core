@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Website Content
 
-**Last Updated:** February 13, 2026
+**Last Updated:** May 19, 2026
 
 ## Hero Section
 
@@ -43,7 +43,7 @@ Once set up, you never think about menu consistency again. The system handles in
 
 ### 5. Add Outlets in Seconds
 
-Open the Locations page, click "Add Outlet", name it, done. The new store gets all your master menus automatically. Billing adjusts to include the new location — no plan changes needed.
+Open the Locations page, click "Add Outlet", name it, done. Mobile owners can use More → Locations for the same flow. The new store gets all your master menus automatically. Billing adjusts to include the new location — no plan changes needed.
 
 > **Visual:** "Add Outlet" button → outlet name input → billing summary showing per-store cost
 

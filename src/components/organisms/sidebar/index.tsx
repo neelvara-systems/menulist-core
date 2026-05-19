@@ -5,6 +5,7 @@ import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_ME
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
+import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import ClientOnlyProvider from '@providers/clientOnlyProvider';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -27,7 +28,7 @@ const SidebarComponent = () => {
     const router = useRouter()
     const isDarkMode = useAppSelector(getDarkModeState);
     const isCollapsed = useAppSelector(getSidebarState)
-    const { isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const [hoverId, setHoverId] = useState(null);
@@ -47,13 +48,19 @@ const SidebarComponent = () => {
     const canShowNavForPermissions = (nav: NavItemType) => (
         satisfiesPermissionRequirement(userPermissions, getPermissionRequirementForPath(nav.route))
     )
+    const canManageLocations = canManageLocationSettings({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
 
     useEffect(() => {
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {
             // Hide Locations for non-master users or when feature is disabled
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
-                return isMasterUser && FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL && userPermissions?.canManageOutlets === true;
+                return canManageLocations;
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD
@@ -102,7 +109,7 @@ const SidebarComponent = () => {
 
         if (currentNav) setActiveNav(currentNav);
         setSidebarMenusList(menuCopy);
-    }, [pathname, isMasterUser, platformRole, userPermissions])
+    }, [pathname, canManageLocations, platformRole, userPermissions])
 
     const showExpandedSidebar = useMemo(() => Boolean(!isCollapsed || isHover), [isCollapsed, isHover])
 

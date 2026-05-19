@@ -6,6 +6,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { signOutSession } from '@lib/auth/client';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
+import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
@@ -21,6 +22,7 @@ import {
     LuBarChart3,
     LuBookOpen,
     LuBuilding2,
+    LuChevronRight,
     LuClock,
     LuClock3,
     LuCreditCard,
@@ -28,9 +30,12 @@ import {
     LuHelpCircle,
     LuKeyRound,
     LuLogOut,
+    LuMail,
     LuMapPin,
     LuMessageCircle,
     LuPalette,
+    LuPhone,
+    LuPencil,
     LuReceipt,
     LuRefreshCw,
     LuSearch,
@@ -40,10 +45,11 @@ import {
     LuSparkles,
     LuTicket,
     LuTv,
+    LuUser,
     LuUsers,
     LuX,
 } from 'react-icons/lu';
-import { Avatar, Button, Card, Dialog, Flex, Input, List, NavBar, Tag, Text, Title, Toast } from '../antd';
+import { Avatar, Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import type { MobilePlatformInternalScreenKey } from './MobilePlatformInternalScreen';
 
@@ -141,6 +147,7 @@ const isPlatformInternalScreen = (screen: MoreSubScreen): screen is MobilePlatfo
 
 export type MoreSubScreen =
     | 'main'
+    | 'accountProfile'
     | 'accountAccess'
     | 'businessProfileHub'
     | 'searchDiscoveryHub'
@@ -220,7 +227,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const tPresence = useTranslations('MobilePresenceMonitor');
     const { token } = theme.useToken();
     const router = useRouter();
-    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
     const businessCopyCoverage = useMemo(
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails],
@@ -234,10 +241,24 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const [officialPageBackTarget, setOfficialPageBackTarget] = useState<MoreSubScreen>('businessProfileHub');
     const logoutLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressNextLogoutClickRef = useRef(false);
+    const [profileOverrides, setProfileOverrides] = useState<{
+        countryCode?: string;
+        dialCode?: string;
+        displayEmail?: string;
+        name?: string;
+        phoneNumber?: string;
+    }>({});
 
-    const userName = session?.user?.name || 'User';
-    const userEmail = session?.user?.email || '';
-    const userImage = session?.user?.image || '';
+    const sessionUser = (session?.user || {}) as any;
+    const userName = profileOverrides.name || sessionUser.name || 'User';
+    const userEmail = sessionUser.email || '';
+    const userImage = sessionUser.image || '';
+    const profileEmail = profileOverrides.displayEmail
+        ?? sessionUser.displayEmail
+        ?? (sessionUser.staffAuthMode === 'owner_passcode' ? '' : userEmail);
+    const profilePhoneNumber = profileOverrides.phoneNumber ?? sessionUser.phoneNumber ?? sessionUser.phone ?? '';
+    const profileDialCode = profileOverrides.dialCode ?? sessionUser.dialCode ?? '';
+    const profileCountryCode = profileOverrides.countryCode ?? sessionUser.countryCode ?? '';
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
@@ -256,13 +277,19 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const canManageFeedback = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_FEEDBACK]);
     const canManageDigitalScreens = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const canAccessBilling = hasAnyPermission(userPermissions, [PERMISSIONS.ACCESS_BILLING]);
+    const canManageLocations = canManageLocationSettings({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
     const canManageBusinessProfile = canManageStore || canManagePublicPresence;
     const canManageSearchDiscovery = canManagePublicPresence || canManageIntegrations;
-    const userLoginLabel = (session?.user as any)?.staffAuthMode === 'owner_passcode'
-        ? `Staff ID: ${(session?.user as any)?.staffLoginId || (session?.user as any)?.loginUsername || ''}`
-        : (session?.user as any)?.displayEmail
-            || (session?.user as any)?.phone
-            || (session?.user as any)?.phoneUsername
+    const userLoginLabel = sessionUser.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${sessionUser.staffLoginId || sessionUser.loginUsername || ''}`
+        : profileEmail
+            || sessionUser.phone
+            || sessionUser.phoneUsername
             || userEmail;
 
     useEffect(() => {
@@ -346,7 +373,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const moduleItems: MoreListItem[] = [
         ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['analytics', 'stats', 'performance', 'insights'], label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') }] : []),
-        ...(canManageDailyActions ? [{ key: 'todayHistory', icon: <LuClock3 color="#0ea5e9" size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
+        ...(canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? [{ key: 'todayHistory', icon: <LuClock3 color="#0ea5e9" size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
         ...(canManageFeedback ? [{ key: 'feedback', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['review', 'rating', 'guest feedback', 'comments', 'feedback qr'], label: tFeedback('title'), description: tFeedback('feedbackQrDesc'), onClick: () => openSubScreen('feedback') }] : []),
         ...(FEATURE_FLAGS.ENABLE_TEMP_STATUS && canManageStore ? [{ key: 'tempStatus', icon: <LuAlertTriangle color="#f59e0b" size={20} />, keywords: ['temporary closed', 'holiday', 'closed today', 'special hours', 'status'], label: t('tempStatus'), description: t('tempStatusDesc'), onClick: () => openSubScreen('tempStatus') }] : []),
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING && canManageMenu ? [{ key: 'specialMenus', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['seasonal menu', 'festival menu', 'limited time', 'brunch', 'special menu'], label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
@@ -367,7 +394,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             { key: 'hoursEdit', icon: <LuClock color="#6366f1" size={20} />, keywords: ['opening hours', 'closing time', 'business hours', 'open', 'close'], label: t('editWorkingHours'), description: t('editWorkingHoursDesc'), onClick: () => openSubScreen('hoursEdit') },
             { key: 'timeSlots', icon: <LuClock color="#10b981" size={20} />, keywords: ['breakfast', 'lunch', 'dinner', 'happy hour', 'slot', 'time slot'], label: t('timeSlots'), description: t('timeSlotsDesc'), onClick: () => openSubScreen('timeSlots') },
         ] : []),
-        ...(userPermissions?.canManageOutlets === true ? [{ key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, keywords: ['branches', 'outlets', 'stores', 'chain', 'multi location'], label: t('locations'), description: t('locationsDesc'), onClick: () => openSubScreen('locations') }] : []),
+        ...(canManageLocations ? [{ key: 'locations', icon: <LuMapPin color="#f59e0b" size={20} />, keywords: ['branches', 'outlets', 'stores', 'chain', 'multi location'], label: t('locations'), description: t('locationsDesc'), onClick: () => openSubScreen('locations') }] : []),
         ...(userPermissions?.canManageUsers ? [{ key: 'users', icon: <LuUsers color="#3b82f6" size={20} />, keywords: ['staff', 'team', 'employee', 'user access', 'invite'], label: t('staff'), description: t('staffDesc'), onClick: () => openSubScreen('users') }] : []),
         ...(userPermissions?.canAssignRoles ? [{ key: 'roles', icon: <LuShield color="#8b5cf6" size={20} />, keywords: ['permissions', 'access control', 'manager', 'cashier', 'role'], label: t('rolesPermissions'), description: t('rolesPermissionsDesc'), onClick: () => openSubScreen('roles') }] : []),
     ];
@@ -461,7 +488,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ].filter((section) => section.items.length > 0) : [];
 
     const canOpenSubScreen = useCallback((screen: MoreSubScreen) => {
-        if (screen === 'main' || screen === 'accountAccess' || screen === 'help') return true;
+        if (screen === 'main' || screen === 'accountProfile' || screen === 'accountAccess' || screen === 'help') return true;
         if (['billing', 'transactions'].includes(screen)) return canAccessBilling;
         if (screen === 'businessProfileHub') return canManageBusinessProfile;
         if (screen === 'searchDiscoveryHub') return canManageSearchDiscovery;
@@ -470,13 +497,13 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['integrations', 'posSync'].includes(screen)) return canManageIntegrations;
         if (screen === 'roles') return userPermissions?.canAssignRoles === true;
         if (screen === 'users') return userPermissions?.canManageUsers === true;
-        if (screen === 'locations') return userPermissions?.canManageOutlets === true;
+        if (screen === 'locations') return canManageLocations;
         if (screen === 'dashboard' || screen === 'analyticsSettings') return canViewAnalytics;
         if (screen === 'feedback' || screen === 'feedbackSettings') return canManageFeedback;
         if (screen === 'designEditor') return canManageMenuDesign;
         if (screen === 'digitalScreens') return canManageDigitalScreens;
         if (screen === 'specialMenus') return canManageMenu;
-        if (screen === 'todayHistory') return canManageDailyActions;
+        if (screen === 'todayHistory') return canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY;
         if (canUseResellerScreens && ['resellerHub', 'resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(screen)) return true;
         if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'canonicaHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
         if (['canonicaHelp', 'canonicaDocs', 'canonicaSupport', 'canonicaReleaseNotes'].includes(screen)) return true;
@@ -494,9 +521,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         canManageSearchDiscovery,
         canManageStore,
         canUseResellerScreens,
+        canManageLocations,
         isPlatformAdmin,
         userPermissions?.canAssignRoles,
-        userPermissions?.canManageOutlets,
         userPermissions?.canManageUsers,
     ]);
 
@@ -547,7 +574,22 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     let subScreenContent: ReactNode = null;
 
-    if (subScreen === 'accountAccess') subScreenContent = <MobileAccountAccessScreen onBack={() => setSubScreen('main')} userLoginLabel={userLoginLabel} userName={userName} />;
+    if (subScreen === 'accountProfile') subScreenContent = (
+        <MobileAccountProfileScreen
+            countryCode={profileCountryCode}
+            dialCode={profileDialCode}
+            email={profileEmail}
+            onBack={() => setSubScreen('main')}
+            onOpenAccountAccess={() => setSubScreen('accountAccess')}
+            onProfileSaved={(updates) => setProfileOverrides((current) => ({ ...current, ...updates }))}
+            phoneNumber={profilePhoneNumber}
+            staffAuthMode={sessionUser.staffAuthMode}
+            userImage={userImage}
+            userLoginLabel={userLoginLabel}
+            userName={userName}
+        />
+    );
+    else if (subScreen === 'accountAccess') subScreenContent = <MobileAccountAccessScreen onBack={() => setSubScreen('accountProfile')} userLoginLabel={userLoginLabel} userName={userName} />;
     else if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
@@ -581,7 +623,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'domainSettings') subScreenContent = <MobileDomainSettingsScreen onBack={() => setSubScreen(getBackTarget('domainSettings'))} />;
     else if (subScreen === 'integrations') subScreenContent = <MobileIntegrationsScreen onBack={() => setSubScreen(getBackTarget('integrations'))} />;
     else if (subScreen === 'posSync') subScreenContent = <MobilePosSyncScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'todayHistory') subScreenContent = <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'todayHistory' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
+        subScreenContent = <MobileTodayHistoryScreen onBack={() => setSubScreen('main')} />;
+    }
     else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
     else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
     else if (subScreen === 'canonicaHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
@@ -685,13 +729,17 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     return (
         <Flex gap={12} style={{ padding: 16 }} vertical>
-            <Card>
-                <Flex align="center" gap={12}>
-                    {userImage ? <Avatar size={48} src={userImage} /> : <Avatar size={48}>{userName.charAt(0).toUpperCase()}</Avatar>}
-                    <Flex gap={2} vertical>
-                        <Title level={5} style={{ margin: 0 }}>{userName}</Title>
-                        {userLoginLabel ? <Text type="secondary">{userLoginLabel}</Text> : null}
+            <Card onClick={() => openSubScreen('accountProfile')} style={{ cursor: 'pointer' }}>
+                <Flex align="center" gap={12} justify="space-between">
+                    <Flex align="center" gap={12} style={{ minWidth: 0 }}>
+                        {userImage ? <Avatar size={48} src={userImage} /> : <Avatar size={48}>{userName.charAt(0).toUpperCase()}</Avatar>}
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Title level={5} style={{ margin: 0 }}>{userName}</Title>
+                            {userLoginLabel ? <Text ellipsis type="secondary">{userLoginLabel}</Text> : null}
+                            <Text type="secondary">Profile and account access</Text>
+                        </Flex>
                     </Flex>
+                    <LuChevronRight color={token.colorTextQuaternary} size={18} />
                 </Flex>
             </Card>
 
@@ -773,13 +821,6 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 <List>
                     <List.Item
                         arrow
-                        description={<Text type="secondary">Change your password or passcode.</Text>}
-                        onClick={() => openSubScreen('accountAccess')}
-                        prefix={<LuKeyRound color="#16a34a" size={20} />}
-                        title={<Text strong>Account access</Text>}
-                    />
-                    <List.Item
-                        arrow
                         description={<Text type="secondary">{t('appSettingsDesc')}</Text>}
                         onClick={() => setIsAppSettingsOpen(true)}
                         prefix={<LuSettings color="#64748b" size={20} />}
@@ -817,6 +858,178 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 onClose={() => setIsAppSettingsOpen(false)}
                 visible={isAppSettingsOpen}
             />
+        </Flex>
+    );
+}
+
+function MobileAccountProfileScreen({
+    countryCode,
+    dialCode,
+    email,
+    onBack,
+    onOpenAccountAccess,
+    onProfileSaved,
+    phoneNumber,
+    staffAuthMode,
+    userImage,
+    userLoginLabel,
+    userName,
+}: {
+    countryCode?: string;
+    dialCode?: string;
+    email?: string;
+    onBack: () => void;
+    onOpenAccountAccess: () => void;
+    onProfileSaved: (updates: { countryCode?: string; dialCode?: string; displayEmail?: string; name?: string; phoneNumber?: string }) => void;
+    phoneNumber?: string;
+    staffAuthMode?: string;
+    userImage?: string;
+    userLoginLabel?: string;
+    userName: string;
+}) {
+    const [draftDialCode, setDraftDialCode] = useState(dialCode || '');
+    const [draftEmail, setDraftEmail] = useState(email || '');
+    const [draftName, setDraftName] = useState(userName || '');
+    const [draftPhone, setDraftPhone] = useState(phoneNumber || '');
+    const [editOpen, setEditOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    const phoneLabel = [dialCode, phoneNumber].filter(Boolean).join(' ').trim();
+    const openEditProfile = () => {
+        setDraftDialCode(dialCode || '');
+        setDraftEmail(email || '');
+        setDraftName(userName || '');
+        setDraftPhone(phoneNumber || '');
+        setEditOpen(true);
+    };
+
+    const saveProfile = async () => {
+        const nextName = draftName.trim();
+        const nextEmail = draftEmail.trim();
+        const nextPhone = draftPhone.trim();
+        const nextDialCode = draftDialCode.trim();
+
+        if (!nextName) {
+            Toast.show({ content: 'Enter your name.', duration: 1500 });
+            return;
+        }
+        if (nextEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+            Toast.show({ content: 'Enter a valid email.', duration: 1500 });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const res = await fetch('/api/auth/update-profile', {
+                body: JSON.stringify({
+                    countryCode,
+                    dialCode: nextDialCode,
+                    displayEmail: nextEmail,
+                    name: nextName,
+                    phoneNumber: nextPhone,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Could not update profile.');
+            }
+
+            onProfileSaved({
+                countryCode,
+                dialCode: nextDialCode,
+                displayEmail: nextEmail,
+                name: nextName,
+                phoneNumber: nextPhone,
+            });
+            setEditOpen(false);
+            Toast.show({ content: 'Profile updated.', duration: 1500 });
+        } catch (error: any) {
+            Toast.show({ content: error?.message || 'Could not update profile.', duration: 2200 });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Flex style={{ minHeight: '100%' }} vertical>
+            <MobileSettingsScreenHeader
+                description="View your signed-in profile and account access."
+                onBack={onBack}
+                title="Profile"
+            />
+            <Flex gap={12} style={{ padding: 16 }} vertical>
+                <Card>
+                    <Flex align="center" gap={12}>
+                        {userImage ? <Avatar size={56} src={userImage} /> : <Avatar icon={<LuUser size={22} />} size={56} />}
+                        <Flex gap={3} style={{ minWidth: 0 }} vertical>
+                            <Title level={4} style={{ margin: 0 }}>{userName}</Title>
+                            {userLoginLabel ? <Text ellipsis type="secondary">{userLoginLabel}</Text> : null}
+                            {staffAuthMode === 'owner_passcode' ? <Tag color="primary">Staff ID login</Tag> : null}
+                        </Flex>
+                    </Flex>
+                </Card>
+
+                <Card title="Profile details">
+                    <List>
+                        <List.Item prefix={<LuUser color="#9ca3af" size={16} />} title={<Text>{userName}</Text>} />
+                        <List.Item prefix={<LuMail color="#9ca3af" size={16} />} title={<Text>{email || 'No email added'}</Text>} />
+                        <List.Item prefix={<LuPhone color="#9ca3af" size={16} />} title={<Text>{phoneLabel || 'No phone added'}</Text>} />
+                    </List>
+                </Card>
+
+                <Button block fill="outline" icon={<LuPencil size={16} />} onClick={openEditProfile} size="large">
+                    Edit profile
+                </Button>
+                <Button block icon={<LuKeyRound size={16} />} onClick={onOpenAccountAccess} size="large">
+                    Change password or passcode
+                </Button>
+
+                <Card>
+                    <Text type="secondary">
+                        Staff and role access for other people stays under Staff. This profile is only for the signed-in account.
+                    </Text>
+                </Card>
+            </Flex>
+
+            <Popup bodyStyle={{ maxHeight: '78vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={saving ? undefined : () => setEditOpen(false)} visible={editOpen}>
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setEditOpen(false)}>
+                        Edit profile
+                    </NavBar>
+                    <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">Name</Text>
+                                <Input onChange={setDraftName} placeholder="Your name" value={draftName} />
+                            </Flex>
+                        </Card>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">Email</Text>
+                                <Text type="secondary">
+                                    {staffAuthMode === 'owner_passcode'
+                                        ? 'Optional contact email. Staff ID remains the sign-in ID.'
+                                        : 'This updates the profile email shown in MenuList.'}
+                                </Text>
+                                <Input onChange={setDraftEmail} placeholder="name@example.com" type="email" value={draftEmail} />
+                            </Flex>
+                        </Card>
+                        <Card>
+                            <Flex gap={8} vertical>
+                                <Text type="secondary">Phone</Text>
+                                <Input onChange={setDraftDialCode} placeholder="Dial code, e.g. +91" type="tel" value={draftDialCode} />
+                                <Input onChange={setDraftPhone} placeholder="Phone number" type="tel" value={draftPhone} />
+                            </Flex>
+                        </Card>
+                        <Flex gap={8}>
+                            <Button block fill="outline" onClick={() => setEditOpen(false)} size="large">Cancel</Button>
+                            <Button block loading={saving} onClick={() => void saveProfile()} size="large">Save</Button>
+                        </Flex>
+                    </Flex>
+                </Flex>
+            </Popup>
         </Flex>
     );
 }

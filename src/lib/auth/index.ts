@@ -13,7 +13,6 @@ import { DefaultSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { signOut } from "next-auth/react";
-import { sanitizeSession } from '../../middleware/auth';
 import { checkAccountLock, getLockoutMessage, logFailedLogin, logSuccessfulLogin } from "./security";
 import {
     addAuthPlatformUser,
@@ -49,6 +48,20 @@ declare module "next-auth/jwt" {
 const AUTH_SESSION_USER_CONTEXT_CACHE_TTL_MS = 15 * 1000;
 const AUTH_SESSION_USER_CONTEXT_CACHE_MAX = 500;
 const authSessionUserContextCache = new Map<string, { expiresAt: number; user: any }>();
+
+const sanitizeAuthSessionForLog = (session: any): any => ({
+    user: {
+        id: session.user?.id,
+        email: session.user?.email,
+        name: session.user?.name,
+    },
+    pId: session.pId,
+    tId: session.tId,
+    sId: session.sId,
+    uId: session.uId,
+    role: session.role,
+    platformRole: session.platformRole,
+});
 
 
 //refer https://www.youtube.com/watch?v=bkUmN9TH_hQ
@@ -229,7 +242,7 @@ export const authOptions: NextAuthOptions = {
                     // Check for OWN properties only, not inherited from prototype
                     if (Object.hasOwn(dbUser, key)) {
                         // ✅ SECURITY: Only log if safe (no sensitive data)
-                        const sanitized = sanitizeSession(session);
+                        const sanitized = sanitizeAuthSessionForLog(session);
                         if (!containsSensitiveData(sanitized) && key !== "__proto__") {
                             secureLog('[Auth] Blocked dangerous key in dbUser', {
                                 key,

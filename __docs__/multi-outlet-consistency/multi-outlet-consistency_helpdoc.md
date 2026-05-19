@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Help Documentation
 
-**Last Updated:** February 13, 2026
+**Last Updated:** May 19, 2026
 
 ## Quick Summary
 
@@ -38,7 +38,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### How to add a new outlet
 
-1. Go to **Locations** in the sidebar
+1. Go to **Locations** (desktop sidebar or mobile **More** → **Locations**)
 2. Click **Add Outlet**
 3. Enter the outlet name (e.g., "Downtown Branch")
 4. Review the billing impact — you'll see the prorated charge for the current cycle
@@ -47,7 +47,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### How to view and manage all locations
 
-1. Go to **Locations** in the sidebar (visible only for HQ accounts)
+1. Go to **Locations** (desktop sidebar or mobile **More** → **Locations**, visible only for HQ accounts)
 2. You'll see the **Chain Control Panel** with:
    - Billing summary (cost per store, total chain cost)
    - A table of all your stores with status
@@ -55,7 +55,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### How to switch between stores
 
-1. Use the **store switcher dropdown** in the header (visible for HQ accounts)
+1. Use the **store switcher dropdown** in the header on desktop, or open **Locations** on mobile (visible for HQ accounts)
 2. Select the store you want to view
 3. A yellow banner will appear: "You are viewing [outlet name]"
 4. Any changes you make only affect that outlet
@@ -105,9 +105,9 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### How do I deactivate an outlet?
 
-1. Go to **Locations** in the sidebar
-2. Find the outlet in the store table
-3. Click the **Deactivate** button
+1. Go to **Locations** (desktop sidebar or mobile **More** → **Locations**)
+2. Find the outlet in the store list
+3. Click or tap **Deactivate**
 4. Confirm — the outlet is deactivated and billing adjusts automatically
 
 ---

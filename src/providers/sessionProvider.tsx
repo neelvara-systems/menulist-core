@@ -9,11 +9,12 @@ import { getStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
-import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
+import { clearUserContext, logger, setUserContext } from '@lib/monitoring/logger';
 import {
     readActiveStoreContextId,
     writeActiveStoreContextId,
 } from '@lib/multiOutlet/activeStoreContext';
+import { isMasterLocationContext } from '@lib/multiOutlet/locationAccess';
 import { applyOutletPolicy } from '@lib/permissions/applyOutletPolicy';
 import { getPermissionsForRole } from '@lib/permissions/hasPermission';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
@@ -172,7 +173,7 @@ export default function SessionProvider({ children, session }: Props) {
             })
             .catch((error) => {
                 const normalizedError = error instanceof Error ? error : new Error('Firebase Auth sync failed');
-                console.error('[MenuList] Firebase Auth sync failed before store bootstrap', normalizedError);
+                logger.error('[MenuList] Firebase Auth sync failed before store bootstrap', normalizedError);
                 if (!cancelled) {
                     setFirebaseAuthSyncError(normalizedError);
                     setActiveSubscriptionLoading(false);
@@ -276,17 +277,17 @@ export default function SessionProvider({ children, session }: Props) {
                         sId: session.user.storeId,
                         tenantName: fetchedTenant.name,
                         storeName: fetchedStore.name,
-                        role: session.user.stores?.find((store: any) => store.storeId === session.user.storeId)?.role || 'user',
+                        role: session.user.stores?.find((store: any) => Number(store.storeId) === Number(session.user.storeId))?.role || 'user',
                         subscriptionPlan: subscriptionData?.planId || 'free',
                         subscriptionStatus: subscriptionData?.status || 'none',
                     });
                 }).catch((e) => {
                     setActiveSubscriptionLoading(false)
-                    console.log(e)
+                    logger.error('[MenuList] Store bootstrap failed', e);
                 })
             }).catch((e) => {
                 setActiveSubscriptionLoading(false)
-                console.log(e)
+                logger.error('[MenuList] Tenant bootstrap failed', e);
             })
 
         } else if (!session) {
@@ -303,7 +304,10 @@ export default function SessionProvider({ children, session }: Props) {
         if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
 
         const loginStoreId = Number(session.user?.storeId);
-        const canUseStoreContext = Boolean(loginStoreDetails.isMaster);
+        const canUseStoreContext = isMasterLocationContext({
+            storeDetails: loginStoreDetails,
+            tenantDetails,
+        });
         const targetStoreId = canUseStoreContext && activeStoreContext && activeStoreContext !== loginStoreId
             ? activeStoreContext
             : null;
@@ -335,7 +339,7 @@ export default function SessionProvider({ children, session }: Props) {
             return;
         }
 
-        const targetSummary = tenantDetails.storesList.find((store: any) => store.storeId === targetStoreId);
+        const targetSummary = tenantDetails.storesList.find((store: any) => Number(store.storeId) === Number(targetStoreId));
         if (!targetSummary) {
             setActiveStoreContext(null);
             return;
@@ -353,7 +357,7 @@ export default function SessionProvider({ children, session }: Props) {
                     return {
                         ...current,
                         storesList: current.storesList.map((store: any) => (
-                            store.storeId === targetStoreId
+                            Number(store.storeId) === Number(targetStoreId)
                                 ? { ...store, storeDetails: removeObjRef(targetStore) }
                                 : store
                         )),
@@ -393,6 +397,55 @@ export default function SessionProvider({ children, session }: Props) {
     ]);
 
     useEffect(() => {
+        if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
+
+        const loginStoreCanActAsMaster = isMasterLocationContext({
+            storeDetails: loginStoreDetails,
+            tenantDetails,
+        });
+        if (loginStoreCanActAsMaster) return;
+
+        const masterSummary = tenantDetails.storesList.find((store: any) => store?.isMaster === true);
+        const masterStoreId = Number(masterSummary?.storeId);
+        if (!masterStoreId || masterSummary?.storeDetails) return;
+
+        let cancelled = false;
+        void getStoreById(masterStoreId)
+            .then((masterStore: StoreDataType) => {
+                if (
+                    cancelled
+                    || !masterStore
+                    || Number(masterStore.tenantId) !== Number(session.user?.tenantId)
+                ) {
+                    return;
+                }
+
+                setTenantDetails((current: TenantDataType) => {
+                    if (!current?.storesList?.length) return current;
+                    return {
+                        ...current,
+                        storesList: current.storesList.map((store: any) => (
+                            Number(store.storeId) === Number(masterStoreId)
+                                ? { ...store, isMaster: true, storeDetails: removeObjRef(masterStore) }
+                                : store
+                        )),
+                    };
+                });
+            })
+            .catch((error) => {
+                logger.error('[MenuList] Master outlet policy load failed', error, { masterStoreId });
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        loginStoreDetails,
+        session,
+        tenantDetails,
+    ]);
+
+    useEffect(() => {
         const authorityStoreDetails = loginStoreDetails || storeDetails;
         if (objectNullCheck(authorityStoreDetails)) {
             if (!authorityStoreDetails?.roles) return;
@@ -405,7 +458,7 @@ export default function SessionProvider({ children, session }: Props) {
             // Get user's single role for their login store. HQ users keep HQ
             // authority while viewing an outlet context.
             const userRoleId = session?.user?.stores?.find(
-                (store: any) => store.storeId === session.user.storeId
+                (store: any) => Number(store.storeId) === Number(session.user.storeId)
             )?.role;
 
             // Find matching role definition from store
@@ -415,7 +468,10 @@ export default function SessionProvider({ children, session }: Props) {
                 const rolePermissions = getPermissionsForRole(userRoleId, authorityStoreDetails.roles || []);
                 // For outlet stores: apply master's outletPolicy to restrict permissions
                 // Master store's outletPolicy is the chain-wide gate for what outlets can do
-                const isMaster = Boolean(authorityStoreDetails.isMaster);
+                const isMaster = isMasterLocationContext({
+                    storeDetails: authorityStoreDetails,
+                    tenantDetails,
+                });
                 if (!isMaster && tenantDetails?.storesList?.length) {
                     const masterStore = tenantDetails.storesList.find((s: any) => s.isMaster);
                     const outletPolicy = masterStore?.storeDetails?.outletPolicy;
@@ -456,6 +512,11 @@ export default function SessionProvider({ children, session }: Props) {
     //     startLogCapture();
     // }, []);
 
+    const loginStoreIsMaster = isMasterLocationContext({
+        storeDetails: loginStoreDetails || storeDetails,
+        tenantDetails,
+    });
+
     return (
         <Provider
             session={session}
@@ -479,7 +540,7 @@ export default function SessionProvider({ children, session }: Props) {
                 setActiveSubscription,
                 activeSubscriptionLoading,
                 setActiveSubscriptionLoading,
-                isMasterUser: Boolean((loginStoreDetails || storeDetails)?.isMaster),
+                isMasterUser: loginStoreIsMaster,
                 activeStoreContext,
                 setActiveStoreContext,
                 cachedKBCategories,

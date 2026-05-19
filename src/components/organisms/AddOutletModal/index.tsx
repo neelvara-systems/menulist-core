@@ -8,6 +8,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { calculateProration } from '@util/razorpay';
 import { Alert, Input, Modal, Space, Typography } from 'antd';
@@ -22,7 +23,7 @@ interface AddOutletModalProps {
 }
 
 export default function AddOutletModal({ open, onClose, subscription }: AddOutletModalProps) {
-    const { tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
+    const { tenantDetails, storeDetails, setStoreDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
     const [outletName, setOutletName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -50,8 +51,13 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
 
             // Update local tenant storesList
             if (tenantDetails && data.storeId) {
+                const normalizedCurrentStores = tenantDetails.storesList.map((store: any) => (
+                    data.masterPromoted && Number(store.storeId) === Number(storeDetails?.storeId)
+                        ? { ...store, isMaster: true }
+                        : store
+                ));
                 const updatedStoresList = [
-                    ...tenantDetails.storesList,
+                    ...normalizedCurrentStores,
                     {
                         active: true,
                         isMaster: false,
@@ -62,6 +68,13 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                     },
                 ];
                 setTenantDetails({ ...tenantDetails, storesList: updatedStoresList });
+            }
+            if (data.masterPromoted && storeDetails) {
+                setStoreDetails({
+                    ...storeDetails,
+                    isMaster: true,
+                    outletPolicy: data.outletPolicy || storeDetails.outletPolicy || DEFAULT_OUTLET_POLICY,
+                });
             }
 
             setOutletName('');

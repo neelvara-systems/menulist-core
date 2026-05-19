@@ -492,13 +492,15 @@ const TodayScreen = () => {
             )}
 
             {/* Past Activity Link */}
-            <Button
-                type="link"
-                className={styles.historyLink}
-                href="/today/history"
-            >
-                View past activity →
-            </Button>
+            {FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? (
+                <Button
+                    type="link"
+                    className={styles.historyLink}
+                    href="/today/history"
+                >
+                    View past activity →
+                </Button>
+            ) : null}
 
             {/* Operational cards — always visible regardless of campaign state */}
             {storeDetails && (

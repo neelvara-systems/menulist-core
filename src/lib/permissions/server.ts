@@ -49,6 +49,39 @@ export async function requireAnyStorePermission(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    return requireAnyStorePermissionForStoreData(
+        request,
+        session,
+        storeData,
+        permissions,
+        label,
+        storeId,
+        tenantId,
+    );
+}
+
+export function requireAnyStorePermissionForStoreData(
+    request: NextRequest,
+    session: any,
+    storeData: any,
+    permissions: PermissionKey[],
+    label: string,
+    storeId: number = getSessionStoreId(session),
+    tenantId: number = getSessionTenantId(session),
+) {
+    if (isPlatformSession(session)) return null;
+
+    if (!storeId || !tenantId || !storeData || Number(storeData?.tenantId) !== tenantId) {
+        logger.security("Authorization Failed - Permission Store Missing", {
+            ...buildSecurityContext(session, request),
+            endpoint: request.nextUrl.pathname,
+            label,
+            storeId,
+            tenantId,
+        }, "high");
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const roleId = session?.user?.stores?.find((store: any) => Number(store?.storeId) === storeId)?.role
         || session?.role
         || session?.user?.role;

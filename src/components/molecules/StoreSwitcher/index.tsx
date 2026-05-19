@@ -7,6 +7,7 @@
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { logger } from '@lib/monitoring/logger';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Select } from 'antd';
 import { useContext } from 'react';
@@ -16,14 +17,16 @@ export default function StoreSwitcher() {
     const { tenantDetails, storeDetails, userPermissions, isMasterUser, activeStoreContext, setActiveStoreContext } =
         useContext(PlatformGlobalDataContext);
 
-    // Only show for master users with canSwitchStores permission
-    if (!isMasterUser || !tenantDetails?.storesList?.length || !userPermissions?.canSwitchStores) return null;
+    const activeStoresList = tenantDetails?.storesList?.filter((store: any) => store.active !== false) || [];
+
+    // Only show for master users with canSwitchStores permission and more than one active store.
+    if (!isMasterUser || activeStoresList.length <= 1 || !userPermissions?.canSwitchStores) return null;
 
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
 
-    const options = tenantDetails.storesList.map((store) => ({
+    const options = activeStoresList.map((store) => ({
         value: store.storeId,
         label: (
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -37,7 +40,7 @@ export default function StoreSwitcher() {
     const currentStoreId = activeStoreContext || storeDetails?.storeId;
 
     const handleSwitch = async (targetStoreId: number) => {
-        if (targetStoreId === storeDetails?.storeId) {
+        if (Number(targetStoreId) === Number(storeDetails?.storeId)) {
             setActiveStoreContext(null);
             return;
         }
@@ -51,7 +54,7 @@ export default function StoreSwitcher() {
                 setActiveStoreContext(targetStoreId);
             }
         } catch (e) {
-            console.error('[StoreSwitcher] Switch failed:', e);
+            logger.error('[StoreSwitcher] Switch failed', e);
         }
     };
 

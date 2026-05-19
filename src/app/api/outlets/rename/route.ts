@@ -23,8 +23,10 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import { isReservedOutletSlug } from '@constant/reservedSlugs';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { secureError } from '@lib/security/secureLogger';
@@ -73,7 +75,18 @@ export const POST = withAuth(async (request, session) => {
 
         // Caller must be the master store of this tenant.
         const masterSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`).get();
-        if (!masterSnap.exists || masterSnap.data()?.isMaster !== true) {
+        const masterStore = masterSnap.data();
+        const permissionError = requireAnyStorePermissionForStoreData(
+            request,
+            session,
+            masterStore,
+            [PERMISSIONS.MANAGE_OUTLETS],
+            'Outlet rename',
+            Number(storeId),
+            Number(tenantId),
+        );
+        if (permissionError) return permissionError;
+        if (!masterSnap.exists || masterStore?.isMaster !== true) {
             return NextResponse.json({ error: 'Only master store can rename outlets' }, { status: 403 });
         }
 
@@ -160,7 +173,20 @@ export const POST = withAuth(async (request, session) => {
             updatePayload.name = newOutletName;
         }
 
+        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
         await db.runTransaction(async (tx) => {
+            const tenantDoc = await tx.get(tenantRef);
+            const storesList = tenantDoc.data()?.storesList || [];
+            const updatedStoresList = storesList.map((store: any) => (
+                Number(store.storeId) === Number(outletStoreId)
+                    ? {
+                        ...store,
+                        ...(newOutletName ? { name: newOutletName } : {}),
+                        outletSlug: proposed,
+                        previousOutletSlugs: cappedChain,
+                    }
+                    : store
+            ));
             tx.update(outletRef, updatePayload);
             const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
             const summaryPayload: Record<string, any> = {
@@ -172,6 +198,7 @@ export const POST = withAuth(async (request, session) => {
                 summaryPayload[`stores.${outletStoreIdStr}.name`] = newOutletName;
             }
             tx.set(summaryRef, summaryPayload, { merge: true });
+            tx.update(tenantRef, { storesList: updatedStoresList });
         });
         revalidateTag(`menu-store-${outletStoreIdStr}`);
         revalidateTag(`store-${outletStoreIdStr}`);

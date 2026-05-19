@@ -2,8 +2,8 @@
 
 > **Feature:** #4 — Multi-Store Menu Consistency  
 > **Status:** ✅ Production Ready  
-> **Last Updated:** February 13, 2026  
-> **Version:** 4.1
+> **Last Updated:** May 19, 2026
+> **Version:** 4.2
 
 > **Scope:** Master/outlet store linking, project replication, override fields, AI extraction integration, and store onboarding. For permissions, see [Roles & Permissions](../roles-permissions/) (Layer 1) and [Multi-Chain Permissions](../multi-chain-permissions/) (Layer 2). For platform admin store CRUD, see [Stores Management](../stores-management/).
 
@@ -22,6 +22,7 @@
 | **AI Integration**     | [\_ai-extraction.md](./multi-outlet-consistency_ai-extraction.md) | How AI extraction works with multi-outlet     |
 | **Verification**       | [\_verification.md](./multi-outlet-consistency_verification.md)   | Implementation verification, bugs found/fixed |
 | **Firebase Costs**     | [\_firebase.md](./multi-outlet-consistency_firebase.md)           | All Firestore reads/writes/deletes            |
+| **Mobile Support**     | [\_mobile-support.md](./multi-outlet-consistency_mobile-support.md) | Mobile owner flow and data parity             |
 | **Website Copy**       | [\_website.md](./multi-outlet-consistency_website.md)             | Landing page content                          |
 | **Help Article**       | [\_helpdoc.md](./multi-outlet-consistency_helpdoc.md)             | Customer help documentation                   |
 

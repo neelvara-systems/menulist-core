@@ -1235,7 +1235,19 @@
         "subtitle": "तुमच्या ठिकाणांची माहिती पहा, स्टोअर संदर्भ बदला आणि आउटलेट धोरणे नियंत्रित करा.",
         "reset": "Reset",
         "saveChanges": "Save",
-        "noChangesToSave": "No changes to save"
+        "noChangesToSave": "No changes to save",
+        "stores": "Stores",
+        "notAvailableHint": "This screen appears for the main account when the role can manage locations.",
+        "addOutletDesc": "Add a new location under this account.",
+        "outletNameHelp": "Use the real branch name customers and staff will recognize, for example Downtown or Indiranagar.",
+        "policyHelp": "These rules decide what outlet teams can control locally and what stays managed by the main account.",
+        "deactivate": "Deactivate",
+        "deactivateOutlet": "Deactivate outlet?",
+        "deactivateOutletConfirm": "This turns off {name} and removes it from normal store switching.",
+        "outletDeactivated": "Outlet deactivated",
+        "failedToDeactivate": "Failed to deactivate outlet",
+        "inactive": "Inactive",
+        "inactiveStore": "This store is inactive"
     },
     "MobileDesignEditor": {
         "title": "Menu Design",

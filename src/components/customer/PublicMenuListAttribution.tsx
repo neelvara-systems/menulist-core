@@ -1,4 +1,4 @@
-import { PLATFORM_URL } from '@constant/urls';
+import { getPublicBaseUrl } from '@constant/urls';
 import type { CSSProperties } from 'react';
 
 interface PublicMenuListAttributionProps {
@@ -10,8 +10,6 @@ interface PublicMenuListAttributionProps {
     accentColor?: string;
     containerStyle?: CSSProperties;
 }
-
-const ctaHref = `${PLATFORM_URL}/create-menu`;
 
 function MenuListLogoMark({ height = 12 }: { height?: number }) {
     const width = Math.round(height * 1.749);
@@ -67,6 +65,9 @@ export default function PublicMenuListAttribution({
 }: PublicMenuListAttributionProps) {
     const isCompact = mode === 'compact';
     const markHeight = isCompact ? 12 : 14;
+    const appUrl = getPublicBaseUrl();
+    const poweredByHref = appUrl;
+    const ctaHref = `${appUrl}/create-menu`;
 
     return (
         <div
@@ -81,7 +82,10 @@ export default function PublicMenuListAttribution({
                 ...containerStyle,
             }}
         >
-            <p
+            <a
+                href={poweredByHref}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                     alignItems: 'center',
                     color: mutedColor,
@@ -92,14 +96,18 @@ export default function PublicMenuListAttribution({
                     justifyContent: 'center',
                     lineHeight: 1.4,
                     margin: 0,
+                    textDecoration: 'none',
                 }}
+                aria-label="Open MenuList app"
             >
                 <MenuListLogoMark height={markHeight} />
                 <span>{surfaceLabel}{rightsLabel ? `. ${rightsLabel}` : ''}</span>
-            </p>
+            </a>
             {ctaLabel ? (
                 <a
                     href={ctaHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                         color: accentColor,
                         fontSize: isCompact ? 11 : 12,

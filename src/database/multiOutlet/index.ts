@@ -1036,27 +1036,16 @@ export const updateOutletPolicy = async (
 
     return await apiCallComposer(
         async () => {
-            const storeRef = doc(firebaseClient, `${DB_COLLECTIONS.STORES}`, `${storeId}`);
-            const storeSnap = await getDoc(storeRef);
-
-            if (!storeSnap.exists()) {
-                throw new Error("Store not found");
+            const res = await fetch("/api/outlets/policy", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ policy }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to update outlet policy");
             }
-
-            const storeData = storeSnap.data();
-            if (!storeData.isMaster) {
-                throw new Error("Outlet policy can only be set on master store");
-            }
-
-            // Merge with existing policy (or DEFAULT_OUTLET_POLICY if none)
-            const { DEFAULT_OUTLET_POLICY } = await import("@type/multiOutlet.types");
-            const currentPolicy = storeData.outletPolicy || DEFAULT_OUTLET_POLICY;
-            const mergedPolicy = { ...currentPolicy, ...policy };
-
-            await updateDoc(storeRef, { outletPolicy: mergedPolicy });
-            await revalidatePublicClientCache(storeId, "updateOutletPolicy");
-
-            return { success: true };
+            return data;
         },
         { storeId, policy },
         "updateOutletPolicy",

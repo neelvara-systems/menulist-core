@@ -1,6 +1,6 @@
 # Multi-Chain Permissions — Help Documentation
 
-**Last Updated:** February 13, 2026
+**Last Updated:** May 19, 2026
 
 ## Quick Summary
 
@@ -17,7 +17,7 @@ Both layers work together: a staff member can only do something if their role al
 
 ### How to set outlet policies (what stores can do)
 
-1. Go to **Locations** (in the sidebar)
+1. Go to **Locations** (desktop sidebar or mobile **More** → **Locations**)
 2. Scroll to the **Outlet Policy** card
 3. Toggle each policy on/off across 5 categories:
 

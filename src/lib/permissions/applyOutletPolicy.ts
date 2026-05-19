@@ -10,7 +10,7 @@
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §12
  */
 
-import type { OutletPolicy } from "@type/multiOutlet.types";
+import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from "@type/multiOutlet.types";
 import type { RolePermissions } from "@type/platform/roles";
 
 /**
@@ -42,17 +42,19 @@ export function applyOutletPolicy(
     outletPolicy: OutletPolicy | undefined,
     isMasterStore: boolean,
 ): RolePermissions {
-    // Master store users are not restricted by outlet policy
-    if (isMasterStore || !outletPolicy) {
+    // Master store users are not restricted by outlet policy.
+    if (isMasterStore) {
         return rolePermissions;
     }
+
+    const effectiveOutletPolicy = outletPolicy || DEFAULT_OUTLET_POLICY;
 
     // Clone permissions to avoid mutation
     const effective: RolePermissions = { ...rolePermissions };
 
     // Apply policy gates: if policy disables a capability, force permission to false
     for (const [policyKey, permissionKeys] of Object.entries(POLICY_TO_PERMISSION_MAP)) {
-        const policyValue = outletPolicy[policyKey as keyof OutletPolicy];
+        const policyValue = effectiveOutletPolicy[policyKey as keyof OutletPolicy];
         if (policyValue === false) {
             for (const permKey of permissionKeys) {
                 effective[permKey] = false;
@@ -69,7 +71,7 @@ export function applyOutletPolicy(
     // Editor-level outlet flags have no RolePermissions counterpart. Keep them
     // attached to the effective permission payload so mobile/desktop editors can
     // enforce direct item-level policy without another master-store read.
-    (effective as RolePermissions & { outletPolicy?: OutletPolicy }).outletPolicy = outletPolicy;
+    (effective as RolePermissions & { outletPolicy?: OutletPolicy }).outletPolicy = effectiveOutletPolicy;
 
     return effective;
 }

@@ -9,14 +9,17 @@ import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
 import { FEATURE_FLAGS } from "@config/features";
 import { resolveBusinessCategory } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
 import { createDefaultRoles } from "@data/defaultRoles";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
+import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
 import { slugify } from "@lib/utils/slugify";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
@@ -47,6 +50,9 @@ export const POST = withAuth(async (request, session) => {
     let previousQty = 1;
     let subId: string | undefined;
     let providerSubId: string | undefined;
+    let masterPromoted = false;
+    let lockAcquired = false;
+    let subscriptionQuantityUpdated = false;
 
     try {
         const body = await request.json();
@@ -54,18 +60,53 @@ export const POST = withAuth(async (request, session) => {
         if (!v.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
         const { outletName } = v.data;
 
-        // Validate: current store must be master
-        const storeSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`).get();
-        if (!storeSnap.exists || !storeSnap.data()?.isMaster) {
+        const masterStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`);
+        const storeSnap = await masterStoreRef.get();
+        if (!storeSnap.exists) {
+            return NextResponse.json({ error: "Store not found" }, { status: 404 });
+        }
+        let masterStore = storeSnap.data()!;
+        const permissionError = requireAnyStorePermissionForStoreData(
+            request,
+            session,
+            masterStore,
+            [PERMISSIONS.MANAGE_OUTLETS],
+            "Outlet creation",
+            Number(storeId),
+            Number(tenantId),
+        );
+        if (permissionError) return permissionError;
+
+        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
+        const initialTenantSnap = await tenantRef.get();
+        const initialStoresList = initialTenantSnap.data()?.storesList || [];
+        const hasMasterStore = initialStoresList.some((s: any) => s?.isMaster === true);
+        masterPromoted = (
+            masterStore.isMaster !== true
+            && !hasMasterStore
+            && initialStoresList.length === 1
+            && Number(initialStoresList[0]?.storeId) === Number(storeId)
+        );
+
+        // Validate: current store must be master. Legacy single-store tenants
+        // are promoted atomically during first outlet creation.
+        if (masterStore.isMaster !== true && !masterPromoted) {
             return NextResponse.json({ error: "Only master store can add outlets" }, { status: 403 });
         }
-        const masterStore = storeSnap.data()!;
+        if (masterPromoted) {
+            masterStore = {
+                ...masterStore,
+                isMaster: true,
+                outletPolicy: masterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
+            };
+        }
 
         // Enforce outlet count limit (excludes master store)
         const maxOutlets = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT;
         if (maxOutlets > 0) {
-            const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
-            const currentOutlets = (tenantSnap.data()?.storesList || []).filter((s: any) => !s.isMaster).length;
+            const currentOutlets = initialStoresList.filter((s: any) => (
+                Number(s?.storeId) !== Number(storeId) && !s.isMaster
+            )).length;
             if (currentOutlets >= maxOutlets) {
                 return NextResponse.json({ error: `Maximum ${maxOutlets} outlets reached` }, { status: 400 });
             }
@@ -84,7 +125,6 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // Acquire creation lock ATOMICALLY via transaction (Architecture Audit §3.2a)
-        const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
         await db.runTransaction(async (t) => {
             const tenantDoc = await t.get(tenantRef);
             const data = tenantDoc.data();
@@ -97,6 +137,7 @@ export const POST = withAuth(async (request, session) => {
                 outletCreationLockAt: now,
             });
         });
+        lockAcquired = true;
 
         // ═══ PATH 1: BILLING (must succeed BEFORE internal creation — Rule 3) ═══
         previousQty = sub?.quantity || 1;
@@ -109,6 +150,7 @@ export const POST = withAuth(async (request, session) => {
         }
         if (subId) {
             await updateSubscription(subId, { quantity: newQty });
+            subscriptionQuantityUpdated = true;
         }
 
         // Pre-fetch master projects OUTSIDE transaction (Firestore requirement)
@@ -170,7 +212,7 @@ export const POST = withAuth(async (request, session) => {
             });
 
             // Sync to storesSummary
-            tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), {
+            const storesSummaryPayload: Record<string, any> = {
                 lastUpdated: now,
                 [`stores.${newStoreId}`]: {
                     tId: tenantId,
@@ -190,12 +232,30 @@ export const POST = withAuth(async (request, session) => {
                     schedulerHour: masterStore.schedulerHour ?? 2, // Inherit from master
                     modifiedOn: now,
                 },
-            }, { merge: true });
+            };
+            if (masterPromoted) {
+                storesSummaryPayload[`stores.${storeId}.isMaster`] = true;
+                storesSummaryPayload[`stores.${storeId}.modifiedOn`] = now;
+            }
+            tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), storesSummaryPayload, { merge: true });
+
+            if (masterPromoted) {
+                tx.set(masterStoreRef, {
+                    isMaster: true,
+                    outletPolicy: masterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
+                    modifiedOn: now,
+                }, { merge: true });
+            }
 
             // Update tenant storesList
             const currentStoresList = tenantData?.storesList || [];
+            const normalizedStoresList = currentStoresList.map((store: any) => (
+                masterPromoted && Number(store?.storeId) === Number(storeId)
+                    ? { ...store, isMaster: true }
+                    : store
+            ));
             tx.update(tenantRef, {
-                storesList: [...currentStoresList, {
+                storesList: [...normalizedStoresList, {
                     storeId: newStoreId,
                     name: outletName,
                     tenantName,
@@ -243,6 +303,10 @@ export const POST = withAuth(async (request, session) => {
         });
         revalidateTag(`menu-store-${result.newStoreId}`);
         revalidateTag(`store-${result.newStoreId}`);
+        if (masterPromoted) {
+            revalidateTag(`menu-store-${storeId}`);
+            revalidateTag(`store-${storeId}`);
+        }
         revalidateTag('client-stores');
 
         return NextResponse.json({
@@ -250,6 +314,8 @@ export const POST = withAuth(async (request, session) => {
             storeId: result.newStoreId,
             outletSlug: result.outletSlug,
             outletName,
+            masterPromoted,
+            outletPolicy: masterPromoted ? masterStore.outletPolicy || DEFAULT_OUTLET_POLICY : null,
             tenantName: result.tenantName,
             quantity: subId ? newQty : null,
         });
@@ -269,18 +335,28 @@ export const POST = withAuth(async (request, session) => {
                 await razorpayClient.subscriptions.update(providerSubId, {
                     quantity: previousQty,
                 });
-                if (subId) await updateSubscription(subId, { quantity: previousQty });
             } catch (revertErr) {
                 secureError("[Outlets] CRITICAL: Billing revert failed", revertErr as Error, {
                     tenantId, storeId, previousQty,
                 });
             }
         }
+        if (subscriptionQuantityUpdated && subId) {
+            try {
+                await updateSubscription(subId, { quantity: previousQty });
+            } catch (revertErr) {
+                secureError("[Outlets] CRITICAL: Subscription quantity revert failed", revertErr as Error, {
+                    tenantId, storeId, previousQty,
+                });
+            }
+        }
 
         // Best-effort lock release
-        try {
-            await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).update({ outletCreationLock: false });
-        } catch (_) { /* best-effort */ }
+        if (lockAcquired) {
+            try {
+                await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).update({ outletCreationLock: false });
+            } catch (_) { /* best-effort */ }
+        }
 
         return NextResponse.json({ error: "Outlet creation failed" }, { status: 500 });
     }

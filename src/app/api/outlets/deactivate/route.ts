@@ -6,9 +6,11 @@ export const dynamic = 'force-dynamic';
  */
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -42,36 +44,46 @@ export const POST = withAuth(async (request, session) => {
 
         // Caller must be master store
         const callerSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeId}`).get();
-        if (!callerSnap.exists || !callerSnap.data()?.isMaster) {
+        const callerStore = callerSnap.data();
+        const permissionError = requireAnyStorePermissionForStoreData(
+            request,
+            session,
+            callerStore,
+            [PERMISSIONS.MANAGE_OUTLETS],
+            "Outlet deactivation",
+            Number(storeId),
+            Number(tenantId),
+        );
+        if (permissionError) return permissionError;
+        if (!callerSnap.exists || !callerStore?.isMaster) {
             return NextResponse.json({ error: "Only master can deactivate" }, { status: 403 });
         }
 
         // Target must be in same tenant and not master
         const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
         const storesList = tenantSnap.data()?.storesList || [];
-        const target = storesList.find((s: any) => s.storeId === outletStoreId);
+        const target = storesList.find((s: any) => Number(s.storeId) === Number(outletStoreId));
         if (!target || target.isMaster) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
         }
 
-        // Deactivate store
-        await db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`).update({
-            active: false,
-            deactivatedAt: now,
-        });
-
-        // Update storesSummary
-        await db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`).set({
-            lastUpdated: now,
-            [`stores.${outletStoreId}.active`]: false,
-            [`stores.${outletStoreId}.modifiedOn`]: now,
-        }, { merge: true });
-
-        // Update tenant storesList to reflect deactivation
+        // Update store, summary, and tenant storesList atomically so location
+        // visibility cannot drift if one write fails.
         const updatedStoresList = storesList.map((s: any) =>
-            s.storeId === outletStoreId ? { ...s, active: false } : s
+            Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
         );
-        await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).update({ storesList: updatedStoresList });
+        await db.runTransaction(async (tx) => {
+            tx.update(db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`), {
+                active: false,
+                deactivatedAt: now,
+            });
+            tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), {
+                lastUpdated: now,
+                [`stores.${outletStoreId}.active`]: false,
+                [`stores.${outletStoreId}.modifiedOn`]: now,
+            }, { merge: true });
+            tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`), { storesList: updatedStoresList });
+        });
 
         // Immediate billing removal: reduce Razorpay quantity now
         // Razorpay prorates refunds automatically for mid-cycle changes
@@ -79,11 +91,13 @@ export const POST = withAuth(async (request, session) => {
         if (FEATURE_FLAGS.ENABLE_BILLING_REMOVAL_IMMEDIATE && FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
             try {
                 const sub = await getActiveSubscriptionForStore(tenantId, storeId);
-                if (sub && sub.providerSubscriptionId && (sub.quantity || 1) > 1) {
+                if (sub && (sub.quantity || 1) > 1) {
                     const newQty = (sub.quantity || 1) - 1;
-                    await razorpayClient.subscriptions.update(sub.providerSubscriptionId, {
-                        quantity: newQty,
-                    });
+                    if (sub.providerSubscriptionId) {
+                        await razorpayClient.subscriptions.update(sub.providerSubscriptionId, {
+                            quantity: newQty,
+                        });
+                    }
                     await updateSubscription(sub.id, { quantity: newQty });
                     billingReduced = true;
                 }

@@ -589,13 +589,15 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                         prefix={<LuEye size={18} />}
                         title={<Text strong>{tDesign('preview')}</Text>}
                     />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">Review today actions completed or skipped in the last 7 days.</Text>}
-                        onClick={onOpenHistory}
-                        prefix={<LuClock size={18} />}
-                        title={<Text strong>Past Activity</Text>}
-                    />
+                    {FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? (
+                        <List.Item
+                            arrow
+                            description={<Text type="secondary">Review today actions completed or skipped in the last 7 days.</Text>}
+                            onClick={onOpenHistory}
+                            prefix={<LuClock size={18} />}
+                            title={<Text strong>Past Activity</Text>}
+                        />
+                    ) : null}
                 </List>
             </Card>
 

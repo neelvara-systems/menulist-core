@@ -2,7 +2,7 @@
 
 **Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 13, 2026  
+**Last Updated:** May 19, 2026
 **Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
 
 > **Scope:** This doc covers menu consistency ops (signal docs, merge resolution, MOL events) and outlet creation/deactivation transactions. For OutletPolicy editor ops (`updateOutletPolicy`), see [Multi-Chain Permissions Firebase](../multi-chain-permissions/multi-chain-permissions_firebase.md). For base store CRUD ops (`addStore`, `updateStore`, summary syncs), see [Stores Management Firebase](../stores-management/stores-management_firebase.md).
@@ -66,14 +66,16 @@
 
 ## Cost Estimate (per 100 multi-outlet stores, 5 outlets each, 10 saves/day)
 
+Assumption for INR estimate: ₹83/USD.
+
 | Resource                            | Operations/month          | Unit Cost  | Monthly Cost     |
 | ----------------------------------- | ------------------------- | ---------- | ---------------- |
-| Firestore Reads (signal listener)   | 500 outlets × 30 = 15,000 | $0.06/100K | $0.01            |
-| Firestore Reads (master resolution) | 50,000                    | $0.06/100K | $0.03            |
-| Firestore Reads (customer render)   | 100,000 ÷ cache = 10,000  | $0.06/100K | $0.01            |
-| Firestore Writes (signal increment) | 30,000                    | $0.18/100K | $0.05            |
-| Firestore Writes (MOL events)       | 150,000                   | $0.18/100K | $0.27            |
-| **Total**                           |                           |            | **~$0.37/month** |
+| Firestore Reads (signal listener)   | 500 outlets × 30 = 15,000 | ~₹5/100K   | ~₹1              |
+| Firestore Reads (master resolution) | 50,000                    | ~₹5/100K   | ~₹2              |
+| Firestore Reads (customer render)   | 100,000 ÷ cache = 10,000  | ~₹5/100K   | ~₹1              |
+| Firestore Writes (signal increment) | 30,000                    | ~₹15/100K  | ~₹5              |
+| Firestore Writes (MOL events)       | 150,000                   | ~₹15/100K  | ~₹22             |
+| **Total**                           |                           |            | **~₹31/month**   |
 
 ---
 
@@ -98,6 +100,7 @@
 | Operation                    | Collection                     | Trigger                      | Docs Read | File                                         |
 | ---------------------------- | ------------------------------ | ---------------------------- | --------- | -------------------------------------------- |
 | Check isMaster (create)      | `stores/{sId}`                 | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:53`     |
+| Check role + legacy master state | `stores/{sId}` + `tenants/{tId}` | POST /api/outlets/create / policy | 2 | `src/lib/permissions/server.ts`, `src/app/api/outlets/policy/route.ts` |
 | Get active subscription      | `subscriptions` (query)        | POST /api/outlets/create     | 1-2       | `src/database/subscriptions/index.ts`        |
 | Lock check (in tx)           | `tenants/{tId}`                | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:69`     |
 | Fetch master projects        | `projects/{tId}/{sId}` (query) | POST /api/outlets/create     | N         | `src/app/api/outlets/create/route.ts:94`     |
@@ -107,6 +110,8 @@
 | Get storesList (deactivate)  | `tenants/{tId}`                | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:45` |
 | Check isMaster (switch)      | `stores/{sId}`                 | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:29`  |
 | Get storesList (switch)      | `tenants/{tId}`                | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts:34`  |
+| Read outlet for rename       | `stores/{outletSId}`           | POST /api/outlets/rename     | 1         | `src/app/api/outlets/rename/route.ts`        |
+| Read tenant list for rename  | `tenants/{tId}`                | POST /api/outlets/rename tx  | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Outlet sub fallback          | `tenants/{tId}`                | Outlet loads billing         | 1         | `src/database/subscriptions/index.ts:127`    |
 | Master sub fetch (fallback)  | `subscriptions` (query)        | Outlet loads billing         | 1-2       | `src/database/subscriptions/index.ts:137`    |
 | Get storesList (propagation) | `tenants/{tId}`                | Master creates project       | 1         | `src/database/multiOutlet/propagation.ts:34` |
@@ -119,14 +124,20 @@
 | Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 1                    | `route.ts:91`                             |
 | Create outlet store (in tx)    | `stores/{newSId}`                      | POST /api/outlets/create     | 1                    | `route.ts:114`                            |
 | Sync storesSummary (in tx)     | `platformSummary/storesSummary`        | POST /api/outlets/create     | 1                    | `route.ts:132`                            |
+| Legacy master repair (in tx)   | `stores/{sId}` + `tenants/{tId}` + `platformSummary/storesSummary` | First outlet or policy save on legacy single-store tenant | 3 | `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/policy/route.ts` |
 | Update storesList (in tx)      | `tenants/{tId}`                        | POST /api/outlets/create     | 1                    | `route.ts:145`                            |
 | Update store count (in tx)     | `platformSummary/summary`              | POST /api/outlets/create     | 1                    | `route.ts:155`                            |
 | Create outlet projects (in tx) | `projects/{tId}/{newSId}/{id}`         | POST /api/outlets/create     | N per master project | `route.ts:164`                            |
 | Sync project summaries (in tx) | `platformSummary/projects_{newSId}`    | POST /api/outlets/create     | N per master project | `route.ts:179`                            |
-| Revert sub quantity (error)    | `subscriptions/{subId}`                | Creation failure             | 1                    | `route.ts:213`                            |
-| Release lock (error)           | `tenants/{tId}`                        | Creation failure             | 1                    | `route.ts:223`                            |
-| Deactivate outlet              | `stores/{outletSId}`                   | POST /api/outlets/deactivate | 1                    | `deactivate/route.ts:53`                  |
-| Sync deactivation              | `platformSummary/storesSummary`        | POST /api/outlets/deactivate | 1                    | `deactivate/route.ts:60`                  |
+| Revert sub quantity (error)    | `subscriptions/{subId}`                | Creation failure after quantity update | 1          | `src/app/api/outlets/create/route.ts`     |
+| Release acquired lock (error)  | `tenants/{tId}`                        | Creation failure after lock acquired | 1              | `src/app/api/outlets/create/route.ts`     |
+| Deactivate outlet (in tx)      | `stores/{outletSId}`                   | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |
+| Sync deactivation (in tx)      | `platformSummary/storesSummary`        | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |
+| Update deactivated storesList (in tx) | `tenants/{tId}`                 | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |
+| Reduce sub quantity (deactivate) | `subscriptions/{subId}`              | POST /api/outlets/deactivate | 1 when quantity > 1  | Internal subscription quantity is reduced even when no provider subscription ID exists. |
+| Rename outlet (in tx)          | `stores/{outletSId}`                   | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
+| Sync renamed outlet (in tx)    | `platformSummary/storesSummary`        | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
+| Update renamed storesList (in tx) | `tenants/{tId}`                     | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Master creates project       | 1 per outlet         | `propagation.ts:60`                       |
 | Sync propagated summary        | `platformSummary/projects_{outletSId}` | Master creates project       | 1 per outlet         | `propagation.ts:77`                       |
 | Set isMaster (onboarding)      | `stores/{sId}` + `tenants/{tId}`       | Onboarding                   | 2                    | `onboarding/create-subscription/route.ts` |
@@ -136,8 +147,8 @@
 
 | Operation                    | Service      | Trigger                  | File           |
 | ---------------------------- | ------------ | ------------------------ | -------------- |
-| Update subscription quantity | Razorpay API | POST /api/outlets/create | `route.ts:86`  |
-| Revert subscription quantity | Razorpay API | Creation failure         | `route.ts:210` |
+| Update subscription quantity | Razorpay API | POST /api/outlets/create/deactivate when provider subscription exists | `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/deactivate/route.ts` |
+| Revert subscription quantity | Razorpay API | Creation failure after provider quantity update | `src/app/api/outlets/create/route.ts` |
 
 ### DAL Functions (Feature #4C)
 

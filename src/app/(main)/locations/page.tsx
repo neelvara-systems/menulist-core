@@ -6,13 +6,13 @@
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §17
  */
 
-import { FEATURE_FLAGS } from '@config/features';
 import AddOutletModal from '@organisms/AddOutletModal';
 import OutletPolicyEditor from '@organisms/OutletPolicyEditor';
 import OutletRenameModal from '@organisms/OutletRenameModal';
+import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
-import { Badge, Button, Card, Empty, message, Space, Table, Tag, Typography } from 'antd';
+import { Badge, Button, Card, Empty, message, Modal, Space, Table, Tag, Typography } from 'antd';
 import { useContext, useState } from 'react';
 import { LuMapPin, LuPlusCircle, LuStar } from 'react-icons/lu';
 
@@ -21,19 +21,37 @@ const { Title, Text } = Typography;
 export default function LocationsPage() {
     const {
         tenantDetails,
+        setTenantDetails,
         storeDetails,
         userPermissions,
         isMasterUser,
         activeSubscription,
         activeStoreContext,
         setActiveStoreContext,
+        setStoreDetails,
     } = useContext(PlatformGlobalDataContext);
 
     const [addOutletOpen, setAddOutletOpen] = useState(false);
     // T2-N-01: outlet rename modal state.
     const [renameTarget, setRenameTarget] = useState<any | null>(null);
+    const [deactivatingStoreId, setDeactivatingStoreId] = useState<number | null>(null);
+    const canManageLocations = canManageLocationSettings({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
+    const canCreateOutlet = canCreateOutletLocation({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
+    const masterStoreSummary = tenantDetails?.storesList?.find((store: any) => store?.isMaster === true);
+    const policySourceStore = masterStoreSummary?.storeDetails || (storeDetails?.isMaster === true ? storeDetails : null) || storeDetails;
+    const policyStoreId = Number(policySourceStore?.storeId || storeDetails?.storeId || 0);
 
-    if (!FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL || !isMasterUser || !userPermissions?.canManageOutlets) {
+    if (!canManageLocations) {
         return <Empty description="Chain Control Panel is not available" />;
     }
 
@@ -47,7 +65,7 @@ export default function LocationsPage() {
     const totalCost = amount * activeCount;
 
     const handleSwitchStore = async (targetStoreId: number) => {
-        if (targetStoreId === storeDetails?.storeId) {
+        if (Number(targetStoreId) === Number(storeDetails?.storeId)) {
             setActiveStoreContext(null);
             return;
         }
@@ -66,6 +84,49 @@ export default function LocationsPage() {
         } catch {
             message.error('Store switch failed');
         }
+    };
+
+    const handleDeactivateOutlet = (record: any) => {
+        Modal.confirm({
+            title: 'Deactivate outlet?',
+            content: `This turns off ${record.name || `Store ${record.storeId}`} and removes it from normal store switching. Billing quantity is reduced when billing removal is enabled.`,
+            okText: 'Deactivate',
+            okButtonProps: { danger: true },
+            onOk: async () => {
+                const outletStoreId = Number(record.storeId);
+                setDeactivatingStoreId(outletStoreId);
+                try {
+                    const res = await fetch('/api/outlets/deactivate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ outletStoreId }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        message.error(data.error || 'Outlet deactivation failed');
+                        return;
+                    }
+                    setTenantDetails((previous: any) => previous?.storesList
+                        ? {
+                            ...previous,
+                            storesList: previous.storesList.map((store: any) => (
+                                Number(store.storeId) === Number(outletStoreId)
+                                    ? { ...store, active: false }
+                                    : store
+                            )),
+                        }
+                        : previous);
+                    if (Number(activeStoreContext) === Number(outletStoreId)) {
+                        setActiveStoreContext(null);
+                    }
+                    message.success('Outlet deactivated');
+                } catch {
+                    message.error('Outlet deactivation failed');
+                } finally {
+                    setDeactivatingStoreId(null);
+                }
+            },
+        });
     };
     const columns = [
         {
@@ -93,6 +154,7 @@ export default function LocationsPage() {
             key: 'actions',
             render: (_: any, record: any) => {
                 if (record.isMaster) return <Text type="secondary">—</Text>;
+                if (record.active === false) return <Text type="secondary">Inactive</Text>;
                 return (
                     <Space size="small">
                         <Button
@@ -113,6 +175,14 @@ export default function LocationsPage() {
                         >
                             Rename URL
                         </Button>
+                        <Button
+                            danger
+                            loading={deactivatingStoreId === Number(record.storeId)}
+                            size="small"
+                            onClick={() => handleDeactivateOutlet(record)}
+                        >
+                            Deactivate
+                        </Button>
                     </Space>
                 );
             },
@@ -127,7 +197,7 @@ export default function LocationsPage() {
                         <LuMapPin style={{ marginRight: 8 }} />
                         Locations
                     </Title>
-                    {FEATURE_FLAGS.ENABLE_OUTLET_CREATION && userPermissions?.canManageOutlets && (
+                    {canCreateOutlet && (
                         <Button
                             type="primary"
                             icon={<LuPlusCircle />}
@@ -153,12 +223,36 @@ export default function LocationsPage() {
                 </Card>
 
                 {/* Outlet Policy Editor */}
-                {outletCount > 0 && (
-                    <OutletPolicyEditor
-                        storeId={storeDetails?.storeId}
-                        currentPolicy={storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY}
-                    />
-                )}
+                <OutletPolicyEditor
+                    storeId={policyStoreId}
+                    currentPolicy={policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY}
+                    onPolicyUpdate={(nextPolicy) => {
+                        setStoreDetails((previous: any) => previous
+                            ? {
+                                ...previous,
+                                ...(Number(previous.storeId) === Number(policyStoreId)
+                                    ? { isMaster: true, outletPolicy: nextPolicy }
+                                    : {}),
+                            }
+                            : previous);
+                        setTenantDetails((previous: any) => previous?.storesList
+                            ? {
+                                ...previous,
+                                storesList: previous.storesList.map((store: any) => (
+                                    Number(store.storeId) === Number(policyStoreId)
+                                        ? {
+                                            ...store,
+                                            isMaster: true,
+                                            storeDetails: store.storeDetails
+                                                ? { ...store.storeDetails, isMaster: true, outletPolicy: nextPolicy }
+                                                : store.storeDetails,
+                                        }
+                                        : store
+                                )),
+                            }
+                            : previous);
+                    }}
+                />
 
                 {/* Outlets Table */}
                 <Card size="small" title="Outlets">

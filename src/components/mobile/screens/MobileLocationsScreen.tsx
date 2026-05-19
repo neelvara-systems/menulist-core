@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { formatCurrency } from '@util/formatters';
@@ -11,7 +12,7 @@ import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
-import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileLocationsScreenProps {
@@ -26,33 +27,51 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
         userPermissions,
         isMasterUser,
         activeSubscription,
+        activeStoreContext,
         setActiveStoreContext,
+        setStoreDetails,
         setTenantDetails,
     } = useContext(PlatformGlobalDataContext);
+    const masterStoreSummary = tenantDetails?.storesList?.find((store: any) => store?.isMaster === true);
+    const policySourceStore = masterStoreSummary?.storeDetails || (storeDetails?.isMaster === true ? storeDetails : null) || storeDetails;
+    const policyStoreId = Number(policySourceStore?.storeId || storeDetails?.storeId || 0);
 
     const [showAddOutlet, setShowAddOutlet] = useState(false);
     const [showPolicy, setShowPolicy] = useState(false);
     const [outletName, setOutletName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
-    const [policy, setPolicy] = useState<OutletPolicy>(storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY);
-    const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY);
+    const [deactivatingStoreId, setDeactivatingStoreId] = useState<number | null>(null);
+    const [policy, setPolicy] = useState<OutletPolicy>(policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY);
+    const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY);
     const [isSavingPolicy, setIsSavingPolicy] = useState(false);
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
+    const canManageLocations = canManageLocationSettings({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
+    const canCreateOutlet = canCreateOutletLocation({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
 
     useEffect(() => {
-        const nextPolicy = storeDetails?.outletPolicy || DEFAULT_OUTLET_POLICY;
+        const nextPolicy = policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY;
         setPolicy(nextPolicy);
         setDraftPolicy(nextPolicy);
-    }, [storeDetails?.outletPolicy]);
+    }, [policySourceStore?.outletPolicy]);
 
     const hasPolicyChanges = useMemo(
         () => Object.keys(DEFAULT_OUTLET_POLICY).some((key) => policy[key as keyof OutletPolicy] !== draftPolicy[key as keyof OutletPolicy]),
         [draftPolicy, policy],
     );
 
-    if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL || userPermissions?.canManageOutlets !== true) {
+    if (!canManageLocations) {
         return (
             <Flex style={{ height: '100%' }} vertical>
                 <MobileSettingsScreenHeader
@@ -61,8 +80,8 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     title={t('title')}
                 />
                 <Flex align="center" gap={8} justify="center" style={{ flex: 1, padding: 24, textAlign: 'center' }} vertical>
-                    <Text strong>Locations are not available for this account.</Text>
-                    <Text type="secondary">This screen appears only when the role can manage locations.</Text>
+                    <Text strong>{t('notAvailable')}</Text>
+                    <Text type="secondary">{t('notAvailableHint')}</Text>
                 </Flex>
             </Flex>
         );
@@ -75,7 +94,12 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     const amount = activeSubscription?.amount || 0;
 
     const handleSwitchStore = async (storeId: number) => {
-        if (storeId === storeDetails?.storeId) {
+        const target = storesList.find((store: any) => Number(store.storeId) === Number(storeId));
+        if ((target as any)?.active === false) {
+            Toast.show({ content: t('inactiveStore'), duration: 1500 });
+            return;
+        }
+        if (Number(storeId) === Number(storeDetails?.storeId)) {
             setActiveStoreContext(null);
             return;
         }
@@ -94,6 +118,50 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
         }
     };
 
+    const handleDeactivateOutlet = async (store: any) => {
+        const outletStoreId = Number(store?.storeId);
+        if (!outletStoreId || store?.isMaster || store?.active === false) return;
+
+        const confirmed = await Dialog.confirm({
+            confirmText: t('deactivate'),
+            content: t('deactivateOutletConfirm', { name: resolveStoreName(store) }),
+            title: t('deactivateOutlet'),
+        });
+        if (!confirmed) return;
+
+        setDeactivatingStoreId(outletStoreId);
+        try {
+            const res = await fetch('/api/outlets/deactivate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ outletStoreId }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                Toast.show({ content: data.error || t('failedToDeactivate'), duration: 2000 });
+                return;
+            }
+            setTenantDetails((previous: any) => previous?.storesList
+                ? {
+                    ...previous,
+                    storesList: previous.storesList.map((entry: any) => (
+                        Number(entry.storeId) === Number(outletStoreId)
+                            ? { ...entry, active: false }
+                            : entry
+                    )),
+                }
+                : previous);
+            if (Number(activeStoreContext) === Number(outletStoreId)) {
+                setActiveStoreContext(null);
+            }
+            Toast.show({ content: t('outletDeactivated'), duration: 1500 });
+        } catch {
+            Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
+        } finally {
+            setDeactivatingStoreId(null);
+        }
+    };
+
     const handleCreateOutlet = async () => {
         if (!outletName.trim()) return;
         setIsCreating(true);
@@ -109,8 +177,13 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                 return;
             }
             if (tenantDetails && data.storeId) {
+                const normalizedCurrentStores = tenantDetails.storesList.map((store: any) => (
+                    data.masterPromoted && Number(store.storeId) === Number(storeDetails?.storeId)
+                        ? { ...store, isMaster: true }
+                        : store
+                ));
                 const updatedStoresList = [
-                    ...tenantDetails.storesList,
+                    ...normalizedCurrentStores,
                     {
                         active: true,
                         isMaster: false,
@@ -121,6 +194,13 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     },
                 ];
                 setTenantDetails({ ...tenantDetails, storesList: updatedStoresList });
+            }
+            if (data.masterPromoted && storeDetails) {
+                setStoreDetails({
+                    ...storeDetails,
+                    isMaster: true,
+                    outletPolicy: data.outletPolicy || storeDetails.outletPolicy || DEFAULT_OUTLET_POLICY,
+                });
             }
             setOutletName('');
             setShowAddOutlet(false);
@@ -146,7 +226,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     };
 
     const handleSavePolicy = async () => {
-        if (!storeDetails?.storeId) return;
+        if (!policyStoreId) return;
         if (!hasPolicyChanges) {
             Toast.show({ content: t('noChangesToSave'), duration: 1200 });
             return;
@@ -154,8 +234,33 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
         setIsSavingPolicy(true);
         try {
-            await updateOutletPolicy(storeDetails.storeId, draftPolicy);
-            setPolicy(draftPolicy);
+            const result = await updateOutletPolicy(policyStoreId, draftPolicy);
+            const nextPolicy = result?.outletPolicy || draftPolicy;
+            setPolicy(nextPolicy);
+            setStoreDetails((previous: any) => previous
+                ? {
+                    ...previous,
+                    ...(Number(previous.storeId) === Number(policyStoreId)
+                        ? { isMaster: true, outletPolicy: nextPolicy }
+                        : {}),
+                }
+                : previous);
+            setTenantDetails((previous: any) => previous?.storesList
+                ? {
+                    ...previous,
+                    storesList: previous.storesList.map((store: any) => (
+                        Number(store.storeId) === Number(policyStoreId)
+                            ? {
+                                ...store,
+                                isMaster: true,
+                                storeDetails: store.storeDetails
+                                    ? { ...store.storeDetails, isMaster: true, outletPolicy: nextPolicy }
+                                    : store.storeDetails,
+                            }
+                            : store
+                    )),
+                }
+                : previous);
             Toast.show({ content: t('policyUpdated'), duration: 1000 });
             setShowPolicy(false);
         } catch {
@@ -208,12 +313,26 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                     store.isMaster ? (
                                         <Flex align="center" gap={6}>
                                             <Tag color="warning">HQ</Tag>
-                                            {store.storeId === storeDetails?.storeId ? <Tag color="processing">Current</Tag> : null}
+                                            {Number(store.storeId) === Number(storeDetails?.storeId) ? <Tag color="processing">Current</Tag> : null}
                                         </Flex>
+                                    ) : store.active === false ? (
+                                        <Tag>{t('inactive')}</Tag>
                                     ) : (
                                         <Flex align="center" gap={6}>
                                             <Tag>View</Tag>
-                                            {store.storeId === storeDetails?.storeId ? <Tag color="processing">Current</Tag> : null}
+                                            {Number(store.storeId) === Number(storeDetails?.storeId) ? <Tag color="processing">Current</Tag> : null}
+                                            <Button
+                                                color="danger"
+                                                fill="outline"
+                                                loading={deactivatingStoreId === Number(store.storeId)}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void handleDeactivateOutlet(store);
+                                                }}
+                                                size="mini"
+                                            >
+                                                {t('deactivate')}
+                                            </Button>
                                         </Flex>
                                     )
                                 }
@@ -223,12 +342,12 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     </List>
                 </Card>
 
-                {FEATURE_FLAGS.ENABLE_OUTLET_CREATION && userPermissions?.canManageOutlets ? (
+                {canCreateOutlet ? (
                     <Card size="small">
                         <Flex align="center" justify="space-between">
                             <Flex gap={4} vertical>
                                 <Text strong>{t('addOutlet')}</Text>
-                                <Text type="secondary">Add a new location under this account.</Text>
+                                <Text type="secondary">{t('addOutletDesc')}</Text>
                             </Flex>
                             <Button color="primary" fill="outline" onClick={() => setShowAddOutlet(true)} size="small">
                                 <Flex align="center" gap={6}>
@@ -240,7 +359,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     </Card>
                 ) : null}
 
-                {outletCount > 0 ? (
+                {canManageLocations ? (
                     <Card onClick={handleOpenPolicy}>
                         <Flex align="center" justify="space-between">
                             <Flex gap={4} vertical>
@@ -267,7 +386,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                     <Flex gap={16} style={{ overflowY: 'auto', padding: 12 }} vertical>
                         <Flex gap={6} vertical>
                             <Text strong>{t('outletName')}</Text>
-                            <Text type="secondary">Use the real branch name customers and staff will recognize, for example Downtown or Indiranagar.</Text>
+                            <Text type="secondary">{t('outletNameHelp')}</Text>
                             <Input
                                 onChange={setOutletName}
                                 placeholder={t('outletNamePlaceholder')}
@@ -281,8 +400,8 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                 return (
                                     <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
                                         <Flex gap={4} vertical>
-                                            <Text>{`Prorated charge today: ${formatCurrency(proration.proratedAmount, currency)}`}</Text>
-                                            <Text type="secondary">{`${proration.daysRemaining} days left in cycle`}</Text>
+                                            <Text>{`${t('proratedCharge')} ${formatCurrency(proration.proratedAmount, currency)}`}</Text>
+                                            <Text type="secondary">{t('daysLeftInCycle', { days: proration.daysRemaining })}</Text>
                                         </Flex>
                                     </Card>
                                 );
@@ -338,7 +457,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
 
                     <Flex gap={12} style={{ flex: 1, overflowY: 'auto', padding: 12 }} vertical>
                         <Text type="secondary">{t('chainWideRules')}</Text>
-                        <Text type="secondary">These rules decide what outlet teams can control locally and what stays managed by the main account.</Text>
+                        <Text type="secondary">{t('policyHelp')}</Text>
 
                         <Flex gap={16} vertical>
                             {OUTLET_POLICY_CATEGORIES.map((category, index) => (

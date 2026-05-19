@@ -5,6 +5,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import { useTodayAction } from '@providers/TodayActionProvider';
+import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, getSidebarLayoutState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import { Button, Flex, Menu, MenuProps, Popover, theme } from 'antd';
@@ -32,7 +33,7 @@ const HorizontalSidebarComponent = () => {
     const pathname = usePathname()
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const { isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
 
     // Today action indicator (per Strategy Doc: small dot when action exists)
     const { hasAction: hasTodayAction } = useTodayAction();
@@ -46,12 +47,18 @@ const HorizontalSidebarComponent = () => {
     const canShowNavForPermissions = (nav: NavItemType) => (
         satisfiesPermissionRequirement(userPermissions, getPermissionRequirementForPath(nav.route))
     )
+    const canManageLocations = canManageLocationSettings({
+        isMasterUser,
+        storeDetails,
+        tenantDetails,
+        userPermissions,
+    });
 
     const getMenuItems = () => {
         const menuCopy = [];
         SIDEBAR_DASHBOARD_LAYOUT.map((nav: NavItemType) => {
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
-                if (!isMasterUser || !FEATURE_FLAGS.ENABLE_CHAIN_CONTROL_PANEL || userPermissions?.canManageOutlets !== true) {
+                if (!canManageLocations) {
                     return;
                 }
             }
@@ -133,7 +140,7 @@ const HorizontalSidebarComponent = () => {
                 setActiveNav([currentNav.key])
             }
         }
-    }, [pathname, platformRole, hasTodayAction, isMasterUser, userPermissions])
+    }, [pathname, platformRole, hasTodayAction, canManageLocations, userPermissions])
 
     const onClickNav: MenuProps['onClick'] = (menu: any) => {
         getMenuItems().map((nav: any) => {

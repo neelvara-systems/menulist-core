@@ -6,11 +6,26 @@
 
 ---
 
+## May 19, 2026 — Multi-Location Mobile and Outlet Policy Audit
+
+### Changed
+
+- **Locations access now handles legacy premium stores** — Mobile and desktop Locations use the same master-location gate, so a safe one-store tenant without an old `isMaster` flag can manage locations and be repaired server-side during first outlet creation or policy save.
+- **Outlet policy updates moved server-side** — Desktop and mobile policy controls now save through a protected API route with tenant access, role permission, master-store validation, legacy repair, and public cache invalidation.
+- **Outlet permission enforcement tightened** — Outlet sessions load the master policy when needed and fall back to default-safe outlet restrictions instead of treating a missing hydrated policy as unrestricted access.
+
+### Fixed
+
+- **Outlet mutation integrity hardened** — Outlet creation now reverts local subscription quantity on later failure and only releases creation locks it acquired; outlet deactivation updates store, tenant list, and summary atomically.
+- **Store switching and rename consistency corrected** — Store IDs are normalized across switch/deactivate paths, inactive stores cannot be switched into, and outlet rename now keeps `tenants/{tenantId}.storesList` aligned with the store doc and summary.
+- **Mobile Locations locale coverage completed** — All active locale packs now include the `MobileLocations` keys used by the mobile Locations screen.
+
 ## May 19, 2026 — Owner PWA Shortcuts
 
 ### Added
 
 - **Owner app shortcuts added** — Installed owner PWAs now expose Today, Menu, Share & QR, and Feedback shortcuts from the app icon, using existing owner routes and mobile navigation so role permissions still apply.
+- **Mobile profile owns account access** — The More tab user card now opens the signed-in profile, profile edit supports name, email, and phone fields, and password/passcode change moved inside that profile flow instead of staying as a top-level More action.
 
 ## May 19, 2026 — Role Permission Set Hardening
 

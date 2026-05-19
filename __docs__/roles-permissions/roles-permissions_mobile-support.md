@@ -1,6 +1,6 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** May 19, 2026 (v4 — mobile permission gates wired)
+**Last Updated:** May 19, 2026 (v5 — signed-in profile owns account access)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage roles and permissions from phone
 
 ---
@@ -32,7 +32,9 @@
 | Add staff                      | `MobileUsersScreen`                   | ✅     |
 | Reset staff password/passcode    | `MobileUsersScreen`                   | ✅     |
 | Copy/share Staff ID + passcode   | `MobileUsersScreen` login popup       | ✅     |
-| Staff/owner change own password  | `MobileMoreScreen` → Account access   | ✅     |
+| Staff/owner view own profile       | `MobileMoreScreen` top user card      | ✅     |
+| Staff/owner edit own name/email/phone | `MobileMoreScreen` profile sheet   | ✅     |
+| Staff/owner change own password  | `MobileMoreScreen` profile → Account access | ✅     |
 | Activate/deactivate staff      | `MobileUsersScreen`                   | ✅     |
 | Change staff role              | `MobileUsersScreen`                   | ✅     |
 | Remove staff from store        | `MobileUsersScreen`                   | ✅     |
@@ -43,7 +45,8 @@
 
 - Uses same `/api/staff`, `/api/staff/password-reset`, and `/api/staff/roles` server contracts as desktop
 - Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once with copy actions, the native **Share** action when `navigator.share` is available, and an **Open WhatsApp Web** action that targets the staff phone number when one is saved.
-- Mobile self-service password change uses the shared `/api/auth/change-password` route from More → Account access. This works for password/passcode accounts when the current password/passcode is known.
+- Mobile self-service password change uses the shared `/api/auth/change-password` route from the signed-in profile screen. The old top-level More row is intentionally removed because account access is a rare profile action, not a daily settings action.
+- Mobile signed-in profile edit uses `/api/auth/update-profile` for the current user's name, display/contact email, and phone fields. This does not change the Firebase Auth login email; password/passcode changes stay under Account access.
 - Same `storeDetails.roles` data source
 - Same `PERMISSION_CATEGORIES_CONFIG` and `PERMISSION_LABELS` constants
 - Same route/screen permission taxonomy as desktop via `src/lib/permissions/permissionRequirements.ts`

@@ -1,6 +1,6 @@
 # Multi-Chain Permissions — Website Content
 
-**Last Updated:** February 13, 2026
+**Last Updated:** May 19, 2026
 
 ## Hero Section
 
@@ -36,7 +36,7 @@ MenuList gives you two layers of control. Staff roles define what each person ca
 
 ### 3. Set Once, Forget
 
-Configure outlet policies from the Locations page. They apply automatically to every user at that store. Changes take effect on next login.
+Configure outlet policies from the Locations page on desktop or mobile. They apply automatically to every user at that store. Changes take effect on next login.
 
 ### 4. Two Layers, One Result
 

@@ -2,13 +2,32 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
-**Last Reviewed:** May 13, 2026
+**Last Reviewed:** May 19, 2026
 **Verified By:** Cascade AI Assistant  
 **Status:** ✅ Production Ready
 
 > **Note (Feb 13, 2026):** This verification was done on Feb 5. Since then, the following were implemented: OutletPolicy (15 flags), OutletPolicyEditor UI, `applyOutletPolicy()`, default roles (3 + custom), `updateOutletPolicy()` DAL, and complete permission resolution via sessionProvider. See [multi-chain-permissions/](../multi-chain-permissions/) and [roles-permissions/](../roles-permissions/) for full details.
 >
 > **Note (May 13, 2026):** Desktop and mobile menu data handling were re-audited against linked outlet behavior. Linked outlet extraction now compares against the master menu, editor display resolves master + local records, save paths strip resolved master records before persistence, shared description/image flows accept outlet-aware persistence callbacks, mobile/desktop project create/duplicate/deactivate/reset paths honor OutletPolicy, and linked reset clears local files plus overrides to return to inherited master state.
+>
+> **Note (May 19, 2026):** Final review + production audit found and fixed additional store-context hardening: shared desktop/mobile Locations gates, legacy single-store master repair, server-owned OutletPolicy writes, atomic outlet deactivation, tenant `storesList` sync during outlet rename, normalized store ID comparisons, inactive-store switch rejection, safe outlet-create lock handling, local subscription quantity rollback on creation failure, and complete `MobileLocations` locale coverage.
+
+## May 19, 2026 Final Review + Production Audit
+
+| Area | Result |
+| ---- | ------ |
+| System consistency | ✅ Desktop/mobile Locations now use `canManageLocationSettings()` and `canCreateOutletLocation()` from `src/lib/multiOutlet/locationAccess.ts`. |
+| End-to-end flow | ✅ Disposable Firebase tenant/store/subscription test covered policy save, legacy master repair, outlet creation, subscription quantity update, store switch, refresh/navigation proof, and cleanup. |
+| Failure simulation | ✅ Outlet creation now only releases locks it acquired and reverts internal subscription quantity if later creation steps fail. |
+| Data integrity | ✅ Outlet deactivation is a Firestore transaction across store, tenant list, and summary. Outlet rename also updates tenant `storesList`. |
+| Security | ✅ Outlet policy/create/deactivate/rename require role permission and master context on the server; switching requires `SWITCH_STORES` and rejects inactive stores. |
+| Mobile parity | ✅ Mobile More and Mobile Locations expose Locations for safe legacy premium single-store tenants and show policy before the first outlet. |
+| Firebase cost | ✅ Normal path adds no polling. Outlet sessions may add one master-store read only when policy is not already hydrated. |
+| Verification commands | ✅ `npx tsc --noEmit --incremental false`; ✅ `npm run lint -- --max-warnings=0`; ✅ `git diff --check` on touched files. |
+
+**Live Firebase test (May 19, 2026):** Disposable tenant `910884561`, master store `37`, outlet store `38`, user, and subscription were created against the configured Firebase project. The test verified policy save, legacy master promotion, outlet create, outlet rename, switch-store, outlet deactivation, inactive-store switch rejection, subscription quantity returning to `1`, and cleanup (`cleanupExists false,false,false,false,false`).
+
+**Residual infrastructure note:** Local route tests still showed Upstash DNS failures for rate-limit checks (`prepared-ant-28434.upstash.io ENOTFOUND`). The route fallback allowed requests, so feature behavior was verified, but deployed rate-limit connectivity should be checked as part of release environment validation.
 
 ---
 

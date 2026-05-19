@@ -1,5 +1,6 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
 import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
@@ -125,7 +126,7 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
     if (tab === 'today') {
         return {
             tab,
-            todayScreen: parts[1] === 'dashboard' ? 'dashboard' : parts[1] === 'history' ? 'history' : 'main',
+            todayScreen: parts[1] === 'dashboard' ? 'dashboard' : parts[1] === 'history' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? 'history' : 'main',
             moreScreen: 'main' as MoreSubScreen,
         };
     }
@@ -375,18 +376,31 @@ export default function MobileShell() {
         setTodayScreen('main');
     }, []);
 
+    const handleOpenHistory = useCallback(() => {
+        if (!FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
+            return;
+        }
+        setTodayScreen('history');
+    }, []);
+
+    useEffect(() => {
+        if (todayScreen === 'history' && !FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
+            setTodayScreen('main');
+        }
+    }, [todayScreen]);
+
     const screen = activeTab === 'today'
         ? (
             todayScreen === 'dashboard'
                 ? <MobileDashboardScreen onBack={() => setTodayScreen('main')} onOpenDesignEditor={handleOpenDesignEditor} />
-                : todayScreen === 'history'
+                : todayScreen === 'history' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
                     : (
                     <MobileHoursScreen
                             onOpenDashboard={() => {
                                 if (canViewAnalytics) setTodayScreen('dashboard');
                             }}
-                        onOpenHistory={() => setTodayScreen('history')}
+                        onOpenHistory={handleOpenHistory}
                         onOpenMenuTab={handleOpenMenuTab}
                         onOpenShare={() => {
                                 setActiveTab(canUseShareTab ? 'share' : 'more');
