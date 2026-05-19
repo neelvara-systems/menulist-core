@@ -139,7 +139,9 @@ The loader reads saved dashboard config with `GET /api/widget/config` unless `da
 defaults → remote dashboard config → explicit script attributes
 ```
 
-This keeps already-installed scripts centrally manageable while preserving per-environment script overrides. Runtime config is cached in browser `sessionStorage` and on the server for short TTLs. It uses no realtime listeners and performs no page-load writes.
+This keeps already-installed scripts centrally manageable while preserving per-environment script overrides. Runtime config is cached in browser `sessionStorage` and on the server for the public 60-second TTL. It uses no realtime listeners and performs no page-load writes.
+
+Predictive help calls are also deduped in the loader: identical sanitized page/context payloads reuse the last short-lived suggestion or miss, so route remounts do not repeatedly hit auth, trigger-index reads, or cooldown checks for the same page state.
 
 ### 3.3.1 MenuList-as-Client Test Host
 
@@ -166,6 +168,7 @@ This keeps already-installed scripts centrally manageable while preserving per-e
 - Desktop/mobile preview.
 
 Management saves write only on explicit Save. Color, layout, origin, and behavior edits stay in local React state until saved.
+The save API normalizes current and incoming config before writing; unchanged saves return the current config response without incrementing `widgetConfigVersion`.
 
 ### 3.3.3 Credential Separation
 

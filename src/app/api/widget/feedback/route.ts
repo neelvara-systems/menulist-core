@@ -123,6 +123,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Search record not found' }, { status: 404 });
         }
 
+        const alreadySubmitted = typeof historyData.submittedAt !== 'undefined'
+            || typeof historyData.modifiedOn !== 'undefined';
+        if (alreadySubmitted && historyData.isGood === isGood) {
+            return NextResponse.json({ success: true });
+        }
+
         await historyRef.set({
             isGood,
             reasonsToImprove: [],

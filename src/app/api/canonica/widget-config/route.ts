@@ -42,6 +42,18 @@ const buildConfigResponse = (storeData: Record<string, any>) => ({
     configVersion: Number(storeData.widgetConfigVersion || 0),
 });
 
+const widgetConfigEquals = (
+    left: Record<string, any>,
+    right: Record<string, any>,
+): boolean => JSON.stringify(normalizeWidgetConfig(left)) === JSON.stringify(normalizeWidgetConfig(right));
+
+const allowedOriginsEqual = (left: string[], right: string[]): boolean => {
+    if (left.length !== right.length) return false;
+    const leftSorted = [...left].sort();
+    const rightSorted = [...right].sort();
+    return leftSorted.every((origin, index) => origin === rightSorted[index]);
+};
+
 export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
         return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
@@ -107,6 +119,15 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const storeTenantId = Number(storeData.tenantId || storeData.tId);
         if (Number.isFinite(storeTenantId) && storeTenantId !== scope.tenantId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const existingConfig = normalizeWidgetConfig(storeData.widgetConfig);
+        const existingOrigins = normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins);
+        if (
+            widgetConfigEquals(existingConfig, config)
+            && allowedOriginsEqual(existingOrigins, allowedOrigins)
+        ) {
+            return NextResponse.json(buildConfigResponse(storeData));
         }
 
         await storeRef.set({

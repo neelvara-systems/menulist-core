@@ -109,6 +109,8 @@
     var productContext = null;
     var pendingSuggestion = null;
     var predictiveRequestTimer = null;
+    var predictiveSuggestionCache = {};
+    var predictiveSuggestionCacheTtlMs = 60000;
     var eventListeners = {};
 
     function isValidChoice(value, allowed) {
@@ -559,6 +561,26 @@
         if (!ctx || !ctx.page || !window.fetch) return;
         if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);
 
+        var contextKey = JSON.stringify({
+            page: ctx.page || '',
+            feature: ctx.feature || '',
+            workflow: ctx.workflow || '',
+            plan: ctx.plan || '',
+            userRole: ctx.userRole || '',
+            entityHints: Array.isArray(ctx.entityHints) ? ctx.entityHints : [],
+        });
+        var cachedSuggestion = predictiveSuggestionCache[contextKey];
+        if (cachedSuggestion && cachedSuggestion.expiresAt > Date.now()) {
+            pendingSuggestion = cachedSuggestion.suggestion || null;
+            if (pendingSuggestion && launcher && !isOpen) {
+                launcher.setAttribute('aria-label', 'Open help suggestion');
+                launcher.setAttribute('title', pendingSuggestion.title || 'Help suggestion');
+                launcher.style.boxShadow = '0 0 0 4px rgba(99,102,241,0.18), 0 4px 24px rgba(0,0,0,0.15)';
+            }
+            sendSuggestionToIframe();
+            return;
+        }
+
         predictiveRequestTimer = window.setTimeout(function () {
             fetch(widgetHost + '/api/canonica/predictive-help', {
                 method: 'POST',
@@ -568,10 +590,20 @@
                 },
                 body: JSON.stringify(ctx),
             }).then(function (response) {
-                if (response.status !== 200) return null;
+                if (response.status !== 200) {
+                    predictiveSuggestionCache[contextKey] = {
+                        expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
+                        suggestion: null,
+                    };
+                    return null;
+                }
                 return response.json();
             }).then(function (data) {
                 if (!data || !data.suggestion) return;
+                predictiveSuggestionCache[contextKey] = {
+                    expiresAt: Date.now() + predictiveSuggestionCacheTtlMs,
+                    suggestion: data.suggestion,
+                };
                 pendingSuggestion = data.suggestion;
                 if (launcher && !isOpen) {
                     launcher.setAttribute('aria-label', 'Open help suggestion');

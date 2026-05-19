@@ -28,7 +28,8 @@ import { secureError } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
-const CONFIG_CACHE_TTL_MS = 30_000;
+const CONFIG_CACHE_TTL_MS = CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS * 1000;
+const MAX_RUNTIME_CONFIG_CACHE_ENTRIES = 500;
 
 type RuntimeConfigCacheEntry = {
     body: Record<string, any>;
@@ -63,6 +64,23 @@ const buildResponse = (
             'Cache-Control': `private, max-age=${CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS}`,
         },
     }), request);
+};
+
+const rememberRuntimeConfig = (
+    cacheKey: string,
+    body: Record<string, any>,
+    etag: string,
+): void => {
+    if (runtimeConfigCache.size >= MAX_RUNTIME_CONFIG_CACHE_ENTRIES) {
+        const oldestKey = runtimeConfigCache.keys().next().value;
+        if (oldestKey) runtimeConfigCache.delete(oldestKey);
+    }
+
+    runtimeConfigCache.set(cacheKey, {
+        body,
+        etag,
+        expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
+    });
 };
 
 export function OPTIONS(request: NextRequest) {
@@ -155,11 +173,7 @@ export async function GET(request: NextRequest) {
         };
         const etag = generateETag(body);
 
-        runtimeConfigCache.set(cacheKey, {
-            body,
-            etag,
-            expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
-        });
+        rememberRuntimeConfig(cacheKey, body, etag);
 
         return buildResponse(request, body, etag);
     } catch (error) {

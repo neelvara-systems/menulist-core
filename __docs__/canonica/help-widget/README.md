@@ -4,7 +4,7 @@
 > **Status:** v2 IMPLEMENTED
 > **Date:** 2026-05-12
 > **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context layer), `ENABLE_CANONICA_GUIDED_WORKFLOWS` (procedure rendering), `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (proactive suggestions)
-> **Auth:** API key via `X-API-Key` header. Raw keys are returned once and stored as `publicApi.apiKeyHash` with a display-only `keyPrefix`.
+> **Auth:** API key via `X-API-Key` header. Raw keys are returned once and stored as `canonicaWidgetApi.apiKeyHash` with a display-only `keyPrefix`.
 
 ---
 
@@ -16,6 +16,7 @@
 | 2   | `help-widget_spec.md`     | CEO/PM         | Business requirements, user stories, embed flow, customization        |
 | 3   | `help-widget_impl.md`     | Developers     | Technical blueprint, file structure, API contracts, phased build plan |
 | 4   | `help-widget_firebase.md` | Developers/Ops | Firestore reads/writes, cost projections                              |
+| 5   | `help-widget_mobile-support.md` | Developers/Ops | Mobile route decision, mobile widget-management support, test cases |
 
 ---
 
@@ -67,6 +68,8 @@ This adapter does **not** replace MenuList's native Help Center. It loads the sa
 Canonica operators manage the embeddable widget from `/canonica/widget`. This is the single dashboard surface for widget keys, install snippets, appearance, behavior, origin allowlists, context snippets, and desktop/mobile preview.
 
 Saved widget settings are stored on the workspace store document under `widgetConfig`, `widgetAllowedOrigins`, and `widgetConfigVersion`. The installed script reads those settings through `GET /api/widget/config` with the widget key, so already-installed snippets can pick up dashboard changes without requiring customers to edit script attributes. Script attributes remain supported and intentionally override remote config for per-environment exceptions.
+
+Runtime config and predictive suggestions are intentionally short-cached. The server and browser both avoid repeated config reads for the same widget key/origin, unchanged dashboard saves do not write, and identical page-context predictive checks reuse a short-lived suggestion/miss. This keeps the embed centrally configurable without adding realtime listeners or page-load writes.
 
 Widget keys are stored separately from broader Canonica public API credentials:
 

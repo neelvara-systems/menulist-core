@@ -16,13 +16,16 @@ import {
     Select,
     Skeleton,
     Tag,
+    theme,
     Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuClipboard,
+    LuClock,
     LuCode,
     LuCopy,
+    LuDatabase,
     LuGlobe,
     LuKey,
     LuMonitor,
@@ -33,6 +36,7 @@ import {
     LuShield,
     LuSmartphone,
     LuTrash2,
+    LuZap,
 } from 'react-icons/lu';
 import {
     CanonicaWidgetConfig,
@@ -56,9 +60,40 @@ type WidgetConfigResponse = {
 };
 
 const CONTROL_LABEL_STYLE = { fontSize: 12 } as const;
+const CACHE_DECISION_ITEMS = [
+    {
+        title: 'Runtime config',
+        detail: 'Browser + server cache, 60 second TTL',
+        status: 'Keep',
+        color: 'green',
+        icon: LuClock,
+    },
+    {
+        title: 'Widget auth',
+        detail: 'Short positive and negative cache',
+        status: 'Keep',
+        color: 'green',
+        icon: LuShield,
+    },
+    {
+        title: 'Canonical answers',
+        detail: 'Upstash only for verified answer cache',
+        status: 'Redis',
+        color: 'blue',
+        icon: LuZap,
+    },
+    {
+        title: 'MenuList public pages',
+        detail: 'Next cache tags stay separate',
+        status: 'Separate',
+        color: 'default',
+        icon: LuDatabase,
+    },
+] as const;
 
 export default function CanonicaWidgetManagement() {
     const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
 
     const [loading, setLoading] = useState(true);
@@ -494,6 +529,46 @@ export default function CanonicaWidgetManagement() {
                             <Button icon={<LuCopy size={14} />} onClick={() => copyText(spaSnippet, 'Context snippet copied')} style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}>
                                 Copy Context Snippet
                             </Button>
+                        </Flex>
+                    </Card>
+                </Col>
+
+                <Col xs={24}>
+                    <Card title={<Flex align="center" gap={8}><LuDatabase size={16} /> Cost & Cache</Flex>}>
+                        <Flex vertical gap={14}>
+                            <Row gutter={[10, 10]}>
+                                {CACHE_DECISION_ITEMS.map((item) => {
+                                    const ItemIcon = item.icon;
+                                    return (
+                                        <Col xs={24} sm={12} xl={6} key={item.title}>
+                                            <div style={{
+                                                minHeight: 92,
+                                                padding: 12,
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 8,
+                                                background: token.colorBgContainer,
+                                            }}>
+                                                <Flex align="center" justify="space-between" gap={8}>
+                                                    <Flex align="center" gap={8}>
+                                                        <ItemIcon size={15} />
+                                                        <Text strong style={{ fontSize: 13 }}>{item.title}</Text>
+                                                    </Flex>
+                                                    <Tag color={item.color}>{item.status}</Tag>
+                                                </Flex>
+                                                <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                                                    {item.detail}
+                                                </Text>
+                                            </div>
+                                        </Col>
+                                    );
+                                })}
+                            </Row>
+                            <Alert
+                                type="info"
+                                showIcon
+                                message="Current cache strategy is set"
+                                description="Widget config stays on the short built-in cache. Redis remains for canonical answer cache, cooldowns, and rate limits. MenuList public cache tags stay separate from Canonica widget credentials."
+                            />
                         </Flex>
                     </Card>
                 </Col>

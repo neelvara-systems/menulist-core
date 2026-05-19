@@ -136,6 +136,7 @@ export type PublicApiKeyValidationResult = {
 
 export type PublicApiKeyValidationOptions = {
     allowLegacyRawFallback?: boolean;
+    includePublicApi?: boolean;
     includeCanonicaWidgetApi?: boolean;
     cacheTtlMs?: number;
     includeCanonicaWidgetTestApi?: boolean;
@@ -147,13 +148,14 @@ const isCanonicaWidgetTestKey = (apiKey: string): boolean => /^cn_[a-f0-9]{64}$/
 const MAX_VALIDATION_CACHE_TTL_MS = 30_000;
 const validationCache = new Map<string, {
     expiresAt: number;
-    result: PublicApiKeyValidationResult;
+    result: PublicApiKeyValidationResult | null;
 }>();
 
 const buildValidationCacheKey = (
     keyHash: string,
     options: {
         allowLegacyRawFallback: boolean;
+        includePublicApi: boolean;
         includeCanonicaWidgetApi: boolean;
         includeCanonicaWidgetTestApi: boolean;
         preferCanonicaWidgetApi: boolean;
@@ -162,6 +164,7 @@ const buildValidationCacheKey = (
 ) => [
     keyHash,
     options.allowLegacyRawFallback ? 'legacy' : 'hash-only',
+    options.includePublicApi ? 'with-public' : 'without-public',
     options.includeCanonicaWidgetApi ? 'with-widget' : 'without-widget',
     options.includeCanonicaWidgetTestApi ? 'with-widget-test' : 'public-only',
     options.preferCanonicaWidgetApi ? 'prefer-widget' : 'prefer-non-widget',
@@ -186,6 +189,7 @@ export async function validatePublicApiKey(
 
     let credentialSource: PublicApiCredentialSource = 'publicApi';
     const allowLegacyRawFallback = options.allowLegacyRawFallback !== false;
+    const includePublicApi = options.includePublicApi !== false;
     const includeCanonicaWidgetApi = Boolean(options.includeCanonicaWidgetApi);
     const includeCanonicaWidgetTestApi = Boolean(options.includeCanonicaWidgetTestApi);
     const preferCanonicaWidgetApi = Boolean(options.preferCanonicaWidgetApi && includeCanonicaWidgetApi);
@@ -198,6 +202,7 @@ export async function validatePublicApiKey(
     const cacheKey = cacheTtl
         ? buildValidationCacheKey(keyHash, {
             allowLegacyRawFallback,
+            includePublicApi,
             includeCanonicaWidgetApi,
             includeCanonicaWidgetTestApi,
             preferCanonicaWidgetApi,
@@ -269,24 +274,28 @@ export async function validatePublicApiKey(
         }
     }
 
-    // Primary: lookup by hash (secure)
-    let snapshot = await db
-        .collection(DB_COLLECTIONS.STORES)
-        .where('publicApi.apiKeyHash', '==', keyHash)
-        .limit(1)
-        .get();
+    let snapshot: FirebaseFirestore.QuerySnapshot | null = null;
 
-    // Fallback: lookup by raw key (backward compat for pre-migration keys)
-    if (snapshot.empty && allowLegacyRawFallback) {
+    if (includePublicApi) {
+        // Primary: lookup by hash (secure)
         snapshot = await db
             .collection(DB_COLLECTIONS.STORES)
-            .where('publicApi.apiKey', '==', normalizedApiKey)
+            .where('publicApi.apiKeyHash', '==', keyHash)
             .limit(1)
             .get();
+
+        // Fallback: lookup by raw key (backward compat for pre-migration keys)
+        if (snapshot.empty && allowLegacyRawFallback) {
+            snapshot = await db
+                .collection(DB_COLLECTIONS.STORES)
+                .where('publicApi.apiKey', '==', normalizedApiKey)
+                .limit(1)
+                .get();
+        }
     }
 
     if (
-        snapshot.empty
+        (!snapshot || snapshot.empty)
         && includeCanonicaWidgetApi
         && normalizedApiKey.startsWith('cn_')
         && !preferCanonicaWidgetApi
@@ -296,7 +305,7 @@ export async function validatePublicApiKey(
     }
 
     if (
-        snapshot.empty
+        (!snapshot || snapshot.empty)
         && includeCanonicaWidgetTestApi
         && normalizedApiKey.startsWith('cn_')
         && !preferCanonicaWidgetTestApi
@@ -305,8 +314,14 @@ export async function validatePublicApiKey(
         credentialSource = 'canonicaWidgetTestApi';
     }
 
-    if (snapshot.empty) {
+    if (!snapshot || snapshot.empty) {
         secureLog('[Public API] Invalid API key attempt');
+        if (cacheKey && cacheTtl) {
+            validationCache.set(cacheKey, {
+                expiresAt: Date.now() + cacheTtl,
+                result: null,
+            });
+        }
         return null;
     }
 
