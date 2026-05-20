@@ -181,6 +181,7 @@ export const POST = withAuth(async (request, session) => {
             totalPaymentsNeededCount: providerSubscription.total_count,
             totalPaymentsMadeCount: providerSubscription.paid_count,
             pastDueSinceAt: null,
+            quantity: Number(providerSubscription.quantity || internalSub.quantity || 1),
             // Store payment method
             paymentMethod: {
                 type: payment.method,

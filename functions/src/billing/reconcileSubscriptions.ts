@@ -66,7 +66,11 @@ async function syncStorePlanEntitlement(
         }, { merge: true }),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
             lastUpdated: syncedAt,
-            [`stores.${storeId}.activePlanType`]: entitlementValue,
+            stores: {
+                [storeId]: {
+                    activePlanType: entitlementValue,
+                },
+            },
         }, { merge: true }),
         db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(sub.id).set({
             analyticsEntitlement: {

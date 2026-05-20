@@ -248,16 +248,18 @@ export async function executePublish(
       storesSummaryRef,
       {
         lastUpdated: now,
-        [`stores.${newStoreId}`]: {
-          tId: newTenantId,
-          businessType: finalBusinessType,
-          businessCategory: finalBusinessCategory,
-          active: true,
-          name: storeName,
-          tenantName: businessName,
-          timeZone: currencyInfo.timezone,
-          businessDayEndTime,
-          schedulerHour,
+        stores: {
+          [newStoreId]: {
+            tId: newTenantId,
+            businessType: finalBusinessType,
+            businessCategory: finalBusinessCategory,
+            active: true,
+            name: storeName,
+            tenantName: businessName,
+            timeZone: currencyInfo.timezone,
+            businessDayEndTime,
+            schedulerHour,
+          },
         },
       },
       { merge: true },

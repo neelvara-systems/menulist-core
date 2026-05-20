@@ -1,7 +1,7 @@
 'use client'
 
 import { AIEnhancementPack, Currency, Plan } from '@data/common';
-import { aiEnhancementPacksList, getB2CPlansList } from '@data/PlatformPlansList';
+import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import usePaymentHandler from '@hook/usePaymentHandler';
@@ -13,7 +13,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useContext, useMemo, useState } from 'react';
-import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMessageCircle, LuPause, LuPlay, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
+import { LuBuilding2, LuChevronRight, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -66,12 +66,23 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const sub = activeSubscription;
     const isManualBilling = sub?.billingMode === 'manual';
     const isPaymentPending = sub?.status === 'pending';
+    const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
+    const paidLocationCount = Math.max(1, Number(sub?.quantity || 1));
+    const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
     const monthlyCredits = sub?.monthlyCredits || 0;
     const monthlyCreditsAllowance = sub?.monthlyCreditsAllowance || 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const topUpCredits = sub?.topUpCredits || 0;
     const totalCredits = monthlyCredits + topUpCredits;
     const isLowOnEnhancements = Boolean(sub && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2));
+    const currentSubscriptionPlan = useMemo(() => {
+        if (!sub) return null;
+        const sourcePlans = sub.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList();
+        return sourcePlans.find((plan) => (
+            plan.planId === sub.planId
+            && plan.billingInterval === sub.planType
+        )) || null;
+    }, [sub?.planId, sub?.planType, sub?.userType]);
 
     const refetchSubscription = async () => {
         try {
@@ -145,6 +156,28 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 await onClickPaymentCard(plan, currency, () => undefined);
             }
             Toast.show({ content: t('planUpdated'), duration: 2000 });
+            await refetchSubscription();
+        } catch (err: any) {
+            Toast.show({ content: err?.message || t('paymentFailedRetry'), duration: 3000 });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAddPaidLocation = async () => {
+        if (!sub || !currentSubscriptionPlan) {
+            Toast.show({ content: 'Current plan details are not available.', duration: 2200 });
+            return;
+        }
+        if (isManualBilling) {
+            Toast.show({ content: 'Ask your reseller to add prepaid location capacity.', duration: 2500 });
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await onUpgradePlan(sub, currentSubscriptionPlan, currency, nextPaidLocationCount);
+            Toast.show({ content: `Paid locations updated to ${nextPaidLocationCount}.`, duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
             Toast.show({ content: err?.message || t('paymentFailedRetry'), duration: 3000 });
@@ -288,7 +321,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         }
     };
 
-    const plans = getB2CPlansList().filter((plan) => plan.billingInterval === billingInterval);
+    const plans = (sub?.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList()).filter((plan) => plan.billingInterval === billingInterval);
     const amountLabel = sub
         ? isManualBilling
             ? `${formatCurrency(sub.amount, sub.currency)} / one-time prepaid${sub.commitmentPeriodMonths ? ` (${sub.commitmentPeriodMonths} months)` : ''}`
@@ -393,6 +426,33 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                     />
                                 </List>
                             </Card>
+
+                            {sub.status === 'active' && !isManualBilling && !isInheritedBilling ? (
+                                <Card size="small" style={{ backgroundColor: '#f8fafc' }}>
+                                    <Flex gap={8} vertical>
+                                        <Flex align="center" gap={8}>
+                                            <LuMapPin color="#9333ea" size={16} />
+                                            <Text strong>Paid locations</Text>
+                                        </Flex>
+                                        <Text type="secondary">
+                                            {paidLocationCount} paid, {activeStoreCount} active. Add one paid location before creating the next outlet.
+                                        </Text>
+                                        <Button
+                                            block
+                                            color="primary"
+                                            disabled={!currentSubscriptionPlan}
+                                            fill="outline"
+                                            onClick={() => void handleAddPaidLocation()}
+                                            size="large"
+                                        >
+                                            <Flex align="center" gap={6} justify="center">
+                                                <LuPlus size={14} />
+                                                <Text>Add paid location</Text>
+                                            </Flex>
+                                        </Button>
+                                    </Flex>
+                                </Card>
+                            ) : null}
 
                             {sub.status === 'past_due' ? (
                                 <Card size="small" style={{ backgroundColor: '#fefce8' }}>

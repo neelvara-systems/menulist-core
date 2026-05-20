@@ -55,7 +55,11 @@ export async function syncStorePlanEntitlementFromSubscription(
         }, { merge: true }),
         firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
             lastUpdated: syncedAt,
-            [`stores.${storeId}.activePlanType`]: entitlementValue,
+            stores: {
+                [storeId]: {
+                    activePlanType: entitlementValue,
+                },
+            },
         }, { merge: true }),
     ]);
 

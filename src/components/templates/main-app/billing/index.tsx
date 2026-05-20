@@ -4,7 +4,7 @@
 import Confetti from '@atoms/Confetti';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { AIEnhancementPack, Plan } from '@data/common';
-import { aiEnhancementPacksList } from '@data/PlatformPlansList';
+import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -21,7 +21,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { FaBoltLightning } from 'react-icons/fa6';
-import { LuBuilding2, LuHelpCircle, LuStore } from 'react-icons/lu';
+import { LuBuilding2, LuHelpCircle, LuMapPin, LuPlusCircle, LuStore } from 'react-icons/lu';
 import ActiveSubscriptionCard from './ActiveSubscriptionCard';
 import BillingHistory from './BillingHistory';
 import CreditsPackModal from './CreditsPackModal';
@@ -56,6 +56,7 @@ function BillingPage() {
     const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase } = usePaymentHandler(dispatch);
     const [isSubscriptionFetching, setIsSubscriptionFetching] = useState(false)
+    const [isAddingPaidLocation, setIsAddingPaidLocation] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
     const tenantStoresList = tenantDetails?.storesList || [];
     const billingStoreId = Number(activeStoreContext || storeDetails?.storeId || session?.user?.storeId || 0);
@@ -71,6 +72,18 @@ function BillingPage() {
         [activeSubscription?.storeId, tenantStoresList],
     );
     const isInheritedBilling = Boolean(activeSubscription && billingStoreId && Number(activeSubscription.storeId) !== billingStoreId);
+    const isManualBilling = activeSubscription?.billingMode === 'manual';
+    const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
+    const paidLocationCount = Math.max(1, Number(activeSubscription?.quantity || 1));
+    const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
+    const currentSubscriptionPlan = useMemo(() => {
+        if (!activeSubscription) return null;
+        const plans = activeSubscription.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList();
+        return plans.find((plan) => (
+            plan.planId === activeSubscription.planId
+            && plan.billingInterval === activeSubscription.planType
+        )) || null;
+    }, [activeSubscription?.planId, activeSubscription?.planType, activeSubscription?.userType]);
 
     useEffect(() => {
         setIsSubscriptionFetching(Boolean(!sessionId && userId && activeSubscriptionLoading));
@@ -186,6 +199,31 @@ function BillingPage() {
         }
     };
 
+    const handleAddPaidLocation = async () => {
+        if (!activeSubscription || !currentSubscriptionPlan) {
+            message.error('Current plan details are not available.');
+            return;
+        }
+        if (isManualBilling) {
+            message.info('Ask your reseller to add prepaid location capacity.');
+            return;
+        }
+
+        setIsAddingPaidLocation(true);
+        try {
+            dispatch(startLoader("Adding paid location"));
+            await onUpgradePlan(activeSubscription, currentSubscriptionPlan, activeSubscription.currency, nextPaidLocationCount);
+            message.success(`Paid locations updated to ${nextPaidLocationCount}.`);
+            await refetchActiveSubscription();
+        } catch (error) {
+            message.error(t('paymentFailed'));
+            console.error('Location capacity payment failed in handleAddPaidLocation', error);
+        } finally {
+            dispatch(stopLoader("Adding paid location"));
+            setIsAddingPaidLocation(false);
+        }
+    };
+
     const handleCreditsPurchase = async (packId: string) => {
         try {
             const pack = aiEnhancementPacksList.find((pack: AIEnhancementPack) => pack.packId === packId);
@@ -267,6 +305,31 @@ function BillingPage() {
                     showIcon
                     style={{ marginBottom: 16 }}
                 />
+            ) : null}
+
+            {activeSubscription?.status === 'active' && !isManualBilling && !isInheritedBilling ? (
+                <Card style={{ marginBottom: 16 }}>
+                    <Flex align="center" justify="space-between" gap={16} wrap>
+                        <Flex align="center" gap={10}>
+                            <LuMapPin size={20} />
+                            <Flex vertical>
+                                <Text strong>Paid locations</Text>
+                                <Text type="secondary">
+                                    {paidLocationCount} paid, {activeStoreCount} active. Add one paid location before creating the next outlet.
+                                </Text>
+                            </Flex>
+                        </Flex>
+                        <Button
+                            disabled={!currentSubscriptionPlan}
+                            icon={<LuPlusCircle />}
+                            loading={isAddingPaidLocation}
+                            onClick={() => void handleAddPaidLocation()}
+                            type="primary"
+                        >
+                            Add paid location
+                        </Button>
+                    </Flex>
+                </Card>
             ) : null}
 
             {isSubscriptionFetching && (

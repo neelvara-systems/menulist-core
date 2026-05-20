@@ -6,6 +6,22 @@
 
 ---
 
+## May 20, 2026 — Public Starter Menu Entry Hardening
+
+### Changed
+
+- **Public menu entry now follows upload-before-auth** — Owners can upload a menu and review the extracted preview before signing in; creating the public starter link still requires authentication.
+- **Starter activation keeps one permanent public URL** — Claim creates the real subdomain immediately, starter expiry shows a calm holding page on the same URL, and payment restores the same URL without QR/link replacement.
+- **Store summary writes now use scheduler-readable nesting** — Public starter creation and payment entitlement sync now mirror store/plan data into `platformSummary/storesSummary.stores.{storeId}` for Cloud Functions and analytics schedulers.
+- **Paid location checkout handles UPI subscriptions** — If Razorpay rejects a quantity update for an active UPI-backed subscription, Locations now sends the owner to Billing to create a replacement same-plan checkout with the next paid-location quantity.
+
+### Fixed
+
+- **Claim conversion is transaction-safe** — Draft validation, tenant/store creation, project creation, summary sync, and draft conversion now commit atomically.
+- **Razorpay webhook continuity verified** — A signed local subscription webhook activates the subscription, syncs store entitlement, updates storesSummary, and revalidates public cache.
+- **Public upload source files remain stable** — Draft uploads now use Firebase download-token URLs and carry file type/size into the claimed project.
+- **Plan changes preserve paid location count** — Existing subscriptions no longer fall back to `quantity: 1` when creating a new Razorpay subscription for an upgrade or paid-location checkout.
+
 ## May 19, 2026 — Multi-Location Mobile and Outlet Policy Audit
 
 ### Changed

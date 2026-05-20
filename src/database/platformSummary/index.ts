@@ -172,52 +172,54 @@ export const syncStoreToSummary = async (storeId: string | number, data: StoreSu
         async () => {
             const ref = getStoresSummaryDocRef();
             const summaryEntry: Record<string, any> = {
-                [`stores.${storeId}.tId`]: data.tId,
-                [`stores.${storeId}.businessType`]: data.businessType || 'unknown',
-                [`stores.${storeId}.businessCategory`]: data.businessCategory || 'specialty',
-                [`stores.${storeId}.active`]: data.active ?? true,
-                [`stores.${storeId}.blocked`]: data.blocked ?? false,
-                [`stores.${storeId}.name`]: data.name || '',
-                [`stores.${storeId}.tenantName`]: data.tenantName || '',
+                tId: data.tId,
+                businessType: data.businessType || 'unknown',
+                businessCategory: data.businessCategory || 'specialty',
+                active: data.active ?? true,
+                blocked: data.blocked ?? false,
+                name: data.name || '',
+                tenantName: data.tenantName || '',
             };
             // Include timeZone for DST-safe runtime scheduling in CF
             if (data.timeZone) {
-                summaryEntry[`stores.${storeId}.timeZone`] = data.timeZone;
+                summaryEntry.timeZone = data.timeZone;
             }
             if (data.businessDayEndTime) {
-                summaryEntry[`stores.${storeId}.businessDayEndTime`] = data.businessDayEndTime;
+                summaryEntry.businessDayEndTime = data.businessDayEndTime;
             }
             if (data.isMaster !== undefined) {
-                summaryEntry[`stores.${storeId}.isMaster`] = data.isMaster;
+                summaryEntry.isMaster = data.isMaster;
             }
             if (data.outletSlug !== undefined) {
-                summaryEntry[`stores.${storeId}.outletSlug`] = data.outletSlug;
+                summaryEntry.outletSlug = data.outletSlug;
             }
             if (data.city !== undefined) {
-                summaryEntry[`stores.${storeId}.city`] = data.city || '';
+                summaryEntry.city = data.city || '';
             }
             if (data.addressLine !== undefined) {
-                summaryEntry[`stores.${storeId}.addressLine`] = data.addressLine || '';
+                summaryEntry.addressLine = data.addressLine || '';
             }
             if (data.logo !== undefined) {
-                summaryEntry[`stores.${storeId}.logo`] = data.logo || '';
+                summaryEntry.logo = data.logo || '';
             }
             if (data.workingHours !== undefined) {
-                summaryEntry[`stores.${storeId}.workingHours`] = data.workingHours || {};
+                summaryEntry.workingHours = data.workingHours || {};
             }
             // schedulerHour is FALLBACK only (for stores without timeZone)
             if (data.schedulerHour !== undefined) {
-                summaryEntry[`stores.${storeId}.schedulerHour`] = data.schedulerHour;
+                summaryEntry.schedulerHour = data.schedulerHour;
             }
             if (data.activePlanType !== undefined) {
-                summaryEntry[`stores.${storeId}.activePlanType`] = data.activePlanType;
+                summaryEntry.activePlanType = data.activePlanType;
             }
             if (data.modifiedOn !== undefined) {
-                summaryEntry[`stores.${storeId}.modifiedOn`] = data.modifiedOn;
+                summaryEntry.modifiedOn = data.modifiedOn;
             }
             await setDoc(ref, {
                 lastUpdated: serverTimestamp(),
-                ...summaryEntry
+                stores: {
+                    [storeId]: summaryEntry,
+                },
             }, { merge: true });
             return true;
         },

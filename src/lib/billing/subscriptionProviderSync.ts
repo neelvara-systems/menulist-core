@@ -27,6 +27,22 @@ export const updateRazorpaySubscriptionQuantity = async (
     return razorpayClient.subscriptions.update(providerSubscriptionId, { quantity });
 };
 
+export const isRazorpayQuantityUpdateUnsupported = (error: unknown) => {
+    const providerError = (error as any)?.error || error;
+    const text = [
+        (providerError as any)?.description,
+        (providerError as any)?.reason,
+        (providerError as any)?.message,
+        (error as Error)?.message,
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+    return text.includes("payment mode is upi")
+        || (text.includes("upi") && text.includes("cannot") && text.includes("updated"));
+};
+
 export const fetchRazorpaySubscription = async (providerSubscriptionId: string) => {
     const { razorpayClient } = await import("@lib/razorpay/razorpay");
     return razorpayClient.subscriptions.fetch(providerSubscriptionId);

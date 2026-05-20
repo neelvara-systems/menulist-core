@@ -11,7 +11,8 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { calculateProration } from '@util/razorpay';
-import { Alert, Input, Modal, Space, Typography } from 'antd';
+import { Alert, Button, Input, Modal, Space, Typography } from 'antd';
+import { useRouter } from 'next/navigation';
 import { useContext, useState } from 'react';
 
 const { Text } = Typography;
@@ -24,9 +25,11 @@ interface AddOutletModalProps {
 
 export default function AddOutletModal({ open, onClose, subscription }: AddOutletModalProps) {
     const { tenantDetails, storeDetails, setStoreDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
+    const router = useRouter();
     const [outletName, setOutletName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [requiresBillingAction, setRequiresBillingAction] = useState(false);
 
     const proration = subscription ? calculateProration(subscription) : null;
     const currency = subscription?.currency || 'INR';
@@ -34,12 +37,24 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     const activeStoreCount = (tenantDetails?.storesList || []).filter((store: any) => store?.active !== false).length || 1;
     const prepaidCapacity = Number(subscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoreCount;
-    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (subscription?.status === 'active' && hasManualCapacity);
+    const needsCheckoutBeforeOutlet = Boolean(
+        !isManualBilling
+        && subscription?.status === 'active'
+        && subscription?.paymentMethod?.type === 'upi'
+        && prepaidCapacity <= activeStoreCount,
+    );
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (subscription?.status === 'active' && hasManualCapacity && !needsCheckoutBeforeOutlet);
+
+    const openBilling = () => {
+        onClose();
+        router.push('/billing');
+    };
 
     const handleCreate = async () => {
         if (!outletName.trim()) return;
         setLoading(true);
         setError(null);
+        setRequiresBillingAction(false);
 
         try {
             const res = await fetch('/api/outlets/create', {
@@ -50,6 +65,8 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             const data = await res.json();
 
             if (!res.ok) {
+                const needsBillingAction = data.code === 'OUTLET_LOCATION_PAYMENT_REQUIRED' || data.billingAction === 'ADD_PAID_LOCATION';
+                setRequiresBillingAction(needsBillingAction);
                 setError(data.error || 'Failed to create outlet');
                 return;
             }
@@ -143,7 +160,24 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                     />
                 )}
 
-                {error && <Alert type="error" message={error} showIcon />}
+                {needsCheckoutBeforeOutlet && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Paid location needed"
+                        description="This payment method needs a fresh checkout before another location can be added."
+                        action={<Button size="small" onClick={openBilling}>Open Billing</Button>}
+                    />
+                )}
+
+                {error && (
+                    <Alert
+                        type="error"
+                        message={error}
+                        showIcon
+                        action={requiresBillingAction ? <Button size="small" onClick={openBilling}>Open Billing</Button> : undefined}
+                    />
+                )}
             </Space>
         </Modal>
     );

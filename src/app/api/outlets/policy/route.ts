@@ -130,8 +130,12 @@ export const POST = withAuth(async (request, session) => {
                 });
                 tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), {
                     lastUpdated: now,
-                    [`stores.${storeId}.isMaster`]: true,
-                    [`stores.${storeId}.modifiedOn`]: now,
+                    stores: {
+                        [storeId]: {
+                            isMaster: true,
+                            modifiedOn: now,
+                        },
+                    },
                 }, { merge: true });
             }
         });

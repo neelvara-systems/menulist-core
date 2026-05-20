@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
+import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 
@@ -19,79 +20,81 @@ export default function HeroSection() {
   const t = useTranslations('Website');
 
   return (
-    <section
-      className="ws-hero-official"
-      style={{
-        padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-20)',
-        backgroundColor: 'var(--ws-bg-primary)',
-      }}
-    >
-      <div className="ws-container">
-        <div className="ws-hero-official__grid">
-          <div className="ws-hero-official__copy">
-            <p className="ws-hero-eyebrow">{t('Hero.eyebrow')}</p>
-            <WebsiteHeadline as="h1">
-              {t('Hero.titlePart1')}
-              <br className="ws-hero-title-break" />
-              <span className="ws-headline__highlight">{t('Hero.titleHighlight')}</span>
-              {t('Hero.titlePart2')}
-            </WebsiteHeadline>
+    <AnimateOnScroll>
+      <section
+        className="ws-hero-official"
+        style={{
+          padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-20)',
+          backgroundColor: 'var(--ws-bg-primary)',
+        }}
+      >
+        <div className="ws-container">
+          <div className="ws-hero-official__grid">
+            <div className="ws-hero-official__copy">
+              <p className="ws-hero-eyebrow">{t('Hero.eyebrow')}</p>
+              <WebsiteHeadline as="h1">
+                {t('Hero.titlePart1')}
+                <br className="ws-hero-title-break" />
+                <span className="ws-headline__highlight">{t('Hero.titleHighlight')}</span>
+                {t('Hero.titlePart2')}
+              </WebsiteHeadline>
 
-            <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '620px' }}>
-              {t('Hero.subtitle')}
-            </p>
+              <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '620px' }}>
+                {t('Hero.subtitle')}
+              </p>
 
-            <div className="ws-hero-official__actions">
-              <WebsiteButton href="/create-menu">
-                {t('Hero.cta')}
-              </WebsiteButton>
-              <WebsiteButton href="#public-proof" variant="ghost">
-                {t('Hero.secondaryCta')}
-              </WebsiteButton>
-            </div>
+              <div className="ws-hero-official__actions">
+                <WebsiteButton href="/create-menu">
+                  {t('Hero.cta')}
+                </WebsiteButton>
+                <WebsiteButton href="#public-proof" variant="ghost">
+                  {t('Hero.secondaryCta')}
+                </WebsiteButton>
+              </div>
 
-            <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
-              {t('Hero.caption')}
-            </p>
+              <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
+                {t('Hero.caption')}
+              </p>
 
-            <div className="ws-hero-official__proof">
-              {[LuShieldCheck, LuQrCode, LuSmartphone].map((Icon, index) => (
-                <div key={index} className="ws-hero-proof-item">
-                  <Icon size={16} />
-                  <span>{t(`Hero.proof${index}`)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="ws-hero-official__visual" aria-label={t('Hero.visualLabel')}>
-            <div className="ws-hero-product-stage ws-hero-product-stage--image">
-              <Image
-                src="/images/website/menulist-hero-official-source.webp"
-                alt={t('Hero.visualLabel')}
-                width={1600}
-                height={1000}
-                priority
-                unoptimized
-                sizes="(min-width: 1024px) 560px, 100vw"
-                className="ws-draft-product-image"
-              />
-            </div>
-
-            <div className="ws-hero-surfaces">
-              {surfaceKeys.map((surface) => {
-                const Icon = surface.icon;
-                return (
-                  <div key={surface.key} className="ws-hero-surface-pill">
-                    <Icon size={15} />
-                    <span>{t(`Hero.${surface.key}`)}</span>
+              <div className="ws-hero-official__proof">
+                {[LuShieldCheck, LuQrCode, LuSmartphone].map((Icon, index) => (
+                  <div key={index} className="ws-hero-official__proof-item">
+                    <Icon size={16} />
+                    <span>{t(`Hero.proof${index}`)}</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            </div>
+
+            <div className="ws-hero-official__visual" aria-label={t('Hero.visualLabel')}>
+              <div className="ws-hero-product-stage ws-hero-product-stage--image">
+                <Image
+                  src="/images/website/menulist-hero-official-source.webp"
+                  alt={t('Hero.visualLabel')}
+                  width={1600}
+                  height={1000}
+                  priority
+                  unoptimized
+                  sizes="(min-width: 1024px) 560px, 100vw"
+                  className="ws-draft-product-image"
+                />
+              </div>
+
+              <div className="ws-hero-surfaces">
+                {surfaceKeys.map((surface) => {
+                  const Icon = surface.icon;
+                  return (
+                    <div key={surface.key} className="ws-hero-surface-pill">
+                      <Icon size={15} />
+                      <span>{t(`Hero.${surface.key}`)}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </AnimateOnScroll>
   );
 }

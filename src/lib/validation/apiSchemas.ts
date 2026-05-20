@@ -237,7 +237,9 @@ export const CreateSubscriptionRequestSchema = z.object({
     planId: z.string().regex(/^[a-zA-Z0-9_-]+$/),
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
-    userType: z.enum(['B2C', 'B2B']).optional()
+    userType: z.enum(['B2C', 'B2B']).optional(),
+    quantity: z.number().int().min(1).max(31).optional(),
+    rc: z.number().min(0).max(1_000_000).optional()
 });
 
 export type CreateSubscriptionRequest = z.infer<typeof CreateSubscriptionRequestSchema>;

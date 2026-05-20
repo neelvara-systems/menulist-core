@@ -189,13 +189,18 @@ export const POST = withAuth(async (request, session) => {
             ));
             tx.update(outletRef, updatePayload);
             const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
-            const summaryPayload: Record<string, any> = {
-                lastUpdated: now,
-                [`stores.${outletStoreIdStr}.outletSlug`]: proposed,
-                [`stores.${outletStoreIdStr}.modifiedOn`]: now,
+            const summaryStorePatch: Record<string, any> = {
+                outletSlug: proposed,
+                modifiedOn: now,
             };
             if (newOutletName) {
-                summaryPayload[`stores.${outletStoreIdStr}.name`] = newOutletName;
+                summaryStorePatch.name = newOutletName;
+            }
+            const summaryPayload: Record<string, any> = {
+                lastUpdated: now,
+                stores: {
+                    [outletStoreIdStr]: summaryStorePatch,
+                },
             }
             tx.set(summaryRef, summaryPayload, { merge: true });
             tx.update(tenantRef, { storesList: updatedStoresList });

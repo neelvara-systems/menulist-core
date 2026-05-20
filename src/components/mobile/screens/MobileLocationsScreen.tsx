@@ -12,15 +12,16 @@ import { formatCurrency } from '@util/formatters';
 import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
+import { LuCreditCard, LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileLocationsScreenProps {
     onBack: () => void;
+    onOpenBilling?: () => void;
 }
 
-export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenProps) {
+export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileLocationsScreenProps) {
     const t = useTranslations('MobileLocations');
     const {
         tenantDetails,
@@ -96,7 +97,13 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     const isManualBilling = activeSubscription?.billingMode === 'manual';
     const prepaidCapacity = Number(activeSubscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoresList.length;
-    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (activeSubscription?.status === 'active' && hasManualCapacity);
+    const needsCheckoutBeforeOutlet = Boolean(
+        !isManualBilling
+        && activeSubscription?.status === 'active'
+        && activeSubscription?.paymentMethod?.type === 'upi'
+        && prepaidCapacity <= activeStoresList.length,
+    );
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (activeSubscription?.status === 'active' && hasManualCapacity && !needsCheckoutBeforeOutlet);
 
     const handleSwitchStore = async (storeId: number) => {
         const target = storesList.find((store: any) => Number(store.storeId) === Number(storeId));
@@ -183,7 +190,11 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
             });
             const data = await res.json();
             if (!res.ok) {
-                Toast.show({ content: data.error || t('failedToCreate'), duration: 2000 });
+                const needsBillingAction = data.code === 'OUTLET_LOCATION_PAYMENT_REQUIRED' || data.billingAction === 'ADD_PAID_LOCATION';
+                Toast.show({
+                    content: needsBillingAction ? 'Add one paid location from Billing, then come back.' : (data.error || t('failedToCreate')),
+                    duration: needsBillingAction ? 3500 : 2000,
+                });
                 return;
             }
             if (tenantDetails && data.storeId) {
@@ -433,6 +444,25 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                                             ? 'This outlet will use one prepaid location.'
                                             : 'Ask your reseller to add prepaid location capacity before adding another outlet.'}
                                     </Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+
+                        {needsCheckoutBeforeOutlet ? (
+                            <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                                <Flex gap={8} vertical>
+                                    <Flex align="center" gap={8}>
+                                        <LuCreditCard color="#d97706" size={16} />
+                                        <Text strong>Paid location needed</Text>
+                                    </Flex>
+                                    <Text type="secondary">
+                                        This payment method needs a fresh checkout before another location can be added.
+                                    </Text>
+                                    {onOpenBilling ? (
+                                        <Button block color="primary" fill="outline" onClick={onOpenBilling} size="large">
+                                            Open Billing
+                                        </Button>
+                                    ) : null}
                                 </Flex>
                             </Card>
                         ) : null}

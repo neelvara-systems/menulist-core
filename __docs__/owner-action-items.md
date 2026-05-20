@@ -17,6 +17,16 @@
 
 ## Active Items
 
+### Public Starter Menu Entry Launch
+
+| #   | Task                                                                 | Why                                                                                                              | Priority                    | Status |
+| --- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
+| 1   | Fix or replace the configured Upstash Redis endpoint                  | Local public upload/claim rate-limit checks logged DNS `ENOTFOUND`; launch needs rate limits to fail closed enough to protect AI/Firebase cost. | P0 (before public traffic)  | ⬜     |
+| 2   | Confirm Gemini quota/key capacity for public menu extraction          | The local verification key returned quota errors; public upload-before-auth depends on reliable extraction capacity or additional rotated keys. | P0 (before public traffic)  | ⬜     |
+| 3   | Deploy Firestore rules, indexes, and updated Cloud Functions scheduler | `publicMenuDrafts` must stay server-only, and expired draft images/docs need the `public_menu_draft_cleanup` scheduler task live.              | P0 (before public traffic)  | ⬜     |
+| 4   | Confirm Razorpay recurring/autopay capability for hosted checkout     | Signed webhook processing passed locally, but hosted recurring checkout still depends on merchant/account capability.                         | P0 (before paid launch)     | ⬜     |
+| 5   | Run WhatsApp Cloud API sandbox media flow if WhatsApp onboarding is included | The public web flow is verified; WhatsApp media/webhook delivery still requires real Meta test app credentials and provider callback proof.    | P1 (before WhatsApp launch) | ⬜     |
+
 ### AI Extraction Monitoring Dashboard
 
 | #   | Task                                                                             | Why                                                                                                                                         | Priority                                | Status |

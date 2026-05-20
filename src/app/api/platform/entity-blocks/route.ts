@@ -38,8 +38,8 @@ async function getTenantStoreIds(db: admin.firestore.Firestore, tenantId: string
     if (summaryStoreIds.length) {
         await summaryRef.set({
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            ...Object.fromEntries(
-                summaryStoreIds.map((storeId) => [`stores.${storeId}.tenantBlocked`, tenantBlocked]),
+            stores: Object.fromEntries(
+                summaryStoreIds.map((storeId) => [storeId, { tenantBlocked }]),
             ),
         }, { merge: true });
         return summaryStoreIds;
@@ -53,8 +53,8 @@ async function getTenantStoreIds(db: admin.firestore.Firestore, tenantId: string
     if (fallbackStoreIds.length) {
         await summaryRef.set({
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            ...Object.fromEntries(
-                fallbackStoreIds.map((storeId) => [`stores.${storeId}.tenantBlocked`, tenantBlocked]),
+            stores: Object.fromEntries(
+                fallbackStoreIds.map((storeId) => [storeId, { tenantBlocked }]),
             ),
         }, { merge: true });
     }
@@ -180,8 +180,12 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
         });
         await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
             lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-            [`stores.${storeId}.blocked`]: blocked,
-            [`stores.${storeId}.modifiedOn`]: modifiedOn,
+            stores: {
+                [storeId]: {
+                    blocked,
+                    modifiedOn,
+                },
+            },
         }, { merge: true });
         revalidateStorePublicCache(storeId);
 

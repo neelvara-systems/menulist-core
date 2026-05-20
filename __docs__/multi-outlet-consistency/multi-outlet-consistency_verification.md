@@ -22,6 +22,8 @@
 > **Note (May 20, 2026 — manual billing creation fix):** Mobile PWA outlet creation can fail on demo/reseller/manual premium accounts when a Firestore subscription is active but uses a `manual_...` provider ID. The route now updates internal subscription quantity for manual/offline accounts without calling Razorpay; real Razorpay-backed subscriptions still require provider quantity success before internal outlet creation.
 >
 > **Note (May 20, 2026 — reseller payment QA):** Real Firebase/Razorpay test-mode QA covered offline reseller onboarding, prepaid location-capacity top-up, owner outlet creation after capacity, second-outlet 402 after capacity exhaustion, online reseller subscription creation with Razorpay `quantity: 2`, pending online outlet-create 402 before activation, and dashboard payment-link recovery for pending online subscriptions. Razorpay hosted checkout reached test card tokenization but the merchant returned "seller does not support recurring payments"; this is account capability/configuration, not an internal Firestore mutation failure.
+>
+> **Note (May 20, 2026 — storesSummary map hardening):** Production-audit parity found several `set(..., { merge: true })` paths writing literal dotted `stores.{storeId}` keys. Outlet create, policy promotion, rename, deactivate, messaging onboarding publish, platform block sync, and scheduler enrichment now write nested `stores: { [storeId]: ... }` maps so Cloud Functions can read `storesSummary.data().stores[storeId]` consistently.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -52,6 +54,7 @@
 | Manual/offline premium create | ✅ `/api/outlets/create` skips Razorpay for `billingMode: "manual"` or non-`sub_...` provider IDs and now requires unused prepaid `subscription.quantity` before creating the outlet. |
 | Manual prepaid capacity | ✅ Reseller desktop and mobile screens can record extra prepaid location capacity through `/api/reseller/add-location-capacity` after cash/UPI collection. |
 | Razorpay-backed create | ✅ Real `sub_...` subscriptions still update provider quantity first when active store count exceeds paid quantity; provider failure returns "Billing needs attention before adding another location" instead of generic outlet failure. |
+| UPI quantity recovery | ✅ Production QA on the demo account confirmed Razorpay rejects quantity update for active UPI subscriptions. `/api/outlets/create` now returns `OUTLET_LOCATION_PAYMENT_REQUIRED`; desktop/mobile Locations route owners to Billing, and Billing creates a replacement same-plan subscription with the next paid-location quantity before outlet creation is retried. |
 | Deactivation/reconciliation | ✅ Outlet deactivation and subscription reconciliation skip manual/offline provider IDs. Razorpay-backed deactivation reduces provider/internal quantity; manual prepaid capacity is retained until expiry. |
 | Mobile/desktop payment display | ✅ Add-outlet proration cards are hidden for manual/offline subscriptions, manual amount displays as prepaid total, and add buttons are disabled when prepaid capacity is exhausted. |
 

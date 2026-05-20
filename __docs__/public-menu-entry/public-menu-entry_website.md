@@ -1,8 +1,8 @@
 # Public Menu Entry — Website Content
 
 **Version:** 1.0
-**Status:** 📝 DRAFT
-**Last Updated:** March 10, 2026
+**Status:** ✅ IMPLEMENTED — Website copy aligned
+**Last Updated:** May 20, 2026
 **Page URL:** `/create-menu`
 
 ---
@@ -33,20 +33,20 @@ There's no single, reliable place where your menu lives.
 
 **Heading:** "One current menu. One official source."
 
-Create a free account and upload a photo of your menu — printed, handwritten, any language. MenuList prepares a clean, structured preview that can become your official menu source after owner review.
+Upload a photo of your menu — printed, handwritten, any language. MenuList prepares a clean, structured preview first, then asks the owner to sign in before creating the public starter link.
 
 ---
 
 ## 4. How It Works (3 Steps)
 
-**Step 1:** Create a free account
-Your menu becomes an official customer-facing source, so MenuList confirms an owner before preparing the draft.
+**Step 1:** Upload your current menu
+Start with a clear photo from your phone camera or a saved file. No account is needed for the first preview.
 
-**Step 2:** Upload and review your menu source
-Upload from your phone camera or choose a file. Your menu appears as a clean, structured preview for owner review.
+**Step 2:** Review before publishing
+Your menu appears as a clean, structured preview for owner review.
 
-**Step 3:** Continue setup
-Continue with QR, link, plan setup, and publishing when you are ready.
+**Step 3:** Sign in and create the starter link
+Confirm the business details, create the permanent MenuList link, and continue with QR, sharing, plan setup, and publishing when you are ready.
 
 ---
 

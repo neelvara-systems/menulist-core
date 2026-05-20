@@ -244,6 +244,25 @@
 }
 
 /* ============================================
+   Scroll Reveal Animation
+   ============================================ */
+
+.ws-animate-on-scroll {
+  opacity: 0;
+  transform: translate3d(0, var(--ws-appear-distance, 16px), 0);
+  transition-property: opacity, transform;
+  transition-duration: var(--ws-appear-duration, 560ms), var(--ws-appear-duration, 560ms);
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--ws-appear-delay, 0s);
+  will-change: opacity, transform;
+}
+
+.ws-animate-on-scroll--visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* ============================================
    Typography
    ============================================ */
 

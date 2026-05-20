@@ -1,8 +1,8 @@
 # Public Menu Entry — Mobile Support Assessment
 
 **Version:** 1.0
-**Status:** 📝 DRAFT
-**Last Updated:** March 10, 2026
+**Status:** ✅ IMPLEMENTED — Mobile-first public flow
+**Last Updated:** May 20, 2026
 
 ---
 
@@ -65,6 +65,7 @@ This feature lives in the `(website)` route group, NOT in the mobile PWA shell. 
 | Viewport           | `viewport-fit=cover` (already set globally)                                           |
 | Orientation        | Works in portrait and landscape                                                       |
 | Offline            | Not applicable (requires upload)                                                      |
+| Claim step         | Business name, city, phone, and address stay in the focused preview page before dashboard entry |
 
 ### Localization
 
@@ -77,6 +78,7 @@ This feature lives in the `(website)` route group, NOT in the mobile PWA shell. 
 - No auth required for upload + preview
 - Signin redirect uses existing NextAuth flow with `callbackUrl` parameter
 - After auth, user returns to preview page automatically
+- After claim, the page refreshes the NextAuth session before redirecting to the success/workspace path so new tenant/store IDs are available immediately
 
 ### Settings Inheritance
 

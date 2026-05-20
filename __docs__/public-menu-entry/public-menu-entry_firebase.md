@@ -1,7 +1,7 @@
 # Public Menu Entry — Firebase Cost Tracking
 
 **Version:** 1.0
-**Status:** 📝 DRAFT
+**Status:** ✅ IMPLEMENTED — Production-audited
 **Last Updated:** May 20, 2026
 
 ---
@@ -46,10 +46,24 @@
 | Create project metadata | `projects` (metadata) | WRITE | 1 | Claim API |
 | Create project data | `projects` (data) | WRITE | 1 | Claim API |
 | Update draft (claimed) | `publicMenuDrafts` | WRITE | 1 | Mark as claimed |
-| Sync storesSummary | `platformSummary` | WRITE | 1 | Existing pattern |
+| Sync storesSummary | `platformSummary` | WRITE | 1 | Nested `stores.{storeId}` map for scheduler-readable store metadata |
 | Sync projectsSummary | `platformSummary` | WRITE | 1 | Existing pattern |
 | Revalidate public cache | Next.js cache tags | INVALIDATE | 3 tags | `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
 | **Subtotal** | | | **1R + 5-6W + 3 cache tags** | |
+
+### 2.3.1 Payment Webhook Entitlement Sync
+
+When Razorpay confirms a subscription, the webhook updates the same public URL from starter state to paid continuity state.
+
+| Operation | Collection | Type | Count | Trigger |
+|-----------|-----------|------|-------|---------|
+| Update subscription status/entitlement | `subscriptions/{subscriptionId}` | WRITE | 1 | Signed Razorpay webhook |
+| Update store plan entitlement | `stores/{storeId}` | WRITE | 1 | `safeSyncStorePlanEntitlementFromSubscription()` |
+| Update storesSummary plan entitlement | `platformSummary/storesSummary` | WRITE | 1 | Nested `stores.{storeId}.activePlanType` mirror |
+| Record webhook audit | `payment_transactions` | WRITE | 1 | Webhook audit trail |
+| Revalidate public cache | Next.js cache tags | INVALIDATE | 3 tags | `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
+
+The nested `stores.{storeId}` map is required because Cloud Functions and scheduler entitlement checks read `storesSummary.data().stores[storeId]` directly.
 
 ### 2.4 Total Per Successful Conversion
 

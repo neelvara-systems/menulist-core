@@ -17,9 +17,10 @@ const usePaymentHandler = (dispatcher: any) => {
     const { data: session, update } = useSession();
     const isScriptLoaded = useRazorpayScript();
 
-    const createSubscription = async (plan: Plan, currency: Currency, user: any, remainingCredits: number = 0) => {
+    const createSubscription = async (plan: Plan, currency: Currency, user: any, remainingCredits: number = 0, quantity: number = 1) => {
         return new Promise<void>(async (resolve, reject) => {
             try {
+                const subscriptionQuantity = Math.max(1, Number(quantity || 1));
                 dispatcher(startLoader("Creating Subscription"));
                 const subResponse = await fetch('/api/razorpay/create-subscription', {
                     method: 'POST',
@@ -29,7 +30,8 @@ const usePaymentHandler = (dispatcher: any) => {
                         interval: plan.billingInterval,
                         currency,
                         userType: plan.type,
-                        rc: remainingCredits
+                        rc: remainingCredits,
+                        quantity: subscriptionQuantity
                         // ✅ Backend gets tenantId/storeId from session (secure)
                     })
                 });
@@ -44,7 +46,9 @@ const usePaymentHandler = (dispatcher: any) => {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     subscription_id: subscription.id,
                     name: 'MenuList.ai Subscription',
-                    description: plan.name,
+                    description: subscriptionQuantity > 1
+                        ? `${plan.name} for ${subscriptionQuantity} locations`
+                        : plan.name,
                     handler: function (response: any) {
                         dispatcher(startLoader("Creating Subscription"));
                         verifySubscriptionPaymentResponse(response).then(() => {
@@ -73,7 +77,7 @@ const usePaymentHandler = (dispatcher: any) => {
         })
     }
 
-    const onClickPaymentCard = async (plan: Plan, currency: Currency, onAuthRequired: () => void) => {
+    const onClickPaymentCard = async (plan: Plan, currency: Currency, onAuthRequired: () => void, quantity: number = 1) => {
         if (!session || !session.user || !session.user.tenantId || !session.user.storeId || !session.user.id) {
             setPendingPlan({ plan, currency });
             onAuthRequired();
@@ -85,7 +89,7 @@ const usePaymentHandler = (dispatcher: any) => {
         }
         return new Promise<void>(async (resolve, reject) => {
             try {
-                const paymentResponse = await createSubscription(plan, currency, session?.user);
+                const paymentResponse = await createSubscription(plan, currency, session?.user, 0, quantity);
                 resolve(paymentResponse);
             } catch (error) {
                 console.error('Payment flow failed in onClickPaymentCard', error);
@@ -168,15 +172,16 @@ const usePaymentHandler = (dispatcher: any) => {
         })
     }
 
-    const onUpgradePlan = async (currentPlan: FirestoreSubscriptionDoc, newPlan: Plan, currency: Currency) => {
+    const onUpgradePlan = async (currentPlan: FirestoreSubscriptionDoc, newPlan: Plan, currency: Currency, quantity?: number) => {
         if (!isScriptLoaded) {
             console.log('Razorpay script not loaded or a payment is already in progress.');
             return;
         }
         let { totalRemainingCredits } = calculateRemainingCredits(currentPlan);
+        const targetQuantity = Math.max(1, Number(quantity || currentPlan.quantity || 1));
         return new Promise<any>(async (resolve, reject) => {
             try {
-                const paymentResponse: any = await createSubscription(newPlan, currency, session?.user, totalRemainingCredits);
+                const paymentResponse: any = await createSubscription(newPlan, currency, session?.user, totalRemainingCredits, targetQuantity);
                 await handleUpgradeSubscription({ rc: totalRemainingCredits, nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
                 resolve(paymentResponse);
             } catch (error) {

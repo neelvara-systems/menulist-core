@@ -2550,7 +2550,7 @@
             "previewClaiming": "Creating your public menu...",
             "previewClaimCta": "Start public setup",
             "previewSignupCta": "Save and continue",
-            "previewSignupCaption": "Free account required before publishing so your setup is protected."
+            "previewSignupCaption": "Preview is ready. Sign in to protect this setup before publishing."
         },
         "CreateMenuSuccess": {
             "defaultBusinessName": "your business",

@@ -564,10 +564,23 @@ const schema = z.object({
 | Separate Cloud Function `extractPublicMenu` | Extraction inline in API route   | Simpler for v1 — avoids separate CF deployment. Same Gemini call, just runs in Next.js API route server-side. |
 | `file.makePublic()` for image URL           | Firebase download-token URL      | Stable after claim and consistent with WhatsApp onboarding source-file handling                              |
 
+## 13. Production Audit Update (May 20, 2026)
+
+### Additional Bugs Found & Fixed
+
+| # | Severity | Issue | Fix |
+|---|----------|-------|-----|
+| P1 | 🔴 CRITICAL | Public upload was still effectively account-first in the website flow. | Removed the pre-upload session gate; upload + preview now happen before auth, and claim remains authenticated. |
+| P2 | 🔴 CRITICAL | Claim creation could partially create project/store state if a later write failed. | Moved draft validation, tenant/store creation, project creation, summary sync, and draft conversion into one Firestore transaction. |
+| P3 | 🟡 MEDIUM | Claimed project files used source image URLs that could expire or disappear. | Public uploads now store stable Firebase download-token URLs and keep `fileType`/`fileSize` on the draft for project file metadata. |
+| P4 | 🟡 MEDIUM | New account sessions could stay stale after claim because the JWT/user context cache still had no tenant/store. | Preview claim now calls `useSession().update()` before redirecting to the success/workspace path. |
+| P5 | 🔴 CRITICAL | Razorpay entitlement sync updated `stores/{storeId}` but did not mirror `activePlanType` into the scheduler-readable nested `storesSummary.stores[storeId]` shape. | Billing sync and subscription reconciliation now write the nested `stores.{storeId}` map, and the shared tenant/store creation helper writes new store summary rows in that same shape. |
+
 ### Remaining Deferred Items
 
 1. **Firestore security rules hardening** — Default deny covers `publicMenuDrafts`; keep explicit rules and index deployment aligned during release.
-2. **Real payment/WhatsApp sandbox sweep** — Required before production traffic because Razorpay recurring capability and WhatsApp webhook delivery depend on external account configuration.
+2. **Hosted Razorpay checkout completion** — Signed webhook processing is verified locally, but hosted recurring checkout still depends on Razorpay merchant recurring/autopay capability.
+3. **WhatsApp sandbox sweep** — Required before production traffic because inbound media/webhook delivery depends on real Meta test app credentials.
 
 ---
 

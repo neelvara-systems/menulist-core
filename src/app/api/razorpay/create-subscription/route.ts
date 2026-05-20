@@ -95,6 +95,7 @@ export const POST = withAuth(async (request, session) => {
                     interval: body?.interval,
                     currency: body?.currency,
                     userType: body?.userType,
+                    quantity: body?.quantity,
                 },
             }, 'critical'); // CRITICAL - money/subscription involved!
 
@@ -105,10 +106,11 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 2. Extract validated data
-        const { planId, interval, currency, userType } = validation.data;
+        const { planId, interval, currency, userType, quantity: requestedQuantity = 1, rc = 0 } = validation.data;
         const name = session?.user?.name || body.name;
         const email = session?.user?.email || body.email;
-        const remainingCredits = body.rc;
+        const remainingCredits = rc;
+        const quantity = Math.max(1, requestedQuantity);
 
         // 3. Find Plan Details from Local Constants
         const plans = userType === "B2C" ? getB2CPlansList() : getB2BPlansList();
@@ -119,11 +121,17 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const priceKey = `price${currency.toUpperCase()}`;
+        const unitAmount = selectedPlan[priceKey].price;
+        const monthlyCredits = selectedPlan[priceKey].monthlyCredits;
+
+        if (typeof unitAmount !== "number" || typeof monthlyCredits !== "number") {
+            return NextResponse.json({ error: "Plan price not available." }, { status: 400 });
+        }
 
         // 4. Orchestration Logic
         // Step A: Get Provider Plan
         const razorpayPlanId = await getOrCreateRazorpayPlan({
-            price: selectedPlan[priceKey].price,
+            price: unitAmount,
             currency,
             interval,
             userType,
@@ -137,18 +145,19 @@ export const POST = withAuth(async (request, session) => {
         const RazorpayCreateObj: any = {
             plan_id: razorpayPlanId,
             total_count: totalCount, // 36 cycles for monthly (3 years), 3 cycles for yearly (3 years)
-            quantity: 1,
+            quantity,
             notes: {
                 tenantId,
                 storeId,
                 userId,
                 userType,
                 planId,
+                quantity,
                 priceKey,
                 interval,
                 name,
                 email,
-                price: selectedPlan[priceKey].price,
+                price: unitAmount,
                 remainingCredits,//Credits Carry Forward from previous subscription
             },
         }
@@ -170,7 +179,7 @@ export const POST = withAuth(async (request, session) => {
             planType: interval,
             userType,
             currency,
-            amount: selectedPlan[priceKey].price,
+            amount: unitAmount,
             status: "pending",
             lastWebhook: null,
             planId: planId,
@@ -183,8 +192,8 @@ export const POST = withAuth(async (request, session) => {
             totalPaymentsMadeCount: 0,
             cycleEndDate: null,
             renewsOn: null,
-            monthlyCreditsAllowance: selectedPlan[priceKey].monthlyCredits,
-            monthlyCredits: selectedPlan[priceKey].monthlyCredits,
+            monthlyCreditsAllowance: monthlyCredits,
+            monthlyCredits: monthlyCredits,
             topUpCredits: remainingCredits || 0,//Credits Carry Forward from previous subscription are added as a topup credits
             creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
             shortUrl: razorpaySubscription.short_url,
@@ -199,13 +208,15 @@ export const POST = withAuth(async (request, session) => {
                 {
                     status: "pending",
                     timestamp: Timestamp.now(),
-                    amount: selectedPlan[priceKey].price,
+                    amount: unitAmount * quantity,
                     currency: currency,
-                    remark: Boolean(remainingCredits) ? `Subscription Upgrade Initiated with Credits Carry Forward: ${remainingCredits}` : "Subscription Initiated",
+                    remark: Boolean(remainingCredits)
+                        ? `Subscription Upgrade Initiated with Credits Carry Forward: ${remainingCredits}; quantity ${quantity}`
+                        : `Subscription Initiated; quantity ${quantity}`,
                 },
             ],
             billingHistory: [],
-            quantity: 1,  // Multi-Outlet Billing (Feature #4C-B): 1 = single store (master)
+            quantity,  // Multi-Outlet Billing (Feature #4C-B): master + paid outlet locations
         };
 
         await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_CREATE_SUBSCRIPTION_INTERNAL', data: { subscriptionPayload }, });

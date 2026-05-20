@@ -1407,10 +1407,12 @@ export const computeDecisionBlocksScores = onSchedule({
         // This replaces N per-store writes with 1 merge write — saves ~99 writes at 100 stores
         if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE && Object.keys(storeEnrichment).length > 0) {
             try {
-                const enrichmentUpdate: Record<string, any> = {};
+                const enrichmentUpdate: Record<string, any> = { stores: {} };
                 for (const [enrichSId, enrichData] of Object.entries(storeEnrichment)) {
-                    enrichmentUpdate[`stores.${enrichSId}.lastPublishedAt`] = enrichData.lastPublishedAt;
-                    enrichmentUpdate[`stores.${enrichSId}.projectCount`] = enrichData.projectCount;
+                    enrichmentUpdate.stores[enrichSId] = {
+                        lastPublishedAt: enrichData.lastPublishedAt,
+                        projectCount: enrichData.projectCount,
+                    };
                 }
                 await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set(
                     enrichmentUpdate,
@@ -2160,8 +2162,12 @@ export const triggerStoreNightlyScheduler = onCall({
         if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE && storeRun.enrichment) {
             await writeRunLog({ phase: 'stores_summary_enrichment' });
             await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
-                [`stores.${sId}.lastPublishedAt`]: storeRun.enrichment.lastPublishedAt,
-                [`stores.${sId}.projectCount`]: storeRun.enrichment.projectCount,
+                stores: {
+                    [sId]: {
+                        lastPublishedAt: storeRun.enrichment.lastPublishedAt,
+                        projectCount: storeRun.enrichment.projectCount,
+                    },
+                },
             }, { merge: true });
         }
 

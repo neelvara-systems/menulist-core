@@ -42,6 +42,7 @@
 - Same `calculateProration` utility
 - Mobile and desktop hide the add-outlet proration card for `billingMode: "manual"` subscriptions because those accounts are prepaid/offline, not auto-debited through Razorpay.
 - Mobile and desktop disable add-outlet submission for manual/offline accounts when prepaid location capacity is exhausted. The owner sees a reseller-capacity message instead of hitting a generic "outlet creation failed" error.
+- Mobile and desktop also disable direct add-outlet submission for active UPI-backed Razorpay subscriptions when paid location capacity is exhausted. Razorpay does not allow quantity updates for that payment mode, so Locations shows "Paid location needed" and routes to Billing; Billing creates a replacement same-plan checkout with the next `quantity`.
 - Same `canManageLocationSettings()` gate across mobile More, mobile Locations, desktop Locations, and desktop sidebars
 - MobileShell `HQ` switch refreshes Firebase auth claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors after switching back.
 - Mobile menu command bubble is offset from the Canonica help launcher so the add item/category command sheet remains reachable on phone-sized screens.
@@ -56,6 +57,7 @@ Older demo/production accounts may have a premium subscription but no `isMaster:
 - Store switching normalizes numeric/string store IDs and rejects inactive target stores server-side, so stale mobile lists cannot switch into a disabled outlet.
 - Mobile location text is covered by the shared `MobileLocations` locale namespace across all active locale files.
 - Manual/offline premium accounts can create outlets from mobile only when prepaid `subscription.quantity` is greater than active store count. If capacity is exhausted, `/api/outlets/create` blocks with 402 and the reseller/platform adds capacity through the reseller dashboard after collecting payment.
+- UPI-backed Razorpay accounts can create outlets from mobile only after Billing has increased paid capacity through the replacement-subscription checkout. `/api/outlets/create` returns `OUTLET_LOCATION_PAYMENT_REQUIRED` when direct provider quantity update is not supported.
 
 ## Actual Firebase Verification (May 19, 2026)
 

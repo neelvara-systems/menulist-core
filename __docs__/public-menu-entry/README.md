@@ -36,6 +36,7 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 | `public-menu-entry_website.md` | Content | Landing page copy, SEO meta |
 | `public-menu-entry_helpdoc.md` | Support | Customer help article |
 | `public-menu-entry_mobile-support.md` | Engineering | Mobile admission test |
+| `public-menu-entry_verification.md` | Engineering/Ops | Production-audit evidence and remaining launch blockers |
 
 ## Key Decisions
 
@@ -46,6 +47,7 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 5. **Preview uses existing menu renderer** — same B2C view components
 6. **Feature-flagged** — `ENABLE_PUBLIC_MENU_ENTRY` controls entire flow
 7. **Mobile-first design** — SMB owners will use this from phone
+8. **Nested storesSummary writes** — starter claim/payment mirrors store plan fields into the scheduler-readable `stores.{storeId}` map, not only flat dot-notation keys
 
 ## Related Features
 

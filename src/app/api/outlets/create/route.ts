@@ -16,6 +16,7 @@ import { getActiveSubscriptionForStore, updateSubscription } from "@database/sub
 import { admin } from "@lib/firebase/firebaseAdmin";
 import {
     getRazorpayManagedSubscriptionId,
+    isRazorpayQuantityUpdateUnsupported,
     updateRazorpaySubscriptionQuantity,
 } from "@lib/billing/subscriptionProviderSync";
 import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
@@ -33,10 +34,16 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 const schema = z.object({ outletName: z.string().min(1).max(200) });
 
 class OutletBillingUpdateError extends Error {
-    constructor(cause: unknown) {
+    reason: "UPI_SUBSCRIPTION_QUANTITY_UNSUPPORTED" | "PROVIDER_QUANTITY_UPDATE_FAILED";
+
+    constructor(
+        cause: unknown,
+        reason: "UPI_SUBSCRIPTION_QUANTITY_UNSUPPORTED" | "PROVIDER_QUANTITY_UPDATE_FAILED",
+    ) {
         super("OUTLET_BILLING_UPDATE_FAILED");
         this.name = "OutletBillingUpdateError";
         this.cause = cause;
+        this.reason = reason;
     }
 }
 
@@ -184,7 +191,12 @@ export const POST = withAuth(async (request, session) => {
                 await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
                 billingUpdated = true;
             } catch (billingError) {
-                throw new OutletBillingUpdateError(billingError);
+                throw new OutletBillingUpdateError(
+                    billingError,
+                    isRazorpayQuantityUpdateUnsupported(billingError)
+                        ? "UPI_SUBSCRIPTION_QUANTITY_UNSUPPORTED"
+                        : "PROVIDER_QUANTITY_UPDATE_FAILED",
+                );
             }
         }
         if (subId && newQty !== previousQty) {
@@ -255,28 +267,32 @@ export const POST = withAuth(async (request, session) => {
             // Sync to storesSummary
             const storesSummaryPayload: Record<string, any> = {
                 lastUpdated: now,
-                [`stores.${newStoreId}`]: {
-                    tId: tenantId,
-                    businessType,
-                    businessCategory,
-                    active: true,
-                    name: outletName,
-                    tenantName,
-                    isMaster: false,
-                    outletSlug,
-                    city: '',
-                    addressLine: '',
-                    logo: masterStore.logo || '',
-                    workingHours: {},
-                    timeZone: masterStore.timeZone || '',
-                    businessDayEndTime: masterStore.businessDayEndTime || '',
-                    schedulerHour: masterStore.schedulerHour ?? 2, // Inherit from master
-                    modifiedOn: now,
+                stores: {
+                    [newStoreId]: {
+                        tId: tenantId,
+                        businessType,
+                        businessCategory,
+                        active: true,
+                        name: outletName,
+                        tenantName,
+                        isMaster: false,
+                        outletSlug,
+                        city: '',
+                        addressLine: '',
+                        logo: masterStore.logo || '',
+                        workingHours: {},
+                        timeZone: masterStore.timeZone || '',
+                        businessDayEndTime: masterStore.businessDayEndTime || '',
+                        schedulerHour: masterStore.schedulerHour ?? 2, // Inherit from master
+                        modifiedOn: now,
+                    },
                 },
             };
             if (masterPromoted) {
-                storesSummaryPayload[`stores.${storeId}.isMaster`] = true;
-                storesSummaryPayload[`stores.${storeId}.modifiedOn`] = now;
+                storesSummaryPayload.stores[storeId] = {
+                    isMaster: true,
+                    modifiedOn: now,
+                };
             }
             tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), storesSummaryPayload, { merge: true });
 
@@ -409,9 +425,29 @@ export const POST = withAuth(async (request, session) => {
             } catch (_) { /* best-effort */ }
         }
 
+        if (isBillingUpdateError) {
+            const billingError = error as OutletBillingUpdateError;
+            const needsCheckout = billingError.reason === "UPI_SUBSCRIPTION_QUANTITY_UNSUPPORTED";
+            return NextResponse.json(
+                {
+                    error: needsCheckout
+                        ? "Add one paid location from Billing, then create this location."
+                        : "Billing needs attention before adding another location",
+                    code: needsCheckout
+                        ? "OUTLET_LOCATION_PAYMENT_REQUIRED"
+                        : "OUTLET_BILLING_UPDATE_FAILED",
+                    billingAction: needsCheckout ? "ADD_PAID_LOCATION" : "CONTACT_SUPPORT",
+                    reason: billingError.reason,
+                    currentQuantity: previousQty,
+                    targetQuantity: newQty,
+                },
+                { status: 402 },
+            );
+        }
+
         return NextResponse.json(
-            { error: isBillingUpdateError ? "Billing needs attention before adding another location" : "Outlet creation failed" },
-            { status: isBillingUpdateError ? 402 : 500 },
+            { error: "Outlet creation failed" },
+            { status: 500 },
         );
     }
 });

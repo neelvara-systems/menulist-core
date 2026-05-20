@@ -84,8 +84,12 @@ export const POST = withAuth(async (request, session) => {
             });
             tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`), {
                 lastUpdated: now,
-                [`stores.${outletStoreId}.active`]: false,
-                [`stores.${outletStoreId}.modifiedOn`]: now,
+                stores: {
+                    [outletStoreId]: {
+                        active: false,
+                        modifiedOn: now,
+                    },
+                },
             }, { merge: true });
             tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`), { storesList: updatedStoresList });
         });

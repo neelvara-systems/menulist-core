@@ -18,6 +18,8 @@ This document covers **PATH 1 (Payment Flow)** for multi-outlet onboarding. It d
 
 > **May 20, 2026 production note:** Manual/offline premium subscriptions created through reseller/founder onboarding use `billingMode: "manual"` and provider IDs like `manual_...`. They are prepaid/offline records, not live Razorpay mandates. Outlet creation must **not** create unpaid manual locations: if `subscription.quantity` is already greater than active store count, the outlet consumes that prepaid capacity; if capacity is exhausted, `/api/outlets/create` returns 402 and the reseller must add prepaid location capacity first. Real Razorpay-backed subscriptions are detected by `billingMode !== "manual"` and a `providerSubscriptionId` shaped like `sub_...`.
 
+> **May 20, 2026 UPI recovery note:** Razorpay test-mode production QA on account `danny.tools.4884@gmail.com` showed that an active UPI-backed subscription can be charged normally but Razorpay rejects `subscriptions.update({ quantity })` with `subscriptions cannot be updated when payment mode is upi`. MenuList now treats that as a payment-action case, not a generic outlet failure: `/api/outlets/create` returns `402` with `code: "OUTLET_LOCATION_PAYMENT_REQUIRED"`, desktop/mobile Locations point the owner to Billing, and desktop/mobile Billing can create a replacement same-plan subscription with the next `quantity`. Store creation stays blocked until the new subscription is active and paid capacity exists.
+
 **Companion doc:** `store-onboarding-flow_impl.md` covers **PATH 2 (Internal Flow)** — store creation, project replication, master linking.
 
 Both flows execute together when HQ adds an outlet. Billing succeeds FIRST, then internal creation proceeds.
@@ -94,7 +96,7 @@ This is cleaner than ChatGPT's approach because:
 | B3  | **Master store owns billing permanently**                     | **AGREE**       | Aligns perfectly with existing architecture. Subscription doc has `storeId: masterStoreId`. Only master can upgrade/cancel/pause.                                                                             |
 | B4  | **Never create unpaid outlet**                                | **AGREE**       | For Razorpay-backed subscriptions, provider quantity MUST succeed before store creation unless prepaid quantity already exists. For manual/offline prepaid subscriptions, reseller/platform must record paid capacity first; outlet creation only consumes unused capacity. |
 | B5  | **Immediate prorated charge (industry standard)**             | **AGREE**       | Razorpay supports proration on quantity change. Mid-cycle outlet addition charges prorated amount immediately via existing mandate.                                                                           |
-| B6  | **Auto-debit via mandate (no payment popup)**                 | **AGREE**       | Already exists. Razorpay subscription flow creates mandate on first payment. Subsequent charges (including quantity increases) auto-debit. Confirmed at `src/app/api/razorpay/webhook/route.ts:31-37`.        |
+| B6  | **Auto-debit via mandate (no payment popup)**                 | **PARTIAL**     | Card/mandate subscriptions can update quantity in place. UPI-backed subscriptions can be active but cannot be quantity-updated by Razorpay; those require a fresh replacement-subscription checkout before outlet creation.        |
 | B7  | **`outletCreationLock` to prevent double-click**              | **AGREE**       | Simple field on tenant doc. Set before billing call, clear after completion.                                                                                                                                  |
 | B8  | **Restrict outlet creation when `past_due`**                  | **AGREE**       | Check subscription status before allowing outlet creation. If `past_due` → block with message.                                                                                                                |
 | B9  | **Quantity mismatch detection**                               | **AGREE**       | Add to existing reconciliation job at `functions/src/billing/reconcileSubscriptions.ts`. Compare `quantity` vs `activeStoreCount`.                                                                            |
@@ -104,6 +106,7 @@ This is cleaner than ChatGPT's approach because:
 | B13 | **All outlets share master billing cycle**                    | **AGREE**       | One invoice, one date, one cycle. Clean accounting. Razorpay aligns new quantity to existing cycle.                                                                                                           |
 | B14 | **`activeStores === subscription.quantity` must always hold** | **AGREE**       | Critical invariant. Enforced in API + reconciliation.                                                                                                                                                         |
 | B14a | **Manual/offline premium outlet creation**                   | **AGREE**       | `billingMode: "manual"` skips Razorpay API calls and requires unused prepaid `quantity` before store creation. Reseller dashboard/mobile can add paid capacity after cash/UPI collection.                              |
+| B14b | **UPI-backed Razorpay outlet creation**                     | **AGREE**       | If Razorpay rejects provider quantity update because the payment mode is UPI, the API returns `OUTLET_LOCATION_PAYMENT_REQUIRED`; Billing creates a new same-plan subscription with larger `quantity`, then the owner creates the outlet after activation. |
 
 ### 2.1b Billing Architecture Decisions — Session 3
 
@@ -208,6 +211,8 @@ HQ clicks "Add Outlet"
     ├── 6. Backend: Update Razorpay quantity
     │       → If subscription.quantity already covers target store count, skip provider update
     │       → Else Razorpay: subscriptions.update(subId, { quantity: activeStoreCount + 1 })
+    │       → If Razorpay rejects UPI quantity update → return 402 OUTLET_LOCATION_PAYMENT_REQUIRED
+    │          and route owner to Billing for a replacement same-plan checkout with larger quantity
     │       → Else manual/offline: return 402 until reseller adds prepaid capacity
     │       → If provider update FAILS → unlock → return error → STOP
     │       → If provider update succeeds or prepaid capacity exists → continue
@@ -805,6 +810,8 @@ POST /api/outlets/create
 | **Total (billing only)**     | **3**           | **3**            | **1**              |
 
 For manual/offline prepaid subscriptions, `Update Razorpay quantity` is skipped. If capacity already exists, outlet creation has **3 reads + 2 writes + 0 Razorpay API calls** in the billing path because no subscription write is needed; when capacity is exhausted, the route returns 402 before the lock and internal creation. The reseller capacity route (`/api/reseller/add-location-capacity`) performs the paid manual subscription write and transaction ledger entry after cash/UPI collection.
+
+For UPI-backed Razorpay subscriptions where provider quantity update is unsupported, outlet creation returns 402 before internal store/project writes after the provider rejection. The recovery path is desktop/mobile Billing: create a replacement same-plan Razorpay subscription with `quantity = max(currentPaidLocations + 1, activeStoreCount + 1)`, verify it, expire/cancel the old subscription through `/api/razorpay/upgrade-subscription`, and then retry outlet creation. That adds one pending subscription write during checkout and avoids unpaid stores.
 
 ### 13.2 Ongoing — Outlet Access Check
 

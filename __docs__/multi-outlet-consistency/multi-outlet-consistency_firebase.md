@@ -132,7 +132,7 @@ Assumption for INR estimate: ₹83/USD.
 | Operation                      | Collection                             | Trigger                      | Docs Written         | File                                      |
 | ------------------------------ | -------------------------------------- | ---------------------------- | -------------------- | ----------------------------------------- |
 | Acquire lock (in tx)           | `tenants/{tId}`                        | POST /api/outlets/create     | 1                    | `route.ts:76`                             |
-| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 0-1                  | Runs only when Razorpay-backed quantity must increase. Manual/offline subscriptions consume already-paid capacity and do not write quantity during outlet creation. |
+| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 0-1                  | Runs only when Razorpay-backed quantity must increase and provider update succeeds. Manual/offline subscriptions consume already-paid capacity and do not write quantity during outlet creation. UPI-backed provider-update failures route to Billing replacement checkout before store creation. |
 | Create outlet store (in tx)    | `stores/{newSId}`                      | POST /api/outlets/create     | 1                    | `route.ts:114`                            |
 | Sync storesSummary (in tx)     | `platformSummary/storesSummary`        | POST /api/outlets/create     | 1                    | `route.ts:132`                            |
 | Legacy master repair (in tx)   | `stores/{sId}` + `tenants/{tId}` + `platformSummary/storesSummary` | First outlet or policy save on legacy single-store tenant | 3 | `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/policy/route.ts` |
@@ -154,7 +154,7 @@ Assumption for INR estimate: ₹83/USD.
 | Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Master creates project       | 1 per outlet         | `propagation.ts:60`                       |
 | Sync propagated summary        | `platformSummary/projects_{outletSId}` | Master creates project       | 1 per outlet         | `propagation.ts:77`                       |
 | Set isMaster (onboarding)      | `stores/{sId}` + `tenants/{tId}`       | Onboarding                   | 2                    | `onboarding/create-subscription/route.ts` |
-| Set sub quantity=1             | `subscriptions/{subId}`                | Subscription creation        | 1                    | Both create-subscription routes           |
+| Set sub quantity               | `subscriptions/{subId}`                | Subscription creation        | 1                    | Onboarding creates `quantity=1`; `/api/razorpay/create-subscription` accepts `quantity` for plan changes and paid-location replacement checkouts. |
 
 ### External API Calls (Feature #4C)
 
@@ -162,8 +162,11 @@ Assumption for INR estimate: ₹83/USD.
 | ---------------------------- | ------------ | ------------------------ | -------------- |
 | Update subscription quantity | Razorpay API | POST /api/outlets/create/deactivate only when `billingMode !== "manual"` and provider subscription ID is a real Razorpay `sub_...` ID | `src/lib/billing/subscriptionProviderSync.ts`, `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/deactivate/route.ts` |
 | Revert subscription quantity | Razorpay API | Creation failure after provider quantity update | `src/app/api/outlets/create/route.ts` |
+| Create replacement subscription | Razorpay API | Desktop/mobile Billing "Add paid location" when UPI-backed quantity update is unsupported or when the owner wants prepaid self-serve capacity | `src/app/api/razorpay/create-subscription/route.ts`, `src/hooks/usePaymentHandler.ts` |
 
 Manual/offline premium subscriptions avoid the Razorpay API call entirely. This prevents failed provider calls for `manual_...` records, removes unnecessary provider traffic from outlet creation/deactivation, and reduces reconciliation noise because manual records are skipped by the subscription reconciler. Manual location capacity is added through `/api/reseller/add-location-capacity`, which writes the subscription `quantity`/`amount`, appends a reseller transaction, and updates reseller revenue stats after offline payment collection.
+
+UPI-backed Razorpay subscriptions can be active but still reject provider quantity updates. In that case, `/api/outlets/create` does not write stores/projects. Billing creates one pending replacement subscription with the target `quantity`; after payment verification, `/api/razorpay/upgrade-subscription` expires/cancels the old subscription and the owner retries outlet creation against already-paid capacity.
 
 ### DAL Functions (Feature #4C)
 
