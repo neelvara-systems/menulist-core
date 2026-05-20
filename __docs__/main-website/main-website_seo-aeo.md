@@ -13,7 +13,7 @@
 
 | Page             | Title                                                                 | Source File                           |
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
-| Homepage         | MenuList - Upload Your Menu Online                                    | `(website)/layout.tsx`                |
+| Homepage         | MenuList - One Official Menu Source for Customers                     | `(website)/layout.tsx`                |
 | Features         | Features — MenuList \| No Extra Work for Your Menu                    | `(website)/features/page.tsx`         |
 | How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
 | Pricing          | Pricing — MenuList \| Simple, Transparent Plans for Every Business    | `(website)/pricing/page.tsx`          |
@@ -31,7 +31,7 @@
 
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homepage       | Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source. |
+| Homepage       | Upload your current menu. MenuList prepares one owner-approved source for your live menu, official page, QR, web link, customer view, and PDF. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source for your public menu, official page, QR assets, customer app, PDF, and web link.   |
 | Pricing        | Choose the right MenuList plan for your business. Free to start. Upgrade for more surfaces, multi-language support, and multi-location management.                  |

@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.4.8 Canonical Website Default
-**Last Updated:** May 19, 2026
+**Status:** IMPLEMENTED — v3.4.15 Canonical Website Default
+**Last Updated:** May 20, 2026
 **Audience:** Developers
 
 ---
@@ -15,6 +15,7 @@ Route Group: src/app/(website)/
 Layout:      LocalisationProvider → WebsiteAuthProvider → ThemeProvider (forcedTheme="light")
 Analytics:   GoogleAnalytics + ClarityAnalytics (injected in layout)
 Styles:      @styles/app.scss (layout) + @/styles/website.css (per-page)
+Build:       Minimal src/pages defaults satisfy generated Pages Router manifest entries
 ```
 
 ---
@@ -46,7 +47,8 @@ Styles:      @styles/app.scss (layout) + @/styles/website.css (per-page)
 - Homepage (`/`) is `'use client'` — includes `SchemaMarkup` (JSON-LD), all other pages are server components with `export const metadata`.
 - `/product` is a permanent redirect to `/how-it-works` (legacy URL preservation).
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows "Coming Soon" when OFF.
-- Public website CTAs route to `/create-menu` for upload-first conversion. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
+- Public website CTAs route to `/create-menu` for free-account-first menu intake. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
+- `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes.
 
 ---
 
@@ -150,13 +152,22 @@ src/components/website/
 └── shadcn/                     — shadcn/ui primitives still required by website layout and pricing
 ```
 
+Build compatibility defaults:
+
+```
+src/pages/
+├── _app.tsx       — Pass-through Pages Router app
+├── _document.tsx  — Standard Html/Head/Main/NextScript document
+└── _error.tsx     — Delegates to Next's default error component
+```
+
 ### Shared Components (`src/components/website/shared/`)
 
 | Component | Purpose |
 |-----------|---------|
 | `AnimateOnScroll.tsx` | Visibility-safe website wrapper; keeps content readable even when scroll animation observers do not fire |
 | `LogoMark.tsx` | Static official MenuList mark used by website header/footer, matched to the app icon / `AnimatedVerticalLogo` geometry |
-| `ScrollToTopButton.tsx` | Floating scroll-to-top button |
+| `ScrollToTopButton.tsx` | Desktop-only floating scroll-to-top button; disabled on mobile to avoid fixed repaint layers |
 | `SectionHeading.tsx` | Section heading wrapper backed by `WebsiteHeadline` |
 | `SectionWrapper.tsx` | Section layout wrapper with consistent spacing |
 | `WebsiteButton.tsx` | Styled CTA button |
@@ -215,6 +226,8 @@ src/components/website/
 - **Approach:** CSS variables for colors, responsive breakpoints, mobile-first spacing, and 44px-class touch targets
 - **Components:** Mix of Tailwind CSS + custom CSS + shadcn/ui
 - **Theme:** Force light mode via `ThemeProvider` (website is always light)
+- **Service worker boundary:** `ServiceWorkerRegister.tsx` registers owner Workbox `/sw.js` only on owner/app platform routes and unregisters it on public marketing routes. If a stale worker controlled the current public page, the page reloads once after unregistering so Safari moves to the network-controlled website. Customer tenant origins still use `sw-customer.js`.
+- **Pages Router defaults:** `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are intentionally minimal. They satisfy Next's generated Pages Router manifest entries during production page-data collection and do not change the App Router website layout or route behavior.
 
 ---
 
@@ -224,9 +237,10 @@ src/components/website/
 |----------|--------|--------|
 | Route group | `(website)` | Separates website from dashboard routes |
 | SSR vs CSR | Server components (except homepage) | SEO benefit for all pages |
-| Homepage CSR | `'use client'` | Heavy animations (Framer Motion, Canvas, SVG) |
+| Homepage CSR | `'use client'` | Website translations, interactive sections, and desktop-only sticky CTA |
 | Pricing | Reuses existing `pricing-pages/` components | Full Razorpay integration already built |
 | Analytics | GA + Clarity in layout | Covers all pages automatically |
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |
 | Theming | shadcn ThemeProvider forced light | Website is always light mode |
 | Localization | next-intl via layout provider | Consistent i18n across all pages |
+| Pages Router defaults | Minimal `_app`, `_document`, `_error` | Keeps production builds stable while website routes remain App Router |

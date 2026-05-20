@@ -8,9 +8,9 @@
 
 ## 1. Elevator Pitch
 
-**One-liner:** "Upload a menu photo, get a live page — no account needed."
+**One-liner:** "Upload your current menu and preview one official customer source."
 
-**30-second version:** Most restaurants still share menus as photos on WhatsApp or outdated PDFs. MenuList turns any menu image into a structured, live page in 60 seconds. No signup required to try it. The owner sees the result, then decides to publish. That page becomes their official menu link — for Google, QR codes, and every customer.
+**30-second version:** Most restaurants still share menus as photos on WhatsApp or outdated PDFs. MenuList starts with a free owner account, then turns the menu a business already uses into a structured preview for one official customer-facing source. The owner sees the result, then publishes and sets up QR, links, and plan options from a controlled owner source.
 
 ---
 
@@ -20,10 +20,11 @@
 Every restaurant owner has the same daily frustration: customers ask for the menu, and the owner sends a blurry photo, an outdated PDF, or says "check our Instagram." There's no single, reliable place where the menu lives.
 
 ### The Solution
-MenuList's public entry lets any business owner upload a menu photo and instantly see it transformed into a clean, structured digital page. No account, no credit card, no learning curve. If they like what they see, one tap publishes it as their official menu link.
+MenuList's public entry lets any business owner create a free account, upload a menu photo, and see it transformed into a clean, structured preview. The marketing promise is not "anonymous free utility"; it is "free to start, review before publishing." The account gate confirms an owner before AI extraction starts.
 
 ### Why It Matters
-- The owner doesn't have to commit before seeing value
+- The owner doesn't have to pay before seeing value
+- MenuList does not spend AI processing on anonymous uploads
 - The menu page becomes the official link for Google, QR codes, WhatsApp shares
 - Every published page strengthens MenuList's network of canonical business truth
 
@@ -33,13 +34,13 @@ MenuList's public entry lets any business owner upload a menu photo and instantl
 
 | Aspect | MenuList | GloriaFood | Menubly | Square |
 |--------|----------|-----------|---------|--------|
-| Try without signup | ✅ Yes | ❌ Account first | ❌ Account first | ❌ POS setup first |
+| Free account before upload | ✅ Yes | ✅ Yes | ✅ Yes | ❌ POS setup first |
 | AI extraction from photo | ✅ Instant | ❌ Manual entry | ❌ Manual entry | ❌ Manual entry |
 | Canonical public page | ✅ Subdomain | ❌ Tool-branded | ⚠️ Basic page | ❌ POS-dependent |
-| Time to first menu | ~60 seconds | 15-30 minutes | 10-20 minutes | 30+ minutes |
+| Time to first preview | Short processing step | 15-30 minutes | 10-20 minutes | 30+ minutes |
 | QR + share assets | ✅ Included | ⚠️ Basic QR | ⚠️ Basic QR | ✅ Included |
 
-**Differentiator:** No other platform shows value before requiring signup. This is "try before you buy" for menu infrastructure.
+**Differentiator:** MenuList shows value before payment, but keeps AI processing tied to an owner account. This is "try before you buy" without anonymous cost leakage.
 
 ---
 
@@ -50,7 +51,7 @@ MenuList's public entry lets any business owner upload a menu photo and instantl
 88% of diners search online before choosing where to eat. Most restaurants have no live, structured menu link.
 
 **Slide 2 — The Solution:**
-"Upload a photo. Get a live page. 60 seconds."
+"Upload your current menu. Preview one official source."
 Show: phone camera → upload → structured menu preview → live page.
 
 **Slide 3 — Key Features:**
@@ -60,11 +61,11 @@ Show: phone camera → upload → structured menu preview → live page.
 - Updates anytime from your phone
 
 **Slide 4 — Differentiation:**
-"See it before you commit."
-No signup wall. No credit card. No learning curve. The menu page exists before the account does.
+"See the source before you pay."
+Free account first. No credit card for preview. Account setup connects the draft to the owner before AI processing and before it becomes an official source.
 
 **Slide 5 — Use Cases:**
-1. Restaurant owner takes photo of wall menu → gets live page in 60 seconds
+1. Restaurant owner takes photo of wall menu → gets a structured owner-review preview
 2. Cafe owner shares MenuList link on WhatsApp instead of sending PDF
 3. Salon owner creates a services page for the first time ever
 
@@ -75,13 +76,13 @@ No signup wall. No credit card. No learning curve. The menu page exists before t
 
 **Slide 7 — CTA:**
 "Try it now — upload your menu at menulist.ai/create-menu"
-No pressure. No account needed. See it for yourself.
+Free to start. Review before publishing.
 
 ---
 
 ## 5. Landing Page Copy Hooks
 
-**Hero headline:** "Your menu, live in 60 seconds."
+**Hero headline:** "Upload your current menu."
 
 **Subheading:** "Upload a photo of your menu. We'll turn it into a page your customers can actually use."
 
@@ -107,7 +108,7 @@ No pressure. No account needed. See it for yourself.
 - Channel: WhatsApp Business, Instagram Reels (30-second demo)
 
 ### Non-India Messaging
-- "Turn any menu into a live page — no account needed"
+- "Turn your current menu into one official customer source"
 - Focus: SEO discovery, Google Business Profile integration
 - Channel: Google Ads (search), social media demos
 
@@ -122,7 +123,7 @@ No pressure. No account needed. See it for yourself.
 → "Your customers are already searching for your menu online. Right now they find nothing — or an outdated photo. This gives them a real answer."
 
 **Objection: "This sounds complicated"**
-→ "Take a photo. That's it. The page is ready in 60 seconds. You can do it right now from your phone."
+→ "Take a photo. That's it. You can review the prepared menu source from your phone before publishing."
 
 **Objection: "Why would I pay for this?"**
 → "Try it free first. If you like it, the paid plan keeps your page always updated and adds features like multiple menus and analytics."
@@ -140,13 +141,13 @@ Per Language Governance: infrastructure language, not marketing language.
 
 ## 9. Pricing/Packaging Story
 
-This feature is **free** — no signup required to try. The value ladder:
+This feature is a **controlled free-preview funnel**. The value ladder:
 
-1. **Free:** Upload + preview (this feature)
-2. **Free account:** Publish + basic page
+1. **Free account:** Owner identity is confirmed before upload and AI processing
+2. **Free preview:** Upload + structured preview, rate-limited and cost-capped
 3. **Paid plan:** Multiple menus, custom domain, analytics, multi-location
 
-The public entry is the top of the funnel. It demonstrates value before asking for commitment.
+The public entry is the top of the funnel. It demonstrates value before asking for payment, but should not be advertised as an anonymous free AI processing tool.
 
 ---
 

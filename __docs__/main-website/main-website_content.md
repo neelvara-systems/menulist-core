@@ -56,11 +56,11 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Headline:**
 
-> Upload your menu. Publish your official menu online.
+> Upload your current menu. Publish one official version customers can trust.
 
 **Subline:**
 
-> Start with the menu you already use. MenuList turns it into a live menu, official page, QR menu, web link, customer view, and PDF from one place you control.
+> Start with a photo, PDF, link, or typed menu. MenuList prepares your live menu, official page, QR menu, web link, customer view, and PDF from one owner-approved source.
 
 **Primary CTA:** Upload your menu →
 **Secondary CTA:** See what customers see (`#public-proof`)
@@ -72,9 +72,10 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Notes:**
 
-- Direction A: No-tech owner action first, official-source proof second.
-- Hero must communicate upload → review → publish official online menu in under 5 seconds.
+- Direction A: Current-menu owner action first, official-source proof second.
+- Hero must communicate upload → review → publish one trusted customer version in under 5 seconds.
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
+- Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise as "Free account to start. You review before publishing."
 
 ---
 

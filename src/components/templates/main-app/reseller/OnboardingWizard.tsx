@@ -45,9 +45,39 @@ function OnboardingWizard() {
         { title: 'Confirm & Activate' },
     ];
 
+    const getStepFieldNames = (step: number) => {
+        if (step === 0) return ['businessName', 'businessType', 'ownerPhone', 'ownerPassword'];
+        if (step === 1) {
+            const paymentMode = form.getFieldValue('paymentMode');
+            return paymentMode === 'offline'
+                ? ['pricingTier', 'paymentMode', 'locationCount', 'commitmentMonths']
+                : ['pricingTier', 'paymentMode', 'locationCount', 'billingInterval'];
+        }
+        return [];
+    };
+
+    const handleNext = async () => {
+        try {
+            await form.validateFields(getStepFieldNames(currentStep));
+            setCurrentStep(s => s + 1);
+        } catch {
+            // Ant Design marks the exact fields inline.
+        }
+    };
+
     const handleSubmit = async () => {
         try {
-            const values = await form.validateFields();
+            await form.validateFields([
+                'businessName',
+                'businessType',
+                'ownerPhone',
+                'ownerPassword',
+                'pricingTier',
+                'paymentMode',
+                'locationCount',
+                ...(form.getFieldValue('paymentMode') === 'offline' ? ['commitmentMonths'] : ['billingInterval']),
+            ]);
+            const values = form.getFieldsValue(true);
             setLoading(true);
 
             const response = await fetch('/api/reseller/onboard', {
@@ -197,7 +227,7 @@ function OnboardingWizard() {
 
     // Step 3: Confirm
     const renderStep3 = () => {
-        const values = form.getFieldsValue();
+        const values = form.getFieldsValue(true);
         return (
             <Card>
                 <Title level={4}>Confirm Onboarding</Title>
@@ -365,7 +395,7 @@ function OnboardingWizard() {
                     Previous
                 </Button>
                 {currentStep < 2 ? (
-                    <Button type="primary" onClick={() => setCurrentStep(s => s + 1)} icon={<LuArrowRight />} iconPosition="end">
+                    <Button type="primary" onClick={handleNext} icon={<LuArrowRight />} iconPosition="end">
                         Next
                     </Button>
                 ) : (

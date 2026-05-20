@@ -7,7 +7,7 @@ import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LuPlus, LuRefreshCw, LuUsers } from "react-icons/lu";
+import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers } from "react-icons/lu";
 
 const { Title, Text } = Typography;
 
@@ -85,6 +85,17 @@ function ResellerDashboard() {
         } finally {
             setAddingLocation(false);
         }
+    };
+
+    const copyPaymentLink = async (link?: string | null) => {
+        if (!link) return;
+        await navigator.clipboard.writeText(link);
+        message.success('Payment link copied.');
+    };
+
+    const openPaymentLink = (link?: string | null) => {
+        if (!link) return;
+        window.open(link, '_blank', 'noopener,noreferrer');
     };
 
     if (isLoading) {
@@ -177,6 +188,9 @@ function ResellerDashboard() {
             render: (_: unknown, record: ResellerTransaction) => {
                 const isManual = record.paymentMode === 'offline' || record.subscriptionBillingMode === 'manual';
                 const canAddLocation = isManual && record.status === 'active';
+                const hasPendingPaymentLink = record.paymentMode === 'online'
+                    && record.status === 'pending_payment'
+                    && Boolean(record.subscriptionShortUrl);
                 return canAddLocation ? (
                     <Button size="small" onClick={() => {
                         setSelectedClient(record);
@@ -184,6 +198,15 @@ function ResellerDashboard() {
                     }}>
                         Add location
                     </Button>
+                ) : hasPendingPaymentLink ? (
+                    <Flex gap={8}>
+                        <Button icon={<LuCopy />} size="small" onClick={() => copyPaymentLink(record.subscriptionShortUrl)}>
+                            Copy link
+                        </Button>
+                        <Button icon={<LuExternalLink />} size="small" onClick={() => openPaymentLink(record.subscriptionShortUrl)}>
+                            Open
+                        </Button>
+                    </Flex>
                 ) : null;
             },
         },

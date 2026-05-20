@@ -8,7 +8,7 @@
 
 ## Quick Summary
 
-Create a live digital menu page by uploading a photo of your menu. No account needed to try it. Ready in about 60 seconds.
+Create a free account, upload a photo of your current menu, and review a structured menu preview. The preview is free and rate-limited, and the account connects the draft to an owner before AI processing starts.
 
 ---
 
@@ -18,15 +18,16 @@ Create a live digital menu page by uploading a photo of your menu. No account ne
 - A photo of your menu (from your phone camera or a saved file)
 - The photo should be clear and well-lit
 - Supported formats: JPEG, PNG, WebP (max 10MB)
+- A free MenuList account
 
 ### First Time? Here's How
 
 1. Go to **menulist.ai/create-menu**
-2. Tap **"Upload Your Menu"**
+2. Tap the upload area and create or sign into your free account
 3. Take a photo or choose a file from your phone
-4. Wait about 60 seconds while your menu is being read
+4. Wait while your menu is being read
 5. See your menu as a clean, structured page
-6. If you like it, tap **"Create free account"** to publish
+6. If you like it, create the official menu source to continue setup
 
 ---
 
@@ -35,7 +36,7 @@ Create a live digital menu page by uploading a photo of your menu. No account ne
 ### How to upload your menu
 
 1. Open **menulist.ai/create-menu** on your phone or computer
-2. Tap the upload area
+2. Tap the upload area and sign in if asked
 3. Choose **"Take Photo"** (phone) or **"Choose File"** (computer)
 4. Select your menu image
 5. The image will be compressed automatically — no need to resize
@@ -54,11 +55,9 @@ You can scroll through the preview to check everything looks correct.
 
 ### How to publish your menu page
 
-1. On the preview page, tap **"Create free account"**
-2. Sign up with Google or email
-3. Confirm your business name and type
-4. Tap **"Publish"**
-5. Your page is now live at **yourname.menulist.site**
+1. On the preview page, confirm your business name and type
+2. Create the official menu source
+3. Your page is now live at **yourname.menulist.site**
 
 ### How to share your menu
 
@@ -91,7 +90,7 @@ After publishing, you get:
 
 ### "My draft expired"
 - Unpublished menus are stored for 24 hours
-- If your draft expired, simply upload again — it takes less than 60 seconds
+- If your draft expired, upload your current menu again to create a fresh review
 
 ### "I uploaded but didn't create an account. Can I get my menu back?"
 - If it's been less than 24 hours, open the preview link again (check your browser history)

@@ -1,8 +1,8 @@
 /**
  * Public Menu Entry — Upload Page
  * 
- * /create-menu — Public page for anonymous menu upload.
- * No authentication required. Mobile-first design.
+ * /create-menu — Public page for owner-account menu upload.
+ * Page is public; upload/extraction requires a free account. Mobile-first design.
  * Feature gated: ENABLE_PUBLIC_MENU_ENTRY
  * 
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md
@@ -17,14 +17,14 @@ import { Metadata } from 'next';
 import CreateMenuClient from './CreateMenuClient';
 
 export const metadata: Metadata = {
-    title: 'Upload Your Menu — MenuList',
-    description: 'Start with your current menu and prepare the owner-approved version for your public menu, official page, QR assets, customer app, and share links.',
+    title: 'Upload Your Current Menu — MenuList',
+    description: 'Start with your current menu and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
     alternates: {
         canonical: '/create-menu',
     },
     openGraph: {
-        title: 'Upload Your Menu — MenuList',
-        description: 'Start with your current menu and prepare the owner-approved version for your public menu, official page, QR assets, customer app, and share links.',
+        title: 'Upload Your Current Menu — MenuList',
+        description: 'Start with your current menu and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
         url: '/create-menu',
     },
 };

@@ -49,6 +49,7 @@ The Reseller Dashboard lets you set up MenuList accounts for local businesses on
 - **Pricing Tier** — Select from available options
 - **Duration** — Choose 3 months, 6 months, or 12 months
 - **Payment Mode** — Online (Razorpay link) or Offline (cash/UPI collected by you)
+- **Locations included** — Enter how many locations the business is paying for
 
 The system shows the total amount automatically.
 
@@ -76,7 +77,29 @@ The system shows the total amount automatically.
 ### Viewing Your Clients
 - Go to **"My Clients"** in the sidebar
 - See all businesses you've onboarded
-- Each row shows: business name, plan, status, and expiry date
+- Each row shows: business name, plan, status, paid locations, and expiry date
+
+### Adding a Paid Location
+
+For an offline/prepaid client:
+
+1. Collect the extra location payment from the business owner
+2. Open the client row in your reseller dashboard
+3. Click **"Add location"** or **"Add prepaid location"**
+4. Enter how many locations to add
+5. Confirm the payment record
+
+After this, the business owner can add the new location from their Locations screen.
+
+### Recovering an Online Payment Link
+
+For an online/Razorpay client that is still pending payment:
+
+1. Open the client row in your reseller dashboard
+2. Click **"Copy link"** to send the Razorpay checkout link again
+3. Click **"Open"** to retry checkout from the dashboard
+
+Online clients can add locations only after the subscription is active. If Razorpay checkout fails, the client remains pending and outlet creation stays blocked until payment succeeds.
 
 ### Status Meanings
 
@@ -154,4 +177,4 @@ This can happen with low-quality photos. The business owner can edit their menu 
 ---
 
 **DOCUMENT STATUS:** 📝 DOCUMENTED  
-**Last Updated:** February 27, 2026
+**Last Updated:** May 20, 2026

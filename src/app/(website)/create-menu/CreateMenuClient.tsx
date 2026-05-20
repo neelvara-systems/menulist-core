@@ -11,6 +11,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuAlertCircle, LuCamera, LuCheck, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
@@ -23,10 +24,15 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 export default function CreateMenuClient() {
     const t = useTranslations('Website');
     const router = useRouter();
+    const { status: sessionStatus } = useSession();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [state, setState] = useState<UploadState>('idle');
     const [error, setError] = useState<string | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
+
+    const redirectToSignup = useCallback(() => {
+        router.push(`/signin?callbackUrl=${encodeURIComponent('/create-menu')}`);
+    }, [router]);
 
     // Cleanup objectURL on unmount or when preview changes to prevent memory leak
     useEffect(() => {
@@ -37,6 +43,12 @@ export default function CreateMenuClient() {
 
     const handleFileSelect = useCallback(async (file: File) => {
         setError(null);
+
+        if (sessionStatus === 'loading') return;
+        if (sessionStatus !== 'authenticated') {
+            redirectToSignup();
+            return;
+        }
 
         // Validate type
         if (!ALLOWED_TYPES.includes(file.type)) {
@@ -92,7 +104,7 @@ export default function CreateMenuClient() {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [router, t]);
+    }, [redirectToSignup, router, sessionStatus, t]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -110,10 +122,16 @@ export default function CreateMenuClient() {
     }, []);
 
     const triggerFileInput = () => {
+        if (sessionStatus === 'loading') return;
+        if (sessionStatus !== 'authenticated') {
+            redirectToSignup();
+            return;
+        }
         fileInputRef.current?.click();
     };
 
     const isProcessing = state === 'optimizing' || state === 'uploading' || state === 'processing';
+    const isAuthenticated = sessionStatus === 'authenticated';
 
     return (
         <div style={{
@@ -197,12 +215,14 @@ export default function CreateMenuClient() {
                 <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
                     {state === 'idle' && (
                         <>
-                            <LuCamera size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                            {isAuthenticated
+                                ? <LuCamera size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />
+                                : <LuUpload size={48} color="var(--ws-brand-secondary)" style={{ marginBottom: '12px' }} />}
                             <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
-                                {t('CreateMenu.uploadTitle')}
+                                {isAuthenticated ? t('CreateMenu.uploadTitle') : t('CreateMenu.accountUploadTitle')}
                             </p>
                             <p style={{ fontSize: '14px', color: 'var(--ws-text-muted)' }}>
-                                {t('CreateMenu.uploadHint')}
+                                {isAuthenticated ? t('CreateMenu.uploadHint') : t('CreateMenu.accountUploadHint')}
                             </p>
                         </>
                     )}

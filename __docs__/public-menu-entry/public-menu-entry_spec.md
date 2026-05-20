@@ -29,7 +29,7 @@ Allow any business owner to upload a menu image and instantly see a structured d
 ### Success Metric
 
 **Primary:** Number of published MenuList pages created through `/create-menu`
-**Secondary:** Conversion rate from upload → signup → publish
+**Secondary:** Conversion rate from free account → upload → publish
 
 ---
 
@@ -40,27 +40,24 @@ Allow any business owner to upload a menu image and instantly see a structured d
 
 **Flow:**
 1. Owner lands on `/create-menu` (from Google, social media, or referral)
-2. Sees a simple page: "Turn your menu into a live page in 60 seconds"
-3. Uploads one menu image (photo from phone or file from desktop)
-4. Waits ~15-30 seconds for AI extraction
-5. Sees a live preview of their structured digital menu
-6. Sees CTA: "Publish this as your official menu page — Create free account"
+2. Sees a simple page: "Start with your current menu"
+3. Creates or signs into a free account before upload
+4. Uploads one menu image (photo from phone or file from desktop)
+5. Waits a short moment for AI extraction
+6. Sees a structured preview and CTA: "Create official menu source"
 
 ### US-2: Claim & Publish
 > As a restaurant owner who saw the preview, I want to quickly create an account and publish my menu page so customers can access it.
 
 **Flow:**
-1. Owner clicks "Create free account" on preview page
-2. Redirected to `/signin` with return URL parameter
-3. Signs up (Google or email)
-4. After auth, redirected back to preview with draft loaded
-5. Owner confirms business name + location (pre-filled from AI if detected)
-6. Clicks "Publish"
-7. MenuList page created: `{subdomain}.menulist.site`
-8. Owner sees: share link + QR code + "Add to Google Maps" hint
+1. Owner reviews the authenticated preview page
+2. Owner confirms business name + location (pre-filled from AI if detected)
+3. Clicks "Create official menu source"
+4. MenuList page created: `{subdomain}.menulist.site`
+5. Owner sees: share link + QR code + "Add to Google Maps" hint
 
 ### US-3: Abandon & Return
-> As a restaurant owner who uploaded but didn't sign up, I want to come back within 24 hours and still find my extracted menu.
+> As a restaurant owner who uploaded from my account, I want to come back within 24 hours and still find my extracted menu.
 
 **Flow:**
 1. Owner uploads menu, sees preview
@@ -74,7 +71,7 @@ Allow any business owner to upload a menu image and instantly see a structured d
 
 **Flow:**
 1. Owner returns after 24 hours
-2. Sees: "This draft has expired. Upload your menu again — it takes less than 60 seconds."
+2. Sees: "This draft has expired. Upload your current menu again to create a fresh review."
 3. CTA: "Upload Menu" (returns to step 1)
 
 ---
@@ -86,13 +83,13 @@ Allow any business owner to upload a menu image and instantly see a structured d
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-1 | Public page accessible without authentication | P0 |
-| FR-2 | Single image upload (JPEG, PNG, WebP, max 10MB) | P0 |
+| FR-2 | Single image upload after free account sign-in (JPEG, PNG, WebP, max 10MB) | P0 |
 | FR-3 | AI extraction using existing Gemini 2.5 Flash pipeline | P0 |
 | FR-4 | Live preview using existing menu renderer components | P0 |
 | FR-5 | Draft stored with unique token URL (not guessable) | P0 |
 | FR-6 | Draft expires after 24 hours (auto-cleanup) | P0 |
 | FR-7 | Rate limit: 3 extractions per IP per 24 hours | P0 |
-| FR-8 | After signup, draft converted to real project + store | P0 |
+| FR-8 | Authenticated draft converted to real project + store | P0 |
 | FR-9 | Published page gets subdomain: `{slug}.menulist.site` | P0 |
 | FR-10 | QR code + share link shown after publish | P1 |
 | FR-11 | "Add to Google Maps" guidance shown after publish | P1 |
@@ -119,7 +116,7 @@ Allow any business owner to upload a menu image and instantly see a structured d
       ↓
 Upload image → Client-side optimization
       ↓
-POST /api/public/create-menu (rate-limited, no auth)
+POST /api/public/create-menu (withAuth, rate-limited)
       ↓
 Upload to Firebase Storage (temp path)
       ↓
@@ -142,7 +139,7 @@ Published: {slug}.menulist.site
 - A public-facing upload page
 - A thin API route that creates a lightweight draft (not a full project)
 - A preview page that renders the extracted data
-- A claim/convert flow that bridges anonymous draft → authenticated project
+- A claim/convert flow that bridges authenticated draft → project
 
 ---
 
@@ -151,13 +148,13 @@ Published: {slug}.menulist.site
 | # | Risk/Question | Mitigation/Decision |
 |---|---|---|
 | R1 | Abuse: bots uploading garbage images | Rate limit 3/IP/day + image validation (min dimensions, file type) |
-| R2 | Cost: Gemini API calls for non-converting users | 24h TTL cleanup + rate limiting caps max daily cost |
+| R2 | Cost: Gemini API calls for non-converting users | Free account before upload + rate limiting + 24h TTL cleanup |
 | R3 | Quality: poor extraction from phone photos | Show "Best results with clear, well-lit photos" guidance |
-| R4 | Privacy: menu images uploaded by non-owners | Terms of service acceptance before upload |
+| R4 | Privacy: menu images uploaded by non-owners | Account gate before upload; Terms acceptance remains in auth flow |
 | R5 | Storage: unclaimed images accumulate | 24h TTL auto-cleanup via nightly scheduler |
 | OQ1 | Should we support PDF upload in v1? | DECISION: No. Image-only for v1. PDF adds complexity. |
 | OQ2 | Should preview be editable before publish? | DECISION: No. Edit after publish in dashboard. Keeps flow simple. |
-| OQ3 | Should we capture email before extraction? | DECISION: No. Show value first, ask for commitment after. |
+| OQ3 | Should we require account before extraction? | DECISION: Yes. Show public proof first, then require a free account before AI processing. |
 
 ---
 

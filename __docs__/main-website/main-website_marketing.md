@@ -15,6 +15,8 @@
 
 > Staff access note (May 19, 2026): Staff accounts, Staff ID/passcode login, role permissions, passcode reset, and owner force sign-out are valuable buyer proof for teams and multi-location operators. On the homepage, keep this as a concise operations reliability proof point. On the Features page, place it under Operations. Do not market it as HR, attendance, payroll, or workforce management.
 
+> Controlled free-preview funnel note (May 20, 2026): See `__docs__/marketing/menulist-growth-and-funnel-strategy.md` for the current project-level growth and funnel decision. The website should say "Free account to start. You review before publishing." It should not promote "no account needed" as a public acquisition promise, and upload/extraction should stay tied to an owner account.
+
 ---
 
 ## My Honest Take (Cascade's Strategic Analysis)

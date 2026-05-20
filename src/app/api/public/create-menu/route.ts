@@ -2,10 +2,11 @@ export const dynamic = 'force-dynamic';
 /**
  * Public Menu Entry API
  * 
- * POST /api/public/create-menu — Upload image + trigger extraction (no auth)
+ * POST /api/public/create-menu — Upload image + trigger extraction (auth required)
  * GET  /api/public/create-menu?draftId={token} — Poll extraction status (no auth)
  * 
- * PUBLIC ENDPOINT - No authentication required.
+ * POST is authenticated to prevent anonymous AI processing cost leakage.
+ * GET remains token-based so owners can review an existing draft.
  * Rate limited by IP address using Upstash.
  * Feature gated: ENABLE_PUBLIC_MENU_ENTRY
  * 
@@ -27,6 +28,7 @@ import { secureError, secureLog } from '@lib/security/secureLogger';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from 'src/middleware/auth';
 import { checkPublicRateLimit, getClientIp } from 'src/middleware/publicApi';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
@@ -73,7 +75,7 @@ const normalizeDraftExtractionLanguages = (languages: any): Array<{ code: string
  * Upload a menu image and trigger AI extraction.
  * Returns a draftId (token) for polling and preview.
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, session) => {
     // 1. Feature gate
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
     // 3. Rate limiting (3 per IP per 24 hours)
     const rateLimitResponse = await checkPublicRateLimit(req, 'PUBLIC_MENU_ENTRY');
     if (rateLimitResponse) return rateLimitResponse;
+
+    const userId = String(session.user.id);
 
     try {
         // 3. Parse multipart form data
@@ -162,6 +166,7 @@ export async function POST(req: NextRequest) {
             detectedBusinessName: null,
             detectedBusinessType: null,
             ipHash,
+            createdByUId: userId,
             createdAt: now,
             expiresAt,
             claimed: false,
@@ -169,7 +174,7 @@ export async function POST(req: NextRequest) {
 
         await firestoreAdmin.collection(COLLECTION).doc(draftToken).set(draftData);
 
-        secureLog('[PublicMenuEntry] Draft created', { draftToken, ipHash, fileSize: imageFile.size });
+        secureLog('[PublicMenuEntry] Draft created', { draftToken, ipHash, fileSize: imageFile.size, userId });
 
         // 10. Trigger extraction via Cloud Function (fire-and-forget)
         // We'll call the extraction inline here since it's simpler than a separate CF for v1
@@ -192,7 +197,7 @@ export async function POST(req: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
 /**
  * GET /api/public/create-menu?draftId={token}

@@ -298,6 +298,7 @@ position: sticky top-0
 z-index: 50
 no background change on scroll
 no shadow on scroll
+no backdrop-filter / glass blur on public website routes
 ```
 
 ### 5.5 Brand Mark
@@ -407,6 +408,12 @@ Website content must never render hidden by default. Do not use `opacity: 0` as 
 Website heading primitives, including legacy shadcn website headings used inside pricing components, must render readable static content by default. Do not gate headings behind `useInView`.
 
 The global app route template must not wrap pages in an initial hidden opacity state. Marketing content, public pages, and owner/customer routes must remain visible without waiting for Framer Motion hydration.
+
+Mobile scroll reliability rule:
+
+- Public marketing pages must not depend on owner-app Workbox caches. On platform domains, `/sw.js` is for owner/app routes only and must be unregistered from marketing routes; if an existing worker controlled the page, reload once after unregistering.
+- Avoid fixed, transformed, or blurred controls during mobile marketing-page scroll. Mobile pages should use in-flow CTAs and the browser's native scroll behavior instead of floating repaint layers.
+- Keep mobile sticky surfaces solid. Do not use `backdrop-filter` or glass blur on the public website header.
 
 Footer ambient exception:
 

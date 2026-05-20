@@ -68,6 +68,7 @@ export const GET = withAuth(async (request, session) => {
                 subscriptionAmount: subscription?.amount,
                 subscriptionBillingMode: subscription?.billingMode,
                 subscriptionQuantity: subscription?.quantity || transaction.subscriptionQuantity || transaction.locationCount || 1,
+                subscriptionShortUrl: subscription?.shortUrl || transaction.shortUrl || null,
                 subscriptionStatus,
                 validUntil: subscription?.validUntil?.toDate?.()?.toISOString?.()
                     || subscription?.cycleEndDate?.toDate?.()?.toISOString?.()

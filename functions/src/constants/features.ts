@@ -247,7 +247,7 @@ export const FUNCTION_FLAGS = {
     ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX: false,
 
     // ═══════════════════════════════════════════════════════════════
-    // PUBLIC MENU ENTRY (No-Auth Menu Creation Pipeline)
+    // PUBLIC MENU ENTRY (Controlled Free Preview Pipeline)
     // @see __docs__/public-menu-entry/
     // ═══════════════════════════════════════════════════════════════
 

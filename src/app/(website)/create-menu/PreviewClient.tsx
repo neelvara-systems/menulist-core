@@ -9,6 +9,7 @@
  */
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
 
@@ -46,6 +47,7 @@ interface PreviewClientProps {
 export default function PreviewClient({ draftId }: PreviewClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const t = useTranslations('Website');
     const isClaimMode = searchParams.get('claim') === 'true';
 
     const [draft, setDraft] = useState<DraftData | null>(null);
@@ -452,7 +454,9 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 cursor: claiming ? 'default' : 'pointer',
                             }}
                         >
-                            {claiming ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Publishing...</> : <><LuSend size={18} /> Publish official menu page</>}
+                            {claiming
+                                ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> {t('CreateMenu.previewClaiming')}</>
+                                : <><LuSend size={18} /> {t('CreateMenu.previewClaimCta')}</>}
                         </button>
                     </div>
                 ) : (
@@ -464,10 +468,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                             maxWidth: '520px',
                             marginTop: 0,
                         }}>
-                            <LuLogIn size={18} /> Publish as your official menu page
+                            <LuLogIn size={18} /> {t('CreateMenu.previewSignupCta')}
                         </button>
                         <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: 0 }}>
-                            Create a free account to publish
+                            {t('CreateMenu.previewSignupCaption')}
                         </p>
                     </>
                 )}

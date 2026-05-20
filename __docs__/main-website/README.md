@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.11 (Canonical Website Default)
+**Version:** 3.4.15 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 20, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.11** | **Canonical Website Default** | **"Upload your menu. Publish your official menu online."** | **ACTIVE** |
+| **3.4.15** | **Canonical Website Default** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
-Version 3.4.11 keeps the upload-first promise, owner-controlled publish language, solid website wordmark, compact homepage proof strip, shared reassurance-line polish, Pricing palette alignment, and Features owner-benefit copy from 3.4.10. It also fixes the deployed white-viewport scroll issue by making website scroll reveal wrappers visible by default instead of depending on IntersectionObserver to reveal hidden content. Search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out remain operations proof for teams. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
+Version 3.4.15 keeps the official customer-source hero and tightens the intake funnel: the website stays free to start, but upload/extraction now requires a free owner account before AI processing. It also keeps the 3.4.13 mobile Safari hardening by keeping the owner Workbox service worker off public marketing routes and removing mobile fixed/blur repaint triggers from the public website. The build includes explicit minimal Pages Router defaults so Next's generated `_app`, `_document`, and `_error` entries resolve during production page-data collection. Search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out remain operations proof for teams. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -85,7 +85,7 @@ Supported website locale files:
 
 | Flag                       | Default | Purpose                           |
 | -------------------------- | ------- | --------------------------------- |
-| `ENABLE_PUBLIC_MENU_ENTRY` | `false` | Gates `/create-menu` public entry |
+| `ENABLE_PUBLIC_MENU_ENTRY` | `true` | Gates `/create-menu` public entry |
 
 **Note:** `ENABLE_NEW_WEBSITE` was removed. The current active homepage is the Stage 4/5 official-source implementation.
 
@@ -283,7 +283,7 @@ Protected scope:
 | Visual direction | Direction A — Official Source Authority                       | Calm, credible, product-led                           |
 | Tone             | Premium calm, operationally clear, low hype                   | Supports trust and owner comprehension                |
 | CTA              | "Upload your menu →"                                          | Matches the non-technical owner action and routes to `/create-menu` |
-| Hero message     | "Upload your menu. Publish your official menu online."        | Explains the owner-controlled transformation before infrastructure depth |
+| Hero message     | "Upload your current menu. Publish one official version customers can trust." | Explains the owner-controlled transformation before infrastructure depth |
 | Homepage shape   | 16 focused sections plus sticky CTA                           | Adds a whole-page revenue path while preserving official-source discipline |
 | Proof strategy   | Public output, customer browse proof, deployment surfaces      | Shows value through believable product evidence       |
 | Protected scope  | Pricing/payment/auth/onboarding logic untouched               | Avoids breaking production billing and subscription flows |
@@ -298,7 +298,7 @@ Protected scope:
 
 ## Stage 7.6 Funnel Clarity and Claim Discipline
 
-Stage 7.6 makes the upload-first funnel the canonical public path while keeping billing/payment internals protected.
+Stage 7.6 keeps `/create-menu` as the canonical public path while requiring a free owner account before upload/extraction and keeping billing/payment internals protected.
 
 Implemented change:
 
@@ -441,12 +441,42 @@ Protected scope:
 
 - Footer layout, pricing/payment runtime, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.16 Mobile Safari Scroll Paint Hardening
+
+Stage 7.16 fixes the remaining mobile-only white viewport behavior after scroll-reveal animations were removed. The second issue was not footer ambience or hidden section content. It was the public website still sharing owner-app PWA/fixed-layer behavior on marketing pages:
+
+- `ServiceWorkerRegister` now unregisters Workbox on platform marketing routes, reloads once when a stale worker was controlling the current public page, and registers `/sw.js` only on owner/app routes such as `/dashboard`, `/projects`, `/billing`, `/today`, `/reseller`, `/signin`, and `/screen`.
+- The public website header now uses a solid white sticky surface instead of a blurred translucent layer.
+- The floating sticky CTA and scroll-to-top control no longer render on mobile, removing fixed transformed controls from mobile scrolling.
+- Customer tenant domains still register `sw-customer.js`; owner app routes on platform domains still register `sw.js`.
+
+Protected scope:
+
+- Customer menu service worker behavior, tenant PWA manifest behavior, owner app runtime, pricing/payment runtime, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+## Stage 7.17 Production Build Compatibility
+
+Stage 7.17 adds explicit minimal Pages Router defaults because the production build's generated `pages-manifest.json` includes `/_app`, `/_document`, and `/_error` entries even though the website itself is App Router based:
+
+- `src/pages/_app.tsx` passes Pages Router pages through unchanged.
+- `src/pages/_document.tsx` uses the standard `Html`, `Head`, `Main`, and `NextScript` shell.
+- `src/pages/_error.tsx` delegates to Next's default error component.
+- These files exist only to satisfy Next's page-data loader and do not wrap, restyle, or reroute the App Router website.
+
+Protected scope:
+
+- App Router website layout, owner app layout, pricing/payment runtime, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.15 | May 20, 2026 | Added minimal Pages Router defaults so production builds resolve generated `/_app`, `/_document`, and `/_error` page-manifest entries without changing App Router website behavior. |
+| 3.4.14 | May 20, 2026 | Required a free owner account before `/create-menu` upload/extraction, preserving free preview before payment while removing anonymous AI-processing cost leakage. |
+| 3.4.13 | May 20, 2026 | Hardened mobile Safari public-website scrolling by unregistering the owner Workbox service worker on marketing routes and removing mobile fixed/blur repaint triggers. |
+| 3.4.12 | May 20, 2026 | Repositioned the homepage hero from generic online-menu language to current-menu/official-version trust language, removed visible "no account needed" upload positioning, and aligned the create-menu preview CTA with the controlled free-preview funnel. |
 | 3.4.11 | May 20, 2026 | Fixed deployed white-screen-on-scroll behavior by making website scroll reveal wrappers visible by default instead of relying on IntersectionObserver to reveal content. |
 | 3.4.10 | May 20, 2026 | Final whole-site theme/content polish: stronger shared reassurance-line contrast, pricing theme variables aligned to the website palette, and Features hero copy tightened to owner-benefit language. |
 | 3.4.9 | May 20, 2026 | Polished the mobile hero and brand lockup: solid website wordmark text, gradient retained in the mark and headline accent, "Publish your official menu online" hero copy, and a compact higher-contrast proof strip. |

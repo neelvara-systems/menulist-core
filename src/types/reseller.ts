@@ -46,6 +46,7 @@ export interface ResellerTransaction {
     subscriptionId: string;           // Links to subscription doc
     subscriptionAmount?: number;      // Current subscription amount snapshot from /subscriptions.
     subscriptionBillingMode?: 'auto' | 'manual';
+    subscriptionShortUrl?: string | null; // Razorpay checkout link for pending online subscriptions.
     subscriptionStatus?: string;
 
     // Timestamps (offline only for validFrom/validUntil)

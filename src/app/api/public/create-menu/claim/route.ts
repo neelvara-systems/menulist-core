@@ -107,6 +107,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
+        if (draft.createdByUId && draft.createdByUId !== userId) {
+            return NextResponse.json(
+                { success: false, error: 'This draft belongs to another account.' },
+                { status: 403 }
+            );
+        }
+
         if (draft.extractionStatus !== 'completed' || !draft.extractedData) {
             return NextResponse.json(
                 { success: false, error: 'Menu extraction is not complete yet.' },

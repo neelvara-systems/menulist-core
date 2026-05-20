@@ -10,7 +10,7 @@
 
 | Collection | Type | Purpose |
 |-----------|------|---------|
-| `publicMenuDrafts` | NEW | Temporary drafts from anonymous uploads (24h TTL) |
+| `publicMenuDrafts` | NEW | Temporary drafts from authenticated free-account uploads (24h TTL) |
 | `projects/{tId}/{sId}/{projectId}` | EXISTING | Final project after claim (no new fields) |
 | `stores` | EXISTING | Store created on claim (no new fields) |
 | `tenants` | EXISTING | Tenant created on claim for new users (no new fields) |
@@ -19,7 +19,7 @@
 
 ## 2. Operations Per User Journey
 
-### 2.1 Upload + Extraction (Anonymous)
+### 2.1 Upload + Extraction (Authenticated Free Account)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
@@ -29,7 +29,7 @@
 | Update draft (extraction result) | `publicMenuDrafts` | WRITE | 1 | CF writes extraction result |
 | **Subtotal** | | | **2R + 2W + 1 Storage** | |
 
-### 2.2 Preview (Anonymous, Polling)
+### 2.2 Preview (Token-Based Polling)
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|

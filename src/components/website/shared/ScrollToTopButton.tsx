@@ -4,15 +4,32 @@ import { useEffect, useState } from 'react';
 import { LuArrowUp } from 'react-icons/lu';
 
 export default function ScrollToTopButton() {
+  const [enabled, setEnabled] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 600);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const media = window.matchMedia('(min-width: 768px)');
+    const syncEnabled = () => setEnabled(media.matches);
+
+    syncEnabled();
+    media.addEventListener('change', syncEnabled);
+
+    return () => media.removeEventListener('change', syncEnabled);
   }, []);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!enabled) {
+      setVisible(false);
+      return;
+    }
+
+    const onScroll = () => setVisible(window.scrollY > 600);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [enabled]);
+
+  if (!enabled || !visible) return null;
 
   return (
     <button

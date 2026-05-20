@@ -6,7 +6,7 @@ import { useResellerDashboard } from '@hook/useResellerDashboard';
 import type { ResellerTransaction } from '@type/reseller';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import { LuPlus, LuRefreshCw, LuUsers, LuX } from 'react-icons/lu';
+import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers, LuX } from 'react-icons/lu';
 import { Button, Card, Empty, Flex, Input, NavBar, Popup, Spin, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -42,11 +42,24 @@ function getDaysLeft(value: any) {
     return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-function ClientCard({ onAddLocation, transaction }: { onAddLocation: (transaction: ResellerTransaction) => void; transaction: ResellerTransaction }) {
+function ClientCard({
+    onAddLocation,
+    onCopyPaymentLink,
+    onOpenPaymentLink,
+    transaction,
+}: {
+    onAddLocation: (transaction: ResellerTransaction) => void;
+    onCopyPaymentLink: (link: string) => void;
+    onOpenPaymentLink: (link: string) => void;
+    transaction: ResellerTransaction;
+}) {
     const daysLeft = getDaysLeft(transaction.validUntil);
     const statusColor = STATUS_COLORS[transaction.status] || 'default';
     const isManual = transaction.paymentMode === 'offline' || transaction.subscriptionBillingMode === 'manual';
     const canAddLocation = isManual && transaction.status === 'active';
+    const hasPendingPaymentLink = transaction.paymentMode === 'online'
+        && transaction.status === 'pending_payment'
+        && Boolean(transaction.subscriptionShortUrl);
 
     return (
         <Card>
@@ -72,6 +85,16 @@ function ClientCard({ onAddLocation, transaction }: { onAddLocation: (transactio
                     <Button block fill="outline" onClick={() => onAddLocation(transaction)} style={{ minHeight: 44 }}>
                         Add prepaid location
                     </Button>
+                ) : null}
+                {hasPendingPaymentLink ? (
+                    <Flex gap={8}>
+                        <Button block fill="outline" onClick={() => onCopyPaymentLink(transaction.subscriptionShortUrl || '')} style={{ minHeight: 44 }}>
+                            <Flex align="center" gap={6} justify="center"><LuCopy size={16} /> Copy link</Flex>
+                        </Button>
+                        <Button block onClick={() => onOpenPaymentLink(transaction.subscriptionShortUrl || '')} style={{ minHeight: 44 }}>
+                            <Flex align="center" gap={6} justify="center"><LuExternalLink size={16} /> Open</Flex>
+                        </Button>
+                    </Flex>
                 ) : null}
             </Flex>
         </Card>
@@ -135,6 +158,17 @@ export default function MobileResellerDashboardScreen({
         } finally {
             setAddingLocation(false);
         }
+    };
+
+    const copyPaymentLink = async (link: string) => {
+        if (!link) return;
+        await navigator.clipboard.writeText(link);
+        Toast.show({ content: 'Payment link copied', duration: 1600, icon: 'success' });
+    };
+
+    const openPaymentLink = (link: string) => {
+        if (!link) return;
+        window.open(link, '_blank', 'noopener,noreferrer');
     };
 
     if (isLoading) {
@@ -234,10 +268,18 @@ export default function MobileResellerDashboardScreen({
                 ) : (
                     <Flex gap={10} vertical>
                         <Title level={5} style={{ margin: 0 }}>Clients</Title>
-                        {transactions.map((transaction) => <ClientCard key={transaction.id} onAddLocation={(client) => {
-                            setSelectedClient(client);
-                            setLocationCount('1');
-                        }} transaction={transaction} />)}
+                        {transactions.map((transaction) => (
+                            <ClientCard
+                                key={transaction.id}
+                                onAddLocation={(client) => {
+                                    setSelectedClient(client);
+                                    setLocationCount('1');
+                                }}
+                                onCopyPaymentLink={copyPaymentLink}
+                                onOpenPaymentLink={openPaymentLink}
+                                transaction={transaction}
+                            />
+                        ))}
                     </Flex>
                 )}
             </Flex>

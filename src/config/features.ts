@@ -2268,18 +2268,18 @@ export const FEATURE_FLAGS = {
     ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX: false,
 
     // ═══════════════════════════════════════════════════════════════
-    // PUBLIC MENU ENTRY (No-Auth Menu Creation Pipeline)
+    // PUBLIC MENU ENTRY (Controlled Free Preview Pipeline)
     // @see __docs__/public-menu-entry/
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Public Menu Entry — No-auth menu creation pipeline
+     * Public Menu Entry — Controlled free preview pipeline
      *
-     * Allows anonymous users to upload a menu image at /create-menu,
-     * see AI extraction result, then sign up to claim and publish.
+     * Allows public users to open /create-menu, then requires a free
+     * owner account before upload/extraction and preview.
      * Creates draft in publicMenuDrafts collection with 24h TTL.
      *
-     * true: /create-menu page active, API accepts anonymous uploads
+     * true: /create-menu page active, API accepts authenticated free-account uploads
      * false: /create-menu returns 404, API returns 404
      *
      * Cost: ~₹0.50-1.00 per extraction (Gemini 2.5 Flash)

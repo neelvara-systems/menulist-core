@@ -35,6 +35,26 @@ import { useEffect } from 'react';
 
 const OWNER_SW_URL = '/sw.js';
 const CUSTOMER_SW_URL = '/sw-customer.js';
+const OWNER_APP_PATHS = [
+    /^\/dashboard(?:\/|$)/,
+    /^\/billing(?:\/|$)/,
+    /^\/business-settings(?:\/|$)/,
+    /^\/feedback\/?$/,
+    /^\/help-center(?:\/|$)/,
+    /^\/locations(?:\/|$)/,
+    /^\/ops(?:\/|$)/,
+    /^\/platform(?:\/|$)/,
+    /^\/projects(?:\/|$)/,
+    /^\/qr-code(?:\/|$)/,
+    /^\/qrCode(?:\/|$)/,
+    /^\/reseller(?:\/|$)/,
+    /^\/screen(?:\/|$)/,
+    /^\/signin(?:\/|$)/,
+    /^\/today(?:\/|$)/,
+    /^\/transactions(?:\/|$)/,
+    /^\/use-menulist(?:\/|$)/,
+    /^\/users(?:\/|$)/,
+];
 
 function getTargetSwUrl(): string | null {
     if (typeof window === 'undefined') return null;
@@ -44,9 +64,13 @@ function getTargetSwUrl(): string | null {
         if (resolved.type === 'subdomain' || resolved.type === 'custom') {
             return CUSTOMER_SW_URL;
         }
-        // Platform / owner dashboard origins → next-pwa SW.
+        // Platform origins serve both the public marketing website and the
+        // owner app. Keep Workbox off public website routes so Safari cannot
+        // keep stale marketing pages or assets in control while scrolling.
         if (resolved.type === 'platform') {
-            return OWNER_SW_URL;
+            return OWNER_APP_PATHS.some((pattern) => pattern.test(window.location.pathname))
+                ? OWNER_SW_URL
+                : null;
         }
         // Product sites and localhost should not register either worker.
         return null;
@@ -72,8 +96,22 @@ export default function ServiceWorkerRegister() {
                 // worker attached. If one exists, unregister it so localhost
                 // does not keep routing requests through old Workbox logic.
                 if (process.env.NODE_ENV !== 'production' || !targetUrl) {
+                    let removedRegistration = false;
                     for (const reg of registrations) {
-                        await reg.unregister().catch(() => { });
+                        const removed = await reg.unregister().catch(() => false);
+                        removedRegistration = removedRegistration || removed;
+                    }
+
+                    if (process.env.NODE_ENV === 'production' && !targetUrl && removedRegistration && navigator.serviceWorker.controller) {
+                        try {
+                            const reloadKey = '__menulist_public_sw_cleared__';
+                            if (!sessionStorage.getItem(reloadKey)) {
+                                sessionStorage.setItem(reloadKey, '1');
+                                window.location.reload();
+                            }
+                        } catch {
+                            window.location.reload();
+                        }
                     }
                     return;
                 }

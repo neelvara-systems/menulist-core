@@ -6,18 +6,37 @@ import WebsiteButton from './WebsiteButton';
 
 export default function StickyCta() {
   const t = useTranslations('Website');
+  const [enabled, setEnabled] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    const syncEnabled = () => setEnabled(media.matches);
+
+    syncEnabled();
+    media.addEventListener('change', syncEnabled);
+
+    return () => media.removeEventListener('change', syncEnabled);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) {
+      setVisible(false);
+      return;
+    }
+
     const handleScroll = () => {
       const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
       // Show after 25% scroll, hide in last 15% (FinalCta is visible)
       setVisible(scrollPercent > 0.25 && scrollPercent < 0.85);
     };
 
+    handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [enabled]);
+
+  if (!enabled) return null;
 
   return (
     <div

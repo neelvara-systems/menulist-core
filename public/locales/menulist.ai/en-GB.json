@@ -2169,10 +2169,10 @@
         },
         "Hero": {
             "eyebrow": "No technical setup",
-            "titlePart1": "Upload your menu.",
-            "titleHighlight": "Publish your official menu online.",
+            "titlePart1": "Upload your current menu.",
+            "titleHighlight": "Publish one official version customers can trust.",
             "titlePart2": "",
-            "subtitle": "Start with the menu you already use. MenuList turns it into a live menu, official page, QR menu, web link, customer view, and PDF from one place you control.",
+            "subtitle": "Start with a photo, PDF, link, or typed menu. MenuList prepares your live menu, official page, QR menu, web link, customer view, and PDF from one owner-approved source.",
             "cta": "Upload your menu →",
             "secondaryCta": "See what customers see",
             "caption": "Free to start. You review before publishing.",

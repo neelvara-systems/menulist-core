@@ -22,7 +22,7 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 | Auth flow (Google + email)            | ✅      | `src/app/(global-pages)/signin/page.tsx`                   | Redirect with `callbackUrl` param               |
 | Store + project creation              | ✅      | `src/database/stores/`, `src/database/projects/`           | Used in claim/publish flow                      |
 | Public page (`/create-menu`)          | ❌ NEW  | `src/app/(website)/create-menu/page.tsx`                   | New page in website route group                 |
-| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — no auth, rate-limited                 |
+| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — POST withAuth, rate-limited; GET token-based preview |
 | Preview page                          | ❌ NEW  | `src/app/(website)/create-menu/preview/[draftId]/page.tsx` | New page — reads draft, renders preview         |
 | Draft Firestore collection            | ❌ NEW  | `publicMenuDrafts`                                         | New collection — 24h TTL                        |
 | Claim/convert flow                    | ❌ NEW  | `src/app/api/public/create-menu/claim/route.ts`            | New API — withAuth, converts draft → project    |
@@ -107,7 +107,7 @@ ENABLE_PUBLIC_MENU_ENTRY: false,
 
 ```
 src/app/(website)/create-menu/
-├── page.tsx                          // Upload page (public, no auth)
+├── page.tsx                          // Upload page (public page, account required before upload)
 ├── CreateMenuClient.tsx              // Client component — upload + progress UI
 ├── preview/
 │   └── [draftId]/
@@ -117,7 +117,7 @@ src/app/(website)/create-menu/
     └── page.tsx                      // Post-publish success page (auth required)
 
 src/app/api/public/create-menu/
-├── route.ts                          // POST: upload image + trigger extraction (no auth)
+├── route.ts                          // POST: upload image + trigger extraction (withAuth); GET: token preview status
 └── claim/
     └── route.ts                      // POST: claim draft → create store + project (withAuth)
 
@@ -312,8 +312,8 @@ const schema = z.object({
 ┌─────────────────────────────┐
 │         MenuList Logo       │
 │                             │
-│  Turn your menu into a      │
-│  live page in 60 seconds    │
+│  Turn your current menu     │
+│  into a review preview      │
 │                             │
 │  ┌───────────────────────┐  │
 │  │                       │  │
@@ -324,8 +324,8 @@ const schema = z.object({
 │  │   or choose file      │  │
 │  └───────────────────────┘  │
 │                             │
-│  ✓ No account needed       │
-│  ✓ Ready in 60 seconds     │
+│  ✓ Free preview first      │
+│  ✓ Review before publishing│
 │  ✓ Works for any business  │
 │                             │
 │  [How it works ↓]           │
@@ -366,7 +366,8 @@ const schema = z.object({
 │  │ Publish as your       │  │
 │  │ official menu page    │  │
 │  │                       │  │
-│  │ [Create free account] │  │
+│  │ [Create official      │  │
+│  │  menu source]         │  │
 │  └───────────────────────┘  │
 └─────────────────────────────┘
 ```
@@ -488,7 +489,7 @@ if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
 
 **Decision:** Preview is read-only. Editing available only after publish in dashboard.
 
-**Reason:** Building an editor for anonymous users adds massive complexity (state management, save logic, auth transitions). The value proposition is "see your menu digitized" — editing is a dashboard feature.
+**Reason:** Building an editor in the intake preview adds massive complexity (state management, save logic, auth transitions). The value proposition is "see your menu digitized" — editing is a dashboard feature.
 
 ### ADR-4: Why 24-hour TTL?
 

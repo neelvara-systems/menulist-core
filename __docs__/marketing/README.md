@@ -1,0 +1,19 @@
+# MenuList Marketing
+
+**Status:** Strategy docs
+**Last Updated:** May 20, 2026
+
+This folder holds project-level marketing and distribution strategy that is broader than one feature doc. Feature-specific marketing docs still live beside their feature docs.
+
+## Current Docs
+
+| Document | Purpose |
+| --- | --- |
+| [menulist-growth-and-funnel-strategy.md](./menulist-growth-and-funnel-strategy.md) | Controlled hype strategy, free-preview funnel, distribution activation, and first 90-day market plan |
+
+## Rules
+
+- Use the live product and website docs as source of truth before turning strategy into public claims.
+- Hype must come from visible product transformation, not unsupported language.
+- Keep MenuList positioned as the official customer-facing source, not a QR menu utility or generic AI menu generator.
+- Early lead cost is acceptable only when it creates publishable public MenuList surfaces and distribution proof.

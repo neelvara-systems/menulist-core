@@ -23,7 +23,7 @@ This feature is primarily a mobile experience. The most common scenario: restaur
 ### Gate 2 — Speed
 
 **Question:** Can it complete in <5 seconds on mobile?
-**Answer:** Upload + extraction takes ~30-60 seconds. But the user action (tap upload, take photo) is <5 seconds. The wait is passive.
+**Answer:** Upload + extraction includes a short processing wait. The user action (tap upload, take photo) is brief, and the wait is passive.
 **Result:** ✅ PASS (user action is fast, processing is passive wait)
 
 ### Gate 3 — Touch

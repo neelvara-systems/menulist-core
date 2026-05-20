@@ -9,9 +9,9 @@
 
 ## 1. Hero Section
 
-**Headline:** "Your menu, live in 60 seconds."
+**Headline:** "Upload your current menu."
 
-**Subheadline:** "Upload a photo of your menu. We turn it into a page your customers can use — on Google, WhatsApp, QR codes, everywhere."
+**Subheadline:** "Preview one owner-approved menu source for the places customers check — QR, WhatsApp, official page, web link, and PDF."
 
 **CTA Button:** "Upload Your Menu"
 
@@ -31,22 +31,22 @@ There's no single, reliable place where your menu lives.
 
 ## 3. Solution Statement
 
-**Heading:** "One photo. One page. Always current."
+**Heading:** "One current menu. One official source."
 
-Upload a photo of your menu — printed, handwritten, any language. MenuList reads it and creates a clean, structured page that works on every phone. Share one link everywhere. Update anytime.
+Create a free account and upload a photo of your menu — printed, handwritten, any language. MenuList prepares a clean, structured preview that can become your official menu source after owner review.
 
 ---
 
 ## 4. How It Works (3 Steps)
 
-**Step 1:** Take a photo of your menu
-Upload from your phone camera or choose a file. Any format works.
+**Step 1:** Create a free account
+Your menu becomes an official customer-facing source, so MenuList confirms an owner before preparing the draft.
 
-**Step 2:** See your live menu page
-In about 60 seconds, your menu appears as a clean, structured page — ready to share.
+**Step 2:** Upload and review your menu source
+Upload from your phone camera or choose a file. Your menu appears as a clean, structured preview for owner review.
 
-**Step 3:** Publish and share
-Create a free account to publish. Get a QR code for tables, a link for WhatsApp, and add it to Google Maps.
+**Step 3:** Continue setup
+Continue with QR, link, plan setup, and publishing when you are ready.
 
 ---
 
@@ -69,7 +69,7 @@ Restaurants, cafes, bakeries, salons, gyms, clinics — any business with offeri
 ## 6. Social Proof Slots
 
 - "[X] businesses created their page this month"
-- "Average time from photo to live page: under 60 seconds"
+- "Average time from upload to first preview: [measure before publishing]"
 - Testimonial placeholder: "[Business name] — [City]"
 
 ---
@@ -77,16 +77,16 @@ Restaurants, cafes, bakeries, salons, gyms, clinics — any business with offeri
 ## 7. FAQ (5 Questions)
 
 **Q: Do I need to create an account?**
-A: No. Upload your menu and see the result first. Create a free account only if you want to publish it.
+A: Yes. A free account is required before upload because MenuList prepares an official customer-facing draft for an owner. Payment is not required to start.
 
 **Q: What kind of menus can I upload?**
 A: Any menu image — printed, handwritten, photographed from a wall or a table. Clear photos work best.
 
 **Q: How long does it take?**
-A: About 60 seconds from upload to seeing your structured menu page.
+A: The preview usually appears after a short processing step. Clearer photos process better.
 
 **Q: Is this free?**
-A: Uploading and previewing is completely free. Publishing requires a free account. Advanced features are available on paid plans.
+A: The first owner-account preview is free and rate-limited. QR, link, publishing, and plan setup continue from the account.
 
 **Q: Can I update my menu later?**
 A: Yes. After publishing, you can update your menu anytime from your phone or computer. Changes go live instantly.
@@ -95,13 +95,13 @@ A: Yes. After publishing, you can update your menu anytime from your phone or co
 
 ## 8. SEO Meta
 
-**Page title:** "Create Your Digital Menu in 60 Seconds — MenuList"
+**Page title:** "Upload Your Current Menu — MenuList"
 
-**Meta description:** "Upload a photo of your menu and get a live, shareable page instantly. No account needed. Works for restaurants, cafes, salons, and any business."
+**Meta description:** "Upload your current menu and preview one owner-approved source for QR, web, official page, customer view, and sharing."
 
-**OG title:** "Your menu, live in 60 seconds"
+**OG title:** "Upload your current menu"
 
-**OG description:** "Turn any menu photo into a clean digital page. Share via QR code, WhatsApp, or Google Maps."
+**OG description:** "Preview the official menu source customers can trust before you continue setup."
 
 **Target keywords:**
 - create digital menu

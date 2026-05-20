@@ -439,7 +439,7 @@ const ConfirmPaymentSchema = z.object({
 
 1. Query `resellerTransactions` where `resellerId == session.user.id`
 2. Bounded-read matching `subscriptions/{subscriptionId}` docs for current quantity/status
-3. Return list with status, store info, expiry dates, and paid location count
+3. Return list with status, store info, expiry dates, paid location count, and the subscription `shortUrl` for pending online payment recovery
 
 **Firebase cost:** 1 transaction query + up to 100 subscription reads for reseller users (200 for platform)
 

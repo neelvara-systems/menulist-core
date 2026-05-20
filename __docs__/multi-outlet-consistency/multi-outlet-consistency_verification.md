@@ -20,6 +20,8 @@
 > **Note (May 20, 2026 — completion hardening):** Remaining partial rows were closed in code: public deleted-item links fall back cleanly, master/local re-extraction persists `extractionIdAliases`, outlet-only local changes stamp `outletLocalState`, and mobile now exposes master-update review/history/acknowledge parity through `MobileMasterUpdateNotice`.
 >
 > **Note (May 20, 2026 — manual billing creation fix):** Mobile PWA outlet creation can fail on demo/reseller/manual premium accounts when a Firestore subscription is active but uses a `manual_...` provider ID. The route now updates internal subscription quantity for manual/offline accounts without calling Razorpay; real Razorpay-backed subscriptions still require provider quantity success before internal outlet creation.
+>
+> **Note (May 20, 2026 — reseller payment QA):** Real Firebase/Razorpay test-mode QA covered offline reseller onboarding, prepaid location-capacity top-up, owner outlet creation after capacity, second-outlet 402 after capacity exhaustion, online reseller subscription creation with Razorpay `quantity: 2`, pending online outlet-create 402 before activation, and dashboard payment-link recovery for pending online subscriptions. Razorpay hosted checkout reached test card tokenization but the merchant returned "seller does not support recurring payments"; this is account capability/configuration, not an internal Firestore mutation failure.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -52,6 +54,18 @@
 | Razorpay-backed create | ✅ Real `sub_...` subscriptions still update provider quantity first when active store count exceeds paid quantity; provider failure returns "Billing needs attention before adding another location" instead of generic outlet failure. |
 | Deactivation/reconciliation | ✅ Outlet deactivation and subscription reconciliation skip manual/offline provider IDs. Razorpay-backed deactivation reduces provider/internal quantity; manual prepaid capacity is retained until expiry. |
 | Mobile/desktop payment display | ✅ Add-outlet proration cards are hidden for manual/offline subscriptions, manual amount displays as prepaid total, and add buttons are disabled when prepaid capacity is exhausted. |
+
+## May 20, 2026 Reseller Payment QA
+
+| Area | Result |
+| ---- | ------ |
+| Offline reseller onboarding | ✅ Created a real offline/manual client with 1 paid location; subscription used `billingMode: "manual"`, `quantity: 1`, active status, and an `ONBOARD` reseller transaction. |
+| Manual capacity top-up | ✅ Reseller dashboard recorded one prepaid location; subscription moved to `quantity: 2`, amount increased by prorated top-up, and an `ADD_LOCATION` transaction was created. |
+| Owner outlet creation | ✅ Owner login created one outlet after prepaid capacity; a second immediate create returned 402 with the reseller prepaid-capacity message. |
+| Online reseller onboarding | ✅ Created a real Razorpay test subscription with `quantity: 2`; Firestore subscription stayed pending with `billingMode: "auto"` and `amountExpected: ₹800`. |
+| Online pending guard | ✅ Owner login for the pending online client received 402 "Billing needs attention before adding another location" before payment activation. |
+| Payment-link recovery | ✅ Reseller clients API now returns subscription `shortUrl`; desktop and mobile dashboards expose copy/open actions for pending online payments. |
+| Razorpay account capability | ⚠️ Hosted test checkout reached card tokenization, then Razorpay returned that the seller does not support recurring payments. Enable Razorpay recurring/autopay capability on the merchant account before release payment smoke tests can complete a real recurring activation. |
 
 **Live Firebase test (May 19, 2026):** Disposable tenant `910884561`, master store `37`, outlet store `38`, user, and subscription were created against the configured Firebase project. The test verified policy save, legacy master promotion, outlet create, outlet rename, switch-store, outlet deactivation, inactive-store switch rejection, subscription quantity returning to `1`, and cleanup (`cleanupExists false,false,false,false,false`).
 
