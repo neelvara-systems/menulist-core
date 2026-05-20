@@ -2,7 +2,7 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
-import { getFormatedDateAndTime } from '@util/dateTime';
+import { getFormatedDateAndTime, type DateLike } from '@util/dateTime';
 import { formatProcessingTime } from '@util/formatters';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,7 +16,7 @@ interface MobileTransactionsScreenProps {
 
 interface TransactionItem {
     action: string;
-    createdOn: string;
+    createdOn: DateLike;
     id: string;
     processingTime: number;
     projectId?: string;

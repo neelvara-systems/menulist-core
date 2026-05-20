@@ -23,6 +23,9 @@
 - **Billing mutation guardrails tightened** — Cancel, pause, resume, upgrade, verification, reconciliation, and grace-period expiry now block invalid state writes, validate request bodies consistently, and avoid master/outlet fallback when mutating the current store subscription.
 - **Billing actions recover faster during rate-limit provider outages** — Upstash failures now time out quickly and open a short local bypass window instead of delaying every payment mutation.
 - **Pricing page credit pack crash fixed** — Logged-in stores with lowercase subscription currency values now normalize currency before rendering or purchasing credit packs.
+- **Billing history handles top-up audit rows** — Desktop and mobile Billing now use one formatter for lean Razorpay webhook summaries and legacy payload rows, so successful enhancement-pack payments appear without crashing the history view and show the configured credit count when Razorpay omits it from the webhook notes.
+- **Enhancement usage dates render correctly** — Desktop and mobile Transactions now normalize Firestore timestamps before rendering and sorting, so usage rows show the real operation date instead of epoch-era fallback dates.
+- **Billing failure logging uses monitored logger** — Desktop and mobile Billing mutation failures now use the approved logger instead of browser console errors.
 - **Public upload source files remain stable** — Draft uploads now use Firebase download-token URLs and carry file type/size into the claimed project.
 - **Plan changes preserve paid location count** — Existing subscriptions no longer fall back to `quantity: 1` when creating a new Razorpay subscription for an upgrade or paid-location checkout.
 

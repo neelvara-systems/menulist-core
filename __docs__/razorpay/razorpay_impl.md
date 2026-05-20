@@ -576,6 +576,8 @@ Every webhook event is logged to the `paymentTransactions` collection as a lean 
 - `transactionType`: "subscription" or "topup"
 - `invoiceUrl`: fetched from Razorpay Invoices API for `subscription.charged` and `order.paid` events
 
+Billing history rendering uses `src/lib/billing/billingHistoryFormatter.ts` so desktop and mobile both accept lean v2 summaries and legacy raw Razorpay payload rows. The formatter keeps webhook documents small while preserving invoice, amount, status, billing-cycle, and top-up credit display. If Razorpay omits `creditAmount` from a top-up webhook row but the pack name/amount still matches the configured pack catalog, the UI uses the configured pack credit count for display without adding a Firestore read.
+
 ---
 
 ## 9. Flow 5: Plan Upgrade

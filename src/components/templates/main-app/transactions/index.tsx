@@ -5,7 +5,8 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getMetadataProjectsList } from '@database/projects';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { getFormatedDateAndTime } from '@util/dateTime';
+import { logger } from '@lib/monitoring/logger';
+import { getFormatedDateAndTime, toDate, type DateLike } from '@util/dateTime';
 import { formatProcessingTime } from '@util/formatters';
 import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
 import dayjs from 'dayjs';
@@ -36,7 +37,7 @@ interface TransactionData {
     totalCredits: number;
     totalCharge: number;
     unitsConsumed?: number;
-    createdOn: string;
+    createdOn: DateLike;
     storeId: string;
     // Fields for language operations
     inputStrings?: Record<string, string>;
@@ -173,7 +174,7 @@ function TransactionPage() {
 
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching transactions:', error);
+            logger.error('Error fetching transactions', error);
             message.error(t('failedToLoad'));
             setLoading(false);
         }
@@ -240,7 +241,7 @@ function TransactionPage() {
                 </Tooltip>
             ),
             sorter: (a: TransactionData, b: TransactionData) => {
-                return new Date(b.createdOn).getTime() - new Date(a.createdOn).getTime();
+                return toDate(b.createdOn).getTime() - toDate(a.createdOn).getTime();
             },
         },
         {

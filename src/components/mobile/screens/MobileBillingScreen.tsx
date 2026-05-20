@@ -6,7 +6,10 @@ import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
+import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import { logger } from '@lib/monitoring/logger';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { toDate } from '@util/dateTime';
 import { formatCurrency } from '@util/formatters';
 import { getGracePeriodInfo, hasValidSubscriptionAccess } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
@@ -94,7 +97,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             );
             setActiveSubscription(subscription);
         } catch (err) {
-            console.error('Failed to refetch subscription:', err);
+            logger.error('Failed to refetch subscription', err);
         }
     };
 
@@ -116,7 +119,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const formatDate = (timestamp: any) => {
         if (!timestamp) return 'N/A';
         try {
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+            const date = toDate(timestamp);
+            if (isNaN(date.getTime())) return 'N/A';
             return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
         } catch {
             return 'N/A';
@@ -158,6 +162,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: t('planUpdated'), duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
+            logger.error('Mobile billing plan update failed', err);
             Toast.show({ content: err?.message || t('paymentFailedRetry'), duration: 3000 });
         } finally {
             setIsLoading(false);
@@ -180,6 +185,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: `Paid locations updated to ${nextPaidLocationCount}.`, duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
+            logger.error('Mobile paid location update failed', err);
             Toast.show({ content: err?.message || t('paymentFailedRetry'), duration: 3000 });
         } finally {
             setIsLoading(false);
@@ -203,6 +209,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 }
                 : previous);
         } catch (err: any) {
+            logger.error('Mobile enhancement pack purchase failed', err);
             Toast.show({ content: err?.message || t('purchaseFailed'), duration: 3000 });
         } finally {
             setIsLoading(false);
@@ -221,6 +228,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     Toast.show({ content: t('subscriptionPaused'), duration: 2000 });
                     await refetchSubscription();
                 } catch (err: any) {
+                    logger.error('Mobile subscription pause failed', err);
                     Toast.show({ content: err?.message || t('failedToPause'), duration: 3000 });
                 }
             },
@@ -233,6 +241,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: t('subscriptionResumed'), duration: 2000 });
             await refetchSubscription();
         } catch (err: any) {
+            logger.error('Mobile subscription resume failed', err);
             Toast.show({ content: err?.message || t('failedToResume'), duration: 3000 });
         }
     };
@@ -249,6 +258,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     Toast.show({ content: t('subscriptionCancelled'), duration: 2000 });
                     await refetchSubscription();
                 } catch (err: any) {
+                    logger.error('Mobile subscription cancellation failed', err);
                     Toast.show({ content: err?.message || t('failedToCancel'), duration: 3000 });
                 }
             },
@@ -259,46 +269,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         try {
             const historyStoreId = Number(sub?.storeId || billingStoreId || session?.user?.storeId);
             const raw = await getBillingHistoryForStore(Number(session?.user?.tenantId), historyStoreId);
-            const formatted = raw.map((event: any) => {
-                if (event.event === 'subscription.charged') {
-                    const entity = event.payload?.payment?.entity || {
-                        id: event.paymentId,
-                        amount: event.amount,
-                        currency: event.currency,
-                        status: event.status,
-                    };
-                    return {
-                        id: entity?.id,
-                        type: 'Subscription',
-                        date: (event.created_at || 0) * 1000,
-                        amount: entity?.amount || 0,
-                        currency: entity?.currency || 'INR',
-                        status: entity?.status,
-                        invoiceUrl: event.invoiceUrl,
-                    };
-                }
-                if (event.event === 'order.paid' && event.transactionType === 'topup') {
-                    const entity = event.payload?.payment?.entity || {
-                        id: event.paymentId,
-                        amount: event.amount,
-                        currency: event.currency,
-                        status: event.status,
-                    };
-                    return {
-                        id: entity?.id,
-                        type: 'Enhancement Pack',
-                        date: (event.created_at || 0) * 1000,
-                        amount: entity?.amount || 0,
-                        currency: entity?.currency || 'INR',
-                        status: entity?.status,
-                        invoiceUrl: event.invoiceUrl,
-                    };
-                }
-                return null;
-            }).filter(Boolean);
+            const formatted = formatBillingHistoryEvents(raw);
             setBillingHistory(formatted);
             setShowHistory(true);
-        } catch {
+        } catch (err) {
+            logger.error('Mobile billing history fetch failed', err);
             Toast.show({ content: t('failedToLoadHistory'), duration: 2000 });
         }
     };
@@ -327,6 +302,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             setShowStorePicker(false);
             Toast.show({ content: 'Switched store', duration: 1500 });
         } catch (err: any) {
+            logger.error('Mobile billing store switch failed', err);
             Toast.show({ content: err?.message || 'Failed to switch store', duration: 2000 });
         }
     };

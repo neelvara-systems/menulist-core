@@ -2,7 +2,7 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 
-import { getFormatedDateAndTime } from '@util/dateTime';
+import { getFormatedDateAndTime, type DateLike } from '@util/dateTime';
 import { formatCurrency, formatProcessingTime } from '@util/formatters';
 import { Button, Descriptions, Divider, Modal, Tag } from 'antd';
 import { useFormatter } from 'next-intl';
@@ -17,7 +17,7 @@ export interface TransactionDetails {
     action: string;
     processingTime: number;
     totalCharge: number;
-    createdOn: string;
+    createdOn: DateLike;
     contentLength?: "Small" | "Medium" | "Large"; // Add contentLength
     // Fields for language operations
     inputStrings?: Record<string, string>;

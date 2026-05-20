@@ -8,6 +8,7 @@
 import { helpCenterTabRouting } from '@constant/navigations';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
+import { logger } from '@lib/monitoring/logger';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
@@ -79,7 +80,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
             message.success('Your subscription has been cancelled successfully.');
             refetchActiveSubscription();
         } catch (error: any) {
-            console.error('Cancellation failed:', error);
+            logger.error('Cancellation failed', error);
             message.error(error.message || 'An unexpected error occurred.');
         } finally {
             dispatch(stopLoader("Cancelling subscription"));
@@ -94,7 +95,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
             message.success('Your subscription has been paused.');
             refetchActiveSubscription();
         } catch (error: any) {
-            console.error('Pause failed:', error);
+            logger.error('Pause failed', error);
             message.error(error.message || 'Failed to pause subscription.');
         } finally {
             dispatch(stopLoader("Pausing subscription"));
@@ -108,7 +109,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
             message.success('Your subscription has been resumed.');
             refetchActiveSubscription();
         } catch (error: any) {
-            console.error('Resume failed:', error);
+            logger.error('Resume failed', error);
             message.error(error.message || 'Failed to resume subscription.');
         } finally {
             dispatch(stopLoader("Resuming subscription"));

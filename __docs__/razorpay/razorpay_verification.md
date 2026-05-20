@@ -19,12 +19,14 @@
 | Authenticated top-up order create | Passed: created Razorpay test-mode top-up order |
 | Verify-subscription schema | Passed: valid payment id without `razorpay_subscription_id` returns 400 with required-field error |
 | Verify-topup bad signature | Passed: valid-shaped IDs with bad signature return 403 |
+| Hosted Razorpay top-up checkout | Passed on `https://menulist.online/billing` in Razorpay Test Mode: checkout opened, OTP success completed, and MenuList updated pack balance by +250 credits |
+| Billing history formatter | Passed: lean v2 top-up rows and subscription rows normalize without legacy raw payload assumptions |
 | Chrome pricing page smoke | Passed: `/pricing` renders plan and credit-pack sections without the previous credit-pack error boundary |
 | Local test data cleanup | Passed: deleted the test `subscriptions/{subId}` and `topups/{orderId}` Firestore documents after smoke testing |
 
 ### Remaining External Conditions
 
-- Full hosted Razorpay checkout completion still requires an interactive test payment in the browser. API-level create/cancel/order/webhook paths were verified in Razorpay test mode.
+- Hosted top-up checkout completion was verified on the live domain in Razorpay Test Mode. New subscription checkout, upgrade checkout, pause/resume, and cancellation success paths should be tested with a disposable store/account or explicit approval because the available live account already has an active Premium subscription.
 - Live WhatsApp onboarding requires configured Meta WhatsApp Cloud API test/sandbox credentials, a reachable webhook URL, and a test sender number. This session did not run a live WhatsApp provider delivery test.
 - Local Upstash DNS failed during testing. `checkRateLimit()` now times out provider calls and opens a short bypass window, but staging/production should still use a healthy Upstash REST endpoint.
 

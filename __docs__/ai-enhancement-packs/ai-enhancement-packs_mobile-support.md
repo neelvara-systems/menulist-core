@@ -1,6 +1,6 @@
 # AI Enhancement Packs — Mobile Support
 
-**Last Updated:** May 12, 2026
+**Last Updated:** May 20, 2026
 **Decision:** ✅ MOBILE SUPPORTED — billing and enhancement packs are handled on mobile through the same Razorpay + subscription contract as desktop
 
 ---
@@ -36,6 +36,7 @@ Pack purchase is handled directly in `MobileBillingScreen`.
 | Change plan | `MobileBillingScreen` plan sheet | `usePaymentHandler.onUpgradePlan()` / `onClickPaymentCard()` |
 | Buy enhancement pack | `MobileBillingScreen` enhancement sheet | `usePaymentHandler.handleTopupPurchase()` → Razorpay top-up APIs |
 | Billing history | `MobileBillingScreen` history sheet | `getBillingHistoryForStore()` using the effective subscription store |
+| Usage history | `MobileTransactionsScreen` | Same `getPaginatedAiOperations()` DAL as desktop, with shared Firestore timestamp normalization |
 
 ## Store Switching Decision
 
@@ -46,3 +47,10 @@ Mobile billing must not assume `session.user.storeId` is always the viewed store
 3. History store: `activeSubscription.storeId || selected billing store`
 
 If an outlet inherits the HQ subscription, the UI states that billing changes apply to HQ.
+
+## May 20, 2026 Verification Update
+
+Mobile Billing and Transactions use the same runtime contracts as desktop:
+
+- Billing mutation errors are sent through the monitored logger before owner-facing Toast feedback.
+- Transaction dates are formatted from the shared date normalizer, preventing live Firestore `Timestamp` values from rendering as incorrect historical dates.

@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** ✅ Runtime Updated
-**Last Updated:** May 12, 2026
+**Last Updated:** May 20, 2026
 **Audience:** Developers, DevOps, Cost Auditing
 
 ---
@@ -13,7 +13,7 @@
 
 | Collection             | Path                                           | Purpose                                                    | Status                                |
 | ---------------------- | ---------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- |
-| `menulistAiOperations` | `menulistAiOperations/{tId}/{sId}/{docId}`     | Append-only AI usage event log                             | ✅ Exists, logging currently disabled |
+| `menulistAiOperations` | `menulistAiOperations/{tId}/{sId}/{docId}`     | Append-only AI usage event log                             | ✅ Active for billable, free, public, and internal AI audit rows |
 | `topups`               | `topups/{orderId}`                             | Pack purchase records                                      | ✅ Written by top-up create/verify APIs |
 | `subscriptions`        | `subscriptions/{sub_id}` (filtered by tId+sId) | Subscription with `monthlyCredits` + `topUpCredits` fields | ✅ Exists, capacity already built-in  |
 | `aiCreditTransactions` | Sub-collection of `menulistAiOperations`       | Legacy credit transaction records                          | ✅ Exists                             |
@@ -97,6 +97,10 @@ Append-only log of every AI operation. Each document represents one API call to 
 | Composite | `createdOn` (desc)            | Date range queries                   |
 
 **Note:** These indexes may already exist if the Transactions UI was previously tested. Verify in Firebase Console.
+
+### Usage Date Rendering Contract
+
+`createdOn` is stored as a Firestore `Timestamp` for normal operation rows. Browser DAL reads can return a live Firebase `Timestamp` object, while serialized/admin paths can return `{ seconds, nanoseconds }` or `{ _seconds, _nanoseconds }`. Desktop Transactions, Mobile Transactions, and the details modal must format dates through the shared date normalizer instead of passing raw timestamp objects to `Intl` formatters.
 
 ---
 

@@ -33,14 +33,25 @@ export const getUserTimezone = (): string => {
 // DATE NORMALISATION
 // ═══════════════════════════════════════════════════════════════
 
+export type DateLike = Timestamp | Date | string | number | {
+    nanoseconds?: number;
+    seconds?: number;
+} | {
+    _nanoseconds?: number;
+    _seconds?: number;
+} | null | undefined;
+
 /**
  * Normalise any date-like value (Timestamp, ISO string, Date, serialised
  * Firestore Timestamp {seconds, nanoseconds}) into a plain JS Date.
  */
-export const toDate = (value: Timestamp | Date | string | { seconds: number; nanoseconds?: number } | { _seconds: number; _nanoseconds?: number }): Date => {
+export const toDate = (value: DateLike): Date => {
+    if (!value) return new Date(Number.NaN);
     if (value instanceof Timestamp) return value.toDate();
+    if (typeof (value as any).toDate === 'function') return (value as any).toDate();
     if (value instanceof Date) return value;
     if (typeof value === 'string') return new Date(value);
+    if (typeof value === 'number') return new Date(value);
     // Serialised Firestore Timestamp from API (plain object)
     const seconds = (value as any).seconds ?? (value as any)._seconds;
     const nanoseconds = (value as any).nanoseconds ?? (value as any)._nanoseconds ?? 0;
@@ -85,27 +96,30 @@ type IntlFormatter = { dateTime: (date: Date, preset: string) => string };
 /**
  * Format date + time using next-intl formatter (respects user prefs)
  */
-export const getFormatedDateAndTime = (formatter: IntlFormatter, date: Date | string | null): string | null => {
+export const getFormatedDateAndTime = (formatter: IntlFormatter, date: DateLike): string | null => {
     if (!date) return null;
-    const d = typeof date === 'string' ? new Date(date) : date;
+    const d = toDate(date);
+    if (isNaN(d.getTime())) return null;
     return `${formatter.dateTime(d, 'date')} ${formatter.dateTime(d, 'time')}`;
 };
 
 /**
  * Format date-only using next-intl formatter (respects user prefs)
  */
-export const getFormatedDate = (formatter: IntlFormatter, date: Date | string | null): string | null => {
+export const getFormatedDate = (formatter: IntlFormatter, date: DateLike): string | null => {
     if (!date) return null;
-    const d = typeof date === 'string' ? new Date(date) : date;
+    const d = toDate(date);
+    if (isNaN(d.getTime())) return null;
     return formatter.dateTime(d, 'date');
 };
 
 /**
  * Format time-only using next-intl formatter (respects user prefs)
  */
-export const getFormatedTime = (formatter: IntlFormatter, date: Date | string | null): string | null => {
+export const getFormatedTime = (formatter: IntlFormatter, date: DateLike): string | null => {
     if (!date) return null;
-    const d = typeof date === 'string' ? new Date(date) : date;
+    const d = toDate(date);
+    if (isNaN(d.getTime())) return null;
     return formatter.dateTime(d, 'time');
 };
 
@@ -114,7 +128,7 @@ export const getFormatedTime = (formatter: IntlFormatter, date: Date | string | 
  * Uses next-intl formatter when available, falls back to ISO string.
  */
 export const formatDateTime = (
-    value?: Timestamp | Date | string | null,
+    value?: DateLike,
     mode: 'date' | 'time' | 'datetime' = 'date',
     formatter?: IntlFormatter,
 ): string => {

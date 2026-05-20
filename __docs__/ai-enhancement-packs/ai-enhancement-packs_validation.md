@@ -1,8 +1,21 @@
 # AI Enhancement Packs — Implementation Validation Report
 
 > **Generated:** Feb 9, 2026
-> **Status:** Implementation Complete — Pending Manual Testing
+> **Last Updated:** May 20, 2026
+> **Status:** Implementation Complete — Live usage-date hardening verified locally
 > **Type Check:** ✅ Zero new errors introduced
+
+## May 20, 2026 Usage History Hardening
+
+Live Billing → View Usage exposed incorrect `Jan 10, 1972` dates when Firestore `Timestamp` values were passed directly into the display formatter. The fix expands the shared date normalizer and routes desktop Transactions, Mobile Transactions, and the transaction details modal through it.
+
+Verification:
+
+- `npx tsx -e "import { Timestamp } from 'firebase/firestore'; import { toDate } from './src/utils/dateTime'; ..."` confirmed a Firestore `Timestamp` normalizes to the expected 2026 date.
+- `npx tsc --noEmit --incremental false` passed.
+- `npm run lint` passed.
+
+Billing mutation failure paths on desktop and mobile now use the monitored logger instead of frontend `console.error`.
 
 ---
 

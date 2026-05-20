@@ -33,7 +33,7 @@
 | Create/read/update | `razorpayWebhookEvents` | 1 transaction + 1 status write | READ/WRITE | Durable replay guard. Claims the event before processing, skips already processed or locked duplicates, and marks processed/failed after handling. |
 | Query | `subscriptions` | 1 read | READ | Find subscription by `providerSubscriptionId` |
 | Update | `subscriptions` | 1 write | WRITE | Update status, dates, credits, lastWebhook, billingHistory |
-| Create | `payment_transactions` | 0-1 write | WRITE | Append-only payment audit log. Webhook storage now writes a lean v2 summary instead of the full Razorpay payload; desktop/mobile billing history support both v2 summaries and legacy raw payload rows. |
+| Create | `payment_transactions` | 0-1 write | WRITE | Append-only payment audit log. Webhook storage writes a lean v2 summary instead of the full Razorpay payload; desktop/mobile billing history parse these summaries through a shared formatter and still tolerate legacy raw payload rows. |
 
 **Frequency:** Per webhook event (typically 1-3 events per billing cycle per store)
 

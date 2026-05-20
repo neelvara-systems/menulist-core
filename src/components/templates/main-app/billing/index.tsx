@@ -10,12 +10,13 @@ import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransa
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
+import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import { logger } from '@lib/monitoring/logger';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BillingHistoryItem, Currency } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
 import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, message } from 'antd';
-import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -94,69 +95,15 @@ function BillingPage() {
 
         // 2. Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
         const rawHistory = await getBillingHistoryForStore(Number(session?.user?.tenantId), effectiveHistoryStoreId);
-        // 3. Transform the raw data into a clean, simple format for the UI
-        const formattedHistory = rawHistory.map(event => {
-            // Handle subscription charges
-            if (event.event === 'subscription.charged') {
-                const entity = event.payload?.payment?.entity || {
-                    id: event.paymentId,
-                    amount: event.amount,
-                    currency: event.currency,
-                    description: event.description,
-                    invoice_id: event.invoiceId,
-                    status: event.status,
-                };
-                const subscriptionEntity = event.payload?.subscription?.entity || {
-                    current_start: event.current_start || event.created_at,
-                    current_end: event.current_end || event.created_at,
-                };
-                const startDate = formatDateTime(Timestamp.fromMillis(Number(subscriptionEntity.current_start || event.created_at || 0) * 1000), "date", formatter);
-                const endDate = formatDateTime(Timestamp.fromMillis(Number(subscriptionEntity.current_end || event.created_at || 0) * 1000), "date", formatter);
-                return {
-                    id: entity.id,
-                    type: "Subscription Payment",
-                    date: event.created_at * 1000, // Convert to JS timestamp
-                    description: entity.description || 'Subscription Payment',
-                    amount: entity.amount,
-                    currency: entity.currency,
-                    status: entity.status,
-                    invoiceId: entity.invoice_id,
-                    invoiceUrl: event.invoiceUrl,
-                    billingCycle: `${startDate}-${endDate}`,
-                };
-            }
-            // Handle top-up charges
-            if (event.event === 'order.paid' && event.transactionType === 'topup') {
-                const entity = event.payload?.payment?.entity || {
-                    id: event.paymentId,
-                    amount: event.amount,
-                    currency: event.currency,
-                    description: event.description,
-                    invoice_id: event.invoiceId,
-                    status: event.status,
-                };
-                const orderNotes = event.payload?.order?.entity?.notes || {
-                    packId: event.packId,
-                    packName: event.packName,
-                    creditAmount: event.creditAmount,
-                };
-                if (!Array.isArray(orderNotes) && orderNotes?.packId) {
-                    return {
-                        id: entity.id,
-                        type: "Enhancement Pack",
-                        date: event.created_at * 1000,
-                        description: entity.description || `${orderNotes?.packName || 'Enhancement Pack'}`,
-                        amount: entity.amount,
-                        currency: entity.currency,
-                        status: entity.status,
-                        invoiceId: entity.invoice_id,
-                        invoiceUrl: event.invoiceUrl,
-                        creditsRe: orderNotes?.creditAmount
-                    };
-                }
-            }
-            return null;
-        }).filter(Boolean); // Filter out any null values (like the subscription's initial order.paid)
+        // 3. Transform lean webhook audit rows and legacy raw payload rows into a clean UI model.
+        const formattedHistory = formatBillingHistoryEvents(rawHistory, {
+            formatBillingCycle: (startSeconds, endSeconds) => {
+                if (!startSeconds || !endSeconds) return undefined;
+                const startDate = formatDateTime(new Date(startSeconds * 1000), "date", formatter);
+                const endDate = formatDateTime(new Date(endSeconds * 1000), "date", formatter);
+                return `${startDate}-${endDate}`;
+            },
+        });
         setBillingHistory(formattedHistory);
     };
 
@@ -172,7 +119,7 @@ function BillingPage() {
             setActiveSubscription(subscription);
             setBillingHistory([]);
         } catch (error) {
-            console.error('Error fetching subscription data:', error);
+            logger.error('Error fetching subscription data', error);
             message.error(t('failedToLoadSubscription'));
         } finally {
             dispatch(stopLoader("Fetching subscription data"));
@@ -213,7 +160,7 @@ function BillingPage() {
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
         } catch (error) {
             message.error(t('paymentFailed'));
-            console.error('Payment flow failed in handleConfirmUpgrade', error);
+            logger.error('Payment flow failed in handleConfirmUpgrade', error);
         } finally {
             setIsPricingModalOpen({ active: false, action: "upgrade" });
             dispatch(stopLoader("Upgrading Plan"));
@@ -238,7 +185,7 @@ function BillingPage() {
             await refetchActiveSubscription();
         } catch (error) {
             message.error(t('paymentFailed'));
-            console.error('Location capacity payment failed in handleAddPaidLocation', error);
+            logger.error('Location capacity payment failed in handleAddPaidLocation', error);
         } finally {
             dispatch(stopLoader("Adding paid location"));
             setIsAddingPaidLocation(false);
@@ -263,7 +210,7 @@ function BillingPage() {
                 : previous);
         } catch (error) {
             message.error(t('enhancementsFailed'));
-            console.error('Enhancement pack purchase failed in handleCreditsPurchase', error);
+            logger.error('Enhancement pack purchase failed in handleCreditsPurchase', error);
         } finally {
             setIsCreditsModalOpen(false);
         }

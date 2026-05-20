@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** Implemented and hardened
-**Last Updated:** May 13, 2026
+**Last Updated:** May 20, 2026
 **Audience:** Developers only
 
 ## May 13, 2026 Runtime Contract
@@ -15,7 +15,9 @@ Free, public, and internal AI calls also write operation events for cost visibil
 
 Help Center and widget search are conditional audit paths. The shared search core marks provider-backed work through `aiProviderUsed` and `aiProviderOperations`; wrappers write operation records only when the request actually reached Gemini for image query generation, embedding generation, or answer generation. Canonical hits, instant-cache hits, and ordinary cached answers are not AI operations and do not create `menulistAiOperations` writes.
 
-Owner visibility is exposed in desktop and mobile Billing through total enhancements left, plan balance, used-this-cycle count, and pack balance. Desktop and mobile Transactions show credits used and token counts so owners and support can trace usage without exposing internal margin math.
+Owner visibility is exposed in desktop and mobile Billing through total enhancements left, plan balance, used-this-cycle count, and pack balance. Desktop and mobile Transactions show credits used, token counts, and normalized operation dates so owners and support can trace usage without exposing internal margin math.
+
+May 20 hardening: Transactions render `createdOn` through the shared date normalization utility so live Firestore `Timestamp`, serialized `{ seconds, nanoseconds }`, ISO string, and `Date` values display consistently on desktop, mobile, and the transaction details modal. Billing mutation failure paths now report through the monitored logger instead of browser `console.error`.
 
 ---
 

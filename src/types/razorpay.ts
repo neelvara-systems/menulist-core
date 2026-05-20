@@ -170,4 +170,6 @@ export interface BillingHistoryItem {
   status: string;
   invoiceId?: string;
   invoiceUrl?: string;
+  billingCycle?: string;
+  credits?: number;
 }
