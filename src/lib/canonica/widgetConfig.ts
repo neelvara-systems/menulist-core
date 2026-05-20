@@ -12,6 +12,49 @@ export const CANONICA_WIDGET_SCOPES = [
 
 export type CanonicaWidgetScope = typeof CANONICA_WIDGET_SCOPES[number];
 
+const MAX_WIDGET_BLOCKED_ROUTES = 50;
+const MAX_WIDGET_BLOCKED_ROUTE_LENGTH = 180;
+
+export function normalizeWidgetBlockedRoute(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    let route = trimmed;
+    try {
+        if (/^https?:\/\//i.test(trimmed)) {
+            const parsed = new URL(trimmed);
+            route = parsed.pathname || '/';
+        }
+    } catch {
+        return null;
+    }
+
+    route = route.split(/[?#]/)[0]?.trim() || '';
+    if (!route) return null;
+    if (route === '*' || route === '/*') return '*';
+    if (!route.startsWith('/')) route = `/${route}`;
+    route = route.replace(/\/{2,}/g, '/');
+    if (route.length > 1 && route.endsWith('/') && !route.endsWith('/*')) {
+        route = route.slice(0, -1);
+    }
+    if (route.length > MAX_WIDGET_BLOCKED_ROUTE_LENGTH) return null;
+    if (route.includes('*') && !route.endsWith('*')) return null;
+    return route;
+}
+
+export function normalizeWidgetBlockedRoutes(values: unknown): string[] {
+    const rawValues = typeof values === 'string'
+        ? values.split(/[\n,]/)
+        : Array.isArray(values) ? values : [];
+
+    return Array.from(new Set(
+        rawValues
+            .filter((value): value is string => typeof value === 'string')
+            .map(normalizeWidgetBlockedRoute)
+            .filter((value): value is string => Boolean(value))
+    )).slice(0, MAX_WIDGET_BLOCKED_ROUTES);
+}
+
 export const CanonicaWidgetConfigSchema = z.object({
     position: z.enum(['bottom-right', 'bottom-left', 'top-right', 'top-left']).default('bottom-right'),
     accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#6366f1'),
@@ -25,6 +68,10 @@ export const CanonicaWidgetConfigSchema = z.object({
     historyMode: z.enum(['session', 'forget']).default('session'),
     launcherVisibility: z.enum(['visible', 'manual']).default('visible'),
     mobileVisibility: z.enum(['show', 'hide']).default('show'),
+    blockedRoutes: z.preprocess(
+        normalizeWidgetBlockedRoutes,
+        z.array(z.string().min(1).max(MAX_WIDGET_BLOCKED_ROUTE_LENGTH)).max(MAX_WIDGET_BLOCKED_ROUTES).default([])
+    ),
 });
 
 export const PartialCanonicaWidgetConfigSchema = CanonicaWidgetConfigSchema.partial();
@@ -108,6 +155,7 @@ export function buildCanonicaWidgetEmbedCode(params: {
     if (config.historyMode !== DEFAULT_CANONICA_WIDGET_CONFIG.historyMode) attrs.push(`  data-history="${escapeHtmlAttribute(config.historyMode)}"`);
     if (config.launcherVisibility !== DEFAULT_CANONICA_WIDGET_CONFIG.launcherVisibility) attrs.push(`  data-launcher-visibility="${escapeHtmlAttribute(config.launcherVisibility)}"`);
     if (config.mobileVisibility !== DEFAULT_CANONICA_WIDGET_CONFIG.mobileVisibility) attrs.push(`  data-mobile-visibility="${escapeHtmlAttribute(config.mobileVisibility)}"`);
+    if (config.blockedRoutes.length > 0) attrs.push(`  data-blocked-routes="${escapeHtmlAttribute(config.blockedRoutes.join(','))}"`);
 
     return `<script\n${attrs.join('\n')}\n></script>`;
 }

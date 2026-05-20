@@ -22,6 +22,7 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
 
     const t = useTranslations('Website');
     const { toast } = useToast();
+    const normalizedCurrency = String(currency || 'INR').toUpperCase() === 'USD' ? 'USD' : 'INR';
     const [isLoading, setIsLoading] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
 
@@ -33,7 +34,7 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
     const handleCreditsCardClick = (pack: AIEnhancementPack) => {
         try {
             setIsLoading(true);
-            handleTopupPurchase(pack, currency).then((paymentResponse: any) => {
+            handleTopupPurchase(pack, normalizedCurrency).then((paymentResponse: any) => {
                 setIsLoading(false);
                 setShowConfetti(true);
                 setTimeout(() => setShowConfetti(false), 5000);
@@ -69,7 +70,7 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
                 </p>
                 <div id="credit-packs" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap', maxWidth: '800px', margin: 'var(--ws-space-10) auto 0' }}>
                     {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (
-                        <CreditPackCard activeSubscription={activeSubscription} key={pack.packId} pack={pack} currency={currency} onPurchase={handleCreditsCardClick} />
+                        <CreditPackCard activeSubscription={activeSubscription} key={pack.packId} pack={pack} currency={normalizedCurrency} onPurchase={handleCreditsCardClick} />
                     ))}
                 </div>
             </div>

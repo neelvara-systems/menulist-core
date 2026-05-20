@@ -18,6 +18,8 @@ Covered:
 - Same permanent subdomain before and after payment
 - Starter expiry holding page
 - Signed Razorpay subscription webhook
+- Authenticated Razorpay create/cancel API smoke with the corrected test owner credentials
+- Synthetic WhatsApp adapter verification/signature/parse/inbound-queue idempotency test
 - Store/project/user/draft/summary Firestore integrity
 - Local cleanup of disposable test data
 
@@ -53,6 +55,11 @@ PASS: starter public URL active before payment
 PASS: starter expiry holding page
 PASS: signed Razorpay subscription webhook
 PASS: payment preserves same public URL
+PASS: authenticated Razorpay create-subscription route
+PASS: Razorpay cancel-subscription cleanup route
+PASS: signed Razorpay webhook writes lean v2 audit row without raw payload
+PASS: starter distribution activation helper counts 2 unique signals
+PASS: synthetic WhatsApp adapter challenge/signature/parser/queue idempotency
 PASS: cleanup completed
 ```
 
@@ -62,6 +69,9 @@ Notes:
 - Public subdomain routing was tested locally with `curl --resolve {subdomain}.menulist.ai:3000:127.0.0.1` so the request exercised the tenant middleware instead of the marketing root.
 - The signed Razorpay webhook used the configured test webhook secret and verified that `subscriptions`, `stores`, and nested `platformSummary/storesSummary.stores.{storeId}.activePlanType` all synced to `starter`.
 - Final parity sweep also fixed sibling `storesSummary` merge writers so public starter, WhatsApp publish, outlet create/rename/deactivate/policy, platform block, and scheduler enrichment writes all preserve the nested `stores.{storeId}` map read by Cloud Functions.
+- Razorpay webhook audit storage now writes lean v2 payment transaction rows and local Razorpay route logs use summaries only, reducing Firestore document size and avoiding raw provider payloads in local log files.
+- Corrected owner credentials reached a real local NextAuth session, created a Razorpay test subscription, and cancelled it through the app cleanup route.
+- WhatsApp live delivery was not exercised, but adapter challenge verification, HMAC signature verification, image payload parsing, inbound queue create, duplicate idempotency, no-raw-payload storage, and cleanup were verified with synthetic payloads.
 - Disposable Auth, Firestore, Storage, project summary, storesSummary, subscription, payment transaction, and AI operation test rows were cleaned up.
 
 ---
@@ -72,6 +82,7 @@ Notes:
 npx tsc --noEmit --incremental false
 npm run lint
 cd functions && npx tsc --noEmit
+npm run build
 git diff --check
 node -e "JSON.parse(...locale files...)"
 ```
@@ -81,6 +92,7 @@ Result:
 - TypeScript app: pass
 - ESLint: pass
 - Cloud Functions TypeScript: pass
+- Production build: pass
 - Diff whitespace: pass
 - Website locale JSON parse: pass
 

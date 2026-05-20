@@ -136,7 +136,9 @@ const expireIfGracePeriodEndedServer = async (
     const { remainingDays, graceEndsDate } = getGracePeriodInfo(sub.pastDueSinceAt);
     if (remainingDays > 0) return sub;
 
-    validateTransition(sub.status, "expired", "server:grace-period-auto-expire");
+    if (!validateTransition(sub.status, "expired", "server:grace-period-auto-expire")) {
+        return sub;
+    }
     await updateSubscriptionServer(sub.id, {
         status: "expired",
         cycleEndDate: admin.firestore.Timestamp.now() as any,
@@ -154,6 +156,15 @@ const expireIfGracePeriodEndedServer = async (
     });
 
     return null;
+};
+
+export const getDirectActiveSubscriptionForStoreServer = async (
+    tenantId: number,
+    storeId: number,
+): Promise<FirestoreSubscriptionDoc | null> => {
+    const raw = await fetchSubscriptionRawServer(tenantId, storeId);
+    if (!raw) return null;
+    return await expireIfGracePeriodEndedServer(raw);
 };
 
 export const getActiveSubscriptionForStoreServer = async (
@@ -186,4 +197,5 @@ export const getCollectionRef = getSubscriptionsCollectionRefServer;
 export const createInitialSubscription = createInitialSubscriptionServer;
 export const updateSubscription = updateSubscriptionServer;
 export const getSubscriptionById = getSubscriptionByIdServer;
+export const getDirectActiveSubscriptionForStore = getDirectActiveSubscriptionForStoreServer;
 export const getActiveSubscriptionForStore = getActiveSubscriptionForStoreServer;

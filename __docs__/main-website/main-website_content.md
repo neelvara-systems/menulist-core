@@ -739,6 +739,26 @@ Description:
 - This is a day-one business-operations proof point for teams where not everyone should have owner access.
 - Keep the claim to implemented access controls. Do not imply payroll, attendance, shift planning, or HR management.
 
+### Customer Signals Block
+
+**Eyebrow:**
+
+> Customer signals
+
+**Heading:**
+
+> Your menu, understood after it goes live
+
+**Subline:**
+
+> MenuList records decision-ready customer signals from the public menu and official business page, then shows them as clear owner metrics.
+
+**Notes:**
+
+- This block should align visually with the other Features page groups, including the same small section label treatment.
+- Cards use left-side Lucide icons with title and supporting copy on the same row.
+- Keep the analytics claim privacy-conscious and decision-ready. Do not imply customer profiling, exact GPS tracking, heatmaps, or guaranteed attribution.
+
 ---
 
 ## Page 3: Multi-Location (/multi-location)

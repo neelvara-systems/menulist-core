@@ -88,9 +88,9 @@ async function syncStorePlanEntitlement(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VALID_TRANSITIONS: Record<string, PaymentStatus[]> = {
-    pending: ['active'],
+    pending: ['active', 'past_due', 'cancelled'],
     active: ['past_due', 'paused', 'cancelled', 'completed', 'expired'],
-    past_due: ['active', 'expired'],
+    past_due: ['active', 'cancelled', 'expired'],
     paused: ['active', 'cancelled', 'expired'],
     cancelled: ['expired'],
     expired: [],
@@ -201,8 +201,7 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
             const rzpStatus = RAZORPAY_STATUS_MAP[rzpSub.status];
 
             // 2a. Status mismatch
-            if (rzpStatus && rzpStatus !== sub.status) {
-                validateTransition(sub.status, rzpStatus, 'reconciliation:status-sync');
+            if (rzpStatus && rzpStatus !== sub.status && validateTransition(sub.status, rzpStatus, 'reconciliation:status-sync')) {
                 updates.status = rzpStatus;
                 syncDetails.push({
                     subId: sub.id,

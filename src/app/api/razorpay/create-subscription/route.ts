@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
 import { createInitialSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
-import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -18,6 +17,29 @@ import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+
+const createSubscriptionLogSummary = (input: {
+    currency: string;
+    interval: string;
+    planId: string;
+    quantity: number;
+    remainingCredits: number;
+    storeId: string | number;
+    tenantId: string | number;
+    unitAmount: number;
+    userType?: string;
+}) => ({
+    currency: input.currency,
+    interval: input.interval,
+    planId: input.planId,
+    quantity: input.quantity,
+    hasCarriedCredits: input.remainingCredits > 0,
+    storeId: input.storeId,
+    tenantId: input.tenantId,
+    unitAmount: input.unitAmount,
+    userType: input.userType,
+});
+
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
@@ -161,10 +183,32 @@ export const POST = withAuth(async (request, session) => {
                 remainingCredits,//Credits Carry Forward from previous subscription
             },
         }
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'NEW_SUBSCRIPTION', data: { data: "#########" }, });
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_CREATE_SUBSCRIPTION_PAYLOAD', data: { RazorpayCreateObj }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_CREATE_SUBSCRIPTION_REQUEST',
+            data: createSubscriptionLogSummary({
+                currency,
+                interval,
+                planId,
+                quantity,
+                remainingCredits,
+                storeId,
+                tenantId,
+                unitAmount,
+                userType,
+            }),
+        });
         const razorpaySubscription = await razorpayClient.subscriptions.create(RazorpayCreateObj);
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_CREATE_SUBSCRIPTION_RESPONSE', data: { razorpaySubscription }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_CREATE_SUBSCRIPTION_RESPONSE',
+            data: {
+                subscriptionId: razorpaySubscription.id,
+                status: razorpaySubscription.status,
+                totalCount: razorpaySubscription.total_count,
+                hasShortUrl: Boolean(razorpaySubscription.short_url),
+            },
+        });
 
         // Step C: Create Firestore Record
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, "id"> = {
@@ -219,21 +263,44 @@ export const POST = withAuth(async (request, session) => {
             quantity,  // Multi-Outlet Billing (Feature #4C-B): master + paid outlet locations
         };
 
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_CREATE_SUBSCRIPTION_INTERNAL', data: { subscriptionPayload }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_CREATE_SUBSCRIPTION_INTERNAL',
+            data: {
+                subscriptionId: razorpaySubscription.id,
+                tenantId,
+                storeId,
+                planId,
+                interval,
+                currency,
+                quantity,
+                status: subscriptionPayload.status,
+            },
+        });
         await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
 
         // 5. Response
         return NextResponse.json({ subscription: razorpaySubscription });
     } catch (error) {
-        console.error("Error creating Razorpay subscription:", error);
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'ERROR', data: { error }, });
-
-        // Use improved error handler with Firestore/Razorpay specific handling
-        return handlePaymentError(error, {
+        logger.error('Subscription creation failed', error as Error, {
             operation: 'create-subscription',
             userId,
             tenantId: session.user.tenantId,
-            endpoint: '/api/razorpay/create-subscription'
+            storeId: session.user.storeId,
+            endpoint: '/api/razorpay/create-subscription',
         });
+
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_CREATE_SUBSCRIPTION_ERROR',
+            data: {
+                message: error instanceof Error ? error.message : 'Unknown error',
+            },
+        });
+
+        return NextResponse.json(
+            { error: 'Failed to create subscription' },
+            { status: 500 }
+        );
     }
 });

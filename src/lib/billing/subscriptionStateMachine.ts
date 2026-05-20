@@ -18,18 +18,18 @@ import { logger } from "@lib/monitoring/logger";
  * Any transition not listed here is considered invalid and will be logged as a warning.
  *
  * State diagram:
- *   pending  ─→ active
+ *   pending  ─→ active | past_due | cancelled
  *   active   ─→ past_due | paused | cancelled | completed | expired (upgrade)
- *   past_due ─→ active | expired
+ *   past_due ─→ active | cancelled | expired
  *   paused   ─→ active | cancelled | expired (upgrade)
  *   cancelled ─→ expired
  *   expired  ─→ (terminal)
  *   completed ─→ (terminal)
  */
 const VALID_TRANSITIONS: Record<string, PaymentStatus[]> = {
-    pending:   ["active"],
+    pending:   ["active", "past_due", "cancelled"],
     active:    ["past_due", "paused", "cancelled", "completed", "expired"],
-    past_due:  ["active", "expired"],
+    past_due:  ["active", "cancelled", "expired"],
     paused:    ["active", "cancelled", "expired"],
     cancelled: ["expired"],
     expired:   [],
@@ -66,4 +66,8 @@ export function validateTransition(from: PaymentStatus, to: PaymentStatus, conte
         });
     }
     return isValid;
+}
+
+export function getAllowedSubscriptionTransitions(from: PaymentStatus): PaymentStatus[] {
+    return VALID_TRANSITIONS[from] || [];
 }

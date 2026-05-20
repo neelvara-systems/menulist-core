@@ -14,6 +14,7 @@ export const DB_COLLECTIONS = {
     SUBSCRIPTIONS: "subscriptions",
     SUBSCRIPTION_PAYMENTS: "subscription_payments",
     PAYMENT_TRANSACTIONS: "payment_transactions",
+    RAZORPAY_WEBHOOK_EVENTS: "razorpayWebhookEvents",
     TOPUPS: "topups",
     ANALYTICS: "analytics",
     INSIGHTS: "insights",

@@ -207,9 +207,9 @@ export default function SuccessPage() {
                     textAlign: 'left',
                     display: 'flex',
                     gap: '12px',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                 }}>
-                    <LuQrCode size={20} color="#ca8a04" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <LuQrCode size={20} color="#ca8a04" style={{ flexShrink: 0 }} />
                     <div>
                         <p style={{ fontSize: '14px', fontWeight: 600, color: '#854d0e', marginBottom: '4px' }}>
                             {t('CreateMenuSuccess.qrTitle')}
@@ -229,9 +229,9 @@ export default function SuccessPage() {
                     textAlign: 'left',
                     display: 'flex',
                     gap: '12px',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                 }}>
-                    <LuMapPin size={20} color="#2563eb" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <LuMapPin size={20} color="#2563eb" style={{ flexShrink: 0 }} />
                     <div>
                         <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e40af', marginBottom: '4px' }}>
                             {t('CreateMenuSuccess.mapsTitle')}

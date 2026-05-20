@@ -260,7 +260,7 @@ export type OnboardingSubscriptionRequest = z.infer<typeof OnboardingSubscriptio
 
 export const VerifyPaymentRequestSchema = z.object({
     razorpay_payment_id: z.string().regex(/^pay_[a-zA-Z0-9]+$/),
-    razorpay_subscription_id: z.string().regex(/^sub_[a-zA-Z0-9]+$/).optional(),
+    razorpay_subscription_id: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
     razorpay_order_id: z.string().regex(/^order_[a-zA-Z0-9]+$/).optional(),
     razorpay_signature: z.string().optional()
 });
@@ -283,7 +283,7 @@ export const VerifyTopupRequestSchema = z.object({
 export type VerifyTopupRequest = z.infer<typeof VerifyTopupRequestSchema>;
 
 export const CancelSubscriptionRequestSchema = z.object({
-    subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
+    subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).optional(),
     reason: z.string().min(1).max(500),
     otherReason: z.string().max(500).optional(),
     consent: z.boolean()
@@ -303,6 +303,14 @@ export const ResumeSubscriptionRequestSchema = z.object({
 });
 
 export type ResumeSubscriptionRequest = z.infer<typeof ResumeSubscriptionRequestSchema>;
+
+export const UpgradeSubscriptionRequestSchema = z.object({
+    rc: z.number().min(0).max(1_000_000),
+    nSi: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
+    oSi: z.string().regex(/^sub_[a-zA-Z0-9]+$/)
+});
+
+export type UpgradeSubscriptionRequest = z.infer<typeof UpgradeSubscriptionRequestSchema>;
 
 // ═══════════════════════════════════════════════════════════
 // BATCH OPERATIONS

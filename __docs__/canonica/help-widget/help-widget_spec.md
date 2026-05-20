@@ -80,6 +80,7 @@ Step 8: User can ask follow-up → conversation context maintained in session
 | `data-offset-x`     | No       | `20`           | Horizontal offset from edge (px)                       |
 | `data-offset-y`     | No       | `20`           | Vertical offset from edge (px)                         |
 | `data-history`      | No       | `session`      | `session` keeps in-memory page history until reload/clear. `forget` clears on close. |
+| `data-blocked-routes` | No     | —              | Comma-separated route patterns where the widget must not appear, for example `/help-center,/help-center/*` |
 | `data-feature`      | No       | —              | Optional mount-time product feature context            |
 | `data-page`         | No       | —              | Optional mount-time page context                       |
 | `data-workflow`     | No       | —              | Optional mount-time workflow context                   |
@@ -159,6 +160,7 @@ Supported runtime methods: `setContext()`, `page()`, `open()`, `close()`, `clear
 - Launcher always bottom-right (position config ignored on mobile)
 - Panel becomes near-full-screen (95vw x 90vh)
 - Touch-optimized input and buttons (44px min touch targets)
+- Route blocklist still applies on mobile; blocked routes hide the launcher and prevent programmatic open.
 
 ---
 
@@ -234,6 +236,7 @@ Aligned with Canonica Non-Goals Charter (doctrine/02):
 
 | Date       | Version | Change                                                                                                                                                     |
 | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-20 | 2.4.2   | Added route blocklist support for pages where client products must hide the widget. |
 | 2026-05-18 | 2.3.0   | Added current runtime contract for mount-time context attributes, explicit transient history behavior, clear-history API, and widget empty-state behavior. |
 | 2026-03-08 | 2.0.0   | Complete rewrite: context-aware support, launcher customization, session memory, feedback signals, origin allowlist, SDK context API, ChatGPT review table |
 | 2026-03-07 | 1.0.0   | Initial spec                                                                                                                                               |

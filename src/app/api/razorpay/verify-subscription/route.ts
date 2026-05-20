@@ -12,11 +12,34 @@ import { buildSecurityContext } from "@lib/security/securityContext";
 import { VerifyPaymentRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
-import { writeErrorLogEntry, writeLogEntry } from 'logs/utils';
+import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+
+const summarizePaymentForLog = (payment: any) => ({
+    paymentId: payment?.id,
+    status: payment?.status,
+    amount: payment?.amount,
+    currency: payment?.currency,
+    method: payment?.method,
+    invoiceId: payment?.invoice_id,
+    hasCard: Boolean(payment?.card),
+    hasUpi: Boolean(payment?.vpa || payment?.acquirer_data?.upi_transaction_id),
+});
+
+const summarizeSubscriptionForLog = (subscription: any) => ({
+    subscriptionId: subscription?.id,
+    status: subscription?.status,
+    currentStart: subscription?.current_start,
+    currentEnd: subscription?.current_end,
+    paidCount: subscription?.paid_count,
+    totalCount: subscription?.total_count,
+    quantity: subscription?.quantity,
+    planId: subscription?.notes?.planId,
+    interval: subscription?.notes?.interval,
+});
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -74,26 +97,39 @@ export const POST = withAuth(async (request, session) => {
         // We ask Razorpay's servers directly about the status of this payment.
 
         // Step A: Fetch the payment from Razorpay to verify its status
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'NEW_SUBSCRIPTION', data: { data: "#########" }, });
         const payment = await razorpayClient.payments.fetch(razorpay_payment_id);
-        await writeLogEntry({ logFileName: LOG_FILE, userId: userId, logType: 'RAZORPAY_PAYMENT_RESPONSE_VERIFY_SUBSCRIPTION', data: { payment }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId: userId,
+            logType: 'RAZORPAY_PAYMENT_RESPONSE_VERIFY_SUBSCRIPTION',
+            data: summarizePaymentForLog(payment),
+        });
 
-
-        // if (payment.status !== 'captured' || payment.status === 'authorized') {
-        //     console.error(`[Verification] Payment ${razorpay_payment_id} is not captured. Status: ${payment.status}`);
-        //     return NextResponse.json({ success: false, error: "Payment not successful." }, { status: 402 });
-        // }
-        // if (payment.status === 'captured' || payment.status === 'authorized') {
-        //     console.error(`[Verification] Payment ${razorpay_payment_id} is not captured. Status: ${payment.status}`);
-        //     return NextResponse.json({ success: false, error: "Payment not successful." }, { status: 402 });
-        // }
         // Step B: Fetch the full subscription details from Razorpay for accurate date info
         const providerSubscription = await razorpayClient.subscriptions.fetch(razorpay_subscription_id);
-        await writeLogEntry({ logFileName: LOG_FILE, userId: userId, logType: 'RAZORPAY_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION', data: { providerSubscription }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId: userId,
+            logType: 'RAZORPAY_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION',
+            data: summarizeSubscriptionForLog(providerSubscription),
+        });
 
         // Step C: Find our internal Firestore document for this subscription
         const internalSub = await getSubscriptionById(razorpay_subscription_id);
-        await writeLogEntry({ logFileName: LOG_FILE, userId: userId, logType: 'INTERNAL_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION', data: { internalSub }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId: userId,
+            logType: 'INTERNAL_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION',
+            data: {
+                subscriptionId: razorpay_subscription_id,
+                found: Boolean(internalSub),
+                status: internalSub?.status,
+                tenantId: internalSub?.tenantId,
+                storeId: internalSub?.storeId,
+                planId: internalSub?.planId,
+                quantity: internalSub?.quantity,
+            },
+        });
 
         if (!internalSub) {
             logger.error('Internal subscription not found', undefined, {
@@ -142,7 +178,9 @@ export const POST = withAuth(async (request, session) => {
         if (!planDetails) {
             logger.error('Plan details not found in subscription notes', undefined, {
                 subscriptionId: razorpay_subscription_id,
-                notes: providerSubscription.notes,
+                planId: providerSubscription.notes?.planId,
+                interval: providerSubscription.notes?.interval,
+                userType: providerSubscription.notes?.userType,
                 userId: userId
             });
             return NextResponse.json({ success: false, error: "Could not derive plan details." }, { status: 500 });
@@ -152,7 +190,9 @@ export const POST = withAuth(async (request, session) => {
         const creditsForPlan = planDetails[priceKey]?.monthlyCredits || 0;
         const paymentAmount = Number(payment.amount || 0);
 
-        validateTransition(internalSub.status, 'active', 'api:verify-subscription');
+        if (!validateTransition(internalSub.status, 'active', 'api:verify-subscription')) {
+            return NextResponse.json({ error: "Subscription cannot be activated in its current state." }, { status: 409 });
+        }
         const updatePayload: Partial<FirestoreSubscriptionDoc> = {
             status: 'active',
             planName: planDetails.name,
@@ -205,7 +245,18 @@ export const POST = withAuth(async (request, session) => {
             billingHistory: [razorpay_payment_id],
         };
 
-        await writeLogEntry({ logFileName: LOG_FILE, userId: userId, logType: 'UPDATE_SUBSCRIPTION_VERIFY_SUBSCRIPTION', data: { updatePayload }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId: userId,
+            logType: 'UPDATE_SUBSCRIPTION_VERIFY_SUBSCRIPTION',
+            data: {
+                subscriptionId: razorpay_subscription_id,
+                status: updatePayload.status,
+                quantity: updatePayload.quantity,
+                totalPaymentsMadeCount: updatePayload.totalPaymentsMadeCount,
+                totalPaymentsNeededCount: updatePayload.totalPaymentsNeededCount,
+            },
+        });
         await updateSubscription(razorpay_subscription_id, updatePayload);
         await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
         await safeSyncStorePlanEntitlementFromSubscription(
@@ -266,10 +317,16 @@ export const POST = withAuth(async (request, session) => {
             api: 'verify-subscription',
             userId: userId
         });
-        console.error('Subscription verification API error:', error);
-        await writeErrorLogEntry(LOG_FILE, error);
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId,
+            logType: 'VERIFY_SUBSCRIPTION_ERROR',
+            data: {
+                message: error instanceof Error ? error.message : 'Unknown error',
+            },
+        });
         return NextResponse.json(
-            { error: 'Failed to verify subscription', details: (error as Error).message },
+            { error: 'Failed to verify subscription' },
             { status: 500 }
         );
     }

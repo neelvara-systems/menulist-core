@@ -44,27 +44,30 @@ export default function PreparedForYouSection() {
                 className="ws-card"
                 style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)', height: '100%' }}
               >
-                <div
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: 'var(--ws-radius-md)',
-                    backgroundColor: 'var(--ws-bg-accent)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon size={24} color="var(--ws-brand-secondary)" />
-                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-4)' }}>
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: 'var(--ws-radius-md)',
+                      backgroundColor: 'var(--ws-bg-accent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon size={24} color="var(--ws-brand-secondary)" />
+                  </div>
 
-                <div>
-                  <h3 className="ws-h3" style={{ fontSize: '1.0625rem' }}>
-                    {cap.title}
-                  </h3>
-                  <p className="ws-body-sm" style={{ fontWeight: 500, color: 'var(--ws-brand-secondary)', marginTop: '2px' }}>
-                    {cap.subtitle}
-                  </p>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>
+                    <h3 className="ws-h3" style={{ fontSize: '1.0625rem', margin: 0 }}>
+                      {cap.title}
+                    </h3>
+                    <p className="ws-body-sm" style={{ fontWeight: 500, color: 'var(--ws-brand-secondary)', marginTop: '2px' }}>
+                      {cap.subtitle}
+                    </p>
+                  </div>
                 </div>
 
                 <p className="ws-caption" style={{ flex: 1 }}>

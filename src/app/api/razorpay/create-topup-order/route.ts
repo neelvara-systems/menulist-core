@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { aiEnhancementPacksList } from '@data/PlatformPlansList';
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
-import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -11,7 +10,7 @@ import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
 import { CreateTopupOrderRequestSchema } from "@lib/validation/apiSchemas";
-import { writeErrorLogEntry } from 'logs/utils';
+import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
@@ -146,15 +145,25 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ order: razorpayOrder });
 
     } catch (error) {
-        console.error("Error creating Razorpay top-up order:", error);
-        await writeErrorLogEntry(LOG_FILE, error);
-
-        // Use improved error handler with Firestore/Razorpay specific handling
-        return handlePaymentError(error, {
+        logger.error('Top-up order creation failed', error as Error, {
             operation: 'create-topup-order',
             userId,
             tenantId,
-            endpoint: '/api/razorpay/create-topup-order'
+            storeId,
+            endpoint: '/api/razorpay/create-topup-order',
         });
+
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_CREATE_TOPUP_ORDER_ERROR',
+            data: {
+                message: error instanceof Error ? error.message : 'Unknown error',
+            },
+        });
+
+        return NextResponse.json(
+            { error: 'Failed to create top-up order' },
+            { status: 500 }
+        );
     }
 });

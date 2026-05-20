@@ -35,7 +35,7 @@
 
 Widget v2 reuses ALL existing Canonica collections. Zero new Firestore collections created. The feedback route writes to `aiSearchHistory` (existing) and `canonica_signal_events` (existing).
 
-The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `canonicaWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins.
+The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `canonicaWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
 
 ---
 
@@ -90,6 +90,7 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 19. **No-op config save guard** — dashboard saves compare normalized config/origin values before writing, so repeated Save clicks do not increment `widgetConfigVersion` or write the store document.
 20. **Duplicate feedback guard** — repeated identical thumbs feedback returns success without another `aiSearchHistory` write or duplicate negative signal event.
 21. **Predictive context cache** — the loader caches same-page predictive results/misses for a short TTL, avoiding repeated auth/index reads from route remounts with identical context.
+22. **Route blocklist is local** — blocked routes ride the existing runtime config response and use `window.location.pathname`; route changes do not create Firebase reads, writes, or listeners.
 
 ## Cache Strategy Decision
 
@@ -125,6 +126,7 @@ The mutation engine (signal events from widget feedback → mutation proposals �
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-20 | 2.4.2   | Added route blocklist cost note: no new collections, reads, writes, or Firestore listeners. |
 | 2026-05-19 | 2.4.1   | Added widget cost pass: 60-second runtime config server cache, negative auth cache, no-op config save guard, duplicate feedback guard, and predictive context cache. |
 | 2026-05-19 | 2.4.0   | Added widget management cost model: runtime config endpoint, explicit dashboard saves, and scoped `canonicaWidgetApi` credential writes. |
 | 2026-05-19 | 2.3.1   | Added widget Firebase cost pass: hash-only Canonica auth, short positive widget auth cache, predictive trigger index cache, same-tab MenuList test-key cache, and context-scoped search cache keys. |

@@ -58,7 +58,7 @@ export default function HeroSection() {
 
               <div className="ws-hero-official__proof">
                 {[LuShieldCheck, LuQrCode, LuSmartphone].map((Icon, index) => (
-                  <div key={index} className="ws-hero-official__proof-item">
+                  <div key={index} className="ws-hero-proof-item">
                     <Icon size={16} />
                     <span>{t(`Hero.proof${index}`)}</span>
                   </div>

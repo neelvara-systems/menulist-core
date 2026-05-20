@@ -65,11 +65,13 @@ This adapter does **not** replace MenuList's native Help Center. It loads the sa
 
 ## Widget Management Console
 
-Canonica operators manage the embeddable widget from `/canonica/widget`. This is the single dashboard surface for widget keys, install snippets, appearance, behavior, origin allowlists, context snippets, and desktop/mobile preview.
+Canonica operators manage the embeddable widget from `/canonica/widget`. This is the single dashboard surface for widget keys, install snippets, appearance, behavior, origin allowlists, route blocklists, context snippets, and desktop/mobile preview. The screen is organized as UI Configuration, Install & Embed, and Access & Security so customer-facing settings stay separate from operational internals.
 
 Saved widget settings are stored on the workspace store document under `widgetConfig`, `widgetAllowedOrigins`, and `widgetConfigVersion`. The installed script reads those settings through `GET /api/widget/config` with the widget key, so already-installed snippets can pick up dashboard changes without requiring customers to edit script attributes. Script attributes remain supported and intentionally override remote config for per-environment exceptions.
 
-Runtime config and predictive suggestions are intentionally short-cached. The server and browser both avoid repeated config reads for the same widget key/origin, unchanged dashboard saves do not write, and identical page-context predictive checks reuse a short-lived suggestion/miss. This keeps the embed centrally configurable without adding realtime listeners or page-load writes.
+Runtime config and predictive suggestions are intentionally short-cached. The server and browser both avoid repeated config reads for the same widget key/origin, unchanged dashboard saves do not write, and identical page-context predictive checks reuse a short-lived suggestion/miss. This keeps the embed centrally configurable without adding realtime listeners or page-load writes. Cache policy is not exposed as a customer setting; the management UI only tells operators that installed widgets can take up to 60 seconds to pick up saved changes.
+
+Route blocklists are stored in the same dashboard config and evaluated inside the loader script against the host page pathname. They are for pages where the client product already has its own help surface, such as `/help-center` or `/help-center/*`.
 
 Widget keys are stored separately from broader Canonica public API credentials:
 
@@ -145,6 +147,8 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-20 | 2.4.2   | Added route blocklist settings for hiding the widget on selected client routes without adding Firebase reads. |
+| 2026-05-20 | 2.4.1   | Split widget management into customer-understandable tabs and removed the standalone Cost & Cache customer-facing section. |
 | 2026-05-19 | 2.4.0   | Added dedicated `/canonica/widget` management console, scoped `canonicaWidgetApi` credentials, public runtime config endpoint, and dashboard-backed script config loading. |
 | 2026-05-19 | 2.3.1   | Firebase cost hardening added: hash-only Canonica auth path, short widget auth cache, predictive trigger index cache, same-tab test-key cache, and context-scoped search cache keys. |
 | 2026-05-18 | 2.3.0   | Runtime widget contract updated: mount-time script context attributes, `data-history`, explicit clear-history API, open/close events, and MenuList external-client test host context wiring.                                                            |

@@ -148,19 +148,19 @@ export default function RefundPolicyPage() {
                         return (
                             <AnimateStaggerChild key={item.title} index={i}>
                                 <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                         <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                             <Icon size={22} color="var(--ws-brand-secondary)" />
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                                        <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
                                             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
                                         </div>
                                     </div>
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                         {item.points.map((point) => (
-                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                                 <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{point}</span>
                                             </li>
                                         ))}
@@ -186,19 +186,19 @@ export default function RefundPolicyPage() {
                         return (
                             <AnimateStaggerChild key={item.title} index={i}>
                                 <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                         <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                             <Icon size={22} color="var(--ws-brand-secondary)" />
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                                        <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
                                             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
                                         </div>
                                     </div>
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                         {item.points.map((point) => (
-                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                                 <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{point}</span>
                                             </li>
                                         ))}

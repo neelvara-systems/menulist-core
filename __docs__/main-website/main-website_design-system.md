@@ -191,6 +191,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 - Mobile: `px-5` (20px sides)
 - Tablet: `px-8` (32px sides)
 - Desktop: `px-8` (32px sides, centered with max-width)
+- Website routes use a website-scoped `border-box` baseline and `width: 100%` containers so inline padding, cards, and grids do not create mobile horizontal overflow.
 
 ---
 

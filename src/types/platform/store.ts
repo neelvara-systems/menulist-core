@@ -568,6 +568,7 @@ export type StoreDataType = {
         historyMode?: 'session' | 'forget';
         launcherVisibility?: 'visible' | 'manual';
         mobileVisibility?: 'show' | 'hide';
+        blockedRoutes?: string[];
     };
 
     /**

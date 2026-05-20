@@ -137,8 +137,8 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
             <div className="flex-grow">
                 <ul className="space-y-3 text-gray-600 dark:text-gray-300">
                     {getPlanBullets(plan.planId).map((bullet, index) => (
-                        <li key={index} className="flex items-start">
-                            <LuCheck className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-green-500" />
+                        <li key={index} className="flex items-center">
+                            <LuCheck className="h-5 w-5 mr-3 flex-shrink-0 text-green-500" />
                             <span className='text-gray-700 dark:text-gray-200 text-sm'>{bullet}</span>
                         </li>
                     ))}

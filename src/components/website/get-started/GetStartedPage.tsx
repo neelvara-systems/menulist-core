@@ -110,12 +110,12 @@ export default function GetStartedPage() {
           <div style={{ display: 'grid', gap: 'var(--ws-space-4)' }}>
             {steps.map(({ icon: Icon, title, desc }, index) => (
               <AnimateStaggerChild key={title} index={index}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                   <div style={{ width: 42, height: 42, borderRadius: 'var(--ws-radius-md)', background: 'var(--ws-bg-accent)', color: 'var(--ws-brand-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Icon size={21} />
                   </div>
-                  <div>
-                    <h3 className="ws-h3">{title}</h3>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>
+                    <h3 className="ws-h3" style={{ margin: 0 }}>{title}</h3>
                     <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{desc}</p>
                   </div>
                 </div>

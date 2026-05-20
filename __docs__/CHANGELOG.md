@@ -19,6 +19,10 @@
 
 - **Claim conversion is transaction-safe** — Draft validation, tenant/store creation, project creation, summary sync, and draft conversion now commit atomically.
 - **Razorpay webhook continuity verified** — A signed local subscription webhook activates the subscription, syncs store entitlement, updates storesSummary, and revalidates public cache.
+- **Razorpay webhook replay protection added** — Signed webhook retries now claim a server-only event lock before billing mutations, preventing duplicate transaction rows and repeated subscription writes.
+- **Billing mutation guardrails tightened** — Cancel, pause, resume, upgrade, verification, reconciliation, and grace-period expiry now block invalid state writes, validate request bodies consistently, and avoid master/outlet fallback when mutating the current store subscription.
+- **Billing actions recover faster during rate-limit provider outages** — Upstash failures now time out quickly and open a short local bypass window instead of delaying every payment mutation.
+- **Pricing page credit pack crash fixed** — Logged-in stores with lowercase subscription currency values now normalize currency before rendering or purchasing credit packs.
 - **Public upload source files remain stable** — Draft uploads now use Firebase download-token URLs and carry file type/size into the claimed project.
 - **Plan changes preserve paid location count** — Existing subscriptions no longer fall back to `quantity: 1` when creating a new Razorpay subscription for an upgrade or paid-location checkout.
 

@@ -136,19 +136,19 @@ export default function PrivacyPolicyPage() {
                         return (
                             <AnimateStaggerChild key={item.title} index={i}>
                                 <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)', height: '100%' }}>
-                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                         <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                             <Icon size={22} color="var(--ws-brand-secondary)" />
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                                        <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
                                             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
                                         </div>
                                     </div>
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                         {item.points.map((point) => (
-                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                                 <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{point}</span>
                                             </li>
                                         ))}
@@ -191,19 +191,19 @@ export default function PrivacyPolicyPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 'var(--ws-space-6)', marginTop: 'var(--ws-space-12)', maxWidth: '960px', marginLeft: 'auto', marginRight: 'auto' }}>
                     <AnimateStaggerChild index={0}>
                         <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                 <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <LuUserCheck size={22} color="var(--ws-brand-secondary)" />
                                 </div>
-                                <div>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Service providers</h3>
+                                <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>Service providers</h3>
                                     <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>We share data with trusted vendors who help us operate the platform.</p>
                                 </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                 {['Payment processing (Razorpay) — PCI-compliant and secure', 'Cloud hosting (Vercel, Google Cloud, Firebase)', 'Content generation (Google Gemini) — under strict confidentiality agreements'].map((p) => (
-                                    <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                         <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>
                                     </li>
                                 ))}
@@ -212,19 +212,19 @@ export default function PrivacyPolicyPage() {
                     </AnimateStaggerChild>
                     <AnimateStaggerChild index={1}>
                         <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                 <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <LuShield size={22} color="var(--ws-brand-secondary)" />
                                 </div>
-                                <div>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Legal requirements</h3>
+                                <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>Legal requirements</h3>
                                     <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>We may disclose your information when legally required to comply with court orders, subpoenas, or applicable law.</p>
                                 </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                 {['We never sell, rent, or trade your personal information', 'Data is shared only when strictly necessary for service operation', 'All third parties operate under confidentiality agreements'].map((p) => (
-                                    <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                    <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                         <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>
                                     </li>
                                 ))}
@@ -233,19 +233,19 @@ export default function PrivacyPolicyPage() {
                     </AnimateStaggerChild>
                     <AnimateStaggerChild index={2}>
                         <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                 <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <LuUsers size={22} color="var(--ws-brand-secondary)" />
                                 </div>
-                                <div>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>Authorized team access</h3>
+                                <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>Authorized team access</h3>
                                     <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>Owners may give staff access to the business account. Staff can see only the areas their assigned role allows.</p>
                                 </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                 {['Staff access is controlled by the business owner', 'Role and store assignments limit what staff can access', 'Owners should remove, deactivate, or sign out staff when access is no longer needed'].map((p) => (
-                                    <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                    <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                        <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                         <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>
                                     </li>
                                 ))}
@@ -269,19 +269,19 @@ export default function PrivacyPolicyPage() {
                         return (
                             <AnimateStaggerChild key={item.title} index={i}>
                                 <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                                         <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                             <Icon size={22} color="var(--ws-brand-secondary)" />
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                                        <div style={{ minWidth: 0, textAlign: 'left' }}>
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
                                             <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
                                         </div>
                                     </div>
                                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                                         {item.points.map((point) => (
-                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'flex-start' }}>
-                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0, marginTop: '3px' }} />
+                                            <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
+                                                <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                                 <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{point}</span>
                                             </li>
                                         ))}

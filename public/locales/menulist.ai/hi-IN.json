@@ -2846,6 +2846,7 @@
             "group5F1Desc": "हर सेव अपने आप चेक होता है। मिसिंग कीमतें, खाली कैटेगरी या टूटे आइटम पब्लिश करने से पहले फ्लैग होते हैं।",
             "group5F2Title": "ग्राहक ट्रस्ट इंडिकेटर",
             "group5F2Desc": "लोकेशन, ओपन स्टेटस, ऑफरिंग टाइप, फ्रेशनेस डेट, सर्च, सेक्शंस और साफ एक्शन आपके पब्लिक मेन्यू पर दिखते हैं। ग्राहकों को दिखता है कि आपका मेन्यू असली और अपडेटेड है।",
+            "analyticsLabel": "ग्राहक संकेत",
             "analyticsTitle": "Live होने के बाद आपका menu समझ में आता है",
             "analyticsSubtitle": "MenuList public menu और Official Business Page से decision-ready customer signals record करता है और owner metrics में साफ दिखाता है।",
             "analytics0Title": "Session quality measured रहती है",

@@ -3111,6 +3111,7 @@
             "group5F1Desc": "Every save is checked automatically. Missing prices, empty categories, or broken items are flagged before publishing.",
             "group5F2Title": "Customer trust indicators",
             "group5F2Desc": "Location, open status, offering type, freshness date, search, sections, and clear actions appear on your public menu. Customers see evidence that your menu is real and current.",
+            "analyticsLabel": "Customer signals",
             "analyticsTitle": "Your menu, understood after it goes live",
             "analyticsSubtitle": "MenuList records decision-ready customer signals from the public menu and official business page, then shows them as clear owner metrics.",
             "analytics0Title": "Session quality is measured",

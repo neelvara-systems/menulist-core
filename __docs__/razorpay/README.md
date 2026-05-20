@@ -1,7 +1,7 @@
 # Razorpay Payment System — Documentation Hub
 
 **Status:** Production Ready — Billing Architecture FROZEN | Razorpay is the ONLY payment provider
-**Last Updated:** Feb 12, 2026
+**Last Updated:** May 20, 2026
 
 ---
 
@@ -67,8 +67,9 @@ All 34 files are inventoried in [§2 — File Inventory](./razorpay_impl.md#2-fi
 - **Reset mechanism:** Two-layer — webhook (monthly plans) + lazy reset in capacity check (yearly + safety net)
 - **Grace period:** 7 days for failed payments, enforced in DAL (`expireIfGracePeriodEnded`)
 - **Top-ups:** One-time Razorpay Orders (not Subscriptions)
-- **Billing history:** Sourced from webhook event log (`paymentTransactions` collection, append-only)
-- **State machine:** All status transitions validated by `subscriptionStateMachine.ts` — warns on invalid, never blocks
+- **Billing history:** Sourced from webhook event log (`paymentTransactions` collection, append-only lean v2 summaries)
+- **Webhook idempotency:** Signed webhook events are claimed in server-only `razorpayWebhookEvents/{eventKey}` before billing mutations, so duplicate retries do not repeat writes.
+- **State machine:** All status transitions validated by `subscriptionStateMachine.ts`; invalid transitions are blocked before status writes.
 - **DAL architecture:** 3-layer composition — `fetchSubscriptionRaw` → `expireIfGracePeriodEnded` → `getActiveSubscriptionForStore`
 - **Reconciliation:** Runs in Firebase nightly scheduler (2:30 AM UTC) via `functions/src/billing/reconcileSubscriptions.ts` — syncs Firestore ↔ Razorpay
 - **Architecture status:** FROZEN — only new plans, price changes, credit packs allowed; no structural changes

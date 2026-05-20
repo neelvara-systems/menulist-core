@@ -89,8 +89,7 @@ export async function GET(request: Request) {
                 const rzpStatus = RAZORPAY_STATUS_MAP[rzpSub.status];
 
                 // 3a. Status mismatch
-                if (rzpStatus && rzpStatus !== sub.status) {
-                    validateTransition(sub.status, rzpStatus, `reconciliation:status-sync`);
+                if (rzpStatus && rzpStatus !== sub.status && validateTransition(sub.status, rzpStatus, `reconciliation:status-sync`)) {
                     updates.status = rzpStatus;
                     syncDetails.push({
                         subId: sub.id,
@@ -209,7 +208,7 @@ export async function GET(request: Request) {
             api: "reconcile-subscriptions",
         });
         return NextResponse.json(
-            { error: "Reconciliation failed", details: (error as Error).message },
+            { error: "Reconciliation failed" },
             { status: 500 }
         );
     }

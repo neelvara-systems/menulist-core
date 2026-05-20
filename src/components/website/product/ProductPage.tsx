@@ -153,8 +153,8 @@ export default function ProductPage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
                 {step1Points.map((p) => (
-                  <div key={p} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
-                    <LuCheck size={16} color="var(--ws-brand-secondary)" style={{ marginTop: '3px', flexShrink: 0 }} />
+                  <div key={p} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'center' }}>
+                    <LuCheck size={16} color="var(--ws-brand-secondary)" style={{ flexShrink: 0 }} />
                     <p className="ws-body-sm">{p}</p>
                   </div>
                 ))}
@@ -253,8 +253,8 @@ export default function ProductPage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
                 {step3Points.map((p) => (
-                  <div key={p} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
-                    <LuCheck size={16} color="var(--ws-brand-secondary)" style={{ marginTop: '3px', flexShrink: 0 }} />
+                  <div key={p} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'center' }}>
+                    <LuCheck size={16} color="var(--ws-brand-secondary)" style={{ flexShrink: 0 }} />
                     <p className="ws-body-sm">{p}</p>
                   </div>
                 ))}
@@ -310,12 +310,12 @@ export default function ProductPage() {
             const Icon = surface.icon;
             return (
               <AnimateStaggerChild key={surface.title} index={index} style={{ height: '100%' }}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start', height: '100%' }}>
+                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Icon size={20} color="var(--ws-brand-secondary)" />
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{surface.title}</h3>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{surface.title}</h3>
                     <p className="ws-caption" style={{ marginTop: '4px' }}>{surface.desc}</p>
                   </div>
                 </div>
@@ -341,14 +341,14 @@ export default function ProductPage() {
                 gap: 'var(--ws-space-4)',
               }}
             >
-              {step4Points.map((p, i) => (
-                <AnimateStaggerChild key={p} index={i}>
-                  <div style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--ws-brand-secondary)', marginTop: '7px', flexShrink: 0 }} />
+                {step4Points.map((p, i) => (
+                  <AnimateStaggerChild key={p} index={i}>
+                  <div style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'center' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--ws-brand-secondary)', flexShrink: 0 }} />
                     <p className="ws-body-sm">{p}</p>
                   </div>
                 </AnimateStaggerChild>
-              ))}
+                ))}
             </div>
           </div>
         </AnimateOnScroll>
@@ -387,12 +387,12 @@ export default function ProductPage() {
             };
             return (
               <AnimateStaggerChild key={index} index={index} style={{ height: '100%' }}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start', height: '100%' }}>
+                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
                   <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Icon size={20} color="var(--ws-brand-secondary)" />
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
                     <p className="ws-caption" style={{ marginTop: '4px' }}>{item.desc}</p>
                   </div>
                 </div>

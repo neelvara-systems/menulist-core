@@ -118,6 +118,7 @@ export default function MenuListCanonicaWidgetTestHost() {
         && activeStoreId
         && !pathname.startsWith('/widget')
         && !pathname.startsWith('/canonica')
+        && !pathname.startsWith('/help-center')
     );
 
     const productContext = useMemo(() => {

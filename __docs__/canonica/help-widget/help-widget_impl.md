@@ -111,6 +111,7 @@ v2 additions:
 - `data-history`: `session` (default) or `forget`
 - `data-launcher-visibility`: `visible` or `manual`
 - `data-mobile-visibility`: `show` or `hide`
+- `data-blocked-routes`: comma-separated route patterns where the widget must stay hidden, for example `/help-center,/help-center/*`
 - `data-use-remote-config`: set to `false` to opt out of dashboard config lookup
 - `data-feature`, `data-page`, `data-workflow`, `data-entity-hints`, `data-user-role`, `data-plan`: optional mount-time context attributes for products that cannot call the SDK before the widget script initializes
 
@@ -140,6 +141,8 @@ defaults → remote dashboard config → explicit script attributes
 ```
 
 This keeps already-installed scripts centrally manageable while preserving per-environment script overrides. Runtime config is cached in browser `sessionStorage` and on the server for the public 60-second TTL. It uses no realtime listeners and performs no page-load writes.
+
+Route blocklist support lives in the loader script, not in a backend route. Saved `widgetConfig.blockedRoutes` is returned with the normal runtime config response, and the loader evaluates it against `window.location.pathname`. Exact patterns such as `/help-center` match one route; child-route patterns such as `/help-center/*` match the parent and all descendants. When the current route is blocked, the launcher is hidden, an open widget is closed, `open()` no-ops, and predictive-help calls are skipped.
 
 Predictive help calls are also deduped in the loader: identical sanitized page/context payloads reuse the last short-lived suggestion or miss, so route remounts do not repeatedly hit auth, trigger-index reads, or cooldown checks for the same page state.
 
@@ -309,7 +312,8 @@ Response:
     "zIndex": 2147483646,
     "historyMode": "session",
     "launcherVisibility": "visible",
-    "mobileVisibility": "show"
+    "mobileVisibility": "show",
+    "blockedRoutes": ["/help-center", "/help-center/*"]
   }
 }
 ```
@@ -500,6 +504,7 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-20 | 2.4.2   | Added saved and script-level blocked route support so client products can hide the widget on selected routes without extra Firebase reads. |
 | 2026-05-19 | 2.3.1   | Widget Firebase cost hardening: hash-only Canonica auth path, 15-second positive widget auth cache, 60-second predictive trigger index cache, same-tab MenuList test-key cache, and context-scoped search cache keys. |
 | 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, iframe ready handshake, MenuList external-client context wiring, page-change history reset, and stale async response guard in the iframe client. |
 | 2026-05-12 | 2.2.1   | Public endpoint cost/security hardening: malformed key short-circuit before Firestore lookup, hash-based rate-limit keys before auth lookup, positive workspace validation, and tenant-filtered vector-search/index documentation. |

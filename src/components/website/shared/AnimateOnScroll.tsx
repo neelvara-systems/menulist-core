@@ -11,12 +11,12 @@ type AnimateCSSProperties = CSSProperties & {
 
 type InViewRef = RefObject<HTMLDivElement | null>;
 
-const REVEAL_DELAY_STEP = 0.08;
-const REVEAL_DISTANCE = 18;
-const REVEAL_DURATION_MS = 600;
-const REVEAL_THRESHOLD = 0.08;
-const REVEAL_ROOT_MARGIN = "0px 0px -8% 0px";
-const REVEAL_FALLBACK_VP_CHECK_DELAY_MS = 320;
+const REVEAL_DELAY_STEP = 0.09;
+const REVEAL_DISTANCE = 12;
+const REVEAL_DURATION_MS = 520;
+const REVEAL_THRESHOLD = 0.1;
+const REVEAL_ROOT_MARGIN = "0px 0px -6% 0px";
+const REVEAL_FALLBACK_VP_CHECK_DELAY_MS = 120;
 
 interface AnimateOnScrollProps {
   children: ReactNode;
@@ -56,6 +56,16 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion;
 }
 
+function useHasMounted() {
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  return hasMounted;
+}
+
 function useInViewReveal(ref: InViewRef, shouldReveal = false) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -87,11 +97,41 @@ function useInViewReveal(ref: InViewRef, shouldReveal = false) {
       return;
     }
 
-    const observer = new IntersectionObserver(
+    let revealHandled = false;
+    let scrollRaf = 0;
+    let observer: IntersectionObserver;
+
+    const revealIfVisible = () => {
+      if (revealHandled || !checkInViewport()) {
+        return;
+      }
+
+      revealHandled = true;
+      setIsVisible(true);
+      observer.disconnect();
+      window.removeEventListener("scroll", handleViewportChange);
+      window.removeEventListener("resize", handleViewportChange);
+    };
+
+    const handleViewportChange = () => {
+      if (scrollRaf) {
+        return;
+      }
+
+      scrollRaf = window.requestAnimationFrame(() => {
+        scrollRaf = 0;
+        revealIfVisible();
+      });
+    };
+
+    observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
+          revealHandled = true;
           setIsVisible(true);
           observer.disconnect();
+          window.removeEventListener("scroll", handleViewportChange);
+          window.removeEventListener("resize", handleViewportChange);
         }
       },
       {
@@ -101,16 +141,22 @@ function useInViewReveal(ref: InViewRef, shouldReveal = false) {
     );
 
     observer.observe(currentElement);
+    window.addEventListener("scroll", handleViewportChange, { passive: true });
+    window.addEventListener("resize", handleViewportChange);
 
     const fallbackTimer = window.setTimeout(() => {
-      if (checkInViewport()) {
-        setIsVisible(true);
-      }
+      revealIfVisible();
     }, REVEAL_FALLBACK_VP_CHECK_DELAY_MS);
 
     return () => {
+      revealHandled = true;
       observer.disconnect();
       clearTimeout(fallbackTimer);
+      window.removeEventListener("scroll", handleViewportChange);
+      window.removeEventListener("resize", handleViewportChange);
+      if (scrollRaf) {
+        window.cancelAnimationFrame(scrollRaf);
+      }
     };
   }, [ref, shouldReveal]);
 
@@ -126,9 +172,12 @@ export default function AnimateOnScroll({
   const elementRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
   const isVisible = useInViewReveal(elementRef, prefersReducedMotion);
+  const hasMounted = useHasMounted();
+  const isPending = hasMounted && !prefersReducedMotion && !isVisible;
 
   const wrapperClassName = [
     "ws-animate-on-scroll",
+    isPending ? "ws-animate-on-scroll--pending" : "",
     isVisible ? "ws-animate-on-scroll--visible" : "",
     className,
   ]
@@ -167,9 +216,12 @@ export function AnimateStaggerChild({
   const delay = index * REVEAL_DELAY_STEP;
   const prefersReducedMotion = usePrefersReducedMotion();
   const isVisible = useInViewReveal(elementRef, prefersReducedMotion);
+  const hasMounted = useHasMounted();
+  const isPending = hasMounted && !prefersReducedMotion && !isVisible;
 
   const wrapperClassName = [
     "ws-animate-on-scroll",
+    isPending ? "ws-animate-on-scroll--pending" : "",
     isVisible ? "ws-animate-on-scroll--visible" : "",
     className,
   ]

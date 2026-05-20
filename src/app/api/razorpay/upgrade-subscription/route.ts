@@ -5,14 +5,26 @@ import { safeSyncStorePlanEntitlementFromSubscription } from '@lib/billing/subsc
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
+import { UpgradeSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
-import { writeErrorLogEntry, writeLogEntry } from 'logs/utils';
+import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+
+const summarizeSubscriptionForMutationLog = (subscription: any) => ({
+    subscriptionId: subscription?.id || subscription?.providerSubscriptionId,
+    providerSubscriptionId: subscription?.providerSubscriptionId,
+    status: subscription?.status,
+    tenantId: subscription?.tenantId,
+    storeId: subscription?.storeId,
+    planId: subscription?.planId,
+    quantity: subscription?.quantity,
+});
 
 export const POST = withAuth(async (request, session) => {
     // Session guaranteed by withAuth middleware
@@ -49,17 +61,15 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const body = await request.json();
-        const { rc, nSi, oSi } = body;
-        const remainingCredits = Number(rc);
-        const newSubscriptionId = nSi;
-        const oldSubscriptionId = oSi;
+        const validation = validateAPIInput(UpgradeSubscriptionRequestSchema, body);
 
-        if (!newSubscriptionId || !oldSubscriptionId) {
+        if (!validation.success) {
+            const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
             // Log to Sentry (CRITICAL - subscription upgrade)
             logger.security('Input Validation Failed', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/upgrade-subscription',
-                error: 'Missing required fields: subscription IDs',
+                error: errorMsg,
                 attemptedData: {
                     hasNewSubscriptionId: !!body?.nSi,
                     hasOldSubscriptionId: !!body?.oSi,
@@ -69,6 +79,11 @@ export const POST = withAuth(async (request, session) => {
 
             return NextResponse.json({ error: "Subscription ID is required." }, { status: 400 });
         }
+
+        const { rc, nSi, oSi } = validation.data;
+        const remainingCredits = Number(rc);
+        const newSubscriptionId = nSi;
+        const oldSubscriptionId = oSi;
 
         const internalSub: FirestoreSubscriptionDoc = await getSubscriptionById(oldSubscriptionId);
         if (!internalSub || !internalSub.providerSubscriptionId) {
@@ -91,20 +106,39 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_INTERNAL_SUB', data: { internalSub }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_INTERNAL_SUB',
+            data: summarizeSubscriptionForMutationLog(internalSub),
+        });
+
+        if (!validateTransition(internalSub.status, 'expired', 'api:upgrade-subscription')) {
+            return NextResponse.json({ error: "Subscription cannot be upgraded in its current state." }, { status: 409 });
+        }
 
         const providerSubscriptionBeforeCancel = await razorpayClient.subscriptions.fetch(internalSub.providerSubscriptionId);
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL', data: { providerSubscriptionBeforeCancel }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL',
+            data: summarizeSubscriptionForMutationLog(providerSubscriptionBeforeCancel),
+        });
 
         if (providerSubscriptionBeforeCancel.status === "completed") {
-            await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL_COMPLETED', data: { providerSubscriptionBeforeCancel }, });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL_COMPLETED',
+                data: summarizeSubscriptionForMutationLog(providerSubscriptionBeforeCancel),
+            });
         } else {
             await razorpayClient.subscriptions.cancel(internalSub.providerSubscriptionId); // Immediate cancel
             const providerSubscriptionAfterCancel = await razorpayClient.subscriptions.fetch(internalSub.providerSubscriptionId);
-            await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_AFTER_CANCEL', data: { providerSubscriptionAfterCancel }, });
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_AFTER_CANCEL',
+                data: summarizeSubscriptionForMutationLog(providerSubscriptionAfterCancel),
+            });
         }
 
-        validateTransition(internalSub.status, 'expired', 'api:upgrade-subscription');
         await updateSubscription(internalSub.id, {
             status: 'expired',
             cycleEndDate: Timestamp.now(),
@@ -124,7 +158,11 @@ export const POST = withAuth(async (request, session) => {
             { ...internalSub, status: 'expired' },
             'api:upgrade-subscription:old-expired',
         );
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_SUCCESS', data: { internalSub }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_SUCCESS',
+            data: summarizeSubscriptionForMutationLog(internalSub),
+        });
         logger.info('Subscription upgraded successfully', {
             oldSubscriptionId: internalSub.id,
             newSubscriptionId,
@@ -137,8 +175,13 @@ export const POST = withAuth(async (request, session) => {
             api: 'upgrade-subscription',
             userId: session?.user?.id
         });
-        console.error('Subscription upgrade API error:', error);
-        await writeErrorLogEntry(LOG_FILE, error);
-        return NextResponse.json({ error: 'Failed to upgrade subscription', details: (error as Error).message }, { status: 500 });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_ERROR',
+            data: {
+                message: error instanceof Error ? error.message : 'Unknown error',
+            },
+        });
+        return NextResponse.json({ error: 'Failed to upgrade subscription' }, { status: 500 });
     }
 });

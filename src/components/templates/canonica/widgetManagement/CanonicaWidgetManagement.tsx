@@ -16,16 +16,14 @@ import {
     Select,
     Skeleton,
     Tag,
-    theme,
+    Tabs,
     Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuClipboard,
-    LuClock,
     LuCode,
     LuCopy,
-    LuDatabase,
     LuGlobe,
     LuKey,
     LuMonitor,
@@ -36,13 +34,14 @@ import {
     LuShield,
     LuSmartphone,
     LuTrash2,
-    LuZap,
+    LuEyeOff,
 } from 'react-icons/lu';
 import {
     CanonicaWidgetConfig,
     DEFAULT_CANONICA_WIDGET_CONFIG,
     buildCanonicaWidgetEmbedCode,
     buildCanonicaWidgetRouteSnippet,
+    normalizeWidgetBlockedRoute,
     normalizeWidgetAllowedOrigin,
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
@@ -64,40 +63,9 @@ type WidgetConfigResponse = {
 };
 
 const CONTROL_LABEL_STYLE = { fontSize: 12 } as const;
-const CACHE_DECISION_ITEMS = [
-    {
-        title: 'Runtime config',
-        detail: 'Browser + server cache, 60 second TTL',
-        status: 'Keep',
-        color: 'green',
-        icon: LuClock,
-    },
-    {
-        title: 'Widget auth',
-        detail: 'Short positive and negative cache',
-        status: 'Keep',
-        color: 'green',
-        icon: LuShield,
-    },
-    {
-        title: 'Canonical answers',
-        detail: 'Upstash only for verified answer cache',
-        status: 'Redis',
-        color: 'blue',
-        icon: LuZap,
-    },
-    {
-        title: 'MenuList public pages',
-        detail: 'Next cache tags stay separate',
-        status: 'Separate',
-        color: 'default',
-        icon: LuDatabase,
-    },
-] as const;
 
 export default function CanonicaWidgetManagement({ embeddedMobile = false }: CanonicaWidgetManagementProps) {
     const screens = Grid.useBreakpoint();
-    const { token } = theme.useToken();
     const isMobile = screens.md !== true;
 
     const [loading, setLoading] = useState(true);
@@ -106,6 +74,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     const [config, setConfig] = useState<CanonicaWidgetConfig>(DEFAULT_CANONICA_WIDGET_CONFIG);
     const [origins, setOrigins] = useState<string[]>([]);
     const [newOrigin, setNewOrigin] = useState('');
+    const [newBlockedRoute, setNewBlockedRoute] = useState('');
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [keyPrefix, setKeyPrefix] = useState<string | null>(null);
     const [hasWidgetKey, setHasWidgetKey] = useState(false);
@@ -230,6 +199,24 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         setDirty(true);
     }, []);
 
+    const addBlockedRoute = useCallback(() => {
+        const normalized = normalizeWidgetBlockedRoute(newBlockedRoute);
+        if (!normalized) {
+            message.error('Enter a valid route, for example /help-center or /help-center/*');
+            return;
+        }
+        if (config.blockedRoutes.includes(normalized)) {
+            message.info('Route already blocked');
+            return;
+        }
+        updateConfig('blockedRoutes', [...config.blockedRoutes, normalized]);
+        setNewBlockedRoute('');
+    }, [config.blockedRoutes, newBlockedRoute, updateConfig]);
+
+    const removeBlockedRoute = useCallback((route: string) => {
+        updateConfig('blockedRoutes', config.blockedRoutes.filter(item => item !== route));
+    }, [config.blockedRoutes, updateConfig]);
+
     const embedCode = useMemo(() => buildCanonicaWidgetEmbedCode({ apiKey, config, scriptSrc }), [apiKey, config, scriptSrc]);
     const spaSnippet = useMemo(() => buildCanonicaWidgetRouteSnippet(), []);
     const nextSnippet = useMemo(() => [
@@ -292,309 +279,339 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                 />
             )}
 
-            <Row gutter={[16, 16]}>
-                <Col xs={24} xl={8}>
-                    <Card title={<Flex align="center" gap={8}><LuKey size={16} /> Widget Key</Flex>}>
-                        <Flex vertical gap={12}>
-                            <Input.Password
-                                value={apiKey || (keyPrefix ? `${keyPrefix}...stored securely` : '')}
-                                placeholder="No widget key"
-                                readOnly
-                                style={{ fontFamily: 'monospace' }}
-                            />
-                            <Flex gap={8} wrap="wrap">
-                                <Button
-                                    type={hasWidgetKey ? 'default' : 'primary'}
-                                    icon={<LuKey size={14} />}
-                                    loading={generatingKey}
-                                    onClick={handleGenerateKey}
-                                >
-                                    {hasWidgetKey ? 'Regenerate' : 'Create Key'}
-                                </Button>
-                                <Button icon={<LuCopy size={14} />} disabled={!apiKey} onClick={() => copyText(apiKey || '', 'Widget key copied')}>
-                                    Copy
-                                </Button>
-                                <Button danger icon={<LuTrash2 size={14} />} disabled={!hasWidgetKey} onClick={handleRevokeKey}>
-                                    Revoke
-                                </Button>
-                            </Flex>
-                            {!apiKey && hasWidgetKey && (
-                                <Alert
-                                    type="info"
-                                    showIcon
-                                    message="Stored keys are only shown once"
-                                    description="Regenerate when you need a fresh copy. Existing installs keep working until revoked."
-                                />
-                            )}
-                        </Flex>
-                    </Card>
-                </Col>
-
-                <Col xs={24} xl={16}>
-                    <Card
-                        title={<Flex align="center" gap={8}><LuCode size={16} /> Install</Flex>}
-                        extra={<Button size="small" icon={<LuClipboard size={14} />} onClick={() => copyText(activeSnippet, 'Install code copied')}>Copy</Button>}
-                    >
-                        <Flex vertical gap={12}>
-                            <Segmented
-                                value={snippetType}
-                                onChange={(value) => setSnippetType(value as SnippetType)}
-                                options={[
-                                    { value: 'html', label: 'HTML' },
-                                    { value: 'spa', label: 'Route Context' },
-                                    { value: 'next', label: 'Next.js' },
-                                ]}
-                            />
-                            <Input.TextArea
-                                value={activeSnippet}
-                                readOnly
-                                rows={snippetType === 'html' ? 8 : 11}
-                                style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
-                            />
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                The script reads saved dashboard settings automatically. Script attributes are still supported for per-environment overrides.
-                            </Text>
-                        </Flex>
-                    </Card>
-                </Col>
-
-                <Col xs={24} lg={14}>
-                    <Card title={<Flex align="center" gap={8}><LuPalette size={16} /> Appearance</Flex>}>
-                        <Row gutter={[14, 14]}>
-                            <Col xs={24} sm={12}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Position</Text>
-                                    <Select
-                                        value={config.position}
-                                        onChange={(value) => updateConfig('position', value)}
-                                        options={[
-                                            { value: 'bottom-right', label: 'Bottom right' },
-                                            { value: 'bottom-left', label: 'Bottom left' },
-                                            { value: 'top-right', label: 'Top right' },
-                                            { value: 'top-left', label: 'Top left' },
-                                        ]}
-                                    />
-                                </Flex>
-                            </Col>
-                            <Col xs={24} sm={12}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Accent Color</Text>
-                                    <ColorPicker
-                                        value={config.accentColor}
-                                        onChange={(_, hex) => updateConfig('accentColor', hex)}
-                                        showText
-                                    />
-                                </Flex>
-                            </Col>
-                            <Col xs={24} sm={12}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Shape</Text>
-                                    <Segmented
-                                        block
-                                        value={config.shape}
-                                        onChange={(value) => updateConfig('shape', value as CanonicaWidgetConfig['shape'])}
-                                        options={[
-                                            { value: 'rounded', label: 'Circle' },
-                                            { value: 'pill', label: 'Pill' },
-                                        ]}
-                                    />
-                                </Flex>
-                            </Col>
-                            <Col xs={24} sm={12}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Display</Text>
-                                    <Segmented
-                                        block
-                                        value={config.display}
-                                        onChange={(value) => updateConfig('display', value as CanonicaWidgetConfig['display'])}
-                                        options={[
-                                            { value: 'icon', label: 'Icon' },
-                                            { value: 'text', label: 'Text' },
-                                            { value: 'icon-text', label: 'Icon + Text' },
-                                        ]}
-                                    />
-                                </Flex>
-                            </Col>
-                            <Col xs={24} sm={8}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Label</Text>
-                                    <Input
-                                        value={config.label}
-                                        maxLength={24}
-                                        onChange={(event) => updateConfig('label', event.target.value || '?')}
-                                    />
-                                </Flex>
-                            </Col>
-                            <Col xs={12} sm={8}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Offset X</Text>
-                                    <InputNumber value={config.offsetX} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetX', Number(value ?? 20))} />
-                                </Flex>
-                            </Col>
-                            <Col xs={12} sm={8}>
-                                <Flex vertical gap={4}>
-                                    <Text strong style={CONTROL_LABEL_STYLE}>Offset Y</Text>
-                                    <InputNumber value={config.offsetY} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetY', Number(value ?? 20))} />
-                                </Flex>
-                            </Col>
-                        </Row>
-                    </Card>
-                </Col>
-
-                <Col xs={24} lg={10}>
-                    <Card title={<Flex align="center" gap={8}><LuSettings size={16} /> Behavior</Flex>}>
-                        <Flex vertical gap={14}>
-                            <Flex vertical gap={4}>
-                                <Text strong style={CONTROL_LABEL_STYLE}>History</Text>
-                                <Segmented
-                                    block
-                                    value={config.historyMode}
-                                    onChange={(value) => updateConfig('historyMode', value as CanonicaWidgetConfig['historyMode'])}
-                                    options={[
-                                        { value: 'session', label: 'Keep on page' },
-                                        { value: 'forget', label: 'Clear on close' },
-                                    ]}
-                                />
-                            </Flex>
-                            <Flex vertical gap={4}>
-                                <Text strong style={CONTROL_LABEL_STYLE}>Launcher</Text>
-                                <Segmented
-                                    block
-                                    value={config.launcherVisibility}
-                                    onChange={(value) => updateConfig('launcherVisibility', value as CanonicaWidgetConfig['launcherVisibility'])}
-                                    options={[
-                                        { value: 'visible', label: 'Visible' },
-                                        { value: 'manual', label: 'Manual only' },
-                                    ]}
-                                />
-                            </Flex>
-                            <Flex vertical gap={4}>
-                                <Text strong style={CONTROL_LABEL_STYLE}>Mobile</Text>
-                                <Segmented
-                                    block
-                                    value={config.mobileVisibility}
-                                    onChange={(value) => updateConfig('mobileVisibility', value as CanonicaWidgetConfig['mobileVisibility'])}
-                                    options={[
-                                        { value: 'show', label: 'Show' },
-                                        { value: 'hide', label: 'Hide' },
-                                    ]}
-                                />
-                            </Flex>
-                            <Flex vertical gap={4}>
-                                <Text strong style={CONTROL_LABEL_STYLE}>Z-index</Text>
-                                <InputNumber value={config.zIndex} min={1000} max={2147483646} style={{ width: '100%' }} onChange={(value) => updateConfig('zIndex', Number(value ?? DEFAULT_CANONICA_WIDGET_CONFIG.zIndex))} />
-                            </Flex>
-                        </Flex>
-                    </Card>
-                </Col>
-
-                <Col xs={24} lg={12}>
-                    <Card title={<Flex align="center" gap={8}><LuShield size={16} /> Security</Flex>}>
-                        <Flex vertical gap={12}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Add the exact app origins that may call the widget runtime APIs.
-                            </Text>
-                            <Flex gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'center'}>
-                                <Input
-                                    value={newOrigin}
-                                    onChange={(event) => setNewOrigin(event.target.value)}
-                                    onPressEnter={addOrigin}
-                                    placeholder="https://app.example.com"
-                                />
-                                <Button icon={<LuGlobe size={14} />} onClick={addOrigin}>Add</Button>
-                            </Flex>
-                            {origins.length > 0 ? (
-                                <Flex gap={8} wrap="wrap">
-                                    {origins.map(origin => (
-                                        <Tag key={origin} closable onClose={(event) => { event.preventDefault(); removeOrigin(origin); }}>
-                                            {origin}
-                                        </Tag>
-                                    ))}
-                                </Flex>
-                            ) : (
-                                <Alert type="warning" showIcon message="All origins are allowed until you add at least one origin." />
-                            )}
-                        </Flex>
-                    </Card>
-                </Col>
-
-                <Col xs={24} lg={12}>
-                    <Card title={<Flex align="center" gap={8}><LuCode size={16} /> Context</Flex>}>
-                        <Flex vertical gap={12}>
-                            <Paragraph style={{ margin: 0 }}>
-                                Send page, feature, workflow, and entity hints after route changes. Do not send account IDs, emails, phone numbers, or tenant/store IDs.
-                            </Paragraph>
-                            <Input.TextArea
-                                value={spaSnippet}
-                                readOnly
-                                rows={7}
-                                style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
-                            />
-                            <Button icon={<LuCopy size={14} />} onClick={() => copyText(spaSnippet, 'Context snippet copied')} style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}>
-                                Copy Context Snippet
-                            </Button>
-                        </Flex>
-                    </Card>
-                </Col>
-
-                <Col xs={24}>
-                    <Card title={<Flex align="center" gap={8}><LuDatabase size={16} /> Cost & Cache</Flex>}>
-                        <Flex vertical gap={14}>
-                            <Row gutter={[10, 10]}>
-                                {CACHE_DECISION_ITEMS.map((item) => {
-                                    const ItemIcon = item.icon;
-                                    return (
-                                        <Col xs={24} sm={12} xl={6} key={item.title}>
-                                            <div style={{
-                                                minHeight: 92,
-                                                padding: 12,
-                                                border: `1px solid ${token.colorBorderSecondary}`,
-                                                borderRadius: 8,
-                                                background: token.colorBgContainer,
-                                            }}>
-                                                <Flex align="center" justify="space-between" gap={8}>
-                                                    <Flex align="center" gap={8}>
-                                                        <ItemIcon size={15} />
-                                                        <Text strong style={{ fontSize: 13 }}>{item.title}</Text>
-                                                    </Flex>
-                                                    <Tag color={item.color}>{item.status}</Tag>
+            <Tabs
+                type={isMobile ? 'line' : 'card'}
+                size={isMobile ? 'small' : 'middle'}
+                items={[
+                    {
+                        key: 'ui',
+                        label: 'UI Configuration',
+                        children: (
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} lg={14}>
+                                    <Card title={<Flex align="center" gap={8}><LuPalette size={16} /> Appearance</Flex>}>
+                                        <Row gutter={[14, 14]}>
+                                            <Col xs={24} sm={12}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Position</Text>
+                                                    <Select
+                                                        value={config.position}
+                                                        onChange={(value) => updateConfig('position', value)}
+                                                        options={[
+                                                            { value: 'bottom-right', label: 'Bottom right' },
+                                                            { value: 'bottom-left', label: 'Bottom left' },
+                                                            { value: 'top-right', label: 'Top right' },
+                                                            { value: 'top-left', label: 'Top left' },
+                                                        ]}
+                                                    />
                                                 </Flex>
-                                                <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                                                    {item.detail}
-                                                </Text>
-                                            </div>
-                                        </Col>
-                                    );
-                                })}
-                            </Row>
-                            <Alert
-                                type="info"
-                                showIcon
-                                message="Current cache strategy is set"
-                                description="Widget config stays on the short built-in cache. Redis remains for canonical answer cache, cooldowns, and rate limits. MenuList public cache tags stay separate from Canonica widget credentials."
-                            />
-                        </Flex>
-                    </Card>
-                </Col>
+                                            </Col>
+                                            <Col xs={24} sm={12}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Accent Color</Text>
+                                                    <ColorPicker
+                                                        value={config.accentColor}
+                                                        onChange={(_, hex) => updateConfig('accentColor', hex)}
+                                                        showText
+                                                    />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={24} sm={12}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Shape</Text>
+                                                    <Segmented
+                                                        block
+                                                        value={config.shape}
+                                                        onChange={(value) => updateConfig('shape', value as CanonicaWidgetConfig['shape'])}
+                                                        options={[
+                                                            { value: 'rounded', label: 'Circle' },
+                                                            { value: 'pill', label: 'Pill' },
+                                                        ]}
+                                                    />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={24} sm={12}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Display</Text>
+                                                    <Segmented
+                                                        block
+                                                        value={config.display}
+                                                        onChange={(value) => updateConfig('display', value as CanonicaWidgetConfig['display'])}
+                                                        options={[
+                                                            { value: 'icon', label: 'Icon' },
+                                                            { value: 'text', label: 'Text' },
+                                                            { value: 'icon-text', label: 'Icon + Text' },
+                                                        ]}
+                                                    />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={24} sm={8}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Label</Text>
+                                                    <Input
+                                                        value={config.label}
+                                                        maxLength={24}
+                                                        onChange={(event) => updateConfig('label', event.target.value || '?')}
+                                                    />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={12} sm={8}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Offset X</Text>
+                                                    <InputNumber value={config.offsetX} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetX', Number(value ?? 20))} />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={12} sm={8}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Offset Y</Text>
+                                                    <InputNumber value={config.offsetY} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetY', Number(value ?? 20))} />
+                                                </Flex>
+                                            </Col>
+                                        </Row>
+                                    </Card>
+                                </Col>
 
-                <Col xs={24}>
-                    <Card
-                        title={<Flex align="center" gap={8}>{previewMode === 'desktop' ? <LuMonitor size={16} /> : <LuSmartphone size={16} />} Preview</Flex>}
-                        extra={(
-                            <Segmented
-                                value={previewMode}
-                                onChange={(value) => setPreviewMode(value as 'desktop' | 'mobile')}
-                                options={[
-                                    { value: 'desktop', label: 'Desktop' },
-                                    { value: 'mobile', label: 'Mobile' },
-                                ]}
-                            />
-                        )}
-                    >
-                        <WidgetPreview config={config} mode={previewMode} />
-                    </Card>
-                </Col>
-            </Row>
+                                <Col xs={24} lg={10}>
+                                    <Card title={<Flex align="center" gap={8}><LuSettings size={16} /> Behavior</Flex>}>
+                                        <Flex vertical gap={14}>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>History</Text>
+                                                <Segmented
+                                                    block
+                                                    value={config.historyMode}
+                                                    onChange={(value) => updateConfig('historyMode', value as CanonicaWidgetConfig['historyMode'])}
+                                                    options={[
+                                                        { value: 'session', label: 'Keep on page' },
+                                                        { value: 'forget', label: 'Clear on close' },
+                                                    ]}
+                                                />
+                                            </Flex>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Launcher</Text>
+                                                <Segmented
+                                                    block
+                                                    value={config.launcherVisibility}
+                                                    onChange={(value) => updateConfig('launcherVisibility', value as CanonicaWidgetConfig['launcherVisibility'])}
+                                                    options={[
+                                                        { value: 'visible', label: 'Visible' },
+                                                        { value: 'manual', label: 'Manual only' },
+                                                    ]}
+                                                />
+                                            </Flex>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Mobile</Text>
+                                                <Segmented
+                                                    block
+                                                    value={config.mobileVisibility}
+                                                    onChange={(value) => updateConfig('mobileVisibility', value as CanonicaWidgetConfig['mobileVisibility'])}
+                                                    options={[
+                                                        { value: 'show', label: 'Show' },
+                                                        { value: 'hide', label: 'Hide' },
+                                                    ]}
+                                                />
+                                            </Flex>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Z-index</Text>
+                                                <InputNumber value={config.zIndex} min={1000} max={2147483646} style={{ width: '100%' }} onChange={(value) => updateConfig('zIndex', Number(value ?? DEFAULT_CANONICA_WIDGET_CONFIG.zIndex))} />
+                                            </Flex>
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24}>
+                                    <Card
+                                        title={<Flex align="center" gap={8}>{previewMode === 'desktop' ? <LuMonitor size={16} /> : <LuSmartphone size={16} />} Preview</Flex>}
+                                        extra={(
+                                            <Segmented
+                                                value={previewMode}
+                                                onChange={(value) => setPreviewMode(value as 'desktop' | 'mobile')}
+                                                options={[
+                                                    { value: 'desktop', label: 'Desktop' },
+                                                    { value: 'mobile', label: 'Mobile' },
+                                                ]}
+                                            />
+                                        )}
+                                    >
+                                        <WidgetPreview config={config} mode={previewMode} />
+                                    </Card>
+                                </Col>
+                            </Row>
+                        ),
+                    },
+                    {
+                        key: 'install',
+                        label: 'Install & Embed',
+                        children: (
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24}>
+                                    <Card
+                                        title={<Flex align="center" gap={8}><LuCode size={16} /> Install Code</Flex>}
+                                        extra={<Button size="small" icon={<LuClipboard size={14} />} onClick={() => copyText(activeSnippet, 'Install code copied')}>Copy</Button>}
+                                    >
+                                        <Flex vertical gap={12}>
+                                            <Segmented
+                                                value={snippetType}
+                                                onChange={(value) => setSnippetType(value as SnippetType)}
+                                                options={[
+                                                    { value: 'html', label: 'HTML' },
+                                                    { value: 'spa', label: 'Route Context' },
+                                                    { value: 'next', label: 'Next.js' },
+                                                ]}
+                                            />
+                                            <Input.TextArea
+                                                value={activeSnippet}
+                                                readOnly
+                                                rows={snippetType === 'html' ? 8 : 11}
+                                                style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
+                                            />
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                The script reads saved dashboard settings automatically. Script attributes are still supported for per-environment overrides.
+                                            </Text>
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24} lg={12}>
+                                    <Card title={<Flex align="center" gap={8}><LuCode size={16} /> Page Context</Flex>}>
+                                        <Flex vertical gap={12}>
+                                            <Paragraph style={{ margin: 0 }}>
+                                                Send page, feature, workflow, and entity hints after route changes. Do not send account IDs, emails, phone numbers, or tenant/store IDs.
+                                            </Paragraph>
+                                            <Input.TextArea
+                                                value={spaSnippet}
+                                                readOnly
+                                                rows={7}
+                                                style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
+                                            />
+                                            <Button icon={<LuCopy size={14} />} onClick={() => copyText(spaSnippet, 'Context snippet copied')} style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}>
+                                                Copy Context Snippet
+                                            </Button>
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24} lg={12}>
+                                    <Card title={<Flex align="center" gap={8}><LuRefreshCw size={16} /> Runtime Updates</Flex>}>
+                                        <Alert
+                                            type="info"
+                                            showIcon
+                                            message="Installed widgets update automatically"
+                                            description="Changes saved here are picked up by installed widgets through Canonica's runtime config endpoint. Updates can take up to 60 seconds to appear; there is no cache setting for the customer to manage."
+                                        />
+                                    </Card>
+                                </Col>
+                            </Row>
+                        ),
+                    },
+                    {
+                        key: 'access',
+                        label: 'Access & Security',
+                        children: (
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} lg={10}>
+                                    <Card title={<Flex align="center" gap={8}><LuKey size={16} /> Widget Key</Flex>}>
+                                        <Flex vertical gap={12}>
+                                            <Input.Password
+                                                value={apiKey || (keyPrefix ? `${keyPrefix}...stored securely` : '')}
+                                                placeholder="No widget key"
+                                                readOnly
+                                                style={{ fontFamily: 'monospace' }}
+                                            />
+                                            <Flex gap={8} wrap="wrap">
+                                                <Button
+                                                    type={hasWidgetKey ? 'default' : 'primary'}
+                                                    icon={<LuKey size={14} />}
+                                                    loading={generatingKey}
+                                                    onClick={handleGenerateKey}
+                                                >
+                                                    {hasWidgetKey ? 'Regenerate' : 'Create Key'}
+                                                </Button>
+                                                <Button icon={<LuCopy size={14} />} disabled={!apiKey} onClick={() => copyText(apiKey || '', 'Widget key copied')}>
+                                                    Copy
+                                                </Button>
+                                                <Button danger icon={<LuTrash2 size={14} />} disabled={!hasWidgetKey} onClick={handleRevokeKey}>
+                                                    Revoke
+                                                </Button>
+                                            </Flex>
+                                            {!apiKey && hasWidgetKey && (
+                                                <Alert
+                                                    type="info"
+                                                    showIcon
+                                                    message="Stored keys are only shown once"
+                                                    description="Regenerate when you need a fresh copy. Existing installs keep working until revoked."
+                                                />
+                                            )}
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24} lg={14}>
+                                    <Card title={<Flex align="center" gap={8}><LuShield size={16} /> Allowed Origins</Flex>}>
+                                        <Flex vertical gap={12}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                Add the exact app origins that may load and call the widget runtime APIs.
+                                            </Text>
+                                            <Flex gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'center'}>
+                                                <Input
+                                                    value={newOrigin}
+                                                    onChange={(event) => setNewOrigin(event.target.value)}
+                                                    onPressEnter={addOrigin}
+                                                    placeholder="https://app.example.com"
+                                                />
+                                                <Button icon={<LuGlobe size={14} />} onClick={addOrigin}>Add</Button>
+                                            </Flex>
+                                            {origins.length > 0 ? (
+                                                <Flex gap={8} wrap="wrap">
+                                                    {origins.map(origin => (
+                                                        <Tag key={origin} closable onClose={(event) => { event.preventDefault(); removeOrigin(origin); }}>
+                                                            {origin}
+                                                        </Tag>
+                                                    ))}
+                                                </Flex>
+                                            ) : (
+                                                <Alert type="warning" showIcon message="All origins are allowed until you add at least one origin." />
+                                            )}
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24}>
+                                    <Card title={<Flex align="center" gap={8}><LuEyeOff size={16} /> Blocked Routes</Flex>}>
+                                        <Flex vertical gap={12}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                Hide the widget on routes where your product already has its own help, support, or guided flow.
+                                            </Text>
+                                            <Flex gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'center'}>
+                                                <Input
+                                                    value={newBlockedRoute}
+                                                    onChange={(event) => setNewBlockedRoute(event.target.value)}
+                                                    onPressEnter={addBlockedRoute}
+                                                    placeholder="/help-center or /help-center/*"
+                                                />
+                                                <Button icon={<LuEyeOff size={14} />} onClick={addBlockedRoute}>Add</Button>
+                                            </Flex>
+                                            {config.blockedRoutes.length > 0 ? (
+                                                <Flex gap={8} wrap="wrap">
+                                                    {config.blockedRoutes.map(route => (
+                                                        <Tag key={route} closable onClose={(event) => { event.preventDefault(); removeBlockedRoute(route); }}>
+                                                            {route}
+                                                        </Tag>
+                                                    ))}
+                                                </Flex>
+                                            ) : (
+                                                <Alert type="info" showIcon message="The widget is visible on every route unless you add blocked routes." />
+                                            )}
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                Use an exact route like /help-center, or include child pages with /help-center/*.
+                                            </Text>
+                                        </Flex>
+                                    </Card>
+                                </Col>
+                            </Row>
+                        ),
+                    },
+                ]}
+            />
 
             {isMobile && (
                 <div style={{

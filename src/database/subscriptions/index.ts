@@ -95,7 +95,9 @@ const expireIfGracePeriodEnded = async (sub: FirestoreSubscriptionDoc): Promise<
     }
 
     // User is OUTSIDE the grace period — auto-expire
-    validateTransition(sub.status, 'expired', 'dal:grace-period-auto-expire');
+    if (!validateTransition(sub.status, 'expired', 'dal:grace-period-auto-expire')) {
+        return sub;
+    }
     await updateSubscription(sub.id, {
         status: 'expired',
         cycleEndDate: Timestamp.now(),

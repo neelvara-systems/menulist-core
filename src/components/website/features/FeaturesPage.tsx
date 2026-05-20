@@ -33,7 +33,9 @@ export default function FeaturesPage() {
       desc: t(`Features.group${gi}F${fi}Desc`),
     })),
   }));
-  const analyticsCards = Array.from({ length: 4 }, (_, i) => ({
+  const analyticsCardIcons = [LuBarChart3, LuEye, LuTrendingUp, LuList];
+  const analyticsCards = analyticsCardIcons.map((icon, i) => ({
+    icon,
     title: t(`Features.analytics${i}Title`),
     desc: t(`Features.analytics${i}Desc`),
   }));
@@ -130,12 +132,12 @@ export default function FeaturesPage() {
                 const Icon = feature.icon;
                 return (
                   <AnimateStaggerChild key={feature.title} index={fi}>
-                    <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start', height: '100%' }}>
+                    <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
                       <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Icon size={20} color="var(--ws-brand-secondary)" />
                       </div>
-                      <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{feature.title}</h3>
+                      <div style={{ minWidth: 0, textAlign: 'left' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{feature.title}</h3>
                         <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{feature.desc}</p>
                       </div>
                     </div>
@@ -148,49 +150,59 @@ export default function FeaturesPage() {
       ))}
 
       <SectionWrapper variant="subtle">
-        <AnimateOnScroll>
-          <SectionHeading
-            title={t('Features.analyticsTitle')}
-            subtitle={t('Features.analyticsSubtitle')}
-          />
-        </AnimateOnScroll>
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <AnimateOnScroll>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-3)', marginBottom: 'var(--ws-space-3)' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--ws-brand-secondary)', backgroundColor: 'var(--ws-bg-accent)', padding: '3px 10px', borderRadius: '20px' }}>
+                {t('Features.analyticsLabel')}
+              </span>
+            </div>
+            <SectionHeading
+              title={t('Features.analyticsTitle')}
+              subtitle={t('Features.analyticsSubtitle')}
+              centered={false}
+            />
+          </AnimateOnScroll>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: 'var(--ws-space-4)',
-            marginTop: 'var(--ws-space-10)',
-            maxWidth: '960px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            gridAutoRows: '1fr',
-          }}
-        >
-          {analyticsCards.map((item, index) => (
-            <AnimateStaggerChild key={item.title} index={index}>
-              <div className="ws-card" style={{ height: '100%' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.title}</h3>
-                <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
-              </div>
-            </AnimateStaggerChild>
-          ))}
-        </div>
-
-        <AnimateOnScroll delay={0.1}>
-          <p
-            className="ws-caption"
+          <div
             style={{
-              textAlign: 'center',
-              marginTop: 'var(--ws-space-8)',
-              maxWidth: '720px',
-              marginLeft: 'auto',
-              marginRight: 'auto',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: 'var(--ws-space-4)',
+              marginTop: 'var(--ws-space-10)',
+              gridAutoRows: '1fr',
             }}
           >
-            {t('Features.analyticsFooter')}
-          </p>
-        </AnimateOnScroll>
+            {analyticsCards.map((item, index) => (
+              <AnimateStaggerChild key={item.title} index={index}>
+                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <item.icon size={20} color="var(--ws-brand-secondary)" />
+                  </div>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
+                    <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
+                  </div>
+                </div>
+              </AnimateStaggerChild>
+            ))}
+          </div>
+
+          <AnimateOnScroll delay={0.1}>
+            <p
+              className="ws-caption"
+              style={{
+                textAlign: 'center',
+                marginTop: 'var(--ws-space-8)',
+                maxWidth: '720px',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }}
+            >
+              {t('Features.analyticsFooter')}
+            </p>
+          </AnimateOnScroll>
+        </div>
       </SectionWrapper>
 
       {/* Final CTA */}

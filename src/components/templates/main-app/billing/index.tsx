@@ -92,16 +92,26 @@ function BillingPage() {
     const fetchBillingHistory = async () => {
         if (!userId || !effectiveHistoryStoreId) return;
 
-        // 2. Fetch the raw transaction logs from our Unified Ledger
+        // 2. Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
         const rawHistory = await getBillingHistoryForStore(Number(session?.user?.tenantId), effectiveHistoryStoreId);
         // 3. Transform the raw data into a clean, simple format for the UI
         const formattedHistory = rawHistory.map(event => {
             // Handle subscription charges
             if (event.event === 'subscription.charged') {
-                const entity = event.payload.payment.entity;
-                const { current_start, current_end } = event.payload.subscription.entity;
-                const startDate = formatDateTime(Timestamp.fromMillis(current_start * 1000), "date", formatter);
-                const endDate = formatDateTime(Timestamp.fromMillis(current_end * 1000), "date", formatter);
+                const entity = event.payload?.payment?.entity || {
+                    id: event.paymentId,
+                    amount: event.amount,
+                    currency: event.currency,
+                    description: event.description,
+                    invoice_id: event.invoiceId,
+                    status: event.status,
+                };
+                const subscriptionEntity = event.payload?.subscription?.entity || {
+                    current_start: event.current_start || event.created_at,
+                    current_end: event.current_end || event.created_at,
+                };
+                const startDate = formatDateTime(Timestamp.fromMillis(Number(subscriptionEntity.current_start || event.created_at || 0) * 1000), "date", formatter);
+                const endDate = formatDateTime(Timestamp.fromMillis(Number(subscriptionEntity.current_end || event.created_at || 0) * 1000), "date", formatter);
                 return {
                     id: entity.id,
                     type: "Subscription Payment",
@@ -117,8 +127,19 @@ function BillingPage() {
             }
             // Handle top-up charges
             if (event.event === 'order.paid' && event.transactionType === 'topup') {
-                const entity = event.payload.payment.entity;
-                const orderNotes = event.payload.order.entity.notes;
+                const entity = event.payload?.payment?.entity || {
+                    id: event.paymentId,
+                    amount: event.amount,
+                    currency: event.currency,
+                    description: event.description,
+                    invoice_id: event.invoiceId,
+                    status: event.status,
+                };
+                const orderNotes = event.payload?.order?.entity?.notes || {
+                    packId: event.packId,
+                    packName: event.packName,
+                    creditAmount: event.creditAmount,
+                };
                 if (!Array.isArray(orderNotes) && orderNotes?.packId) {
                     return {
                         id: entity.id,

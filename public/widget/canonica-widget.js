@@ -35,6 +35,7 @@
  *   data-history       (optional) "session" | "forget" (default: session, no persistent storage)
  *   data-launcher-visibility (optional) "visible" | "manual" (default: visible)
  *   data-mobile-visibility   (optional) "show" | "hide" (default: show)
+ *   data-blocked-routes      (optional) comma-separated route patterns such as "/help-center,/help-center/*"
  *   data-use-remote-config   (optional) "false" disables dashboard config fetch
  */
 (function () {
@@ -72,6 +73,7 @@
         historyMode: 'session',
         launcherVisibility: 'visible',
         mobileVisibility: 'show',
+        blockedRoutes: [],
     };
     var explicitConfig = {};
     var position = defaultConfig.position;
@@ -86,6 +88,7 @@
     var historyMode = defaultConfig.historyMode;
     var launcherVisibility = defaultConfig.launcherVisibility;
     var mobileVisibility = defaultConfig.mobileVisibility;
+    var blockedRoutes = defaultConfig.blockedRoutes;
     var useRemoteConfig = script.getAttribute('data-use-remote-config') !== 'false';
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
@@ -122,6 +125,71 @@
         var value = parseInt(script.getAttribute(name) || '', 10);
         if (!Number.isFinite(value)) return fallback;
         return Math.max(min, Math.min(max, value));
+    }
+
+    function normalizeBlockedRoute(value) {
+        if (typeof value !== 'string') return null;
+        var route = value.trim();
+        if (!route) return null;
+        try {
+            if (/^https?:\/\//i.test(route)) {
+                route = new URL(route).pathname || '/';
+            }
+        } catch (_) {
+            return null;
+        }
+        route = (route.split(/[?#]/)[0] || '').trim();
+        if (!route) return null;
+        if (route === '*' || route === '/*') return '*';
+        if (route.charAt(0) !== '/') route = '/' + route;
+        route = route.replace(/\/{2,}/g, '/');
+        if (route.length > 1 && route.slice(-1) === '/' && route.slice(-2) !== '/*') {
+            route = route.slice(0, -1);
+        }
+        if (route.length > 180) return null;
+        if (route.indexOf('*') !== -1 && route.slice(-1) !== '*') return null;
+        return route;
+    }
+
+    function normalizeBlockedRoutes(value) {
+        var rawRoutes = typeof value === 'string'
+            ? value.split(/[\n,]/)
+            : Array.isArray(value) ? value : [];
+        var seen = {};
+        var routes = [];
+        rawRoutes.forEach(function (item) {
+            var route = normalizeBlockedRoute(item);
+            if (route && !seen[route] && routes.length < 50) {
+                seen[route] = true;
+                routes.push(route);
+            }
+        });
+        return routes;
+    }
+
+    function getCurrentRoutePath() {
+        var path = window.location && window.location.pathname ? window.location.pathname : '/';
+        return normalizeBlockedRoute(path) || '/';
+    }
+
+    function isRoutePatternMatch(pattern, path) {
+        if (pattern === '*') return true;
+        if (pattern.slice(-2) === '/*') {
+            var base = pattern.slice(0, -2) || '/';
+            return path === base || path.indexOf(base + '/') === 0;
+        }
+        if (pattern.slice(-1) === '*') {
+            return path.indexOf(pattern.slice(0, -1)) === 0;
+        }
+        return path === pattern;
+    }
+
+    function isCurrentRouteBlocked() {
+        if (!blockedRoutes || !blockedRoutes.length) return false;
+        var path = getCurrentRoutePath();
+        return blockedRoutes.some(function (pattern) {
+            return isRoutePatternMatch(pattern, path);
+        });
     }
 
     function readScriptConfig() {
@@ -164,6 +232,9 @@
         value = script.getAttribute('data-mobile-visibility');
         if (script.hasAttribute('data-mobile-visibility') && isValidChoice(value, ['show', 'hide'])) config.mobileVisibility = value;
 
+        value = script.getAttribute('data-blocked-routes');
+        if (script.hasAttribute('data-blocked-routes')) config.blockedRoutes = normalizeBlockedRoutes(value);
+
         return config;
     }
 
@@ -183,6 +254,7 @@
         if (isValidChoice(input.historyMode, ['session', 'forget'])) config.historyMode = input.historyMode;
         if (isValidChoice(input.launcherVisibility, ['visible', 'manual'])) config.launcherVisibility = input.launcherVisibility;
         if (isValidChoice(input.mobileVisibility, ['show', 'hide'])) config.mobileVisibility = input.mobileVisibility;
+        if (Array.isArray(input.blockedRoutes)) config.blockedRoutes = normalizeBlockedRoutes(input.blockedRoutes);
         return config;
     }
 
@@ -208,9 +280,11 @@
         historyMode = merged.historyMode;
         launcherVisibility = merged.launcherVisibility;
         mobileVisibility = merged.mobileVisibility;
+        blockedRoutes = normalizeBlockedRoutes(merged.blockedRoutes);
         s = sizes[size] || sizes.medium;
 
         updateWidgetChrome();
+        syncRouteAvailability();
     }
 
     function sanitizeContextString(value, maxLength) {
@@ -317,7 +391,7 @@
     }
 
     function shouldHideLauncher() {
-        return launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
+        return isCurrentRouteBlocked() || launcherVisibility === 'manual' || (isMobile && mobileVisibility === 'hide');
     }
 
     function getLauncherStyles() {
@@ -408,6 +482,7 @@
         if (productContext) {
             requestPredictiveHelp(productContext);
         }
+        syncRouteAvailability();
     }
 
     // ===== WIDGET CONTAINER =====
@@ -455,6 +530,7 @@
     function toggleWidget() { isOpen ? closeWidget() : openWidget(); }
 
     function openWidget() {
+        if (isCurrentRouteBlocked()) return;
         if (isMobile && mobileVisibility === 'hide') return;
         if (!container) createWidget();
         isOpen = true;
@@ -514,6 +590,31 @@
         emitEvent('history:clear', {});
     }
 
+    function syncRouteAvailability() {
+        if (isCurrentRouteBlocked() && isOpen) {
+            closeWidget();
+        }
+        updateWidgetChrome();
+    }
+
+    function scheduleRouteAvailabilitySync() {
+        window.setTimeout(syncRouteAvailability, 0);
+    }
+
+    window.addEventListener('popstate', scheduleRouteAvailabilitySync);
+    window.addEventListener('hashchange', scheduleRouteAvailabilitySync);
+    try {
+        ['pushState', 'replaceState'].forEach(function (methodName) {
+            var original = window.history && window.history[methodName];
+            if (typeof original !== 'function') return;
+            window.history[methodName] = function () {
+                var result = original.apply(this, arguments);
+                scheduleRouteAvailabilitySync();
+                return result;
+            };
+        });
+    } catch (_) {}
+
     // ===== MESSAGE LISTENER =====
     window.addEventListener('message', function (e) {
         if (e.origin !== widgetHost) return;
@@ -537,7 +638,8 @@
             }
             emitEvent('context', { context: sanitizedContext });
             sendContextToIframe();
-            if (sanitizedContext) requestPredictiveHelp(sanitizedContext);
+            syncRouteAvailability();
+            if (sanitizedContext && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
         open: function () { openWidget(); },
@@ -559,6 +661,7 @@
 
     function requestPredictiveHelp(ctx) {
         if (!ctx || !ctx.page || !window.fetch) return;
+        if (isCurrentRouteBlocked()) return;
         if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);
 
         var contextKey = JSON.stringify({

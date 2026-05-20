@@ -323,6 +323,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Razorpay Webhook Events — server-only idempotency locks
+    match /razorpayWebhookEvents/{eventId} {
+      allow read, write: if false;
+    }
+
     // Topups — Server-side writes, tenant-scoped owner reads
     match /topups/{topupId} {
       allow read: if isAuthenticated()

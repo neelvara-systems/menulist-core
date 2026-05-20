@@ -261,7 +261,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             const raw = await getBillingHistoryForStore(Number(session?.user?.tenantId), historyStoreId);
             const formatted = raw.map((event: any) => {
                 if (event.event === 'subscription.charged') {
-                    const entity = event.payload?.payment?.entity;
+                    const entity = event.payload?.payment?.entity || {
+                        id: event.paymentId,
+                        amount: event.amount,
+                        currency: event.currency,
+                        status: event.status,
+                    };
                     return {
                         id: entity?.id,
                         type: 'Subscription',
@@ -273,7 +278,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     };
                 }
                 if (event.event === 'order.paid' && event.transactionType === 'topup') {
-                    const entity = event.payload?.payment?.entity;
+                    const entity = event.payload?.payment?.entity || {
+                        id: event.paymentId,
+                        amount: event.amount,
+                        currency: event.currency,
+                        status: event.status,
+                    };
                     return {
                         id: entity?.id,
                         type: 'Enhancement Pack',

@@ -65,12 +65,14 @@ export default function AboutPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--ws-space-5)', marginTop: 'var(--ws-space-10)' }}>
           {principles.map(({ icon: Icon, title, desc }, index) => (
             <AnimateStaggerChild key={title} index={index}>
-              <div className="ws-card" style={{ height: '100%' }}>
-                <div style={{ width: 44, height: 44, borderRadius: 'var(--ws-radius-md)', background: 'var(--ws-bg-accent)', color: 'var(--ws-brand-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 'var(--ws-space-4)' }}>
+              <div className="ws-card" style={{ height: '100%', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-4)' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 'var(--ws-radius-md)', background: 'var(--ws-bg-accent)', color: 'var(--ws-brand-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Icon size={22} />
                 </div>
-                <h3 className="ws-h3">{title}</h3>
-                <p className="ws-caption" style={{ marginTop: 'var(--ws-space-3)' }}>{desc}</p>
+                <div style={{ minWidth: 0 }}>
+                  <h3 className="ws-h3" style={{ margin: 0 }}>{title}</h3>
+                  <p className="ws-caption" style={{ marginTop: 'var(--ws-space-3)' }}>{desc}</p>
+                </div>
               </div>
             </AnimateStaggerChild>
           ))}

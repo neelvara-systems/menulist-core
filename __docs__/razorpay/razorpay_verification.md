@@ -1,5 +1,35 @@
 # Razorpay — Session Verification Log
 
+## Session: May 20, 2026
+
+**Task:** Production audit hardening for Razorpay billing routes, webhook replay protection, and local test-mode payment smoke.
+
+### Changes Verified
+
+| Check | Result |
+|-------|--------|
+| Root TypeScript | Passed: `npx tsc --noEmit --incremental false` |
+| Functions TypeScript | Passed: `cd functions && npx tsc --noEmit` |
+| Production build | Passed: `npm run build` |
+| ESLint | Passed: `npm run lint` |
+| Signed webhook idempotency | Passed: first signed `order.paid` returned `status: ok`, exact replay returned `status: duplicate`, one `payment_transactions` row was written |
+| Invalid webhook signature | Passed: invalid signature returned 400 before parsing/mutation |
+| Authenticated Razorpay test-mode subscription create | Passed: created `starter` monthly subscription in Razorpay test mode |
+| Authenticated Razorpay test-mode cancel | Passed: created test subscription cancelled successfully |
+| Authenticated top-up order create | Passed: created Razorpay test-mode top-up order |
+| Verify-subscription schema | Passed: valid payment id without `razorpay_subscription_id` returns 400 with required-field error |
+| Verify-topup bad signature | Passed: valid-shaped IDs with bad signature return 403 |
+| Chrome pricing page smoke | Passed: `/pricing` renders plan and credit-pack sections without the previous credit-pack error boundary |
+| Local test data cleanup | Passed: deleted the test `subscriptions/{subId}` and `topups/{orderId}` Firestore documents after smoke testing |
+
+### Remaining External Conditions
+
+- Full hosted Razorpay checkout completion still requires an interactive test payment in the browser. API-level create/cancel/order/webhook paths were verified in Razorpay test mode.
+- Live WhatsApp onboarding requires configured Meta WhatsApp Cloud API test/sandbox credentials, a reachable webhook URL, and a test sender number. This session did not run a live WhatsApp provider delivery test.
+- Local Upstash DNS failed during testing. `checkRateLimit()` now times out provider calls and opens a short bypass window, but staging/production should still use a healthy Upstash REST endpoint.
+
+---
+
 **Session:** Feb 12, 2026
 **Task:** Migrate subscription reconciliation from Vercel API route to Firebase Cloud Function
 

@@ -30,6 +30,27 @@ const upstash = FEATURE_FLAGS.ENABLE_RATE_LIMITING
     })
     : null;
 
+const RATE_LIMIT_PROVIDER_TIMEOUT_MS = 1500;
+const RATE_LIMIT_PROVIDER_BYPASS_MS = 60_000;
+let rateLimitProviderBypassUntil = 0;
+
+const withRateLimitTimeout = async <T>(promise: Promise<T>): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                timeoutId = setTimeout(
+                    () => reject(new Error('Rate limit provider timeout')),
+                    RATE_LIMIT_PROVIDER_TIMEOUT_MS,
+                );
+            }),
+        ]);
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+};
+
 interface RateLimitConfig {
     key: string;           // Unique identifier (userId, IP, etc.)
     limit: number;         // Max requests allowed
@@ -92,6 +113,15 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
             current: 0
         };
     }
+
+    if (rateLimitProviderBypassUntil > now) {
+        return {
+            allowed: true,
+            remaining: limit,
+            resetAt: now + (window * 1000),
+            current: 0
+        };
+    }
     
     const windowStart = now - (window * 1000);
 
@@ -112,7 +142,7 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
         pipeline.expire(key, window * 2); // 2x window for safety
 
         // Execute all commands atomically
-        const results = await pipeline.exec();
+        const results = await withRateLimitTimeout(pipeline.exec());
 
         // results[1] is the count BEFORE adding current request
         const currentCount = (results[1] as number) || 0;
@@ -120,7 +150,7 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
         // Check if limit exceeded
         if (currentCount >= limit) {
             // Get oldest request to calculate reset time
-            const oldest = await upstash.zrange(key, 0, 0, { withScores: true });
+            const oldest = await withRateLimitTimeout(upstash.zrange(key, 0, 0, { withScores: true }));
             
             // Parse the oldest timestamp from Upstash response
             // Upstash returns: [member1, score1, member2, score2, ...]
@@ -153,6 +183,7 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
         };
 
     } catch (error) {
+        rateLimitProviderBypassUntil = Date.now() + RATE_LIMIT_PROVIDER_BYPASS_MS;
         console.error('[Rate Limit] Upstash error:', error);
         
         // FALLBACK: Allow request on Upstash error

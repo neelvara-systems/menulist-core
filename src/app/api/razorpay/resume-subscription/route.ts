@@ -1,17 +1,29 @@
 export const dynamic = 'force-dynamic';
-import { getActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
+import { getDirectActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
+import { ResumeSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { Timestamp } from "firebase/firestore";
-import { writeErrorLogEntry, writeLogEntry } from 'logs/utils';
+import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
+
+const summarizeSubscriptionForMutationLog = (subscription: any) => ({
+    subscriptionId: subscription?.id || subscription?.providerSubscriptionId,
+    providerSubscriptionId: subscription?.providerSubscriptionId,
+    status: subscription?.status,
+    tenantId: subscription?.tenantId,
+    storeId: subscription?.storeId,
+    planId: subscription?.planId,
+    quantity: subscription?.quantity,
+});
 
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
@@ -45,10 +57,25 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const body = await request.json();
-        const { subscriptionId } = body;
+        const validation = validateAPIInput(ResumeSubscriptionRequestSchema, body);
+        if (!validation.success) {
+            const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
+            logger.security('Input Validation Failed', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/resume-subscription',
+                error: errorMsg,
+                attemptedData: {
+                    hasSubscriptionId: !!body?.subscriptionId,
+                },
+            }, 'critical');
+
+            return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        }
+
+        const { subscriptionId } = validation.data;
 
         // Find the user's paused subscription
-        const internalSub = subscriptionId ? await getSubscriptionById(subscriptionId) : await getActiveSubscriptionForStore(Number(tenantId), Number(storeId));
+        const internalSub = subscriptionId ? await getSubscriptionById(subscriptionId) : await getDirectActiveSubscriptionForStore(Number(tenantId), Number(storeId));
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No subscription found to resume." }, { status: 404 });
         }
@@ -73,17 +100,28 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Only paused subscriptions can be resumed." }, { status: 400 });
         }
 
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW', data: { internalSub } });
+        if (!validateTransition(internalSub.status, 'active', 'api:resume-subscription')) {
+            return NextResponse.json({ error: "Subscription cannot be resumed in its current state." }, { status: 409 });
+        }
+
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW',
+            data: summarizeSubscriptionForMutationLog(internalSub),
+        });
 
         // Call Razorpay Resume API — resume_at: "now" is the only request param per Razorpay docs
         await razorpayClient.subscriptions.resume(internalSub.providerSubscriptionId, {
             resume_at: 'now'
         });
 
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW_SUCCESS', data: { internalSub } });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW_SUCCESS',
+            data: summarizeSubscriptionForMutationLog(internalSub),
+        });
 
         // Update internal record
-        validateTransition(internalSub.status, 'active', 'api:resume-subscription');
         await updateSubscription(internalSub.id, {
             status: 'active',
             statuses: [
@@ -113,7 +151,13 @@ export const POST = withAuth(async (request, session) => {
             api: 'resume-subscription',
             userId
         });
-        await writeErrorLogEntry(LOG_FILE, error);
-        return NextResponse.json({ error: 'Failed to resume subscription', details: (error as Error).message }, { status: 500 });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            logType: 'RAZORPAY_RESUME_SUBSCRIPTION_ERROR',
+            data: {
+                message: error instanceof Error ? error.message : 'Unknown error',
+            },
+        });
+        return NextResponse.json({ error: 'Failed to resume subscription' }, { status: 500 });
     }
 });

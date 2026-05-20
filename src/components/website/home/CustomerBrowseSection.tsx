@@ -42,7 +42,7 @@ export default function CustomerBrowseSection() {
             const Icon = item.icon;
             return (
               <AnimateStaggerChild key={item.title} index={index}>
-                <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
                   <div
                     style={{
                       width: 44,
@@ -57,8 +57,8 @@ export default function CustomerBrowseSection() {
                   >
                     <Icon size={21} color="var(--ws-brand-secondary)" />
                   </div>
-                  <div>
-                    <h3 className="ws-h3" style={{ fontSize: '1.0625rem' }}>
+                  <div style={{ minWidth: 0, textAlign: 'left' }}>
+                    <h3 className="ws-h3" style={{ fontSize: '1.0625rem', margin: 0 }}>
                       {item.title}
                     </h3>
                     <p className="ws-caption" style={{ marginTop: '4px' }}>

@@ -108,7 +108,8 @@ const usePaymentHandler = (dispatcher: any) => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                reject(errorData.message || 'Failed to cancel subscription.');
+                reject(new Error(errorData.error || errorData.message || 'Failed to cancel subscription.'));
+                return;
             }
             resolve();
         })
@@ -166,7 +167,8 @@ const usePaymentHandler = (dispatcher: any) => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                reject(errorData.message || 'Failed to upgrade subscription.');
+                reject(new Error(errorData.error || errorData.message || 'Failed to upgrade subscription.'));
+                return;
             }
             resolve();
         })

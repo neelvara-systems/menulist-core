@@ -108,10 +108,10 @@ export default function ContactPage() {
                 {t('Contact.leftSubtitle')}
               </p>
 
-              <div style={{ marginTop: 'var(--ws-space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                {whyPoints.map((pt) => (
-                  <div key={pt} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
+                <div style={{ marginTop: 'var(--ws-space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
+                    {whyPoints.map((pt) => (
+                  <div key={pt} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'center' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <LuCheck size={12} color="var(--ws-brand-secondary)" strokeWidth={3} />
                     </div>
                     <p style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', lineHeight: 1.6 }}>{pt}</p>
@@ -206,12 +206,12 @@ export default function ContactPage() {
                   </div>
 
                   {/* Terms checkbox */}
-                  <div style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'center' }}>
                     <input
                       type="checkbox"
                       id="agreeToTerms"
                       {...register('agreeToTerms')}
-                      style={{ marginTop: '3px', flexShrink: 0, width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ flexShrink: 0, width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <label htmlFor="agreeToTerms" style={{ fontSize: '0.875rem', color: 'var(--ws-text-muted)', cursor: 'pointer', lineHeight: 1.5 }}>
                       {t('Contact.formAgree')}

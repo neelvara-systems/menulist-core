@@ -1,13 +1,16 @@
 import { useTranslations } from 'next-intl';
+import { LuBadgeCheck, LuClock3, LuLink, LuRefreshCw, LuSearchCheck, LuServer, LuShieldCheck, LuUsers } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
 const OUTCOME_COUNT = 8;
+const outcomeIcons = [LuShieldCheck, LuClock3, LuRefreshCw, LuBadgeCheck, LuSearchCheck, LuServer, LuLink, LuUsers];
 
 export default function SmartFeaturesSection() {
   const t = useTranslations('Website');
   const outcomes = Array.from({ length: OUTCOME_COUNT }, (_, i) => ({
+    icon: outcomeIcons[i],
     title: t(`SmartFeatures.outcome${i}Title`),
     desc: t(`SmartFeatures.outcome${i}Desc`),
   }));
@@ -32,30 +35,24 @@ export default function SmartFeaturesSection() {
           marginRight: 'auto',
         }}
       >
-        {outcomes.map((outcome, index) => (
-          <AnimateStaggerChild key={outcome.title} index={index}>
-            <div style={{ display: 'flex', gap: 'var(--ws-space-3)' }}>
-              <div
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--ws-brand-secondary)',
-                  marginTop: '8px',
-                  flexShrink: 0,
-                }}
-              />
-              <div>
-                <p className="ws-body-sm" style={{ fontWeight: 600 }}>
-                  {outcome.title}
-                </p>
-                <p className="ws-caption" style={{ marginTop: '2px' }}>
-                  {outcome.desc}
-                </p>
+        {outcomes.map((outcome, index) => {
+          const Icon = outcome.icon;
+          return (
+            <AnimateStaggerChild key={outcome.title} index={index} style={{ height: '100%' }}>
+              <div className="ws-card ws-icon-card">
+                <div className="ws-icon-card__icon ws-icon-card__icon--sm">
+                  <Icon size={20} color="var(--ws-brand-secondary)" />
+                </div>
+                <div className="ws-icon-card__content">
+                  <h3 className="ws-icon-card__title">{outcome.title}</h3>
+                  <p className="ws-caption" style={{ marginTop: '2px' }}>
+                    {outcome.desc}
+                  </p>
+                </div>
               </div>
-            </div>
-          </AnimateStaggerChild>
-        ))}
+            </AnimateStaggerChild>
+          );
+        })}
       </div>
     </SectionWrapper>
   );

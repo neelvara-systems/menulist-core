@@ -1,7 +1,7 @@
 # Razorpay Payment System — Complete Technical Reference
 
 **For:** Developers, Founder, CEO, Co-Founder
-**Last Updated:** Feb 10, 2026 (Razorpay Official Docs Audit added)
+**Last Updated:** May 20, 2026 (production audit hardening added)
 **Status:** Production Ready — Razorpay is the ONLY payment provider (Stripe fully removed)
 **Codebase:** Single source of truth. Every claim links to exact file:line.
 
@@ -523,6 +523,10 @@ Razorpay sends webhook events for subscription lifecycle changes. This route is 
 4. If mismatch → 400 "Invalid signature"
 ```
 
+### Durable Webhook Replay Guard
+
+Before any billing mutation, the webhook handler claims a server-only document in `razorpayWebhookEvents/{eventKey}`. The key prefers Razorpay's webhook event id when present and falls back to a stable hash of the signed raw body. Already processed events and actively locked events return `status: duplicate`, so retries do not create extra `payment_transactions` rows or repeat subscription writes. Failed or stale claims can be retried.
+
 ### Handled Events
 
 | Event                    | Action                                                                                 |
@@ -566,7 +570,7 @@ Razorpay sends webhook events for subscription lifecycle changes. This route is 
 
 **File:** `src/app/api/razorpay/webhook/route.ts:119`
 
-Every webhook event is logged to the `paymentTransactions` collection via `createPaymentTransaction()`. This creates a complete audit trail. The event payload is enriched with:
+Every webhook event is logged to the `paymentTransactions` collection as a lean v2 audit summary instead of the full Razorpay payload. This creates a complete audit trail while limiting Firestore document size and read cost. The event summary is enriched with:
 
 - `tenantId` and `storeId` (extracted from subscription/order notes)
 - `transactionType`: "subscription" or "topup"
@@ -652,7 +656,7 @@ FRONTEND:
 
 BACKEND:
 5. withAuth() + verifyTenantAccess()
-6. Find subscription: by subscriptionId or getActiveSubscriptionForStore()
+6. Find subscription: by subscriptionId or direct current-store subscription lookup
 7. Verify subscription belongs to user's tenant/store
 8. Fetch subscription from Razorpay
 9. If Razorpay status is "completed" → skip cancel (already ended)
@@ -1028,6 +1032,10 @@ Every webhook event is stored as a document. Used for:
 - Audit trail of all Razorpay events
 - Billing history display in the frontend
 
+**May 20, 2026 hardening:** New webhook rows use `auditVersion: 2` and store only the fields needed for audit and billing history (`event`, tenant/store ids, payment/subscription/order ids, amount, currency, status, invoice id/url, subscription cycle, quantity, and top-up pack metadata). Raw provider payloads are not stored for new rows. Desktop and mobile billing history still fall back to legacy raw rows.
+
+Pending subscriptions can be cancelled before authentication/activation. This is expected for abandoned hosted checkout or cleanup flows, so the shared state machine allows `pending -> cancelled`.
+
 ### Billing History Query
 
 **File:** `src/database/subscriptions/paymentTransactions.ts:29-54`
@@ -1130,6 +1138,15 @@ Calculates billing-cycle-aware YYYYMM key from subscription's `cycleStartDate`. 
 ---
 
 ## 22. Changes, Fixes & Improvements Log
+
+### May 20, 2026 — Production Audit Hardening
+
+- **Webhook replay protection:** Added `razorpayWebhookEvents` server-only idempotency locks. Duplicate signed events now return without repeating payment transaction writes or subscription mutations.
+- **State transitions now block invalid writes:** API routes, DAL grace expiry, webhook handlers, and reconciliation only write status changes when `subscriptionStateMachine.ts` allows the transition.
+- **Payment mutation lookup tightened:** Cancel, pause, and resume no longer use master/outlet fallback when no subscription ID is provided; they fetch only the current store's direct subscription.
+- **Mutation validation tightened:** Verify-subscription now requires `razorpay_subscription_id`; cancel, pause, resume, and upgrade use Zod schemas and return controlled 400/404/409 responses instead of leaking internal errors.
+- **Client mutation errors fixed:** Dashboard cancel and upgrade promises now stop after failed responses instead of rejecting and then resolving.
+- **Rate limiter outage behavior improved:** Upstash provider calls now have a short timeout and temporary bypass window so a Redis outage does not stall billing actions.
 
 ### Feb 10, 2026 — Monthly Credit Reset Bug Fix
 

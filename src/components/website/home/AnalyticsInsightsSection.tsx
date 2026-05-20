@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuBarChart3, LuMousePointerClick, LuPhoneCall, LuShieldCheck, LuTags } from 'react-icons/lu';
+import { LuBarChart3, LuCheck, LuEye, LuMousePointerClick, LuPhoneCall, LuShieldCheck, LuTags } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -71,30 +71,12 @@ export default function AnalyticsInsightsSection() {
           const Icon = signal.icon;
           return (
             <AnimateStaggerChild key={signal.title} index={index}>
-              <div
-                className="ws-card"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--ws-space-4)',
-                  height: '100%',
-                }}
-              >
-                <div
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: 'var(--ws-radius-md)',
-                    backgroundColor: 'var(--ws-bg-accent)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
+              <div className="ws-card ws-icon-card">
+                <div className="ws-icon-card__icon ws-icon-card__icon--lg">
                   <Icon size={22} color="var(--ws-brand-secondary)" />
                 </div>
-                <div>
-                  <h3 className="ws-h3" style={{ fontSize: '1.0625rem' }}>{signal.title}</h3>
+                <div className="ws-icon-card__content">
+                  <h3 className="ws-icon-card__title ws-icon-card__title--lg">{signal.title}</h3>
                   <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{signal.desc}</p>
                 </div>
               </div>
@@ -115,12 +97,19 @@ export default function AnalyticsInsightsSection() {
         }}
       >
         <AnimateStaggerChild index={analyticsSignals.length}>
-          <div className="ws-card" style={{ height: '100%' }}>
-            <h3 className="ws-h3" style={{ fontSize: '1rem' }}>{t('AnalyticsInsights.ownerCardTitle')}</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--ws-space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
+          <div className="ws-card ws-icon-card ws-icon-card--stacked" style={{ height: '100%' }}>
+            <div className="ws-icon-card__header">
+              <div className="ws-icon-card__icon">
+                <LuEye size={20} color="var(--ws-brand-secondary)" />
+              </div>
+              <div className="ws-icon-card__content">
+                <h3 className="ws-icon-card__title">{t('AnalyticsInsights.ownerCardTitle')}</h3>
+              </div>
+            </div>
+            <ul className="ws-check-list">
               {ownerVisibility.map((item) => (
-                <li key={item} style={{ display: 'flex', gap: 'var(--ws-space-3)', alignItems: 'flex-start' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--ws-brand-secondary)', marginTop: 7, flexShrink: 0 }} />
+                <li key={item} className="ws-check-list__item">
+                  <LuCheck className="ws-check-list__icon" size={15} />
                   <span className="ws-body-sm" style={{ fontSize: '0.9375rem' }}>{item}</span>
                 </li>
               ))}
@@ -129,28 +118,20 @@ export default function AnalyticsInsightsSection() {
         </AnimateStaggerChild>
 
         <AnimateStaggerChild index={analyticsSignals.length + 1}>
-          <div className="ws-card" style={{ height: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-3)' }}>
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: 'var(--ws-radius-md)',
-                  backgroundColor: 'var(--ws-bg-accent)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
+          <div className="ws-card ws-icon-card ws-icon-card--stacked" style={{ height: '100%' }}>
+            <div className="ws-icon-card__header">
+              <div className="ws-icon-card__icon">
                 <LuShieldCheck size={20} color="var(--ws-brand-secondary)" />
               </div>
-              <h3 className="ws-h3" style={{ fontSize: '1rem', margin: 0 }}>{t('AnalyticsInsights.safetyCardTitle')}</h3>
+              <div className="ws-icon-card__content">
+                <h3 className="ws-icon-card__title">{t('AnalyticsInsights.safetyCardTitle')}</h3>
+              </div>
             </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 'var(--ws-space-4) 0 0', display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-3)' }}>
+            <ul className="ws-check-list">
               {transparencyPoints.map((point) => (
-                <li key={point} className="ws-body-sm" style={{ fontSize: '0.9375rem' }}>
-                  {point}
+                <li key={point} className="ws-check-list__item">
+                  <LuCheck className="ws-check-list__icon" size={15} />
+                  <span className="ws-body-sm" style={{ fontSize: '0.9375rem' }}>{point}</span>
                 </li>
               ))}
             </ul>

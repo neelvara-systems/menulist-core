@@ -68,7 +68,7 @@ export default function SurfacesSection() {
                 style={{
                   display: 'flex',
                   gap: 'var(--ws-space-4)',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                   height: '100%',
                 }}
               >
@@ -86,9 +86,9 @@ export default function SurfacesSection() {
                 >
                   <Icon size={20} color="var(--ws-brand-secondary)" />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}>
-                    <h3 className="ws-h3" style={{ fontSize: '1rem' }}>
+                    <h3 className="ws-h3" style={{ fontSize: '1rem', margin: 0 }}>
                       {surface.title}
                     </h3>
                   </div>
