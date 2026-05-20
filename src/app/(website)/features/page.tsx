@@ -6,13 +6,13 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Features — MenuList | Everything Your Menu Needs, Nothing It Doesn\'t',
+  title: 'Features — MenuList | No Extra Work for Your Menu',
   description: 'Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place.',
   alternates: {
     canonical: '/features',
   },
   openGraph: {
-    title: 'Features — MenuList | Everything Your Menu Needs, Nothing It Doesn\'t',
+    title: 'Features — MenuList | No Extra Work for Your Menu',
     description: 'Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place.',
     url: '/features',
   },

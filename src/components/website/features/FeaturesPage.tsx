@@ -44,7 +44,7 @@ export default function FeaturesPage() {
       <section style={{ padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-16)', backgroundColor: 'var(--ws-bg-primary)', textAlign: 'center' }}>
         <div className="ws-container" style={{ maxWidth: 'var(--ws-max-w-text)' }}>
           <AnimateOnScroll>
-            <p style={{ fontSize: '0.8125rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--ws-brand-secondary)', marginBottom: 'var(--ws-space-4)' }}>
               {t('Features.heroEyebrow')}
             </p>
             <WebsiteHeadline as="h1">
@@ -105,7 +105,7 @@ export default function FeaturesPage() {
           <div id={group.id} style={{ scrollMarginTop: '5rem' }}>
             <AnimateOnScroll>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-3)', marginBottom: 'var(--ws-space-3)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ws-brand-secondary)', backgroundColor: 'var(--ws-bg-accent)', padding: '3px 10px', borderRadius: '20px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0, color: 'var(--ws-brand-secondary)', backgroundColor: 'var(--ws-bg-accent)', padding: '3px 10px', borderRadius: '20px' }}>
                   {group.label}
                 </span>
               </div>

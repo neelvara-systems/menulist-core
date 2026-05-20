@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.9 (Canonical Website Default)
+**Version:** 3.4.10 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 20, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.9** | **Canonical Website Default** | **"Upload your menu. Publish your official menu online."** | **ACTIVE** |
+| **3.4.10** | **Canonical Website Default** | **"Upload your menu. Publish your official menu online."** | **ACTIVE** |
 
-Version 3.4.9 keeps the upload-first promise, shifts the hero action language from "get" to owner-controlled "publish", uses a solid website wordmark with the gradient reserved for the mark and headline accents, and turns the first hero trust points into a compact high-contrast proof strip. It also keeps search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out as operations proof for teams. The Features page carries dedicated owner-phone and staff-access operations cards grounded in shipped owner surfaces. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
+Version 3.4.10 keeps the upload-first promise, owner-controlled publish language, solid website wordmark, and compact homepage proof strip from 3.4.9. It adds the final website polish pass: shared owner reassurance lines now use stronger contrast and cleaner mobile wrapping, the Pricing page theme variables are aligned to the main website palette/radius system, and the Features hero now says "No extra work for you" instead of using abstract feature-list framing. Search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out remain operations proof for teams. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -414,12 +414,26 @@ Protected scope:
 
 - Staff/auth runtime, legal entity details, cookie consent, DPA/SLA pages, pricing, payment, Razorpay, subscription, billing, checkout, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.14 Whole Website Polish
+
+Stage 7.14 aligns the website's shared visual system after the mobile hero and brand pass:
+
+- `WebsiteMobileSupportHint` and `WebsiteOwnerApprovalHint` now use the shared `ws-support-hint` styling so reassurance lines remain readable on supporting-page heroes and wrap cleanly on mobile.
+- The Pricing page Tailwind/shadcn variable bridge now uses the same MenuList website palette, muted text contrast, and 8px radius as the main website system.
+- The Features hero now keeps the owner-benefit framing direct: "Everything your menu needs. No extra work for you."
+- Locale-backed Features hero copy was updated across the website locale files.
+
+Protected scope:
+
+- Pricing, payment, Razorpay, subscription, billing, checkout, auth, staff/auth runtime, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.10 | May 20, 2026 | Final whole-site theme/content polish: stronger shared reassurance-line contrast, pricing theme variables aligned to the website palette, and Features hero copy tightened to owner-benefit language. |
 | 3.4.9 | May 20, 2026 | Polished the mobile hero and brand lockup: solid website wordmark text, gradient retained in the mark and headline accent, "Publish your official menu online" hero copy, and a compact higher-contrast proof strip. |
 | 3.4.8 | May 19, 2026 | Aligned Privacy Policy, Terms of Service, and Trust & Security with owner-managed staff access, role-scoped permissions, passcode reset metadata, and session revocation. |
 | 3.4.7 | May 19, 2026 | Added staff access control as homepage/features/FAQ operations proof without changing staff/auth runtime. |

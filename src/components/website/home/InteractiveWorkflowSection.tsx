@@ -24,7 +24,7 @@ export default function InteractiveWorkflowSection() {
             textAlign: 'center',
             fontSize: '0.8125rem',
             fontWeight: 600,
-            letterSpacing: '0.1em',
+            letterSpacing: 0,
             textTransform: 'uppercase',
             color: 'var(--ws-text-muted)',
             marginBottom: 'var(--ws-space-4)',

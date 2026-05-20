@@ -115,16 +115,16 @@ font-family:
 
 | Token     | Element        | Weight | Desktop | Mobile | Line Height | Letter Spacing | Tailwind                                              |
 | --------- | -------------- | ------ | ------- | ------ | ----------- | -------------- | ----------------------------------------------------- |
-| `display` | Hero headline  | 700    | 56px    | 36px   | 1.1         | -0.02em        | `text-[56px] md:text-[36px] font-bold tracking-tight` |
-| `h1`      | Page titles    | 700    | 48px    | 32px   | 1.15        | -0.02em        | `text-5xl md:text-3xl font-bold tracking-tight`       |
-| `h2`      | Section titles | 600    | 36px    | 26px   | 1.2         | -0.01em        | `text-4xl md:text-2xl font-semibold`                  |
-| `h3`      | Subsections    | 600    | 24px    | 20px   | 1.3         | -0.01em        | `text-2xl md:text-xl font-semibold`                   |
+| `display` | Hero headline  | 700    | 56px    | 36px   | 1.1         | 0              | `text-[56px] md:text-[36px] font-bold`                |
+| `h1`      | Page titles    | 700    | 48px    | 32px   | 1.15        | 0              | `text-5xl md:text-3xl font-bold`                      |
+| `h2`      | Section titles | 600    | 36px    | 26px   | 1.2         | 0              | `text-4xl md:text-2xl font-semibold`                  |
+| `h3`      | Subsections    | 600    | 24px    | 20px   | 1.3         | 0              | `text-2xl md:text-xl font-semibold`                   |
 | `h4`      | Card titles    | 600    | 20px    | 18px   | 1.3         | 0              | `text-xl md:text-lg font-semibold`                    |
 | `body-lg` | Hero subtext   | 400    | 20px    | 17px   | 1.6         | 0              | `text-xl md:text-[17px]`                              |
 | `body`    | General text   | 400    | 16px    | 15px   | 1.6         | 0              | `text-base md:text-[15px]`                            |
 | `body-sm` | Small text     | 400    | 14px    | 13px   | 1.5         | 0              | `text-sm`                                             |
-| `caption` | Meta/labels    | 500    | 12px    | 12px   | 1.4         | 0.02em         | `text-xs font-medium tracking-wide`                   |
-| `button`  | CTA text       | 600    | 16px    | 16px   | 1           | 0.01em         | `text-base font-semibold`                             |
+| `caption` | Meta/labels    | 500    | 12px    | 12px   | 1.4         | 0              | `text-xs font-medium`                                 |
+| `button`  | CTA text       | 600    | 16px    | 16px   | 1           | 0              | `text-base font-semibold`                             |
 | `nav`     | Nav links      | 500    | 15px    | 15px   | 1           | 0              | `text-[15px] font-medium`                             |
 
 ### 3.3 Typography Rules
@@ -133,7 +133,7 @@ font-family:
 2. **Headings: max 2 lines on desktop, 3 on mobile** — Rewrite if longer
 3. **No font below 13px** — Accessibility requirement
 4. **Use SemiBold (600) for headings, not Bold (700)** — Except hero display
-5. **Tight letter-spacing on headings** — Creates authority feel
+5. **Letter spacing stays 0 in runtime website styles** — Do not add negative tracking or wide-spaced labels
 6. **Default letter-spacing on body** — Readability priority
 7. **Color hierarchy:** Headlines = `--text-primary`, Body = `--text-secondary`, Meta = `--text-muted`
 
@@ -244,7 +244,7 @@ transition: color 200ms ease
 ```
 bg: --bg-primary (#FFFFFF) on subtle backgrounds, --bg-subtle on white backgrounds
 border: 1px solid --border-default (#E2E8F0)
-radius: 12px (rounded-xl)
+radius: 8px (`--ws-radius-lg`)
 shadow: none or shadow-sm (0 1px 2px rgba(0,0,0,0.05))
 padding: 24px (p-6)
 NO hover transform
@@ -262,8 +262,9 @@ Approved helper patterns:
 
 Design rules:
 
-- Use caption-scale text.
-- Keep the icon small and calm.
+- Use caption-scale text with `--text-secondary` contrast and 600 weight.
+- Keep the icon small and calm; phone support uses brand blue, approval uses success green.
+- Use `ws-support-hint`, `ws-support-hint__icon`, and `ws-support-hint__text` so icon and text wrap together on mobile.
 - Do not stack more than two helper lines in one hero area.
 - Do not use these helpers inside dense feature grids.
 - Do not turn them into large banners unless a page has a specific trust problem.
@@ -326,7 +327,16 @@ Rules:
 - Keep proof strips to three short claims.
 - Keep owner-facing claims factual and tied to implemented product behavior.
 
-### 5.7 Icons
+### 5.7 Pricing Theme Bridge
+
+The Pricing page may use Tailwind/shadcn utilities, but its CSS variables must remain visually aligned with the main website tokens:
+
+- Background stays white/subtle, not a separate dark or campaign theme.
+- Primary action color maps to the MenuList website blue family.
+- Muted text must remain readable (`#475569` equivalent), not pale disabled-looking copy.
+- Card and control radius stays at 8px unless a payment/runtime component requires its own internal style.
+
+### 5.8 Icons
 
 - Library: `react-icons/lu` (Lucide) — already standard
 - Default size: 20px inline, 24px standalone, 32-40px section icons

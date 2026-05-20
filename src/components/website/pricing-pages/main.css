@@ -4,50 +4,38 @@
 
 @layer base {
 
-  /* Light Mode Palette */
+  /* Website palette bridge: keep pricing pages visually aligned with src/styles/website.css. */
   :root {
-    --background: 210 20% 98%;
-    /* Clean, slightly cool white */
-    --foreground: 224 71% 4%;
-    /* Near-black for high contrast */
-    --card: 210 20% 100%;
-    /* Pure white for cards */
-    --card-foreground: 224 71% 4%;
-    --popover: 210 20% 100%;
-    --popover-foreground: 224 71% 4%;
-    --primary: 200 85% 50%;
-    /* The vibrant "Brava Blue" accent */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 20% 94%;
-    /* Light gray for secondary elements */
-    --secondary-foreground: 224 71% 4%;
-    --muted: 210 20% 94%;
-    --muted-foreground: 224 71% 25%;
-    /* Softer gray for muted text */
-    --border: 210 20% 89%;
-    --radius: 0.75rem;
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 35%;
+    --border: 214 32% 91%;
+    --radius: 0.5rem;
   }
 
-  /* Dark Mode Palette (The Core "Guerrilla" Theme) */
   .dark {
-    --background: 222 84% 4.9%;
-    /* Near-black "Matte" background */
+    --background: 222 47% 11%;
     --foreground: 210 40% 98%;
-    /* Off-white "Silver" text */
-    --card: 222 47% 11.2%;
-    /* Dark charcoal "Engine Block" cards */
+    --card: 222 47% 13%;
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11.2%;
+    --popover: 222 47% 13%;
     --popover-foreground: 210 40% 98%;
-    --primary: 198 93% 60%;
-    /* The vibrant "Brava Blue" accent */
-    --primary-foreground: 222 47% 11.2%;
-    --secondary: 217 32.6% 17.5%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --border: 217 32.6% 17.5%;
-    /* Subtle "Metallic" borders */
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 75%;
+    --border: 217 33% 22%;
   }
 }
 

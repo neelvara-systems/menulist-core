@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** May 18, 2026
+**Last Updated:** May 20, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -14,7 +14,7 @@
 | Page             | Title                                                                 | Source File                           |
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
 | Homepage         | MenuList - Upload Your Menu Online                                    | `(website)/layout.tsx`                |
-| Features         | Features — MenuList \| Everything Your Menu Needs, Nothing It Doesn't | `(website)/features/page.tsx`         |
+| Features         | Features — MenuList \| No Extra Work for Your Menu                    | `(website)/features/page.tsx`         |
 | How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
 | Pricing          | Pricing — MenuList \| Simple, Transparent Plans for Every Business    | `(website)/pricing/page.tsx`          |
 | Multi-Location   | Multi-Location Menu Management — MenuList \| One Menu, Every Outlet   | `(website)/multi-location/page.tsx`   |

@@ -132,7 +132,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                     {/* Right Panel: The "How" */}
                     <div className="p-8 flex flex-col gap-4 align-center justify-center">
                         <DialogHeader className="text-left">
-                            <DialogTitle className="text-2xl font-bold tracking-tight">Tell us about your business</DialogTitle>
+                            <DialogTitle className="text-2xl font-bold">Tell us about your business</DialogTitle>
                         </DialogHeader>
                         <DialogDescription>
                             Just a few details to create your workspace. This helps us tailor your experience from the start.

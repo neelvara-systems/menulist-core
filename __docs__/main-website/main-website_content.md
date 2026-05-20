@@ -23,7 +23,7 @@
 
 The current homepage is the only default MenuList marketing website. It keeps the strongest conversion jobs from prior review work in safer official-source language: setup effort removal, numbers proof, analytics proof, industry breadth, public-surface clarity, and final CTA confidence. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
 
-Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, and safer pricing/setup claims. Pricing visual copy can be improved, but payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
+Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, safer pricing/setup claims, and a unified website palette. Pricing payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
 
 **Current route/component order:**
 
@@ -688,6 +688,23 @@ Key FAQ topics:
 
 **Canonical note:** The Features page can explain deeper product capability than the homepage, but it must stay owner-readable and evidence-backed. Feature cards should not become a generic SaaS checklist.
 
+### Hero
+
+**Headline:**
+
+> Everything your menu needs. No extra work for you.
+
+**Subline:**
+
+> MenuList handles the public places your menu touches, so you can stay focused on the business.
+
+**CTA:** Upload your menu →
+
+**Notes:**
+
+- This hero should sell reduced owner work, not an abstract feature catalogue.
+- Keep the phone-first and owner-approval helper lines directly below the hero subline.
+
 ### Operations Group
 
 **Mobile owner operations card:**
@@ -1174,7 +1191,7 @@ Two reusable owner-facing helper lines are part of the website conversion system
 - Phone-first operation: "No desktop required: manage and publish from a phone browser or the MenuList PWA."
 - Owner approval boundary: "Nothing is published until you review and approve it."
 
-These lines are intentionally short. They answer two high-friction SMB owner doubts: "Can I run this without a laptop?" and "Will the system publish something wrong without me?" They should appear near primary CTAs and supporting-page heroes, not inside every feature card.
+These lines are intentionally short. They answer two high-friction SMB owner doubts: "Can I run this without a laptop?" and "Will the system publish something wrong without me?" They should appear near primary CTAs and supporting-page heroes, not inside every feature card. They render through `ws-support-hint` so the copy stays readable and wraps cleanly on mobile.
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |

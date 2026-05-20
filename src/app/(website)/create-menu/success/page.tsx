@@ -96,11 +96,11 @@ export default function SuccessPage() {
                 {hasMenuUrl && (
                     <div style={{
                         backgroundColor: 'var(--ws-bg-subtle)',
-                        borderRadius: 'var(--ws-radius-xl)',
+                        borderRadius: 'var(--ws-radius-lg)',
                         padding: '20px',
                         marginBottom: '24px',
                     }}>
-                        <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: 0 }}>
                             {t('CreateMenuSuccess.linkLabel')}
                         </p>
                         <a

@@ -16,18 +16,12 @@ export default function WebsiteMobileSupportHint({
 
   return (
     <p
-      className={`ws-caption${className ? ` ${className}` : ''}`}
-      style={{
-        marginTop: 'var(--ws-space-2)',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 'var(--ws-space-2)',
-      }}
+      className={`ws-support-hint ws-support-hint--mobile${className ? ` ${className}` : ''}`}
     >
-      <span aria-hidden="true" style={{ display: 'inline-flex', color: 'var(--ws-text-muted)' }}>
+      <span aria-hidden="true" className="ws-support-hint__icon">
         <LuSmartphone size={14} />
       </span>
-      <span>{text ?? t('mobileSupportLine')}</span>
+      <span className="ws-support-hint__text">{text ?? t('mobileSupportLine')}</span>
     </p>
   );
 }
