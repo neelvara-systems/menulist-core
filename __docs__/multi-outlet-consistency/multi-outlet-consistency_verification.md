@@ -18,6 +18,8 @@
 > **Note (May 19, 2026 — test-case line audit):** `multi-outlet-consistency_test-cases.md` was re-read as the contract: 90 numbered cases, 40 QA rows, write invariants, and deferred/by-design sections. The audit closed the remaining policy/security rows by adding strict linked-outlet override schemas, invalid-price rejection, server-side AI description/image policy checks, theme/brand/layout policy checks on linked saves, and store-token matching for extraction job creation.
 >
 > **Note (May 20, 2026 — completion hardening):** Remaining partial rows were closed in code: public deleted-item links fall back cleanly, master/local re-extraction persists `extractionIdAliases`, outlet-only local changes stamp `outletLocalState`, and mobile now exposes master-update review/history/acknowledge parity through `MobileMasterUpdateNotice`.
+>
+> **Note (May 20, 2026 — manual billing creation fix):** Mobile PWA outlet creation can fail on demo/reseller/manual premium accounts when a Firestore subscription is active but uses a `manual_...` provider ID. The route now updates internal subscription quantity for manual/offline accounts without calling Razorpay; real Razorpay-backed subscriptions still require provider quantity success before internal outlet creation.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -40,6 +42,16 @@
 | Extraction ID stability | ✅ The comparison engine matches `extractionIdAliases`; apply writes persist aliases without replacing stable IDs. |
 | Outlet-local state | ✅ Linked saves, direct overrides, and extraction apply stamp `outletLocalState` only on the outlet project in the existing write. |
 | Mobile master updates | ✅ `MobileMasterUpdateNotice` mirrors desktop master-update review, history, and acknowledge flow. |
+
+## May 20, 2026 Manual Billing Capacity Fix
+
+| Area | Result |
+| ---- | ------ |
+| Manual/offline premium create | ✅ `/api/outlets/create` skips Razorpay for `billingMode: "manual"` or non-`sub_...` provider IDs and now requires unused prepaid `subscription.quantity` before creating the outlet. |
+| Manual prepaid capacity | ✅ Reseller desktop and mobile screens can record extra prepaid location capacity through `/api/reseller/add-location-capacity` after cash/UPI collection. |
+| Razorpay-backed create | ✅ Real `sub_...` subscriptions still update provider quantity first when active store count exceeds paid quantity; provider failure returns "Billing needs attention before adding another location" instead of generic outlet failure. |
+| Deactivation/reconciliation | ✅ Outlet deactivation and subscription reconciliation skip manual/offline provider IDs. Razorpay-backed deactivation reduces provider/internal quantity; manual prepaid capacity is retained until expiry. |
+| Mobile/desktop payment display | ✅ Add-outlet proration cards are hidden for manual/offline subscriptions, manual amount displays as prepaid total, and add buttons are disabled when prepaid capacity is exhausted. |
 
 **Live Firebase test (May 19, 2026):** Disposable tenant `910884561`, master store `37`, outlet store `38`, user, and subscription were created against the configured Firebase project. The test verified policy save, legacy master promotion, outlet create, outlet rename, switch-store, outlet deactivation, inactive-store switch rejection, subscription quantity returning to `1`, and cleanup (`cleanupExists false,false,false,false,false`).
 

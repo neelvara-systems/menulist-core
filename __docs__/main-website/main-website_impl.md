@@ -154,7 +154,7 @@ src/components/website/
 
 | Component | Purpose |
 |-----------|---------|
-| `AnimateOnScroll.tsx` | Scroll-triggered animations (Framer Motion) |
+| `AnimateOnScroll.tsx` | Visibility-safe website wrapper; keeps content readable even when scroll animation observers do not fire |
 | `LogoMark.tsx` | Static official MenuList mark used by website header/footer, matched to the app icon / `AnimatedVerticalLogo` geometry |
 | `ScrollToTopButton.tsx` | Floating scroll-to-top button |
 | `SectionHeading.tsx` | Section heading wrapper backed by `WebsiteHeadline` |

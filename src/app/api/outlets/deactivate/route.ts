@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 /**
  * POST /api/outlets/deactivate — Deactivate an outlet store
- * Sets store.active = false, schedules billing removal for next cycle.
+ * Sets store.active = false. Razorpay-managed subscriptions reduce quantity
+ * immediately; manual/offline prepaid capacity stays available until expiry.
  * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §16
  */
 import { FEATURE_FLAGS } from "@config/features";
@@ -9,10 +10,13 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import {
+    getRazorpayManagedSubscriptionId,
+    updateRazorpaySubscriptionQuantity,
+} from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
-import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { revalidateTag } from "next/cache";
@@ -72,6 +76,7 @@ export const POST = withAuth(async (request, session) => {
         const updatedStoresList = storesList.map((s: any) =>
             Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
         );
+        const activeStoresAfterDeactivation = Math.max(1, updatedStoresList.filter((s: any) => s?.active !== false).length);
         await db.runTransaction(async (tx) => {
             tx.update(db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`), {
                 active: false,
@@ -85,21 +90,21 @@ export const POST = withAuth(async (request, session) => {
             tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`), { storesList: updatedStoresList });
         });
 
-        // Immediate billing removal: reduce Razorpay quantity now
-        // Razorpay prorates refunds automatically for mid-cycle changes
+        // Immediate billing removal for Razorpay-managed subscriptions only.
+        // Manual/offline prepaid quantity is paid capacity, so deactivation
+        // frees a replacement slot without refunding or reducing the license.
         let billingReduced = false;
         if (FEATURE_FLAGS.ENABLE_BILLING_REMOVAL_IMMEDIATE && FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
             try {
                 const sub = await getActiveSubscriptionForStore(tenantId, storeId);
-                if (sub && (sub.quantity || 1) > 1) {
-                    const newQty = (sub.quantity || 1) - 1;
-                    if (sub.providerSubscriptionId) {
-                        await razorpayClient.subscriptions.update(sub.providerSubscriptionId, {
-                            quantity: newQty,
-                        });
+                if (sub && (sub.quantity || 1) > activeStoresAfterDeactivation) {
+                    const providerSubId = getRazorpayManagedSubscriptionId(sub);
+                    if (providerSubId) {
+                        const newQty = activeStoresAfterDeactivation;
+                        await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
+                        await updateSubscription(sub.id, { quantity: newQty });
+                        billingReduced = true;
                     }
-                    await updateSubscription(sub.id, { quantity: newQty });
-                    billingReduced = true;
                 }
             } catch (billingErr) {
                 // Log but don't fail deactivation — billing can be reconciled later

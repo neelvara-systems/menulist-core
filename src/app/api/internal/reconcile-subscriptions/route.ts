@@ -5,10 +5,13 @@ import {
     isSubscriptionEntitlementSynced,
     safeSyncStorePlanEntitlementFromSubscription,
 } from "@lib/billing/subscriptionEntitlementSync";
+import {
+    fetchRazorpaySubscription,
+    getRazorpayManagedSubscriptionId,
+} from "@lib/billing/subscriptionProviderSync";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
-import { razorpayClient } from "@lib/razorpay/razorpay";
 import { PaymentStatus } from "@type/razorpay";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
@@ -76,7 +79,12 @@ export async function GET(request: Request) {
             processed++;
 
             try {
-                const rzpSub = await razorpayClient.subscriptions.fetch(sub.providerSubscriptionId);
+                const providerSubId = getRazorpayManagedSubscriptionId(sub);
+                if (!providerSubId) {
+                    continue;
+                }
+
+                const rzpSub = await fetchRazorpaySubscription(providerSubId);
                 const updates: Record<string, any> = {};
                 const rzpStatus = RAZORPAY_STATUS_MAP[rzpSub.status];
 

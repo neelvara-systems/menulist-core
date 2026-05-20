@@ -185,7 +185,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 2. Reseller collects cash/UPI from client separately
 3. Reseller confirms payment during onboarding
 4. System immediately activates a manual prepaid subscription with `billingMode: 'manual'`
-5. Sets `validUntil` = now + duration
+5. Sets `validUntil` = now + duration and `quantity` = prepaid location count
 6. Reseller shares the returned dashboard claim link with the client
 7. Nightly scheduler auto-expires when `validUntil` passes
 
@@ -194,12 +194,13 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 - Online pending subscriptions stay visible on desktop and mobile billing with a "Pay Now" action using the Razorpay `shortUrl`.
 - Offline subscriptions show as "Offline one-time prepaid" with prepaid period and prepaid-until date.
 - Offline active subscriptions do not show Razorpay pause/cancel/upgrade actions because those actions only apply to recurring Razorpay subscriptions.
+- Offline outlet creation requires unused prepaid capacity. If the client needs another location, reseller collects cash/UPI and records "Add prepaid location" before the owner creates the outlet.
 - Enhancement packs remain available while the prepaid subscription is active.
 
 **Safeguards:**
 
 - Reseller must confirm they received payment (checkbox + button)
-- Amount is displayed (computed from tier × duration) — cannot be edited
+- Amount is displayed (computed from tier × duration × locations) — cannot be edited
 - Transaction logged immutably
 - Reseller has offline activation cap
 
@@ -230,10 +231,12 @@ Reseller selects:
 - **Billing Interval:** Monthly / Yearly (for online) or Duration 3/6/12 months (for offline)
 - **Payment Mode:** Online / Offline (toggle)
 - **Commitment Period:** 3 / 6 / 12 months (for online — tracking only, not billing)
+- **Locations included:** number of paid location seats. Owner can create outlets later up to this paid capacity.
 
 System displays:
 
 - Monthly/yearly amount (online) or total prepaid amount (offline)
+- Amount includes the selected location count (`tier × duration × locations` for offline; Razorpay subscription quantity for online)
 - Commitment period or validity dates
 
 ### Step 4: Confirmation
@@ -289,8 +292,9 @@ System creates:
 ### 6.3 My Clients (`/reseller/clients`)
 
 - Table of all onboarded stores
-- Columns: Business Name, Plan, Status, Expires On, Payment Mode
+- Columns: Business Name, Plan, Status, Expires On, Payment Mode, Paid Locations
 - Status badges: Active (green), Expiring Soon (orange), Expired (red), Pending Payment (yellow)
+- Active offline/manual clients show "Add prepaid location" so reseller can record extra paid capacity before owner outlet creation.
 - Click → details view
 
 ### 6.4 Client Detail (`/reseller/clients/[storeId]`)
@@ -299,6 +303,7 @@ System creates:
 - Subscription status
 - Payment history (for this client)
 - Renewal action (create new license period)
+- Add prepaid location action for active offline/manual clients
 
 ---
 
@@ -444,5 +449,5 @@ The client has **zero awareness** of the reseller layer:
 
 ---
 
-**DOCUMENT STATUS:** ✅ IMPLEMENTED (Feature Flag OFF)  
-**Last Updated:** February 27, 2026 (v1.2 — implementation complete)
+**DOCUMENT STATUS:** ✅ IMPLEMENTED  
+**Last Updated:** May 20, 2026 (v1.3 — manual/offline location capacity and quantity-aware billing)

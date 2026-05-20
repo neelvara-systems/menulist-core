@@ -1,10 +1,12 @@
 'use client';
 
+import { calculateOfflineLocationTopup } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
 import { ResellerTransaction } from "@type/reseller";
-import { Badge, Button, Card, Col, Empty, Flex, Row, Spin, Statistic, Table, Tag, Typography } from "antd";
+import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Spin, Statistic, Table, Tag, Typography } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { LuPlus, LuRefreshCw, LuUsers } from "react-icons/lu";
 
 const { Title, Text } = Typography;
@@ -27,6 +29,13 @@ function formatMoney(paise?: number) {
     return `₹${Math.round((paise || 0) / 100).toLocaleString('en-IN')}`;
 }
 
+function formatDate(value: any) {
+    if (!value) return 'Auto-renew';
+    const date = value?.toDate ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Auto-renew';
+    return date.toLocaleDateString();
+}
+
 function ResellerDashboard() {
     const { data: session } = useSession();
     const router = useRouter();
@@ -35,6 +44,48 @@ function ResellerDashboard() {
     const isPlatform = (session as any)?.platformRole === 'PLATFORM' || (session?.user as any)?.platformRole === 'PLATFORM';
 
     const { profile, monthlySummary, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const [selectedClient, setSelectedClient] = useState<ResellerTransaction | null>(null);
+    const [locationCount, setLocationCount] = useState(1);
+    const [addingLocation, setAddingLocation] = useState(false);
+    const locationTopup = selectedClient
+        ? (() => {
+            try {
+                return calculateOfflineLocationTopup({
+                    locationCount,
+                    pricingTier: selectedClient.pricingTier,
+                    validUntil: selectedClient.validUntil,
+                });
+            } catch {
+                return null;
+            }
+        })()
+        : null;
+
+    const handleAddLocationCapacity = async () => {
+        if (!selectedClient) return;
+        setAddingLocation(true);
+        try {
+            const response = await fetch('/api/reseller/add-location-capacity', {
+                body: JSON.stringify({
+                    locationCount,
+                    storeId: selectedClient.storeId,
+                    tenantId: selectedClient.tenantId,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Failed to add location');
+            message.success(`Location capacity added. Collect ${formatMoney(data.amountExpected)}.`);
+            setSelectedClient(null);
+            setLocationCount(1);
+            refresh();
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to add location');
+        } finally {
+            setAddingLocation(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -75,6 +126,14 @@ function ResellerDashboard() {
             ),
         },
         {
+            title: 'Locations',
+            dataIndex: 'subscriptionQuantity',
+            key: 'subscriptionQuantity',
+            render: (_: number, record: ResellerTransaction) => (
+                <Text>{record.subscriptionQuantity || record.locationCount || 1}</Text>
+            ),
+        },
+        {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
@@ -96,7 +155,7 @@ function ResellerDashboard() {
                 const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
                 return (
                     <Text type={daysLeft <= 0 ? 'danger' : isExpiringSoon ? 'warning' : undefined}>
-                        {date.toLocaleDateString()}
+                        {formatDate(val)}
                         {daysLeft > 0 && ` (${daysLeft}d)`}
                     </Text>
                 );
@@ -110,6 +169,22 @@ function ResellerDashboard() {
                 if (!val) return '-';
                 const date = val?.toDate ? val.toDate() : new Date(val);
                 return <Text type="secondary">{date.toLocaleDateString()}</Text>;
+            },
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_: unknown, record: ResellerTransaction) => {
+                const isManual = record.paymentMode === 'offline' || record.subscriptionBillingMode === 'manual';
+                const canAddLocation = isManual && record.status === 'active';
+                return canAddLocation ? (
+                    <Button size="small" onClick={() => {
+                        setSelectedClient(record);
+                        setLocationCount(1);
+                    }}>
+                        Add location
+                    </Button>
+                ) : null;
             },
         },
     ];
@@ -222,6 +297,39 @@ function ResellerDashboard() {
                     />
                 </Card>
             )}
+            <Modal
+                destroyOnClose
+                okButtonProps={{ disabled: !locationTopup || locationTopup.daysRemaining <= 0, loading: addingLocation }}
+                okText="Record prepaid location"
+                onCancel={() => setSelectedClient(null)}
+                onOk={handleAddLocationCapacity}
+                open={Boolean(selectedClient)}
+                title="Add Prepaid Location"
+            >
+                {selectedClient ? (
+                    <Flex gap={12} vertical>
+                        <Text>
+                            {selectedClient.storeName || `Store ${selectedClient.storeId}`} currently has {selectedClient.subscriptionQuantity || selectedClient.locationCount || 1} paid location{(selectedClient.subscriptionQuantity || selectedClient.locationCount || 1) > 1 ? 's' : ''}.
+                        </Text>
+                        <InputNumber
+                            min={1}
+                            max={30}
+                            onChange={(value) => setLocationCount(Math.max(1, Number(value || 1)))}
+                            style={{ width: '100%' }}
+                            value={locationCount}
+                        />
+                        <Card size="small">
+                            <Flex gap={4} vertical>
+                                <Text type="secondary">Collect from client</Text>
+                                <Text strong>{formatMoney(locationTopup?.amountPaise)}</Text>
+                                <Text type="secondary">
+                                    Valid until {formatDate(selectedClient.validUntil)} ({locationTopup?.daysRemaining || 0} days remaining).
+                                </Text>
+                            </Flex>
+                        </Card>
+                    </Flex>
+                ) : null}
+            </Modal>
         </div>
     );
 }

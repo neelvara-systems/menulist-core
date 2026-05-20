@@ -2,7 +2,7 @@
 
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@constant/common";
-import { Button, Card, Col, Divider, Flex, Form, Input, message, Radio, Result, Row, Select, Steps, Typography } from "antd";
+import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,6 +13,7 @@ const { Title, Text, Paragraph } = Typography;
 interface OnboardResult {
     dashboardUrl?: string;
     loginEmail?: string;
+    locationCount?: number;
     ownerUsername?: string;
     passwordSet?: boolean;
     publicUrl?: string;
@@ -61,6 +62,7 @@ function OnboardingWizard() {
                     pricingTier: values.pricingTier,
                     billingInterval: values.billingInterval || 'MONTH',
                     commitmentMonths: values.commitmentMonths || undefined,
+                    locationCount: values.locationCount || 1,
                     paymentMode: values.paymentMode,
                 }),
             });
@@ -85,17 +87,19 @@ function OnboardingWizard() {
     const paymentMode = form.getFieldValue('paymentMode');
     const commitmentMonths = form.getFieldValue('commitmentMonths');
     const billingInterval = form.getFieldValue('billingInterval');
+    const locationCount = Number(form.getFieldValue('locationCount') || 1);
 
     const getDisplayAmount = () => {
         if (!selectedTier) return '';
         if (paymentMode === 'offline' && commitmentMonths) {
-            const total = calculateOfflineAmount(selectedTier.id, commitmentMonths);
-            return `₹${(total / 100).toLocaleString()} one-time prepaid (${commitmentMonths} months)`;
+            const total = calculateOfflineAmount(selectedTier.id, commitmentMonths, locationCount);
+            return `₹${(total / 100).toLocaleString()} one-time prepaid (${commitmentMonths} months, ${locationCount} location${locationCount > 1 ? 's' : ''})`;
         }
+        const quantitySuffix = locationCount > 1 ? ` × ${locationCount} locations` : '';
         if (billingInterval === 'YEAR') {
-            return `₹${(selectedTier.yearlyPriceINR / 100).toLocaleString()}/year (recurring)`;
+            return `₹${((selectedTier.yearlyPriceINR * locationCount) / 100).toLocaleString()}/year (recurring${quantitySuffix})`;
         }
-        return `₹${(selectedTier.monthlyPriceINR / 100).toLocaleString()}/month (recurring)`;
+        return `₹${((selectedTier.monthlyPriceINR * locationCount) / 100).toLocaleString()}/month (recurring${quantitySuffix})`;
     };
 
     // Step 1: Business Details
@@ -145,6 +149,15 @@ function OnboardingWizard() {
                     <Radio.Button value="online">Online (Razorpay)</Radio.Button>
                     <Radio.Button value="offline">Offline (One-time Prepaid)</Radio.Button>
                 </Radio.Group>
+            </Form.Item>
+
+            <Form.Item
+                initialValue={1}
+                label="Locations included"
+                name="locationCount"
+                rules={[{ required: true, message: 'Enter number of locations' }]}
+            >
+                <InputNumber min={1} max={30} size="large" style={{ width: '100%' }} />
             </Form.Item>
 
             <Form.Item noStyle shouldUpdate={(prev, cur) => prev.paymentMode !== cur.paymentMode}>
@@ -209,6 +222,8 @@ function OnboardingWizard() {
                     <Col span={16}><Text strong>{selectedTier?.name || values.pricingTier}</Text></Col>
                     <Col span={8}><Text type="secondary">Payment</Text></Col>
                     <Col span={16}><Text>{values.paymentMode === 'online' ? 'Online (Razorpay recurring)' : 'Offline (one-time prepaid)'}</Text></Col>
+                    <Col span={8}><Text type="secondary">Locations</Text></Col>
+                    <Col span={16}><Text>{values.locationCount || 1}</Text></Col>
                     <Col span={8}><Text type="secondary">Amount</Text></Col>
                     <Col span={16}><Text strong>{getDisplayAmount()}</Text></Col>
                 </Row>
@@ -234,7 +249,7 @@ function OnboardingWizard() {
                 <Result
                     status="success"
                     title="Client Onboarded Successfully!"
-                    subTitle={`Store ID: ${result.storeId} | Status: ${result.status}`}
+                    subTitle={`Store ID: ${result.storeId} | Status: ${result.status}${result.locationCount ? ` | ${result.locationCount} location${result.locationCount > 1 ? 's' : ''}` : ''}`}
                     extra={[
                         result.shortUrl && (
                             <Card key="link" size="small" style={{ marginBottom: 16, textAlign: 'left' }}>

@@ -103,11 +103,55 @@ export const RESELLER_CAPS = {
     MAX_TOTAL_RESELLERS: 10,
 } as const;
 
-/** Calculate total amount for offline prepaid (tier × duration) */
-export function calculateOfflineAmount(tierId: string, durationMonths: number): number {
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const normalizeLocationCount = (locationCount?: number): number => {
+    const count = Number(locationCount || 1);
+    return Number.isFinite(count) && count > 0 ? Math.floor(count) : 1;
+};
+
+const toDate = (value: any): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value?.toDate === 'function') return value.toDate();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/** Calculate total amount for offline prepaid (tier × duration × locations). */
+export function calculateOfflineAmount(tierId: string, durationMonths: number, locationCount: number = 1): number {
     const tier = RESELLER_PRICING_TIERS.find(t => t.id === tierId);
     if (!tier) throw new Error(`Unknown pricing tier: ${tierId}`);
-    return tier.monthlyPriceINR * durationMonths;
+    return tier.monthlyPriceINR * durationMonths * normalizeLocationCount(locationCount);
+}
+
+/**
+ * Calculate one-time offline amount for adding prepaid locations until the
+ * current manual subscription expiry. Manual subscriptions have one shared
+ * expiry, so added location capacity always aligns to that date.
+ */
+export function calculateOfflineLocationTopup(params: {
+    locationCount?: number;
+    pricingTier: string;
+    validUntil: any;
+    now?: Date;
+}): { amountPaise: number; daysRemaining: number; locationCount: number } {
+    const tier = RESELLER_PRICING_TIERS.find(t => t.id === params.pricingTier);
+    if (!tier) throw new Error(`Unknown pricing tier: ${params.pricingTier}`);
+
+    const now = params.now || new Date();
+    const validUntil = toDate(params.validUntil);
+    const daysRemaining = validUntil
+        ? Math.max(0, Math.ceil((validUntil.getTime() - now.getTime()) / MS_PER_DAY))
+        : 0;
+    const locationCount = normalizeLocationCount(params.locationCount);
+    const dailyAmount = tier.monthlyPriceINR / 30;
+
+    return {
+        amountPaise: Math.ceil(dailyAmount * daysRemaining * locationCount),
+        daysRemaining,
+        locationCount,
+    };
 }
 
 /**

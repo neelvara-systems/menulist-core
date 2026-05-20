@@ -132,7 +132,7 @@ Assumption for INR estimate: ₹83/USD.
 | Operation                      | Collection                             | Trigger                      | Docs Written         | File                                      |
 | ------------------------------ | -------------------------------------- | ---------------------------- | -------------------- | ----------------------------------------- |
 | Acquire lock (in tx)           | `tenants/{tId}`                        | POST /api/outlets/create     | 1                    | `route.ts:76`                             |
-| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 1                    | `route.ts:91`                             |
+| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 0-1                  | Runs only when Razorpay-backed quantity must increase. Manual/offline subscriptions consume already-paid capacity and do not write quantity during outlet creation. |
 | Create outlet store (in tx)    | `stores/{newSId}`                      | POST /api/outlets/create     | 1                    | `route.ts:114`                            |
 | Sync storesSummary (in tx)     | `platformSummary/storesSummary`        | POST /api/outlets/create     | 1                    | `route.ts:132`                            |
 | Legacy master repair (in tx)   | `stores/{sId}` + `tenants/{tId}` + `platformSummary/storesSummary` | First outlet or policy save on legacy single-store tenant | 3 | `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/policy/route.ts` |
@@ -147,7 +147,7 @@ Assumption for INR estimate: ₹83/USD.
 | Deactivate outlet (in tx)      | `stores/{outletSId}`                   | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |
 | Sync deactivation (in tx)      | `platformSummary/storesSummary`        | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |
 | Update deactivated storesList (in tx) | `tenants/{tId}`                 | POST /api/outlets/deactivate | 1                    | `src/app/api/outlets/deactivate/route.ts` |
-| Reduce sub quantity (deactivate) | `subscriptions/{subId}`              | POST /api/outlets/deactivate | 1 when quantity > 1  | Internal subscription quantity is reduced even when no provider subscription ID exists. |
+| Reduce sub quantity (deactivate) | `subscriptions/{subId}`              | POST /api/outlets/deactivate | 1 for Razorpay-backed only | Manual/offline prepaid capacity is retained until expiry, so deactivation frees a replacement slot without a refund/write. |
 | Rename outlet (in tx)          | `stores/{outletSId}`                   | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Sync renamed outlet (in tx)    | `platformSummary/storesSummary`        | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Update renamed storesList (in tx) | `tenants/{tId}`                     | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
@@ -160,8 +160,10 @@ Assumption for INR estimate: ₹83/USD.
 
 | Operation                    | Service      | Trigger                  | File           |
 | ---------------------------- | ------------ | ------------------------ | -------------- |
-| Update subscription quantity | Razorpay API | POST /api/outlets/create/deactivate when provider subscription exists | `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/deactivate/route.ts` |
+| Update subscription quantity | Razorpay API | POST /api/outlets/create/deactivate only when `billingMode !== "manual"` and provider subscription ID is a real Razorpay `sub_...` ID | `src/lib/billing/subscriptionProviderSync.ts`, `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/deactivate/route.ts` |
 | Revert subscription quantity | Razorpay API | Creation failure after provider quantity update | `src/app/api/outlets/create/route.ts` |
+
+Manual/offline premium subscriptions avoid the Razorpay API call entirely. This prevents failed provider calls for `manual_...` records, removes unnecessary provider traffic from outlet creation/deactivation, and reduces reconciliation noise because manual records are skipped by the subscription reconciler. Manual location capacity is added through `/api/reseller/add-location-capacity`, which writes the subscription `quantity`/`amount`, appends a reseller transaction, and updates reseller revenue stats after offline payment collection.
 
 ### DAL Functions (Feature #4C)
 

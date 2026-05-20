@@ -6,7 +6,7 @@ import { Timestamp } from "firebase/firestore";
 // ═══════════════════════════════════════════════════════════════
 
 /** Actions a reseller can perform */
-export type ResellerTransactionAction = 'ONBOARD' | 'RENEW' | 'CANCEL';
+export type ResellerTransactionAction = 'ONBOARD' | 'RENEW' | 'ADD_LOCATION' | 'CANCEL';
 
 /** Payment modes for reseller onboarding */
 export type ResellerPaymentMode = 'online' | 'offline';
@@ -35,6 +35,8 @@ export interface ResellerTransaction {
     pricingTier: string;              // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'
     billingInterval: 'MONTH' | 'YEAR';
     commitmentMonths?: number;        // 3 | 6 | 12 (online: tracking, offline: duration)
+    locationCount?: number;           // Number of prepaid/recurring locations covered by this transaction.
+    subscriptionQuantity?: number;    // Current total licensed locations after this transaction.
     amountExpected: number;           // In paise (INR smallest unit)
     currency: 'INR';
     paymentMode: ResellerPaymentMode;
@@ -42,6 +44,9 @@ export interface ResellerTransaction {
     // Status
     status: ResellerTransactionStatus;
     subscriptionId: string;           // Links to subscription doc
+    subscriptionAmount?: number;      // Current subscription amount snapshot from /subscriptions.
+    subscriptionBillingMode?: 'auto' | 'manual';
+    subscriptionStatus?: string;
 
     // Timestamps (offline only for validFrom/validUntil)
     validFrom?: Timestamp | null;

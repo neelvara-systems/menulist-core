@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** May 20, 2026 (v6 — mobile master-update review parity + outlet-local state markers)
+**Last Updated:** May 20, 2026 (v8 — prepaid manual location capacity)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -40,6 +40,8 @@
 - Same `updateOutletPolicy` DAL function, now server-owned for policy writes
 - Same `OutletPolicy` type and `DEFAULT_OUTLET_POLICY`
 - Same `calculateProration` utility
+- Mobile and desktop hide the add-outlet proration card for `billingMode: "manual"` subscriptions because those accounts are prepaid/offline, not auto-debited through Razorpay.
+- Mobile and desktop disable add-outlet submission for manual/offline accounts when prepaid location capacity is exhausted. The owner sees a reseller-capacity message instead of hitting a generic "outlet creation failed" error.
 - Same `canManageLocationSettings()` gate across mobile More, mobile Locations, desktop Locations, and desktop sidebars
 - MobileShell `HQ` switch refreshes Firebase auth claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors after switching back.
 - Mobile menu command bubble is offset from the Canonica help launcher so the add item/category command sheet remains reachable on phone-sized screens.
@@ -53,6 +55,7 @@ Older demo/production accounts may have a premium subscription but no `isMaster:
 - Both paths update `stores/{sId}`, `tenants/{tId}.storesList`, `platformSummary/storesSummary`, and public cache tags.
 - Store switching normalizes numeric/string store IDs and rejects inactive target stores server-side, so stale mobile lists cannot switch into a disabled outlet.
 - Mobile location text is covered by the shared `MobileLocations` locale namespace across all active locale files.
+- Manual/offline premium accounts can create outlets from mobile only when prepaid `subscription.quantity` is greater than active store count. If capacity is exhausted, `/api/outlets/create` blocks with 402 and the reseller/platform adds capacity through the reseller dashboard after collecting payment.
 
 ## Actual Firebase Verification (May 19, 2026)
 

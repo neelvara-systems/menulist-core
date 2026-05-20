@@ -26,6 +26,7 @@
 > - Follow-up line audit added strict server validation for linked outlet override payloads: extra override fields and invalid price strings are rejected before Firebase writes.
 > - Follow-up policy audit also added server-side checks for linked outlet description/image generation, theme/brand/layout changes, and extraction job store scoping.
 > - May 20 completion pass closed the remaining useful partials: public item links now fall back cleanly when an outlet local item is gone, extraction persists `extractionIdAliases` for stable master/local IDs, outlet local saves stamp `outletLocalState`, and mobile now has the same master-update review/acknowledge surface as desktop.
+> - May 20 billing follow-up corrected manual/offline payment handling: manual accounts now require prepaid location capacity before outlet creation, reseller desktop/mobile can record paid capacity, and Razorpay-backed quantity updates still happen before store writes.
 
 ---
 
@@ -40,6 +41,7 @@
 | Server/Firebase | ✅ `/api/projects/outlet-save`, `/api/projects/master-job-status`, `/api/outlets/*`, AI description/image APIs, and Firestore rules now cover direct-bypass cases before writes or provider calls. |
 | Outlet local staleness | ✅ Outlet-only local changes now update `outletLocalState` on the outlet project from linked saves, extraction apply, and direct override paths without writing master data. |
 | Runtime evidence | ✅ Chrome/Firebase QA used tenant `39`, master store `39`, outlet store `40`, master project `39-mpctee7o-39`, and outlet project `39-mpcthm9t-40`; outlet local IDs stayed isolated from master after refresh and switching. |
+| Payment capacity | ✅ Razorpay-backed accounts use provider quantity when paid capacity is exhausted; manual/offline accounts consume reseller-recorded prepaid capacity and block with 402 when none remains. |
 
 ---
 

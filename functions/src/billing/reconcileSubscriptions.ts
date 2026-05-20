@@ -107,6 +107,16 @@ function validateTransition(from: string, to: string, context: string): boolean 
     return isValid;
 }
 
+const RAZORPAY_SUBSCRIPTION_ID_PATTERN = /^sub_[A-Za-z0-9]+$/;
+
+function getRazorpayManagedSubscriptionId(sub: Record<string, any>): string | null {
+    const providerSubscriptionId = String(sub.providerSubscriptionId || '').trim();
+    if (sub.paymentProvider && sub.paymentProvider !== 'razorpay') return null;
+    if (sub.billingMode === 'manual') return null;
+    if (!RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(providerSubscriptionId)) return null;
+    return providerSubscriptionId;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RAZORPAY CLIENT (initialized lazily with Firebase secrets)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,7 +161,6 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
     const syncDetails: Array<{ subId: string; field: string; local: string; remote: string }> = [];
 
     const db = firestoreAdmin;
-    const razorpay = getRazorpayClient();
 
     // 1. Query all subscriptions that should be "alive"
     const snapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
@@ -177,7 +186,13 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
         processed++;
 
         try {
-            const rzpSub = await razorpay.subscriptions.fetch(sub.providerSubscriptionId);
+            const providerSubId = getRazorpayManagedSubscriptionId(sub);
+            if (!providerSubId) {
+                continue;
+            }
+
+            const razorpay = getRazorpayClient();
+            const rzpSub = await razorpay.subscriptions.fetch(providerSubId);
             const updates: Record<string, any> = {};
             const rzpStatus = RAZORPAY_STATUS_MAP[rzpSub.status];
 

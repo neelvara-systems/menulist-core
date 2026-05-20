@@ -391,25 +391,22 @@ Mobile: grid-cols-2 gap-3
 
 **No video. No SVG explainer animation. No hero background video. No animated journey diagrams.**
 
-Default animation used on the site:
+Default content visibility rule:
 
 ```css
 .reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 500ms ease-out,
-    transform 500ms ease-out;
-}
-.reveal.visible {
   opacity: 1;
   transform: translateY(0);
 }
 ```
 
-Use IntersectionObserver (existing `useInView` hook) with `threshold: 0.1`, `triggerOnce: true`.
+Website content must never render hidden by default. Do not use `opacity: 0` as the initial state for public marketing sections, page heroes, proof cards, legal content, or conversion CTAs. Scroll-triggered motion is allowed only when the server-rendered and hydrated fallback remains readable without IntersectionObserver firing.
 
-**Stagger:** When multiple elements enter together, delay each by 100ms.
+`AnimateOnScroll` and `AnimateStaggerChild` are reliability wrappers, not visibility gates. They must keep children visible even if browser animation, hash navigation, or mobile scroll observers fail.
+
+Website heading primitives, including legacy shadcn website headings used inside pricing components, must render readable static content by default. Do not gate headings behind `useInView`.
+
+The global app route template must not wrap pages in an initial hidden opacity state. Marketing content, public pages, and owner/customer routes must remain visible without waiting for Framer Motion hydration.
 
 Footer ambient exception:
 

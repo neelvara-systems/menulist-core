@@ -1,11 +1,13 @@
 'use client'
 
+import { calculateOfflineLocationTopup } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
 import type { ResellerTransaction } from '@type/reseller';
 import { useSession } from 'next-auth/react';
-import { LuPlus, LuRefreshCw, LuUsers } from 'react-icons/lu';
-import { Button, Card, Empty, Flex, Spin, Tag, Text, Title } from '../antd';
+import { useState } from 'react';
+import { LuPlus, LuRefreshCw, LuUsers, LuX } from 'react-icons/lu';
+import { Button, Card, Empty, Flex, Input, NavBar, Popup, Spin, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -40,9 +42,11 @@ function getDaysLeft(value: any) {
     return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-function ClientCard({ transaction }: { transaction: ResellerTransaction }) {
+function ClientCard({ onAddLocation, transaction }: { onAddLocation: (transaction: ResellerTransaction) => void; transaction: ResellerTransaction }) {
     const daysLeft = getDaysLeft(transaction.validUntil);
     const statusColor = STATUS_COLORS[transaction.status] || 'default';
+    const isManual = transaction.paymentMode === 'offline' || transaction.subscriptionBillingMode === 'manual';
+    const canAddLocation = isManual && transaction.status === 'active';
 
     return (
         <Card>
@@ -58,11 +62,17 @@ function ClientCard({ transaction }: { transaction: ResellerTransaction }) {
                     <Tag>{transaction.paymentMode === 'online' ? 'Online' : 'Offline'}</Tag>
                     <Tag>{transaction.pricingTier}</Tag>
                     <Tag>{formatMoney(transaction.amountExpected)}</Tag>
+                    <Tag>{transaction.subscriptionQuantity || transaction.locationCount || 1} location{(transaction.subscriptionQuantity || transaction.locationCount || 1) > 1 ? 's' : ''}</Tag>
                 </Flex>
                 <Flex align="center" justify="space-between">
                     <Text type="secondary">Expires</Text>
                     <Text strong>{formatDate(transaction.validUntil)}{daysLeft && daysLeft > 0 ? ` (${daysLeft}d)` : ''}</Text>
                 </Flex>
+                {canAddLocation ? (
+                    <Button block fill="outline" onClick={() => onAddLocation(transaction)} style={{ minHeight: 44 }}>
+                        Add prepaid location
+                    </Button>
+                ) : null}
             </Flex>
         </Card>
     );
@@ -83,6 +93,49 @@ export default function MobileResellerDashboardScreen({
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const { profile, monthlySummary, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const [selectedClient, setSelectedClient] = useState<ResellerTransaction | null>(null);
+    const [locationCount, setLocationCount] = useState('1');
+    const [addingLocation, setAddingLocation] = useState(false);
+    const parsedLocationCount = Math.max(1, Number(locationCount || 1));
+    const locationTopup = selectedClient
+        ? (() => {
+            try {
+                return calculateOfflineLocationTopup({
+                    locationCount: parsedLocationCount,
+                    pricingTier: selectedClient.pricingTier,
+                    validUntil: selectedClient.validUntil,
+                });
+            } catch {
+                return null;
+            }
+        })()
+        : null;
+
+    const handleAddLocationCapacity = async () => {
+        if (!selectedClient) return;
+        setAddingLocation(true);
+        try {
+            const response = await fetch('/api/reseller/add-location-capacity', {
+                body: JSON.stringify({
+                    locationCount: parsedLocationCount,
+                    storeId: selectedClient.storeId,
+                    tenantId: selectedClient.tenantId,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Could not add location');
+            Toast.show({ content: `Collect ${formatMoney(data.amountExpected)}`, duration: 2200, icon: 'success' });
+            setSelectedClient(null);
+            setLocationCount('1');
+            refresh();
+        } catch (error: any) {
+            Toast.show({ content: error?.message || 'Could not add location', duration: 2600 });
+        } finally {
+            setAddingLocation(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -181,10 +234,59 @@ export default function MobileResellerDashboardScreen({
                 ) : (
                     <Flex gap={10} vertical>
                         <Title level={5} style={{ margin: 0 }}>Clients</Title>
-                        {transactions.map((transaction) => <ClientCard key={transaction.id} transaction={transaction} />)}
+                        {transactions.map((transaction) => <ClientCard key={transaction.id} onAddLocation={(client) => {
+                            setSelectedClient(client);
+                            setLocationCount('1');
+                        }} transaction={transaction} />)}
                     </Flex>
                 )}
             </Flex>
+            <Popup
+                bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }}
+                onMaskClick={addingLocation ? undefined : () => setSelectedClient(null)}
+                position="bottom"
+                visible={Boolean(selectedClient)}
+            >
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setSelectedClient(null)}>
+                        Add prepaid location
+                    </NavBar>
+                    {selectedClient ? (
+                        <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                            <Text strong>{selectedClient.storeName || `Store ${selectedClient.storeId}`}</Text>
+                            <Text type="secondary">
+                                Current paid locations: {selectedClient.subscriptionQuantity || selectedClient.locationCount || 1}
+                            </Text>
+                            <Input
+                                inputMode="numeric"
+                                onChange={(value) => setLocationCount(value.replace(/[^0-9]/g, ''))}
+                                placeholder="1"
+                                type="number"
+                                value={locationCount}
+                            />
+                            <Card size="small">
+                                <Flex gap={4} vertical>
+                                    <Text type="secondary">Collect from client</Text>
+                                    <Text strong>{formatMoney(locationTopup?.amountPaise)}</Text>
+                                    <Text type="secondary">{locationTopup?.daysRemaining || 0} days remaining.</Text>
+                                </Flex>
+                            </Card>
+                            <Flex gap={10}>
+                                <Button block fill="outline" onClick={() => setSelectedClient(null)} style={{ minHeight: 44 }}>Cancel</Button>
+                                <Button
+                                    block
+                                    disabled={!locationTopup || locationTopup.daysRemaining <= 0}
+                                    loading={addingLocation}
+                                    onClick={handleAddLocationCapacity}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    Record payment
+                                </Button>
+                            </Flex>
+                        </Flex>
+                    ) : null}
+                </Flex>
+            </Popup>
         </Flex>
     );
 }

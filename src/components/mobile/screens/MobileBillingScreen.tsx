@@ -372,6 +372,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         extra={<Tag color={isManualBilling ? 'purple' : 'processing'}>{isManualBilling ? 'Offline one-time prepaid' : isPaymentPending ? 'Razorpay pending' : 'Razorpay recurring'}</Tag>}
                                     />
                                     <List.Item
+                                        title={<Text>Paid locations</Text>}
+                                        extra={<Text>{sub.quantity || 1}</Text>}
+                                    />
+                                    <List.Item
                                         title={<Text>Enhancement balance remaining</Text>}
                                         extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits}</Tag>}
                                     />

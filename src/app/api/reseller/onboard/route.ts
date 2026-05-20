@@ -158,7 +158,7 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
-        const { businessName, businessType, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, paymentMode } = validation.data;
+        const { businessName, businessType, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
 
         // 3. Validate reseller profile exists and is active
         const resellerProfile = await getResellerProfile(resellerId, session.user.email);
@@ -189,7 +189,7 @@ export const POST = withAuth(async (request, session) => {
             }
         }
 
-        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RESELLER_ONBOARD_STARTED', data: { resellerId, businessName, pricingTier, paymentMode } });
+        await writeLogEntry({ logFileName: LOG_FILE, logType: 'RESELLER_ONBOARD_STARTED', data: { resellerId, businessName, pricingTier, paymentMode, locationCount } });
 
         // 6. ATOMIC TRANSACTION: Create Tenant, Store, User (centralized utility)
         const db = admin.firestore();
@@ -361,11 +361,12 @@ export const POST = withAuth(async (request, session) => {
         let subscriptionId = '';
         let shortUrl: string | undefined;
         const durationForOffline = commitmentMonths || 3;
+        const billingAmount = billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR;
 
         if (paymentMode === 'online') {
             // Create Razorpay Subscription (same as self-serve)
             const razorpayPlanId = await getOrCreateRazorpayPlan({
-                price: billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
+                price: billingAmount,
                 currency: 'INR',
                 interval: billingInterval || 'MONTH',
                 userType: 'B2C',
@@ -377,7 +378,7 @@ export const POST = withAuth(async (request, session) => {
             const razorpaySubscription = await razorpayClient.subscriptions.create({
                 plan_id: razorpayPlanId,
                 total_count: totalCount,
-                quantity: 1,
+                quantity: locationCount,
                 notes: {
                     tenantId: result.tenantId,
                     storeId: result.storeId,
@@ -389,7 +390,8 @@ export const POST = withAuth(async (request, session) => {
                     name: businessName,
                     email: result.loginEmail,
                     ownerUsername: result.ownerUsername,
-                    price: billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
+                    price: billingAmount,
+                    locationCount,
                     resellerId,
                     remainingCredits: 0,
                 },
@@ -411,7 +413,7 @@ export const POST = withAuth(async (request, session) => {
                 planType: billingInterval || 'MONTH',
                 userType: 'B2C',
                 currency: 'INR',
-                amount: billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
+                amount: billingAmount,
                 status: "pending",
                 lastWebhook: null,
                 planId: tier.planId,
@@ -433,12 +435,12 @@ export const POST = withAuth(async (request, session) => {
                 statuses: [{
                     status: "pending",
                     timestamp: Timestamp.now(),
-                    amount: billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
+                    amount: billingAmount * locationCount,
                     currency: 'INR',
-                    remark: `Reseller onboarding (${tier.name}) — awaiting client payment`,
+                    remark: `Reseller onboarding (${tier.name}) — ${locationCount} location${locationCount > 1 ? 's' : ''} awaiting client payment`,
                 }],
                 billingHistory: [],
-                quantity: 1,
+                quantity: locationCount,
                 // Reseller fields
                 billingMode: 'auto',
                 onboardingSource: 'RESELLER_ONBOARDING',
@@ -453,7 +455,7 @@ export const POST = withAuth(async (request, session) => {
                 await updateResellerStatsOnOnboarding(
                     resellerProfile.id,
                     paymentMode,
-                    billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR,
+                    billingAmount * locationCount,
                 );
             }
         } else {
@@ -462,7 +464,7 @@ export const POST = withAuth(async (request, session) => {
             const validUntil = new Date(now);
             validUntil.setMonth(validUntil.getMonth() + durationForOffline);
 
-            const totalAmount = calculateOfflineAmount(pricingTier, durationForOffline);
+            const totalAmount = calculateOfflineAmount(pricingTier, durationForOffline, locationCount);
             subscriptionId = `manual_${result.tenantId}_${result.storeId}_${Date.now()}`;
 
             const subscriptionPayload: Omit<FirestoreSubscriptionDoc, "id"> = {
@@ -501,10 +503,10 @@ export const POST = withAuth(async (request, session) => {
                     timestamp: Timestamp.now(),
                     amount: totalAmount,
                     currency: 'INR',
-                    remark: `Reseller offline onboarding (${tier.name}) — ${durationForOffline} months`,
+                    remark: `Reseller offline onboarding (${tier.name}) — ${locationCount} location${locationCount > 1 ? 's' : ''}, ${durationForOffline} months`,
                 }],
                 billingHistory: [],
-                quantity: 1,
+                quantity: locationCount,
                 // Reseller fields
                 billingMode: 'manual',
                 validUntil: Timestamp.fromDate(validUntil),
@@ -540,9 +542,11 @@ export const POST = withAuth(async (request, session) => {
             billingInterval: billingInterval || 'MONTH',
             commitmentMonths: commitmentMonths || durationForOffline,
             amountExpected: paymentMode === 'offline'
-                ? calculateOfflineAmount(pricingTier, durationForOffline)
-                : (billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR),
+                ? calculateOfflineAmount(pricingTier, durationForOffline, locationCount)
+                : billingAmount * locationCount,
             currency: 'INR',
+            locationCount,
+            subscriptionQuantity: locationCount,
             paymentMode,
             status: paymentMode === 'offline' ? 'active' : 'pending_payment',
             subscriptionId,
@@ -570,6 +574,7 @@ export const POST = withAuth(async (request, session) => {
             loginEmail: result.loginEmail,
             ownerUsername: result.ownerUsername,
             passwordSet: true,
+            locationCount,
             subdomain: result.subdomain,
             userId: result.userId,
             status: paymentMode === 'offline' ? 'active' : 'pending',

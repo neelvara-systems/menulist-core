@@ -42,8 +42,9 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 | Reseller Home | P0 | Stats overview + "Onboard New Client" CTA |
 | Onboarding Wizard | P0 | Multi-step form (business details → plan selection → recurring online or one-time prepaid offline confirmation) |
 | My Clients List | P0 | Scrollable list with status badges |
-| Client Detail | P0 | Read-only detail with renewal action |
+| Client Detail | P0 | Read-only detail with renewal and prepaid-location actions |
 | Confirm Payment | P0 | Single-action confirmation for offline payments |
+| Add Prepaid Location | P0 | Record cash/UPI collection for extra manual location capacity |
 
 ### Mobile-Specific Considerations
 
@@ -53,6 +54,7 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 4. **Offline indicator** — If reseller has poor connectivity at client location, show clear status
 5. **Share payment link** — Native share sheet for sending Razorpay link via WhatsApp/SMS
 6. **Billing parity** — Mobile Billing must show pending reseller-online subscriptions with Pay Now, and manual reseller-offline subscriptions as one-time prepaid access with no Razorpay pause/cancel/upgrade controls.
+7. **Manual location capacity** — Mobile reseller dashboard exposes "Add prepaid location" for active offline clients, using the same `/api/reseller/add-location-capacity` route as desktop. This is required so field resellers can collect cash/UPI and immediately unlock owner outlet creation from the client's phone.
 
 ---
 

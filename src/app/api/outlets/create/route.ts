@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 /**
  * POST /api/outlets/create — internal outlet creation
- * Billing sync is optional for now, so multi-branch settings stay available
- * even when no active subscription is present.
+ * Billing-first: Razorpay-managed accounts update provider quantity before
+ * creation; manual/offline accounts must already have prepaid capacity.
  * @see __docs__/multi-outlet-consistency/store-onboarding-billing_impl.md §5
  */
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
@@ -14,10 +14,13 @@ import { isReservedOutletSlug } from "@constant/reservedSlugs";
 import { createDefaultRoles, getOwnerRoleId } from "@data/defaultRoles";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import {
+    getRazorpayManagedSubscriptionId,
+    updateRazorpaySubscriptionQuantity,
+} from "@lib/billing/subscriptionProviderSync";
 import { buildUserStoreAccessUpdate } from "@lib/multiOutlet/serverStoreAccess";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
-import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
@@ -28,6 +31,14 @@ import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const schema = z.object({ outletName: z.string().min(1).max(200) });
+
+class OutletBillingUpdateError extends Error {
+    constructor(cause: unknown) {
+        super("OUTLET_BILLING_UPDATE_FAILED");
+        this.name = "OutletBillingUpdateError";
+        this.cause = cause;
+    }
+}
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_OUTLET_CREATION) {
@@ -49,6 +60,7 @@ export const POST = withAuth(async (request, session) => {
     const now = admin.firestore.Timestamp.now();
     let billingUpdated = false;
     let previousQty = 1;
+    let newQty = 1;
     let subId: string | undefined;
     let providerSubId: string | undefined;
     let masterPromoted = false;
@@ -81,6 +93,8 @@ export const POST = withAuth(async (request, session) => {
         const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`);
         const initialTenantSnap = await tenantRef.get();
         const initialStoresList = initialTenantSnap.data()?.storesList || [];
+        const activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1;
+        const targetQty = activeStoreCount + 1;
         const hasMasterStore = initialStoresList.some((s: any) => s?.isMaster === true);
         masterPromoted = (
             masterStore.isMaster !== true
@@ -114,15 +128,37 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const sub = await getActiveSubscriptionForStore(tenantId, storeId);
-        if (sub) {
-            if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && sub.status !== 'active') {
+        if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
+            if (!sub) {
+                return NextResponse.json(
+                    { error: "Choose an active plan before adding another location" },
+                    { status: 402 },
+                );
+            }
+            if (sub.status !== 'active') {
                 return NextResponse.json(
                     { error: "Billing needs attention before adding another location" },
                     { status: 402 },
                 );
             }
             subId = sub.id;
-            providerSubId = sub.providerSubscriptionId;
+            providerSubId = getRazorpayManagedSubscriptionId(sub) || undefined;
+            previousQty = Math.max(1, Number(sub.quantity || 1));
+
+            const hasPrepaidCapacity = previousQty >= targetQty;
+            if (!hasPrepaidCapacity && !providerSubId) {
+                const manualCapacityMessage = sub.billingMode === 'manual'
+                    ? "Ask your reseller to add prepaid location capacity before adding another location"
+                    : "Billing needs attention before adding another location";
+                return NextResponse.json(
+                    { error: manualCapacityMessage },
+                    { status: 402 },
+                );
+            }
+        } else if (sub) {
+            subId = sub.id;
+            providerSubId = getRazorpayManagedSubscriptionId(sub) || undefined;
+            previousQty = Math.max(1, Number(sub.quantity || 1));
         }
 
         // Acquire creation lock ATOMICALLY via transaction (Architecture Audit §3.2a)
@@ -141,15 +177,17 @@ export const POST = withAuth(async (request, session) => {
         lockAcquired = true;
 
         // ═══ PATH 1: BILLING (must succeed BEFORE internal creation — Rule 3) ═══
-        previousQty = sub?.quantity || 1;
-        const newQty = previousQty + 1;
-        if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && sub?.status === 'active' && sub.providerSubscriptionId) {
-            await razorpayClient.subscriptions.update(sub.providerSubscriptionId, {
-                quantity: newQty,
-            });
-            billingUpdated = true;
+        newQty = Math.max(previousQty, targetQty);
+        const hasExistingBillingCapacity = previousQty >= targetQty;
+        if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && sub?.status === 'active' && providerSubId && !hasExistingBillingCapacity) {
+            try {
+                await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
+                billingUpdated = true;
+            } catch (billingError) {
+                throw new OutletBillingUpdateError(billingError);
+            }
         }
-        if (subId) {
+        if (subId && newQty !== previousQty) {
             await updateSubscription(subId, { quantity: newQty });
             subscriptionQuantityUpdated = true;
         }
@@ -331,20 +369,23 @@ export const POST = withAuth(async (request, session) => {
         });
     } catch (error) {
         const errMsg = (error as Error).message;
+        const isBillingUpdateError = error instanceof OutletBillingUpdateError;
 
         // Handle lock contention gracefully
         if (errMsg === "LOCK_HELD") {
             return NextResponse.json({ error: "Another outlet is being created" }, { status: 409 });
         }
 
-        secureError("[Outlets] Create failed", error as Error, { tenantId, storeId });
+        secureError(
+            isBillingUpdateError ? "[Outlets] Billing provider quantity update failed" : "[Outlets] Create failed",
+            error as Error,
+            { tenantId, storeId },
+        );
 
         // BE1: If billing updated but internal creation failed, revert Razorpay quantity
         if (billingUpdated && providerSubId) {
             try {
-                await razorpayClient.subscriptions.update(providerSubId, {
-                    quantity: previousQty,
-                });
+                await updateRazorpaySubscriptionQuantity(providerSubId, previousQty);
             } catch (revertErr) {
                 secureError("[Outlets] CRITICAL: Billing revert failed", revertErr as Error, {
                     tenantId, storeId, previousQty,
@@ -368,6 +409,9 @@ export const POST = withAuth(async (request, session) => {
             } catch (_) { /* best-effort */ }
         }
 
-        return NextResponse.json({ error: "Outlet creation failed" }, { status: 500 });
+        return NextResponse.json(
+            { error: isBillingUpdateError ? "Billing needs attention before adding another location" : "Outlet creation failed" },
+            { status: isBillingUpdateError ? 402 : 500 },
+        );
     }
 });

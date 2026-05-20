@@ -106,7 +106,8 @@ export const POST = withAuth(async (request, session) => {
         const newValidUntil = new Date(renewalStart);
         newValidUntil.setMonth(newValidUntil.getMonth() + durationMonths);
 
-        const totalAmount = calculateOfflineAmount(pricingTier, durationMonths);
+        const subscriptionQuantity = Math.max(1, Number(existingSubData.quantity || 1));
+        const totalAmount = calculateOfflineAmount(pricingTier, durationMonths, subscriptionQuantity);
 
         // Update subscription
         await updateSubscription(existingSub.id, {
@@ -127,7 +128,7 @@ export const POST = withAuth(async (request, session) => {
                     timestamp: Timestamp.now(),
                     amount: totalAmount,
                     currency: 'INR',
-                    remark: `Reseller renewal (${tier.name}) — ${durationMonths} months`,
+                    remark: `Reseller renewal (${tier.name}) — ${subscriptionQuantity} location${subscriptionQuantity > 1 ? 's' : ''}, ${durationMonths} months`,
                 },
             ],
         });
@@ -154,6 +155,8 @@ export const POST = withAuth(async (request, session) => {
             pricingTier,
             billingInterval: 'MONTH',
             commitmentMonths: durationMonths,
+            locationCount: subscriptionQuantity,
+            subscriptionQuantity,
             amountExpected: totalAmount,
             currency: 'INR',
             paymentMode: 'offline',
@@ -171,6 +174,8 @@ export const POST = withAuth(async (request, session) => {
             success: true,
             subscriptionId: existingSub.id,
             transactionId,
+            locationCount: subscriptionQuantity,
+            amountExpected: totalAmount,
             validFrom: renewalStart.toISOString(),
             validUntil: newValidUntil.toISOString(),
         });

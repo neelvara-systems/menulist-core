@@ -30,6 +30,11 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
 
     const proration = subscription ? calculateProration(subscription) : null;
     const currency = subscription?.currency || 'INR';
+    const isManualBilling = subscription?.billingMode === 'manual';
+    const activeStoreCount = (tenantDetails?.storesList || []).filter((store: any) => store?.active !== false).length || 1;
+    const prepaidCapacity = Number(subscription?.quantity || 1);
+    const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoreCount;
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (subscription?.status === 'active' && hasManualCapacity);
 
     const handleCreate = async () => {
         if (!outletName.trim()) return;
@@ -93,7 +98,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             onCancel={onClose}
             onOk={handleCreate}
             okText="Add Outlet"
-            okButtonProps={{ loading, disabled: !outletName.trim() }}
+            okButtonProps={{ loading, disabled: !outletName.trim() || !hasBillingAccess }}
             destroyOnClose
         >
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -105,7 +110,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                     autoFocus
                 />
 
-                {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && proration && (
+                {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && proration && !isManualBilling && (
                     <Alert
                         type="info"
                         showIcon
@@ -117,6 +122,24 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                                 <Text type="secondary">{proration.daysRemaining} days remaining in current cycle</Text>
                             </Space>
                         }
+                    />
+                )}
+
+                {FEATURE_FLAGS.ENABLE_OUTLET_BILLING && !subscription && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Active plan required"
+                        description="Choose an active plan before adding another location."
+                    />
+                )}
+
+                {isManualBilling && !hasManualCapacity && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Prepaid location needed"
+                        description="Ask your reseller to add prepaid location capacity before adding another outlet."
                     />
                 )}
 

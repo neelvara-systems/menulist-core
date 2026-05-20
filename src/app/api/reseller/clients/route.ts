@@ -29,7 +29,7 @@ export const GET = withAuth(async (request, session) => {
             : transactionsCollection.where("resellerId", "==", resellerId).limit(100);
 
         const snapshot = await transactionsQuery.get();
-        const transactions = snapshot.docs.map((doc) => {
+        const rawTransactions: any[] = snapshot.docs.map((doc) => {
             const data = doc.data();
             return {
                 ...data,
@@ -37,6 +37,42 @@ export const GET = withAuth(async (request, session) => {
                 createdOn: data.createdOn?.toDate?.()?.toISOString?.() || data.createdOn || null,
                 modifiedOn: data.modifiedOn?.toDate?.()?.toISOString?.() || data.modifiedOn || null,
                 validUntil: data.validUntil?.toDate?.()?.toISOString?.() || data.validUntil || null,
+            };
+        });
+
+        // Current subscription state is needed for manual location capacity.
+        // This dashboard is low-volume and capped, so one bounded read per
+        // visible client keeps the reseller UI accurate without duplicating
+        // subscription truth onto every transaction.
+        const subscriptionIds = Array.from(new Set(
+            rawTransactions
+                .map((transaction) => String(transaction.subscriptionId || ''))
+                .filter(Boolean),
+        )).slice(0, isPlatform ? 200 : 100);
+        const subscriptionDocs = subscriptionIds.length
+            ? await db.getAll(...subscriptionIds.map((id) => db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(id)))
+            : [];
+        const subscriptionsById = new Map(subscriptionDocs
+            .filter((doc) => doc.exists)
+            .map((doc) => [doc.id, doc.data() || {}]));
+
+        const transactions = rawTransactions.map((transaction) => {
+            const subscription = subscriptionsById.get(String(transaction.subscriptionId || ''));
+            const subscriptionStatus = subscription?.status;
+            return {
+                ...transaction,
+                amountExpected: Number(transaction.amountExpected || 0),
+                status: subscriptionStatus === 'pending'
+                    ? 'pending_payment'
+                    : (subscriptionStatus || transaction.status),
+                subscriptionAmount: subscription?.amount,
+                subscriptionBillingMode: subscription?.billingMode,
+                subscriptionQuantity: subscription?.quantity || transaction.subscriptionQuantity || transaction.locationCount || 1,
+                subscriptionStatus,
+                validUntil: subscription?.validUntil?.toDate?.()?.toISOString?.()
+                    || subscription?.cycleEndDate?.toDate?.()?.toISOString?.()
+                    || transaction.validUntil
+                    || null,
             };
         }).sort((a, b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
 

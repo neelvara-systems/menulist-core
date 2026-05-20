@@ -129,10 +129,11 @@ Same as offline, minus reseller profile offline cap update unless a profile exis
 | ------------------------------ | ---------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------- |
 | `createResellerOnboarding()`   | tenants, stores, users, platformSummary, subscriptions, resellerTransactions, resellerProfiles | 2R + 7-8W  | `src/app/api/reseller/onboard/route.ts` |
 | `confirmOfflinePayment()`      | subscriptions, resellerTransactions, resellerProfiles                                          | 1R + 3W    | `src/database/reseller/index.ts`         |
-| `getResellerClients()`         | resellerTransactions                                                                           | 1R         | `src/database/reseller/index.ts`         |
+| `getResellerClients()`         | resellerTransactions, subscriptions                                                           | 1 query + bounded subscription reads | `src/app/api/reseller/clients/route.ts` |
 | `getClientDetail()`            | subscriptions, resellerTransactions                                                            | 2R         | `src/database/reseller/index.ts`         |
 | `getResellerProfile()`         | resellerProfiles                                                                               | 1-2R       | `src/database/reseller/index.ts`         |
 | `renewResellerLicense()`       | subscriptions, resellerTransactions, resellerProfiles                                           | 1R + 2-3W  | `src/app/api/reseller/renew/route.ts`    |
+| `addManualLocationCapacity()`  | subscriptions, resellerTransactions, resellerProfiles                                           | 1R + 3W    | `src/app/api/reseller/add-location-capacity/route.ts` |
 | `checkResellerLicenseExpiry()` | subscriptions                                                                                  | 1R + NW    | `functions/src/decisionBlocksScoring.ts` |
 
 ---

@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.10 (Canonical Website Default)
+**Version:** 3.4.11 (Canonical Website Default)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 20, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.10** | **Canonical Website Default** | **"Upload your menu. Publish your official menu online."** | **ACTIVE** |
+| **3.4.11** | **Canonical Website Default** | **"Upload your menu. Publish your official menu online."** | **ACTIVE** |
 
-Version 3.4.10 keeps the upload-first promise, owner-controlled publish language, solid website wordmark, and compact homepage proof strip from 3.4.9. It adds the final website polish pass: shared owner reassurance lines now use stronger contrast and cleaner mobile wrapping, the Pricing page theme variables are aligned to the main website palette/radius system, and the Features hero now says "No extra work for you" instead of using abstract feature-list framing. Search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out remain operations proof for teams. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
+Version 3.4.11 keeps the upload-first promise, owner-controlled publish language, solid website wordmark, compact homepage proof strip, shared reassurance-line polish, Pricing palette alignment, and Features owner-benefit copy from 3.4.10. It also fixes the deployed white-viewport scroll issue by making website scroll reveal wrappers visible by default instead of depending on IntersectionObserver to reveal hidden content. Search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out remain operations proof for teams. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -427,12 +427,27 @@ Protected scope:
 
 - Pricing, payment, Razorpay, subscription, billing, checkout, auth, staff/auth runtime, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.15 Deployed Scroll Visibility Fix
+
+Stage 7.15 fixes a deployed rendering failure where hash navigation or fast mobile scrolling could show a white viewport until scroll observers fired:
+
+- `AnimateOnScroll` and `AnimateStaggerChild` no longer render children with initial `opacity: 0`.
+- The older shadcn website `SectionHeading` also renders visible static headings instead of waiting for `useInView`.
+- The global app template no longer wraps all routes in an initial `opacity: 0` Framer Motion fade.
+- Website content now stays visible by default; scroll animation can no longer be a dependency for reading marketing sections.
+- The footer background/canvas was not the cause. The blank viewport was caused by hidden Framer Motion scroll-reveal wrappers in deployed HTML.
+
+Protected scope:
+
+- Footer layout, pricing/payment runtime, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.4.11 | May 20, 2026 | Fixed deployed white-screen-on-scroll behavior by making website scroll reveal wrappers visible by default instead of relying on IntersectionObserver to reveal content. |
 | 3.4.10 | May 20, 2026 | Final whole-site theme/content polish: stronger shared reassurance-line contrast, pricing theme variables aligned to the website palette, and Features hero copy tightened to owner-benefit language. |
 | 3.4.9 | May 20, 2026 | Polished the mobile hero and brand lockup: solid website wordmark text, gradient retained in the mark and headline accent, "Publish your official menu online" hero copy, and a compact higher-contrast proof strip. |
 | 3.4.8 | May 19, 2026 | Aligned Privacy Policy, Terms of Service, and Trust & Security with owner-managed staff access, role-scoped permissions, passcode reset metadata, and session revocation. |

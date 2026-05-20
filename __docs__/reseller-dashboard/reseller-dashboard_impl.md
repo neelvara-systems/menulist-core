@@ -280,15 +280,23 @@ export const RESELLER_CAPS = {
   MAX_TOTAL_RESELLERS: 10,
 } as const;
 
-/** Calculate total amount for offline prepaid (tier × duration) */
+/** Calculate total amount for offline prepaid (tier × duration × locations) */
 export function calculateOfflineAmount(
   tierId: string,
   durationMonths: number,
+  locationCount: number = 1,
 ): number {
   const tier = RESELLER_PRICING_TIERS.find((t) => t.id === tierId);
   if (!tier) throw new Error(`Unknown pricing tier: ${tierId}`);
-  return tier.monthlyPriceINR * durationMonths;
+  return tier.monthlyPriceINR * durationMonths * locationCount;
 }
+
+/** Add prepaid manual location capacity until current expiry. */
+export function calculateOfflineLocationTopup(params: {
+  pricingTier: string;
+  validUntil: unknown;
+  locationCount?: number;
+}): { amountPaise: number; daysRemaining: number; locationCount: number };
 
 /**
  * Sunset flags — feature-flag controlled tier availability.
@@ -353,6 +361,7 @@ const ResellerOnboardSchema = z.object({
   pricingTier: z.enum(["FOUNDER_400", "FOUNDER_500", "STANDARD"]),
   billingInterval: z.enum(["MONTH", "YEAR"]).optional().default("MONTH"), // For online only
   commitmentMonths: z.enum(["3", "6", "12"]).transform(Number).optional(), // Tracking only for online, duration for offline
+  locationCount: z.number().int().min(1).max(30).optional().default(1),
   paymentMode: z.enum(["online", "offline"]),
   skipMenuUpload: z.boolean().optional().default(true),
 });
@@ -374,6 +383,7 @@ const ResellerOnboardSchema = z.object({
 5. Create subscription doc:
    - `billingMode: paymentMode === 'online' ? 'auto' : 'manual'`
    - `status: paymentMode === 'offline' ? 'active' : 'pending'`
+   - `quantity: locationCount` so the owner can create prepaid/paid locations after onboarding without a second billing decision
    - `validUntil` (offline only): `now + commitmentMonths`
    - `onboardingSource: 'reseller'`
    - `resellerId: session.user.id`
@@ -392,6 +402,7 @@ const ResellerOnboardSchema = z.object({
   subscriptionId: string;
   shortUrl?: string; // Only for online — Razorpay checkout URL for client
   status: 'active' | 'pending';
+  locationCount: number;
 }
 ```
 
@@ -427,9 +438,10 @@ const ConfirmPaymentSchema = z.object({
 **Logic:**
 
 1. Query `resellerTransactions` where `resellerId == session.user.id`
-2. Return list with status, store info, expiry dates
+2. Bounded-read matching `subscriptions/{subscriptionId}` docs for current quantity/status
+3. Return list with status, store info, expiry dates, and paid location count
 
-**Firebase cost:** 1 read (single query)
+**Firebase cost:** 1 transaction query + up to 100 subscription reads for reseller users (200 for platform)
 
 ### 4.4 `POST /api/reseller/renew` — Renew Existing License
 
@@ -451,13 +463,43 @@ const RenewSchema = z.object({
 
 1. Find existing subscription for store
 2. Create new subscription period (extend `validUntil`)
-3. New transaction record (append, never mutate old)
-4. If online: new payment link
-5. If offline: activate immediately
+3. Calculate offline amount as `tier × duration × subscription.quantity`
+4. New transaction record (append, never mutate old)
+5. If online: new payment link
+6. If offline: activate immediately
 
 **Firebase cost:** ~4 writes
 
-### 4.5 `GET /api/reseller/profile` — Reseller's Own Profile
+### 4.5 `POST /api/reseller/add-location-capacity` — Add Manual Location Capacity
+
+**Auth:** `withAuth({ requiredPlatformRole: 'RESELLER' })` (or `PLATFORM`)
+
+**Purpose:** Manual/offline clients cannot auto-charge a Razorpay mandate when they add an outlet. The reseller must collect cash/UPI first, then record paid capacity.
+
+**Request Body:**
+
+```typescript
+const AddLocationCapacitySchema = z.object({
+  storeId: z.number(),
+  tenantId: z.number(),
+  locationCount: z.number().int().min(1).max(30).default(1),
+});
+```
+
+**Logic:**
+
+1. Verify reseller profile is active and owns the manual subscription
+2. Require `billingMode: "manual"` and active, non-expired prepaid access
+3. Calculate prorated amount until the existing `validUntil`
+4. Update `subscriptions/{subId}`: `quantity += locationCount`, `amount += topupAmount`
+5. Append `resellerTransactions` action `ADD_LOCATION`
+6. Update reseller tracked revenue
+
+**Owner-side effect:** `/api/outlets/create` now consumes this prepaid capacity. If manual capacity is exhausted, outlet creation returns 402 and no store is created.
+
+**Firebase cost:** 1 subscription query + 1 subscription write + 1 transaction write + 1 resellerProfile write
+
+### 4.6 `GET /api/reseller/profile` — Reseller's Own Profile
 
 **Auth:** `withAuth({ requiredPlatformRole: 'RESELLER' })` (or `PLATFORM`)
 
@@ -497,7 +539,7 @@ const razorpayPlanId = await getOrCreateRazorpayPlan({
 const razorpaySubscription = await razorpayClient.subscriptions.create({
   plan_id: razorpayPlanId,
   total_count: billingInterval === "MONTH" ? 36 : 3, // 3 years
-  quantity: 1,
+  quantity: locationCount,
   notes: {
     tenantId: result.tenantId,
     storeId: result.storeId,
@@ -584,6 +626,7 @@ src/
 │   │       ├── onboard/route.ts              # POST — Create store + subscription
 │   │       ├── confirm-payment/route.ts      # POST — Offline payment confirmation
 │   │       ├── clients/route.ts              # GET — List reseller's clients
+│   │       ├── add-location-capacity/route.ts # POST — Add manual prepaid location capacity
 │   │       ├── renew/route.ts                # POST — Renew offline license
 │   │       └── profile/route.ts              # GET — Reseller profile
 │   └── (main)/
@@ -809,6 +852,7 @@ When reseller onboards a client, the system must return a usable owner access pa
 - [ ] `POST /api/reseller/onboard`
 - [ ] `POST /api/reseller/confirm-payment`
 - [ ] `GET /api/reseller/clients`
+- [ ] `POST /api/reseller/add-location-capacity`
 - [ ] `POST /api/reseller/renew`
 - [ ] `GET /api/reseller/profile`
 - [ ] Update `withAuth` for PLATFORM fallback
@@ -858,8 +902,10 @@ When reseller onboards a client, the system must return a usable owner access pa
 | 8   | Reseller renews expired offline store          | New transaction, validUntil starts from now (renewal anchor rule)                         |
 | 9   | Founder views all reseller data                | Full visibility across all resellers                                                      |
 | 10  | Online payment fails                           | Status stays pending, reseller can retry                                                  |
+| 11  | Reseller adds prepaid location to offline client | Subscription quantity/amount increase, `ADD_LOCATION` transaction logged, owner can add outlet |
+| 12  | Offline client tries to add outlet without capacity | `/api/outlets/create` returns 402 and creates no store/project                            |
 
 ---
 
-**DOCUMENT STATUS:** ✅ IMPLEMENTED (Feature Flag OFF)  
-**Last Updated:** February 28, 2026 (v1.4 — onboardingSource standardized across all flows, pricing tiers made configurable, reseller management screen added, profile expanded with full fields + stats)
+**DOCUMENT STATUS:** ✅ IMPLEMENTED  
+**Last Updated:** May 20, 2026 (v1.5 — manual/offline location capacity, reseller desktop/mobile add-location action, quantity-aware renewals)

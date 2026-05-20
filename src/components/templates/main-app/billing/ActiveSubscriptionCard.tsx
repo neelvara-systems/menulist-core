@@ -56,6 +56,9 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
     const amountSuffix = isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
         : intervalLabel;
+    const displayAmount = isManualBilling
+        ? activeSubscription.amount
+        : activeSubscription.amount * (activeSubscription.quantity || 1);
     const formatBillingDate = (value: any, fallback = 'N/A') => value ? formatDateTime(value, "date", formatter) : fallback;
 
     const cardStyle = {
@@ -268,7 +271,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
                                         title=""
-                                        value={formatCurrency(activeSubscription.amount * (activeSubscription.quantity || 1), activeSubscription.currency)}
+                                        value={formatCurrency(displayAmount, activeSubscription.currency)}
                                         suffix={<Text type="secondary">/ {amountSuffix}</Text>}
                                     />
                                     {(activeSubscription.quantity || 1) > 1 && !isManualBilling && (
@@ -278,7 +281,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                                     )}
                                     {isManualBilling && (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            Offline payment confirmed by reseller. This is prepaid access, not lifetime access.
+                                            Offline payment confirmed by reseller for {activeSubscription.quantity || 1} location{(activeSubscription.quantity || 1) > 1 ? 's' : ''}. This is prepaid access, not lifetime access.
                                         </Text>
                                     )}
                                 </Col>

@@ -93,6 +93,10 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
     const outletCount = storesList.filter((store: any) => !store.isMaster).length;
     const currency = activeSubscription?.currency || 'INR';
     const amount = activeSubscription?.amount || 0;
+    const isManualBilling = activeSubscription?.billingMode === 'manual';
+    const prepaidCapacity = Number(activeSubscription?.quantity || 1);
+    const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoresList.length;
+    const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (activeSubscription?.status === 'active' && hasManualCapacity);
 
     const handleSwitchStore = async (storeId: number) => {
         const target = storesList.find((store: any) => Number(store.storeId) === Number(storeId));
@@ -301,9 +305,9 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                         </Flex>
                         <Flex gap={2} vertical>
                             <Title level={5} style={{ margin: 0 }}>
-                                {formatCurrency(amount * activeStoresList.length, currency)}
+                                {formatCurrency(isManualBilling ? amount : amount * (activeSubscription?.quantity || activeStoresList.length), currency)}
                             </Title>
-                            <Text type="secondary">{t('perMonthTotal')}</Text>
+                            <Text type="secondary">{isManualBilling ? 'prepaid total' : t('perMonthTotal')}</Text>
                         </Flex>
                     </Flex>
                 </Card>
@@ -400,7 +404,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                             />
                         </Flex>
 
-                        {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription ? (
+                        {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription && !isManualBilling ? (
                             (() => {
                                 const proration = calculateProration(activeSubscription);
                                 return (
@@ -414,6 +418,25 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                             })()
                         ) : null}
 
+                        {FEATURE_FLAGS.ENABLE_OUTLET_BILLING && !activeSubscription ? (
+                            <Card size="small" style={{ backgroundColor: '#fff7e6' }}>
+                                <Text>Choose an active plan before adding another location.</Text>
+                            </Card>
+                        ) : null}
+
+                        {isManualBilling ? (
+                            <Card size="small" style={{ backgroundColor: hasManualCapacity ? '#ecfdf5' : '#fff7e6' }}>
+                                <Flex gap={4} vertical>
+                                    <Text>{prepaidCapacity} prepaid location{prepaidCapacity > 1 ? 's' : ''} included</Text>
+                                    <Text type="secondary">
+                                        {hasManualCapacity
+                                            ? 'This outlet will use one prepaid location.'
+                                            : 'Ask your reseller to add prepaid location capacity before adding another outlet.'}
+                                    </Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+
                         <Flex gap={12}>
                             <Button block fill="outline" onClick={() => setShowAddOutlet(false)} size="large">
                                 {t('cancel')}
@@ -421,7 +444,7 @@ export default function MobileLocationsScreen({ onBack }: MobileLocationsScreenP
                             <Button
                                 block
                                 color="primary"
-                                disabled={!outletName.trim()}
+                                disabled={!outletName.trim() || !hasBillingAccess}
                                 loading={isCreating}
                                 onClick={handleCreateOutlet}
                                 size="large"

@@ -15,6 +15,7 @@ type OnboardDraft = {
     businessName: string;
     businessType: string;
     commitmentMonths: string;
+    locationCount: string;
     ownerEmail: string;
     ownerPassword: string;
     ownerPhone: string;
@@ -25,6 +26,7 @@ type OnboardDraft = {
 type OnboardResult = {
     dashboardUrl?: string;
     loginEmail?: string;
+    locationCount?: number;
     ownerUsername?: string;
     passwordSet?: boolean;
     publicUrl?: string;
@@ -41,6 +43,7 @@ const initialDraft: OnboardDraft = {
     businessName: '',
     businessType: '',
     commitmentMonths: '',
+    locationCount: '1',
     ownerEmail: '',
     ownerPassword: '',
     ownerPhone: '',
@@ -70,13 +73,14 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
 
     const amountLabel = () => {
         if (!selectedTier) return 'Select a tier';
+        const locationCount = Math.max(1, Number(draft.locationCount || 1));
         if (draft.paymentMode === 'offline' && draft.commitmentMonths) {
-            return `${formatMoney(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths)))} one-time prepaid`;
+            return `${formatMoney(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths), locationCount))} one-time prepaid`;
         }
         if (draft.billingInterval === 'YEAR') {
-            return `${formatMoney(selectedTier.yearlyPriceINR)}/year recurring`;
+            return `${formatMoney(selectedTier.yearlyPriceINR * locationCount)}/year recurring`;
         }
-        return `${formatMoney(selectedTier.monthlyPriceINR)}/month recurring`;
+        return `${formatMoney(selectedTier.monthlyPriceINR * locationCount)}/month recurring`;
     };
 
     const validateStep = () => {
@@ -89,6 +93,10 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
         if (step === 1) {
             if (!draft.pricingTier || !draft.paymentMode) {
                 Toast.show({ content: 'Select a pricing tier and payment mode.', duration: 2200 });
+                return false;
+            }
+            if (Number(draft.locationCount || 1) < 1) {
+                Toast.show({ content: 'Enter number of locations.', duration: 2200 });
                 return false;
             }
             if (draft.paymentMode === 'offline' && !draft.commitmentMonths) {
@@ -119,6 +127,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     ownerPhone: draft.ownerPhone.trim(),
                     paymentMode: draft.paymentMode,
                     pricingTier: draft.pricingTier,
+                    locationCount: Math.max(1, Number(draft.locationCount || 1)),
                 }),
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
@@ -156,7 +165,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Result
                             status="success"
                             title="Client onboarded"
-                            subTitle={`Store ${result.storeId} · ${result.status}`}
+                            subTitle={`Store ${result.storeId} · ${result.status}${result.locationCount ? ` · ${result.locationCount} location${result.locationCount > 1 ? 's' : ''}` : ''}`}
                         />
                     </Card>
                     {result.shortUrl ? (
@@ -308,6 +317,19 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             </Flex>
                         </Card>
 
+                        <Card title="Locations included">
+                            <Flex gap={8} vertical>
+                                <Input
+                                    inputMode="numeric"
+                                    onChange={(value) => updateDraft('locationCount', value.replace(/[^0-9]/g, ''))}
+                                    placeholder="1"
+                                    type="number"
+                                    value={draft.locationCount}
+                                />
+                                <Text type="secondary">The client gets this many paid location seats. Add more later from the reseller dashboard.</Text>
+                            </Flex>
+                        </Card>
+
                         {draft.paymentMode === 'online' ? (
                             <>
                                 <Card title="Billing interval">
@@ -358,6 +380,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Flex justify="space-between"><Text type="secondary">Username</Text><Text strong>{draft.ownerPhone.replace(/[^0-9]/g, '')}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Tier</Text><Text strong>{selectedTier?.name || draft.pricingTier}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>{draft.paymentMode === 'online' ? 'Online recurring' : 'Offline prepaid'}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Locations</Text><Text strong>{Math.max(1, Number(draft.locationCount || 1))}</Text></Flex>
                             {draft.commitmentMonths ? (
                                 <Flex justify="space-between"><Text type="secondary">{draft.paymentMode === 'online' ? 'Commitment' : 'Duration'}</Text><Text strong>{draft.commitmentMonths} months</Text></Flex>
                             ) : null}

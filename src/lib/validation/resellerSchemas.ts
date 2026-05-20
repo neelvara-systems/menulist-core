@@ -17,6 +17,7 @@ export const ResellerOnboardSchema = z.object({
     pricingTier: z.enum(['FOUNDER_400', 'FOUNDER_500', 'STANDARD']),
     billingInterval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
     commitmentMonths: z.coerce.number().refine(v => [3, 6, 12].includes(v), 'Must be 3, 6, or 12').optional(),
+    locationCount: z.coerce.number().int().min(1).max(30).optional().default(1),
     paymentMode: z.enum(['online', 'offline']),
     skipMenuUpload: z.boolean().optional().default(true),
 });
@@ -45,3 +46,15 @@ export const ResellerRenewSchema = z.object({
 });
 
 export type ResellerRenewInput = z.infer<typeof ResellerRenewSchema>;
+
+/**
+ * POST /api/reseller/add-location-capacity — Record offline prepaid capacity
+ * before a manual/reseller client creates another outlet.
+ */
+export const ResellerAddLocationCapacitySchema = z.object({
+    storeId: z.coerce.number().int().positive(),
+    tenantId: z.coerce.number().int().positive(),
+    locationCount: z.coerce.number().int().min(1).max(30).default(1),
+});
+
+export type ResellerAddLocationCapacityInput = z.infer<typeof ResellerAddLocationCapacitySchema>;
