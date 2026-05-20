@@ -1,6 +1,7 @@
 'use client'
 
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { Spin } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -8,15 +9,17 @@ import { useContext, useEffect } from 'react';
 import OwnerDashboard from './OwnerDashboard';
 
 function DashboardPage() {
-    const { activeSubscription, activeSubscriptionLoading } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { activeSubscription, activeSubscriptionLoading, storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const router = useRouter()
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     useEffect(() => {
         // Only redirect after the subscription lookup has finished.
-        if (!activeSubscriptionLoading && !hasValidSubscriptionAccess(activeSubscription)) {
-            router.replace('/billing')
+        if (!activeSubscriptionLoading && !hasPaidAccess) {
+            router.replace(hasStarterAccess ? '/use-menulist' : '/billing')
         }
-    }, [activeSubscription, activeSubscriptionLoading, router])
+    }, [activeSubscriptionLoading, hasPaidAccess, hasStarterAccess, router])
 
     // Subscription still loading - don't render or redirect yet.
     if (activeSubscriptionLoading) {
@@ -24,7 +27,7 @@ function DashboardPage() {
     }
 
     // Subscription loaded but invalid — redirect in progress via useEffect
-    if (!hasValidSubscriptionAccess(activeSubscription)) {
+    if (!hasPaidAccess) {
         return null
     }
 

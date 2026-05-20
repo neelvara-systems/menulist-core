@@ -8,6 +8,7 @@ import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
+import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
@@ -28,6 +29,7 @@ const MobileDashboardScreen = dynamic(() => import('./screens/MobileDashboardScr
 const MobileTodayHistoryScreen = dynamic(() => import('./screens/MobileTodayHistoryScreen'), { ssr: false });
 const MobileShareScreen = dynamic(() => import('./screens/MobileShareScreen'), { ssr: false });
 const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { ssr: false });
+const StarterActivationBanner = dynamic(() => import('../onboarding/StarterActivationBanner'), { ssr: false });
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
@@ -237,6 +239,7 @@ export default function MobileShell() {
     const [isReturningToHq, setIsReturningToHq] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
@@ -288,12 +291,22 @@ export default function MobileShell() {
         PERMISSIONS.PUBLISH_MENU,
     ]);
     const canViewAnalytics = hasAnyPermission(userPermissions, [PERMISSIONS.VIEW_ANALYTICS]);
-    const visibleTabs: MobileTab[] = useMemo(() => [
-        ...(canUseTodayTab ? ['today' as MobileTab] : []),
-        ...(canUseMenuTab ? ['menu' as MobileTab] : []),
-        ...(canUseShareTab ? ['share' as MobileTab] : []),
-        'more',
-    ], [canUseMenuTab, canUseShareTab, canUseTodayTab]);
+    const visibleTabs: MobileTab[] = useMemo(() => {
+        if (hasStarterAccess) {
+            return [
+                ...(canUseMenuTab ? ['menu' as MobileTab] : []),
+                ...(canUseShareTab ? ['share' as MobileTab] : []),
+                'more',
+            ];
+        }
+
+        return [
+            ...(canUseTodayTab ? ['today' as MobileTab] : []),
+            ...(canUseMenuTab ? ['menu' as MobileTab] : []),
+            ...(canUseShareTab ? ['share' as MobileTab] : []),
+            'more',
+        ];
+    }, [canUseMenuTab, canUseShareTab, canUseTodayTab, hasStarterAccess]);
 
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
@@ -437,11 +450,11 @@ export default function MobileShell() {
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} />;
 
-    if (activeSubscriptionLoading && !hasSubscription && !shouldBypassSubscriptionGate) {
+    if (activeSubscriptionLoading && !hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
         return <ServerSidePageLoader page="Mobile App" />;
     }
 
-    if (!hasSubscription && !shouldBypassSubscriptionGate) {
+    if (!hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
         return (
             <Flex
                 style={{
@@ -494,6 +507,7 @@ export default function MobileShell() {
                         <Text style={{ color: token.colorTextLightSolid }}>You&apos;re offline. Some features may be limited.</Text>
                     </Card>
                 ) : null}
+                <StarterActivationBanner />
                 {activeOutletSummary ? (
                     <Flex
                         align="center"

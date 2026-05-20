@@ -244,6 +244,35 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)' }}>
                         {t('Pricing.locationNote')}
                     </p>
+                    <div
+                        style={{
+                            maxWidth: 760,
+                            margin: 'var(--ws-space-6) auto 0',
+                            padding: 'var(--ws-space-5)',
+                            border: '1px solid var(--ws-border-default)',
+                            borderRadius: 'var(--ws-radius-md)',
+                            background: 'var(--ws-bg-subtle)',
+                            textAlign: 'left',
+                        }}
+                    >
+                        <p
+                            style={{
+                                margin: 0,
+                                color: 'var(--ws-brand-secondary)',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                            }}
+                        >
+                            {t('Pricing.setupStateEyebrow')}
+                        </p>
+                        <h2 style={{ margin: 'var(--ws-space-2) 0 0', color: 'var(--ws-text-primary)', fontSize: '1.25rem', fontWeight: 800 }}>
+                            {t('Pricing.setupStateTitle')}
+                        </h2>
+                        <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>
+                            {t('Pricing.setupStateBody')}
+                        </p>
+                    </div>
                 </div>
             </section>
 

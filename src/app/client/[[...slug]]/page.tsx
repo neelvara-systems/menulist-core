@@ -50,6 +50,7 @@ import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
 import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
+import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
@@ -73,6 +74,7 @@ import {
 } from "@lib/schema";
 import { slugify } from "@lib/utils/slugify";
 import ClientMenuRenderer from "@template/website/clientWebsite";
+import StarterActivationHoldingPage from "@/components/customer/StarterActivationHoldingPage";
 import { Metadata, Viewport } from "next";
 import { unstable_cache } from "next/cache";
 import { notFound, redirect } from "next/navigation";
@@ -533,6 +535,16 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     const storeName = isRootRequest && FEATURE_FLAGS.ENABLE_OBP
         ? getBrandName(storeData, "Restaurant Menu")
         : getStoreContextName(storeData, "Restaurant Menu");
+    if (isStarterPublicSurfaceExpired(storeData)) {
+        return {
+            title: `${storeName} menu is being finalized`,
+            description: `${storeName}'s MenuList page is being finalized. Please contact the business directly for the current menu.`,
+            robots: {
+                index: false,
+                follow: false,
+            },
+        };
+    }
     const storeMetaTitle = getLocalizedText(
         storeData?.metaTitle,
         contentLanguage,
@@ -1616,6 +1628,14 @@ async function MenuContent({
                 // Business → Outlet breadcrumb with the correct brand name.
                 masterBrandName={masterBrandName}
                 requestedLanguage={requestedLanguage}
+            />
+        );
+    }
+
+    if (isStarterPublicSurfaceExpired(storeData)) {
+        return (
+            <StarterActivationHoldingPage
+                storeName={getStoreContextName(storeData, '') || masterBrandName || null}
             />
         );
     }

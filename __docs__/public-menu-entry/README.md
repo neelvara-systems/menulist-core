@@ -9,21 +9,21 @@
 
 ## What Is This?
 
-A public-facing page at `/create-menu` that lets any business owner create a free account, upload a current menu image, and see a structured owner-review preview. The public marketing promise is **free to start, review before publishing**, not an anonymous free AI utility.
+A public-facing page at `/create-menu` that lets any business owner upload a current menu image, see a structured owner-review preview, and sign in only before claiming the public starter activation. The public marketing promise is **free to start, review before publishing**, not an unlimited free AI utility.
 
-**Core loop:** Free account → Upload → extraction → Preview → official source setup
+**Core loop:** Upload → extraction → Preview → sign in → official source setup
 
 ## Why This Matters
 
-MenuList's long-term asset is **canonical public business pages**. This feature removes the biggest friction: forcing payment before showing value, while still preventing anonymous AI-processing cost leakage. The owner creates a free account first, then sees the prepared source before choosing how far to continue.
+MenuList's long-term asset is **canonical public business pages**. This feature removes the biggest friction: forcing payment or account creation before showing value, while still preventing broad AI-processing cost leakage through SAFE_MODE, IP rate limits, file validation, and TTL cleanup. The owner sees the prepared source before choosing how far to continue.
 
 ## Architecture Summary
 
 - **Zero new backend infrastructure** — reuses existing AI extraction pipeline, menu rendering, and auth flow
 - **One new public page** — `src/app/(website)/create-menu/page.tsx`
-- **One API route** — `/api/public/create-menu` (POST requires auth for upload + extraction; GET polls token-based preview status)
+- **One API route** — `/api/public/create-menu` (POST is public/rate-limited for upload + extraction; GET polls token-based preview status)
 - **Temporary storage** — extracted data stored in `publicMenuDrafts` collection with 24h TTL
-- **Conversion flow** — authenticated draft is converted to real project via existing project/store creation path
+- **Conversion flow** — preview draft is converted after authenticated claim via the existing project/store creation path
 
 ## Documents
 
@@ -39,7 +39,7 @@ MenuList's long-term asset is **canonical public business pages**. This feature 
 
 ## Key Decisions
 
-1. **Free account before upload** — value shown before payment, without spending AI processing on anonymous uploads
+1. **Upload before account** — value shown before payment and before owner auth; public claiming still requires Google/WhatsApp identity
 2. **24-hour TTL on drafts** — unclaimed drafts auto-deleted (cost control)
 3. **Rate limiting by IP** — 3 extractions per IP per day (abuse prevention)
 4. **Reuses existing extraction pipeline** — same shared extraction/client patterns as the current implementation

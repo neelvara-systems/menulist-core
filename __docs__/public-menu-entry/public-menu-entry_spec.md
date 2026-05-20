@@ -1,9 +1,9 @@
 # Public Menu Entry — Business Requirements (Spec)
 
 **Version:** 1.0
-**Status:** 📝 DRAFT — Pending review
+**Status:** ✅ IMPLEMENTED — Active funnel
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** March 10, 2026
+**Last Updated:** May 20, 2026
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### Goal
 
-Allow any business owner to upload a menu image and instantly see a structured digital menu — without creating an account. After previewing the result, the owner signs up to claim and publish the page.
+Allow any business owner to reach a public upload entry point, upload a menu image before account creation, and see a structured preview. After previewing the result, the owner signs in, confirms business basics, and publishes a 7-day starter activation on the permanent public URL.
 
 ### Scope
 
@@ -20,51 +20,53 @@ Allow any business owner to upload a menu image and instantly see a structured d
 | Public upload page at `/create-menu` | PDF upload (Phase 2 — image only for v1) |
 | AI menu extraction from image | Multi-image upload (single image v1) |
 | Live preview of extracted menu | Editor/editing capability on public page |
-| Sign up to claim + publish | Payment/billing during this flow |
+| Confirm business basics + publish starter activation | Payment/billing during upload/extraction |
 | QR code + share link generation post-publish | Public directory/listing pages |
 | Mobile-first responsive design | WhatsApp onboarding integration |
-| Rate limiting (3/day per IP) | Social login (Google only + email) |
-| 24-hour draft TTL | Custom domain setup |
+| Rate limiting (3/day per IP) | New phone-only auth system |
+| 24-hour unclaimed draft TTL; 7-day claimed starter activation | Custom domain setup |
 
 ### Success Metric
 
-**Primary:** Number of published MenuList pages created through `/create-menu`
-**Secondary:** Conversion rate from free account → upload → publish
+**Primary:** Number of verified starter activations created through `/create-menu`
+**Secondary:** Conversion rate from upload → preview → sign-in → starter activation → payment
 
 ---
 
 ## 2. User Stories
 
 ### US-1: First Visit (Discovery)
-> As a restaurant owner, I want to see what MenuList does for my menu without signing up, so I can decide if it's worth creating an account.
+> As a restaurant owner, I want to understand the setup before committing payment, so I can decide if MenuList can become my official customer menu source.
 
 **Flow:**
 1. Owner lands on `/create-menu` (from Google, social media, or referral)
 2. Sees a simple page: "Start with your current menu"
-3. Creates or signs into a free account before upload
-4. Uploads one menu image (photo from phone or file from desktop)
-5. Waits a short moment for AI extraction
-6. Sees a structured preview and CTA: "Create official menu source"
+3. Uploads one menu image (photo from phone or file from desktop)
+4. Waits a short moment for AI extraction
+5. Sees a structured preview and CTA to save and continue setup
+6. Signs in only when ready to claim/publish
 
 ### US-2: Claim & Publish
 > As a restaurant owner who saw the preview, I want to quickly create an account and publish my menu page so customers can access it.
 
 **Flow:**
-1. Owner reviews the authenticated preview page
-2. Owner confirms business name + location (pre-filled from AI if detected)
-3. Clicks "Create official menu source"
-4. MenuList page created: `{subdomain}.menulist.site`
-5. Owner sees: share link + QR code + "Add to Google Maps" hint
+1. Owner reviews the public preview page
+2. Owner signs in through Google or arrives from verified WhatsApp onboarding before claim
+3. Owner confirms business name + location (pre-filled from AI if detected)
+4. Clicks "Create official menu source"
+5. MenuList starter page created at the permanent customer URL from `getMenuUrl(subdomain)`
+6. Owner sees: share link + QR code + "Add to Google Maps" hint
+7. The same URL and QR remain after payment
 
 ### US-3: Abandon & Return
-> As a restaurant owner who uploaded from my account, I want to come back within 24 hours and still find my extracted menu.
+> As a restaurant owner who uploaded from the public entry page, I want to come back within 24 hours and still find my extracted preview.
 
 **Flow:**
 1. Owner uploads menu, sees preview
-2. Leaves without signing up
+2. Leaves without publishing starter activation
 3. Returns within 24 hours using the same draft URL (saved in browser/bookmarked)
 4. Preview still available
-5. Can proceed to sign up and publish
+5. Can proceed to confirm business basics and publish starter activation
 
 ### US-4: Expired Draft
 > As a restaurant owner who waited too long, I should understand that my draft expired and can easily start over.
@@ -83,14 +85,14 @@ Allow any business owner to upload a menu image and instantly see a structured d
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-1 | Public page accessible without authentication | P0 |
-| FR-2 | Single image upload after free account sign-in (JPEG, PNG, WebP, max 10MB) | P0 |
-| FR-3 | AI extraction using existing Gemini 2.5 Flash pipeline | P0 |
+| FR-2 | Single image upload before account creation (JPEG, PNG, WebP, max 10MB) | P0 |
+| FR-3 | AI extraction using the configured public-route model and existing extraction patterns | P0 |
 | FR-4 | Live preview using existing menu renderer components | P0 |
 | FR-5 | Draft stored with unique token URL (not guessable) | P0 |
 | FR-6 | Draft expires after 24 hours (auto-cleanup) | P0 |
 | FR-7 | Rate limit: 3 extractions per IP per 24 hours | P0 |
-| FR-8 | Authenticated draft converted to real project + store | P0 |
-| FR-9 | Published page gets subdomain: `{slug}.menulist.site` | P0 |
+| FR-8 | Authenticated claim converts draft to real project + store with `onboardingSource: 'PUBLIC_MENU_ENTRY'` | P0 |
+| FR-9 | Published starter page gets permanent subdomain via shared URL helper | P0 |
 | FR-10 | QR code + share link shown after publish | P1 |
 | FR-11 | "Add to Google Maps" guidance shown after publish | P1 |
 | FR-12 | Business name + type detected from menu image (AI) | P1 |
@@ -116,11 +118,11 @@ Allow any business owner to upload a menu image and instantly see a structured d
       ↓
 Upload image → Client-side optimization
       ↓
-POST /api/public/create-menu (withAuth, rate-limited)
+POST /api/public/create-menu (public, SAFE_MODE + IP rate-limited)
       ↓
 Upload to Firebase Storage (temp path)
       ↓
-Gemini 2.5 Flash extraction (server-side)
+Gemini extraction (server-side, public-route model/cost tracked)
       ↓
 Store result in publicMenuDrafts/{draftId}
       ↓
@@ -128,18 +130,18 @@ Return draftId + preview URL
       ↓
 /create-menu/preview/{draftId} (public preview)
       ↓
-Owner signs up → draft claimed → converted to real project
+Owner signs in and confirms business basics → draft claimed → converted to real project/store
       ↓
-Published: {slug}.menulist.site
+Published starter activation: permanent customer URL from getMenuUrl(subdomain)
 ```
 
 ### Key Architectural Decision
 
-**This feature creates ZERO new extraction logic.** It reuses the existing `processMenuImagesJobLogic` from Cloud Functions. The only new code is:
+**This feature keeps extraction narrow and isolated.** It reuses the shared Gemini client, AI operation logging, and category/language helpers, but does not reuse the authenticated job queue because public drafts do not have tenant/store context until claim. The new code is:
 - A public-facing upload page
 - A thin API route that creates a lightweight draft (not a full project)
 - A preview page that renders the extracted data
-- A claim/convert flow that bridges authenticated draft → project
+- A claim/convert flow that bridges public draft → authenticated project/store starter activation
 
 ---
 
@@ -148,13 +150,13 @@ Published: {slug}.menulist.site
 | # | Risk/Question | Mitigation/Decision |
 |---|---|---|
 | R1 | Abuse: bots uploading garbage images | Rate limit 3/IP/day + image validation (min dimensions, file type) |
-| R2 | Cost: Gemini API calls for non-converting users | Free account before upload + rate limiting + 24h TTL cleanup |
+| R2 | Cost: Gemini API calls for non-converting users | SAFE_MODE + IP rate limiting + 24h TTL cleanup |
 | R3 | Quality: poor extraction from phone photos | Show "Best results with clear, well-lit photos" guidance |
-| R4 | Privacy: menu images uploaded by non-owners | Account gate before upload; Terms acceptance remains in auth flow |
+| R4 | Privacy: menu images uploaded by non-owners | 24h draft TTL, no raw IP storage, sign-in before public claim/publish |
 | R5 | Storage: unclaimed images accumulate | 24h TTL auto-cleanup via nightly scheduler |
 | OQ1 | Should we support PDF upload in v1? | DECISION: No. Image-only for v1. PDF adds complexity. |
 | OQ2 | Should preview be editable before publish? | DECISION: No. Edit after publish in dashboard. Keeps flow simple. |
-| OQ3 | Should we require account before extraction? | DECISION: Yes. Show public proof first, then require a free account before AI processing. |
+| OQ3 | Should we require account before extraction? | DECISION: No. The first proof moment happens before auth; account/identity is required before public claim/publish. |
 
 ---
 

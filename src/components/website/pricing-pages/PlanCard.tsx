@@ -7,32 +7,32 @@ import { LuBuilding2, LuCheck, LuStore, LuZap } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from '.';
 import './main.css';
 
-const getPlanBullets = (planId: string, monthlyCreditAllowance: string | number) => {
+const getPlanBullets = (planId: string) => {
     switch (planId) {
         case 'starter':
             return [
-                '1 outlet',
-                'QR + web menu',
+                'Keep one business menu live',
+                'Stable public link and QR',
                 'Official business page',
-                'Upload menu from image, PDF, or link',
-                'Basic updates (limited)'
+                'Owner-approved menu updates',
+                'Basic visit signals'
             ];
         case 'pro':
             return [
-                'Your menu looks professional everywhere your customers see it',
-                'Generated descriptions and images',
-                'Multi-language menu',
-                'Pro analytics action summaries',
-                'Branding and presentation control',
-                'Update once, publish from the approved source'
+                'Better customer-facing presentation',
+                'AI enhancement credits for content and images',
+                'Multi-language menu support',
+                'Action summaries from menu activity',
+                'Brand and presentation controls',
+                'Update once from the approved source'
             ];
         case 'premium':
             return [
-                'Run your entire brand from one place',
-                'Control all your outlets from one place',
-                'Keep menus consistent across every location',
-                'Pro analytics action summaries',
+                'Run multiple locations from one place',
+                'Keep menus consistent across locations',
                 'Central menu with outlet-level overrides',
+                'Location governance controls',
+                'Action summaries across the brand',
                 'Priority support'
             ];
         default:
@@ -49,29 +49,27 @@ type PlanCardProps = {
 const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
 
     const price = plan[`price${currency}`].price;
-    const monthlyCreditAllowance = plan[`price${currency}`].monthlyCredits || "Custom";
-
     const planStyles = {
         starter: {
             icon: <LuStore className="w-full h-full text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-slate-200 dark:border-slate-700',
             buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Start Simple Menu'
+            buttonText: 'Keep Menu Live'
         },
         pro: {
             icon: <LuBuilding2 className="w-full h-full text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-blue-400 dark:border-blue-500',
             buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Launch Professional Menu'
+            buttonText: 'Improve Presentation'
         },
         premium: {
             icon: <LuZap className="w-full h-full text-blue-500" />,
             bgColor: 'bg-gradient-to-b from-blue-500/5 to-transparent',
             borderColor: 'border-slate-200 dark:border-slate-700',
             buttonClass: 'bg-blue-600 hover:bg-blue-700',
-            buttonText: 'Scale Across Locations'
+            buttonText: 'Control Locations'
         },
         custom: {
             icon: <LuZap className="w-full h-full text-blue-500" />,
@@ -138,7 +136,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
 
             <div className="flex-grow">
                 <ul className="space-y-3 text-gray-600 dark:text-gray-300">
-                    {getPlanBullets(plan.planId, monthlyCreditAllowance).map((bullet, index) => (
+                    {getPlanBullets(plan.planId).map((bullet, index) => (
                         <li key={index} className="flex items-start">
                             <LuCheck className="h-5 w-5 mr-3 mt-0.5 flex-shrink-0 text-green-500" />
                             <span className='text-gray-700 dark:text-gray-200 text-sm'>{bullet}</span>

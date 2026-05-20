@@ -14,6 +14,7 @@ import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import type { StarterActivationSignal } from "@lib/onboarding/starterActivation";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
 import { TimeSlotPreset } from "@type/platform/store";
@@ -429,6 +430,24 @@ export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: Ti
 
 export type MenuPresenceSurface = 'googleBusiness' | 'instagramBio' | 'whatsappProfile';
 
+export const recordStarterActivationSignal = async (
+    storeId: number,
+    signal: StarterActivationSignal,
+) => {
+    return await apiCallComposer(
+        async () => {
+            const now = new Date().toISOString();
+            await updateDoc(getDocRef(`${storeId}`), {
+                [`starterActivationSignals.actions.${signal}`]: now,
+                'starterActivationSignals.lastSignalAt': now,
+            });
+            return { signal };
+        },
+        { storeId, signal },
+        "recordStarterActivationSignal"
+    );
+};
+
 /**
  * Update a manual presence confirmation for a specific surface.
  * Timestamp-only schema: exists = confirmed, missing = not confirmed.
@@ -437,15 +456,22 @@ export type MenuPresenceSurface = 'googleBusiness' | 'instagramBio' | 'whatsappP
 export const updateMenuPresence = async (
     storeId: number,
     surface: MenuPresenceSurface,
-    confirmed: boolean
+    confirmed: boolean,
+    options?: { starterSignal?: StarterActivationSignal },
 ) => {
     return await apiCallComposer(
         async () => {
             const docRef = getDocRef(`${storeId}`);
+            const now = new Date().toISOString();
             if (confirmed) {
-                await updateDoc(docRef, {
-                    [`menuPresence.${surface}`]: new Date().toISOString(),
-                });
+                const updatePayload: Record<string, string> = {
+                    [`menuPresence.${surface}`]: now,
+                };
+                if (options?.starterSignal) {
+                    updatePayload[`starterActivationSignals.actions.${options.starterSignal}`] = now;
+                    updatePayload['starterActivationSignals.lastSignalAt'] = now;
+                }
+                await updateDoc(docRef, updatePayload);
             } else {
                 await updateDoc(docRef, {
                     [`menuPresence.${surface}`]: deleteField(),
@@ -453,7 +479,7 @@ export const updateMenuPresence = async (
             }
             return { surface, confirmed };
         },
-        { storeId, surface, confirmed },
+        { storeId, surface, confirmed, starterSignal: options?.starterSignal },
         "updateMenuPresence"
     );
 };

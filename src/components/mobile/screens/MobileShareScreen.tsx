@@ -2,11 +2,18 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
+import { recordStarterActivationSignal } from '@database/stores';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import {
+    STARTER_ACTIVATION_SIGNALS,
+    isStarterActivationSignal,
+    shouldRecordStarterActivationSignal,
+    type StarterActivationSignal,
+} from '@lib/onboarding/starterActivation';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
@@ -14,7 +21,7 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBookOpen,
     LuCopy,
@@ -70,6 +77,7 @@ type ShareData = {
 type QrSheetState = {
     filename: string;
     helperText: string;
+    starterSignal?: StarterActivationSignal;
     title: string;
     url: string;
 };
@@ -90,6 +98,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
     const resolveProjectName = useCallback(
         (name: string | Record<string, string> | undefined, fallback?: string) =>
             getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback || tProjectSelector('untitled')),
@@ -162,6 +171,12 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
     }, []);
 
+    useEffect(() => {
+        const existingSignals = Object.keys(storeDetails?.starterActivationSignals?.actions || {})
+            .filter(isStarterActivationSignal);
+        recordedStarterSignalsRef.current = new Set(existingSignals);
+    }, [storeDetails?.storeId, storeDetails?.starterActivationSignals?.lastSignalAt]);
+
     const activeProject = useMemo(
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
@@ -179,10 +194,21 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         window.location.assign(url);
     };
 
-    const handleCopy = async (value: string, label: string) => {
+    const recordStarterSignal = useCallback((signal?: StarterActivationSignal) => {
+        if (!signal || !storeDetails?.storeId || !shouldRecordStarterActivationSignal(storeDetails)) return;
+        if (recordedStarterSignalsRef.current.has(signal)) return;
+
+        recordedStarterSignalsRef.current.add(signal);
+        recordStarterActivationSignal(storeDetails.storeId, signal).catch(() => {
+            recordedStarterSignalsRef.current.delete(signal);
+        });
+    }, [storeDetails]);
+
+    const handleCopy = async (value: string, label: string, starterSignal?: StarterActivationSignal) => {
         try {
             await navigator.clipboard.writeText(value);
             Toast.show({ content: t('copiedLabel', { label }), duration: 1200 });
+            recordStarterSignal(starterSignal);
         } catch {
             Toast.show({ content: t('copyFailedLabel', { label: label.toLowerCase() }), duration: 1500 });
         }
@@ -202,6 +228,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 title: label,
                 url,
             });
+            recordStarterSignal(STARTER_ACTIVATION_SIGNALS.NATIVE_SHARE_COMPLETED);
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
             Toast.show({ content: t('couldNotCopy'), duration: 1500 });
@@ -271,7 +298,11 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 icon={<LuExternalLink color={token.colorText} size={18} />}
                 isPrimary
                 label={t('officialBusinessLink')}
-                onCopy={() => void handleCopy(withSource(data.obpLink, 'copy'), t('officialBusinessLink'))}
+                onCopy={() => void handleCopy(
+                    withSource(data.obpLink, 'copy'),
+                    t('officialBusinessLink'),
+                    STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                )}
                 onOpen={() => openInternalLink(withSource(data.obpLink, 'direct'))}
                 onShare={supportsNativeShare ? () => void handleNativeShare({
                     label: t('officialBusinessLink'),
@@ -281,6 +312,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-official-page`, 'qr'),
                     helperText: t('obpShareHint'),
+                    starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                     title: t('officialBusinessLink'),
                     url: withSource(data.obpLink, 'qr'),
                 })}
@@ -298,7 +330,11 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 description={t('directOfferingLinkDesc', { offering: labels.offeringLower })}
                 icon={<LuLink2 color={token.colorText} size={18} />}
                 label={t('directOfferingLink', { offering: labels.offeringTitle })}
-                onCopy={() => void handleCopy(withSource(data.menuLink, 'copy'), t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
+                onCopy={() => void handleCopy(
+                    withSource(data.menuLink, 'copy'),
+                    t('directOfferingLinkCopyLabel', { offering: labels.offeringLower }),
+                    STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                )}
                 onOpen={() => openInternalLink(withSource(data.menuLink, 'direct'))}
                 onShare={supportsNativeShare ? () => void handleNativeShare({
                     label: t('directOfferingLink', { offering: labels.offeringTitle }),
@@ -308,6 +344,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-${labels.offeringLower}-direct-link`, 'qr'),
                     helperText: t('directOfferingLinkDesc', { offering: labels.offeringLower }),
+                    starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                     title: t('directOfferingLink', { offering: labels.offeringTitle }),
                     url: withSource(data.menuLink, 'qr'),
                 })}
@@ -320,7 +357,11 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                     description="Share this when customers should install your business app directly on their phone."
                     icon={<LuSmartphone color={token.colorText} size={18} />}
                     label="Customer App install link"
-                    onCopy={() => void handleCopy(withSource(data.installAppLink as string, 'copy'), 'Customer App install link')}
+                    onCopy={() => void handleCopy(
+                        withSource(data.installAppLink as string, 'copy'),
+                        'Customer App install link',
+                        STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                    )}
                     onOpen={() => openInternalLink(withSource(data.installAppLink as string, 'direct'))}
                     onShare={supportsNativeShare ? () => void handleNativeShare({
                         label: 'Customer App install link',
@@ -330,6 +371,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                     onShowQr={() => handleOpenQr({
                         filename: buildQrCodeFilename(`${data.storeName}-customer-app-install`, 'qr'),
                         helperText: 'Customers can scan this QR to install your business app.',
+                        starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                         title: 'Customer App install link',
                         url: withSource(data.installAppLink as string, 'qr'),
                     })}
@@ -418,6 +460,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 helperText={qrSheet?.helperText}
                 imageAlt={qrSheet?.title || t('showQr')}
                 onClose={() => setIsQrSheetOpen(false)}
+                onDownload={() => recordStarterSignal(qrSheet?.starterSignal)}
                 qrErrorMessage={t('qrFailed')}
                 title={qrSheet?.title || t('showQr')}
                 url={qrSheet?.url || ''}

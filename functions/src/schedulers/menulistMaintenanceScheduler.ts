@@ -12,7 +12,8 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { aggregateDailyChatStatsLogic } from '../aggregateDailyChatStats';
 import { SECRET_GROUPS } from '../config/secrets';
 import { DB_COLLECTIONS } from '../constants/database';
-import { firestoreAdmin as db } from '../firebaseAdmin';
+import { isFunctionFeatureEnabled } from '../constants/features';
+import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { isAlertsMuted } from '../monitoring/deployMute';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
@@ -436,6 +437,70 @@ async function runMessagingSessionCleanup(): Promise<MaintenanceTaskResult> {
     };
 }
 
+async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
+    if (!isFunctionFeatureEnabled('ENABLE_PUBLIC_MENU_ENTRY')) {
+        return {
+            activity: false,
+            details: { enabled: false, deletedDrafts: 0, deletedFiles: 0, errors: 0 },
+        };
+    }
+
+    const snapshot = await db
+        .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
+        .where('claimed', '==', false)
+        .where('expiresAt', '<', Timestamp.now())
+        .limit(100)
+        .get();
+
+    if (snapshot.empty) {
+        return {
+            activity: false,
+            details: { enabled: true, deletedDrafts: 0, deletedFiles: 0, errors: 0 },
+        };
+    }
+
+    const batch = db.batch();
+    let deletedFiles = 0;
+    let errors = 0;
+    const sampleDraftIds: string[] = [];
+    const bucket = storageAdmin.bucket();
+
+    for (const doc of snapshot.docs) {
+        const data = doc.data();
+        const imagePath = typeof data.imagePath === 'string' ? data.imagePath : '';
+        if (imagePath) {
+            try {
+                await bucket.file(imagePath).delete({ ignoreNotFound: true });
+                deletedFiles += 1;
+            } catch (error) {
+                errors += 1;
+                logger.warn('[public_menu_draft_cleanup] Failed to delete draft image', {
+                    draftId: doc.id,
+                    error: errorMessage(error),
+                });
+            }
+        }
+
+        if (sampleDraftIds.length < 5) {
+            sampleDraftIds.push(doc.id);
+        }
+        batch.delete(doc.ref);
+    }
+
+    await batch.commit();
+
+    return {
+        activity: snapshot.size > 0 || errors > 0,
+        details: {
+            enabled: true,
+            deletedDrafts: snapshot.size,
+            deletedFiles,
+            errors,
+            sampleDraftIds,
+        },
+    };
+}
+
 async function runAlertEscalation(): Promise<MaintenanceTaskResult> {
     const muted = await isAlertsMuted();
     if (muted) {
@@ -517,6 +582,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 3, minuteUtc: 0, retryAfterMinutes: 120 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runMenuOldCleanup,
+    },
+    {
+        name: 'public_menu_draft_cleanup',
+        cadence: { type: 'daily', hourUtc: 3, minuteUtc: 30, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runPublicMenuDraftCleanup,
     },
     {
         name: 'messaging_session_cleanup',

@@ -10,6 +10,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
 
@@ -49,6 +50,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const searchParams = useSearchParams();
     const t = useTranslations('Website');
     const isClaimMode = searchParams.get('claim') === 'true';
+    const { update: updateSession } = useSession();
 
     const [draft, setDraft] = useState<DraftData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -56,6 +58,9 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
     // Claim form state
     const [businessName, setBusinessName] = useState('');
+    const [city, setCity] = useState('');
+    const [phone, setPhone] = useState('');
+    const [addressLine, setAddressLine] = useState('');
     const [claiming, setClaiming] = useState(false);
     const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -125,6 +130,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             setClaimError('Please enter your business name (at least 2 characters).');
             return;
         }
+        if (!city.trim() || city.trim().length < 2) {
+            setClaimError('Please enter your city or area.');
+            return;
+        }
         setClaiming(true);
         setClaimError(null);
 
@@ -136,6 +145,9 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     draftId,
                     businessName: businessName.trim(),
                     businessType: draft?.detectedBusinessType || undefined,
+                    city: city.trim(),
+                    phone: phone.trim() || undefined,
+                    addressLine: addressLine.trim() || undefined,
                 }),
             });
 
@@ -147,6 +159,22 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             }
 
             const data = await res.json();
+            if (typeof window !== 'undefined') {
+                if (data.storeId && data.isNewAccount) {
+                    window.sessionStorage.setItem('menulist:create-menu:last-claim', JSON.stringify({
+                        projectId: data.projectId,
+                        storeId: data.storeId,
+                        subdomain: data.subdomain,
+                    }));
+                } else {
+                    window.sessionStorage.removeItem('menulist:create-menu:last-claim');
+                }
+            }
+            try {
+                await updateSession();
+            } catch {
+                // Non-blocking: the next authenticated page can refresh session state again.
+            }
             const params = new URLSearchParams({
                 menuUrl: data.menuUrl || '',
                 subdomain: data.subdomain || '',
@@ -434,6 +462,54 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 padding: '12px 16px',
                                 fontSize: '15px',
                                 border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
+                                borderRadius: 'var(--ws-radius-xl)',
+                                marginBottom: '8px',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                        <input
+                            type="text"
+                            value={city}
+                            onChange={(e) => { setCity(e.target.value); setClaimError(null); }}
+                            placeholder="City or area"
+                            style={{
+                                width: '100%',
+                                padding: '12px 16px',
+                                fontSize: '15px',
+                                border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
+                                borderRadius: 'var(--ws-radius-xl)',
+                                marginBottom: '8px',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                        <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => { setPhone(e.target.value); setClaimError(null); }}
+                            placeholder="Public phone or WhatsApp number"
+                            style={{
+                                width: '100%',
+                                padding: '12px 16px',
+                                fontSize: '15px',
+                                border: '1px solid var(--ws-border-default)',
+                                borderRadius: 'var(--ws-radius-xl)',
+                                marginBottom: '8px',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                        <input
+                            type="text"
+                            value={addressLine}
+                            onChange={(e) => { setAddressLine(e.target.value); setClaimError(null); }}
+                            placeholder="Address (optional)"
+                            style={{
+                                width: '100%',
+                                padding: '12px 16px',
+                                fontSize: '15px',
+                                border: '1px solid var(--ws-border-default)',
                                 borderRadius: 'var(--ws-radius-xl)',
                                 marginBottom: '8px',
                                 outline: 'none',

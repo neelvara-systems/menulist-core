@@ -124,7 +124,7 @@ process.env.ENABLE_MESSAGING_ONBOARDING_TRACKING // defaults true
 | 10  | **Provider-agnostic from day one**         | 3-Year Freeze: build extensibly now. Adding Telegram/LINE = ~200 lines adapter, zero core changes.               |
 | 11  | **Provider-agnostic collection names**     | `messagingOnboardingSessions` not `whatsappOnboardingSessions`. Avoids costly data migration later.              |
 | 12  | **Complete feature isolation**             | Zero existing file modifications. Feature flag gated. Clean teardown in <1 hour.                                 |
-| 13  | **Free publish, pay to maintain (ADR-12)** | 24h public grace → dashboard restricted → owner pays via existing Razorpay. Conversion psychology.               |
+| 13  | **Verified starter activation, pay to maintain (ADR-12)** | 7-day starter activation → focused starter workspace → owner pays via existing Razorpay to keep the same public URL and QR live. |
 | 14  | **Business type AI-detected**              | Gemini detects from menu, uses existing `BUSINESS_TYPES` (60+ types). Editable on preview. Fallback: Restaurant. |
 
 ---

@@ -6,6 +6,18 @@
 
 ---
 
+## May 2026 Update — Starter Activation Supersedes Pay-First Trial
+
+This document is retained as historical pricing strategy, but the old "No free. No basic. No starter." decision is no longer the active onboarding rule.
+
+Current decision: MenuList uses **free setup as a verified onboarding state**, not a permanent free plan. A verified owner can create a 7-day starter activation with the same permanent public URL and QR before payment. Payment preserves and expands operational control through Starter, Pro, and Premium plans.
+
+Active source: `__docs__/onboarding/onboarding_public-draft-strategy-review.md`.
+
+Durable principle preserved from this document: do not become a free QR/menu utility. Costly AI operations, exports, advanced analytics, multi-location control, custom domains, and serious ongoing management remain paid/capability-gated.
+
+---
+
 ## 🎯 Core Principle (Non-Negotiable)
 
 > **You are NOT selling a digital menu.**

@@ -6,8 +6,10 @@ import { useAppSelector } from '@hook/useAppSelector';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import { useTodayAction } from '@providers/TodayActionProvider';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, getSidebarLayoutState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
+import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { Button, Flex, Menu, MenuProps, Popover, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -33,7 +35,7 @@ const HorizontalSidebarComponent = () => {
     const pathname = usePathname()
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const { tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { activeSubscription, tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
 
     // Today action indicator (per Strategy Doc: small dot when action exists)
     const { hasAction: hasTodayAction } = useTodayAction();
@@ -53,10 +55,15 @@ const HorizontalSidebarComponent = () => {
         tenantDetails,
         userPermissions,
     });
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     const getMenuItems = () => {
         const menuCopy = [];
         SIDEBAR_DASHBOARD_LAYOUT.map((nav: NavItemType) => {
+            if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route)) {
+                return;
+            }
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
                 if (!canManageLocations) {
                     return;
@@ -140,7 +147,7 @@ const HorizontalSidebarComponent = () => {
                 setActiveNav([currentNav.key])
             }
         }
-    }, [pathname, platformRole, hasTodayAction, canManageLocations, userPermissions])
+    }, [pathname, platformRole, hasTodayAction, canManageLocations, hasStarterAccess, userPermissions])
 
     const onClickNav: MenuProps['onClick'] = (menu: any) => {
         getMenuItems().map((nav: any) => {

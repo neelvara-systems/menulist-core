@@ -1,8 +1,8 @@
 /**
  * Public Menu Entry — Upload Page
  * 
- * /create-menu — Public page for owner-account menu upload.
- * Page is public; upload/extraction requires a free account. Mobile-first design.
+ * /create-menu — Public page for upload-before-auth menu preview.
+ * Page is public; owner sign-in is required only before claiming/publishing.
  * Feature gated: ENABLE_PUBLIC_MENU_ENTRY
  * 
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md

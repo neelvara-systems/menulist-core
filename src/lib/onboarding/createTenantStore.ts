@@ -94,8 +94,13 @@ export interface TenantStoreResult {
 export async function preCheckSubdomain(
     db: FirebaseFirestore.Firestore,
     businessName: string,
+    locality?: string,
 ): Promise<string> {
-    const subdomain = slugify(businessName);
+    const slugSource = [businessName, locality]
+        .map((part) => typeof part === 'string' ? part.trim() : '')
+        .filter(Boolean)
+        .join(' ');
+    const subdomain = slugify(slugSource || businessName);
     if (!subdomain || isReservedSubdomain(subdomain)) {
         return '';
     }

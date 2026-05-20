@@ -95,6 +95,9 @@ export type TenantDataType = {
     // ONBOARDING TRACKING
     // @see __docs__/reseller-dashboard/
     // ─────────────────────────────────────────────────────────────
-    onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING';
+    onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING' | 'PUBLIC_MENU_ENTRY';
+    starterActivationStatus?: 'preview_created' | 'starter_active' | 'payment_pending' | 'active_paid' | 'starter_expired' | 'archived';
+    starterActivatedAt?: Timestamp;
+    activationDeadline?: Timestamp;
     resellerId?: string;              // Reseller profile ID (if onboarded by reseller)
 };

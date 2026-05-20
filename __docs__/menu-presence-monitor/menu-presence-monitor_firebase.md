@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Firebase Cost Tracking
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** May 20, 2026
 
 ---
 
@@ -17,6 +17,9 @@
 | Field | Document | Type | Size |
 |-------|----------|------|------|
 | `menuPresence` | `stores/{tId}_{sId}` | Map with 3 optional sub-maps | ~200 bytes max |
+| `starterActivationSignals` | `stores/{tId}_{sId}` | Map of starter distribution actions | ~500 bytes max during starter activation |
+
+For starter activation stores, confirming Google Business, Instagram Bio, or WhatsApp Profile also writes the matching `starterActivationSignals.actions.*` key in the same `updateDoc()` call. This keeps the distribution activation metric measurable without adding a second write.
 
 ## Cost Estimate
 
@@ -35,6 +38,7 @@ The store document is already fetched by the Use MenuList data loader (`Platform
 ## Firestore Indexes
 
 None needed. No queries on `menuPresence` field — it's read as part of the store document.
+No indexes are needed for `starterActivationSignals`; it is read as part of the existing store document.
 
 ---
 

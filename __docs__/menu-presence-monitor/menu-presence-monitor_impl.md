@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
-> **Version:** 2.0 (post-ChatGPT feedback)
-> **Last Updated:** March 16, 2026
+> **Version:** 2.1 (starter activation telemetry)
+> **Last Updated:** May 20, 2026
 > **Audience:** Developers
 
 ---
@@ -12,6 +12,7 @@ Menu Presence Monitor is a **pure UI component** embedded in the Use MenuList pa
 
 - **Auto-detected statuses** from existing data (screen token, Menu Kit download, feedback setting)
 - **Manual confirmations** stored as a lightweight field on the store document
+- **Starter activation telemetry** piggybacked on the same store document for unpaid public starter workspaces
 
 Zero new collections. Zero new API routes. Client-side DAL only.
 
@@ -30,7 +31,14 @@ menuPresence?: {
   instagramBio?: string;     // ISO 8601 timestamp when owner confirmed
   whatsappProfile?: string;  // ISO 8601 timestamp when owner confirmed
 }
+
+starterActivationSignals?: {
+  actions?: Record<string, string>; // starter activation signal -> ISO 8601 timestamp
+  lastSignalAt?: string;
+}
 ```
+
+`starterActivationSignals` is only written for stores in starter activation state. The signal contract lives in `src/lib/onboarding/starterActivation.ts`.
 
 ### 2.2 Auto-Detected Surfaces
 
@@ -71,7 +79,8 @@ src/components/mobile/components/
 └── PresenceMonitor.tsx          # ~120 lines — Mobile version (antd-mobile)
 
 src/types/platform/store.ts      # Modified — add menuPresence field
-src/database/stores/index.ts     # Modified — add updateMenuPresence()
+src/database/stores/index.ts     # Modified — add updateMenuPresence() + recordStarterActivationSignal()
+src/lib/onboarding/starterActivation.ts # Modified — shared starter signal contract and 2-action target
 src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 ```
 
@@ -82,20 +91,27 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 ### Phase 1: Data Layer (~30 min)
 
 1. Add `menuPresence` optional field to `StoreDataType` in `src/types/platform/store.ts`
-2. Add `updateMenuPresence()` function to `src/database/stores/index.tsx`:
+2. Add `updateMenuPresence()` and `recordStarterActivationSignal()` functions to `src/database/stores/index.tsx`:
    ```typescript
    export const updateMenuPresence = async (
      storeId: number,
      surface: MenuPresenceSurface,
      confirmed: boolean,
+     options?: { starterSignal?: StarterActivationSignal },
    ) => {
      return await apiCallComposer(
        async () => {
          const docRef = getDocRef(`${storeId}`);
+         const now = new Date().toISOString();
          if (confirmed) {
-           await updateDoc(docRef, {
-             [`menuPresence.${surface}`]: new Date().toISOString(),
-           });
+           const updatePayload: Record<string, string> = {
+             [`menuPresence.${surface}`]: now,
+           };
+           if (options?.starterSignal) {
+             updatePayload[`starterActivationSignals.actions.${options.starterSignal}`] = now;
+             updatePayload["starterActivationSignals.lastSignalAt"] = now;
+           }
+           await updateDoc(docRef, updatePayload);
          } else {
            await updateDoc(docRef, {
              [`menuPresence.${surface}`]: deleteField(),
@@ -103,7 +119,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
          }
          return { surface, confirmed };
        },
-       { storeId, surface, confirmed },
+       { storeId, surface, confirmed, starterSignal: options?.starterSignal },
        "updateMenuPresence",
      );
    };

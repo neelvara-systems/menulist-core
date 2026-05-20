@@ -984,7 +984,9 @@ Key functions reused:
   roles: createDefaultRoles(newStoreId, generatedEmail),
   isMaster: true, // First store is always master
   onboardingSource: 'MESSAGING_ONBOARDING', // Identifies messaging-onboarded stores (§17)
-  activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000), // 24h grace (§17.5)
+  starterActivationStatus: 'starter_active',
+  starterActivatedAt: Timestamp.now(),
+  activationDeadline: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day starter activation (§17.5)
 
   // Fields NOT in existing dashboard onboarding (create-subscription/route.ts) but
   // messaging onboarding can infer from available data (§18 Gap Analysis):
@@ -1960,13 +1962,13 @@ Messaging onboarding creates tenant + store **without any subscription** (ADR-8.
 ### 17.2 Post-Publish Flow (Locked)
 
 ```
-PUBLISH → Menu live (24h) → Dashboard restricted → Owner pays → Full access
+PUBLISH → 7-day starter activation → Focused starter workspace → Owner pays → Full access
 ```
 
 | Phase                         | Public Menu                          | Dashboard Access                               | Duration  |
 | ----------------------------- | ------------------------------------ | ---------------------------------------------- | --------- |
-| **1. Just published**         | Live (fully visible)                 | Restricted mode — see menu + pricing only      | 0-24h     |
-| **2. Grace expired (unpaid)** | Shows "temporarily inactive" overlay | Restricted mode — pay to unlock                | After 24h |
+| **1. Starter active**         | Live at the permanent public URL     | Focused starter workspace — menu, sharing, QR, business basics, billing | 7 days |
+| **2. Starter expired (unpaid)** | Same URL preserved with recovery/billing path | Billing/help recovery only until payment | After 7 days |
 | **3. Owner pays**             | Permanently live                     | Full access (same as dashboard-onboarded user) | Ongoing   |
 
 ### 17.3 Store Document: `onboardingSource` Field
@@ -1978,7 +1980,9 @@ Messaging-onboarded stores are identified by a new field:
 transaction.set(storeRef, {
   // ... existing fields (§8.2.1) ...
   onboardingSource: "MESSAGING_ONBOARDING", // Identifies messaging-onboarded stores
-  activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000), // 24h from publish
+  starterActivationStatus: "starter_active",
+  starterActivatedAt: Timestamp.now(),
+  activationDeadline: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from publish
 });
 ```
 
@@ -1997,10 +2001,10 @@ if (!subscription && store.onboardingSource === 'MESSAGING_ONBOARDING') {
 }
 ```
 
-### 17.5 Public Menu Behavior (24h Grace)
+### 17.5 Public Menu Behavior (7-Day Starter Activation)
 
-- **First 24h after publish:** Menu fully visible at OBP/QR link. Owner can share, test, show staff.
-- **After 24h (if unpaid):** Public page shows subtle overlay: "Menu temporarily inactive. Owner needs to activate plan." Not a broken page — just a clean inactive state.
+- **First 7 days after publish:** Menu is visible at the permanent OBP/QR link. Owner can share, test, show staff, and place the same URL on customer surfaces.
+- **After 7 days (if unpaid):** The same URL stays reserved for recovery. Public behavior should be a calm inactive/recovery state, not a hard 404 and not a URL change.
 - **After payment:** Menu permanently live. No further gates.
 
 ### 17.6 WhatsApp Message (Post-Publish)
@@ -2016,7 +2020,7 @@ Payment happens entirely inside the dashboard.
 
 ### 17.7 ADR-12: Why Free Publish → Pay Later (Not Pay Before Publish)
 
-**Decision:** Owner publishes for free. Payment required to maintain access and edit.
+**Decision:** Owner publishes into a verified 7-day starter activation. Payment is required to keep the same public URL live and unlock full ongoing management.
 
 **Reason:**
 

@@ -1,9 +1,9 @@
 # Public Menu Entry — Technical Implementation Plan
 
 **Version:** 1.0
-**Status:** 📝 DRAFT — Pending review
+**Status:** ✅ IMPLEMENTED — Production-audited
 **Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** March 10, 2026
+**Last Updated:** May 20, 2026
 
 ---
 
@@ -15,18 +15,18 @@ This feature is **80% existing code, 20% new glue.** The table below maps what e
 | ------------------------------------- | ------- | ---------------------------------------------------------- | ----------------------------------------------- |
 | Image optimization (client-side)      | ✅      | `compressor.js` (package.json)                             | Direct reuse — same compression before upload   |
 | Firebase Storage upload               | ✅      | `src/database/projects/index.ts`                           | New path: `publicMenuDrafts/{draftId}/`         |
-| AI menu extraction (Gemini 2.5 Flash) | ✅      | `functions/src/logic/processMenuImagesJob.ts`              | Reuse core extraction logic via callable CF     |
+| AI menu extraction (Gemini 2.0 Flash in public route; shared pipeline uses configured AI model) | ✅      | `src/app/api/public/create-menu/route.ts`, `functions/src/logic/processMenuImagesJob.ts` | Reuse core extraction logic and keep model/cost visible |
 | Menu preview rendering                | ✅      | `src/components/templates/website/clientWebsite/`          | Reuse `MainContentRenderer` with extracted data |
 | QR code generation                    | ✅      | `src/components/.../shareModal/qrCodeView.tsx`             | Reuse QR component on success page              |
 | Menu Kit (share assets)               | ✅      | `src/components/.../shareModal/MenuKitSection.tsx`         | Available post-publish                          |
 | Auth flow (Google + email)            | ✅      | `src/app/(global-pages)/signin/page.tsx`                   | Redirect with `callbackUrl` param               |
 | Store + project creation              | ✅      | `src/database/stores/`, `src/database/projects/`           | Used in claim/publish flow                      |
 | Public page (`/create-menu`)          | ❌ NEW  | `src/app/(website)/create-menu/page.tsx`                   | New page in website route group                 |
-| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — POST withAuth, rate-limited; GET token-based preview |
+| Draft API route                       | ❌ NEW  | `src/app/api/public/create-menu/route.ts`                  | New API — POST public + rate-limited; GET token-based preview |
 | Preview page                          | ❌ NEW  | `src/app/(website)/create-menu/preview/[draftId]/page.tsx` | New page — reads draft, renders preview         |
 | Draft Firestore collection            | ❌ NEW  | `publicMenuDrafts`                                         | New collection — 24h TTL                        |
 | Claim/convert flow                    | ❌ NEW  | `src/app/api/public/create-menu/claim/route.ts`            | New API — withAuth, converts draft → project    |
-| Nightly cleanup                       | ❌ NEW  | Addition to `functions/src/decisionBlocksScoring.ts`       | Add step to existing nightly scheduler          |
+| Nightly cleanup                       | ❌ NEW  | `functions/src/schedulers/menulistMaintenanceScheduler.ts` | Add task to consolidated MenuList scheduler     |
 
 ---
 
@@ -44,6 +44,8 @@ interface PublicMenuDraft {
   imageUrl: string; // Firebase Storage URL
   imagePath: string; // Storage path for cleanup
   originalFileName: string;
+  fileType: string; // Original MIME type for permanent project file record
+  fileSize: number;
 
   // Extraction Result
   extractedData: {
@@ -79,6 +81,31 @@ interface PublicMenuDraft {
 **Index needed:** `token` (equality) — for preview lookup
 **Index needed:** `expiresAt` (range) + `claimed` (equality) — for nightly cleanup
 
+### 2.1A Claimed Starter Activation
+
+The 24-hour TTL above applies only to **unclaimed upload drafts**. Once a verified owner claims/publishes the draft, MenuList creates the real tenant/store/project and moves the business into a 7-day starter activation.
+
+Claimed store/tenant fields:
+
+```typescript
+{
+  onboardingSource: "PUBLIC_MENU_ENTRY",
+  starterActivationStatus: "starter_active",
+  starterActivatedAt: Timestamp,
+  activationDeadline: Timestamp, // starterActivatedAt + 7 days
+  subdomain: "business-locality" // permanent public URL namespace
+}
+```
+
+Rules:
+
+- The public URL and QR are real from starter activation and must not change after payment.
+- The owner sees a focused starter workspace, not the full paid dashboard.
+- Payment keeps the same public URL live and unlocks operational control.
+- Claim/publish writes must revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`.
+- Unpaid starter expiration should preserve a recovery path on the same public identity instead of creating a hard broken link.
+- Starter distribution actions are recorded on `stores/{storeId}.starterActivationSignals` from the success page, Use MenuList, mobile Share, and Presence Monitor. The activation target is 2 unique actions in 7 days.
+
 ### 2.2 Constants Addition
 
 ```typescript
@@ -93,10 +120,10 @@ PUBLIC_MENU_DRAFTS: 'publicMenuDrafts',
 
 ```typescript
 // src/config/features.ts
-ENABLE_PUBLIC_MENU_ENTRY: false, // Public menu creation without auth
+ENABLE_PUBLIC_MENU_ENTRY: true, // Public menu creation without auth
 
 // functions/src/constants/features.ts (mirror)
-ENABLE_PUBLIC_MENU_ENTRY: false,
+ENABLE_PUBLIC_MENU_ENTRY: true,
 ```
 
 ---
@@ -107,7 +134,7 @@ ENABLE_PUBLIC_MENU_ENTRY: false,
 
 ```
 src/app/(website)/create-menu/
-├── page.tsx                          // Upload page (public page, account required before upload)
+├── page.tsx                          // Upload page (public page, no account before upload)
 ├── CreateMenuClient.tsx              // Client component — upload + progress UI
 ├── preview/
 │   └── [draftId]/
@@ -117,12 +144,11 @@ src/app/(website)/create-menu/
     └── page.tsx                      // Post-publish success page (auth required)
 
 src/app/api/public/create-menu/
-├── route.ts                          // POST: upload image + trigger extraction (withAuth); GET: token preview status
+├── route.ts                          // POST: upload image + trigger extraction (public/rate-limited); GET: token preview status
 └── claim/
     └── route.ts                      // POST: claim draft → create store + project (withAuth)
 
-functions/src/publicMenu/
-└── extractPublicMenu.ts              // Callable CF: runs extraction on draft image
+functions/src/schedulers/menulistMaintenanceScheduler.ts // public_menu_draft_cleanup task
 ```
 
 ### Modified Files (4 files)
@@ -132,7 +158,7 @@ src/constants/database.ts             // +1 collection constant
 functions/src/constants/database.ts   // +1 collection constant (mirror)
 src/config/features.ts                // +1 feature flag
 functions/src/constants/features.ts   // +1 feature flag (mirror)
-functions/src/decisionBlocksScoring.ts // +1 nightly cleanup step
+functions/src/schedulers/menulistMaintenanceScheduler.ts // +1 cleanup task
 firestore.indexes.json                // +2 composite indexes
 ```
 
@@ -185,10 +211,10 @@ const schema = z.object({
 1. Validate feature flag
 2. Check IP rate limit
 3. Validate file (type, size)
-4. Optimize image server-side (sharp — already in dependencies)
-5. Upload to Storage: `publicMenuDrafts/{draftId}/{filename}`
+4. Upload client-optimized image to Storage: `publicMenuDrafts/{draftId}/{filename}`
+5. Store a stable Firebase download-token URL for preview and source-file continuity after claim
 6. Create Firestore draft doc with `extractionStatus: 'pending'`
-7. Call `extractPublicMenu` Cloud Function (fire-and-forget)
+7. Trigger inline extraction helper (fire-and-forget inside the API route)
 8. Return draftId immediately
 
 ### 4.2 GET `/api/public/create-menu?draftId={token}`
@@ -214,7 +240,7 @@ const schema = z.object({
 
 ### 4.3 POST `/api/public/create-menu/claim`
 
-**Auth:** `withAuth()` — user must be authenticated
+**Auth:** `withAuth()` — user must be authenticated before claim/publish
 **Purpose:** Convert draft to real store + project
 
 **Request:**
@@ -238,6 +264,7 @@ const schema = z.object({
   businessType: z.string().optional(),
   phone: z.string().optional(),
   city: z.string().optional(),
+  addressLine: z.string().optional(),
 });
 ```
 
@@ -248,7 +275,7 @@ const schema = z.object({
   storeId: number;
   projectId: string;
   subdomain: string;
-  menuUrl: string; // https://{subdomain}.menulist.site
+  menuUrl: string; // getMenuUrl(subdomain)
   success: true;
 }
 ```
@@ -259,45 +286,46 @@ const schema = z.object({
 2. Look up draft by token
 3. Verify draft exists, not expired, not already claimed
 4. Create tenant (if new user) or use existing
-5. Create store with provided business info
+5. Create store with provided business info and starter activation fields
 6. Create project with extracted data
 7. Publish project (set `isDefault: true`)
 8. Mark draft as claimed
-9. Delete Storage image (now lives in project)
-10. Return store/project details
+9. Revalidate public cache tags: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`
+10. Return store/project details and canonical menu URL
+11. Client success handler calls `useSession().update()` so the newly claimed tenant/store is available before opening the workspace
 
 ---
 
-## 5. Cloud Function: `extractPublicMenu`
+## 5. Inline Extraction Helper
 
-**Location:** `functions/src/publicMenu/extractPublicMenu.ts`
-**Type:** `onCall` (callable from API route)
-**Purpose:** Run AI extraction on the uploaded image
+**Location:** `src/app/api/public/create-menu/route.ts` (`triggerExtraction`)
+**Type:** Fire-and-forget server helper inside the Next.js API route
+**Purpose:** Run AI extraction on the uploaded image without exposing the Gemini key to the client
 
 **Reuses:**
 
-- `parallelProcessingPrompt` from `functions/src/logic/parallelProcessingPrompt.ts`
-- `aiResponseUtils` from `functions/src/logic/aiResponseUtils.ts`
-- Gemini 2.5 Flash model configuration
+- Shared Gemini client (`genAIClient`)
+- Shared category/business-type helpers
+- Shared AI operation logging (`recordAiOperation`)
 
 **Does NOT reuse:**
 
 - Full `processMenuImagesJobLogic` (too coupled to project/session/job queue)
-- Instead: extracts the **core Gemini call + response normalization** into a simpler standalone function
+- Separate callable Cloud Function (not needed for v1)
 
 **Flow:**
 
-1. Read draft doc
+1. Mark draft as `processing`
 2. Download image from Storage
-3. Call Gemini 2.5 Flash with menu extraction prompt
-4. Normalize response (categories, items, languages)
+3. Call configured Gemini model with menu extraction prompt
+4. Parse and validate JSON response shape
 5. Attempt business name/type detection from content
 6. Update draft doc: `extractionStatus: 'completed'`, `extractedData: {...}`
 
 **Error handling:**
 
-- On failure: set `extractionStatus: 'failed'`, `extractionError: message`
-- Retries: 1 retry with 3s delay (Gemini transient failures)
+- On failure: set `extractionStatus: 'failed'` with a generic owner-safe `extractionError`
+- Raw provider/parse errors are only written to secure server logs
 
 ---
 
@@ -385,11 +413,11 @@ const schema = z.object({
 **Shows:**
 
 - Confirmation: "Your menu page is live!"
-- Live URL: `{subdomain}.menulist.site`
+- Live URL: canonical MenuList customer URL from `getMenuUrl(subdomain)`
 - QR code (reuse `QRCodeView` component)
 - Share buttons (WhatsApp, copy link)
 - "Add to Google Maps" guidance
-- "Go to dashboard" CTA
+- "Open setup workspace" CTA
 
 ---
 
@@ -397,7 +425,7 @@ const schema = z.object({
 
 | Concern               | Mitigation                                                                             |
 | --------------------- | -------------------------------------------------------------------------------------- |
-| Bot abuse             | IP-based rate limiting (3/day), file type validation, min image dimensions (200×200px) |
+| Bot abuse             | IP-based rate limiting (3/day), file type validation, max file size, SAFE_MODE kill switch |
 | Storage abuse         | 24h TTL auto-cleanup, max 10MB per upload                                              |
 | Draft enumeration     | URL uses crypto-random token, NOT sequential IDs                                       |
 | Cost spikes           | Rate limit caps max daily Gemini calls. Feature flag kill switch.                      |
@@ -408,26 +436,15 @@ const schema = z.object({
 
 ## 8. Nightly Cleanup (Addition to Existing Scheduler)
 
-**Location:** `functions/src/decisionBlocksScoring.ts` — add new step after existing steps
+**Location:** `functions/src/schedulers/menulistMaintenanceScheduler.ts` — `public_menu_draft_cleanup` task in the consolidated MenuList maintenance scheduler.
 
 ```typescript
-// Step: Clean up expired public menu drafts
-if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
-  const expiredDrafts = await db
-    .collection("publicMenuDrafts")
-    .where("expiresAt", "<", Timestamp.now())
-    .where("claimed", "==", false)
-    .limit(100)
-    .get();
-
-  for (const doc of expiredDrafts.docs) {
-    // Delete Storage image
-    // Delete Firestore doc
-  }
-}
+// Task: public_menu_draft_cleanup
+// Daily at 03:30 UTC, max 100 expired unclaimed drafts per run.
+// Deletes the temporary Storage image and the publicMenuDrafts document.
 ```
 
-**Cost:** Negligible — one query per nightly run, batch deletes.
+**Cost:** Negligible — one query per daily due run, one Storage delete per expired draft, and batch document deletes.
 
 ---
 
@@ -435,31 +452,31 @@ if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
 
 ### Phase 1: Foundation (Core Flow)
 
-- [ ] Add feature flag + DB constant (both frontend + CF)
-- [ ] Create `publicMenuDrafts` collection schema
-- [ ] Create upload API route (`/api/public/create-menu`)
-- [ ] Create Cloud Function (`extractPublicMenu`)
-- [ ] Create upload page UI (`/create-menu`)
-- [ ] Create preview page UI (`/create-menu/preview/[draftId]`)
-- [ ] Add Firestore indexes
+- [x] Add feature flag + DB constant (both frontend + CF)
+- [x] Create `publicMenuDrafts` collection schema
+- [x] Create upload API route (`/api/public/create-menu`)
+- [x] Keep extraction inline in the public API route for v1
+- [x] Create upload page UI (`/create-menu`)
+- [x] Create preview page UI (`/create-menu/preview/[draftId]`)
+- [x] Add Firestore indexes
 
 ### Phase 2: Claim & Publish
 
-- [ ] Create claim API route (`/api/public/create-menu/claim`)
-- [ ] Create success page (`/create-menu/success`)
-- [ ] Implement draft → project conversion
-- [ ] Wire auth redirect flow (signin → return to preview)
-- [ ] QR code + share link on success page
+- [x] Create claim API route (`/api/public/create-menu/claim`)
+- [x] Create success page (`/create-menu/success`)
+- [x] Implement draft → project conversion
+- [x] Wire auth redirect flow (signin → return to preview)
+- [x] QR code + share link on success page
 
 ### Phase 3: Polish & Safety
 
-- [ ] Rate limiting configuration
-- [ ] Nightly cleanup step
-- [ ] Error states (all edge cases)
-- [ ] Loading/progress animations
-- [ ] Mobile optimization
-- [ ] Image validation (dimensions, format)
-- [ ] Terms acceptance checkbox
+- [x] Rate limiting configuration
+- [x] Nightly cleanup step
+- [x] Error states (all edge cases)
+- [x] Loading/progress animations
+- [x] Mobile optimization
+- [x] Image validation (format + size)
+- [x] Terms acceptance remains in authenticated account flow
 
 ### Phase 4: Type Check & Verification
 
@@ -481,9 +498,9 @@ if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
 
 ### ADR-2: Why server-side extraction (not client-side)?
 
-**Decision:** API route uploads image, Cloud Function runs extraction.
+**Decision:** API route uploads the image and runs the narrow extraction helper server-side.
 
-**Reason:** Gemini API key must stay server-side. Client-side extraction would expose the key. The CF also allows rate limiting enforcement at the server level.
+**Reason:** Gemini API key must stay server-side. Client-side extraction would expose the key. Keeping the helper in the API route avoids a separate Cloud Function while still allowing SAFE_MODE, rate limiting, secure logging, and AI operation accounting before the model call.
 
 ### ADR-3: Why no editor on preview page?
 
@@ -519,7 +536,7 @@ if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
 | 2     | Auth redirect flow         | ✅     | ?claim=true param handling             |
 | 3     | Rate limiting              | ✅     | PUBLIC_MENU_ENTRY config (3/24h/IP)    |
 | 3     | SAFE_MODE check            | ✅     | Added during audit                     |
-| 3     | Nightly cleanup            | ⬜     | Deferred — low risk (feature flag OFF) |
+| 3     | Nightly cleanup            | ✅     | Consolidated scheduler task            |
 | 3     | Error states               | ✅     | All edge cases covered                 |
 | 4     | Type check                 | ✅     | Zero errors                            |
 | 4     | Firestore indexes          | ✅     | 1 composite index                      |
@@ -533,7 +550,7 @@ if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
 | #     | Severity    | Issue                                                                                                                                    | Fix                                                                                                                                                                                       |
 | ----- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | F1    | 🔴 CRITICAL | Wrong Gemini SDK — used `@google/generative-ai` (old) instead of `@google/genai` via `genAIClient`                                       | Rewrote extraction to use `genAIClient.models.generateContent()` matching all other AI routes                                                                                             |
-| F2/F3 | 🔴 CRITICAL | `file.makePublic()` — Storage may block public access; signed URLs are safer and standard                                                | Replaced with `file.getSignedUrl()` with 25h expiry (outlives 24h draft TTL)                                                                                                              |
+| F2/F3 | 🔴 CRITICAL | `file.makePublic()` — Storage may block public access; short-lived signed URLs break claimed project source previews                    | Replaced with stable Firebase download-token URLs and unclaimed draft cleanup                                                                                                             |
 | F4    | 🟡 MEDIUM   | Memory leak — `URL.createObjectURL` never revoked in CreateMenuClient                                                                    | Added `useEffect` cleanup that revokes URL on unmount/change                                                                                                                              |
 | F6    | 🟢 LOW      | `MIN_DIMENSION` constant declared but never used                                                                                         | Removed                                                                                                                                                                                   |
 | F10   | 🟡 MEDIUM   | No SAFE_MODE check before Gemini call — AI operations should be blockable during maintenance                                             | Added `checkSafeMode()` before rate limiting                                                                                                                                              |
@@ -545,15 +562,15 @@ if (FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
 | Spec Said                                   | Actual                           | Reason                                                                                                        |
 | ------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Separate Cloud Function `extractPublicMenu` | Extraction inline in API route   | Simpler for v1 — avoids separate CF deployment. Same Gemini call, just runs in Next.js API route server-side. |
-| `file.makePublic()` for image URL           | `getSignedUrl()` with 25h expiry | More secure, works with any Storage security rules, standard pattern in codebase                              |
+| `file.makePublic()` for image URL           | Firebase download-token URL      | Stable after claim and consistent with WhatsApp onboarding source-file handling                              |
 
-### Remaining Deferred Items (Low Risk)
+### Remaining Deferred Items
 
-1. **Nightly cleanup step** — Not yet in scheduler. Drafts accumulate but feature is OFF. Add before enabling flag.
-2. **Firestore security rules** — Default deny covers it. No client-side access needed.
+1. **Firestore security rules hardening** — Default deny covers `publicMenuDrafts`; keep explicit rules and index deployment aligned during release.
+2. **Real payment/WhatsApp sandbox sweep** — Required before production traffic because Razorpay recurring capability and WhatsApp webhook delivery depend on external account configuration.
 
 ---
 
 **Document Signature:** MenuList Technical Implementation
 **Audience:** Developers
-**Last Updated:** March 11, 2026
+**Last Updated:** May 20, 2026

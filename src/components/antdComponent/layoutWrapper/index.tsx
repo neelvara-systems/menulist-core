@@ -6,22 +6,31 @@ import { SKIP_CLIENT_APP_LAYOUT_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
 import useDeviceType from '@hook/useDeviceType';
 import { clearForceDesktopMode, shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
+import {
+    hasStarterWorkspaceAccess,
+    isStarterActivationStore,
+    isStarterRecoveryRoute,
+    isStarterWorkspaceRoute,
+} from '@lib/onboarding/starterActivation';
 import HeadMetaTags from '@organisms/headMetaTags';
 import HorizontalSidebar from '@organisms/sidebar/horizontalSidebar';
 import AntdThemeProvider from '@providers/antdThemeProvider';
 import GlobalKeyboardShortcutsProvider from '@providers/GlobalKeyboardShortcutsProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, getRTLDirectionState, getSidebarLayoutState, getSidebarState } from '@reduxSlices/clientThemeConfig';
+import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { Layout, theme } from 'antd';
 import dynamic from 'next/dynamic';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { Fragment, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Fragment, useContext, useEffect, useState } from 'react';
 import styles from './layoutWrapper.module.scss';
 
 const AppSettingsPanel = dynamic(() => import('@organisms/sidebar/appSettingsPanel'), { ssr: false });
 const HeaderComponent = dynamic(() => import('@organisms/headerComponent'), { ssr: false });
 const SidebarComponent = dynamic(() => import('@organisms/sidebar'), { ssr: false });
 const MobileShell = dynamic(() => import('../../mobile/MobileShell'), { ssr: false });
+const StarterActivationBanner = dynamic(() => import('../../onboarding/StarterActivationBanner'), { ssr: false });
 
 const { Content } = Layout;
 const DESKTOP_ONLY_ROUTE_PREFIXES: string[] = [];
@@ -34,7 +43,9 @@ export default function AntdLayoutWrapper(props: any) {
     const isRTLDirection = useAppSelector(getRTLDirectionState)
     const { token } = theme.useToken();
     const pathname = usePathname();
+    const router = useRouter();
     const searchParams = useSearchParams();
+    const { activeSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
     const { isHandheld, isMobile, hasMounted } = useDeviceType();
     const [, setForceDesktopRefreshKey] = useState(0);
@@ -56,6 +67,30 @@ export default function AntdLayoutWrapper(props: any) {
         && !isDesktopOnlyRoute
         && (isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute)));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
+    const isStarterStore = isStarterActivationStore(storeDetails);
+
+    useEffect(() => {
+        if (!hasMounted || hasPaidAccess || shouldRenderMobileShell) return;
+
+        if (hasStarterAccess && !isStarterWorkspaceRoute(pathname)) {
+            router.replace('/use-menulist');
+            return;
+        }
+
+        if (isStarterStore && !hasStarterAccess && !isStarterRecoveryRoute(pathname)) {
+            router.replace('/billing');
+        }
+    }, [
+        hasMounted,
+        hasPaidAccess,
+        hasStarterAccess,
+        isStarterStore,
+        pathname,
+        router,
+        shouldRenderMobileShell,
+    ]);
 
     const renderContent = () => {
 
@@ -98,6 +133,7 @@ export default function AntdLayoutWrapper(props: any) {
                             width: "100%"
                         }}>
                         <OutletContextBanner />
+                        <StarterActivationBanner />
                         {isHandheldDesktopRoute ? (
                             <div style={{ maxWidth: '100vw', overflowX: 'auto', width: '100%' }}>
                                 {props.children}

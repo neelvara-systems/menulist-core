@@ -23,6 +23,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
+import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -245,6 +246,8 @@ function ProjectsPage() {
     // Preview modal state (for Upload view)
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [previewLanguage, setPreviewLanguage] = useState('en');
+    const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
+    const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     const resolveProjectImageForSave = useCallback(async (
         projectImage?: string | null,
@@ -2019,7 +2022,7 @@ function ProjectsPage() {
 
     return (
         <Flex vertical gap={10}>
-            {activeSubscriptionLoading ? <Spin style={{ display: 'block', marginTop: 80, textAlign: 'center' }} /> : hasValidSubscriptionAccess(activeSubscription) ? <>
+            {activeSubscriptionLoading ? <Spin style={{ display: 'block', marginTop: 80, textAlign: 'center' }} /> : (hasPaidAccess || hasStarterAccess) ? <>
 
                 <ProjectsDataProvider
                     contextData={{ activeProject, setActiveProject: (data: Project) => mutateProject(data, { revalidate: false }), currentView, setCurrentView, activeBatchImageJob, setActiveBatchImageJob }}>

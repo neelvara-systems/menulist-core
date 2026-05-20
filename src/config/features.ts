@@ -2275,11 +2275,11 @@ export const FEATURE_FLAGS = {
     /**
      * Public Menu Entry — Controlled free preview pipeline
      *
-     * Allows public users to open /create-menu, then requires a free
-     * owner account before upload/extraction and preview.
+     * Allows public users to open /create-menu, upload a menu before
+     * account creation, and sign in only before claiming/publishing.
      * Creates draft in publicMenuDrafts collection with 24h TTL.
      *
-     * true: /create-menu page active, API accepts authenticated free-account uploads
+     * true: /create-menu page active, API accepts public rate-limited uploads
      * false: /create-menu returns 404, API returns 404
      *
      * Cost: ~₹0.50-1.00 per extraction (Gemini 2.5 Flash)

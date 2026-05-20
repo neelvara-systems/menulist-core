@@ -40,6 +40,14 @@ export default function FooterVeilCanvas() {
     if (!canvas || !context || !parent) return undefined;
 
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const isIosSafari = /iP(?:hone|ad|od)/i.test(navigator.userAgent);
+    if (isIosSafari) {
+      // iOS Safari has repeatable rendering instability with this layered canvas
+      // on long website pages when animation runs in the footer. Hide for now.
+      canvas.style.display = 'none';
+      return undefined;
+    }
+
     let width = 0;
     let height = 0;
     let animationFrame = 0;
@@ -110,6 +118,7 @@ export default function FooterVeilCanvas() {
 
       context.globalCompositeOperation = 'source-over';
       context.shadowBlur = 0;
+      context.globalAlpha = 1;
 
       if (!motionQuery.matches) {
         animationFrame = window.requestAnimationFrame(render);

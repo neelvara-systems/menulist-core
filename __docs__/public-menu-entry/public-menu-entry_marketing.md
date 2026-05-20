@@ -1,8 +1,8 @@
 # Public Menu Entry — Marketing & Sales Collateral
 
 **Version:** 1.0
-**Status:** 📝 DRAFT
-**Last Updated:** March 10, 2026
+**Status:** ✅ IMPLEMENTED — Active funnel
+**Last Updated:** May 20, 2026
 
 ---
 
@@ -10,7 +10,7 @@
 
 **One-liner:** "Upload your current menu and preview one official customer source."
 
-**30-second version:** Most restaurants still share menus as photos on WhatsApp or outdated PDFs. MenuList starts with a free owner account, then turns the menu a business already uses into a structured preview for one official customer-facing source. The owner sees the result, then publishes and sets up QR, links, and plan options from a controlled owner source.
+**30-second version:** Most restaurants still share menus as photos on WhatsApp or outdated PDFs. MenuList starts with the menu a business already uses, turns it into a structured preview, then asks the owner to sign in before making the public starter source live. The owner sees the result first, then publishes and sets up QR, links, and plan options from a controlled owner source.
 
 ---
 
@@ -20,11 +20,11 @@
 Every restaurant owner has the same daily frustration: customers ask for the menu, and the owner sends a blurry photo, an outdated PDF, or says "check our Instagram." There's no single, reliable place where the menu lives.
 
 ### The Solution
-MenuList's public entry lets any business owner create a free account, upload a menu photo, and see it transformed into a clean, structured preview. The marketing promise is not "anonymous free utility"; it is "free to start, review before publishing." The account gate confirms an owner before AI extraction starts.
+MenuList's public entry lets any business owner upload a menu photo and see it transformed into a clean, structured preview before payment or account creation. The marketing promise is not "anonymous free utility"; it is "free to start, review before publishing." The account gate starts only when the owner wants to claim and publish the starter public source.
 
 ### Why It Matters
 - The owner doesn't have to pay before seeing value
-- MenuList does not spend AI processing on anonymous uploads
+- MenuList caps anonymous AI cost with SAFE_MODE, IP rate limits, file validation, and 24-hour cleanup
 - The menu page becomes the official link for Google, QR codes, WhatsApp shares
 - Every published page strengthens MenuList's network of canonical business truth
 
@@ -34,13 +34,13 @@ MenuList's public entry lets any business owner create a free account, upload a 
 
 | Aspect | MenuList | GloriaFood | Menubly | Square |
 |--------|----------|-----------|---------|--------|
-| Free account before upload | ✅ Yes | ✅ Yes | ✅ Yes | ❌ POS setup first |
+| Upload before account | ✅ Yes | ❌ Usually no | ⚠️ Varies | ❌ POS setup first |
 | AI extraction from photo | ✅ Instant | ❌ Manual entry | ❌ Manual entry | ❌ Manual entry |
 | Canonical public page | ✅ Subdomain | ❌ Tool-branded | ⚠️ Basic page | ❌ POS-dependent |
 | Time to first preview | Short processing step | 15-30 minutes | 10-20 minutes | 30+ minutes |
 | QR + share assets | ✅ Included | ⚠️ Basic QR | ⚠️ Basic QR | ✅ Included |
 
-**Differentiator:** MenuList shows value before payment, but keeps AI processing tied to an owner account. This is "try before you buy" without anonymous cost leakage.
+**Differentiator:** MenuList shows value before payment and before account creation, but keeps public activation tied to a verified owner account. This is public proof before payment without open-ended anonymous usage.
 
 ---
 
@@ -62,7 +62,7 @@ Show: phone camera → upload → structured menu preview → live page.
 
 **Slide 4 — Differentiation:**
 "See the source before you pay."
-Free account first. No credit card for preview. Account setup connects the draft to the owner before AI processing and before it becomes an official source.
+Upload first. No credit card for preview. Account setup connects the draft to the owner before it becomes an official source.
 
 **Slide 5 — Use Cases:**
 1. Restaurant owner takes photo of wall menu → gets a structured owner-review preview
@@ -126,7 +126,7 @@ Free to start. Review before publishing.
 → "Take a photo. That's it. You can review the prepared menu source from your phone before publishing."
 
 **Objection: "Why would I pay for this?"**
-→ "Try it free first. If you like it, the paid plan keeps your page always updated and adds features like multiple menus and analytics."
+→ "Start setup free. If it works for your business, the paid plan keeps the same public link live and unlocks ongoing management."
 
 ---
 
@@ -141,11 +141,12 @@ Per Language Governance: infrastructure language, not marketing language.
 
 ## 9. Pricing/Packaging Story
 
-This feature is a **controlled free-preview funnel**. The value ladder:
+This feature is a **controlled starter-activation funnel**. The value ladder:
 
-1. **Free account:** Owner identity is confirmed before upload and AI processing
-2. **Free preview:** Upload + structured preview, rate-limited and cost-capped
-3. **Paid plan:** Multiple menus, custom domain, analytics, multi-location
+1. **Free preview:** Upload + structured preview, rate-limited and cost-capped
+2. **Owner claim:** Owner identity is confirmed before public activation
+3. **Starter activation:** Permanent public URL and QR work for 7 days with focused workspace access
+4. **Paid plan:** Keeps the same URL live and unlocks ongoing operations according to Starter, Pro, or Premium
 
 The public entry is the top of the funnel. It demonstrates value before asking for payment, but should not be advertised as an anonymous free AI processing tool.
 

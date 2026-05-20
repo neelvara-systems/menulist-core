@@ -559,7 +559,7 @@ When owner clicks "Approve & Publish", system creates everything atomically:
 ### What Gets Created (Single Firestore Transaction)
 
 1. **Tenant** — New tenant with business name, detected businessType (actual type like "Restaurant", not "B2C"), email, and tenant subdomain
-2. **Store** — New store with: business info, default roles, time slot presets, businessCategory, detected businessType, phoneNumber (from WhatsApp), defaultLanguage (from extraction), country/currency (inferred from phone country code), `onboardingSource: 'MESSAGING_ONBOARDING'`, `activationDeadline` (24h from publish), and public subdomain
+2. **Store** — New store with: business info, default roles, time slot presets, businessCategory, detected businessType, phoneNumber (from WhatsApp), defaultLanguage (from extraction), country/currency (inferred from phone country code), `onboardingSource: 'MESSAGING_ONBOARDING'`, `starterActivationStatus: 'starter_active'`, `activationDeadline` (7 days from publish), and public subdomain
 3. **User account** — Created or linked (using WhatsApp phone as identifier)
 4. **platformSummary** — Tenant/store counters incremented
 5. **storesSummary** — Store synced for Cloud Function optimization
@@ -780,7 +780,7 @@ This feature is successful when:
 | 1   | WhatsApp Business Account setup — need Meta Business verification | Blocks launch                | To do                                                                                                                                                                                                 |
 | 2   | WhatsApp template message approval timeline                       | Affects proactive messages   | To research                                                                                                                                                                                           |
 | 3   | User account creation method — phone-based auth or magic link?    | Affects dashboard login flow | **Decision: Claim link via WhatsApp. Owner can claim with Google, email/password, or WhatsApp number/passcode; phone number stays linked to user.**                                                   |
-| 4   | Free tier duration — how long before billing required?            | Affects business model       | **Decision (ADR-12): Free publish → 24h public grace → dashboard restricted mode. Owner pays via existing Razorpay when ready. No hard deadline, but editing locked until paid. See `_impl.md §17`.** |
+| 4   | Free setup duration — how long before billing required?            | Affects business model       | **Decision (ADR-12): Verified publish → 7-day starter activation → focused starter workspace → owner pays via existing Razorpay to keep the same public URL and QR live. See `_impl.md §17`.** |
 | 5   | Preview page domain — dedicated subdomain or path?                | Affects infrastructure       | **Decision: `preview.menulist.ai/{sessionId}` or path under main domain**                                                                                                                             |
 
 ---

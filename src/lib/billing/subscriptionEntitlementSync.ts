@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type { FirestoreSubscriptionDoc, PaymentStatus } from '@type/razorpay';
+import { revalidateTag } from 'next/cache';
 
 export interface SubscriptionEntitlementSyncInput {
     id?: string;
@@ -66,8 +67,12 @@ export async function syncStorePlanEntitlementFromSubscription(
                 syncedAt,
                 source,
             },
-        }, { merge: true });
+            }, { merge: true });
     }
+
+    revalidateTag(`menu-store-${storeId}`);
+    revalidateTag(`store-${storeId}`);
+    revalidateTag('client-stores');
 }
 
 export async function safeSyncStorePlanEntitlementFromSubscription(

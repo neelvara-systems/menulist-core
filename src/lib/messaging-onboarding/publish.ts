@@ -9,6 +9,7 @@ import { admin } from "@lib/firebase/firebaseAdmin";
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
+import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from "@lib/onboarding/starterActivation";
 import { secureError } from "@lib/security/secureLogger";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
@@ -168,7 +169,9 @@ export async function executeMessagingOnboardingPublish(
       subdomain: { preChecked: preCheckedSubdomain },
       includeTimeSlotPresets: true,
       storeExtra: {
-        activationDeadline: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+        activationDeadline: Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS),
+        starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
+        starterActivatedAt: Timestamp.now(),
         phoneNumber: sessionData.providerDisplayId || "",
         addressLine: address || "",
         activeLanguages: extractedLanguageCodes,

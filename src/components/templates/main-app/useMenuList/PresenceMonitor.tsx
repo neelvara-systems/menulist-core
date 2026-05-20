@@ -13,6 +13,10 @@
 
 import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import {
+    STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    shouldRecordStarterActivationSignal,
+} from '@lib/onboarding/starterActivation';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, message, Tag, Typography } from 'antd';
 import { useState } from 'react';
@@ -167,7 +171,11 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const handleConfirm = async (surface: ManualSurfaceConfig) => {
         setUpdating(surface.id);
         try {
-            await updateMenuPresence(storeDetails.storeId, surface.dalKey, true);
+            await updateMenuPresence(storeDetails.storeId, surface.dalKey, true, {
+                starterSignal: shouldRecordStarterActivationSignal(storeDetails)
+                    ? STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface.dalKey]
+                    : undefined,
+            });
             setLocalPresence(prev => ({ ...prev, [surface.id]: new Date().toISOString() }));
             message.success(`${surface.label} — official link added`);
             setExpandedGuide(null);

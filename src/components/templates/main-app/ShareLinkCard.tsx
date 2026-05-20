@@ -15,6 +15,7 @@ interface ShareLinkCardProps {
     sharePrefix: string;
     copySuccessLabel?: string;
     onGuide?: () => void;
+    onShareAction?: (action: 'copy' | 'copy_message' | 'whatsapp') => void;
 }
 
 export default function ShareLinkCard({
@@ -25,6 +26,7 @@ export default function ShareLinkCard({
     sharePrefix,
     copySuccessLabel = 'Link',
     onGuide,
+    onShareAction,
 }: ShareLinkCardProps) {
     const { token } = theme.useToken();
 
@@ -36,6 +38,7 @@ export default function ShareLinkCard({
         try {
             await navigator.clipboard.writeText(withSrc('copy'));
             message.success(`${copySuccessLabel} copied`);
+            onShareAction?.('copy');
         } catch {
             message.error('Could not copy link');
         }
@@ -44,6 +47,7 @@ export default function ShareLinkCard({
     const handleWhatsApp = () => {
         const msg = `${sharePrefix}\n${withSrc('whatsapp')}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        onShareAction?.('whatsapp');
     };
 
     const handleCopyMessage = async () => {
@@ -51,6 +55,7 @@ export default function ShareLinkCard({
         try {
             await navigator.clipboard.writeText(msg);
             message.success('Message copied — paste it in WhatsApp or anywhere');
+            onShareAction?.('copy_message');
         } catch {
             message.error('Could not copy message');
         }

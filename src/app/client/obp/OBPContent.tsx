@@ -17,11 +17,13 @@ import {
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
+import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import BrandOBPContent from "./BrandOBPContent";
 import OBPResolvedSurface, { type ObpMenuInfo } from "./OBPResolvedSurface";
+import StarterActivationHoldingPage from "@/components/customer/StarterActivationHoldingPage";
 
 async function withTimeout<T>(promise: Promise<T>, ms: number = 5000): Promise<T> {
     return Promise.race([
@@ -183,6 +185,13 @@ export default async function OBPContent({
     }
 
     const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
+    if (isStarterPublicSurfaceExpired(storeData)) {
+        return (
+            <StarterActivationHoldingPage
+                storeName={storeData?.name || storeData?.businessName || null}
+            />
+        );
+    }
 
     if (!storeOverride && storeData.isMaster) {
         const outletCount = await withTimeout(countActiveStoresForTenant(storeData.tenantId));

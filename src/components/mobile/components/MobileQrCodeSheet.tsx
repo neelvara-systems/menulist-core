@@ -15,6 +15,7 @@ interface MobileQrCodeSheetProps {
     helperText?: string;
     imageAlt: string;
     onClose: () => void;
+    onDownload?: () => void;
     qrErrorMessage: string;
     title: string;
     url: string;
@@ -30,6 +31,7 @@ export default function MobileQrCodeSheet({
     helperText,
     imageAlt,
     onClose,
+    onDownload,
     qrErrorMessage,
     title,
     url,
@@ -90,6 +92,7 @@ export default function MobileQrCodeSheet({
         if (!qrDataUrl) return;
         downloadQrCode(qrDataUrl, filename);
         Toast.show({ content: downloadSuccessMessage, duration: 1500 });
+        onDownload?.();
     };
 
     return (

@@ -30,7 +30,7 @@ const pricingFaqData = [
         category: 'Getting Started',
         question: `What happens after I subscribe?`,
         answer: (
-            <p>Upload your menu, review the prepared source, then publish when it is ready.</p>
+            <p>Your public menu link stays the same and becomes the permanent workspace for updates, QR, and customer sharing.</p>
         )
     },
     // == Understanding Plans ==
@@ -41,9 +41,9 @@ const pricingFaqData = [
             <div className="space-y-2">
                 <p>Choose based on your stage:</p>
                 <ul className="list-disc list-outside pl-5 space-y-1">
-                    <li><strong>Starter</strong> — getting your menu online quickly with one outlet.</li>
-                    <li><strong>Pro</strong> — full presentation control, generated descriptions and photos, multi-language, and branding. Most growing businesses choose this.</li>
-                    <li><strong>Premium</strong> — central control across multiple outlets with consistent branding.</li>
+                    <li><strong>Starter</strong> — keep one public menu live with QR and basic updates.</li>
+                    <li><strong>Pro</strong> — improve presentation, languages, owner controls, and content enhancement capacity.</li>
+                    <li><strong>Premium</strong> — manage multiple locations with central governance.</li>
                 </ul>
             </div>
         )
@@ -64,8 +64,8 @@ const pricingFaqData = [
                 <ul className="list-disc list-outside pl-5 space-y-1">
                     <li>QR menu, web menu, and shareable link</li>
                     <li>Official Business Page with hours, contact, and menu</li>
-                    <li>Automatic data extraction from images, PDFs, or links</li>
-                    <li>Descriptions, translations, and photo generation</li>
+                    <li>Owner-approved menu updates from one source</li>
+                    <li>Stable customer-facing URL after activation</li>
                     <li>Real-time updates across all surfaces</li>
                 </ul>
             </div>
@@ -83,7 +83,7 @@ const pricingFaqData = [
         category: 'Content & Credits',
         question: `How do credits work?`,
         answer: (
-            <p>Credits are used for generation features. Core features like data extraction and descriptions are included. Credits are mainly used for photo generation and editing. Each plan includes a monthly allowance, and you can top up anytime.</p>
+            <p>Credits are used for AI enhancement work such as generated images, descriptions, translations, and edits. Your core public menu, QR, and link do not depend on unlimited generation.</p>
         )
     },
     {

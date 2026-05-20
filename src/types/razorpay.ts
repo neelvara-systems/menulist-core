@@ -121,7 +121,7 @@ export interface FirestoreSubscriptionDoc {
   // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §2.1
   billingMode?: 'auto' | 'manual';           // 'auto' = Razorpay recurring, 'manual' = reseller offline
   validUntil?: Timestamp | null;             // For manual billing only: when access expires
-  onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING';  // How this store was onboarded
+  onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING' | 'PUBLIC_MENU_ENTRY';  // How this store was onboarded
   resellerId?: string | null;                // User ID of the reseller who onboarded this store
   resellerProfileId?: string | null;         // resellerProfiles doc used for caps/stats when present
   resellerPricingTier?: string | null;       // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'

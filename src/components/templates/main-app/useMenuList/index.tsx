@@ -23,11 +23,18 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
 import { getProjectsList } from '@database/projects';
+import { recordStarterActivationSignal } from '@database/stores';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit } from '@lib/menu-kit/menuKitGenerator';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import {
+    STARTER_ACTIVATION_SIGNALS,
+    isStarterActivationSignal,
+    shouldRecordStarterActivationSignal,
+    type StarterActivationSignal,
+} from '@lib/onboarding/starterActivation';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename, downloadQrCode, generateQrCodeDataUrl } from '@lib/utils/qrCode';
@@ -35,7 +42,7 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBookOpen,
     LuCheck,
@@ -71,6 +78,7 @@ export default function UseMenuList() {
     const [generatingKit, setGeneratingKit] = useState(false);
     const [generatingAsset, setGeneratingAsset] = useState<string | null>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
 
     const labels = useMemo(() => getOfferingLabels(storeDetails?.businessType), [storeDetails?.businessType]);
     const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
@@ -88,6 +96,22 @@ export default function UseMenuList() {
     useEffect(() => {
         if (!FEATURE_FLAGS.ENABLE_USE_MENULIST) return;
         loadData();
+    }, [storeDetails]);
+
+    useEffect(() => {
+        const existingSignals = Object.keys(storeDetails?.starterActivationSignals?.actions || {})
+            .filter(isStarterActivationSignal);
+        recordedStarterSignalsRef.current = new Set(existingSignals);
+    }, [storeDetails?.storeId, storeDetails?.starterActivationSignals?.lastSignalAt]);
+
+    const recordStarterSignal = useCallback((signal?: StarterActivationSignal) => {
+        if (!signal || !storeDetails?.storeId || !shouldRecordStarterActivationSignal(storeDetails)) return;
+        if (recordedStarterSignalsRef.current.has(signal)) return;
+
+        recordedStarterSignalsRef.current.add(signal);
+        recordStarterActivationSignal(storeDetails.storeId, signal).catch(() => {
+            recordedStarterSignalsRef.current.delete(signal);
+        });
     }, [storeDetails]);
 
     async function loadData() {
@@ -199,7 +223,7 @@ export default function UseMenuList() {
             setPageState('ready');
         } catch (error) {
             console.error('[UseMenuList] Error loading data:', error);
-            setPageState('ready');
+            setPageState('no_menu');
         }
     }
 
@@ -209,10 +233,11 @@ export default function UseMenuList() {
         withAnalyticsSource(url, entrySource === 'copy' ? 'copy_link' : entrySource)
     );
 
-    const handleCopy = async (text: string, label: string) => {
+    const handleCopy = async (text: string, label: string, starterSignal?: StarterActivationSignal) => {
         try {
             await navigator.clipboard.writeText(text);
             message.success(`${label} copied`);
+            recordStarterSignal(starterSignal);
         } catch {
             message.error('Failed to copy');
         }
@@ -237,6 +262,7 @@ export default function UseMenuList() {
             const safeName = data.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
             downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
             message.success('Menu Kit downloaded');
+            recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
         } catch {
             message.error('Failed to generate Menu Kit');
         } finally {
@@ -273,13 +299,19 @@ export default function UseMenuList() {
     // The print assets above include branded QR layouts; this handler emits a
     // raw QR PNG for contexts where the owner wants to paste the code into
     // their own design (Instagram bio banner, Google Maps profile, flyer).
-    const handleDownloadQr = async (url: string, label: string, filenameLabel: string) => {
+    const handleDownloadQr = async (
+        url: string,
+        label: string,
+        filenameLabel: string,
+        starterSignal?: StarterActivationSignal,
+    ) => {
         if (!url) return;
         setGeneratingAsset(label);
         try {
             const dataUrl = await generateQrCodeDataUrl(url);
             downloadQrCode(dataUrl, buildQrCodeFilename(filenameLabel));
             message.success(`${label} downloaded`);
+            recordStarterSignal(starterSignal);
         } catch {
             message.error(`Failed to generate ${label}`);
         } finally {
@@ -419,7 +451,11 @@ export default function UseMenuList() {
                             block
                             type="primary"
                             icon={<LuCopy size={16} />}
-                            onClick={() => handleCopy(withEntrySource(data.menuLink, 'copy'), `${labels.offeringTitle} link`)}
+                            onClick={() => handleCopy(
+                                withEntrySource(data.menuLink, 'copy'),
+                                `${labels.offeringTitle} link`,
+                                STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                            )}
                             size="large"
                         >
                             Copy {labels.offeringTitle} Link
@@ -466,9 +502,9 @@ export default function UseMenuList() {
             {/* ─── Menu Visibility (Presence Monitor) ─────────────── */}
             {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR && storeDetails && (
                 <PresenceMonitor
-                    data={data}
-                    storeDetails={storeDetails}
-                    onCopyLink={handleCopy}
+                        data={data}
+                        storeDetails={storeDetails}
+                        onCopyLink={handleCopy}
                 />
             )}
 
@@ -484,6 +520,11 @@ export default function UseMenuList() {
                         shortUrl={data.obpLink.replace(/^https?:\/\//, '')}
                         sharePrefix={labels.shareMessagePrefix}
                         copySuccessLabel={`${labels.offeringTitle} page link`}
+                        onShareAction={(action) => recordStarterSignal(
+                            action === 'whatsapp'
+                                ? STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED
+                                : STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                        )}
                         onGuide={() => setGuideModal({
                             title: `Where to share your ${labels.offeringLower}`,
                             content: (
@@ -506,6 +547,11 @@ export default function UseMenuList() {
                         shortUrl={shortMenuLink}
                         sharePrefix={labels.shareMessagePrefix}
                         copySuccessLabel={`Direct ${labels.offeringLower} link`}
+                        onShareAction={(action) => recordStarterSignal(
+                            action === 'whatsapp'
+                                ? STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED
+                                : STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                        )}
                     />
                 </Col>
                 {data.installAppLink ? (
@@ -517,6 +563,11 @@ export default function UseMenuList() {
                             shortUrl={data.installAppLink.replace(/^https?:\/\//, '')}
                             sharePrefix={`Install ${data.storeName} on your phone:`}
                             copySuccessLabel="Customer App install link"
+                            onShareAction={(action) => recordStarterSignal(
+                                action === 'whatsapp'
+                                    ? STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED
+                                    : STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+                            )}
                             onGuide={() => setGuideModal({
                                 title: 'Where to share the Customer App install link',
                                 content: (
@@ -556,6 +607,7 @@ export default function UseMenuList() {
                             withEntrySource(`${data.obpLink.replace(/\/$/, '')}/menu`, 'qr'),
                             'Store Menu QR',
                             `${data.storeName}-store-menu-qr`,
+                            STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                         )}
                         highlight
                         themeToken={themeToken}
@@ -571,6 +623,7 @@ export default function UseMenuList() {
                             withEntrySource(data.obpLink, 'qr'),
                             'Business Profile QR',
                             `${data.storeName}-business-profile-qr`,
+                            STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                         )}
                         themeToken={themeToken}
                     />
@@ -585,6 +638,7 @@ export default function UseMenuList() {
                             withEntrySource(data.menuLink, 'qr'),
                             'Project Menu QR',
                             `${data.storeName}-${data.projectName || 'project'}-menu-qr`,
+                            STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                         )}
                         themeToken={themeToken}
                     />

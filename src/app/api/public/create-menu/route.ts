@@ -2,10 +2,11 @@ export const dynamic = 'force-dynamic';
 /**
  * Public Menu Entry API
  * 
- * POST /api/public/create-menu — Upload image + trigger extraction (auth required)
+ * POST /api/public/create-menu — Upload image + trigger extraction (no account required)
  * GET  /api/public/create-menu?draftId={token} — Poll extraction status (no auth)
  * 
- * POST is authenticated to prevent anonymous AI processing cost leakage.
+ * POST is public by design so owners can see the first proof moment before auth.
+ * Cost leakage is controlled by SAFE_MODE, IP rate limiting, file validation, and TTL cleanup.
  * GET remains token-based so owners can review an existing draft.
  * Rate limited by IP address using Upstash.
  * Feature gated: ENABLE_PUBLIC_MENU_ENTRY
@@ -28,14 +29,12 @@ import { secureError, secureLog } from '@lib/security/secureLogger';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from 'src/middleware/auth';
 import { checkPublicRateLimit, getClientIp } from 'src/middleware/publicApi';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const IMAGE_URL_EXPIRY_MS = 25 * 60 * 60 * 1000; // 25 hours (1h longer than draft TTL)
 
 const normalizeDraftExtractionLanguages = (languages: any): Array<{ code: string; name: string; isPrimary?: boolean }> => {
     const normalized = Array.isArray(languages)
@@ -75,7 +74,7 @@ const normalizeDraftExtractionLanguages = (languages: any): Array<{ code: string
  * Upload a menu image and trigger AI extraction.
  * Returns a draftId (token) for polling and preview.
  */
-export const POST = withAuth(async (req: NextRequest, session) => {
+export async function POST(req: NextRequest) {
     // 1. Feature gate
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return NextResponse.json(
@@ -91,8 +90,6 @@ export const POST = withAuth(async (req: NextRequest, session) => {
     // 3. Rate limiting (3 per IP per 24 hours)
     const rateLimitResponse = await checkPublicRateLimit(req, 'PUBLIC_MENU_ENTRY');
     if (rateLimitResponse) return rateLimitResponse;
-
-    const userId = String(session.user.id);
 
     try {
         // 3. Parse multipart form data
@@ -129,6 +126,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
         const buffer = Buffer.from(await imageFile.arrayBuffer());
         const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
         const storagePath = `publicMenuDrafts/${draftToken}/menu.${ext}`;
+        const downloadToken = crypto.randomUUID();
 
         const bucket = storageAdmin.bucket();
         const file = bucket.file(storagePath);
@@ -137,16 +135,15 @@ export const POST = withAuth(async (req: NextRequest, session) => {
                 contentType: imageFile.type,
                 metadata: {
                     draftToken,
+                    firebaseStorageDownloadTokens: downloadToken,
                     uploadedAt: new Date().toISOString(),
                 },
             },
         });
 
-        // Generate signed URL for preview (25h — outlives 24h draft TTL)
-        const [imageUrl] = await file.getSignedUrl({
-            action: 'read' as const,
-            expires: Date.now() + IMAGE_URL_EXPIRY_MS,
-        });
+        // Use a stable Firebase download-token URL because claimed project files
+        // keep this source image reference after the preview becomes a workspace.
+        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
 
         // 8. Hash IP for storage (privacy — don't store raw IP)
         const ip = getClientIp(req);
@@ -161,12 +158,14 @@ export const POST = withAuth(async (req: NextRequest, session) => {
             imageUrl,
             imagePath: storagePath,
             originalFileName: imageFile.name || 'menu.jpg',
+            fileType: imageFile.type,
+            fileSize: imageFile.size,
             extractedData: null,
             extractionStatus: 'pending' as const,
             detectedBusinessName: null,
             detectedBusinessType: null,
             ipHash,
-            createdByUId: userId,
+            createdByUId: null,
             createdAt: now,
             expiresAt,
             claimed: false,
@@ -174,11 +173,11 @@ export const POST = withAuth(async (req: NextRequest, session) => {
 
         await firestoreAdmin.collection(COLLECTION).doc(draftToken).set(draftData);
 
-        secureLog('[PublicMenuEntry] Draft created', { draftToken, ipHash, fileSize: imageFile.size, userId });
+        secureLog('[PublicMenuEntry] Draft created', { draftToken, ipHash, fileSize: imageFile.size });
 
         // 10. Trigger extraction via Cloud Function (fire-and-forget)
         // We'll call the extraction inline here since it's simpler than a separate CF for v1
-        triggerExtraction(draftToken, imageUrl, storagePath).catch((err) => {
+        triggerExtraction(draftToken, storagePath).catch((err) => {
             secureError('[PublicMenuEntry] Extraction trigger failed', err instanceof Error ? err : new Error(String(err)), { draftToken });
         });
 
@@ -197,7 +196,7 @@ export const POST = withAuth(async (req: NextRequest, session) => {
             { status: 500 }
         );
     }
-});
+}
 
 /**
  * GET /api/public/create-menu?draftId={token}
@@ -267,7 +266,7 @@ export async function GET(req: NextRequest) {
  * Runs server-side using Gemini 2.5 Flash.
  * Updates the draft document with extraction results.
  */
-async function triggerExtraction(draftToken: string, imageUrl: string, storagePath: string): Promise<void> {
+async function triggerExtraction(draftToken: string, storagePath: string): Promise<void> {
     const draftRef = firestoreAdmin.collection(COLLECTION).doc(draftToken);
 
     try {
@@ -349,7 +348,26 @@ Rules:
             jsonStr = jsonMatch[1].trim();
         }
 
-        const parsed = JSON.parse(jsonStr);
+        let parsed: any;
+        try {
+            parsed = JSON.parse(jsonStr);
+        } catch (parseError) {
+            secureError(
+                '[PublicMenuEntry] AI extraction JSON parse failed',
+                parseError instanceof Error ? parseError : new Error(String(parseError)),
+                { draftToken },
+            );
+            throw new Error('EXTRACTION_PARSE_FAILED');
+        }
+
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            secureError(
+                '[PublicMenuEntry] AI extraction returned invalid shape',
+                new Error('Expected extraction JSON object'),
+                { draftToken },
+            );
+            throw new Error('EXTRACTION_INVALID_SHAPE');
+        }
         const businessCategory = resolveBusinessCategory(parsed.businessType, parsed.businessCategory) || 'specialty';
         const categoriesWithIcons = applyCategoryIconDefaults(
             parsed.categories || [],
@@ -403,7 +421,7 @@ Rules:
         // Mark as failed
         await draftRef.update({
             extractionStatus: 'failed',
-            extractionError: error instanceof Error ? error.message : 'Extraction failed. Please try again with a clearer photo.',
+            extractionError: 'Extraction failed. Please try again with a clearer photo.',
         }).catch(() => { /* ignore update failure */ });
     }
 }

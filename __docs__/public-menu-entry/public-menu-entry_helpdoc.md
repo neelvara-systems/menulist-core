@@ -55,9 +55,10 @@ You can scroll through the preview to check everything looks correct.
 
 ### How to publish your menu page
 
-1. On the preview page, confirm your business name and type
+1. On the preview page, confirm your business name, city or area, and public contact details
 2. Create the official menu source
-3. Your page is now live at **yourname.menulist.site**
+3. Your starter page is now live at your permanent MenuList link
+4. You have 7 days to place the same link on QR, WhatsApp, Instagram, Google Business, or other customer surfaces before choosing a paid plan to keep it live and updated
 
 ### How to share your menu
 
@@ -97,10 +98,11 @@ After publishing, you get:
 - After 24 hours, the draft is automatically removed — upload again to start fresh
 
 ### "What happens after I publish?"
-- Your menu page is live at **yourname.menulist.site**
+- Your menu page is live at your permanent MenuList link
 - You can share the link and QR code anywhere
-- You can update your menu anytime from your dashboard
-- Your page is indexed by search engines automatically
+- The same link and QR stay the same after payment
+- During starter setup, you get focused access for menu review, QR, sharing, and business basics
+- A paid plan keeps the menu live and unlocks full ongoing management
 
 ---
 

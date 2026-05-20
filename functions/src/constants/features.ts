@@ -262,7 +262,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/public-menu-entry/public-menu-entry_impl.md
      */
-    ENABLE_PUBLIC_MENU_ENTRY: false,
+    ENABLE_PUBLIC_MENU_ENTRY: true,
 
 } as const;
 

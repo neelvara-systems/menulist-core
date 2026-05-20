@@ -13,6 +13,10 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
+import {
+    STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    shouldRecordStarterActivationSignal,
+} from '@lib/onboarding/starterActivation';
 import { StoreDataType } from '@type/platform/store';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -158,7 +162,11 @@ export default function MobilePresenceMonitor({
     const handleConfirm = async (surface: ManualSurfaceConfig) => {
         setUpdating(surface.id);
         try {
-            await updateMenuPresence(storeDetails.storeId, surface.dalKey, true);
+            await updateMenuPresence(storeDetails.storeId, surface.dalKey, true, {
+                starterSignal: shouldRecordStarterActivationSignal(storeDetails)
+                    ? STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface.dalKey]
+                    : undefined,
+            });
             setLocalPresence((previous) => ({ ...previous, [surface.id]: new Date().toISOString() }));
             Toast.show({ content: t('surfaceUpdated', { surface: t(surface.labelKey) }), duration: 1500 });
             setSelectedSurfaceId(null);

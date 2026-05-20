@@ -14,9 +14,14 @@ import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
+import { recordStarterActivationSignal } from '@database/stores';
+import {
+    STARTER_ACTIVATION_SIGNALS,
+    type StarterActivationSignal,
+} from '@lib/onboarding/starterActivation';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
 export default function SuccessPage() {
@@ -27,6 +32,24 @@ export default function SuccessPage() {
     const hasMenuUrl = Boolean(menuUrl);
 
     const [copied, setCopied] = useState(false);
+    const recordedSignalsRef = useRef(new Set<StarterActivationSignal>());
+
+    const recordStarterSignal = useCallback((signal: StarterActivationSignal) => {
+        if (recordedSignalsRef.current.has(signal)) return;
+        try {
+            const rawClaim = window.sessionStorage.getItem('menulist:create-menu:last-claim');
+            const claim = rawClaim ? JSON.parse(rawClaim) : null;
+            const storeId = Number(claim?.storeId);
+            if (!storeId) return;
+
+            recordedSignalsRef.current.add(signal);
+            recordStarterActivationSignal(storeId, signal).catch(() => {
+                recordedSignalsRef.current.delete(signal);
+            });
+        } catch {
+            // Non-blocking: the success page remains useful even if telemetry cannot be recorded.
+        }
+    }, []);
 
     const handleCopyLink = useCallback(async () => {
         try {
@@ -44,12 +67,14 @@ export default function SuccessPage() {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
-    }, [menuUrl]);
+        recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED);
+    }, [menuUrl, recordStarterSignal]);
 
     const handleWhatsAppShare = useCallback(() => {
         const msg = t('CreateMenuSuccess.whatsAppMessage', { menuUrl });
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-    }, [menuUrl, t]);
+        recordStarterSignal(STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED);
+    }, [menuUrl, recordStarterSignal, t]);
 
     return (
         <div className="ws-page">
@@ -219,7 +244,7 @@ export default function SuccessPage() {
 
                 {/* Go to dashboard */}
                 <a
-                    href="/dashboard"
+                    href="/use-menulist"
                     style={{
                         display: 'inline-flex',
                         alignItems: 'center',

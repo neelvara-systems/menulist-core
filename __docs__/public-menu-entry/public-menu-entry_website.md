@@ -77,7 +77,7 @@ Restaurants, cafes, bakeries, salons, gyms, clinics — any business with offeri
 ## 7. FAQ (5 Questions)
 
 **Q: Do I need to create an account?**
-A: Yes. A free account is required before upload because MenuList prepares an official customer-facing draft for an owner. Payment is not required to start.
+A: You can upload and review the first preview before creating an account. A free account is required before claiming the public starter menu so the setup is attached to the right owner.
 
 **Q: What kind of menus can I upload?**
 A: Any menu image — printed, handwritten, photographed from a wall or a table. Clear photos work best.
