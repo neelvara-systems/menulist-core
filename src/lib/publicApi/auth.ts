@@ -11,6 +11,8 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
+import { shouldUseSharedCanonicaFirebase } from "@lib/firebase/canonicaConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { secureLog } from "@lib/security/secureLogger";
 import { createHash } from "crypto";
@@ -192,6 +194,13 @@ export async function validatePublicApiKey(
     const includePublicApi = options.includePublicApi !== false;
     const includeCanonicaWidgetApi = Boolean(options.includeCanonicaWidgetApi);
     const includeCanonicaWidgetTestApi = Boolean(options.includeCanonicaWidgetTestApi);
+    const dedicatedCanonicaDb = !shouldUseSharedCanonicaFirebase
+        && normalizedApiKey.startsWith('cn_')
+        && includeCanonicaWidgetApi
+        && canonicaFirestoreAdmin
+        && typeof (canonicaFirestoreAdmin as any).collection === 'function'
+        ? canonicaFirestoreAdmin
+        : null;
     const preferCanonicaWidgetApi = Boolean(options.preferCanonicaWidgetApi && includeCanonicaWidgetApi);
     const preferCanonicaWidgetTestApi = Boolean(
         options.preferCanonicaWidgetTestApi
@@ -226,11 +235,25 @@ export async function validatePublicApiKey(
         .limit(1)
         .get();
 
-    const queryCanonicaWidgetApi = async () => db
-        .collection(DB_COLLECTIONS.STORES)
-        .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
-        .limit(1)
-        .get();
+    const queryCanonicaWidgetApi = async () => {
+        const primaryDb = dedicatedCanonicaDb || db;
+        const primarySnapshot = await primaryDb
+            .collection(DB_COLLECTIONS.STORES)
+            .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
+            .limit(1)
+            .get();
+
+        if (!primarySnapshot.empty || !dedicatedCanonicaDb) {
+            return primarySnapshot;
+        }
+
+        // Compatibility fallback for legacy MenuList-hosted test installs that
+        // stored a real Canonica widget key before the dedicated project split.
+        return db.collection(DB_COLLECTIONS.STORES)
+            .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
+            .limit(1)
+            .get();
+    };
 
     if (preferCanonicaWidgetTestApi) {
         const widgetSnapshot = await queryCanonicaWidgetTestApi();

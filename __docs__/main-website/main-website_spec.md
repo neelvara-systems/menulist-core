@@ -1,10 +1,12 @@
 # Main Website Strategy Spec
 
-**Version:** 3.3.0 — Canonical Website Default
+**Version:** 3.5.0 — Homepage Compression + Conversion Proof Pass
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
 > This file keeps useful strategy context and validation notes. It is not a separate website version and must not be used to restore old website source code.
+
+> May 21, 2026 update: the canonical homepage is now intentionally shorter than earlier strategy drafts. Advanced proof should remain available in supporting pages and future expansion content, but the first homepage scroll should not try to explain the entire product.
 
 ---
 
@@ -14,7 +16,7 @@
 | ------------------ | ---------------------------------------- | --------------------------------------------- |
 | **Goal**           | Build trust + authority                  | Acquire customers + create buzz               |
 | **Tone**           | Premium calm, professional               | Direct, transformation-focused, energetic     |
-| **Hero message**   | "Your official menu. From one place."    | "Upload your menu. Your business is online."  |
+| **Hero message**   | "Your official menu. From one place."    | "Upload your current menu. Publish one official version customers can trust." |
 | **Core narrative** | Source of truth, stays aligned           | Menu → Internet Presence (transformation)     |
 | **Emotion**        | Relief, trust                            | Surprise, curiosity, "why didn't this exist?" |
 | **Language**       | Operational words only                   | Transformation statements, direct outcomes    |
@@ -30,7 +32,7 @@
 | --- | ----------------------------------------- | ------------------- | ----------------------------------------------- |
 | 1   | "Menu → Internet Presence" narrative      | ✅ ADOPT            | Stronger than "source of truth" for acquisition |
 | 2   | Show transformation, not features         | ✅ ADOPT            | "Upload menu → business online" is compelling   |
-| 3   | Hero = transformation statement           | ✅ ADOPT            | "Upload your menu. Your business is online."    |
+| 3   | Hero = transformation statement           | ✅ ADOPT            | Current version: "Upload your current menu. Publish one official version customers can trust." |
 | 4   | Before/After framing for problem section  | ✅ ADOPT            | Makes broken internet obvious                   |
 | 5   | Don't call it "QR menu tool" or "AI tool" | ✅ ADOPT            | Already follows language governance             |
 | 6   | Interactive demo in hero (future)         | ✅ DEFER            | Good idea but requires significant engineering  |
@@ -75,31 +77,28 @@ ChatGPT had zero awareness of these built features:
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces
 18. **Customer Communication Kit** — Pre-written messages with menu link, address, hours
 
-**Rule:** NEVER remove these features from the website. They are competitive advantages that no competitor has in one system.
+**Rule:** Do not forget these capabilities in the website ecosystem. They are competitive advantages, but they do not all need to sit on the homepage at once.
 
 ---
 
-## V2 Homepage Section Order
+## Current Homepage Section Order
 
-**Changed from V1** — Workflow section moved up for immediate product proof.
+**Changed from V2** — the homepage is compressed so first-time SMB owners see the problem, solution, workflow, customer preview, and CTA before advanced feature density.
 
 ```
-1. HeroSection          — Transformation statement
-2. ProblemSection       — Internet menus are broken
-3. SolutionSection      — One menu, everywhere
-4. InteractiveWorkflow  — How it works (moved UP from #10)
-5. PreparedForYou       — Everything prepared for you (unique features)
-6. SurfacesSection      — Where it appears
-7. CustomerBrowse       — Customer-facing menu browsing proof
-8. SmartFeatures        — Stays correct automatically
-9. StatsSection         — Proof by numbers
-10. BusinessSection     — For serious businesses
-11. IndustrySection     — Who it's for (12 types)
-12. FaqSection          — Questions answered
-13. FinalCtaSection     — Close with transformation CTA
+1. HeroSection              — Upload current menu -> one official version
+2. ProblemSection           — Internet menus are broken
+3. SolutionSection          — One menu, public places stay aligned
+4. InteractiveWorkflow      — Upload, review, publish, share
+5. SetupReliefSection       — Setup work prepared before publishing
+6. SurfacesSection          — Public output proof
+7. CustomerBrowseSection    — Customer-facing menu preview
+8. PreparedForYouSection    — Real-world rollout proof
+9. FaqSection               — Questions answered
+10. FinalCtaSection         — Close with owner-approved menu CTA
 ```
 
-**Rationale:** After showing the transformation (Hero → Problem → Solution), immediately prove it works (Workflow). Then show unique capabilities (Prepared), distribution (Surfaces), customer-facing browsing quality (CustomerBrowse), and trust signals (SmartFeatures, Stats, Business, Industry).
+**Rationale:** After showing the transformation (Hero -> Problem -> Solution), immediately prove the workflow and public customer result. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
 
 ---
 
@@ -108,14 +107,15 @@ ChatGPT had zero awareness of these built features:
 ### Hero (CHANGED)
 
 **Old:** "Your official menu. From one place."
-**New:** "Upload your menu. Your business is online."
+**New:** "Upload your current menu. Publish one official version customers can trust."
 
-- titlePart1: "Upload your menu. "
-- titleHighlight: "Your business is online."
+- titlePart1: "Upload your current menu."
+- titleHighlight: "Publish one official version customers can trust."
 - titlePart2: ""
-- subtitle: Transformation-focused (what you get)
-- CTA: "Upload Your Menu →" (action-oriented)
-- Caption: "Go live in minutes. Free to start."
+- subtitle: Transformation-focused, but grounded in owner approval and actual public outputs
+- CTA: "Upload your menu →" (action-oriented)
+- Secondary CTA: "See customer preview" (`#customer-demo`)
+- Caption: "Start with a 7-day setup. Review the public menu before choosing a paid plan."
 
 ### Problem (REFRAMED)
 
@@ -128,19 +128,19 @@ ChatGPT had zero awareness of these built features:
 ### Solution (REFRAMED)
 
 **Old:** "Create one official version. Everything else stays aligned."
-**New:** "One menu. Everywhere customers look."
+**Current:** "One menu. Public places stay aligned."
 
-- Focus on transformation: upload → digital menu + QR + official page + link
+- Focus on transformation: upload -> owner review -> official page/live menu/QR/share link
 - SVG diagram stays (already shows the transformation perfectly)
-- Relief anchor: "Upload once. Your business is online everywhere."
+- Relief anchor: "The customer sees one clear version. The owner manages one menu."
 
 ### FinalCta (CHANGED)
 
 **Old:** "Make your menu official."
-**New:** "Upload your menu. Your business is online."
+**Current:** "Make one public menu customers can trust."
 
 - Mirrors hero for consistent messaging
-- CTA: "Upload Your Menu →"
+- CTA: "Upload your menu →"
 
 ### SmartFeatures (EXPANDED — v2.2 March 2026)
 
@@ -167,13 +167,13 @@ ChatGPT had zero awareness of these built features:
 
 **Rationale:** The homepage already proves MenuList can publish a menu everywhere. This section proves the public menu itself helps customers browse, trust, and decide faster, which separates MenuList from basic QR menu tools.
 
-### Sections UNCHANGED (content preserved)
+### Sections Preserved as Components or Homepage Sections
 
 - **PreparedForYouSection** — All 6 capabilities stay (unique competitive advantage)
-- **SurfacesSection** — Customer App is now included as a live customer-facing surface; Google Business remains a "Soon" surface.
-- **StatsSection** — All 4 stats stay
-- **BusinessSection** — All 6 points stay (special menus, temp status, multi-location)
-- **IndustrySection** — All 12 industry types stay
+- **SurfacesSection** — Saved menu shortcut is included as a repeat-access surface; Google/Instagram/WhatsApp placement stays manually framed.
+- **StatsSection** — Preserved as supporting component, not mounted on current homepage.
+- **BusinessSection** — Preserved as supporting component, not mounted on current homepage.
+- **IndustrySection** — Preserved as supporting component/future page material, not mounted on current homepage.
 - **InteractiveWorkflowSection** — Content stays, just moved up in order
 - **FaqSection** — Minor updates to align with new positioning
 
@@ -191,15 +191,14 @@ ChatGPT had zero awareness of these built features:
 
 ### Now allowed (V2 only)
 
-- Direct transformation statements ("Upload your menu. Your business is online.")
-- Energetic but factual claims ("Go live in minutes")
-- Action-oriented CTAs ("Upload Your Menu")
+- Direct transformation statements only when owner approval and public output remain clear.
+- Action-oriented CTAs ("Upload your menu")
 - Problem-agitation framing ("Business menus on the internet are broken")
-- "Free to start" language
+- 7-day setup language aligned with pricing/funnel copy
 
 ### Core principle
 
-**Hype comes from the TRANSFORMATION, not from language.** Show the magic of menu → online presence. Let the product speak.
+**Hype comes from the TRANSFORMATION, not from language.** Show the practical move from current menu -> reviewed public menu -> customer-facing surfaces. Let the product speak.
 
 ---
 
@@ -207,7 +206,7 @@ ChatGPT had zero awareness of these built features:
 
 | Page     | Title                                                 | Description                                                                                                      |
 | -------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Homepage | MenuList — Upload Your Menu. Your Business is Online. | Turn a menu photo, PDF, or link into your digital menu, QR menu, and official business page. Go live in minutes. |
+| Homepage | MenuList - One Official Menu Source for Customers | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 
 ---
 

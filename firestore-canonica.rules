@@ -100,6 +100,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /canonica_aiOperations/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantPath(tId, sId));
+      allow write: if false;
+    }
+
     match /canonica_integrationEvents/{docId} {
       allow read: if isCanonicaScopedRead();
       allow write: if false;
@@ -204,7 +210,11 @@ service cloud.firestore {
     match /changelog/{tId}/{sId}/{pageId} {
       allow read: if isAuthenticated()
         && (isPlatformAdmin() || isCanonicaTenantPath(tId, sId));
-      allow write: if isAuthenticated() && isPlatformAdmin();
+      allow write: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (hasTenantWriteRole() && isCanonicaTenantPath(tId, sId))
+        );
     }
 
     function isAuthenticated() {

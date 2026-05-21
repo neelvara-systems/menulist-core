@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
@@ -23,8 +24,9 @@ const TenantSummarySyncSchema = z.object({
 });
 
 const getSessionScope = (session: any) => {
-    const tenantId = Number(session?.tId ?? session?.tenantId ?? session?.user?.tenantId);
-    const storeId = Number(session?.sId ?? session?.storeId ?? session?.user?.storeId);
+    const canonicaScope = resolveCanonicaSessionScope(session);
+    const tenantId = Number(canonicaScope?.tenantId ?? session?.tId ?? session?.tenantId ?? session?.user?.tenantId);
+    const storeId = Number(canonicaScope?.storeId ?? session?.sId ?? session?.storeId ?? session?.user?.storeId);
     const platformRole = String(session?.platformRole ?? session?.user?.platformRole ?? '').toUpperCase();
 
     return {

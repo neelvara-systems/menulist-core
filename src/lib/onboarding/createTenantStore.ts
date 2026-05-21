@@ -64,6 +64,9 @@ export interface TenantStoreConfig {
 
     /** Additional fields merged into the store document (source-specific) */
     storeExtra?: Record<string, any>;
+
+    /** Allow first tenant/store creation when the target product DB starts empty. */
+    allowInitialCounters?: boolean;
 }
 
 export interface TenantStoreResult {
@@ -153,6 +156,7 @@ export async function createTenantStoreInTransaction(
         includeTimeSlotPresets = false,
         tenantExtra = {},
         storeExtra = {},
+        allowInitialCounters = false,
     } = config;
 
     // 1. Read platformSummary (with transaction lock — prevents race conditions)
@@ -182,7 +186,9 @@ export async function createTenantStoreInTransaction(
     const currentTenantCount = Number(summaryData?.tenants?.count || 0) || derivedCounts.tenantCount;
     const currentStoreCount = Number(summaryData?.stores?.count || 0) || derivedCounts.storeCount;
 
-    if (!currentTenantCount || !currentStoreCount) {
+    const hasUsableCounters = currentTenantCount > 0 && currentStoreCount > 0;
+    const canBootstrapCounters = allowInitialCounters && currentTenantCount >= 0 && currentStoreCount >= 0;
+    if (!hasUsableCounters && !canBootstrapCounters) {
         throw new Error('Platform summary not found and storesSummary cannot bootstrap counters');
     }
 

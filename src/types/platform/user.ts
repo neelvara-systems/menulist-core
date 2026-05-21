@@ -85,6 +85,15 @@ export type UserDataType = {
     storeId: number;//defalt store id
     pId?: ProductId;
     productId?: ProductId;
+    productAccounts?: Partial<Record<ProductId, {
+        tenantId: number;
+        storeId: number;
+        role?: string;
+        platformRole?: string;
+        storeIds?: Array<number | string>;
+        createdAt?: any;
+        updatedAt?: any;
+    }>>;
     stores: UserStoreMappingType[],
     storeIds: number[],
 

@@ -21,6 +21,8 @@
  * @see src/constants/urls.ts — MenuList-specific URL constants
  */
 
+import { CANONICA_PRODUCT_DOMAINS } from './canonica/domains';
+
 // ═══════════════════════════════════════════════════════════════
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
@@ -65,10 +67,7 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
     {
         id: 'canonica',
         name: 'Canonica',
-        domains: [
-            'canonica.app',
-            'www.canonica.app',
-        ],
+        domains: [...CANONICA_PRODUCT_DOMAINS],
         devPathPrefix: '/__canonica',
         internalBasePath: '/sites/canonica',
         enabled: true,

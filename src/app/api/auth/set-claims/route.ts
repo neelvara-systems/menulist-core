@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
+import { DB_COLLECTIONS } from '@constant/database';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
-import { canonicaAdminApp, canonicaAuthAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { canonicaAdminApp, canonicaAuthAdmin, canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { authAdmin } from '@lib/firebase/firebaseAdmin';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -26,6 +27,7 @@ const setClaimsSchema = z.object({
         'Invalid UID format'
     ),
     targetStoreId: z.number().int().positive().optional(),
+    productId: z.string().trim().max(12).optional(),
 });
 
 async function readSetClaimsBody(request: NextRequest): Promise<unknown | null> {
@@ -72,6 +74,24 @@ async function createCanonicaCustomTokenIfNeeded(
 
     await canonicaAuthAdmin.setCustomUserClaims(canonicaUid, customClaims);
     return canonicaAuthAdmin.createCustomToken(canonicaUid, customClaims);
+}
+
+async function getCanonicaAuthUserByEmail(email: string): Promise<any | null> {
+    if (shouldUseSharedCanonicaFirebase) return null;
+    const db = canonicaFirestoreAdmin as any;
+    if (!db || typeof db.collection !== 'function') return null;
+
+    const normalizedEmail = String(email || '').toLowerCase().trim();
+    if (!normalizedEmail) return null;
+
+    const snapshot = await db.collection(DB_COLLECTIONS.USERS)
+        .where('email', '==', normalizedEmail)
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() };
 }
 
 const getStoreIdsClaim = (dbUser: any): string[] => {
@@ -134,16 +154,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        // Get user from database
-        const dbUser: any = await getAuthUserByEmail(session.user.email);
-
-        if (!dbUser) {
-            return NextResponse.json(
-                { error: 'User not found' },
-                { status: 404 }
-            );
-        }
-
         // Get Firebase UID from request body (optional - we'll create if needed).
         // Empty body is equivalent to `{}` for OAuth custom-token creation.
         const body = await readSetClaimsBody(request);
@@ -167,6 +177,35 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         let { uid, targetStoreId } = validation.data;
+        const requestedProductId = normalizeProductId(validation.data.productId);
+        const shouldUseCanonicaUserContext = requestedProductId === PRODUCT_IDS.CANONICA && !shouldUseSharedCanonicaFirebase;
+
+        // Get user from the product-specific auth profile. Canonica has its own
+        // Firebase project, so Canonica dashboard claims must be built from the
+        // Canonica user document, not from the user's MenuList tenant/store.
+        let dbUser: any = shouldUseCanonicaUserContext
+            ? await getCanonicaAuthUserByEmail(session.user.email)
+            : await getAuthUserByEmail(session.user.email);
+
+        if (!dbUser && shouldUseCanonicaUserContext) {
+            const fallbackDbUser: any = await getAuthUserByEmail(session.user.email);
+            const fallbackPlatformRole = String(fallbackDbUser?.platformRole || '').toUpperCase();
+            if (fallbackPlatformRole === 'PLATFORM' || fallbackPlatformRole === 'PLATFORM_SUPPORT') {
+                dbUser = {
+                    ...fallbackDbUser,
+                    pId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.CANONICA,
+                };
+            }
+        }
+
+        if (!dbUser) {
+            return NextResponse.json(
+                { error: 'User not found' },
+                { status: 404 }
+            );
+        }
+
         if (targetStoreId && !canAccessStore(dbUser, targetStoreId)) {
             secureLog('[Auth] Rejected set-claims store switch outside user stores', {
                 requestedStoreId: targetStoreId,

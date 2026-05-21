@@ -1,5 +1,5 @@
-import { LuActivity, LuBarChartBig, LuBook, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDatabase, LuDatabaseBackup, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLineChart, LuMapPin, LuMessageSquare, LuPieChart, LuQrCode, LuReceipt, LuShare2, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
-import { MdOutlineManageHistory, MdOutlineSupportAgent } from 'react-icons/md';
+import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuMapPin, LuQrCode, LuReceipt, LuShare2, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
+import { MdOutlineManageHistory } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
 
@@ -102,21 +102,6 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
             { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.RESELLER, icon: LuLayoutDashboard, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
             { label: 'Onboard Client', route: NAVIGARIONS_ROUTINGS.RESELLER_ONBOARD, icon: LuSparkles, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE] },
             { label: 'Reseller Management', route: NAVIGARIONS_ROUTINGS.RESELLER_MANAGE, icon: LuUsers, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
-        ]
-    },
-    {
-        label: 'Canonica', route: NAVIGARIONS_ROUTINGS.CANONICA, icon: LuBookOpen,
-        subNav: [
-            { label: 'Support Tickets', route: NAVIGARIONS_ROUTINGS.PLATFORM_SUPPORT_TICKETS, icon: MdOutlineSupportAgent },
-            { label: 'Feedback Admin', route: NAVIGARIONS_ROUTINGS.PLATFORM_FEEDBACK_ADMIN, icon: LuHeartHandshake },
-            { label: 'Knowledge Base', route: NAVIGARIONS_ROUTINGS.PLATFORM_KNOWLEDGE_BASE, icon: LuBook },
-            { label: 'KB Generation', route: NAVIGARIONS_ROUTINGS.PLATFORM_KB_GENERATION, icon: LuDatabase },
-            { label: 'Changelog', route: NAVIGARIONS_ROUTINGS.PLATFORM_CHANGELOG, icon: LuReceipt },
-            { label: 'Chat List', route: NAVIGARIONS_ROUTINGS.CHAT_MANAGEMENT, icon: LuMessageSquare },
-            { label: 'Chat Insights', route: NAVIGARIONS_ROUTINGS.CHAT_INSIGHTS, icon: LuBarChartBig },
-            { label: 'Chat Backfill', route: NAVIGARIONS_ROUTINGS.CHAT_BACKFILL, icon: LuDatabaseBackup },
-            { label: 'Weekly Digest', route: NAVIGARIONS_ROUTINGS.CHAT_WEEKLY_DIGEST, icon: LuLineChart },
-            { label: 'ROI Calculator', route: NAVIGARIONS_ROUTINGS.CHAT_ROI_CALCULATOR, icon: LuPieChart },
         ]
     },
 ]

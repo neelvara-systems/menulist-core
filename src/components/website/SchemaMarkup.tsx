@@ -27,7 +27,7 @@ const softwareSchema = {
   "name": "MenuList",
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Web",
-  "description": "Manage your official menu and business information from one place. Update once — stays correct across QR, screens, web, print, official pages, and customer apps.",
+  "description": "Manage your official menu and business information from one place. Update once — stays correct across QR, screens, web, print, official pages, and saved customer menu shortcuts.",
   "url": SITE_URL,
   "offers": {
     "@type": "AggregateOffer",

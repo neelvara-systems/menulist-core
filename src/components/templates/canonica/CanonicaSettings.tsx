@@ -7,7 +7,7 @@
  * lives in /canonica/widget to keep a single save path and runtime contract.
  */
 
-import { CANONICA_ROUTES } from '@constant/canonica/navigations';
+import { CANONICA_ROUTES, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { Button, Card, Descriptions, Flex, Grid, Tag, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ export default function CanonicaSettings() {
     const router = useRouter();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
     return (
         <Flex vertical gap={isMobile ? 14 : 20}>
@@ -42,7 +43,7 @@ export default function CanonicaSettings() {
                     <Text type="secondary">
                         Configure the embeddable widget, create keys, copy install code, set origins, and preview desktop/mobile behavior.
                     </Text>
-                    <Button type="primary" onClick={() => router.push(CANONICA_ROUTES.WIDGET)}>
+                    <Button type="primary" onClick={() => router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.WIDGET, currentHostname))}>
                         Open Widget Management
                     </Button>
                 </Flex>

@@ -14,7 +14,6 @@ import { getLocale } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import SessionExpiryMonitor from '../../components/auth/SessionExpiryMonitor'
 import OwnerPermissionGuard from '../../components/auth/OwnerPermissionGuard'
-import MenuListCanonicaWidgetTestHost from '../../components/canonica/MenuListCanonicaWidgetTestHost'
 import OwnerAppUpdatePrompt from '../../components/common/OwnerAppUpdatePrompt'
 
 export const metadata: Metadata = {
@@ -72,7 +71,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
                   {children}
                 </OwnerPermissionGuard>
               </AntdLayoutWrapper>
-              <MenuListCanonicaWidgetTestHost />
             </NoSSRProvider>
           </SessionProvider>
         </ReduxStoreProvider>

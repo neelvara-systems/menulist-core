@@ -16,7 +16,7 @@ export default function CustomerBrowseSection() {
   }));
 
   return (
-    <SectionWrapper>
+    <SectionWrapper id="customer-demo">
       <AnimateOnScroll>
         <SectionHeading
           title={t('CustomerBrowse.title')}

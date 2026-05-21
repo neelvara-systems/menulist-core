@@ -13,8 +13,13 @@
  */
 
 import { useAppSelector } from '@hook/useAppSelector';
-import { CANONICA_ADMIN_ROUTES, CANONICA_ROUTES } from '@constant/canonica/navigations';
-import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import {
+    CANONICA_ADMIN_ROUTES,
+    CANONICA_ROUTES,
+    normalizeCanonicaRoutePathname,
+    toCanonicaDashboardRoute,
+} from '@constant/canonica/navigations';
+import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
 import AntdThemeProvider from '@providers/antdThemeProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
 import { getDarkModeState } from '@reduxSlices/clientThemeConfig';
@@ -37,18 +42,19 @@ export default function CanonicaDashboardLayout({ children }: { children: React.
     const isDesktop = screens.lg === true;
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const layoutBackground = isDarkMode ? '#141414' : '#f5f5f5';
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const canUsePlatformSurfaces = platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+    const canUsePlatformSurfaces = canUseCanonicaManagement(session);
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
     const isAdminRoute = useMemo(() => (
-        CANONICA_ADMIN_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
-    ), [pathname]);
+        CANONICA_ADMIN_ROUTES.some((route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`))
+    ), [normalizedPathname]);
 
     useEffect(() => {
         if (status === 'loading') return;
         if (isAdminRoute && !canUsePlatformSurfaces) {
-            router.replace(CANONICA_ROUTES.HELP);
+            router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
         }
-    }, [canUsePlatformSurfaces, isAdminRoute, router, status]);
+    }, [canUsePlatformSurfaces, currentHostname, isAdminRoute, router, status]);
 
     return (
         <AntdThemeProvider>

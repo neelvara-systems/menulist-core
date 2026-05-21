@@ -37,6 +37,8 @@ yarn-error.log*
 .env.production.local
 .service-account.json
 /service-account.json
+/canonica-service-account.json
+/*-service-account.json
 
 # Auto Generated PWA files
 **/public/sw.js

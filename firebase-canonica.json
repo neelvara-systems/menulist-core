@@ -18,5 +18,8 @@
   "firestore": {
     "rules": "firestore-canonica.rules",
     "indexes": "firestore-canonica.indexes.json"
+  },
+  "storage": {
+    "rules": "storage-canonica.rules"
   }
 }

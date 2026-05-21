@@ -21,11 +21,14 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getCanonicaBetaPlan, getCanonicaPlanById } from '@data/canonica/plans';
-import { createInitialSubscription } from '@database/subscriptions/server';
+import { getOwnerRoleId } from '@data/defaultRoles';
+import { CANONICA_PRODUCT_ACCOUNT_KEY } from '@lib/canonica/sessionScope';
 import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import { createTenantStoreInTransaction, updateUserWithTenantStore } from '@lib/onboarding/createTenantStore';
+import { createTenantStoreInTransaction } from '@lib/onboarding/createTenantStore';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -46,6 +49,94 @@ const OnboardRequestSchema = z.object({
     currency: z.enum(['INR', 'USD']).optional().default('INR'),
 });
 
+const getCanonicaDb = () => {
+    const db = shouldUseSharedCanonicaFirebase
+        ? admin.firestore()
+        : canonicaFirestoreAdmin;
+
+    return db && typeof (db as any).collection === 'function' ? db : null;
+};
+
+const getCanonicaUserByEmail = async (db: FirebaseFirestore.Firestore, email?: string | null) => {
+    const normalizedEmail = String(email || '').toLowerCase().trim();
+    if (!normalizedEmail) return null;
+
+    const snapshot = await db.collection(DB_COLLECTIONS.USERS)
+        .where('email', '==', normalizedEmail)
+        .limit(1)
+        .get();
+
+    if (snapshot.empty) return null;
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Record<string, any>;
+};
+
+const createCanonicaSubscription = async (
+    db: FirebaseFirestore.Firestore,
+    providerSubscriptionId: string,
+    data: Omit<FirestoreSubscriptionDoc, 'id'>,
+) => {
+    const now = admin.firestore.Timestamp.now();
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(providerSubscriptionId).set({
+        ...data,
+        pId: PRODUCT_IDS.CANONICA,
+        productId: PRODUCT_IDS.CANONICA,
+        tId: data.tenantId,
+        sId: data.storeId,
+        uId: data.userId,
+        role: 'owner',
+        modifiedOn: now,
+        createdOn: now,
+        createdBy: data.name || data.email || 'Canonica',
+        modifiedBy: data.name || data.email || 'Canonica',
+    });
+};
+
+const syncDefaultAuthProductAccount = async (params: {
+    userId: string;
+    session: any;
+    tenantId: number;
+    storeId: number;
+    storeName: string;
+}) => {
+    const now = admin.firestore.Timestamp.now();
+    const role = getOwnerRoleId();
+    const rootTenantMissing = !params.session?.user?.tenantId;
+    const rootStoreMissing = !params.session?.user?.storeId;
+    const canonicaProductAccount = {
+        tenantId: params.tenantId,
+        storeId: params.storeId,
+        role,
+        platformRole: params.session?.user?.platformRole || 'OWNER',
+        storeIds: [params.storeId],
+        updatedAt: now,
+    };
+    const defaultUserUpdate: Record<string, any> = {
+        productAccounts: {
+            [CANONICA_PRODUCT_ACCOUNT_KEY]: canonicaProductAccount,
+        },
+        modifiedOn: now,
+    };
+
+    if (rootTenantMissing && rootStoreMissing) {
+        defaultUserUpdate.tenantId = params.tenantId;
+        defaultUserUpdate.storeId = params.storeId;
+        defaultUserUpdate.pId = PRODUCT_IDS.CANONICA;
+        defaultUserUpdate.productId = PRODUCT_IDS.CANONICA;
+        defaultUserUpdate.role = role;
+        defaultUserUpdate.stores = [{
+            storeId: params.storeId,
+            name: params.storeName,
+            role,
+        }];
+    }
+
+    await admin.firestore()
+        .collection(DB_COLLECTIONS.USERS)
+        .doc(params.userId)
+        .set(defaultUserUpdate, { merge: true });
+};
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     const userId = session.user.id;
 
@@ -58,8 +149,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        // 1. Verify user doesn't already have a Canonica tenant
-        if (session.user.tenantId && session.user.storeId) {
+        const db = getCanonicaDb();
+        if (!db) {
+            return NextResponse.json(
+                { error: 'Canonica Firebase is not configured.' },
+                { status: 503 }
+            );
+        }
+
+        // 1. Verify user doesn't already have a Canonica tenant. A MenuList
+        // tenant/store on the same login must not block Canonica onboarding.
+        const existingProductAccount = (session.user as any)?.productAccounts?.[CANONICA_PRODUCT_ACCOUNT_KEY];
+        const existingCanonicaUser = await getCanonicaUserByEmail(db, session.user.email);
+        if (
+            (existingProductAccount?.tenantId && existingProductAccount?.storeId)
+            || (existingCanonicaUser?.tenantId && existingCanonicaUser?.storeId)
+        ) {
             return NextResponse.json(
                 { error: 'You already have an account. Go to your dashboard.' },
                 { status: 400 }
@@ -102,9 +207,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
         // 5. ATOMIC TRANSACTION: Create Tenant + Store + Update User
-        const db = admin.firestore();
         const cleanCompany = companyName.trim();
         const storeName = productName || companyName;
+        const ownerRole = getOwnerRoleId();
 
         const result = await db.runTransaction(async (transaction) => {
             // Centralized tenant + store creation
@@ -115,18 +220,57 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 email: session.user.email,
                 onboardingSource: 'CANONICA_ONBOARDING',
                 storeName,
-                tenantExtra: { productId: 'CN', productName: productName || '' },
-                storeExtra: { productId: 'CN' },
+                allowInitialCounters: true,
+                tenantExtra: {
+                    pId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.CANONICA,
+                    productName: productName || '',
+                },
+                storeExtra: {
+                    pId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.CANONICA,
+                },
             });
 
-            // Update User with tenant/store IDs
-            updateUserWithTenantStore(transaction, db, userId, core, {
+            const userRef = db.collection(DB_COLLECTIONS.USERS).doc(userId);
+            transaction.set(userRef, {
+                id: userId,
+                email: String(session.user.email || '').toLowerCase().trim(),
+                name: session.user.name || session.user.email || 'Canonica user',
+                image: session.user.image || '',
+                isVerified: true,
+                active: true,
+                tenantId: core.tenantId,
+                storeId: core.storeId,
+                stores: [
+                    {
+                        storeId: core.storeId,
+                        name: core.storeName,
+                        role: ownerRole,
+                    },
+                ],
+                storeIds: [core.storeId],
                 pId: PRODUCT_IDS.CANONICA,
                 productId: PRODUCT_IDS.CANONICA,
+                role: ownerRole,
+                platformRole: 'OWNER',
+                tId: core.tenantId,
+                sId: core.storeId,
+                uId: userId,
                 onboardingSource: 'CANONICA_ONBOARDING',
-            });
+                modifiedOn: core.now,
+                createdOn: core.now,
+            }, { merge: true });
 
-            return { tenantId: core.tenantId, storeId: core.storeId };
+            return { tenantId: core.tenantId, storeId: core.storeId, storeName: core.storeName };
+        });
+
+        await syncDefaultAuthProductAccount({
+            userId,
+            session,
+            tenantId: result.tenantId,
+            storeId: result.storeId,
+            storeName: result.storeName,
         });
 
         await upsertCanonicaTenantSummaryAdmin({
@@ -197,7 +341,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 onboardingSource: 'CANONICA_ONBOARDING' as any,
             };
 
-            await createInitialSubscription(subscriptionId, subscriptionPayload);
+            await createCanonicaSubscription(db, subscriptionId, subscriptionPayload);
         } else {
             const { getOrCreateRazorpayPlan } = await import('@lib/razorpay/plan-handler');
             const { razorpayClient } = await import('@lib/razorpay/razorpay');
@@ -217,7 +361,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 total_count: totalCount,
                 quantity: 1,
                 notes: {
-                    productId: 'CN',
+                    productId: PRODUCT_IDS.CANONICA,
                     tenantId: result.tenantId,
                     storeId: result.storeId,
                     userId,
@@ -278,7 +422,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 onboardingSource: 'CANONICA_ONBOARDING' as any,
             };
 
-            await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
+            await createCanonicaSubscription(db, razorpaySubscription.id, subscriptionPayload);
         }
 
         // 7. Generate API key for the widget
@@ -288,7 +432,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 apiKeyHash: hashApiKey(apiKey),
                 keyPrefix: apiKey.slice(0, 7),
                 createdAt: new Date().toISOString(),
-                productId: 'CN',
+                productId: PRODUCT_IDS.CANONICA,
                 purpose: 'canonica_widget',
                 scopes: [...CANONICA_WIDGET_SCOPES],
             },

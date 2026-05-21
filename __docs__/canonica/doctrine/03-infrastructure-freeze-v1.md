@@ -149,5 +149,6 @@ This freeze operates independently from MenuList's own architecture freeze. Cano
 - Certification checklist
 - Freeze-break procedure
 - Annual validation
+- Firebase project, Auth, Firestore, Storage, App Check, and Cloud Functions
 
-The two systems share Firebase infrastructure but have separate governance.
+The two systems share the same Next.js codebase and Vercel deployment, but Canonica runtime data and credentials stay separated from MenuList.

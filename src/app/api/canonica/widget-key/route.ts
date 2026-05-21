@@ -9,7 +9,10 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { hashApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -23,15 +26,28 @@ const RequestSchema = z.object({
     action: z.enum(['generate', 'revoke']),
 });
 
+const getCanonicaDb = () => {
+    const db = canonicaFirestoreAdmin as any;
+    return db && typeof db.collection === 'function' ? canonicaFirestoreAdmin : null;
+};
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
             return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
         }
 
-        const { tId: tenantId, sId: storeId } = session;
+        const scope = resolveCanonicaSessionScope(session) || {
+            tenantId: Number(session.tId),
+            storeId: Number(session.sId),
+        };
+        const { tenantId, storeId } = scope;
         if (!tenantId || !storeId) {
             return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        }
+        const db = getCanonicaDb();
+        if (!db) {
+            return NextResponse.json({ error: 'Canonica Firebase is not configured' }, { status: 503 });
         }
 
         const rateLimitResult = await checkRateLimit({
@@ -48,7 +64,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
         }
 
-        const storeRef = admin.firestore().collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
 
         if (validation.data.action === 'generate') {
             const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
@@ -59,7 +75,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     apiKeyHash: hashApiKey(apiKey),
                     keyPrefix,
                     createdAt: new Date().toISOString(),
-                    productId: 'CN',
+                    productId: PRODUCT_IDS.CANONICA,
                     purpose: 'canonica_widget',
                     scopes: [...CANONICA_WIDGET_SCOPES],
                 },

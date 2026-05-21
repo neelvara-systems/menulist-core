@@ -1,9 +1,11 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** May 20, 2026
+**Last Updated:** May 21, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
+
+> May 21, 2026 update: the homepage was compressed for conversion clarity. Search/AEO proof remains valid product proof, but it is no longer mounted as a full homepage section; it belongs in supporting feature/page content unless needed for a dedicated discovery page. Homepage metadata now avoids "instantly" and aligns with the owner-approved 7-day setup funnel.
 
 ---
 
@@ -31,15 +33,15 @@
 
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homepage       | Upload your current menu. MenuList prepares one owner-approved source for your live menu, official page, QR, web link, customer view, and PDF. |
+| Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
-| How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source for your public menu, official page, QR assets, customer app, PDF, and web link.   |
-| Pricing        | Choose the right MenuList plan for your business. Free to start. Upgrade for more surfaces, multi-language support, and multi-location management.                  |
+| How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source for your public menu, official page, QR assets, saved menu shortcut, PDF, and web link.   |
+| Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official menu link live, updated, and ready for customers.                  |
 | Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |
 | About          | MenuList turns your menu into your entire online presence. Built for businesses that care about how they present themselves to customers.                           |
 | Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
-| Get Started    | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links.             |
-| Create Menu    | Start with your current menu and create the owner-approved source for your public menu, official page, QR assets, customer app, and share links.                      |
+| Get Started    | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, saved menu shortcut, and share links.             |
+| Create Menu    | Start with your current menu and create the owner-approved source for your public menu, official page, QR assets, saved menu shortcut, and share links.                      |
 
 ### 1.3 Heading Hierarchy
 
@@ -129,7 +131,7 @@ Every page includes self-referencing canonical:
     "@type": "Offer",
     "price": "0",
     "priceCurrency": "INR",
-    "description": "Free to start. Plans from ₹599/month."
+    "description": "Start with a 7-day setup. Plans from ₹599/month."
   }
 }
 ```
@@ -274,7 +276,7 @@ Do not use:
 />
 <meta
   property="og:description"
-  content="MenuList gives your menu and business information one owner-approved source for the public menu, official business page, QR assets, customer app, screens, and share links."
+  content="Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source."
 />
 <meta property="og:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 <meta property="og:url" content="https://menulist.ai" />
@@ -289,7 +291,7 @@ Do not use:
 />
 <meta
   name="twitter:description"
-  content="MenuList gives your menu and business information one owner-approved source for the public menu, official business page, QR assets, customer app, screens, and share links."
+  content="Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source."
 />
 <meta name="twitter:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 ```

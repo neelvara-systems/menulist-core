@@ -7,7 +7,12 @@
  * Separate from MenuList's HeaderComponent.
  */
 
-import { CANONICA_BASE_PATH, CANONICA_SIDEBAR_NAV } from '@constant/canonica/navigations';
+import {
+    CANONICA_ROUTES,
+    CANONICA_SIDEBAR_NAV,
+    normalizeCanonicaRoutePathname,
+    toCanonicaDashboardRoute,
+} from '@constant/canonica/navigations';
 import { PRODUCT_IDS } from '@constant/product';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { clearForceDesktopMode } from '@lib/mobile/forceDesktopMode';
@@ -31,12 +36,14 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
     const pathname = usePathname();
     const router = useRouter();
     const { token } = theme.useToken();
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
 
     // Derive page title from current route
     const pageTitle = useMemo(() => {
-        const nav = CANONICA_SIDEBAR_NAV.find(n => pathname === n.route || pathname.startsWith(n.route + '/'));
+        const nav = CANONICA_SIDEBAR_NAV.find(n => normalizedPathname === n.route || normalizedPathname.startsWith(n.route + '/'));
         return nav?.label || 'Dashboard';
-    }, [pathname]);
+    }, [normalizedPathname]);
 
     const userMenuItems: MenuProps['items'] = [
         {
@@ -70,7 +77,7 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
         clearForceDesktopMode();
         router.push(isMenuListClient
             ? (showMenuButton ? '/dashboard#mobile/more' : '/dashboard')
-            : CANONICA_BASE_PATH
+            : toCanonicaDashboardRoute(CANONICA_ROUTES.DASHBOARD, currentHostname)
         );
     };
 

@@ -114,17 +114,6 @@ const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'platformTenants',
     'platformStores',
     'platformUsers',
-    'supportTickets',
-    'feedbackAdmin',
-    'knowledgeBase',
-    'kbGeneration',
-    'changelog',
-    'chatManagement',
-    'chatInsights',
-    'chatBackfill',
-    'chatWeeklyDigest',
-    'chatRoiCalculator',
-    'canonicaWidget',
 ];
 
 const canonicaInternalScreens: MobilePlatformInternalScreenKey[] = [
@@ -433,9 +422,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         { key: 'platformHub', icon: <LuShield color="#dc2626" size={20} />, keywords: ['platform', 'internal', 'users', 'tenants', 'stores', 'entity blocks'], label: 'Platform Management', description: 'Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics.', onClick: () => openSubScreen('platformHub') },
     ] : [];
 
-    const canonicaManagementItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'canonicaHub', icon: <LuBookOpen color="#7c3aed" size={20} />, keywords: ['canonica', 'support', 'tickets', 'knowledge base', 'kb', 'chat', 'changelog', 'widget'], label: 'Canonica', description: 'Canonica support, knowledge base, widget, changelog, chat analytics, and backfill tools.', onClick: () => openSubScreen('canonicaHub') },
-    ] : [];
+    const canonicaManagementItems: MoreListItem[] = [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color="#dc2626" size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
@@ -455,37 +442,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
     ] : [];
 
-    const canonicaHubItems: MoreListItem[] = isPlatformAdmin ? [
-        { key: 'supportTickets', icon: <LuHelpCircle color="#0891b2" size={20} />, keywords: ['support', 'tickets', 'customer issues'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
-        { key: 'feedbackAdmin', icon: <LuMessageCircle color="#16a34a" size={20} />, keywords: ['feedback admin', 'reviews', 'guest feedback'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openSubScreen('feedbackAdmin') },
-        { key: 'knowledgeBase', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['knowledge base', 'help articles', 'kb'], label: 'Knowledge Base', description: 'Platform knowledge base editing and publishing.', onClick: () => openSubScreen('knowledgeBase') },
-        { key: 'kbGeneration', icon: <LuSparkles color="#9333ea" size={20} />, keywords: ['kb generation', 'articles', 'content generation'], label: 'KB Generation', description: 'Generate, review, and reconcile knowledge base content.', onClick: () => openSubScreen('kbGeneration') },
-        { key: 'changelog', icon: <LuReceipt color="#f59e0b" size={20} />, keywords: ['changelog', 'release notes', 'updates'], label: 'Changelog', description: 'Create and publish platform release notes.', onClick: () => openSubScreen('changelog') },
-        { key: 'canonicaWidget', icon: <LuKeyRound color="#7c3aed" size={20} />, keywords: ['widget', 'embed', 'api key', 'origins', 'cache', 'cost', 'configuration'], label: 'Widget Management', description: 'Configure widget keys, install snippets, origins, appearance, and cache strategy.', onClick: () => openSubScreen('canonicaWidget') },
-        { key: 'chatManagement', icon: <LuMessageCircle color="#6366f1" size={20} />, keywords: ['chat', 'conversations', 'management'], label: 'Chat Management', description: 'Review and manage customer chat conversations.', onClick: () => openSubScreen('chatManagement') },
-        { key: 'chatInsights', icon: <LuBarChart3 color="#4f46e5" size={20} />, keywords: ['chat insights', 'analytics', 'conversation analytics'], label: 'Chat Insights', description: 'Conversation analytics and chat quality signals.', onClick: () => openSubScreen('chatInsights') },
-        { key: 'chatBackfill', icon: <LuRefreshCw color="#0ea5e9" size={20} />, keywords: ['chat backfill', 'analytics backfill'], label: 'Chat Backfill', description: 'Backfill chat analytics and operational data.', onClick: () => openSubScreen('chatBackfill') },
-        { key: 'chatWeeklyDigest', icon: <LuClock color="#14b8a6" size={20} />, keywords: ['weekly digest', 'chat digest'], label: 'Chat Weekly Digest', description: 'Review weekly chat digest output.', onClick: () => openSubScreen('chatWeeklyDigest') },
-        { key: 'chatRoiCalculator', icon: <LuCreditCard color="#9333ea" size={20} />, keywords: ['roi', 'calculator', 'chat roi'], label: 'Chat ROI Calculator', description: 'Internal ROI calculator for chat operations.', onClick: () => openSubScreen('chatRoiCalculator') },
-    ] : [];
-    const canonicaHubSections: MoreListSection[] = isPlatformAdmin ? [
-        {
-            title: 'Support',
-            items: canonicaHubItems.filter((item) => ['supportTickets', 'feedbackAdmin'].includes(item.key)),
-        },
-        {
-            title: 'Knowledge',
-            items: canonicaHubItems.filter((item) => ['knowledgeBase', 'kbGeneration', 'changelog'].includes(item.key)),
-        },
-        {
-            title: 'Management',
-            items: canonicaHubItems.filter((item) => ['canonicaWidget'].includes(item.key)),
-        },
-        {
-            title: 'Chat',
-            items: canonicaHubItems.filter((item) => ['chatManagement', 'chatInsights', 'chatBackfill', 'chatWeeklyDigest', 'chatRoiCalculator'].includes(item.key)),
-        },
-    ].filter((section) => section.items.length > 0) : [];
+    const canonicaHubItems: MoreListItem[] = [];
+    const canonicaHubSections: MoreListSection[] = [];
 
     const canOpenSubScreen = useCallback((screen: MoreSubScreen) => {
         if (screen === 'main' || screen === 'accountProfile' || screen === 'accountAccess' || screen === 'help') return true;
@@ -505,7 +463,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'specialMenus') return canManageMenu;
         if (screen === 'todayHistory') return canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY;
         if (canUseResellerScreens && ['resellerHub', 'resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(screen)) return true;
-        if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'canonicaHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
+        if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
         if (['canonicaHelp', 'canonicaDocs', 'canonicaSupport', 'canonicaReleaseNotes'].includes(screen)) return true;
         return false;
     }, [

@@ -1,4 +1,6 @@
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
+import { PRODUCT_IDS } from "@constant/product";
+import { getCanonicaScopedSession, isCanonicaRuntimeRoute } from "@lib/canonica/sessionScope";
 import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
@@ -77,6 +79,21 @@ const sameEmail = (left?: string | null, right?: string | null) => (
     String(left || "").toLowerCase().trim() === String(right || "").toLowerCase().trim()
 );
 
+const shouldUseCanonicaScope = () => (
+    typeof window !== "undefined"
+    && isCanonicaRuntimeRoute(window.location.pathname, window.location.hostname)
+);
+
+const getEffectiveSessionForFirebaseAuth = (session: any) => {
+    const outletScopedSession = typeof window === "undefined"
+        ? session
+        : applyActiveStoreContextToSession(session);
+
+    return shouldUseCanonicaScope()
+        ? getCanonicaScopedSession(outletScopedSession)
+        : outletScopedSession;
+};
+
 async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
     if (!session?.user?.email) return { ready: false };
@@ -111,6 +128,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
         body: JSON.stringify({
             ...(canRefreshCurrentUser && currentUser ? { uid: currentUser.uid } : {}),
             targetStoreId: Number(storeId),
+            ...(shouldUseCanonicaScope() ? { productId: PRODUCT_IDS.CANONICA } : {}),
         }),
     });
 
@@ -157,6 +175,7 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
         body: JSON.stringify({
             uid: firebaseAuth.currentUser.uid,
             ...(targetStoreId ? { targetStoreId } : {}),
+            ...(shouldUseCanonicaScope() ? { productId: PRODUCT_IDS.CANONICA } : {}),
         }),
     });
 
@@ -189,9 +208,7 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
 }
 
 export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuthSyncResult> {
-    const effectiveSession = typeof window === "undefined"
-        ? session
-        : applyActiveStoreContextToSession(session);
+    const effectiveSession = getEffectiveSessionForFirebaseAuth(session);
     const tenantId = getSessionTenantId(effectiveSession);
     const storeId = getSessionStoreId(effectiveSession);
     const currentUid = firebaseAuth?.currentUser?.uid || "none";

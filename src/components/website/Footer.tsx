@@ -84,7 +84,7 @@ export default function Footer() {
 
         <div className="ws-footer-main">
           <div className="ws-footer-brand">
-            <Link href="/" className="ws-footer-logo" aria-label="MenuList AI home">
+            <Link href="/" className="ws-footer-logo" aria-label="MenuList home">
               <BrandWordmark
                 className="ws-brand-wordmark"
                 iconHeight={26}

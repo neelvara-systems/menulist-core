@@ -17,6 +17,8 @@
 
 > Controlled free-preview funnel note (May 20, 2026): See `__docs__/marketing/menulist-growth-and-funnel-strategy.md` for the current project-level growth and funnel decision. The website should say "Free account to start. You review before publishing." It should not promote "no account needed" as a public acquisition promise, and upload/extraction should stay tied to an owner account.
 
+> Homepage compression note (May 21, 2026): The homepage should sell faster by using a shorter sequence: Hero -> Problem -> Solution -> How it works -> Public proof -> Customer preview -> Real-world rollout -> FAQ -> CTA. Advanced proof such as analytics, SEO/AEO, POS Sync, staff access, and industry breadth should support Features/How It Works/future pages unless a focused section is needed. Public brand display should be `MenuList`, and homepage-facing "Customer app" copy should usually be phrased as a saved menu shortcut so SMB owners do not assume a native app-store product.
+
 ---
 
 ## My Honest Take (Cascade's Strategic Analysis)
@@ -150,7 +152,7 @@ Focus on ONE city (e.g., Bangalore, Mumbai, or Pune)
 1. **3-second rule** — Visitor must understand the product in 3 seconds (hero headline + visual)
 2. **Pain > Features** — Lead with the problem, not the tech (Aimers: "Nobody cares you're AI-powered")
 3. **Product visualization** — Short demos (15-30 sec) outperform static screenshots consistently
-4. **Clear CTA** — "Start free" / "Upload Your Menu" > creative/clever CTAs
+4. **Clear CTA** — "Upload your menu" / "Start with setup" > creative/clever CTAs
 5. **Before/After** — Transformation visuals convert 2-4x better than feature lists
 6. **Single path** — One CTA, one action. Don't split attention.
 
@@ -169,7 +171,7 @@ Focus on ONE city (e.g., Bangalore, Mumbai, or Pune)
 3. **Solution shows ONE concept** — "One menu. Everywhere customers look."
 4. **Workflow proves it works** — 4-step visual flow with speed emphasis
 5. **Features prove depth** — Prepared section shows 14+ capabilities competitors don't have
-6. **CTA is action-oriented** — "Upload Your Menu" (what they'll actually do)
+6. **CTA is action-oriented** — "Upload your menu" (what they'll actually do)
 
 ---
 
@@ -305,7 +307,7 @@ with QR code — in minutes.
 
 Here's a 30-second demo: [link]
 
-Want me to set it up for your business? Free to start.
+Want me to set it up for your business? You can start with a 7-day setup and review the public menu first.
 
 [Your name]
 MenuList

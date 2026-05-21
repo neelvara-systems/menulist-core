@@ -1,4 +1,5 @@
 import LoginUserType from "@type/loginUser";
+import { getCanonicaScopedSession, isCanonicaRuntimeRoute } from "@lib/canonica/sessionScope";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 
 const CLIENT_SESSION_TTL_MS = 5000;
@@ -23,10 +24,13 @@ const getActiveSession = async () => {
 
     const now = Date.now();
     if (clientSessionCache && now - clientSessionCacheAt < CLIENT_SESSION_TTL_MS) {
+        const scopedSession = isCanonicaRuntimeRoute(window.location.pathname, window.location.hostname)
+            ? getCanonicaScopedSession(clientSessionCache)
+            : clientSessionCache;
         console.log(`%c🔐 Auth%c session cache hit`, AUTH_LOG_BADGE, AUTH_LOG_TEXT, {
             ageMs: now - clientSessionCacheAt,
         });
-        return applyActiveStoreContextToSession(clientSessionCache);
+        return applyActiveStoreContextToSession(scopedSession);
     }
 
     if (clientSessionRequest) {
@@ -42,7 +46,10 @@ const getActiveSession = async () => {
             const sessionWithType = session as unknown as LoginUserType | null;
             clientSessionCache = sessionWithType;
             clientSessionCacheAt = Date.now();
-            const effectiveSession = applyActiveStoreContextToSession(sessionWithType);
+            const scopedSession = isCanonicaRuntimeRoute(window.location.pathname, window.location.hostname)
+                ? getCanonicaScopedSession(sessionWithType)
+                : sessionWithType;
+            const effectiveSession = applyActiveStoreContextToSession(scopedSession);
             console.log(`%c🔐 Auth%c session fetch success`, AUTH_LOG_BADGE, AUTH_SUCCESS_TEXT, {
                 authenticated: Boolean(effectiveSession?.user),
                 sId: effectiveSession?.sId ?? null,

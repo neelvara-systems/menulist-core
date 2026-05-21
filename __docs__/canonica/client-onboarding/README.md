@@ -1,9 +1,9 @@
 # Canonica Client Onboarding
 
 > **Feature:** Self-service onboarding for external SaaS founders
-> **Status:** ✅ IMPLEMENTED (Phase 2 Step 5: DISTRIBUTE)
-> **Date:** 2026-03-07
-> **Auth:** Google OAuth (reuses existing NextAuth)
+> **Status:** ✅ IMPLEMENTED
+> **Date:** 2026-05-21
+> **Auth:** Google OAuth through shared NextAuth login plus Canonica product-account bridge
 > **Billing:** Beta plan ($0, 6 months). Paid plans via Razorpay (same as MenuList).
 
 ---
@@ -26,7 +26,7 @@ A self-service signup flow where external SaaS founders create a Canonica accoun
 1. Visit `canonica.app/get-started`
 2. Sign in with Google OAuth
 3. Enter company name + product name
-4. Account created instantly (tenant + store + subscription + API key)
+4. Account created instantly (Canonica tenant + store + subscription + widget key)
 5. Redirected to dashboard to start configuring KB + widget
 
 ## Onboarding Flow
@@ -35,18 +35,19 @@ A self-service signup flow where external SaaS founders create a Canonica accoun
 canonica.app/get-started
   │
   ├── Step 1: Google OAuth sign-in (existing NextAuth)
-  │   → Creates user record in 'users' collection
+  │   → Creates/uses the default auth user record
   │
   ├── Step 2: Enter company name + product name
   │
   ├── Step 3: POST /api/canonica/onboard
   │   → Atomic transaction:
-  │     ├── Create tenant (tenants collection)
-  │     ├── Create store (stores collection)
-  │     ├── Update user (link tenant+store)
-  │     ├── Create subscription (beta: free, 6 months)
-  │     ├── Generate API key (cn_* prefix)
-  │     └── Update platform summary counts
+  │     ├── Create tenant in Canonica Firestore
+  │     ├── Create store in Canonica Firestore
+  │     ├── Create/update Canonica user
+  │     ├── Create Canonica beta subscription
+  │     ├── Generate widget key (cn_* prefix)
+  │     ├── Update Canonica platform summaries
+  │     └── Write productAccounts.CN bridge to the default auth user
   │
   └── Step 4: Show API key + next steps
       → Go to dashboard
@@ -56,7 +57,7 @@ canonica.app/get-started
 
 | File | Purpose |
 |------|---------|
-| `src/app/api/canonica/onboard/route.ts` | Onboarding API (tenant+store+sub+API key) |
+| `src/app/api/canonica/onboard/route.ts` | Onboarding API (Canonica tenant+store+subscription+widget key) |
 | `src/app/sites/canonica/get-started/OnboardingForm.tsx` | Self-service signup form UI |
 | `src/app/sites/canonica/get-started/page.tsx` | Get-started page (criteria + form) |
 | `src/data/CanonicaPlansList.ts` | Canonica plans config (beta, starter, pro) |
@@ -66,12 +67,13 @@ canonica.app/get-started
 | Component | Reused From |
 |-----------|------------|
 | NextAuth (Google OAuth) | `src/lib/auth/index.ts` |
-| Atomic tenant+store transaction | `src/app/api/onboarding/create-subscription/route.ts` |
-| Platform summary pattern | Same `platformSummary/summary` doc |
+| Canonica product-account bridge | `src/lib/canonica/sessionScope.ts` |
+| Atomic tenant+store transaction | `src/lib/onboarding/createTenantStore.ts` with Canonica DB injection |
+| Platform summary pattern | Canonica `platformSummary` docs in the Canonica Firebase project |
 | Subscription model | Same `FirestoreSubscriptionDoc` type |
 | Rate limiting | Same Upstash rate limiter |
 | Default roles | Same `createDefaultRoles()` |
-| API key pattern | Same `store.publicApi` object; current keys are stored as `apiKeyHash` + display-only `keyPrefix` |
+| Widget key pattern | Canonica-scoped `store.canonicaWidgetApi`; current keys are stored as `apiKeyHash` + display-only `keyPrefix` |
 
 ---
 
@@ -79,4 +81,5 @@ canonica.app/get-started
 
 | Date | Change |
 |------|--------|
+| 2026-05-21 | Separate-mode onboarding writes Canonica product data to `canonica-qa` and stores only `productAccounts.CN` on the default auth user bridge |
 | 2026-03-07 | Initial implementation: beta plan, Google OAuth, atomic provisioning |

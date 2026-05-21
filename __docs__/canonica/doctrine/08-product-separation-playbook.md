@@ -1,7 +1,34 @@
 # Product Separation Playbook — Canonica
 
-> **v1.0.0** | 2025-03-05 | Ref: 07-multi-product-tenancy.md v4.1.0
-> No backward compat. Not live. Clean break.
+> **v1.1.0** | 2026-05-21 | Ref: 07-multi-product-tenancy.md v4.1.0
+> QA separate-mode live path exists. Production still requires production Canonica Firebase credentials and deploy verification.
+
+> QA deployment status is tracked in `__docs__/canonica/deployment/canonica-qa-deployment-runbook.md`.
+
+## Current Domain Split
+
+Canonica and MenuList share the same Vercel project, but product hostnames route to separate product surfaces:
+
+| Product | Staging host | Production host | Dashboard paths |
+| --- | --- | --- | --- |
+| MenuList | `menulist.online` | `menulist.ai` | MenuList owner app routes |
+| Canonica | `ecomsai.com` | `canonica.app` | `/dashboard`, `/widget`, `/settings`, `/knowledge-base`, `/kb-generation`, `/tickets`, `/conversations`, `/governance`, `/changelog`, `/docs`, `/help`, `/support`, `/release-notes` |
+
+Canonica product hosts must pass through `/api/*`, `/_next/*`, `/signin`, `/unauthorized`, and `/widget/*` runtime/embed paths. Only dashboard paths rewrite into the Canonica dashboard route group; marketing paths rewrite into `src/app/sites/canonica/`.
+
+MenuList owner navigation, including desktop sidebar and mobile More, must not expose Canonica management. Canonica settings and widget management belong to the Canonica dashboard, not the MenuList owner shell.
+
+## Current Session/Product Account Bridge
+
+Until external-client CCT auth becomes the primary cross-product contract, the shared Next.js app uses a narrow login bridge:
+
+- The default NextAuth user document may contain `productAccounts.CN`.
+- `productAccounts.CN` stores Canonica `pId`, `tenantId`, `storeId`, `platformRole`, `role`, `active`, and `isVerified` for that Canonica account.
+- Canonica routes and APIs scope the session through this Canonica product account instead of using the MenuList root `tenantId`/`storeId`.
+- `/api/auth/set-claims` issues Canonica Firebase custom claims from the Canonica user/account when `CANONICA_FIREBASE_MODE=separate`.
+- Canonica onboarding writes product data to the Canonica Firebase project and only writes the bridge object back to the default auth user document.
+
+This bridge does not make MenuList the owner of Canonica data. It only lets one Google login access both products while Firebase data, rules, functions, and widget credentials stay separated.
 
 ---
 
@@ -81,21 +108,22 @@ functions-canonica/
 
 ### New Environment Variables
 
+Staging uses the Canonica QA Firebase project. Production must use the production Canonica Firebase project values, not the QA values.
+
 ```
 NEXT_PUBLIC_CANONICA_FIREBASE_MODE=separate
 NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=...
 NEXT_PUBLIC_CANONICA_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa
 NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET=...
 NEXT_PUBLIC_CANONICA_FIREBASE_MESSAGING_SENDER_ID=...
 NEXT_PUBLIC_CANONICA_FIREBASE_APP_ID=...
 NEXT_PUBLIC_CANONICA_FIRESTORE_DATABASE_ID=
 CANONICA_FIREBASE_MODE=separate
-CANONICA_FIREBASE_PROJECT_ID=canonica
+CANONICA_FIREBASE_PROJECT_ID=canonica-qa
 CANONICA_FIREBASE_PRIVATE_KEY=...
 CANONICA_FIREBASE_CLIENT_EMAIL=...
 CANONICA_FIRESTORE_DATABASE_ID=
-CANONICA_GOOGLE_APPLICATION_CREDENTIALS=./canonica-service-account.json
 ```
 
 Use `shared` mode only for local/test environments that intentionally point Canonica at the MenuList DB. Production stays `separate`.
@@ -185,8 +213,11 @@ Keep the legacy MenuList exports for now as shared-mode compatibility. In `NEXT_
 # MenuList functions
 firebase deploy --only functions --project ecomsai
 
-# Canonica functions
-firebase deploy --only functions --project canonica --config firebase-canonica.json
+# Canonica QA functions
+firebase deploy --only functions --project canonica-qa --config firebase-canonica.json
+
+# Canonica QA Firestore/Storage rules and indexes
+firebase deploy --only firestore:rules,firestore:indexes,storage --project canonica-qa --config firebase-canonica.json --non-interactive
 ```
 
 ---

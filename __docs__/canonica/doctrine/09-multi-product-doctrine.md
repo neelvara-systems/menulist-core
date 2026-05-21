@@ -77,12 +77,13 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ecomsai
 
 # Canonica
 NEXT_PUBLIC_CANONICA_FIREBASE_API_KEY=...
-NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica
-CANONICA_FIREBASE_PROJECT_ID=canonica
+NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID=canonica-qa
+CANONICA_FIREBASE_PROJECT_ID=canonica-qa
 CANONICA_FIREBASE_PRIVATE_KEY=...
 CANONICA_FIREBASE_CLIENT_EMAIL=...
-CANONICA_GOOGLE_APPLICATION_CREDENTIALS=./canonica-service-account.json
 ```
+
+Staging uses `canonica-qa`; production must use the production Canonica Firebase project values. Prefer env-based Admin credentials over a local service-account JSON file.
 
 ## 8. When to Separate a New Product
 

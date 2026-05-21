@@ -6,13 +6,13 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'Get Started — Create Your Official Menu Source',
-    description: 'Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links.',
+    description: 'Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, saved menu shortcut, and share links.',
     alternates: {
         canonical: '/get-started',
     },
     openGraph: {
         title: 'Get Started — Create Your Official Menu Source',
-        description: 'Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links.',
+        description: 'Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, saved menu shortcut, and share links.',
         url: '/get-started',
     },
 };

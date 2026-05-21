@@ -272,6 +272,7 @@ export const authOptions: NextAuthOptions = {
                     storeId: dbUser.storeId,
                     pId: (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     productId: (dbUser as any).productId || (dbUser as any).pId || DEFAULT_PRODUCT_ID,
+                    productAccounts: (dbUser as any).productAccounts,
                     platformRole: dbUser.platformRole,
                     role: sessionStoreRole || '',
                     sessionRevokedAt: (dbUser as any).sessionRevokedAt,
@@ -494,6 +495,19 @@ const getDatabaseUserForSession = (dbUser: any): any => {
 
     // Remove both OAuth and dangerous keys using utility function
     const sanitized = removeKeys(dbUser, excludeKeys) as any;
+    const legacyCanonicaProductAccount = sanitized[`productAccounts.${PRODUCT_IDS.CANONICA}`];
+    const productAccounts = sanitized.productAccounts && typeof sanitized.productAccounts === 'object'
+        ? sanitized.productAccounts
+        : undefined;
+    const normalizedProductAccounts = legacyCanonicaProductAccount && typeof legacyCanonicaProductAccount === 'object'
+        ? {
+            ...(productAccounts || {}),
+            [PRODUCT_IDS.CANONICA]: {
+                ...(productAccounts?.[PRODUCT_IDS.CANONICA] || {}),
+                ...legacyCanonicaProductAccount,
+            },
+        }
+        : productAccounts;
 
     // ✅ PERFORMANCE: Keep JWT cookie small
     // NextAuth JWT is stored in a cookie (header). If it gets too big, the app will fail with HTTP 431.
@@ -518,6 +532,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         productId: normalizeAuthProductId(sanitized.productId)
             || normalizeAuthProductId(sanitized.pId)
             || DEFAULT_PRODUCT_ID,
+        productAccounts: normalizedProductAccounts,
         platformRole: sanitized.platformRole,
         role: sanitized.role,
         staffAuthMode: sanitized.staffAuthMode,
@@ -578,7 +593,8 @@ const getAuthSessionUserContext = async (email: string, forceRefresh = false): P
     const now = Date.now();
     const cached = authSessionUserContextCache.get(normalizedEmail);
 
-    if (!forceRefresh && cached && cached.expiresAt > now) {
+    const cachedUserNeedsOnboardingRefresh = !cached?.user?.tenantId || !cached?.user?.storeId;
+    if (!forceRefresh && cached && cached.expiresAt > now && !cachedUserNeedsOnboardingRefresh) {
         return cloneAuthSessionUserContext(cached.user);
     }
 

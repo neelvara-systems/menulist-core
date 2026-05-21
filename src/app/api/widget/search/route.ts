@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { PRODUCT_IDS } from '@constant/product';
 import { recordAiOperation } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
@@ -252,6 +253,7 @@ export async function POST(request: NextRequest) {
                     suggestedQuestionsCount: result.suggestedQuestions?.length || 0,
                 },
                 model: 'coreSearch',
+                pId: PRODUCT_IDS.CANONICA,
                 processingTime: Date.now() - operationStart,
                 sId,
                 source: 'canonica_widget_search',

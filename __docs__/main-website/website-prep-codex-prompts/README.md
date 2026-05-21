@@ -1,6 +1,6 @@
 # Website Prep Codex Prompts
 
-**Status:** Prepared prompt pack with Stage 1-7.5 outputs
+**Status:** Prepared prompt pack with Stage 1-8.0 outputs
 **Scope:** MenuList main marketing website preparation, strategy, visual direction, implementation, launch, and governance
 **Source:** User-provided Perplexity + ChatGPT conversation, adapted for MenuList Codex execution
 **Created:** May 16, 2026
@@ -99,6 +99,7 @@ These rules come from the owner's current direction and must be applied before a
 | 7.2 | [stage-07-2-output-reference-revenue-readiness-pass.md](./stage-07-2-output-reference-revenue-readiness-pass.md) | Completed May 17, 2026 - reference-site/web review and footer revenue-readiness pass |
 | 7.3 | [stage-07-3-output-reference-informed-page-layout-pass.md](./stage-07-3-output-reference-informed-page-layout-pass.md) | Completed May 17, 2026 - reference learning applied to whole homepage layout and conversion flow |
 | 7.5 | [stage-07-5-output-supporting-page-revenue-polish.md](./stage-07-5-output-supporting-page-revenue-polish.md) | Completed May 17, 2026 - supporting-page revenue polish, pricing copy hardening, and shared hero/proof components |
+| 8.0 | [stage-08-output-chatgpt-homepage-feedback-compression-pass.md](./stage-08-output-chatgpt-homepage-feedback-compression-pass.md) | Completed May 21, 2026 - external homepage feedback validation, homepage compression, demo path, copy safety, and docs sync |
 
 ## Execution Order
 
@@ -119,8 +120,9 @@ Run stages in order:
 13. Stage 7.2 - Reference-informed revenue readiness if new reference sites are introduced before launch
 14. Stage 7.3 - Whole-page reference-informed layout pass if the reference review reveals homepage flow gaps
 15. Stage 7.5 - Supporting-page revenue polish if secondary pages feel weaker than the homepage
-16. Stage 8 - Post-launch optimization
-16. Stage 9 - Continuous governance
+16. Stage 8.0 - External homepage feedback validation if live-site audit reveals density or proof-path gaps
+17. Stage 8 - Post-launch optimization
+18. Stage 9 - Continuous governance
 
 ## MenuList Constraints To Preserve
 

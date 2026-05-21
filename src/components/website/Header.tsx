@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LuArrowRight,
+  LuEye,
   LuFileText,
   LuLayoutGrid,
   LuLogOut,
@@ -21,6 +22,7 @@ import WebsiteLanguageSwitcher from "./shared/WebsiteLanguageSwitcher";
 
 const navItemKeys = [
   { href: "/how-it-works", key: "howItWorks", icon: LuZap },
+  { href: "/#customer-demo", key: "demo", icon: LuEye },
   { href: "/features", key: "features", icon: LuLayoutGrid },
   { href: "/pricing", key: "pricing", icon: LuFileText },
   { href: "/multi-location", key: "multiLocation", icon: LuMapPin },
@@ -170,6 +172,7 @@ export default function Header() {
               <>
                 <button
                   type="button"
+                  aria-label={t("Header.login")}
                   onClick={() =>
                     signIn("google", { callbackUrl: "/dashboard" })
                   }
@@ -195,6 +198,7 @@ export default function Header() {
                 </button>
                 <Link
                   href="/create-menu"
+                  aria-label={t("Header.ctaAria")}
                   className="ws-btn ws-btn--primary"
                   style={{ padding: "0.625rem 1.25rem", fontSize: "0.9375rem" }}
                 >
@@ -424,6 +428,7 @@ export default function Header() {
               {status !== "authenticated" && (
                 <Link
                   href="/create-menu"
+                  aria-label={t("Header.ctaAria")}
                   onClick={closeDrawer}
                   className="ws-btn ws-btn--primary"
                   style={{

@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 20, 2026
+**Last Updated:** May 21, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -21,32 +21,25 @@
 
 ### Canonical Implementation Scope
 
-The current homepage is the only default MenuList marketing website. It keeps the strongest conversion jobs from prior review work in safer official-source language: setup effort removal, numbers proof, analytics proof, industry breadth, public-surface clarity, and final CTA confidence. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
+The current homepage is the only default MenuList marketing website. It keeps the strongest first-visit conversion jobs in safer official-source language: public drift pain, upload/review/publish clarity, setup effort removal, customer preview proof, public-surface clarity, rollout proof, FAQ trust, and final CTA confidence. Advanced proof areas stay available in supporting pages/components instead of lengthening the first homepage scroll. It intentionally does **not** edit pricing, payment, subscription, Razorpay, auth, or onboarding runtime logic.
 
 Supporting pages now share the same official-source discipline through shared hero/proof components, owner-readable trust language, safer pricing/setup claims, and a unified website palette. Pricing payment, subscription, Razorpay, auth, and onboarding runtime logic remains protected unless a separate payment-scope task explicitly approves it.
 
 **Current route/component order:**
 
 1. `HeroSection`
-2. `RevenuePathSection`
-3. `InteractiveWorkflowSection`
-4. `ProblemSection`
-5. `SolutionSection`
-6. `StatsSection`
-7. `SetupReliefSection`
-8. `SurfacesSection`
-9. `SearchDiscoverySection`
-10. `CustomerBrowseSection`
-11. `AnalyticsInsightsSection`
-12. `SmartFeaturesSection`
-13. `PreparedForYouSection`
-14. `BusinessSection`
-15. `IndustrySection`
-16. `FaqSection`
-17. `FinalCtaSection`
-18. `StickyCta`
+2. `ProblemSection`
+3. `SolutionSection`
+4. `InteractiveWorkflowSection`
+5. `SetupReliefSection`
+6. `SurfacesSection`
+7. `CustomerBrowseSection`
+8. `PreparedForYouSection`
+9. `FaqSection`
+10. `FinalCtaSection`
+11. `StickyCta`
 
-**Canonical section policy:** `StatsSection`, `AnalyticsInsightsSection`, `IndustrySection`, and `SetupReliefSection` are part of the current homepage. They are not alternate-version carryovers; they are the active source-of-truth page flow.
+**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
@@ -63,23 +56,23 @@ Supporting pages now share the same official-source discipline through shared he
 > Start with a photo, PDF, link, or typed menu. MenuList prepares your live menu, official page, QR menu, web link, customer view, and PDF from one owner-approved source.
 
 **Primary CTA:** Upload your menu →
-**Secondary CTA:** See what customers see (`#public-proof`)
-**Micro-trust line:** Free to start. You review before publishing.
+**Secondary CTA:** See customer preview (`#customer-demo`)
+**Micro-trust line:** Start with a 7-day setup. Review the public menu before choosing a paid plan.
 
-**Proof strip:** Review before publishing · QR and web link included · No desktop required
+**Proof strip:** Review before publishing · Upload before sign-in · No desktop required
 
-**Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and Customer App.
+**Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and saved menu shortcut.
 
 **Notes:**
 
 - Direction A: Current-menu owner action first, official-source proof second.
 - Hero must communicate upload → review → publish one trusted customer version in under 5 seconds.
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
-- Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise as "Free account to start. You review before publishing."
+- Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise aligned to the current setup model: "Start with a 7-day setup. Review before choosing a paid plan."
 
 ---
 
-### Section 2 — Revenue Path
+### Supporting Component — Revenue Path (not mounted on current homepage)
 
 **Purpose:**
 
@@ -122,7 +115,7 @@ This section shows the practical path from the menu a business already has to th
 
 ---
 
-### Section 3 — The Problem
+### Section 2 — The Problem
 
 **Section heading:**
 
@@ -160,7 +153,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 **Supporting text:**
 
-> MenuList gives your menu and business information one official home. From there, the public menu, official page, QR assets, customer app, screens, and share links all reflect the same owner-approved truth.
+> MenuList gives your menu and business information one official home. From there, the public menu, official page, QR assets, saved menu shortcut, screens, and share links all reflect the same owner-approved truth.
 
 **Bullet points (6):**
 
@@ -178,7 +171,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 4 — Source Proof Numbers
+### Supporting Component — Source Proof Numbers (not mounted on current homepage)
 
 **Section heading:**
 
@@ -189,7 +182,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | # | Metric | Meaning |
 | --- | --- | --- |
 | 1 | 1 owner-approved source | Menu, prices, hours, and public business details begin from one controlled source. |
-| 2 | 6 customer places | Live menu, official page, QR assets, customer app, screens, and PDF outputs can show the same current menu. |
+| 2 | 6 customer places | Live menu, official page, QR assets, saved menu shortcut, screens, and PDF outputs can show the same current menu. |
 | 3 | 3 clear steps | Start with the current menu, review the prepared version, then publish what customers see. |
 | 4 | 0 technical setup | No website build, design tool, or separate QR-menu system is needed before publishing. |
 
@@ -200,7 +193,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 5 — Source-To-Public Workflow
+### Section 4 — Source-To-Public Workflow
 
 **Section heading:**
 
@@ -213,7 +206,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | 1 | Start with the menu you already use | Photo, PDF, or typed menu. The setup starts from the current source your business already trusts. |
 | 2 | Review the prepared source | Items, categories, prices, language, images, and business details become structured before they go public. |
 | 3 | Publish the official version | The official page and live menu become the customer-facing source for your menu and business information. |
-| 4 | Deploy it where customers look | QR assets, customer app, screens, print, and share links point back to the same current source. |
+| 4 | Deploy it where customers look | QR assets, saved menu shortcut, screens, print, and share links point back to the same current source. |
 
 **Micro-copy below steps:**
 
@@ -221,7 +214,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 6 — Setup Effort Removed
+### Section 5 — Setup Effort Removed
 
 **Section heading:**
 
@@ -247,7 +240,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 7 — Public Proof Surfaces
+### Section 6 — Public Proof Surfaces
 
 **Section heading:**
 
@@ -255,7 +248,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 **Supporting text:**
 
-> The public output is the proof. MenuList connects the official page, live menu, QR assets, customer app, screens, and share links around the same source.
+> The public output is the proof. MenuList connects the official page, live menu, QR assets, saved menu shortcut, screens, and share links around the same source.
 
 **Surface tiles (7):**
 
@@ -266,17 +259,17 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | 3 | Digital Screens | Store screens can reflect the same published source. |
 | 4 | PDF Export | Clean export when print or internal use is needed. |
 | 5 | Official Page | Menu, hours, photos, directions, contact, and language choice. |
-| 6 | Customer App | Repeat customers keep the business close on their phone. |
+| 6 | Saved menu shortcut | Repeat customers keep the business close on their phone. |
 | 7 | Google, Instagram, WhatsApp | Presence Monitor tracks manual placement without claiming automatic external sync. |
 
 **Notes:**
 
-- Section carries `id="public-proof"` for hero secondary CTA.
+- Section still carries `id="public-proof"` for footer/public-proof links. The hero secondary CTA now points to the customer preview section at `#customer-demo`.
 - Do not claim automatic Google/Instagram/WhatsApp sync unless the runtime path proves it.
 
 ---
 
-### Section 8 — Search and AI Discovery
+### Supporting Component — Search and AI Discovery (not mounted on current homepage)
 
 **Section heading:**
 
@@ -326,7 +319,7 @@ MenuList turns approved menu and business details into visible public pages, str
 
 ---
 
-### Section 9 — Customer Browse Proof
+### Section 7 — Customer Browse Proof
 
 **Section heading:**
 
@@ -347,7 +340,7 @@ MenuList turns approved menu and business details into visible public pages, str
 
 ---
 
-### Section 10 — Analytics And Intent Proof
+### Supporting Component — Analytics And Intent Proof (not mounted on current homepage)
 
 **Section heading:**
 
@@ -372,7 +365,7 @@ MenuList turns approved menu and business details into visible public pages, str
 
 ---
 
-### Section 11 — Quiet Reliability
+### Supporting Component — Quiet Reliability (not mounted on current homepage)
 
 **Section heading:**
 
@@ -402,7 +395,7 @@ MenuList turns approved menu and business details into visible public pages, str
 
 ---
 
-### Section 12 — Real-World Deployment
+### Section 8 — Real-World Deployment
 
 **Section heading:**
 
@@ -417,7 +410,7 @@ MenuList turns approved menu and business details into visible public pages, str
 - Table and counter QR.
 - Packaging and takeaway.
 - WhatsApp and Instagram.
-- Customer app access.
+- Saved menu shortcut access.
 - Digital screens.
 - Placement checklist.
 
@@ -428,7 +421,7 @@ MenuList turns approved menu and business details into visible public pages, str
 
 ---
 
-### Section 13 — Business Fit
+### Supporting Component — Business Fit (not mounted on current homepage)
 
 **Section heading:**
 
@@ -448,7 +441,7 @@ MenuList turns approved menu and business details into visible public pages, str
 
 ---
 
-### Section 14 — Industry Breadth
+### Supporting Component — Industry Breadth (not mounted on current homepage)
 
 **Section heading:**
 
@@ -475,12 +468,12 @@ MenuList turns approved menu and business details into visible public pages, str
 
 **Notes:**
 
-- Included because `IndustrySection` prevents category narrowing.
+- Retained as a supporting component because `IndustrySection` can prevent category narrowing on future/expanded pages.
 - This should widen the buyer's mental model without turning the homepage into scattered industry SEO pages.
 
 ---
 
-### Section 15 — FAQ
+### Section 9 — FAQ
 
 FAQ language should reinforce MenuList as the official customer-facing source. Avoid reducing the product to a "digital menu", "restaurant website", "AI tool", or "QR generator". Do not overclaim automatic external distribution; use owner-approved source and MenuList public-surface language.
 
@@ -499,7 +492,7 @@ Key FAQ topics:
 
 ---
 
-### Section 16 — Final CTA
+### Section 10 — Final CTA
 
 **Heading:**
 
@@ -519,7 +512,7 @@ Key FAQ topics:
 
 **Bottom text:**
 
-> Public page, live menu, QR assets, customer app, and deployment surfaces from one source.
+> Public page, live menu, QR assets, saved menu shortcut, and customer-facing materials from one menu.
 
 ---
 
@@ -1216,12 +1209,12 @@ These lines are intentionally short. They answer two high-friction SMB owner dou
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Homepage       | MenuList - Upload Your Menu Online | Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source. |
+| Homepage       | MenuList - One Official Menu Source for Customers | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Product        | How MenuList Works — One Menu, Everywhere              | See how MenuList keeps your menu correct across QR, official pages, screens, web links, and print outputs from one approved source.         |
 | Multi-Location | MenuList for Chains & Multi-Location Businesses        | Manage menus across all your locations from one place. Master menu, per-location control, instant sync.                                    |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |
 | About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for cafes, service businesses, and growing teams that publish customer-facing offers. |
-| Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, customer app, and share links. |
+| Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, saved menu shortcut, and share links. |
 | Contact        | Contact MenuList                                       | Have a question about MenuList? Reach out to our team.                                                                                     |
 | Privacy        | Privacy Policy — MenuList                              | MenuList privacy policy. How we handle and protect your data.                                                                              |
 | Terms          | Terms of Service — MenuList                            | MenuList terms of service for all users and businesses.                                                                                    |

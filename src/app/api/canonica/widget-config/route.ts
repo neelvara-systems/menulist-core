@@ -9,12 +9,14 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import {
     CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
     parseWidgetConfigSaveInput,
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
 } from '@lib/canonica/widgetConfig';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -23,10 +25,16 @@ import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
-    const tenantId = Number(session?.tId ?? session?.user?.tenantId);
-    const storeId = Number(session?.sId ?? session?.user?.storeId);
+    const canonicaScope = resolveCanonicaSessionScope(session);
+    const tenantId = Number(canonicaScope?.tenantId ?? session?.tId ?? session?.user?.tenantId);
+    const storeId = Number(canonicaScope?.storeId ?? session?.sId ?? session?.user?.storeId);
     if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
     return { tenantId, storeId };
+};
+
+const getCanonicaDb = () => {
+    const db = canonicaFirestoreAdmin as any;
+    return db && typeof db.collection === 'function' ? canonicaFirestoreAdmin : null;
 };
 
 const buildConfigResponse = (storeData: Record<string, any>) => ({
@@ -63,9 +71,13 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const db = getCanonicaDb();
+    if (!db) {
+        return NextResponse.json({ error: 'Canonica Firebase is not configured' }, { status: 503 });
+    }
 
     try {
-        const storeRef = admin.firestore().collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
         const storeSnap = await storeRef.get();
         if (!storeSnap.exists) {
             return NextResponse.json({ error: 'Store not found' }, { status: 404 });
@@ -95,6 +107,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const db = getCanonicaDb();
+    if (!db) {
+        return NextResponse.json({ error: 'Canonica Firebase is not configured' }, { status: 503 });
+    }
 
     try {
         const rateLimitResult = await checkRateLimit({
@@ -109,7 +125,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const body = await request.json().catch(() => null);
         const { config, allowedOrigins } = parseWidgetConfigSaveInput(body);
 
-        const storeRef = admin.firestore().collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
         const storeSnap = await storeRef.get();
         if (!storeSnap.exists) {
             return NextResponse.json({ error: 'Store not found' }, { status: 404 });

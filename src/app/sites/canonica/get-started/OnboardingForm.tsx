@@ -22,7 +22,7 @@ export default function OnboardingForm() {
 }
 
 function OnboardingFormInner() {
-    const { data: session, status } = useSession();
+    const { data: session, status, update } = useSession();
     const [step, setStep] = useState<OnboardingStep>(status === 'authenticated' ? 'details' : 'auth');
     const [companyName, setCompanyName] = useState('');
     const [productName, setProductName] = useState('');
@@ -66,6 +66,7 @@ function OnboardingFormInner() {
                 throw new Error(data.error || 'Something went wrong');
             }
 
+            await update();
             setResult(data);
             setStep('done');
         } catch (err: any) {

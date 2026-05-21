@@ -20,6 +20,10 @@
  */
 
 import { CSP_ALLOWLIST, CSP_DEV_SETTINGS, buildCSPDirective } from '@config/csp-allowlist';
+import {
+    CANONICA_PRODUCT_PASSTHROUGH_PATHS,
+    getCanonicaDashboardRewritePath,
+} from '@constant/canonica/domains';
 import { resolveProductSiteByDevPath } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import { NextRequest, NextResponse } from 'next/server';
@@ -131,6 +135,13 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     return response;
 }
 
+function shouldPassThroughCanonicaProductPath(pathname: string): boolean {
+    if ((CANONICA_PRODUCT_PASSTHROUGH_PATHS as readonly string[]).includes(pathname)) return true;
+    if (pathname.startsWith('/widget/')) return true;
+
+    return shouldBypassDomainRouting(pathname);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Main Middleware
 // ═══════════════════════════════════════════════════════════════
@@ -168,6 +179,31 @@ export function middleware(request: NextRequest) {
     // 1a. Production: hostname-based product routing (canonica.app → /sites/canonica)
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
+
+        if (productConfig.id === 'canonica') {
+            if (pathname === '/canonica' || pathname.startsWith('/canonica/')) {
+                const url = request.nextUrl.clone();
+                url.pathname = pathname === '/canonica'
+                    ? '/dashboard'
+                    : pathname.slice('/canonica'.length) || '/dashboard';
+                return NextResponse.redirect(url, 301);
+            }
+
+            if (shouldPassThroughCanonicaProductPath(pathname)) {
+                return applySecurityHeaders(request, NextResponse.next());
+            }
+
+            const canonicaDashboardPath = getCanonicaDashboardRewritePath(pathname);
+            const url = request.nextUrl.clone();
+            url.pathname = canonicaDashboardPath ||
+                `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
+
+            const response = NextResponse.rewrite(url);
+            response.headers.set('x-product-id', productConfig.id);
+            response.headers.set('x-product-name', productConfig.name);
+            return applySecurityHeaders(request, response);
+        }
+
         const url = request.nextUrl.clone();
         url.pathname = `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
         const response = NextResponse.rewrite(url);
@@ -182,7 +218,11 @@ export function middleware(request: NextRequest) {
         if (devProductMatch) {
             const { product, strippedPath } = devProductMatch;
             const url = request.nextUrl.clone();
-            url.pathname = `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
+            const canonicaDashboardPath = product.id === 'canonica'
+                ? getCanonicaDashboardRewritePath(strippedPath)
+                : null;
+            url.pathname = canonicaDashboardPath ||
+                `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', product.id);
             response.headers.set('x-product-name', product.name);

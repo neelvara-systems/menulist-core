@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.4.15 Canonical Website Default
-**Last Updated:** May 20, 2026
+**Status:** IMPLEMENTED — v3.5.0 Homepage Compression + Conversion Proof Pass
+**Last Updated:** May 21, 2026
 **Audience:** Developers
 
 ---
@@ -66,8 +66,8 @@ LocalisationProvider (locale from next-intl/server)
 ```
 
 **Default metadata (from layout):**
-- Title: `MenuList - Upload Your Menu Online`
-- Description: `Start with your current menu. MenuList turns it into a live menu, official page, QR, web link, customer view, and PDF from one approved source.`
+- Title: `MenuList - One Official Menu Source for Customers`
+- Description: `Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source.`
 - OG image: `/images/website/menulist-og-official-source.png`
 - Backward-compatible OG copy: `/og-image.png`
 - Robots: index, follow (full crawling enabled)
@@ -75,31 +75,26 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (17 sections plus sticky CTA, in order)
+## 4. Homepage Sections (10 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
 | # | Section | Component File |
 |---|---------|---------------|
 | 1 | Hero | `HeroSection.tsx` |
-| 2 | Revenue Path | `RevenuePathSection.tsx` |
-| 3 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
-| 4 | Problem | `ProblemSection.tsx` |
-| 5 | Solution | `SolutionSection.tsx` |
-| 6 | Stats | `StatsSection.tsx` |
-| 7 | Setup Relief | `SetupReliefSection.tsx` |
-| 8 | Surfaces | `SurfacesSection.tsx` |
-| 9 | Search Discovery | `SearchDiscoverySection.tsx` |
-| 10 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 11 | Analytics Insights | `AnalyticsInsightsSection.tsx` |
-| 12 | Smart Features | `SmartFeaturesSection.tsx` |
-| 13 | Prepared For You | `PreparedForYouSection.tsx` |
-| 14 | Business | `BusinessSection.tsx` |
-| 15 | Industry | `IndustrySection.tsx` |
-| 16 | FAQ | `FaqSection.tsx` |
-| 17 | Final CTA | `FinalCtaSection.tsx` |
+| 2 | Problem | `ProblemSection.tsx` |
+| 3 | Solution | `SolutionSection.tsx` |
+| 4 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
+| 5 | Setup Relief | `SetupReliefSection.tsx` |
+| 6 | Surfaces | `SurfacesSection.tsx` |
+| 7 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 8 | Prepared For You | `PreparedForYouSection.tsx` |
+| 9 | FAQ | `FaqSection.tsx` |
+| 10 | Final CTA | `FinalCtaSection.tsx` |
 
-**Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, `CustomerBrowseSection.tsx`, `AnalyticsInsightsSection.tsx`, and `BusinessSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
+`RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage.
+
+**Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, and `CustomerBrowseSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 
 **Footer revenue pass:** Stage 7.2 reviewed Paper, Kestra, Stripe, Lenis, Upscayl, Linear, Vercel, and Notion reference patterns, then upgraded `Footer.tsx` into a conversion/resource layer. It deliberately borrows structure, not unsupported claims or trend-heavy visuals.
 
@@ -121,6 +116,8 @@ LocalisationProvider (locale from next-intl/server)
 
 **Staff access policy alignment:** Stage 7.13 updated public Privacy Policy, Terms of Service, and Trust & Security content to reflect owner-managed staff identities, role/store-scoped access, passcode reset metadata, authorized team access, and owner session revocation controls. This was a content/security-disclosure alignment only; no staff/auth runtime behavior changed.
 
+**Homepage compression and demo proof:** Stage 8.0 compressed the homepage after live-site audit feedback. It moved `ProblemSection` directly after the hero, removed repetitive/advanced sections from the mounted homepage flow, added a header Demo link to `#customer-demo`, moved the hero secondary CTA to the customer preview, aligned hero microcopy with the 7-day setup pricing promise, changed the public wordmark to `MenuList`, and tightened security FAQ language. Pricing, payment, subscription, Razorpay, auth, onboarding, `/create-menu` extraction, POS Sync runtime, analytics runtime, and owner dashboard logic were not changed.
+
 **Canonical cleanup:** v3.3.0 made this implementation the only website source-code version. Old source-code backups, backup restore docs, the dead `HowItWorksSection.tsx`, and unused legacy landing-template visuals were removed. Historical strategy docs may remain for context, but they are not restoration sources.
 
 ---
@@ -134,7 +131,7 @@ src/components/website/
 ├── SchemaMarkup.tsx            — Homepage JSON-LD schema
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
-├── home/                       — 17 homepage sections + StickyCta
+├── home/                       — compressed homepage sections + supporting section components + StickyCta
 ├── about/AboutPage.tsx         — About page
 ├── contact/ContactPage.tsx     — Contact page
 ├── features/FeaturesPage.tsx   — Features page

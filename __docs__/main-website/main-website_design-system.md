@@ -75,9 +75,9 @@ Brand gradient rule:
 
 - Use `--brand-gradient` only for the MenuList mark, auth-page product title, and deliberate headline highlight spans.
 - Do not apply the gradient to website wordmark text, body copy, full headings, CTA buttons, cards, icons, or page backgrounds.
-- Brand display surfaces should render through `src/components/website/shared/BrandWordmark.tsx`; the canonical display name is `MenuList AI`.
+- Brand display surfaces should render through `src/components/website/shared/BrandWordmark.tsx`; the canonical public website display name is `MenuList`.
 - Website header/footer wordmark text is solid and inherits the surface text color; the logo mark carries the gradient.
-- Keep body copy as `MenuList` unless the context explicitly names the AI/product platform identity.
+- Keep body copy as `MenuList` unless the context explicitly names an internal AI/product platform setting or legal/account context.
 
 ### 2.3 Contrast Verification
 

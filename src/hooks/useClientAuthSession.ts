@@ -1,16 +1,22 @@
 import LoginUserType from "@type/loginUser";
+import { getCanonicaScopedSession, isCanonicaRuntimeRoute } from "@lib/canonica/sessionScope";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
 //used only for pure react components
 export function useClientAuthSession() {
     const { data, status }: any = useSession();
+    const pathname = usePathname();
     
     // Return null while loading to prevent using undefined session
     if (status === 'loading') {
         return null;
     }
     
-    const sessionWithType: LoginUserType = data;
+    const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const sessionWithType: LoginUserType = isCanonicaRuntimeRoute(pathname, hostname)
+        ? getCanonicaScopedSession(data)
+        : data;
     return sessionWithType;
 }
 

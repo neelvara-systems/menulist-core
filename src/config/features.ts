@@ -1901,12 +1901,12 @@ export const FEATURE_FLAGS = {
      * false: Widget endpoints return 404
      *
      * Allows SaaS founders to embed a help search widget in their product.
-     * Widget authenticates via store publicApi.apiKey (same as Platform Pull API).
+     * Widget authenticates via the Canonica-scoped canonicaWidgetApi credential.
      * Searches KB articles, returns AI answers, supports canonical-first retrieval.
      *
      * @see __docs__/canonica/help-widget/
      */
-    ENABLE_CANONICA_WIDGET: false,
+    ENABLE_CANONICA_WIDGET: true,
 
     /**
      * MenuList-as-Client Canonica Widget Test Host
@@ -1920,7 +1920,7 @@ export const FEATURE_FLAGS = {
      *
      * Keep this false outside explicit Canonica widget integration testing.
      */
-    ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST: true,
+    ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST: false,
 
     /**
      * Canonica Email Notifications

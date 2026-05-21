@@ -1,9 +1,9 @@
 # Help Center — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-03-01
+> **Last Updated:** 2026-05-21
 > **Audit Type:** Codebase-first forensic documentation
-> **Feature Scope:** 16 subsystems, 190+ files, 27 Firestore collections
+> **Feature Scope:** 16 subsystems, 190+ files, Canonica + Help Center Firestore collections
 
 ---
 
@@ -39,6 +39,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 | 8   | `help-center/help-center_mobile-support.md`      | Mobile team     | 4-gate admission test, mobile architecture                    |
 | 9   | `help-center/help-center_decoupling-analysis.md` | Strategy/Arch   | Future standalone SaaS readiness assessment                   |
 | 10  | `firebase-cost-optimization-audit.md`            | Developers/Ops  | Canonica-wide Firebase read/write/listener cost map and latest optimizations |
+| 11  | `deployment/canonica-qa-deployment-runbook.md`   | Developers/Ops  | QA deployment evidence, commands, secret handling, and production checklist |
 
 ---
 
@@ -217,7 +218,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `ENABLE_CANONICA_DRIFT_DETECTION`   | `src/config/features.ts`                       | `false` | 4-class drift engine                             |
 | `ENABLE_CANONICA_SIGNAL_MUTATION`   | `src/config/features.ts`                       | `false` | Signal mutation + proposal review                |
 | `ENABLE_CANONICA_PUBLIC_API`        | `src/config/features.ts`                       | `false` | Public answers, entities, and signal ingestion API (Pillar 5; implemented and rollout-gated) |
-| `ENABLE_CANONICA_WIDGET`            | `src/config/features.ts`                       | `false` | Embeddable help widget + onboarding gate         |
+| `ENABLE_CANONICA_WIDGET`            | `src/config/features.ts`                       | `true`  | Embeddable help widget + onboarding gate         |
 | `ENABLE_CANONICA_NOTIFICATIONS`     | `src/config/features.ts`                       | `false` | Email notifications for ticket events            |
 | `ENABLE_CANONICA_GOVERNANCE_UI`     | `src/config/features.ts`                       | `false` | Governance hub (answer editor, drift, analytics) |
 | `ENABLE_CANONICA_SIGNAL_QUALITY`    | `src/config/features.ts`                       | `false` | Severity weighting, time decay, batch queries    |
@@ -259,19 +260,21 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_auditLogs`             | Governance audit trail (append-only)    | Tenant+Store scoped                 |
 | `canonica_frictionDailyStats`    | Daily friction aggregates               | Tenant+Store scoped                 |
 | `canonica_schedulerRunLogs`      | Canonica nightly run logs and diagnostics | Platform-only read, server-written |
+| `canonica_aiOperations`          | Canonica AI operation/cost logs           | Tenant+Store scoped, server-written |
 | `platformSummary/canonicaTenantsSummary` | Scheduler tenant/store registry | Server-written, platform-only summary |
 | `platformSummary/trustMetrics_{tId}_{sId}` | Founder trust metrics dashboard read model | Tenant+Store scoped summary |
 | `canonica_integrationEvents`     | Workflow integration events             | Tenant+Store scoped, server-written |
 | `canonica_integrationDeliveryLogs` | Integration delivery attempt logs      | Tenant+Store scoped, server-written |
 | `canonica_predictiveTriggers`    | Predictive support trigger rules        | Tenant+Store scoped                 |
 
-**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for shared-DB local/test mode and `firestore-canonica.rules` for dedicated Canonica Firebase deployments. `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`, and the client signs into the Canonica Firebase app with the same `platformRole`, `tenantId`, and `storeId` claims. Canonica query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
+**Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for shared-DB local/test mode and `firestore-canonica.rules` for dedicated Canonica Firebase deployments. `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`. The client signs into the Canonica Firebase app with Canonica-scoped `platformRole`, `tenantId`, and `storeId` claims resolved from the default user document's `productAccounts.CN` bridge or from the Canonica `users` document. Canonica query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
 ---
 
 ## Auth & Permission Model
 
-- **Owner-side** (Help Center page): Requires authenticated session via NextAuth. Tenant-isolated (`tId`), store-isolated (`sId`), user-isolated (`uId`).
+- **Canonica owner-side** (dashboard, widget, KB, tickets, changelog): Requires authenticated NextAuth session plus a Canonica product account (`productAccounts.CN`) or Canonica `users` document. Tenant-isolated (`tId`), store-isolated (`sId`), user-isolated (`uId`) against the Canonica Firebase project in separate mode.
+- **MenuList Help Center** (`/help-center`): Remains a MenuList owner support surface. It can use Canonica-backed components where explicitly wired, but it does not make MenuList a Canonica management dashboard.
 - **Platform-admin** (Support Tickets, KB Management, Chat Management): Requires `platformRole` check (PLATFORM or PLATFORM_SUPPORT).
 - **End-user chat**: The AI search modal (`AISearchModal/`) can be used by any authenticated user within their tenant.
 - **KB articles**: Server-side retrieval is tenant/store filtered and fail-closed when `tId` or `sId` is missing or invalid. Write operations require platform auth.
@@ -349,6 +352,7 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-21 | 3.2.0   | Updated Canonica separate-product auth/Firebase notes: `productAccounts.CN`, dedicated widget credentials, Canonica AI operation logs, and enabled core widget flag.                   |
 | 2026-03-06 | 3.1.0   | ChatGPT domain/launch review — 10 failure modes, entity categories, authoring guidelines added to activation experiment. Archive: `_archive/chatgpt-review-domain-launch-readiness.md` |
 | 2026-03-02 | 3.0.0   | Canonica strategic doctrine — 9 governance documents from ChatGPT strategic session                                                                                                    |
 | 2026-03-02 | 2.0.0   | Feature-by-feature deep documentation — 7 features × 8 docs = 56 sub-feature documents                                                                                                 |

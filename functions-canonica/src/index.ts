@@ -25,6 +25,7 @@ import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runCanonicaNightly } from './canonica/canonicaNightly';
 import { assertCanonicaPlatformCallable } from './callableAuth';
+import { CANONICA_SECRET_GROUPS, readCanonicaCronSecret } from './config/secrets';
 import { DB_COLLECTIONS } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
 import { processEvent } from './integrations/eventProcessor';
@@ -74,7 +75,7 @@ export const canonicaNightly = onSchedule(
 function isManualTriggerAuthorized(req: any): boolean {
     if (process.env.FUNCTIONS_EMULATOR === 'true') return true;
 
-    const cronSecret = process.env.CRON_SECRET;
+    const cronSecret = readCanonicaCronSecret();
     const authHeader = req.get?.('authorization') || req.headers?.authorization || '';
 
     return Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
@@ -85,6 +86,7 @@ export const triggerCanonicaNightly = onRequest(
         timeoutSeconds: 540,
         memory: '512MiB',
         maxInstances: 1,
+        secrets: CANONICA_SECRET_GROUPS.MANUAL_SCHEDULER,
     },
     async (req, res) => {
         if (!isManualTriggerAuthorized(req)) {

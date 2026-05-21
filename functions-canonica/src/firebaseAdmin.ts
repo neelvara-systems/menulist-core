@@ -8,12 +8,28 @@
  */
 
 import * as admin from 'firebase-admin';
+import * as logger from 'firebase-functions/logger';
+import * as fs from 'fs';
+import * as path from 'path';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getFirestore } from 'firebase-admin/firestore';
 
 type CredentialPrefix = 'FIREBASE' | 'CANONICA_FIREBASE';
 
 const normalizeMode = (value?: string) => value?.trim().toLowerCase();
+const normalizePrivateKey = (privateKey: string) => privateKey.replace(/\\n/g, '\n').trim();
+
+function getCanonicaProjectId(): string | undefined {
+    return process.env.CANONICA_FIREBASE_PROJECT_ID ||
+        process.env.GCLOUD_PROJECT ||
+        process.env.GCLOUD_PROJECT_ID ||
+        process.env.GOOGLE_CLOUD_PROJECT;
+}
+
+function getCanonicaStorageBucket(): string | undefined {
+    return process.env.CANONICA_FIREBASE_STORAGE_BUCKET ||
+        process.env.NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET;
+}
 
 function getShouldUseSharedFirebase(): boolean {
     return ['shared', 'same', 'default'].includes(normalizeMode(process.env.CANONICA_FIREBASE_MODE) || '') ||
@@ -31,11 +47,49 @@ function getCredential(prefix: CredentialPrefix): admin.credential.Credential | 
 
     if (!projectId || !privateKey || !clientEmail) return null;
 
-    return admin.credential.cert({
-        projectId,
-        privateKey: privateKey.replace(/\\n/g, '\n'),
-        clientEmail,
-    });
+    try {
+        return admin.credential.cert({
+            projectId,
+            privateKey: normalizePrivateKey(privateKey),
+            clientEmail,
+        });
+    } catch (error) {
+        logger.warn('[Canonica Firebase Admin] Ignoring invalid service-account credential. Falling back to runtime credentials when available.', {
+            prefix,
+            error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+    }
+}
+
+function getCanonicaServiceAccountFileCredential(): admin.credential.Credential | null {
+    const credentialPath = process.env.CANONICA_GOOGLE_APPLICATION_CREDENTIALS;
+    if (!credentialPath) return null;
+
+    try {
+        const resolvedPath = path.isAbsolute(credentialPath)
+            ? credentialPath
+            : path.join(process.cwd(), credentialPath);
+        const raw = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+        const projectId = raw.project_id || getCanonicaProjectId();
+        const privateKey = raw.private_key;
+        const clientEmail = raw.client_email;
+
+        if (!projectId || !privateKey || !clientEmail) {
+            throw new Error('Missing project_id, private_key, or client_email in Canonica service-account file.');
+        }
+
+        return admin.credential.cert({
+            projectId,
+            privateKey: normalizePrivateKey(privateKey),
+            clientEmail,
+        });
+    } catch (error) {
+        logger.warn('[Canonica Firebase Admin] Could not load CANONICA_GOOGLE_APPLICATION_CREDENTIALS. Falling back to runtime credentials when available.', {
+            error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+    }
 }
 
 if (!admin.apps.length) {
@@ -45,12 +99,18 @@ if (!admin.apps.length) {
 
     const credential = getShouldUseSharedFirebase()
         ? (getCredential('FIREBASE') || getCredential('CANONICA_FIREBASE'))
-        : getCredential('CANONICA_FIREBASE');
+        : (getCredential('CANONICA_FIREBASE') || getCanonicaServiceAccountFileCredential());
 
     if (credential) {
-        admin.initializeApp({ credential });
+        admin.initializeApp({
+            credential,
+            ...(getCanonicaStorageBucket() ? { storageBucket: getCanonicaStorageBucket() } : {}),
+        });
     } else {
-        admin.initializeApp();
+        admin.initializeApp({
+            ...(getCanonicaProjectId() ? { projectId: getCanonicaProjectId() } : {}),
+            ...(getCanonicaStorageBucket() ? { storageBucket: getCanonicaStorageBucket() } : {}),
+        });
     }
 }
 

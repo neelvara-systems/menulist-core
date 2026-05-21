@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react';
 import LogoMark from './LogoMark';
 
-export const BRAND_DISPLAY_NAME = 'MenuList AI';
+export const BRAND_DISPLAY_NAME = 'MenuList';
 
 interface BrandWordmarkProps {
   showLogo?: boolean;

@@ -9,6 +9,11 @@ import { getStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getTenantById } from '@database/tenants';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import {
+    getCanonicaScopedSession,
+    isCanonicaRuntimeRoute,
+    resolveCanonicaSessionScope,
+} from '@lib/canonica/sessionScope';
 import { clearUserContext, logger, setUserContext } from '@lib/monitoring/logger';
 import {
     readActiveStoreContextId,
@@ -94,11 +99,17 @@ export default function SessionProvider({ children, session }: Props) {
     const [platformStoreSummaryOptions, setPlatformStoreSummaryOptions] = useState<PlatformStoreSummaryOption[]>([])
     const [platformStoreSummaryLoadedAt, setPlatformStoreSummaryLoadedAt] = useState<number | null>(null)
     const [platformStoreSummaryLoading, setPlatformStoreSummaryLoading] = useState(false)
-    const [firebaseAuthReady, setFirebaseAuthReady] = useState(!session?.user?.storeId)
+    const [firebaseAuthReady, setFirebaseAuthReady] = useState(
+        !session?.user?.storeId && !(session?.user as any)?.productAccounts?.CN?.storeId
+    )
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
     const activeSubscriptionStoreIdRef = useRef<number | null>(null);
     const activeSubscriptionRequestStoreIdRef = useRef<number | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const isCanonicaRoute = isCanonicaRuntimeRoute(normalizedPathname, currentHostname);
+    const canonicaScope = isCanonicaRoute ? resolveCanonicaSessionScope(session) : null;
+    const effectiveSession = isCanonicaRoute ? getCanonicaScopedSession(session as any) : session;
     const isPlatformSession = session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
     const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
     const isStoreIndependentRoute =
@@ -107,14 +118,16 @@ export default function SessionProvider({ children, session }: Props) {
         || normalizedPathname.startsWith('/platform/')
         || normalizedPathname === '/ops'
         || normalizedPathname.startsWith('/ops/')
-        || normalizedPathname === '/canonica'
-        || normalizedPathname.startsWith('/canonica/')
+        || isCanonicaRoute
         || normalizedPathname === '/reseller'
         || normalizedPathname.startsWith('/reseller/');
     const canRenderBeforeStoreData = Boolean(session) && (
-        (isPlatformSession && isStoreIndependentRoute)
+        (isCanonicaRoute && Boolean(canonicaScope))
+        || (isPlatformSession && isCanonicaRoute)
+        || (isPlatformSession && isStoreIndependentRoute)
         || (isResellerSession && (normalizedPathname === '/reseller' || normalizedPathname.startsWith('/reseller/')))
     );
+    const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData && !isCanonicaRoute;
 
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string>();
@@ -150,7 +163,7 @@ export default function SessionProvider({ children, session }: Props) {
 
     useEffect(() => {
         let cancelled = false;
-        const requiresFirebaseAuth = Boolean(session?.user?.tenantId && session?.user?.storeId);
+        const requiresFirebaseAuth = Boolean(effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId);
 
         if (!session) {
             setFirebaseAuthReady(false);
@@ -167,7 +180,7 @@ export default function SessionProvider({ children, session }: Props) {
         setFirebaseAuthReady(false);
         setFirebaseAuthSyncError(null);
 
-        ensureFirebaseAuthForSession(session)
+        ensureFirebaseAuthForSession(effectiveSession)
             .then(() => {
                 if (!cancelled) setFirebaseAuthReady(true);
             })
@@ -188,6 +201,8 @@ export default function SessionProvider({ children, session }: Props) {
         session?.user?.id,
         session?.user?.storeId,
         session?.user?.tenantId,
+        effectiveSession?.user?.storeId,
+        effectiveSession?.user?.tenantId,
     ]);
 
     // Listen for AI balance updates from API responses (saves Firebase reads)
@@ -222,13 +237,18 @@ export default function SessionProvider({ children, session }: Props) {
             console.info('[MenuList session debug]', debugSession);
         }
 
-        if (session?.user?.tenantId && session?.user?.storeId && !firebaseAuthReady) {
+        if (effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId && !firebaseAuthReady) {
+            return;
+        }
+
+        if (isCanonicaRoute) {
+            setActiveSubscriptionLoading(false);
             return;
         }
 
         // Create a key from relevant session data for comparison
         const currentSessionKey = JSON.stringify({
-            user: session?.user,
+            user: effectiveSession?.user,
             expires: session?.expires
         });
 
@@ -298,7 +318,14 @@ export default function SessionProvider({ children, session }: Props) {
             setActiveSubscriptionLoading(false);
             clearUserContext();
         }
-    }, [fetchActiveSubscriptionForStore, session, firebaseAuthReady]) // Re-run the effect when the session changes
+    }, [
+        effectiveSession?.user?.storeId,
+        effectiveSession?.user?.tenantId,
+        fetchActiveSubscriptionForStore,
+        firebaseAuthReady,
+        isCanonicaRoute,
+        session,
+    ]) // Re-run the effect when the session changes
 
     useEffect(() => {
         if (!session || !loginStoreDetails || !tenantDetails?.storesList?.length) return;
@@ -558,7 +585,7 @@ export default function SessionProvider({ children, session }: Props) {
                 platformStoreSummaryLoading,
                 setPlatformStoreSummaryLoading
             }}>
-                {(session && session.user?.storeId && !firebaseAuthReady && !canRenderBeforeStoreData) ? (
+                {(effectiveSession && effectiveSession.user?.storeId && !firebaseAuthReady && !canRenderBeforeFirebaseAuth) ? (
                     <ServerSidePageLoader page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"} />
                 ) : (session && !storeDetails && !canRenderBeforeStoreData) ? (
                     <ServerSidePageLoader page="Loading Store Data" />

@@ -44,10 +44,10 @@ export default function HeroSection() {
               </p>
 
               <div className="ws-hero-official__actions">
-                <WebsiteButton href="/create-menu">
+                <WebsiteButton href="/create-menu" ariaLabel={t('Hero.ctaAria')}>
                   {t('Hero.cta')}
                 </WebsiteButton>
-                <WebsiteButton href="#public-proof" variant="ghost">
+                <WebsiteButton href="#customer-demo" variant="ghost" ariaLabel={t('Hero.secondaryCtaAria')}>
                   {t('Hero.secondaryCta')}
                 </WebsiteButton>
               </div>

@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.4.15 (Canonical Website Default)
+**Version:** 3.5.0 (Homepage Compression + Conversion Proof Pass)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 20, 2026
+**Last Updated:** May 21, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.4.15** | **Canonical Website Default** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.5.0** | **Homepage Compression + Conversion Proof Pass** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
-Version 3.4.15 keeps the official customer-source hero and tightens the intake funnel: the website stays free to start, but upload/extraction now requires a free owner account before AI processing. It also keeps the 3.4.13 mobile Safari hardening by keeping the owner Workbox service worker off public marketing routes and removing mobile fixed/blur repaint triggers from the public website. The build includes explicit minimal Pages Router defaults so Next's generated `_app`, `_document`, and `_error` entries resolve during production page-data collection. Search/AI discovery proof, low-prominence POS Sync operations proof, staff accounts, Staff ID/passcode access, roles, passcode reset, and owner force sign-out remain operations proof for teams. Privacy, Terms, and Trust & Security explicitly cover owner-managed staff access, role-scoped data access, passcode reset metadata, and session revocation. The public claim remains deliberately conservative: phone-first owner access and staff access control are conversion proof points, not promises of HR/payroll management or exact parity for every advanced desktop-only edge case.
+Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Solution -> How it works -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -56,7 +56,7 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/app/(website)/layout.tsx`                              | Shared layout (locale, auth, theme, analytics) |
 | `src/app/(website)/page.tsx`                                | Homepage route                                 |
 | `src/app/(website)/WebsiteAuthProvider.tsx`                 | Auth context for pricing/onboarding flows      |
-| `src/components/website/home/HomePage.tsx`                  | Current 17-section homepage composition plus sticky CTA |
+| `src/components/website/home/HomePage.tsx`                  | Current compressed homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
 | `src/components/website/shared/LogoMark.tsx`                | Official MenuList logo mark used by website header/footer |
@@ -93,7 +93,7 @@ Supported website locale files:
 
 ## Current Canonical Scope
 
-The current homepage is the default. It preserves official-source positioning while retaining useful conversion jobs: setup effort removal, numbers proof, analytics proof, industry breadth, and public-surface clarity.
+The current homepage is the default. It preserves official-source positioning while prioritizing first-visit conversion jobs: fast problem recognition, upload/review/publish clarity, public-surface proof, customer-preview proof, rollout confidence, FAQ trust, and final CTA confidence.
 
 Protected production surfaces remain out of scope unless separately approved:
 
@@ -120,6 +120,23 @@ Active asset requirements:
 - `__docs__/main-website/main-website_image-assets.md`
 
 Stage 6 keeps the current coded homepage visuals as launch-safe placeholders until real product-derived screenshots and composites are produced. Pricing, payment, subscription, Razorpay, auth wrappers, onboarding payment behavior, and `/create-menu` runtime logic remain protected out of scope.
+
+## Stage 8 Homepage Compression + Conversion Proof Pass
+
+Stage 8 is complete as a homepage flow/copy pass driven by live-site audit feedback. It validates the useful parts of the external feedback without treating it as source-of-truth over the repo.
+
+Active decisions:
+
+- Keep the codebase and current product capability as the source of truth.
+- Move the public drift/problem section directly after the hero.
+- Merge the old revenue-path/workflow repetition by removing `RevenuePathSection` from the homepage composition and letting `InteractiveWorkflowSection` carry upload -> review -> publish -> share.
+- Keep advanced proof sections (`SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, `IndustrySection`, `StatsSection`) in the repo for supporting pages/future use, but remove them from the primary homepage scroll.
+- Add a header Demo link to `#customer-demo`.
+- Point the hero secondary CTA to the customer menu preview.
+- Align hero pricing microcopy with the 7-day setup language.
+- Render the public website wordmark as `MenuList`, not `MenuList AI`.
+- Use "saved menu shortcut" in homepage-facing copy where "Customer app" could sound like a native app-store promise.
+- Keep search/AEO, POS Sync, analytics, staff access, and multi-location proof conservative and supporting-page-led.
 
 ## Stage 6.1 Synthetic Asset Pack
 
@@ -264,7 +281,7 @@ Implemented change:
 
 - Normalized owner-facing wording in the homepage `Website` copy, especially `RevenuePath`, workflow labels, analytics labels, public-surface names, and footer navigation.
 - Replaced internal/revenue-review phrasing with customer-facing wording that explains how a current menu source becomes public action.
-- Standardized casing for public surfaces such as `QR menu`, `public page`, `Official Business Page`, `digital screens`, `Print/PDF`, and `customer app`.
+- Standardized casing for public surfaces such as `QR menu`, `public page`, `Official Business Page`, `digital screens`, `Print/PDF`, and `saved menu shortcut`.
 - Removed viewport-based website font scaling and negative letter spacing from `website.css`; website headings and labels now keep stable letter spacing.
 - Added subtle hover motion to proof/path/problem elements and reduced-motion safeguards for CSS transitions and Framer Motion scroll reveals.
 

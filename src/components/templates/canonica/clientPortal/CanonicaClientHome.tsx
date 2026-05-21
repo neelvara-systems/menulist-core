@@ -1,6 +1,6 @@
 'use client'
 
-import { CANONICA_ROUTES } from '@constant/canonica/navigations';
+import { CANONICA_ROUTES, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
 import BrowseCategories from '@template/main-app/helpCenter/landing/BrowseCategories';
 import RunningTickets from '@template/main-app/helpCenter/landing/RunningTickets';
 import WhatsNew from '@template/main-app/helpCenter/landing/WhatsNew';
@@ -37,6 +37,7 @@ const supportActions = [
 export default function CanonicaClientHome() {
     const router = useRouter();
     const { token } = theme.useToken();
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
     return (
         <Flex vertical gap={20} style={{ width: '100%', maxWidth: 1180, margin: '0 auto' }}>
@@ -52,7 +53,7 @@ export default function CanonicaClientHome() {
                         <Col key={action.key} xs={24} md={8}>
                             <Card
                                 hoverable
-                                onClick={() => router.push(action.route)}
+                                onClick={() => router.push(toCanonicaDashboardRoute(action.route, currentHostname))}
                                 styles={{ body: { minHeight: 132 } }}
                                 style={{ height: '100%' }}
                             >

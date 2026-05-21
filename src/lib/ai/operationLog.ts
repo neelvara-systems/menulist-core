@@ -1,7 +1,9 @@
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID, ECOMSAI_PLATFORM_USER_NAME } from "@constant/user";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
+import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 
 type JsonRecord = Record<string, any>;
@@ -102,8 +104,13 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
     const tId = String(input.tId ?? ECOMSAI_PLATFORM_TENANT_ID);
     const sId = String(input.sId ?? ECOMSAI_PLATFORM_STORE_ID);
     const now = admin.firestore.Timestamp.now();
+    const productId = String(input.pId || '').toUpperCase();
+    const shouldWriteCanonicaOperation = productId === PRODUCT_IDS.CANONICA
+        && canonicaFirestoreAdmin
+        && typeof (canonicaFirestoreAdmin as any).collection === 'function';
     const data = sanitizeForFirestore({
         ...buildAiOperationLog(input),
+        ...(productId ? { pId: productId } : {}),
         tId: Number.isFinite(Number(tId)) ? Number(tId) : tId,
         sId: Number.isFinite(Number(sId)) ? Number(sId) : sId,
         uId: input.uId || ECOMSAI_PLATFORM_USER_ID,
@@ -113,8 +120,10 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
         modifiedOn: now,
     });
 
-    const docRef = await firestoreAdmin
-        .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+    const docRef = await (shouldWriteCanonicaOperation ? canonicaFirestoreAdmin : firestoreAdmin)
+        .collection(shouldWriteCanonicaOperation
+            ? DB_COLLECTIONS.CANONICA_AI_OPERATIONS
+            : DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
         .doc(tId)
         .collection(sId)
         .add(data);
@@ -125,6 +134,7 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
 export async function recordAiOperationForSession(session: any, input: AiOperationLogInput): Promise<string> {
     return recordAiOperation({
         ...input,
+        pId: input.pId ?? session?.pId ?? session?.user?.pId ?? session?.user?.productId,
         tId: input.tId ?? session?.tId ?? session?.user?.tenantId,
         sId: input.sId ?? session?.sId ?? session?.user?.storeId,
         uId: input.uId ?? session?.uId ?? session?.user?.id,

@@ -1956,7 +1956,7 @@
   display: none !important;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .ws-desktop-nav {
     display: none !important;
   }

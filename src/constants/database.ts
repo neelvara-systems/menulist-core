@@ -1,3 +1,5 @@
+import { CANONICA_DB_COLLECTIONS } from './canonica/database';
+
 export const DB_COLLECTIONS = {
     PLATFORM_SUMMARY: "platformSummary",
     LANDING_PAGE_ENQUIRIES: "landingPageEnquiries",
@@ -149,31 +151,7 @@ export const DB_COLLECTIONS = {
     // DAL files use canonicaFirebaseClient, not firebaseClient.
     // @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
     // ═══════════════════════════════════════════════════════════════
-    CANONICA_ENTITIES: "canonica_entities",                       // Product ontology entities (features, plans, roles, workflows, states, integrations, errors)
-    CANONICA_ENTITY_RELATIONS: "canonica_entityRelations",       // Explicit typed relationships between entities
-    CANONICA_CANONICAL_ANSWERS: "canonica_canonicalAnswers",     // Governed, versioned, scoped knowledge assets
-    CANONICA_RELEASES: "canonica_releases",                       // Append-only product release timeline
-    CANONICA_MUTATION_PROPOSALS: "canonica_mutationProposals",   // Governed mutation queue (signal → knowledge)
-    CANONICA_SIGNAL_EVENTS: "canonica_signalEvents",             // Raw friction events (tickets, chat negative, escalations)
-    CANONICA_AUDIT_LOGS: "canonica_auditLogs",                   // Append-only audit trail for all governance actions
-    CANONICA_ENTITY_SEARCH_INDEX: "canonica_entitySearchIndex",  // Deterministic entity lookup (inverted index + synonyms)
-    CANONICA_ENTITY_CANDIDATES: "canonica_entityCandidates",     // Staging for AI-extracted entity candidates (pre-approval)
-    CANONICA_FRICTION_DAILY_STATS: "canonica_frictionDailyStats", // Daily per-entity friction metrics (Expansion Item #5)
-    CANONICA_SCHEDULER_RUN_LOGS: "canonica_schedulerRunLogs",    // Canonica nightly scheduler run logs (separate Firebase project)
-    CANONICA_CACHE_VERSIONS: "canonica_cacheVersions",           // Tiny per-store source-version manifests for cache freshness
-
-    // External Workflow Integrations (Expansion Item #7)
-    // Append-only event log + delivery attempt logs
-    // Feature-flagged: ENABLE_CANONICA_WORKFLOW_INTEGRATIONS
-    // @see __docs__/canonica/workflow-integrations/
-    CANONICA_INTEGRATION_EVENTS: "canonica_integrationEvents",
-    CANONICA_INTEGRATION_DELIVERY_LOGS: "canonica_integrationDeliveryLogs",
-
-    // Predictive Support (Expansion Item #12)
-    // Rule-based proactive help triggers
-    // Feature-flagged: ENABLE_CANONICA_PREDICTIVE_SUPPORT
-    // @see __docs__/canonica/predictive-support/
-    CANONICA_PREDICTIVE_TRIGGERS: "canonica_predictiveTriggers",
+    ...CANONICA_DB_COLLECTIONS,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

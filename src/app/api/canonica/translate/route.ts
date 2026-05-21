@@ -21,6 +21,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { bumpCanonicaCacheVersionAdmin } from '@lib/canonica/cacheVersionAdmin';
 import { CANONICA_CACHE_SOURCES } from '@lib/canonica/cacheVersionManifest';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
@@ -72,11 +73,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const article = articleDoc.data()!;
         const articleTenantId = Number(article.tId ?? article.tenantId);
         const articleStoreId = Number(article.sId ?? article.storeId);
+        const sessionScope = resolveCanonicaSessionScope(session) || {
+            tenantId: Number(session.tId),
+            storeId: Number(session.sId),
+        };
         if (
             !Number.isFinite(articleTenantId) ||
             !Number.isFinite(articleStoreId) ||
-            articleTenantId !== Number(session.tId) ||
-            articleStoreId !== Number(session.sId)
+            articleTenantId !== Number(sessionScope.tenantId) ||
+            articleStoreId !== Number(sessionScope.storeId)
         ) {
             return NextResponse.json({ error: 'Article not found.' }, { status: 404 });
         }

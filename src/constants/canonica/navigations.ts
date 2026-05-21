@@ -21,6 +21,7 @@ import {
     LuShield,
     LuTicket,
 } from 'react-icons/lu';
+import { isCanonicaProductHostname } from './domains';
 
 // ═══════════════════════════════════════════════════════════════
 // ROUTE CONSTANTS
@@ -43,6 +44,22 @@ export const CANONICA_ROUTES = {
     WIDGET: `${CANONICA_BASE_PATH}/widget`,
     SETTINGS: `${CANONICA_BASE_PATH}/settings`,
 } as const;
+
+export function toCanonicaDashboardRoute(route: string, hostname?: string | null) {
+    if (!isCanonicaProductHostname(hostname) || !route.startsWith(CANONICA_BASE_PATH)) {
+        return route;
+    }
+
+    return route.slice(CANONICA_BASE_PATH.length) || '/dashboard';
+}
+
+export function normalizeCanonicaRoutePathname(pathname: string) {
+    if (pathname === '/' || pathname.startsWith(CANONICA_BASE_PATH)) {
+        return pathname;
+    }
+
+    return `${CANONICA_BASE_PATH}${pathname}`;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SIDEBAR NAVIGATION
