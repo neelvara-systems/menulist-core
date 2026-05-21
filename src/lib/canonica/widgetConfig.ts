@@ -5,6 +5,7 @@ export const CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS = 60;
 
 export const CANONICA_WIDGET_SCOPES = [
     'widget:config',
+    'widget:content',
     'widget:search',
     'widget:feedback',
     'widget:predictive',

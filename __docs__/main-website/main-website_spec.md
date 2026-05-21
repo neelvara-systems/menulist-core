@@ -169,11 +169,11 @@ ChatGPT had zero awareness of these built features:
 
 ### Sections Preserved as Components or Homepage Sections
 
-- **PreparedForYouSection** — All 6 capabilities stay (unique competitive advantage)
-- **SurfacesSection** — Saved menu shortcut is included as a repeat-access surface; Google/Instagram/WhatsApp placement stays manually framed.
+- **PreparedForYouSection** — Keep rollout proof compact; current homepage renders 5 placement cards instead of a broad capability grid
+- **SurfacesSection** — Saved menu shortcut is included as a repeat-access surface; feedback is framed as a public-correction loop; Google/Instagram/WhatsApp placement stays manually framed.
 - **StatsSection** — Preserved as supporting component, not mounted on current homepage.
 - **BusinessSection** — Preserved as supporting component, not mounted on current homepage.
-- **IndustrySection** — Preserved as supporting component/future page material, not mounted on current homepage.
+- **IndustrySection** — Preserved as supporting component/future page material, not mounted on current homepage; do not add separate industry/flexibility homepage copy unless future edits make the page visibly too restaurant-only.
 - **InteractiveWorkflowSection** — Content stays, just moved up in order
 - **FaqSection** — Minor updates to align with new positioning
 

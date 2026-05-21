@@ -224,18 +224,15 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 > MenuList starts from the menu you already have, then prepares the pieces owners usually chase across separate tools.
 
-**Prepared cards (6):**
+**Prepared cards (3):**
 
-- Upload the current menu.
-- Item images prepared.
-- Descriptions and details.
-- Language support.
-- Brand and layout.
-- Launch materials.
+- Menu structure prepared.
+- Public presentation prepared.
+- Launch materials prepared.
 
 **Notes:**
 
-- Included because setup-effort removal is one of the strongest buying triggers.
+- Included because setup-effort removal is one of the strongest buying triggers, but now compressed to avoid making the homepage feel like a configuration tour.
 - New copy keeps owner approval in the center and avoids pretending AI publishes unchecked.
 
 ---
@@ -248,23 +245,26 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 **Supporting text:**
 
-> The public output is the proof. MenuList connects the official page, live menu, QR assets, saved menu shortcut, screens, and share links around the same source.
+> The public output is the proof. MenuList connects the official page, QR menu, public link, customer actions, saved shortcut, discovery source, activity signals, and customer feedback loop around the same approved menu.
 
-**Surface tiles (7):**
+**Surface tiles (8):**
 
 | # | Surface | Purpose |
 | --- | --- | --- |
 | 1 | QR Menu | Customers scan and see the current published menu. |
 | 2 | Public Link | One official link for WhatsApp, Instagram, and packaging. |
-| 3 | Digital Screens | Store screens can reflect the same published source. |
-| 4 | PDF Export | Clean export when print or internal use is needed. |
-| 5 | Official Page | Menu, hours, photos, directions, contact, and language choice. |
-| 6 | Saved menu shortcut | Repeat customers keep the business close on their phone. |
-| 7 | Google, Instagram, WhatsApp | Presence Monitor tracks manual placement without claiming automatic external sync. |
+| 3 | Official Business Page | Menu, hours, photos, directions, contact, and customer actions. |
+| 4 | Customer Actions | Customers can call, WhatsApp, get directions, see photos, and open the menu from the same current version. |
+| 5 | Saved Menu Shortcut | Repeat customers keep the current menu close on their phone. |
+| 6 | Clear Public Source | Search and answer systems get cleaner public business information without ranking promises. |
+| 7 | Simple Activity Signals | A small usage/freshness trust signal, not a full analytics section. |
+| 8 | Customer Feedback Loop | Customers can flag wrong prices, missing items, outdated details, or menu issues so the owner can correct the approved source. |
 
 **Notes:**
 
 - Section still carries `id="public-proof"` for footer/public-proof links. The hero secondary CTA now points to the customer preview section at `#customer-demo`.
+- Feedback is framed as a public-correction loop, not reviews, reputation management, testimonials, or growth marketing.
+- Analytics and Search/AEO remain small confidence cards here, not full homepage sections. Multi-location stays conservative in FAQ/supporting pages instead of taking a homepage surface card.
 - Do not claim automatic Google/Instagram/WhatsApp sync unless the runtime path proves it.
 
 ---
@@ -469,7 +469,7 @@ MenuList turns approved menu and business details into visible public pages, str
 **Notes:**
 
 - Retained as a supporting component because `IndustrySection` can prevent category narrowing on future/expanded pages.
-- This should widen the buyer's mental model without turning the homepage into scattered industry SEO pages.
+- Do not add standalone industry/flexibility copy to the compressed homepage unless the live page becomes visibly too restaurant-only after future edits. Keep the current homepage focused on public-source proof and let the FAQ carry business-fit breadth.
 
 ---
 

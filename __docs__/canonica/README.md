@@ -84,7 +84,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - `/canonica/support` → `src/app/(canonica)/canonica/support/page.tsx`
 - `/canonica/release-notes` → `src/app/(canonica)/canonica/release-notes/page.tsx`
 
-The primary embedded MenuList client support home is `/help-center`, backed by `src/app/(main)/help-center/page.tsx` and `src/components/templates/main-app/helpCenter`. The `/canonica/help` route is a compatibility/direct shell route that reuses the same Help Center home; `/canonica/docs`, `/canonica/support`, and `/canonica/release-notes` remain direct tab/surface routes for documentation, store-scoped support tickets, and release notes.
+The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard and management surfaces remain separate product routes. The `/canonica/help` route is a compatibility/direct shell route that reuses the same Help Center home; `/canonica/docs`, `/canonica/support`, and `/canonica/release-notes` remain direct tab/surface routes for documentation, store-scoped support tickets, and release notes.
 
 ### Canonica Operator Routes
 
@@ -99,9 +99,9 @@ The primary embedded MenuList client support home is `/help-center`, backed by `
 
 The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client sessions see only the client support routes; `PLATFORM` and `PLATFORM_SUPPORT` sessions can also access operator management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
-### MenuList Client Wiring
+### MenuList Help Center Boundary
 
-MenuList is the first embedded Canonica client. Owner support entry points now open the existing Help Center home instead of a separate lightweight Canonica client home:
+MenuList owner support entry points open the MenuList-owned Help Center home. They do not mount Canonica management screens or the Canonica widget inside the MenuList owner shell:
 
 - Desktop sidebar Help → `/help-center`
 - Desktop support popover Help Center → `/help-center`
@@ -112,25 +112,7 @@ MenuList is the first embedded Canonica client. Owner support entry points now o
 - Mobile More tab Support Tickets → existing Help Center `ticket` tab inside `MobileShell`
 - Mobile More tab Release Notes → existing Help Center `changelog` tab inside `MobileShell`
 
-The mobile More tab does not route-hop to `/canonica/*`; it renders `src/components/templates/main-app/helpCenter` inside the MenuList mobile shell to prevent hash/router fights, accidental desktop fallback, or app reloads. Direct visits to `/help-center`, `/help-center/kb`, `/help-center/ticket`, `/help-center/changelog`, and legacy `?tab=` URLs resolve to the same Help Center tabs. Nested `/help-center/*` routes are treated as MobileShell routes, so mobile article, ticket, and changelog deep links do not fall back to Today or a blank desktop shell. Article deep links use `/help-center/kb/articles/:articleId`; changelog deep links use `/help-center/changelog/:entryId`. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, and `/canonica/changelog` stay platform-only management surfaces.
-
-### MenuList Platform Operator Wiring
-
-MenuList also exposes Canonica operator screens for `PLATFORM` users from Mobile More -> Canonica. These are real product screens mounted through `src/components/mobile/screens/MobilePlatformInternalScreen.tsx`, not lightweight overview pages:
-
-- Support Tickets
-- Feedback Admin
-- Knowledge Base
-- KB Generation
-- Changelog
-- Widget Management
-- Chat Management
-- Chat Insights
-- Chat Backfill
-- Chat Weekly Digest
-- Chat ROI Calculator
-
-Back navigation from these screens returns to the Canonica hub. Expensive operations such as Chat Backfill must use explicit user confirmation and the cached platform store-summary selector instead of raw tenant/store inputs or the logged-in user's default store.
+The mobile More tab does not route-hop to `/canonica/*`; it renders `src/components/templates/main-app/helpCenter` inside the MenuList mobile shell to prevent hash/router fights, accidental desktop fallback, or app reloads. Direct visits to `/help-center`, `/help-center/kb`, `/help-center/ticket`, `/help-center/changelog`, and legacy `?tab=` URLs resolve to the same Help Center tabs. Nested `/help-center/*` routes are treated as MobileShell routes, so mobile article, ticket, and changelog deep links do not fall back to Today or a blank desktop shell. Article deep links use `/help-center/kb/articles/:articleId`; changelog deep links use `/help-center/changelog/:entryId`. Canonica operator routes such as `/canonica/dashboard`, `/canonica/knowledge-base`, `/canonica/tickets`, `/canonica/changelog`, and `/canonica/widget` stay in the Canonica product dashboard.
 
 ### Canonica Public Routes
 

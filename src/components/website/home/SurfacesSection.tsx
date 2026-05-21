@@ -1,6 +1,15 @@
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuFileText, LuLayoutGrid, LuLink, LuMapPin, LuMonitor, LuQrCode, LuSmartphone } from 'react-icons/lu';
+import {
+  LuActivity,
+  LuLayoutGrid,
+  LuLink,
+  LuMessageCircle,
+  LuMousePointerClick,
+  LuQrCode,
+  LuSearch,
+  LuSmartphone,
+} from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -8,11 +17,12 @@ import SectionWrapper from '../shared/SectionWrapper';
 const surfaceMeta = [
   { icon: LuQrCode },
   { icon: LuLink },
-  { icon: LuMonitor },
-  { icon: LuFileText },
   { icon: LuLayoutGrid },
+  { icon: LuMousePointerClick },
   { icon: LuSmartphone },
-  { icon: LuMapPin },
+  { icon: LuSearch },
+  { icon: LuActivity },
+  { icon: LuMessageCircle },
 ];
 
 export default function SurfacesSection() {

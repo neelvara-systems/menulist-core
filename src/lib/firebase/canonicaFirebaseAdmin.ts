@@ -25,7 +25,10 @@ const getCanonicaStorageBucket = () =>
     process.env.NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET;
 
 function normalizePrivateKey(privateKey: string): string {
-    return privateKey.replace(/\\n/g, '\n').trim();
+    return privateKey
+        .replace(/\\\r?\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .trim();
 }
 
 function getAdminCredential(prefix: 'FIREBASE' | 'CANONICA_FIREBASE'): admin.credential.Credential | null {

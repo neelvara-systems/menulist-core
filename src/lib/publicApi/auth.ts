@@ -121,10 +121,11 @@ export function logApiRequest(
  *
  * @returns Store data if valid key, null if invalid
  */
-export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetApi' | 'canonicaWidgetTestApi';
+export type PublicApiCredentialSource = 'publicApi' | 'canonicaWidgetApi';
 export type PublicApiCredentialScope =
     | 'public:read'
     | 'widget:config'
+    | 'widget:content'
     | 'widget:search'
     | 'widget:feedback'
     | 'widget:predictive';
@@ -141,12 +142,9 @@ export type PublicApiKeyValidationOptions = {
     includePublicApi?: boolean;
     includeCanonicaWidgetApi?: boolean;
     cacheTtlMs?: number;
-    includeCanonicaWidgetTestApi?: boolean;
     preferCanonicaWidgetApi?: boolean;
-    preferCanonicaWidgetTestApi?: boolean;
 };
 
-const isCanonicaWidgetTestKey = (apiKey: string): boolean => /^cn_[a-f0-9]{64}$/i.test(apiKey);
 const MAX_VALIDATION_CACHE_TTL_MS = 30_000;
 const validationCache = new Map<string, {
     expiresAt: number;
@@ -159,18 +157,14 @@ const buildValidationCacheKey = (
         allowLegacyRawFallback: boolean;
         includePublicApi: boolean;
         includeCanonicaWidgetApi: boolean;
-        includeCanonicaWidgetTestApi: boolean;
         preferCanonicaWidgetApi: boolean;
-        preferCanonicaWidgetTestApi: boolean;
     },
 ) => [
     keyHash,
     options.allowLegacyRawFallback ? 'legacy' : 'hash-only',
     options.includePublicApi ? 'with-public' : 'without-public',
     options.includeCanonicaWidgetApi ? 'with-widget' : 'without-widget',
-    options.includeCanonicaWidgetTestApi ? 'with-widget-test' : 'public-only',
     options.preferCanonicaWidgetApi ? 'prefer-widget' : 'prefer-non-widget',
-    options.preferCanonicaWidgetTestApi ? 'prefer-widget-test' : 'prefer-public',
 ].join(':');
 
 const getValidationCacheTtl = (ttlMs: number | undefined): number => {
@@ -193,7 +187,6 @@ export async function validatePublicApiKey(
     const allowLegacyRawFallback = options.allowLegacyRawFallback !== false;
     const includePublicApi = options.includePublicApi !== false;
     const includeCanonicaWidgetApi = Boolean(options.includeCanonicaWidgetApi);
-    const includeCanonicaWidgetTestApi = Boolean(options.includeCanonicaWidgetTestApi);
     const dedicatedCanonicaDb = !shouldUseSharedCanonicaFirebase
         && normalizedApiKey.startsWith('cn_')
         && includeCanonicaWidgetApi
@@ -202,20 +195,13 @@ export async function validatePublicApiKey(
         ? canonicaFirestoreAdmin
         : null;
     const preferCanonicaWidgetApi = Boolean(options.preferCanonicaWidgetApi && includeCanonicaWidgetApi);
-    const preferCanonicaWidgetTestApi = Boolean(
-        options.preferCanonicaWidgetTestApi
-        && includeCanonicaWidgetTestApi
-        && isCanonicaWidgetTestKey(normalizedApiKey)
-    );
     const cacheTtl = getValidationCacheTtl(options.cacheTtlMs);
     const cacheKey = cacheTtl
         ? buildValidationCacheKey(keyHash, {
             allowLegacyRawFallback,
             includePublicApi,
             includeCanonicaWidgetApi,
-            includeCanonicaWidgetTestApi,
             preferCanonicaWidgetApi,
-            preferCanonicaWidgetTestApi,
         })
         : '';
 
@@ -229,52 +215,14 @@ export async function validatePublicApiKey(
         }
     }
 
-    const queryCanonicaWidgetTestApi = async () => db
-        .collection(DB_COLLECTIONS.STORES)
-        .where('canonicaWidgetTestApi.apiKeyHash', '==', keyHash)
-        .limit(1)
-        .get();
-
     const queryCanonicaWidgetApi = async () => {
         const primaryDb = dedicatedCanonicaDb || db;
-        const primarySnapshot = await primaryDb
+        return primaryDb
             .collection(DB_COLLECTIONS.STORES)
             .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
             .limit(1)
             .get();
-
-        if (!primarySnapshot.empty || !dedicatedCanonicaDb) {
-            return primarySnapshot;
-        }
-
-        // Compatibility fallback for legacy MenuList-hosted test installs that
-        // stored a real Canonica widget key before the dedicated project split.
-        return db.collection(DB_COLLECTIONS.STORES)
-            .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
-            .limit(1)
-            .get();
     };
-
-    if (preferCanonicaWidgetTestApi) {
-        const widgetSnapshot = await queryCanonicaWidgetTestApi();
-        if (!widgetSnapshot.empty) {
-            const doc = widgetSnapshot.docs[0];
-            const storeData = doc.data();
-            const result: PublicApiKeyValidationResult = {
-                credential: storeData.canonicaWidgetTestApi,
-                credentialSource: 'canonicaWidgetTestApi',
-                storeData,
-                storeId: doc.id,
-            };
-            if (cacheKey && cacheTtl) {
-                validationCache.set(cacheKey, {
-                    expiresAt: Date.now() + cacheTtl,
-                    result,
-                });
-            }
-            return result;
-        }
-    }
 
     if (preferCanonicaWidgetApi) {
         const widgetSnapshot = await queryCanonicaWidgetApi();
@@ -327,16 +275,6 @@ export async function validatePublicApiKey(
         credentialSource = 'canonicaWidgetApi';
     }
 
-    if (
-        (!snapshot || snapshot.empty)
-        && includeCanonicaWidgetTestApi
-        && normalizedApiKey.startsWith('cn_')
-        && !preferCanonicaWidgetTestApi
-    ) {
-        snapshot = await queryCanonicaWidgetTestApi();
-        credentialSource = 'canonicaWidgetTestApi';
-    }
-
     if (!snapshot || snapshot.empty) {
         secureLog('[Public API] Invalid API key attempt');
         if (cacheKey && cacheTtl) {
@@ -353,9 +291,7 @@ export async function validatePublicApiKey(
     const result: PublicApiKeyValidationResult = {
         credential: credentialSource === 'publicApi'
             ? storeData.publicApi
-            : credentialSource === 'canonicaWidgetApi'
-                ? storeData.canonicaWidgetApi
-                : storeData.canonicaWidgetTestApi,
+            : storeData.canonicaWidgetApi,
         credentialSource,
         storeData,
         storeId: doc.id,
@@ -382,11 +318,11 @@ export function hasPublicApiCredentialScope(
 
     const purpose = typeof credential.purpose === 'string' ? credential.purpose : '';
     if (requiredScope.startsWith('widget:')) {
-        return purpose === 'canonica_widget' || purpose === 'canonica_widget_test_host';
+        return purpose === 'canonica_widget';
     }
 
     if (requiredScope === 'public:read') {
-        return purpose !== 'canonica_widget' && purpose !== 'canonica_widget_test_host';
+        return purpose !== 'canonica_widget';
     }
 
     return false;

@@ -26,14 +26,15 @@ src/data/CanonicaPlansList.ts                    # Canonica plans config
 **Body:** `{ companyName, productName?, planId?, interval?, currency? }`
 
 **Flow:**
-1. Verify user doesn't already have tenant/store (prevents re-onboarding)
+1. Verify user doesn't already have `productAccounts.CN` or a Canonica-project tenant/store (prevents re-onboarding while allowing existing MenuList owners to add Canonica)
 2. Rate limiting (3/hour per user)
 3. Validate input (companyName min 2 chars)
 4. Resolve plan (beta default)
-5. Atomic Firestore transaction: create tenant + store + update user + update platform summary
+5. Atomic Firestore transaction: create Canonica tenant + store + Canonica user
 6. Create subscription (beta: free, 6-month window; paid: Razorpay recurring subscription)
-7. Generate API key (`cn_` prefix) on store document
-8. Return tenantId, storeId, subscriptionId, apiKey
+7. Write the default-auth bridge under `productAccounts.CN` and upsert `platformSummary/canonicaTenantsSummary`
+8. Generate widget API key (`cn_` prefix) under `stores/{sId}.canonicaWidgetApi`
+9. Return tenantId, storeId, subscriptionId, apiKey
 
 **Reuses from MenuList:**
 - Same atomic transaction pattern as `create-subscription/route.ts`
@@ -95,17 +96,17 @@ Response (success):
 
 For paid plans, `subscription` contains the Razorpay subscription id, payment URL, and provider status. The Firestore subscription is created as `pending`; activation still depends on the existing Razorpay webhook/reconciliation flow.
 
-Errors: 400 (already onboarded / invalid input), 401 (not authenticated), 429 (rate limited), 500 (server error)
+Errors: 400 (already onboarded / invalid input), 401 (not authenticated), 403 (feature unavailable), 429 (rate limited), 500 (server error)
 
 ---
 
 ## Tenant Isolation
 
-Canonica tenants share the same Firestore collections as MenuList tenants but are identified by:
+Canonica uses the same collection names but, in separate mode, writes them to the Canonica Firebase project. Documents are identified by:
 - `onboardingSource: 'CANONICA_ONBOARDING'` on tenant + store docs
 - `productId: 'CN'` on tenant + store docs
 - `businessType: 'SaaS'` + `businessIndustry: 'B2B'`
-- API key prefix: `cn_*` (vs `ml_*` for MenuList)
+- API key prefix: `cn_*` (vs `ml_*` for MenuList), persisted under `canonicaWidgetApi`
 
 This allows querying Canonica-specific tenants without a separate collection.
 
@@ -115,5 +116,6 @@ This allows querying Canonica-specific tenants without a separate collection.
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-21 | 1.2.0 | Documented separate-product onboarding sequence: Canonica-project user, default-auth `productAccounts.CN` bridge, tenant summary, and `canonicaWidgetApi` key |
 | 2026-05-16 | 1.1.0 | Added paid Canonica Razorpay subscription path and `currency` input |
 | 2026-03-07 | 1.0.0 | Initial implementation |

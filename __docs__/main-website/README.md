@@ -136,7 +136,8 @@ Active decisions:
 - Align hero pricing microcopy with the 7-day setup language.
 - Render the public website wordmark as `MenuList`, not `MenuList AI`.
 - Use "saved menu shortcut" in homepage-facing copy where "Customer app" could sound like a native app-store promise.
-- Keep search/AEO, POS Sync, analytics, staff access, and multi-location proof conservative and supporting-page-led.
+- Keep search/AEO, POS Sync, analytics, staff access, multi-location, and industry breadth conservative and supporting-page-led.
+- Include feedback on the homepage only as a small public-correction card: customers can flag wrong public details, and owners correct the same approved source. Do not frame it as reviews, reputation management, or testimonials.
 
 ## Stage 6.1 Synthetic Asset Pack
 

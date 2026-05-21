@@ -81,5 +81,6 @@ canonica.app/get-started
 
 | Date | Change |
 |------|--------|
+| 2026-05-21 | Client-product-specific widget/changelog adapters removed from runtime; external clients must embed the generic widget script with Canonica-issued keys from their own codebase |
 | 2026-05-21 | Separate-mode onboarding writes Canonica product data to `canonica-qa` and stores only `productAccounts.CN` on the default auth user bridge |
 | 2026-03-07 | Initial implementation: beta plan, Google OAuth, atomic provisioning |

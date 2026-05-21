@@ -63,7 +63,7 @@ const allowedOriginsEqual = (left: string[], right: string[]): boolean => {
 };
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
     }
 
@@ -99,7 +99,7 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
 });
 
 export const PUT = withAuth(async (request: NextRequest, session) => {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
     }
 

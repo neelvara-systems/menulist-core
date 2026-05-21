@@ -82,15 +82,14 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 11. **Hash-only Canonica auth path** — Widget and Canonica public routes disable the legacy raw-key fallback because Canonica `cn_*` keys are stored hash-only.
 12. **Short positive auth cache** — Widget search, predictive help, and feedback reuse a positive API-key validation result for up to 15 seconds per warm server instance. Revocation can take up to that short TTL to reflect on that instance.
 13. **Predictive trigger index cache** — Page-context suggestions reuse the `platformSummary/predictiveTriggers_{tId}_{sId}` document for 60 seconds per warm server instance.
-14. **Same-tab test key cache** — The temporary MenuList test host keeps the deterministic widget key in `sessionStorage`, avoiding repeated key-resolution API calls during same-tab remounts.
-15. **Runtime config cache** — `/api/widget/config` uses short server caching and browser `sessionStorage`, so installed scripts do not re-read Firestore on every route render.
-16. **Explicit-save dashboard writes** — `/canonica/widget` keeps edits local until Save; no Firestore writes happen while typing, moving controls, or previewing.
-17. **Scoped widget credential field** — `canonicaWidgetApi` separates widget keys from `publicApi`, so widget runtime routes can opt into widget scopes without broader public API reads.
-18. **Negative API-key validation cache** — repeated invalid widget keys are cached briefly per warm server instance, reducing repeated Firestore misses during abuse or broken installs.
-19. **No-op config save guard** — dashboard saves compare normalized config/origin values before writing, so repeated Save clicks do not increment `widgetConfigVersion` or write the store document.
-20. **Duplicate feedback guard** — repeated identical thumbs feedback returns success without another `aiSearchHistory` write or duplicate negative signal event.
-21. **Predictive context cache** — the loader caches same-page predictive results/misses for a short TTL, avoiding repeated auth/index reads from route remounts with identical context.
-22. **Route blocklist is local** — blocked routes ride the existing runtime config response and use `window.location.pathname`; route changes do not create Firebase reads, writes, or listeners.
+14. **Runtime config cache** — `/api/widget/config` uses short server caching and browser `sessionStorage`, so installed scripts do not re-read Firestore on every route render.
+15. **Explicit-save dashboard writes** — `/canonica/widget` keeps edits local until Save; no Firestore writes happen while typing, moving controls, or previewing.
+16. **Scoped widget credential field** — `canonicaWidgetApi` separates widget keys from `publicApi`, so widget runtime routes can opt into widget scopes without broader public API reads.
+17. **Negative API-key validation cache** — repeated invalid widget keys are cached briefly per warm server instance, reducing repeated Firestore misses during abuse or broken installs.
+18. **No-op config save guard** — dashboard saves compare normalized config/origin values before writing, so repeated Save clicks do not increment `widgetConfigVersion` or write the store document.
+19. **Duplicate feedback guard** — repeated identical thumbs feedback returns success without another `aiSearchHistory` write or duplicate negative signal event.
+20. **Predictive context cache** — the loader caches same-page predictive results/misses for a short TTL, avoiding repeated auth/index reads from route remounts with identical context.
+21. **Route blocklist is local** — blocked routes ride the existing runtime config response and use `window.location.pathname`; route changes do not create Firebase reads, writes, or listeners.
 
 ## Cache Strategy Decision
 
@@ -102,11 +101,7 @@ The widget intentionally uses a mixed cache strategy instead of forcing every ca
 | Widget API-key validation | Short process-local positive/negative cache | Keep. Staleness is bounded to seconds, so key revoke/origin changes are not hidden behind a long shared cache. |
 | Canonical answer instant responses | Upstash Redis instant cache | Keep. This is deterministic canonical-answer output with source-version freshness validation and high provider-cost avoidance. |
 | Predictive cooldowns/rate limits | Upstash Redis | Keep. These require shared cross-instance counters/TTL state. |
-| Public MenuList menu/OBP pages | Next/Vercel Data Cache + `revalidateTag` owner-side invalidation | Keep for MenuList public pages. This pattern is for public SSR/read models, not API-key scoped widget credentials. |
-
 Do **not** move widget runtime config to Upstash now. A Redis `GET` on every widget config request can cost more than the Firestore read it replaces at low/medium traffic, and it adds a second invalidation path for key revoke and origin changes.
-
-Do **not** move widget runtime config to MenuList public-menu cache tags now. That cache is optimized for public URL rendering with owner-side public truth invalidation. The widget config endpoint is credential-scoped and origin-scoped; broad public tags would increase coupling between Canonica and MenuList.
 
 Future trigger to reconsider: if widget config/auth reads become a measurable production cost driver, add a Canonica-specific cache layer with explicit tags such as `canonica-widget-store-{sId}` and forced invalidation from widget key/config writes. Do this only after measuring real read volume, because the current 60-second cache envelope keeps config reads low without long stale-auth risk.
 
@@ -126,9 +121,10 @@ The mutation engine (signal events from widget feedback → mutation proposals �
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-21 | 2.4.3   | Removed temporary client-product connector cost notes after separating Canonica runtime from client product code. |
 | 2026-05-20 | 2.4.2   | Added route blocklist cost note: no new collections, reads, writes, or Firestore listeners. |
 | 2026-05-19 | 2.4.1   | Added widget cost pass: 60-second runtime config server cache, negative auth cache, no-op config save guard, duplicate feedback guard, and predictive context cache. |
 | 2026-05-19 | 2.4.0   | Added widget management cost model: runtime config endpoint, explicit dashboard saves, and scoped `canonicaWidgetApi` credential writes. |
-| 2026-05-19 | 2.3.1   | Added widget Firebase cost pass: hash-only Canonica auth, short positive widget auth cache, predictive trigger index cache, same-tab MenuList test-key cache, and context-scoped search cache keys. |
+| 2026-05-19 | 2.3.1   | Added widget Firebase cost pass: hash-only Canonica auth, short positive widget auth cache, predictive trigger index cache, and context-scoped search cache keys. |
 | 2026-03-08 | 2.0.0   | Complete rewrite: added feedback operations, origin allowlist, SAFE_MODE read, updated cost projections for v2, long-term cost strategy |
 | 2026-03-07 | 1.0.0   | Initial cost analysis                                                                                                                   |

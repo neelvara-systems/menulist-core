@@ -13,7 +13,6 @@ import {
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
-import { PRODUCT_IDS } from '@constant/product';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { clearForceDesktopMode } from '@lib/mobile/forceDesktopMode';
 import type { MenuProps } from 'antd';
@@ -67,18 +66,11 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
         return name.charAt(0).toUpperCase();
     }, [session]);
 
-    const sourceProductId = (session as any)?.pId || (session?.user as any)?.pId || (session?.user as any)?.productId;
-    const isMenuListClient = sourceProductId === PRODUCT_IDS.MENULIST;
-    const returnLabel = isMenuListClient
-        ? (showMenuButton ? 'MenuList' : 'Back to MenuList')
-        : (showMenuButton ? 'Home' : 'Canonica Home');
+    const returnLabel = showMenuButton ? 'Home' : 'Canonica Home';
 
     const handleReturn = () => {
         clearForceDesktopMode();
-        router.push(isMenuListClient
-            ? (showMenuButton ? '/dashboard#mobile/more' : '/dashboard')
-            : toCanonicaDashboardRoute(CANONICA_ROUTES.DASHBOARD, currentHostname)
-        );
+        router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.DASHBOARD, currentHostname));
     };
 
     return (

@@ -72,8 +72,6 @@ export async function POST(request: NextRequest) {
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
             includeCanonicaWidgetApi: true,
             preferCanonicaWidgetApi: true,
-            includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
-            preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
         });
         if (!authResult) {
             return new NextResponse(null, { status: 204 });

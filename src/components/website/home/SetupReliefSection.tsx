@@ -1,11 +1,11 @@
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuCamera, LuFileText, LuImage, LuLanguages, LuPackage, LuPalette } from 'react-icons/lu';
+import { LuFileText, LuPackage, LuPalette } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
-const capIcons = [LuCamera, LuImage, LuFileText, LuLanguages, LuPalette, LuPackage];
+const capIcons = [LuFileText, LuPalette, LuPackage];
 
 export default function SetupReliefSection() {
   const t = useTranslations('Website');

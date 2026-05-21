@@ -1,12 +1,9 @@
 import { useChangelogCache } from '@hook/useChangelogCache';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import DisplayChangelog from '@template/platform/changelog/displayChangelog';
 import { ChangelogPage } from '@type/changelog';
-import { message, Typography } from 'antd';
+import { message } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useState } from 'react';
-
-const { Title, Paragraph } = Typography;
+import { useCallback, useEffect, useState } from 'react';
 
 interface ChangelogViewProps {
     initialEntryId?: string;
@@ -16,10 +13,8 @@ const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
     const t = useTranslations('HelpCenter');
     const { getItem } = useChangelogCache();
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
 
-    const fetchLatestPage = async () => {
-        if (!storeDetails) return;
+    const fetchLatestPage = useCallback(async () => {
         try {
             const page = await getItem();
             if (page) {
@@ -28,11 +23,11 @@ const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
         } catch (error) {
             message.error(t('failedToLoadChangelogPage'));
         }
-    };
+    }, [getItem, t]);
 
     useEffect(() => {
-        fetchLatestPage();
-    }, [storeDetails]);
+        void fetchLatestPage();
+    }, [fetchLatestPage]);
 
     return (
         <DisplayChangelog initialEntryId={initialEntryId} pageData={changelogPage} />

@@ -53,12 +53,10 @@ src/app/api/widget/search/route.ts        # Origin allowlist, conversation histo
 src/app/api/widget/feedback/route.ts      # Feedback endpoint with tenant-scoped searchHistory ownership check
 src/app/api/canonica/widget-key/route.ts  # Hash-only widget key generate/revoke endpoint
 src/app/api/canonica/widget-config/route.ts # Protected dashboard load/save endpoint
-src/app/api/canonica/menulist-widget-test-key/route.ts  # MenuList-as-client test key adapter
 src/app/(canonica)/canonica/settings/page.tsx  # Thin page wrapper (dynamic import of template)
 src/app/(canonica)/canonica/widget/page.tsx    # Dedicated widget management route
 src/components/templates/canonica/CanonicaSettings.tsx  # Workspace settings entry point, links to widget management
 src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx  # Widget management UI
-src/components/canonica/MenuListCanonicaWidgetTestHost.tsx  # Temporary MenuList external-client host
 src/types/platform/store.ts               # MODIFY: added canonicaWidgetApi + widgetConfig + widgetAllowedOrigins fields
 ```
 
@@ -146,18 +144,16 @@ Route blocklist support lives in the loader script, not in a backend route. Save
 
 Predictive help calls are also deduped in the loader: identical sanitized page/context payloads reuse the last short-lived suggestion or miss, so route remounts do not repeatedly hit auth, trigger-index reads, or cooldown checks for the same page state.
 
-### 3.3.1 MenuList-as-Client Test Host
+### 3.3.1 External Client Integration Boundary
 
-`ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST` mounts the real widget inside the MenuList owner app for integration testing only. This treats MenuList as a separate external client:
+Canonica does not ship product-specific widget hosts inside client product shells. A client product integrates the widget by loading `public/widget/canonica-widget.js` from its own runtime with a real `canonicaWidgetApi` key generated in the Canonica dashboard.
 
-- `MenuListCanonicaWidgetTestHost` requests `POST /api/canonica/menulist-widget-test-key`.
-- The route derives a deterministic per-store `cn_*` key from `NEXTAUTH_SECRET`, stores only `hashApiKey(apiKey)` under `stores/{sId}.canonicaWidgetTestApi`, and returns the raw key to the current authenticated page.
-- The host injects `/widget/canonica-widget.js` with the returned key, `data-history="session"`, and sanitized mount-time context attributes. The public script creates the same launcher and iframe used by external products. On route changes, the adapter mirrors the latest context back onto the script `data-*` attributes before calling the SDK.
-- Context is limited to sanitized MenuList page/workflow hints such as `menulist_projects_home`; no MenuList tenant/store/user IDs are sent as product context.
-- When the MenuList route page key changes, the adapter calls `clearHistory()` before `page(nextContext)` so old feature/page conversation history cannot contaminate the new page context. Close/open on the same page still preserves the page session.
-- The host stores the deterministic test key in same-tab `sessionStorage` after the server route has written/verified the hashed key and origin allowlist, so remounts in the same tab do not keep re-reading the store document.
-- Widget runtime routes explicitly opt in to this test credential source for predictive help, widget search, and widget feedback only. Shared public API validation defaults to normal `publicApi` credentials, so this temporary key cannot authorize unrelated MenuList or Canonica public API routes.
-- The deterministic test key shape is `cn_` plus a 64-character HMAC digest. Widget routes prefer the `canonicaWidgetTestApi` lookup for that shape in test mode, avoiding repeated failed `publicApi` lookups during local integration testing.
+Context-aware support remains generic:
+
+- Client products can use script `data-*` attributes or `window.CanonicaWidget.page()` / `setContext()` to pass sanitized page, feature, workflow, plan, role, and entity-hint context.
+- Canonica must not require a client product's tenant/store/user IDs for widget mounting.
+- Client route blocklists are configured in the Canonica widget dashboard or through the generic `data-blocked-routes` attribute.
+- Product-specific adapters, if any, belong in the client product's own codebase, not in Canonica core runtime.
 
 ### 3.3.2 Widget Management Console
 
@@ -505,8 +501,9 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-20 | 2.4.2   | Added saved and script-level blocked route support so client products can hide the widget on selected routes without extra Firebase reads. |
-| 2026-05-19 | 2.3.1   | Widget Firebase cost hardening: hash-only Canonica auth path, 15-second positive widget auth cache, 60-second predictive trigger index cache, same-tab MenuList test-key cache, and context-scoped search cache keys. |
-| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, iframe ready handshake, MenuList external-client context wiring, page-change history reset, and stale async response guard in the iframe client. |
+| 2026-05-21 | 2.4.3   | Removed the temporary client-product-specific widget host and test-key route; widget embedding is now only through the generic public script plus Canonica-issued widget keys. |
+| 2026-05-19 | 2.3.1   | Widget Firebase cost hardening: hash-only Canonica auth path, 15-second positive widget auth cache, 60-second predictive trigger index cache, and context-scoped search cache keys. |
+| 2026-05-18 | 2.3.0   | Widget runtime UX/context hardening: mount-time context attributes, explicit `data-history` behavior, clear-history/open-close event SDK, iframe ready handshake, page-change history reset, and stale async response guard in the iframe client. |
 | 2026-05-12 | 2.2.1   | Public endpoint cost/security hardening: malformed key short-circuit before Firestore lookup, hash-based rate-limit keys before auth lookup, positive workspace validation, and tenant-filtered vector-search/index documentation. |
 | 2026-05-12 | 2.2.0   | Runtime contract hardening: hash-only widget keys, Canonica-specific key endpoint, tenant-scoped search history feedback, server-side widget image validation, guided workflow rendering, predictive suggestion delivery, and tenant-scoped KB category docs. |
 | 2026-03-09 | 2.1.0   | Settings page refactored: 520-line inline page → thin wrapper + CanonicaSettings template. Feature Status card removed (exposed internal flags). Sidebar now filters nav by feature flags. Governance useMemo deps fixed. Setup progress guide added to settings. |

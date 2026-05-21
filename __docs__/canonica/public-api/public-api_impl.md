@@ -34,7 +34,6 @@
 Widget credentials are intentionally separate:
 
 - `stores.canonicaWidgetApi` is accepted only by widget runtime routes.
-- `stores.canonicaWidgetTestApi` is accepted only by the temporary MenuList-as-client widget test host.
 - Legacy `stores.publicApi.purpose = "canonica_widget"` keys remain accepted by widget routes but are rejected by Canonica public API routes.
 
 ---

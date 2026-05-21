@@ -272,10 +272,10 @@ export const authOptions: NextAuthOptions = {
                     storeId: dbUser.storeId,
                     pId: (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     productId: (dbUser as any).productId || (dbUser as any).pId || DEFAULT_PRODUCT_ID,
-                    productAccounts: (dbUser as any).productAccounts,
+                    productAccounts: serializeAuthSessionValue((dbUser as any).productAccounts),
                     platformRole: dbUser.platformRole,
                     role: sessionStoreRole || '',
-                    sessionRevokedAt: (dbUser as any).sessionRevokedAt,
+                    sessionRevokedAt: serializeAuthTimestamp((dbUser as any).sessionRevokedAt),
                     stores: dbUser.stores
                 };
                 session.authIssuedAt = typeof token?.sessionIssuedAt === 'number' ? token.sessionIssuedAt : token?.iat;
@@ -508,6 +508,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
             },
         }
         : productAccounts;
+    const safeProductAccounts = serializeAuthSessionValue(normalizedProductAccounts);
 
     // ✅ PERFORMANCE: Keep JWT cookie small
     // NextAuth JWT is stored in a cookie (header). If it gets too big, the app will fail with HTTP 431.
@@ -532,7 +533,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         productId: normalizeAuthProductId(sanitized.productId)
             || normalizeAuthProductId(sanitized.pId)
             || DEFAULT_PRODUCT_ID,
-        productAccounts: normalizedProductAccounts,
+        productAccounts: safeProductAccounts,
         platformRole: sanitized.platformRole,
         role: sanitized.role,
         staffAuthMode: sanitized.staffAuthMode,
@@ -564,9 +565,38 @@ const serializeAuthTimestamp = (value: any): string | number | undefined => {
     return undefined;
 };
 
+const serializeAuthSessionValue = (value: any): any => {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== 'object') return value;
+
+    const timestampValue = serializeAuthTimestamp(value);
+    if (timestampValue !== undefined) return timestampValue;
+
+    if (value instanceof Date) return value.toISOString();
+
+    if (Array.isArray(value)) {
+        return value
+            .map(serializeAuthSessionValue)
+            .filter((item) => item !== undefined);
+    }
+
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return undefined;
+
+    return Object.entries(value).reduce((acc, [key, item]) => {
+        if ((DANGEROUS_KEYS as readonly string[]).includes(key)) return acc;
+        const serialized = serializeAuthSessionValue(item);
+        if (serialized !== undefined) {
+            acc[key] = serialized;
+        }
+        return acc;
+    }, {} as Record<string, any>);
+};
+
 const cloneAuthSessionUserContext = (user: any): any => ({
     ...user,
     blockDetails: user?.blockDetails ? { ...user.blockDetails } : user?.blockDetails,
+    productAccounts: serializeAuthSessionValue(user?.productAccounts),
     stores: Array.isArray(user?.stores)
         ? user.stores.map((store: any) => ({ ...store }))
         : [],

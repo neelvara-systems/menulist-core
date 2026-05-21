@@ -3,10 +3,9 @@
 import { deleteChangelogEntry, loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useChangelogCache } from '@hook/useChangelogCache';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Divider, Flex, Layout, Modal, Steps, Typography, message } from 'antd';
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LuBookOpen, LuDot, LuEye, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import AddEditChangelog from './addEditChangelog';
@@ -28,7 +27,6 @@ function ChangelogTemplate() {
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
     const [entries, setEntries] = useState<any[]>([]);
     const [hasMore, setHasMore] = useState(true);
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { clearCache: clearChangelogCache, getItem: getCachedChangelog } = useChangelogCache();
     const dispatch = useAppDispatch();
 
@@ -41,7 +39,6 @@ function ChangelogTemplate() {
     };
 
     const fetchLatestPage = useCallback(async (forceRefresh = false) => {
-        if (!storeDetails) return;
         dispatch(startLoader('Fetching Changelog'));
         try {
             const data = await getCachedChangelog({ forceRefresh });
@@ -58,14 +55,14 @@ function ChangelogTemplate() {
         } finally {
             dispatch(stopLoader('Fetching Changelog'));
         }
-    }, [dispatch, getCachedChangelog, storeDetails]);
+    }, [dispatch, getCachedChangelog]);
 
     useEffect(() => {
         fetchLatestPage();
     }, [fetchLatestPage]);
 
     const loadMore = async () => {
-        if (!changelogPage || !storeDetails) return;
+        if (!changelogPage) return;
 
         dispatch(startLoader('Loading More...'));
         try {

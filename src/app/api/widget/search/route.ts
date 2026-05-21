@@ -60,7 +60,7 @@ const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test
 
 export async function POST(request: NextRequest) {
     // Feature flag check
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
     }
 
@@ -97,8 +97,6 @@ export async function POST(request: NextRequest) {
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
             includeCanonicaWidgetApi: true,
             preferCanonicaWidgetApi: true,
-            includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
-            preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
         });
         if (!authResult) {
             return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });

@@ -1922,20 +1922,6 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_WIDGET: true,
 
     /**
-     * MenuList-as-Client Canonica Widget Test Host
-     *
-     * true: MenuList owner app loads the real Canonica widget script/iframe as
-     * an external client would. This is a temporary integration-test adapter,
-     * not the native MenuList support UX and not Canonica core behavior.
-     *
-     * The test host mints a scoped cn_* widget key for the current MenuList
-     * store without persisting the raw key, then loads /widget/canonica-widget.js.
-     *
-     * Keep this false outside explicit Canonica widget integration testing.
-     */
-    ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST: false,
-
-    /**
      * Canonica Email Notifications
      *
      * true: Email notifications sent for ticket replies, status changes, etc.

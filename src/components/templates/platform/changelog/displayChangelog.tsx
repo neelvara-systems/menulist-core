@@ -8,14 +8,13 @@ import { loadOlderChangelogPage } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useChangelogCache } from '@hook/useChangelogCache';
 import { getTextFromTiptapJson } from '@lib/tiptap';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import { generateGradientFromHex } from '@util/utils';
 import { Badge, Button, Empty, Flex, Grid, Input, Layout, List, Popover, Typography, message, theme } from 'antd';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { LuFilter, LuSearch } from 'react-icons/lu';
 import AnimatedVersionNumber from './AnimatedVersionNumber';
@@ -66,7 +65,6 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [filtersOpen, setFiltersOpen] = useState(false);
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
     const { token } = useToken();
     const screens = Grid.useBreakpoint();
@@ -109,8 +107,7 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
             });
     }, [entries, searchQuery, selectedTags]);
 
-    const fetchLatestPage = async () => {
-        if (!storeDetails) return;
+    const fetchLatestPage = useCallback(async () => {
         dispatch(startLoader('Fetching Changelog...'));
         try {
             let page = pageData;
@@ -130,11 +127,11 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
         } finally {
             dispatch(stopLoader('Fetching Changelog...'));
         }
-    };
+    }, [dispatch, getItem, pageData]);
 
     useEffect(() => {
-        fetchLatestPage();
-    }, [storeDetails, pageData]);
+        void fetchLatestPage();
+    }, [fetchLatestPage]);
 
     useEffect(() => {
         if (!initialEntryId || entries.length === 0) return;
@@ -150,7 +147,7 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
     }, [entries.length, initialEntryId]);
 
     const loadMore = async () => {
-        if (!changelogPage || !storeDetails) return;
+        if (!changelogPage) return;
         dispatch(startLoader('Loading More...'));
         try {
             const olderPage = await loadOlderChangelogPage(changelogPage.pageNumber);

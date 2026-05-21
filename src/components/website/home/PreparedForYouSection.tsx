@@ -1,10 +1,10 @@
 import { useTranslations } from 'next-intl';
-import { LuCamera, LuFileText, LuImage, LuLanguages, LuPackage, LuPalette } from 'react-icons/lu';
+import { LuListChecks, LuMessageCircle, LuMonitor, LuPackage, LuQrCode } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
-const capIcons = [LuCamera, LuImage, LuFileText, LuLanguages, LuPalette, LuPackage];
+const capIcons = [LuQrCode, LuMessageCircle, LuPackage, LuMonitor, LuListChecks];
 
 export default function PreparedForYouSection() {
   const t = useTranslations('Website');

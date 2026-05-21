@@ -23,6 +23,7 @@ The user shared an external ChatGPT audit of the live MenuList homepage. The fee
 ## Rejected Or Deferred Feedback
 
 - Removing advanced product proof from the codebase was rejected. Analytics, SEO/AEO, POS Sync, staff access, industry breadth, and business-fit sections remain useful supporting/future page material.
+- Adding a standalone industry/flexibility line to the homepage was rejected. Business-fit breadth stays in FAQ/supporting material unless future homepage edits make the page feel too restaurant-only.
 - Creating a new fake demo route was deferred. The current secondary proof path now anchors to the existing customer menu preview section.
 - Pricing/payment/subscription/Razorpay/auth/onboarding runtime changes were explicitly out of scope.
 
@@ -50,6 +51,10 @@ The user shared an external ChatGPT audit of the live MenuList homepage. The fee
 - Aligned hero microcopy to the 7-day setup funnel.
 - Changed public wordmark display from `MenuList AI` to `MenuList`.
 - Rephrased homepage-facing `Customer app` copy to `saved menu shortcut`.
+- Swept the Website locale namespace for stale public-copy payload terms, including the old `From menu to customer action` eyebrow, `Customer App` labels in secondary locales, and risky `instantly` wording in supporting feature copy.
+- Kept analytics and Search/AEO as small confidence cards inside the public-surfaces section instead of restoring full sections.
+- Replaced the small multi-location homepage card with a customer feedback loop card because end-to-end feedback directly supports the core public-truth promise: customers flag wrong public details, and owners correct the same approved source.
+- Reduced setup relief from 6 setup cards to 3 owner-outcome cards, and reduced real-world rollout from 6 placement cards to 5.
 - Tightened FAQ security language to say MenuList does not store a password for Google sign-in accounts, rather than saying there are no passwords to breach.
 - Updated default homepage metadata description and schema description.
 - Updated supported website locale hero proof keys for consistency.
@@ -64,4 +69,3 @@ The user shared an external ChatGPT audit of the live MenuList homepage. The fee
 - SEO/AEO runtime
 - Analytics runtime
 - Owner dashboard/mobile owner runtime
-

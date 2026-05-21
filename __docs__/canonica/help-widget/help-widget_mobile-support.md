@@ -8,7 +8,7 @@
 
 ## Mobile Decision
 
-`/canonica/widget` is supported on mobile through the existing Canonica dashboard shell. MenuList's mobile More tab also opens the same widget console from More -> Canonica -> Widget Management. Do not create a separate mobile-only widget settings route.
+`/canonica/widget` is supported on mobile through the existing Canonica dashboard shell. Client product mobile apps must not expose Canonica management screens inside their own app shell; widget configuration belongs in the Canonica dashboard.
 
 Reason:
 
@@ -24,7 +24,7 @@ The mobile route uses the same `CanonicaWidgetManagement` template as desktop:
 - Install & Embed tab: install snippets, route/context snippets, runtime update note.
 - Access & Security tab: key create/regenerate/revoke, origin allowlist, and blocked routes.
 
-MenuList mobile only acts as a client/test host entry point. It must render Canonica's responsive widget console inside the existing mobile sub-screen model instead of duplicating widget settings in a separate MenuList-only implementation.
+Client mobile apps may show an installed widget only when they explicitly embed the generic public widget script from their own runtime. Canonica core does not ship client-product-specific mobile hosts.
 
 ## Runtime Update Mobile Rule
 
@@ -38,7 +38,6 @@ Current mobile-visible behavior:
 | Widget auth | Key status and revoke controls only | Bounded auth freshness; revoke delay stays seconds-level |
 | Blocked routes | Route list in Access & Security | Local pathname check in the loader; no Firebase call |
 | Canonical answers | Not exposed as a setting | Canonica-owned retrieval cache stays internal |
-| MenuList public pages | Not exposed in Canonica widget UI | No coupling between Canonica widget credentials and MenuList public menu cache |
 
 ## Mobile UX Requirements
 
@@ -53,7 +52,7 @@ Current mobile-visible behavior:
 
 1. Open `/canonica/widget` at mobile width.
 2. Confirm the Canonica drawer includes the Widget route under Management for platform users.
-3. Confirm MenuList mobile More -> Canonica includes Widget Management and opens the same widget console in the mobile sub-screen flow.
+3. Confirm client product mobile navigation does not expose Canonica management screens.
 4. Confirm the UI Configuration, Install & Embed, and Access & Security tabs fit on mobile.
 5. Confirm Save remains reachable after switching tabs and scrolling.
 6. Confirm the runtime update note does not make its own request.

@@ -88,7 +88,7 @@ export function OPTIONS(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET && !FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST) {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return withPublicApiCors(NextResponse.json({ error: 'Widget not enabled' }, { status: 404 }), request);
     }
 
@@ -131,8 +131,6 @@ export async function GET(request: NextRequest) {
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
             includeCanonicaWidgetApi: true,
             preferCanonicaWidgetApi: true,
-            includeCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
-            preferCanonicaWidgetTestApi: FEATURE_FLAGS.ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST,
         });
         if (!authResult) {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);

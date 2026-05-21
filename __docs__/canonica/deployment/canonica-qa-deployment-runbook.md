@@ -36,9 +36,9 @@ Current implementation:
 - Canonica dashboard routes resolve Canonica scope from `productAccounts.CN` on the shared NextAuth profile, or from the Canonica `users` document when running in `CANONICA_FIREBASE_MODE=separate`.
 - Canonica onboarding writes tenant, store, user, subscription, widget key, and summaries to the Canonica Firebase project, then writes only the `productAccounts.CN` bridge back to the default auth user document.
 - Canonica widget config/key APIs use Canonica Firestore in separate mode.
-- Public widget runtime keys validate against Canonica `canonicaWidgetApi` first; MenuList test-host keys remain a separate temporary credential source guarded by `ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST`.
+- Public widget runtime keys validate only against Canonica `canonicaWidgetApi` for widget routes.
 - Canonica AI operation logs write to `canonica_aiOperations` in the Canonica Firebase project.
-- MenuList owner navigation does not expose Canonica management by default. MenuList can still be used as an external widget test host only when the test-host flag is intentionally enabled.
+- MenuList owner navigation does not expose Canonica management by default and no longer mounts a Canonica widget host from the shared MenuList layout.
 
 Verification performed:
 
@@ -108,6 +108,16 @@ Fix found during this pass:
 
 - The auth session context cache could briefly serve a pre-onboarding user after the onboarding transaction. `getAuthSessionUserContext()` now bypasses cached users that still have no tenant/store so the immediate post-onboarding session can see `productAccounts.CN`.
 - A QA harness initially attempted to update `canonica_auditLogs`, but audit logs are append-only by design. The final client-rule test was rerun using the intended create/read-only audit-log contract and passed.
+
+## 2026-05-21 Client-Product Separation Cleanup
+
+The temporary client-product-specific widget host and changelog connector have been removed from runtime code. Canonica remains available through its own routes/domains, while client products integrate the widget only by embedding the generic public script with a real Canonica-issued `canonicaWidgetApi` key from their own codebase.
+
+Follow-up verification for this cleanup:
+
+- `/dashboard` remains the MenuList owner app and should not mount a Canonica widget from the shared layout.
+- Canonica dashboard routes remain available through `/__canonica/*` locally and Canonica host rewrites in QA.
+- Widget runtime endpoints continue to accept only normal `canonicaWidgetApi` keys.
 
 ## 2026-05-20 Verification Log
 

@@ -57,11 +57,11 @@ The widget sits entirely in Layer 4. It is a query entry point. The intelligence
 
 ---
 
-## MenuList Test Host
+## External Client Embeds
 
-MenuList can temporarily act as an external Canonica client for widget testing through `ENABLE_MENULIST_CANONICA_WIDGET_TEST_HOST`.
+Canonica does not mount its widget inside MenuList core. Client products embed the public script from their own runtime using a real `canonicaWidgetApi` key issued from the Canonica dashboard.
 
-This adapter does **not** replace MenuList's native Help Center. It loads the same public widget script and iframe an outside SaaS product would use, derives a scoped `cn_*` test key for the current MenuList store, stores only its hash under `canonicaWidgetTestApi`, and passes only sanitized page/workflow context. On MenuList page changes, it clears the widget page session before sending the next context so stale route history is not reused. Same-tab remounts reuse the resolved test key from session storage after the server route has verified the hashed key and origin allowlist. Widget runtime routes must explicitly opt in to this temporary credential source; normal public APIs still require `publicApi` credentials. It exists so the real widget runtime can be tested before a separate external product is available.
+Any client-specific context must be passed through the generic widget SDK or script attributes. Canonica accepts only sanitized page, feature, workflow, plan, role, and entity-hint context. Client tenant IDs, store IDs, user IDs, and raw business records are not required and must not be hardcoded into the Canonica runtime.
 
 ## Widget Management Console
 
@@ -77,7 +77,6 @@ Widget keys are stored separately from broader Canonica public API credentials:
 
 - `canonicaWidgetApi` — embeddable widget credential with `widget:*` scopes.
 - `publicApi` — Canonica public API credential with public API scope.
-- `canonicaWidgetTestApi` — temporary MenuList-as-client test credential.
 
 Legacy widget keys still stored under `publicApi.purpose = "canonica_widget"` remain accepted by widget runtime routes, but they no longer authorize Canonica public API routes.
 
@@ -150,7 +149,8 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 | 2026-05-20 | 2.4.2   | Added route blocklist settings for hiding the widget on selected client routes without adding Firebase reads. |
 | 2026-05-20 | 2.4.1   | Split widget management into customer-understandable tabs and removed the standalone Cost & Cache customer-facing section. |
 | 2026-05-19 | 2.4.0   | Added dedicated `/canonica/widget` management console, scoped `canonicaWidgetApi` credentials, public runtime config endpoint, and dashboard-backed script config loading. |
-| 2026-05-19 | 2.3.1   | Firebase cost hardening added: hash-only Canonica auth path, short widget auth cache, predictive trigger index cache, same-tab test-key cache, and context-scoped search cache keys. |
-| 2026-05-18 | 2.3.0   | Runtime widget contract updated: mount-time script context attributes, `data-history`, explicit clear-history API, open/close events, and MenuList external-client test host context wiring.                                                            |
+| 2026-05-21 | 2.4.3   | Removed the temporary MenuList widget host from runtime/docs; client products now integrate only through the generic public widget script and Canonica-issued widget keys. |
+| 2026-05-19 | 2.3.1   | Firebase cost hardening added: hash-only Canonica auth path, short widget auth cache, predictive trigger index cache, and context-scoped search cache keys. |
+| 2026-05-18 | 2.3.0   | Runtime widget contract updated: mount-time script context attributes, `data-history`, explicit clear-history API, and open/close events.                                                            |
 | 2026-03-08 | 2.0.0   | Complete documentation rewrite: v2 architecture with context-aware support, launcher customization, session memory, feedback signals, origin allowlist. Unified search architecture. ChatGPT conversation reviewed + validated against Canonica codebase. |
 | 2026-03-07 | 1.0.0   | Initial implementation: embed script + iframe page + public API + feature flag                                                                                                                                                                            |
