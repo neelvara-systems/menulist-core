@@ -2,16 +2,18 @@ import CanonicaLink from './CanonicaLink';
 
 const FOOTER_LINKS = {
     Product: [
-        { label: 'Canonical Answers', href: '/product#canonical-answers' },
-        { label: 'Drift Detection', href: '/product#drift-detection' },
-        { label: 'Signal Mutation', href: '/product#signal-mutation' },
-        { label: 'Product Ontology', href: '/product#ontology' },
+        { label: 'Product', href: '/product' },
+        { label: 'Use Cases', href: '/use-cases' },
+        { label: 'Demo', href: '/demo' },
         { label: 'Pricing', href: '/pricing' },
+        { label: 'Start Free', href: '/get-started' },
     ],
     Resources: [
-        { label: 'Documentation', href: '/docs' },
-        { label: 'API Reference', href: '/docs#api' },
-        { label: 'Changelog', href: '/changelog' },
+        { label: 'Resources', href: '/resources' },
+        { label: 'Widget Install', href: '/install' },
+        { label: 'Updates', href: '/updates' },
+        { label: 'FAQ', href: '/faq' },
+        { label: 'Security', href: '/security' },
     ],
     Company: [
         { label: 'About', href: '/about' },
@@ -35,8 +37,8 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                             <span className="text-lg font-semibold text-white">Canonica</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
-                            The Support Knowledge Control Plane for SaaS.
-                            Governed answers. Zero drift.
+                            Page-aware support knowledge for small SaaS teams.
+                            Approved answers before fallback.
                         </p>
                     </div>
 

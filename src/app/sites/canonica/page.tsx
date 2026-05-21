@@ -7,9 +7,16 @@ import CanonicaHeader from './components/Header';
 import HeroSection from './components/HeroSection';
 import HowItWorksSection from './components/HowItWorksSection';
 import PillarsSection from './components/PillarsSection';
+import ProductPreviewSection from './components/ProductPreviewSection';
+import CanonicaStructuredData from './components/StructuredData';
+import SystemCoverageSection from './components/SystemCoverageSection';
+import WidgetSection from './components/WidgetSection';
+import { CANONICA_SITE_DESCRIPTION } from './siteConfig';
 
 export const metadata: Metadata = {
-    title: 'Canonica — The Support Knowledge Control Plane for SaaS',
+    title: 'Canonica — Page-Aware Support Knowledge for SaaS',
+    description: CANONICA_SITE_DESCRIPTION,
+    alternates: { canonical: '/' },
 };
 
 /**
@@ -38,9 +45,13 @@ export default function CanonicaHomePage() {
     return (
         <>
             <CanonicaHeader basePath={basePath} />
+            <CanonicaStructuredData />
             <main>
                 <HeroSection basePath={basePath} />
+                <ProductPreviewSection />
+                <WidgetSection basePath={basePath} />
                 <PillarsSection />
+                <SystemCoverageSection />
                 <HowItWorksSection />
                 <ComparisonSection />
                 <CTASection basePath={basePath} />

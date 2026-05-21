@@ -1,19 +1,18 @@
-'use client';
-
 import type { ReactNode } from 'react';
-import { useState } from 'react';
-import { LuMenu, LuX } from 'react-icons/lu';
+import { LuMenu } from 'react-icons/lu';
 import CanonicaLink from './CanonicaLink';
 
 const NAV_LINKS = [
     { label: 'Product', href: '/product' },
+    { label: 'Use Cases', href: '/use-cases' },
+    { label: 'Demo', href: '/demo' },
+    { label: 'Install', href: '/install' },
     { label: 'Pricing', href: '/pricing' },
-    { label: 'About', href: '/about' },
+    { label: 'Resources', href: '/resources' },
 ];
 
 export default function CanonicaHeader({ basePath = '' }: { basePath?: string }) {
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const L = (props: { href: string; className?: string; onClick?: () => void; children: ReactNode }) => (
+    const L = (props: { href: string; className?: string; children: ReactNode }) => (
         <CanonicaLink basePath={basePath} {...props} />
     );
 
@@ -27,7 +26,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                     <span className="text-lg font-semibold tracking-tight text-white">Canonica</span>
                 </L>
 
-                <nav className="hidden items-center gap-8 md:flex">
+                <nav className="hidden items-center gap-5 lg:gap-8 md:flex">
                     {NAV_LINKS.map((link) => (
                         <L key={link.href} href={link.href} className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">
                             {link.label}
@@ -38,35 +37,38 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                 <div className="hidden items-center gap-3 md:flex">
                     <L href="/contact" className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">Contact</L>
                     <L href="/get-started" className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-600">
-                        Get Early Access
+                        Start Free
                     </L>
                 </div>
 
-                <button
-                    onClick={() => setMobileOpen(!mobileOpen)}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white md:hidden"
-                    aria-label="Toggle menu"
-                >
-                    {mobileOpen ? <LuX size={22} aria-hidden /> : <LuMenu size={22} aria-hidden />}
-                </button>
-            </div>
-
-            {mobileOpen && (
-                <div className="border-t border-white/[0.06] bg-[#0a0a1a] px-6 py-4 md:hidden">
-                    <nav className="flex flex-col gap-3">
-                        {NAV_LINKS.map((link) => (
-                            <L key={link.href} href={link.href} onClick={() => setMobileOpen(false)}
-                                className="rounded-lg px-3 py-2 text-sm font-medium text-[#a0a0c0] transition-colors hover:bg-white/[0.03] hover:text-white">
-                                {link.label}
+                <details className="group md:hidden">
+                    <summary
+                        className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white [&::-webkit-details-marker]:hidden"
+                        aria-label="Toggle menu"
+                    >
+                        <LuMenu size={22} aria-hidden />
+                    </summary>
+                    <div className="fixed left-0 right-0 top-16 border-t border-white/[0.06] bg-[#0a0a1a] px-6 py-4 shadow-2xl shadow-black/30">
+                        <nav className="flex flex-col gap-3">
+                            {NAV_LINKS.map((link) => (
+                                <L
+                                    key={link.href}
+                                    href={link.href}
+                                    className="rounded-lg px-3 py-2 text-sm font-medium text-[#a0a0c0] transition-colors hover:bg-white/[0.03] hover:text-white"
+                                >
+                                    {link.label}
+                                </L>
+                            ))}
+                            <L
+                                href="/get-started"
+                                className="mt-2 rounded-lg bg-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                            >
+                                Start Free
                             </L>
-                        ))}
-                        <L href="/get-started" onClick={() => setMobileOpen(false)}
-                            className="mt-2 rounded-lg bg-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-white">
-                            Get Early Access
-                        </L>
-                    </nav>
-                </div>
-            )}
+                        </nav>
+                    </div>
+                </details>
+            </div>
         </header>
     );
 }

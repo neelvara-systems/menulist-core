@@ -24,6 +24,10 @@ import { getCanonicaBetaPlan, getCanonicaPlanById } from '@data/canonica/plans';
 import { getOwnerRoleId } from '@data/defaultRoles';
 import { CANONICA_PRODUCT_ACCOUNT_KEY } from '@lib/canonica/sessionScope';
 import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
+import {
+    getContextContentSummaryDocId,
+    parseProductSurfaceSaveInput,
+} from '@lib/canonica/productSurfaceContent';
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
@@ -41,13 +45,189 @@ import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const LOG_FILE = 'canonica-onboarding.log';
+const OptionalUrlSchema = z.preprocess(
+    (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
+    z.string().trim().url().max(300).optional(),
+);
+const OptionalEmailSchema = z.preprocess(
+    (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
+    z.string().trim().email().max(160).optional(),
+);
+const BillingModelSchema = z.enum(['free', 'subscription', 'usage', 'one_time', 'not_sure']);
 const OnboardRequestSchema = z.object({
     companyName: z.string().trim().min(2).max(120),
     productName: z.string().trim().max(120).optional(),
+    productUrl: OptionalUrlSchema,
+    supportEmail: OptionalEmailSchema,
+    billingModel: BillingModelSchema.optional().default('subscription'),
+    primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).optional().default([]),
     planId: z.string().trim().max(80).optional().default('canonica_beta'),
     interval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
     currency: z.enum(['INR', 'USD']).optional().default('INR'),
 });
+
+const ONBOARDING_SURFACE_TEMPLATES: Record<string, {
+    label: string;
+    routePatterns: string[];
+    feature: string;
+    page: string;
+    workflow?: string;
+    entityHints: string[];
+    tags: string[];
+    priority: number;
+}> = {
+    billing: {
+        label: 'Billing',
+        routePatterns: ['/billing', '/billing/*', '/settings/billing/*'],
+        feature: 'billing',
+        page: 'billing',
+        workflow: 'manage_subscription',
+        entityHints: ['invoice', 'subscription', 'payment'],
+        tags: ['billing', 'subscription'],
+        priority: 120,
+    },
+    onboarding: {
+        label: 'Onboarding',
+        routePatterns: ['/onboarding', '/setup/*', '/get-started/*'],
+        feature: 'onboarding',
+        page: 'setup',
+        workflow: 'complete_setup',
+        entityHints: ['setup', 'import', 'activation'],
+        tags: ['onboarding', 'setup'],
+        priority: 110,
+    },
+    settings: {
+        label: 'Settings',
+        routePatterns: ['/settings', '/settings/*'],
+        feature: 'settings',
+        page: 'settings',
+        workflow: 'manage_workspace',
+        entityHints: ['settings', 'workspace', 'configuration'],
+        tags: ['settings'],
+        priority: 100,
+    },
+    team: {
+        label: 'Team',
+        routePatterns: ['/team', '/settings/team/*', '/users/*'],
+        feature: 'team',
+        page: 'members',
+        workflow: 'manage_team',
+        entityHints: ['user', 'role', 'permission'],
+        tags: ['team', 'permissions'],
+        priority: 90,
+    },
+    integrations: {
+        label: 'Integrations',
+        routePatterns: ['/integrations', '/integrations/*', '/settings/integrations/*'],
+        feature: 'integrations',
+        page: 'integrations',
+        workflow: 'connect_integration',
+        entityHints: ['integration', 'api', 'connection'],
+        tags: ['integrations'],
+        priority: 80,
+    },
+    release_notes: {
+        label: 'Release Notes',
+        routePatterns: ['/releases', '/changelog', '/whats-new'],
+        feature: 'release_notes',
+        page: 'releases',
+        workflow: 'review_changes',
+        entityHints: ['release', 'change', 'update'],
+        tags: ['release_notes', 'changelog'],
+        priority: 70,
+    },
+};
+
+const DEFAULT_ONBOARDING_SURFACES = ['billing', 'onboarding', 'settings'];
+
+const normalizeOnboardingSurfaces = (values: string[]): string[] => {
+    const selected = Array.from(new Set(
+        values
+            .map(value => value.trim().toLowerCase())
+            .filter(value => Boolean(ONBOARDING_SURFACE_TEMPLATES[value]))
+    ));
+
+    return selected.length ? selected : DEFAULT_ONBOARDING_SURFACES;
+};
+
+const bootstrapInitialProductSurfaces = async (params: {
+    db: FirebaseFirestore.Firestore;
+    tId: number;
+    sId: number;
+    userId: string;
+    surfaceKeys: string[];
+}): Promise<number> => {
+    const surfaceKeys = normalizeOnboardingSurfaces(params.surfaceKeys);
+    const batch = params.db.batch();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const surfaceSummary: Record<string, any> = {};
+
+    surfaceKeys.forEach((surfaceKey) => {
+        const template = ONBOARDING_SURFACE_TEMPLATES[surfaceKey];
+        const parsed = parseProductSurfaceSaveInput({
+            key: surfaceKey,
+            label: template.label,
+            description: `Initial ${template.label.toLowerCase()} product surface from Canonica onboarding.`,
+            routePatterns: template.routePatterns,
+            feature: template.feature,
+            page: template.page,
+            workflow: template.workflow,
+            entityHints: template.entityHints,
+            tags: template.tags,
+            active: true,
+            priority: template.priority,
+            visibility: { helpWidget: true, helpCenter: true, changelog: true },
+        }, { tId: params.tId, sId: params.sId });
+        const docId = `${params.tId}_${params.sId}_${parsed.key}`;
+        const docRef = params.db.collection(DB_COLLECTIONS.CANONICA_PRODUCT_SURFACES).doc(docId);
+
+        batch.set(docRef, {
+            ...parsed,
+            createdOn: now,
+            modifiedOn: now,
+            createdBy: params.userId,
+            modifiedBy: params.userId,
+            uId: params.userId,
+            onboardingSource: 'CANONICA_ONBOARDING',
+        }, { merge: true });
+
+        surfaceSummary[parsed.key] = {
+            key: parsed.key,
+            label: parsed.label,
+            routePatterns: parsed.routePatterns,
+            feature: parsed.feature,
+            page: parsed.page,
+            workflow: parsed.workflow,
+            entityHints: parsed.entityHints,
+            entityIds: [],
+            tags: parsed.tags,
+            visibility: parsed.visibility,
+            articles: [],
+            changelogs: [],
+            tickets: { total: 0, open: 0, recentDisplayIds: [] },
+        };
+    });
+
+    batch.set(
+        params.db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getContextContentSummaryDocId(params.tId, params.sId)),
+        {
+            pId: PRODUCT_IDS.CANONICA,
+            tId: params.tId,
+            sId: params.sId,
+            generatedAt: now,
+            source: 'client_onboarding_surface_bootstrap',
+            surfaceCount: surfaceKeys.length,
+            articleCount: 0,
+            changelogCount: 0,
+            ticketCount: 0,
+            surfaces: surfaceSummary,
+        },
+        { merge: true },
+    );
+
+    await batch.commit();
+    return surfaceKeys.length;
+};
 
 const getCanonicaDb = () => {
     const db = shouldUseSharedCanonicaFirebase
@@ -189,7 +369,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (!validation.success) {
             return NextResponse.json({ error: 'Company name is required (min 2 chars).' }, { status: 400 });
         }
-        const { companyName, productName, planId, interval, currency } = validation.data;
+        const {
+            companyName,
+            productName,
+            productUrl,
+            supportEmail,
+            billingModel,
+            primarySurfaces,
+            planId,
+            interval,
+            currency,
+        } = validation.data;
 
         // 4. Resolve plan
         const plan = planId === 'canonica_beta'
@@ -210,6 +400,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const cleanCompany = companyName.trim();
         const storeName = productName || companyName;
         const ownerRole = getOwnerRoleId();
+        const launchProfileCreatedAt = admin.firestore.Timestamp.now();
 
         const result = await db.runTransaction(async (transaction) => {
             // Centralized tenant + store creation
@@ -225,10 +416,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     pId: PRODUCT_IDS.CANONICA,
                     productId: PRODUCT_IDS.CANONICA,
                     productName: productName || '',
+                    productUrl: productUrl || '',
+                    supportEmail: supportEmail || '',
+                    billingModel,
                 },
                 storeExtra: {
                     pId: PRODUCT_IDS.CANONICA,
                     productId: PRODUCT_IDS.CANONICA,
+                    productName: productName || storeName,
+                    productUrl: productUrl || '',
+                    supportEmail: supportEmail || '',
+                    billingModel,
+                    primarySurfaces: normalizeOnboardingSurfaces(primarySurfaces),
+                    canonicaLaunchProfile: {
+                        productUrl: productUrl || '',
+                        supportEmail: supportEmail || '',
+                        billingModel,
+                        primarySurfaces: normalizeOnboardingSurfaces(primarySurfaces),
+                        createdAt: launchProfileCreatedAt,
+                    },
                 },
             });
 
@@ -271,6 +477,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tenantId: result.tenantId,
             storeId: result.storeId,
             storeName: result.storeName,
+        });
+
+        let initialSurfaceCount = 0;
+        await bootstrapInitialProductSurfaces({
+            db,
+            tId: result.tenantId,
+            sId: result.storeId,
+            userId,
+            surfaceKeys: primarySurfaces,
+        }).then((count) => {
+            initialSurfaceCount = count;
+        }).catch((surfaceError) => {
+            secureError('[Canonica Onboard] Initial surface bootstrap failed', surfaceError as Error, {
+                tenantId: result.tenantId,
+                storeId: result.storeId,
+            });
         });
 
         await upsertCanonicaTenantSummaryAdmin({
@@ -475,6 +697,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 storeId: result.storeId,
                 subscriptionId,
                 planId,
+                initialSurfaceCount,
             },
         });
 
@@ -493,6 +716,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 name: plan.name,
                 isBeta,
             },
+            initialSurfaceCount,
         });
 
     } catch (error) {

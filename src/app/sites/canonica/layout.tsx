@@ -1,26 +1,59 @@
 import { Metadata } from 'next';
+import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_URL } from './siteConfig';
 import './styles.css';
 
-const canonicaUrl = 'https://canonica.app';
-
 export const metadata: Metadata = {
+    applicationName: 'Canonica',
+    authors: [{ name: 'Canonica', url: CANONICA_SITE_URL }],
+    creator: 'Canonica',
+    publisher: 'Canonica',
+    category: 'customer support software',
     title: {
-        default: 'Canonica — The Support Knowledge Control Plane for SaaS',
+        default: 'Canonica — Page-Aware Support Knowledge for SaaS',
         template: '%s | Canonica',
     },
-    description: 'Canonica turns your support knowledge into a single, governed source of truth. Canonical answers. Zero drift. Enterprise-grade knowledge infrastructure.',
-    metadataBase: new URL(canonicaUrl),
+    description: CANONICA_SITE_DESCRIPTION,
+    metadataBase: new URL(CANONICA_SITE_URL),
+    keywords: [
+        'support knowledge infrastructure',
+        'SaaS support widget',
+        'page-aware support',
+        'SaaS help widget',
+        'widget install',
+        'canonical answers',
+        'help center software',
+        'support gap tracking',
+        'changelog support',
+        'product surface mapping',
+        'product support ontology',
+    ],
+    manifest: '/canonica.webmanifest',
+    icons: {
+        icon: [
+            { url: '/canonica-favicon-32.png', sizes: '32x32', type: 'image/png' },
+            { url: '/canonica-icon-192.png', sizes: '192x192', type: 'image/png' },
+        ],
+        apple: [{ url: '/canonica-icon-192.png', sizes: '192x192', type: 'image/png' }],
+    },
+    appleWebApp: {
+        capable: true,
+        title: 'Canonica',
+        statusBarStyle: 'black-translucent',
+    },
+    formatDetection: {
+        telephone: false,
+    },
     openGraph: {
-        title: 'Canonica — The Support Knowledge Control Plane for SaaS',
-        description: 'Canonica turns your support knowledge into a single, governed source of truth. Canonical answers. Zero drift. Enterprise-grade knowledge infrastructure.',
-        url: canonicaUrl,
+        title: 'Canonica — Page-Aware Support Knowledge for SaaS',
+        description: CANONICA_SITE_DESCRIPTION,
+        url: CANONICA_SITE_URL,
         siteName: 'Canonica',
         images: [
             {
-                url: '/canonica-og-image.png',
+                url: buildCanonicaUrl('/canonica-og-image.png'),
                 width: 1200,
                 height: 630,
-                alt: 'Canonica — The Support Knowledge Control Plane for SaaS',
+                alt: 'Canonica — Page-Aware Support Knowledge for SaaS',
             },
         ],
         locale: 'en_US',
@@ -28,9 +61,9 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Canonica — The Support Knowledge Control Plane for SaaS',
-        description: 'Canonica turns your support knowledge into a single, governed source of truth.',
-        images: ['/canonica-og-image.png'],
+        title: 'Canonica — Page-Aware Support Knowledge for SaaS',
+        description: CANONICA_SITE_DESCRIPTION,
+        images: [buildCanonicaUrl('/canonica-og-image.png')],
     },
     robots: {
         index: true,
@@ -49,6 +82,7 @@ export const viewport = {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
+    themeColor: '#0a0a1a',
 };
 
 interface CanonicaLayoutProps {

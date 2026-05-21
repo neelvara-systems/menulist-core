@@ -179,9 +179,9 @@ export default function CanonicaActivationCommandCenter() {
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 80 : 0 }}>
             <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                 <div>
-                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Activation Command Center</Title>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Launch Support Setup</Title>
                     <Text type="secondary">
-                        One place to launch Canonica for {summary.workspace.productName || summary.workspace.companyName || 'this product'}.
+                        Launch support in 10 minutes for {summary.workspace.productName || summary.workspace.companyName || 'this product'}.
                     </Text>
                 </div>
                 <Space wrap>
@@ -353,6 +353,26 @@ export default function CanonicaActivationCommandCenter() {
                                     {summary.subscription.currency || 'INR'} {summary.subscription.amount}
                                 </Paragraph>
                             )}
+                        </Card>
+                        <Card title="Workspace Profile">
+                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Product URL</Text>
+                                    <Text style={{ textAlign: 'right', wordBreak: 'break-all' }}>{summary.workspace.productUrl || 'Missing'}</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Support email</Text>
+                                    <Text style={{ textAlign: 'right', wordBreak: 'break-all' }}>{summary.workspace.supportEmail || 'Missing'}</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Billing model</Text>
+                                    <Text>{summary.workspace.billingModel || 'Not set'}</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Initial surfaces</Text>
+                                    <Text>{summary.workspace.primarySurfaceCount || 0}</Text>
+                                </Flex>
+                            </Space>
                         </Card>
                         <Card title="Knowledge Health">
                             <Space direction="vertical" size={10} style={{ width: '100%' }}>

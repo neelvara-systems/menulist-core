@@ -55,6 +55,8 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 10  | `firebase-cost-optimization-audit.md`            | Developers/Ops  | Canonica-wide Firebase read/write/listener cost map and latest optimizations |
 | 11  | `deployment/canonica-qa-deployment-runbook.md`   | Developers/Ops  | QA deployment evidence, commands, secret handling, and production checklist |
 | 12  | `product-surface-contexts/`                      | Product/Ops/Dev | Route/page/workflow context model for related KB, changelog, ticket, and widget answers |
+| 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Canonica feature map, route map, Firebase map, file inventory, and website truth |
+| 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Canonica self-serve positioning, non-enterprise ICP, pricing direction, and execution task list |
 
 ---
 
@@ -114,6 +116,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
 - `/canonica/product-surfaces` → `src/app/(canonica)/canonica/product-surfaces/page.tsx`
 - `/canonica/widget` → `src/app/(canonica)/canonica/widget/page.tsx`
+- `/canonica/weekly-digest` → `src/app/(canonica)/canonica/weekly-digest/page.tsx`
 
 The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client support users see only the client support routes; Canonica owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
@@ -135,8 +138,11 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 ### Canonica Public Routes
 
 - `/sites/canonica` and `__canonica` host rewrites → Canonica marketing site
-- `/sites/canonica/get-started` → self-service beta onboarding
-- `/sites/canonica/product`, `/pricing`, `/about`, `/contact` → public site pages
+- `/sites/canonica/demo` and `__canonica/demo` → static page-aware product demo
+- `/sites/canonica/get-started` → self-service onboarding
+- `/sites/canonica/product`, `/pricing`, `/security`, `/faq`, `/about`, `/contact` → public site pages
+- `/sites/canonica/privacy-policy`, `/sites/canonica/terms-of-service` → public legal/support policy pages
+- `/sites/canonica/sitemap.xml`, `/sites/canonica/robots.txt` → Canonica product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
 
 The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/activation`.
@@ -147,6 +153,10 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `POST /api/helpCenter/search-kb-stream` — Streaming RAG search (SSE)
 - `POST /api/helpCenter/article-embedding` — Generate & store article embeddings
 - `GET /api/canonica/activation/summary` — Cost-optimized client readiness summary from compact store/platformSummary docs
+- `POST /api/canonica/onboard` — Self-service Canonica workspace provisioning
+- `GET/PUT /api/canonica/workspace-profile` — Product URL, support email, billing model, and initial surface profile
+- `GET/PUT /api/canonica/widget-config` — Protected widget configuration, allowed origins, blocked routes, and runtime status
+- `POST /api/canonica/widget-key` — Protected widget key generation/revocation
 - `POST /api/canonica/tenant-summary` — Authenticated server-side sync for `platformSummary/canonicaTenantsSummary` after client-side entity creation
 - `POST /api/canonica/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
 

@@ -2,12 +2,13 @@
 
 import { getPreviousIngestionJobs } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useIngestionJobsListener } from '@hook/useIngestionJobsListener';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ARTICLE_RECONCILIATION_STATUS, INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
-import { Button, Card, Col, Empty, Flex, Layout, message, Row, Typography } from 'antd';
-import { useContext, useEffect, useState } from 'react';
+import { Alert, Button, Card, Col, Empty, Flex, Layout, message, Row, Typography } from 'antd';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuEye, LuPlus } from 'react-icons/lu';
 import JobCard from './jobCard';
 import JobHistory from './jobHistory';
@@ -20,7 +21,7 @@ const { Title, Paragraph } = Typography;
 const { Content } = Layout;
 
 function KBGenerationTemplate() {
-    const { activeJob } = useIngestionJobsListener();
+    const session = useClientAuthSession();
     const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [previousJobs, setPreviousJobs] = useState<IngestionJob[]>([]);
@@ -31,6 +32,16 @@ function KBGenerationTemplate() {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const dispatch = useAppDispatch()
     const [isHistoryfetched, setisHistoryfetched] = useState(false)
+    const scope = useMemo(() => {
+        const tId = Number(session?.tId ?? storeDetails?.tenantId);
+        const sId = Number(session?.sId ?? storeDetails?.storeId);
+        return {
+            tId: Number.isFinite(tId) && tId > 0 ? tId : 0,
+            sId: Number.isFinite(sId) && sId > 0 ? sId : 0,
+        };
+    }, [session?.sId, session?.tId, storeDetails?.storeId, storeDetails?.tenantId]);
+    const { activeJob } = useIngestionJobsListener(scope);
+    const hasScope = scope.tId > 0 && scope.sId > 0;
 
     const handleReviewClick = () => {
         if (!checkArticlesToReview() && activeJob && activeJob.status === INGESTION_JOB_STATUS.NEEDS_REVIEW) {
@@ -63,9 +74,13 @@ function KBGenerationTemplate() {
     };
 
     const handleFetchHistory = async () => {
+        if (!hasScope) {
+            message.error('Workspace scope is not available yet.');
+            return;
+        }
         dispatch(startLoader("Fetching Jobs..."))
         try {
-            const jobs = await getPreviousIngestionJobs({ tId: storeDetails.tenantId, sId: storeDetails.storeId });
+            const jobs = await getPreviousIngestionJobs(scope);
             setPreviousJobs(jobs);
         } catch (error) {
             message.error('Failed to fetch job history.');
@@ -88,7 +103,7 @@ function KBGenerationTemplate() {
                         }
                     >
                         <Flex align='center' justify='center' gap="middle">
-                            <Button type="primary" icon={<LuPlus />} onClick={() => setIsUploadModalVisible(true)}>
+                            <Button type="primary" icon={<LuPlus />} disabled={!hasScope} onClick={() => setIsUploadModalVisible(true)}>
                                 Upload New Content
                             </Button>
                             {!isHistoryfetched && <Button onClick={handleFetchHistory}>View Previous Job History</Button>}
@@ -118,6 +133,15 @@ function KBGenerationTemplate() {
         <Layout style={{ height: '100%', padding: 24 }}>
             <Content>
                 <Title level={3}>KB Generation Dashboard</Title>
+                {!hasScope && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                        message="Workspace scope is not available"
+                        description="Sign in to a Canonica workspace before starting a knowledge import."
+                    />
+                )}
                 {renderContent()}
                 {Boolean(previousJobs) && isHistoryfetched && <JobHistory jobs={previousJobs} onCardClick={handleCardClick} />}
             </Content>

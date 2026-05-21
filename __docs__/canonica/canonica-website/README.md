@@ -17,20 +17,33 @@
 | 2 | `canonica-website_spec.md` | CEO/PM | Business requirements, page architecture |
 | 3 | `canonica-website_impl.md` | Developers | Technical blueprint, file paths, routing |
 
+## Related Strategy
+
+- `../self-sellable-product-strategy.md` — Canonica's non-enterprise ICP, small-SaaS positioning, pricing direction, website message bank, and sellable-launch task list. Use this before changing public Canonica website copy.
+
 ---
 
 ## Quick Reference
 
-### Pages (6 total)
+### Pages (15 total)
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Hero + Pillars + HowItWorks + Comparison + CTA |
-| `/product` | Product | Deep-dive into 5 architectural pillars |
-| `/pricing` | Pricing | Beta pricing (free) + included features list |
+| `/` | Homepage | Hero + product preview + widget install + pillars + system coverage + HowItWorks + Comparison + CTA |
+| `/product` | Product | Self-serve product overview for launch setup, page-aware support, canonical answers, releases, and support gaps |
+| `/use-cases` | Use Cases | Founder/operator scenarios by support problem |
+| `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
+| `/install` | Widget Install | Widget script, allowed origins, blocked routes, safe page context, and runtime verification |
+| `/pricing` | Pricing | INR Starter/Growth/Studio packaging plus beta launch note |
+| `/resources` | Resources | Canonica learning hub for launch setup, widget install, governance, and cost controls |
+| `/updates` | Updates | Public product update timeline without using dashboard-owned changelog routes |
+| `/security` | Security | Trust controls for widget context, tenant separation, owner-approved answers, runtime limits, and responsible disclosure |
+| `/faq` | FAQ | Founder questions about setup, widget context, pricing, tickets, and data handling |
 | `/about` | About | Company beliefs + team origin |
-| `/contact` | Contact | Email contacts + design partner program |
-| `/get-started` | Get Started | Beta application + design partner criteria |
+| `/contact` | Contact | Email contacts for questions, setup help, and partnerships |
+| `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace |
+| `/privacy-policy` | Privacy Policy | Public privacy summary for account, workspace, support, and widget data |
+| `/terms-of-service` | Terms of Service | Public terms summary for account, content, widget, and service usage |
 
 ### Key Files
 
@@ -39,11 +52,33 @@
 | `src/app/sites/canonica/layout.tsx` | Layout with metadata, OG tags, SEO |
 | `src/app/sites/canonica/styles.css` | Tailwind directives + CSS variables |
 | `src/app/sites/canonica/page.tsx` | Homepage (server component) |
+| `src/app/sites/canonica/use-cases/page.tsx` | Use-case page for founder/operator support scenarios |
+| `src/app/sites/canonica/install/page.tsx` | Public widget install page |
+| `src/app/sites/canonica/integrations/page.tsx` | Redirect alias to `/install` for older links |
+| `src/app/sites/canonica/resources/page.tsx` | Public resources hub |
+| `src/app/sites/canonica/updates/page.tsx` | Public website update log |
+| `src/app/sites/canonica/demo/page.tsx` | Static product demo route |
+| `src/app/sites/canonica/demo/CanonicaPublicDemo.tsx` | Client-side demo interaction state |
+| `src/app/sites/canonica/security/page.tsx` | Public security/trust page with facts, runtime controls, and disclosure |
+| `src/app/sites/canonica/faq/page.tsx` | Public FAQ page with FAQ structured data |
+| `src/app/sites/canonica/privacy-policy/page.tsx` | Public privacy policy page |
+| `src/app/sites/canonica/terms-of-service/page.tsx` | Public terms of service page |
+| `src/app/sites/canonica/sitemap.xml/route.ts` | Canonica product-domain sitemap |
+| `src/app/sites/canonica/robots.txt/route.ts` | Canonica product-domain robots policy |
+| `src/app/sites/canonica/siteConfig.ts` | Public site URL, sitemap page list, and shared metadata constants |
+| `src/app/sites/canonica/enginePillars.ts` | Shared implemented Canonica engine pillar content |
+| `src/app/sites/canonica/systemCoverage.ts` | Shared implemented Canonica system coverage groups |
+| `src/app/sites/canonica/components/StructuredData.tsx` | Homepage Organization/WebSite/SoftwareApplication JSON-LD |
+| `public/canonica-og-image.png` | 1200x630 public social preview image |
+| `public/canonica.webmanifest` | Canonica web app manifest |
 | `src/app/sites/canonica/components/Header.tsx` | Shared header with nav + mobile menu |
 | `src/app/sites/canonica/components/Footer.tsx` | Shared footer with link columns |
 | `src/app/sites/canonica/components/CanonicaLink.tsx` | Dev/production-aware Link component |
 | `src/app/sites/canonica/components/HeroSection.tsx` | Hero with gradient text + CTAs |
-| `src/app/sites/canonica/components/PillarsSection.tsx` | 5 pillar cards grid |
+| `src/app/sites/canonica/components/ProductPreviewSection.tsx` | Static dashboard/widget/governance product preview |
+| `src/app/sites/canonica/components/WidgetSection.tsx` | Homepage page-aware widget and install section |
+| `src/app/sites/canonica/components/PillarsSection.tsx` | 4 Canonica engine pillar cards |
+| `src/app/sites/canonica/components/SystemCoverageSection.tsx` | Launch Setup, Support Control, Knowledge Governance, and Runtime Layer cards |
 | `src/app/sites/canonica/components/HowItWorksSection.tsx` | 5-step vertical timeline |
 | `src/app/sites/canonica/components/ComparisonSection.tsx` | Traditional KB vs Canonica table |
 | `src/app/sites/canonica/components/CTASection.tsx` | Bottom CTA section |
@@ -66,7 +101,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 1. **Dark theme** — Deep navy/indigo palette. Distinct from MenuList's light theme. Signals infrastructure product.
 2. **Tailwind CSS** — Same build pipeline as rest of app. `@tailwind` directives in `styles.css`.
-3. **Server components by default** — Pages are server components. Only Header (mobile menu state) is client.
+3. **Server components by default** — Pages and shared chrome stay server-rendered. The mobile header menu uses native HTML instead of client state.
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **CanonicaLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses Tailwind + inline SVGs.
@@ -78,3 +113,9 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | Date | Change |
 |------|--------|
 | 2026-03-07 | Initial implementation: 6 pages, shared components, Tailwind, multi-product routing |
+| 2026-05-21 | Added small-SaaS positioning, `/demo`, Starter/Growth/Studio pricing copy, founder-friendly product/get-started/contact pages, public security/FAQ/legal pages, Canonica sitemap/robots, manifest, icons, and structured data |
+| 2026-05-21 | Restored implemented Canonica engine pillars to homepage and product page while keeping the deferred API/integration pillar off public claims |
+| 2026-05-21 | Added homepage system coverage map from the Canonica codebase inventory |
+| 2026-05-21 | Added static product preview and market-standard public pages for use cases, integrations, resources, and updates |
+| 2026-05-21 | Replaced public integrations positioning with widget-first install positioning; API/adapters stay rollout-gated and out of buyer-facing package copy |
+| 2026-05-21 | Expanded the security page using the reusable MenuList trust-page structure while keeping Canonica-specific product boundaries, widget controls, owner-reviewed answers, rate limits, and responsible disclosure |

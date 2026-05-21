@@ -1,145 +1,284 @@
-'use client'
+'use client';
 
 /**
- * Canonica Dashboard — Overview Page
- * 
- * Quick stats: coverage KPI, entity count, drifted answers, recent activity.
- * Entry point for Canonica admin users.
+ * Canonica Dashboard — Readiness Metrics
+ *
+ * This landing page intentionally reads the compact activation summary instead
+ * of full entity/answer collections. Deep governance tables stay in
+ * /canonica/governance where the extra reads are explicitly user-requested.
  */
 
-import CanonicaCoverageKPI from '@/components/templates/canonica/CanonicaCoverageKPI';
-import { useCanonicalAnswers } from '@hook/canonica/useCanonicalAnswers';
-import { useEntities } from '@hook/canonica/useEntities';
-import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { Card, Col, Empty, Flex, Row, Statistic, Typography } from 'antd';
+import {
+    CANONICA_GOVERNANCE_TABS,
+    CANONICA_ROUTES,
+    getCanonicaGovernanceRoute,
+    toCanonicaDashboardRoute,
+} from '@constant/canonica/navigations';
+import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
+import {
+    Alert,
+    Button,
+    Card,
+    Col,
+    Empty,
+    Flex,
+    Grid,
+    List,
+    Progress,
+    Row,
+    Skeleton,
+    Space,
+    Statistic,
+    Tag,
+    Typography,
+    message,
+} from 'antd';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBookOpen,
-    LuBoxes,
+    LuCheckCircle2,
+    LuExternalLink,
+    LuLayers,
+    LuRefreshCw,
     LuShieldCheck,
+    LuTicket,
     LuZap,
 } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
 
+type ActivationSummaryResponse = {
+    summary?: CanonicaActivationSummary;
+    error?: string;
+};
+
+const STATUS_META = {
+    complete: { color: 'success', label: 'Done', icon: LuCheckCircle2 },
+    attention: { color: 'warning', label: 'Needs review', icon: LuAlertTriangle },
+    pending: { color: 'default', label: 'Pending', icon: LuZap },
+    optional: { color: 'processing', label: 'Optional', icon: LuZap },
+} as const;
+
+const getStepMeta = (step: CanonicaActivationStep) => STATUS_META[step.status] || STATUS_META.pending;
+
 export default function CanonicaDashboardPage() {
-    const session = useClientAuthSession();
-    const tId = session?.tId || 0;
-    const sId = session?.sId || 0;
+    const screens = Grid.useBreakpoint();
+    const router = useRouter();
+    const isMobile = screens.md !== true;
+    const [summary, setSummary] = useState<CanonicaActivationSummary | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
-    const { answers, driftedAnswers, loading: answersLoading } = useCanonicalAnswers(tId, sId);
-    const { entities, relations, searchIndex, loading: entitiesLoading } = useEntities(tId, sId);
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
-    const loading = answersLoading || entitiesLoading;
+    const loadSummary = useCallback(async (silent = false) => {
+        if (silent) {
+            setRefreshing(true);
+        } else {
+            setLoading(true);
+        }
 
-    const activeAnswers = (answers || []).filter(a => a.status === 'active');
-    const activeEntities = (entities || []).filter(e => e.status !== 'deprecated');
-    const totalSignals = activeAnswers.reduce((sum, a) =>
-        sum + (a.signalMetrics?.linkedTicketCount || 0) + (a.signalMetrics?.linkedChatCount || 0), 0
+        try {
+            const response = await fetch('/api/canonica/activation/summary', { method: 'GET' });
+            const data: ActivationSummaryResponse = await response.json().catch(() => ({}));
+            if (!response.ok || !data.summary) {
+                throw new Error(data.error || 'Failed to load readiness metrics');
+            }
+            setSummary(data.summary);
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to load readiness metrics');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadSummary();
+    }, [loadSummary]);
+
+    const requiredSteps = useMemo(() => summary?.steps.filter(step => step.required) || [], [summary]);
+    const attentionSteps = useMemo(() => summary?.steps.filter(step => step.status === 'attention') || [], [summary]);
+    const nextSteps = useMemo(
+        () => summary?.steps.filter(step => step.required && step.status !== 'complete').slice(0, 5) || [],
+        [summary],
     );
 
+    const openRoute = useCallback((route?: string) => {
+        if (!route) return;
+        router.push(toCanonicaDashboardRoute(route, currentHostname));
+    }, [currentHostname, router]);
+
+    if (loading) {
+        return <Skeleton active paragraph={{ rows: 10 }} />;
+    }
+
+    if (!summary) {
+        return (
+            <Alert
+                type="warning"
+                showIcon
+                message="Readiness metrics are unavailable"
+                description="Refresh after Canonica Firebase and onboarding scope are configured."
+                action={<Button onClick={() => loadSummary(true)}>Retry</Button>}
+            />
+        );
+    }
+
+    const coverageRate = summary.governance.canonicalCoverageRate;
+    const trustScore = summary.governance.trustScore;
+    const activeAnswersStep = summary.steps.find(step => step.key === 'canonical-answers');
+    const activeAnswerCount = activeAnswersStep?.description.match(/^\d+/)?.[0] || '0';
+
     return (
-        <Flex vertical gap={24}>
-            <div>
-                <Title level={4} style={{ margin: 0 }}>Dashboard</Title>
-                <Text type="secondary">Canonica knowledge governance overview</Text>
-            </div>
+        <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 76 : 0 }}>
+            <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
+                <div>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Readiness Metrics</Title>
+                    <Text type="secondary">
+                        Summary-based support health for {summary.workspace.productName || summary.workspace.companyName || 'this workspace'}.
+                    </Text>
+                </div>
+                <Space wrap>
+                    <Button icon={<LuRefreshCw />} loading={refreshing} onClick={() => loadSummary(true)}>
+                        Refresh
+                    </Button>
+                    <Button type="primary" icon={<LuExternalLink />} onClick={() => openRoute(CANONICA_ROUTES.ACTIVATION)}>
+                        Open Launch Setup
+                    </Button>
+                </Space>
+            </Flex>
 
-            {/* Quick Stats Row */}
-            <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card loading={loading}>
+            <Alert
+                type={attentionSteps.length ? 'warning' : summary.readinessScore >= 85 ? 'success' : 'info'}
+                showIcon
+                message={summary.readinessScore >= 85 ? 'Support readiness is launch-ready' : 'Support readiness is still building'}
+                description={`${summary.readinessScore}% ready from ${requiredSteps.length} required setup checks. This page uses compact summary docs, not full collection scans.`}
+            />
+
+            <Row gutter={[12, 12]}>
+                <Col xs={24} md={8}>
+                    <Card>
+                        <Flex align="center" gap={16}>
+                            <Progress
+                                type="circle"
+                                percent={summary.readinessScore}
+                                size={isMobile ? 84 : 104}
+                                strokeColor={summary.readinessScore >= 85 ? '#52c41a' : '#1677ff'}
+                            />
+                            <div>
+                                <Text type="secondary">Launch readiness</Text>
+                                <Title level={4} style={{ margin: '4px 0' }}>
+                                    {requiredSteps.filter(step => step.status === 'complete').length}/{requiredSteps.length}
+                                </Title>
+                                <Text>{summary.stage}</Text>
+                            </div>
+                        </Flex>
+                    </Card>
+                </Col>
+                <Col xs={12} md={4}>
+                    <Card>
+                        <Statistic title="Surfaces" value={summary.content.surfaceCount} prefix={<LuLayers />} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={4}>
+                    <Card>
+                        <Statistic title="Articles" value={summary.content.articleCount} prefix={<LuBookOpen />} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={4}>
+                    <Card>
                         <Statistic
-                            title="Entities"
-                            value={activeEntities.length}
-                            prefix={<LuBoxes style={{ color: '#1677ff' }} />}
+                            title="Coverage"
+                            value={typeof coverageRate === 'number' ? coverageRate : 0}
+                            suffix="%"
+                            prefix={<LuShieldCheck />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card loading={loading}>
-                        <Statistic
-                            title="Canonical Answers"
-                            value={activeAnswers.length}
-                            prefix={<LuBookOpen style={{ color: '#52c41a' }} />}
-                        />
+                <Col xs={12} md={4}>
+                    <Card>
+                        <Statistic title="Tickets" value={summary.content.ticketCount} prefix={<LuTicket />} />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card loading={loading}>
+                <Col xs={12} md={4}>
+                    <Card>
                         <Statistic
-                            title="Drifted"
-                            value={driftedAnswers.length}
-                            prefix={driftedAnswers.length > 0
-                                ? <LuAlertTriangle style={{ color: '#faad14' }} />
-                                : <LuShieldCheck style={{ color: '#52c41a' }} />
-                            }
-                            valueStyle={{ color: driftedAnswers.length > 0 ? '#faad14' : '#52c41a' }}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card loading={loading}>
-                        <Statistic
-                            title="Total Signals"
-                            value={totalSignals}
-                            prefix={<LuZap style={{ color: '#722ed1' }} />}
+                            title="Trust"
+                            value={typeof trustScore === 'number' ? trustScore : 0}
+                            suffix={typeof trustScore === 'number' ? '%' : ''}
+                            prefix={<LuShieldCheck />}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            {/* Coverage KPI + Ontology Summary */}
-            <Row gutter={[16, 16]}>
-                <Col xs={24} lg={8}>
-                    <CanonicaCoverageKPI />
-                </Col>
-                <Col xs={24} lg={16}>
-                    <Card title="Ontology Summary" loading={loading}>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Statistic title="Relations" value={relations.length} />
-                            </Col>
-                            <Col span={8}>
-                                <Statistic title="Search Index" value={searchIndex.length} />
-                            </Col>
-                            <Col span={8}>
-                                <Statistic
-                                    title="Coverage"
-                                    value={activeEntities.length > 0
-                                        ? Math.round((activeEntities.filter(e =>
-                                            activeAnswers.some(a => a.scope.entityIds.includes(e.id))
-                                        ).length / activeEntities.length) * 100)
-                                        : 0
-                                    }
-                                    suffix="%"
-                                    valueStyle={{
-                                        color: activeEntities.length === 0 ? '#999'
-                                            : activeEntities.filter(e => activeAnswers.some(a => a.scope.entityIds.includes(e.id))).length / activeEntities.length >= 0.7 ? '#52c41a' : '#faad14'
-                                    }}
-                                />
-                            </Col>
-                        </Row>
+            <Row gutter={[12, 12]}>
+                <Col xs={24} lg={14}>
+                    <Card title="Next Actions">
+                        {nextSteps.length ? (
+                            <List
+                                dataSource={nextSteps}
+                                renderItem={(step) => {
+                                    const meta = getStepMeta(step);
+                                    const Icon = meta.icon;
+                                    return (
+                                        <List.Item
+                                            actions={[
+                                                step.route ? (
+                                                    <Button key="open" size="small" onClick={() => openRoute(step.route)}>
+                                                        {step.actionLabel || 'Open'}
+                                                    </Button>
+                                                ) : null,
+                                            ].filter(Boolean)}
+                                        >
+                                            <List.Item.Meta
+                                                avatar={<Icon style={{ marginTop: 4 }} />}
+                                                title={<Flex align="center" gap={8} wrap="wrap"><Text strong>{step.title}</Text><Tag color={meta.color}>{meta.label}</Tag></Flex>}
+                                                description={<Text type="secondary">{step.description}</Text>}
+                                            />
+                                        </List.Item>
+                                    );
+                                }}
+                            />
+                        ) : (
+                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No required setup actions are open." />
+                        )}
                     </Card>
                 </Col>
-            </Row>
-
-            {/* Getting Started Guide (shown when empty) */}
-            {!loading && activeEntities.length === 0 && activeAnswers.length === 0 && (
-                <Card>
-                    <Empty
-                        description={
-                            <Flex vertical align="center" gap={8}>
-                                <Title level={5}>Welcome to Canonica</Title>
-                                <Paragraph type="secondary" style={{ maxWidth: 500, textAlign: 'center' }}>
-                                    Start by creating product entities (features, plans, roles), then build canonical answers
-                                    bound to those entities. The governance engine will monitor for drift automatically.
-                                </Paragraph>
+                <Col xs={24} lg={10}>
+                    <Card title="Knowledge Health">
+                        <Flex vertical gap={12}>
+                            <Flex justify="space-between" gap={12}>
+                                <Text type="secondary">Canonical answers</Text>
+                                <Text strong>{activeAnswerCount}</Text>
                             </Flex>
-                        }
-                    />
-                </Card>
-            )}
+                            <Flex justify="space-between" gap={12}>
+                                <Text type="secondary">Coverage sample</Text>
+                                <Text strong>{summary.governance.canonicalCoverageTotal ?? 0}</Text>
+                            </Flex>
+                            <Flex justify="space-between" gap={12}>
+                                <Text type="secondary">Widget key</Text>
+                                <Tag color={summary.widget.hasWidgetKey ? 'success' : 'default'}>
+                                    {summary.widget.hasWidgetKey ? 'Ready' : 'Missing'}
+                                </Tag>
+                            </Flex>
+                            <Flex justify="space-between" gap={12}>
+                                <Text type="secondary">Allowed origins</Text>
+                                <Text strong>{summary.widget.allowedOriginCount}</Text>
+                            </Flex>
+                            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                                Open deep governance only when you need answer-level review. This keeps the normal landing page cheap and predictable.
+                            </Paragraph>
+                            <Button onClick={() => openRoute(getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.ANSWERS))}>
+                                Open Governance
+                            </Button>
+                        </Flex>
+                    </Card>
+                </Col>
+            </Row>
         </Flex>
     );
 }

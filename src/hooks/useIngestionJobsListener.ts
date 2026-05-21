@@ -11,14 +11,21 @@ import { message } from 'antd';
 import { onSnapshot } from 'firebase/firestore';
 import { useContext, useEffect, useRef, useState } from 'react';
 
-export const useIngestionJobsListener = () => {
+export type IngestionJobsScope = {
+    tId?: number | string | null;
+    sId?: number | string | null;
+};
+
+export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
     const [activeJob, setActiveJob] = useState<IngestionJob | null>(null);
     const dispatch = useAppDispatch();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const unsubscribeRef = useRef<(() => void) | null>(null);
+    const tenantId = Number(scope?.tId ?? storeDetails?.tenantId);
+    const storeId = Number(scope?.sId ?? storeDetails?.storeId);
 
     useEffect(() => {
-        if (!storeDetails?.storeId) return;
+        if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return;
         if (unsubscribeRef.current) unsubscribeRef.current();
 
         const loaderId = 'ingestion-jobs-listener';
@@ -26,7 +33,7 @@ export const useIngestionJobsListener = () => {
         try {
             dispatch(startLoader(loaderId));
 
-            const jobsCollectionRef = getIngestionJobCollectionRef({ tId: storeDetails.tenantId, sId: storeDetails.storeId });
+            const jobsCollectionRef = getIngestionJobCollectionRef({ tId: tenantId, sId: storeId });
 
             const unsubscribe = onSnapshot(jobsCollectionRef, async (querySnapshot) => {
                 const jobsData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as IngestionJob));
@@ -41,7 +48,7 @@ export const useIngestionJobsListener = () => {
                 dispatch(stopLoader(loaderId));
             },
                 (error) => {
-                    logger.error('Ingestion jobs listener error', error, { tenantId: storeDetails.tenantId, storeId: storeDetails.storeId });
+                    logger.error('Ingestion jobs listener error', error, { tenantId, storeId });
                     message.error('Failed to fetch real-time job updates.');
                     dispatch(stopLoader(loaderId));
                 }
@@ -49,7 +56,7 @@ export const useIngestionJobsListener = () => {
 
             unsubscribeRef.current = unsubscribe;
         } catch (error) {
-            logger.error('Failed to setup ingestion jobs listener', error, { tenantId: storeDetails.tenantId, storeId: storeDetails.storeId });
+            logger.error('Failed to setup ingestion jobs listener', error, { tenantId, storeId });
             message.error('Failed to set up real-time job updates.');
             dispatch(stopLoader(loaderId));
         }
@@ -60,7 +67,7 @@ export const useIngestionJobsListener = () => {
             }
             dispatch(stopLoader(loaderId));
         };
-    }, [storeDetails?.storeId, storeDetails?.tenantId, dispatch]);
+    }, [storeId, tenantId, dispatch]);
 
     return { activeJob };
 };

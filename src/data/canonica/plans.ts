@@ -2,10 +2,10 @@
  * Canonica Plans — Pricing & Plan Configuration
  *
  * Separate from MenuList plans. Canonica has its own pricing model
- * based on canonical answer volume and API usage.
+ * based on canonical answer volume, knowledge coverage, signals, and workspaces.
  *
- * During beta: all features included at $0.
- * Post-beta: per-tenant pricing based on usage.
+ * Public packaging is founder-friendly and INR-first:
+ * Starter, Growth, Studio. Beta remains available as a controlled launch path.
  *
  * Prices are in smallest currency unit (paise for INR, cents for USD).
  *
@@ -25,6 +25,7 @@ export interface CanonicaPlan {
         maxCanonicalAnswers: number;
         maxKBArticles: number;
         maxSignalEventsPerMonth: number;
+        maxWorkspaces?: number;
         widgetIncluded: boolean;
         apiAccessIncluded: boolean;
     };
@@ -35,7 +36,7 @@ const CanonicaPlansList: CanonicaPlan[] = [
     {
         planId: 'canonica_beta',
         name: 'Beta',
-        description: 'Full access during private beta. All features included.',
+        description: 'Controlled launch access before paid packaging is enabled.',
         isRecommended: true,
         billingInterval: 'MONTH',
         priceINR: { price: 0, monthlyCredits: 500 },
@@ -45,24 +46,26 @@ const CanonicaPlansList: CanonicaPlan[] = [
             maxCanonicalAnswers: 500,
             maxKBArticles: 200,
             maxSignalEventsPerMonth: 10000,
+            maxWorkspaces: 1,
             widgetIncluded: true,
-            apiAccessIncluded: true,
+            apiAccessIncluded: false,
         },
     },
     // Starter Plan — Monthly
     {
         planId: 'canonica_starter',
         name: 'Starter',
-        description: 'For SaaS products with up to 50 canonical answers.',
+        description: 'For solo founders launching support for one SaaS product.',
         isRecommended: false,
         billingInterval: 'MONTH',
-        priceINR: { price: 299900, monthlyCredits: 200 },
-        priceUSD: { price: 4900, monthlyCredits: 200 },
+        priceINR: { price: 99900, monthlyCredits: 150 },
+        priceUSD: { price: 1200, monthlyCredits: 150 },
         limits: {
             maxEntities: 50,
             maxCanonicalAnswers: 50,
             maxKBArticles: 50,
             maxSignalEventsPerMonth: 2000,
+            maxWorkspaces: 1,
             widgetIncluded: true,
             apiAccessIncluded: false,
         },
@@ -71,54 +74,95 @@ const CanonicaPlansList: CanonicaPlan[] = [
     {
         planId: 'canonica_starter',
         name: 'Starter (Yearly)',
-        description: 'For SaaS products with up to 50 canonical answers.',
+        description: 'For solo founders launching support for one SaaS product.',
         isRecommended: false,
         billingInterval: 'YEAR',
-        priceINR: { price: 2999000, monthlyCredits: 200 },
-        priceUSD: { price: 49000, monthlyCredits: 200 },
+        priceINR: { price: 999000, monthlyCredits: 150 },
+        priceUSD: { price: 12000, monthlyCredits: 150 },
         limits: {
             maxEntities: 50,
             maxCanonicalAnswers: 50,
             maxKBArticles: 50,
             maxSignalEventsPerMonth: 2000,
+            maxWorkspaces: 1,
             widgetIncluded: true,
             apiAccessIncluded: false,
         },
     },
-    // Pro Plan — Monthly
+    // Growth Plan — Monthly
     {
-        planId: 'canonica_pro',
-        name: 'Pro',
-        description: 'For SaaS products with full canonical governance.',
+        planId: 'canonica_growth',
+        name: 'Growth',
+        description: 'For growing SaaS products that need surfaces, signals, and weekly governance.',
         isRecommended: true,
         billingInterval: 'MONTH',
-        priceINR: { price: 799900, monthlyCredits: 500 },
-        priceUSD: { price: 9900, monthlyCredits: 500 },
+        priceINR: { price: 299900, monthlyCredits: 500 },
+        priceUSD: { price: 3600, monthlyCredits: 500 },
         limits: {
             maxEntities: 200,
             maxCanonicalAnswers: 500,
             maxKBArticles: 200,
             maxSignalEventsPerMonth: 10000,
+            maxWorkspaces: 1,
             widgetIncluded: true,
-            apiAccessIncluded: true,
+            apiAccessIncluded: false,
         },
     },
-    // Pro Plan — Yearly
+    // Growth Plan — Yearly
     {
-        planId: 'canonica_pro',
-        name: 'Pro (Yearly)',
-        description: 'For SaaS products with full canonical governance.',
+        planId: 'canonica_growth',
+        name: 'Growth (Yearly)',
+        description: 'For growing SaaS products that need surfaces, signals, and weekly governance.',
         isRecommended: true,
         billingInterval: 'YEAR',
-        priceINR: { price: 7999000, monthlyCredits: 500 },
-        priceUSD: { price: 99000, monthlyCredits: 500 },
+        priceINR: { price: 2999000, monthlyCredits: 500 },
+        priceUSD: { price: 36000, monthlyCredits: 500 },
         limits: {
             maxEntities: 200,
             maxCanonicalAnswers: 500,
             maxKBArticles: 200,
             maxSignalEventsPerMonth: 10000,
+            maxWorkspaces: 1,
             widgetIncluded: true,
-            apiAccessIncluded: true,
+            apiAccessIncluded: false,
+        },
+    },
+    // Studio Plan — Monthly
+    {
+        planId: 'canonica_studio',
+        name: 'Studio',
+        description: 'For agencies and dev studios managing several small SaaS launches.',
+        isRecommended: false,
+        billingInterval: 'MONTH',
+        priceINR: { price: 699900, monthlyCredits: 1200 },
+        priceUSD: { price: 8400, monthlyCredits: 1200 },
+        limits: {
+            maxEntities: 800,
+            maxCanonicalAnswers: 2000,
+            maxKBArticles: 800,
+            maxSignalEventsPerMonth: 40000,
+            maxWorkspaces: 5,
+            widgetIncluded: true,
+            apiAccessIncluded: false,
+        },
+    },
+    // Studio Plan — Yearly
+    {
+        planId: 'canonica_studio',
+        name: 'Studio (Yearly)',
+        description: 'For agencies and dev studios managing several small SaaS launches.',
+        isRecommended: false,
+        billingInterval: 'YEAR',
+        priceINR: { price: 6999000, monthlyCredits: 1200 },
+        priceUSD: { price: 84000, monthlyCredits: 1200 },
+        limits: {
+            maxEntities: 800,
+            maxCanonicalAnswers: 2000,
+            maxKBArticles: 800,
+            maxSignalEventsPerMonth: 40000,
+            maxWorkspaces: 5,
+            widgetIncluded: true,
+            apiAccessIncluded: false,
         },
     },
 ];

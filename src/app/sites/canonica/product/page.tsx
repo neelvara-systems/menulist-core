@@ -3,10 +3,12 @@ import { headers } from 'next/headers';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica\'s five architectural pillars: Product Ontology, Canonical Answer Engine, Drift Governance, Signal Mutation, and API Integration.',
+    description: 'Canonica keeps support answers correct across help centers, widgets, changelogs, and tickets for small SaaS teams.',
+    alternates: { canonical: '/product' },
 };
 
 function getBasePath(): string {
@@ -19,68 +21,68 @@ function getBasePath(): string {
 
 const FEATURES = [
     {
-        id: 'ontology',
-        badge: 'Pillar 1',
-        title: 'Product Ontology',
-        description: 'Model your entire product as structured entities — features, plans, roles, workflows, states, integrations, and errors. Each entity has a canonical name, type, relationships, and a deterministic search index.',
+        id: 'launch-setup',
+        badge: 'Launch Setup',
+        title: 'Go from blank support to a working support layer',
+        description: 'Create a workspace, add your product details, import the help content you already have, and verify the widget on your own product pages.',
         capabilities: [
-            'Guided entity extraction from existing KB articles',
-            'Human-validated candidate approval pipeline',
-            'Typed relationships between entities',
-            'Deterministic search index with synonyms and stemming',
-            'Tenant-scoped, version-aware entity graph',
+            'Product profile, support email, billing model, and main product pages',
+            'Knowledge import for docs, FAQs, starter answers, and existing files',
+            'Activation checklist for widget install, allowed origins, and first answer readiness',
+            'Initial product surfaces so coverage is measured by page, not only by article count',
+            'Human review before generated drafts become approved answers',
+        ],
+    },
+    {
+        id: 'page-aware-support',
+        badge: 'Support Control',
+        title: 'Show help that matches the page the user is on',
+        description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help.',
+        capabilities: [
+            'Widget install script with allowed-origin and blocked-route controls',
+            'Safe context payloads for page, feature, workflow, plan, and role hints',
+            'Related articles and changelog entries filtered by product surface',
+            'Tickets as fallback when approved content is missing',
+            'Mobile-first widget UI for end users inside client products',
         ],
     },
     {
         id: 'canonical-answers',
-        badge: 'Pillar 2',
-        title: 'Canonical Answer Engine',
-        description: 'Replace generated guesses with governed, versioned, entity-bound answers. Each answer is a persistent knowledge asset — not an ephemeral generation. Same query, same context, same answer. Every time.',
+        badge: 'Knowledge Governance',
+        title: 'Serve approved answers before fallback',
+        description: 'Canonica treats approved support answers as durable product knowledge. Fallback can help while coverage grows, but repeated fallback becomes a visible gap.',
         capabilities: [
-            'Entity-bound answers with version windows',
-            'Scope filtering by plan, role, and product state',
-            'Specificity scoring (version match → scope depth → recency → confidence)',
-            'No generation during retrieval — fully deterministic',
-            'RAG fallback for uncovered queries, logged as CANONICAL_MISS',
+            'Canonical-first retrieval before RAG fallback',
+            'Owner-approved answer drafts and mutation proposals',
+            'Coverage metrics by surface, entity, and answer readiness',
+            'Cache freshness checks so updated content does not serve stale answers',
+            'Audit trail for answer review and governance actions',
         ],
     },
     {
-        id: 'drift-detection',
-        badge: 'Pillar 3',
-        title: 'Drift Governance',
-        description: 'Detect when answers become stale through four deterministic drift classes. Every product release triggers evaluation. Nightly batch audits catch what releases miss.',
+        id: 'release-awareness',
+        badge: 'Release Awareness',
+        title: 'Keep support aligned when the product changes',
+        description: 'Changelogs, product surfaces, and affected answers stay connected, so a release can point owners to the support content that needs review.',
         capabilities: [
-            'Version drift — entity changed, answer not revalidated',
-            'Signal anomaly — negative feedback spike detected',
-            'Scope conflict — overlapping active answers found',
-            'Orphan entity — deprecated entity still bound to answers',
-            'Advisory governance — flags, never blocks',
+            'Changelog entries assigned to surfaces, tags, and affected answers',
+            'Drift flags for stale or conflicting support knowledge',
+            'Release impact checks without creating a separate scheduler',
+            'Weekly digest of what needs review next',
+            'Summary-backed readiness metrics to avoid expensive dashboard scans',
         ],
     },
     {
-        id: 'signal-mutation',
-        badge: 'Pillar 4',
-        title: 'Signal Mutation Engine',
-        description: 'Every support ticket and negative chat feedback becomes a structured signal. Signals cluster by entity. Clusters that exceed threshold auto-generate mutation proposals. You review and approve. Knowledge evolves.',
+        id: 'support-gap-loop',
+        badge: 'Support Gap Loop',
+        title: 'Turn missed questions into better knowledge',
+        description: 'Tickets, low-confidence answers, and negative feedback become signals. Canonica clusters those signals and routes the useful ones into owner-reviewed improvements.',
         capabilities: [
-            'Fire-and-forget signal emission (never blocks operations)',
-            'Entity-based clustering with threshold detection',
-            'Four mutation types: content refinement, scope adjustment, version update, new answer required',
-            'Human-in-the-loop approval (no autonomous editing)',
-            '14-day post-mutation impact tracking',
-        ],
-    },
-    {
-        id: 'api',
-        badge: 'Pillar 5',
-        title: 'API & Integration',
-        description: 'Embed Canonica behind your existing support tools. Public API for canonical answer retrieval. Version-aware endpoints. Drift webhooks. Signal ingestion. Works with Zendesk, Intercom, or custom systems.',
-        capabilities: [
-            'REST API for canonical answer retrieval',
-            'Version-aware, scope-filtered endpoints',
-            'Outbound drift event webhooks',
-            'Inbound signal ingestion endpoint',
-            'Tenant-isolated, rate-limited access',
+            'Fire-and-forget signal writes with bounded payloads',
+            'Signal-to-knowledge queue for recurring gaps',
+            'Draft canonical answers for owner review',
+            'Ticket resolution extraction when a support case teaches the product',
+            'Cost-conscious summaries for dashboards and scheduler discovery',
         ],
     },
 ];
@@ -96,13 +98,42 @@ export default function CanonicaProductPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Knowledge infrastructure,{' '}
-                        <span className="text-indigo-300">not another tool</span>
+                        Support answers tied to the product screen where users need help.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Five architectural pillars that transform how SaaS companies govern support knowledge.
-                        Deterministic. Versioned. Self-improving.
+                        Canonica gives small SaaS teams a governed support knowledge layer: product surfaces, canonical answers, release-aware review, and a signal queue for recurring gaps.
                     </p>
+                </section>
+
+                <section className="border-t border-white/[0.06] px-6 py-20">
+                    <div className="mx-auto max-w-6xl">
+                        <div className="mb-12 max-w-3xl">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Canonica Engine</p>
+                            <h2 className="text-3xl font-bold sm:text-4xl">Built as a knowledge control plane, not a chatbot wrapper.</h2>
+                            <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
+                                These are the implemented architecture layers behind the website, widget, help center, tickets, and governance screens.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {CANONICA_ENGINE_PILLARS.map((pillar) => (
+                                <article
+                                    key={pillar.number}
+                                    className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6"
+                                >
+                                    <div className="mb-4 flex items-center gap-3">
+                                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-xs font-bold text-indigo-400">
+                                            {pillar.number}
+                                        </span>
+                                        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                            {pillar.highlight}
+                                        </span>
+                                    </div>
+                                    <h3 className="mb-2 text-lg font-semibold text-white">{pillar.title}</h3>
+                                    <p className="text-sm leading-relaxed text-[#808099]">{pillar.description}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
                 </section>
 
                 {/* Feature sections */}
@@ -138,14 +169,23 @@ export default function CanonicaProductPage() {
                 <section className="border-t border-white/[0.06] px-6 py-20 text-center">
                     <h2 className="mb-4 text-3xl font-bold">See it in action</h2>
                     <p className="mb-8 text-lg text-[#a0a0c0]">
-                        Canonica is in private beta. Request access and we will set up a guided walkthrough.
+                        Try the static demo first, then create a workspace and connect your own product.
                     </p>
+                    <div className="mb-4">
+                        <CanonicaLink
+                            basePath={basePath}
+                            href="/demo"
+                            className="inline-block rounded-xl border border-white/[0.1] bg-white/[0.03] px-8 py-3.5 text-sm font-semibold text-[#d6d6ef] transition-all hover:border-white/[0.2] hover:text-white"
+                        >
+                            Try Demo
+                        </CanonicaLink>
+                    </div>
                     <CanonicaLink
                         basePath={basePath}
                         href="/get-started"
                         className="inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
                     >
-                        Request Early Access
+                        Start Free
                     </CanonicaLink>
                 </section>
             </main>

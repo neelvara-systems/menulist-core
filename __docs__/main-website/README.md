@@ -139,9 +139,11 @@ Active decisions:
 - Keep search/AEO, POS Sync, analytics, staff access, multi-location, and industry breadth conservative and supporting-page-led.
 - Include feedback on the homepage only as a small public-correction card: customers can flag wrong public details, and owners correct the same approved source. Do not frame it as reviews, reputation management, or testimonials.
 
-## Stage 6.1 Synthetic Asset Pack
+## Stage 6.3 P0 Fictional Demo Asset Pack
 
-Stage 6.1 produced a safe synthetic launch asset pack because current tenant data is temporary and unapproved third-party extracted menu data must not be used publicly.
+Stage 6.3 supersedes the earlier Stage 6.1 draft asset pack with a fictional founder-approved demo business named **The Daily Plate**. This was needed because current tenant data is temporary and unapproved third-party extracted menu data must not be used publicly.
+
+The latest generator pass was cross-checked against the real MenuList public surface anatomy and the Habibis reference captures in `asset-production/stage-06-4-reference/`. The generated pack intentionally keeps the website's light marketing theme instead of copying Habibis' dark customer theme, because customer public pages can follow each business brand. The OBP/menu structures now mirror the real product pattern: language pills, business identity, service modes, official/open badges, action buttons, menu cards, search, category chips, featured/category rhythm, item cards, and owner-approved source status.
 
 Generated assets:
 
@@ -162,9 +164,19 @@ Generator:
 
 Stage output:
 
-- `__docs__/main-website/website-prep-codex-prompts/stage-06-1-output-synthetic-launch-asset-pack.md`
+- `__docs__/main-website/asset-production/stage-06-3/stage-06-3-p0-fictional-demo-asset-pack.md`
 
-These visuals are launch-safe placeholders. They should be replaced with real product screenshots after a clean founder-approved demo tenant is prepared.
+Reference captures used for structure only:
+
+- `__docs__/main-website/asset-production/stage-06-4-reference/habibis-root-mobile.png`
+- `__docs__/main-website/asset-production/stage-06-4-reference/habibis-root-desktop.png`
+- `__docs__/main-website/asset-production/stage-06-4-reference/habibis-menu-mobile.png`
+
+These visuals are launch-safe demo product visuals, not screenshots from a real customer account. They should be replaced with routed product screenshots after a clean founder-approved demo tenant is prepared.
+
+Historical Stage 6.1 draft output:
+
+- `__docs__/main-website/website-prep-codex-prompts/stage-06-1-output-synthetic-launch-asset-pack.md`
 
 ## Stage 6.2 Clean Demo Captures
 

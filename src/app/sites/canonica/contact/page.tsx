@@ -5,7 +5,8 @@ import CanonicaHeader from '../components/Header';
 
 export const metadata: Metadata = {
     title: 'Contact',
-    description: 'Get in touch with the Canonica team. We are happy to discuss how Canonica can govern your support knowledge.',
+    description: 'Contact Canonica for product questions, onboarding help, and partnerships.',
+    alternates: { canonical: '/contact' },
 };
 
 function getBasePath(): string {
@@ -28,8 +29,8 @@ export default function CanonicaContactPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Contact</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Get in touch</h1>
                         <p className="mb-12 text-lg text-[#a0a0c0]">
-                            Have questions about Canonica? Want to discuss how it fits your SaaS support stack?
-                            We would love to hear from you.
+                            Have questions about Canonica, onboarding, widget install, or whether it fits your SaaS product?
+                            Reach the team here.
                         </p>
 
                         <div className="space-y-6">
@@ -48,10 +49,10 @@ export default function CanonicaContactPage() {
                             </div>
 
                             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
-                                <h3 className="mb-2 font-semibold text-white">Design partner program</h3>
+                                <h3 className="mb-2 font-semibold text-white">Early customer program</h3>
                                 <p className="text-sm text-[#808099]">
-                                    We work closely with a small number of mid-market SaaS companies during our beta phase.
-                                    If you have 5+ support agents and biweekly release cadence, you might be a great fit.
+                                    We work closely with small SaaS teams, solo founders, and studios that want support
+                                    answers connected to their product pages before they build a full support team.
                                 </p>
                             </div>
                         </div>

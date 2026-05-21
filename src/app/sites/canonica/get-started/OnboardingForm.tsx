@@ -5,6 +5,7 @@ import { SessionProvider, signIn, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
+type BillingModel = 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
 
 interface OnboardResult {
     tenantId: number;
@@ -12,6 +13,15 @@ interface OnboardResult {
     apiKey: string;
     plan: { id: string; name: string; isBeta: boolean };
 }
+
+const SURFACE_OPTIONS = [
+    { key: 'billing', label: 'Billing' },
+    { key: 'onboarding', label: 'Onboarding' },
+    { key: 'settings', label: 'Settings' },
+    { key: 'team', label: 'Team' },
+    { key: 'integrations', label: 'Connected apps' },
+    { key: 'release_notes', label: 'Release notes' },
+];
 
 export default function OnboardingForm() {
     return (
@@ -26,6 +36,10 @@ function OnboardingFormInner() {
     const [step, setStep] = useState<OnboardingStep>(status === 'authenticated' ? 'details' : 'auth');
     const [companyName, setCompanyName] = useState('');
     const [productName, setProductName] = useState('');
+    const [productUrl, setProductUrl] = useState('');
+    const [supportEmail, setSupportEmail] = useState('');
+    const [billingModel, setBillingModel] = useState<BillingModel>('subscription');
+    const [primarySurfaces, setPrimarySurfaces] = useState<string[]>(['billing', 'onboarding', 'settings']);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<OnboardResult | null>(null);
 
@@ -44,6 +58,15 @@ function OnboardingFormInner() {
             setError('Company name must be at least 2 characters.');
             return;
         }
+        if (productUrl.trim()) {
+            try {
+                const parsed = new URL(productUrl.trim());
+                if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid URL');
+            } catch {
+                setError('Enter a valid product URL, for example https://app.example.com.');
+                return;
+            }
+        }
 
         setStep('creating');
         setError(null);
@@ -55,6 +78,10 @@ function OnboardingFormInner() {
                 body: JSON.stringify({
                     companyName: companyName.trim(),
                     productName: productName.trim() || undefined,
+                    productUrl: productUrl.trim() || undefined,
+                    supportEmail: supportEmail.trim() || undefined,
+                    billingModel,
+                    primarySurfaces,
                     planId: 'canonica_beta',
                     interval: 'MONTH',
                 }),
@@ -73,6 +100,12 @@ function OnboardingFormInner() {
             setError(err.message || 'Failed to create account');
             setStep('details');
         }
+    };
+
+    const toggleSurface = (surfaceKey: string) => {
+        setPrimarySurfaces(prev => prev.includes(surfaceKey)
+            ? prev.filter(item => item !== surfaceKey)
+            : [...prev, surfaceKey]);
     };
 
     return (
@@ -128,10 +161,64 @@ function OnboardingFormInner() {
                         />
                     </div>
 
+                    <div style={styles.fieldGroup}>
+                        <label style={styles.label}>Product URL (optional)</label>
+                        <input
+                            type="url"
+                            value={productUrl}
+                            onChange={(e) => setProductUrl(e.target.value)}
+                            placeholder="https://app.example.com"
+                            style={styles.input}
+                        />
+                    </div>
+
+                    <div style={styles.fieldGroup}>
+                        <label style={styles.label}>Support email (optional)</label>
+                        <input
+                            type="email"
+                            value={supportEmail}
+                            onChange={(e) => setSupportEmail(e.target.value)}
+                            placeholder="support@example.com"
+                            style={styles.input}
+                        />
+                    </div>
+
+                    <div style={styles.fieldGroup}>
+                        <label style={styles.label}>Billing model</label>
+                        <select
+                            value={billingModel}
+                            onChange={(e) => setBillingModel(e.target.value as BillingModel)}
+                            style={styles.select}
+                        >
+                            <option value="subscription">Subscription</option>
+                            <option value="usage">Usage based</option>
+                            <option value="one_time">One-time payment</option>
+                            <option value="free">Free product</option>
+                            <option value="not_sure">Not sure yet</option>
+                        </select>
+                    </div>
+
+                    <div style={styles.fieldGroup}>
+                        <label style={styles.label}>Main product pages</label>
+                        <div style={styles.checkboxGrid}>
+                            {SURFACE_OPTIONS.map((surface) => (
+                                <label key={surface.key} style={styles.checkboxOption}>
+                                    <input
+                                        type="checkbox"
+                                        checked={primarySurfaces.includes(surface.key)}
+                                        onChange={() => toggleSurface(surface.key)}
+                                        style={styles.checkboxInput}
+                                    />
+                                    {surface.label}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
                     <div style={styles.planBadge}>
                         <span style={styles.planLabel}>Beta Plan</span>
                         <span style={styles.planPrice}>Free during beta</span>
-                        <span style={styles.planDesc}>All features included during private beta.</span>
+                        <span style={styles.planDesc}>All launch features included during controlled beta.</span>
                     </div>
 
                     {error && <p style={styles.error}>{error}</p>}
@@ -172,9 +259,9 @@ function OnboardingFormInner() {
                     <div style={styles.nextSteps}>
                         <h3 style={styles.nextStepsTitle}>Next steps</h3>
                         <ol style={styles.stepsList}>
-                            <li>Upload your help articles to the dashboard</li>
-                            <li>Review suggested product topics</li>
-                            <li>Approve your first governed answers</li>
+                            <li>Check your activation dashboard</li>
+                            <li>Upload docs or starter answers</li>
+                            <li>Review generated product topics and answer drafts</li>
                             <li>Add the widget to your product with this key</li>
                         </ol>
                     </div>
@@ -215,6 +302,18 @@ const styles: Record<string, CSSProperties> = {
         border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
         color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
     },
+    select: {
+        width: '100%', padding: '10px 14px', borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.12)', background: '#111124',
+        color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+    },
+    checkboxGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, width: '100%' },
+    checkboxOption: {
+        minHeight: 40, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
+        background: 'rgba(255,255,255,0.04)', color: '#d6d6ef', fontSize: 13,
+        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', boxSizing: 'border-box',
+    },
+    checkboxInput: { width: 16, height: 16, accentColor: '#6366f1' },
     planBadge: {
         width: '100%', padding: '12px 16px', borderRadius: 8,
         border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)',

@@ -46,6 +46,7 @@ import {
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
 } from '@lib/canonica/widgetConfig';
+import type { CanonicaWidgetRuntimeStatus } from '@type/canonica';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -60,9 +61,26 @@ type WidgetConfigResponse = {
     allowedOrigins?: string[];
     keyPrefix?: string | null;
     hasWidgetKey?: boolean;
+    runtimeStatus?: CanonicaWidgetRuntimeStatus | null;
 };
 
 const CONTROL_LABEL_STYLE = { fontSize: 12 } as const;
+
+const formatRuntimeDate = (value: any): string => {
+    if (!value) return 'Not seen yet';
+    const date = typeof value?.toDate === 'function'
+        ? value.toDate()
+        : typeof value?.seconds === 'number'
+            ? new Date(value.seconds * 1000)
+            : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not seen yet';
+    return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
 
 export default function CanonicaWidgetManagement({ embeddedMobile = false }: CanonicaWidgetManagementProps) {
     const screens = Grid.useBreakpoint();
@@ -78,6 +96,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [keyPrefix, setKeyPrefix] = useState<string | null>(null);
     const [hasWidgetKey, setHasWidgetKey] = useState(false);
+    const [runtimeStatus, setRuntimeStatus] = useState<CanonicaWidgetRuntimeStatus | null>(null);
     const [snippetType, setSnippetType] = useState<SnippetType>('html');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [scriptSrc, setScriptSrc] = useState('https://canonica.app/widget/canonica-widget.js');
@@ -99,6 +118,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
             setKeyPrefix(data.keyPrefix || null);
             setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setRuntimeStatus(data.runtimeStatus || null);
             setDirty(false);
         } catch (error: any) {
             message.error(error?.message || 'Failed to load widget settings');
@@ -131,6 +151,9 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             if (!res.ok) throw new Error((data as any).error || 'Failed to save widget settings');
             setConfig(normalizeWidgetConfig(data.config));
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
+            if ('runtimeStatus' in data) {
+                setRuntimeStatus(data.runtimeStatus || null);
+            }
             setDirty(false);
             message.success('Widget settings saved');
         } catch (error: any) {
@@ -241,6 +264,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     ].join('\n'), []);
 
     const activeSnippet = snippetType === 'html' ? embedCode : snippetType === 'spa' ? spaSnippet : nextSnippet;
+    const widgetSeen = Boolean(runtimeStatus?.lastSeenAt);
+    const contextSeen = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
 
     const copyText = useCallback(async (value: string, successMessage = 'Copied') => {
         try {
@@ -357,6 +382,17 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                     />
                                                 </Flex>
                                             </Col>
+                                            <Col xs={24} sm={16}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Greeting</Text>
+                                                    <Input
+                                                        value={config.greeting}
+                                                        maxLength={120}
+                                                        onChange={(event) => updateConfig('greeting', event.target.value || DEFAULT_CANONICA_WIDGET_CONFIG.greeting)}
+                                                        placeholder="How can we help?"
+                                                    />
+                                                </Flex>
+                                            </Col>
                                             <Col xs={12} sm={8}>
                                                 <Flex vertical gap={4}>
                                                     <Text strong style={CONTROL_LABEL_STYLE}>Offset X</Text>
@@ -434,7 +470,10 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                             />
                                         )}
                                     >
-                                        <WidgetPreview config={config} mode={previewMode} />
+                                        <Flex vertical gap={12}>
+                                            <WidgetPreview config={config} mode={previewMode} />
+                                            <PageAwarePreview />
+                                        </Flex>
                                     </Card>
                                 </Col>
                             </Row>
@@ -470,6 +509,49 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                 The script reads saved dashboard settings automatically. Script attributes are still supported for per-environment overrides.
                                             </Text>
                                         </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24}>
+                                    <Card title={<Flex align="center" gap={8}><LuShield size={16} /> Install Verification</Flex>}>
+                                        <Row gutter={[12, 12]}>
+                                            <Col xs={24} md={8}>
+                                                <Alert
+                                                    type={widgetSeen ? 'success' : 'warning'}
+                                                    showIcon
+                                                    message={widgetSeen ? 'Widget loaded recently' : 'Widget not seen yet'}
+                                                    description={widgetSeen
+                                                        ? `Last seen ${formatRuntimeDate(runtimeStatus?.lastSeenAt)}.`
+                                                        : 'Install the script and open your product once to verify the widget loads.'}
+                                                />
+                                            </Col>
+                                            <Col xs={24} md={8}>
+                                                <Alert
+                                                    type={contextSeen ? 'success' : 'info'}
+                                                    showIcon
+                                                    message={contextSeen ? 'Page context received' : 'Page context not received yet'}
+                                                    description={contextSeen
+                                                        ? runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage || 'Context marker saved.'
+                                                        : 'Add the route context snippet so Canonica can answer for the current screen.'}
+                                                />
+                                            </Col>
+                                            <Col xs={24} md={8}>
+                                                <Flex vertical gap={6}>
+                                                    <Flex justify="space-between" gap={12}>
+                                                        <Text type="secondary">Last route</Text>
+                                                        <Text strong style={{ wordBreak: 'break-all', textAlign: 'right' }}>{runtimeStatus?.lastPath || 'Not seen yet'}</Text>
+                                                    </Flex>
+                                                    <Flex justify="space-between" gap={12}>
+                                                        <Text type="secondary">Last origin</Text>
+                                                        <Text strong style={{ wordBreak: 'break-all', textAlign: 'right' }}>{runtimeStatus?.lastOrigin || 'Not seen yet'}</Text>
+                                                    </Flex>
+                                                    <Flex justify="space-between" gap={12}>
+                                                        <Text type="secondary">Seen count</Text>
+                                                        <Text strong>{runtimeStatus?.seenCount || 0}</Text>
+                                                    </Flex>
+                                                </Flex>
+                                            </Col>
+                                        </Row>
                                     </Card>
                                 </Col>
 
@@ -710,5 +792,36 @@ function WidgetPreview({ config, mode }: { config: CanonicaWidgetConfig; mode: '
                 )}
             </div>
         </Flex>
+    );
+}
+
+function PageAwarePreview() {
+    return (
+        <Card size="small" styles={{ body: { padding: 12 } }}>
+            <Flex vertical gap={8}>
+                <Flex align="center" justify="space-between" gap={8} wrap="wrap">
+                    <Text strong>Page-aware response preview</Text>
+                    <Tag color="blue">contextKey: billing_invoices</Tag>
+                </Flex>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    When your app sends route context, Canonica boosts linked product surfaces before falling back to general help.
+                </Text>
+                <Flex gap={6} wrap="wrap">
+                    <Tag>Billing</Tag>
+                    <Tag>Invoices</Tag>
+                    <Tag>Plans</Tag>
+                </Flex>
+                <div style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: 10,
+                    background: '#f8fafc',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                }}>
+                    Users on the billing page see billing articles, latest plan-change release notes, and ticket fallback only when approved answers are missing.
+                </div>
+            </Flex>
+        </Card>
     );
 }

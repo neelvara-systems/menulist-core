@@ -1,32 +1,32 @@
 const STEPS = [
     {
         step: '1',
-        title: 'Model your product',
-        description: 'Define entities — features, plans, workflows, errors. Build a structured ontology of your product from existing docs.',
+        title: 'Add product details',
+        description: 'Create the workspace, add your product URL, support email, billing model, and the core product surfaces users ask about.',
         visual: '{ }',
     },
     {
         step: '2',
-        title: 'Write canonical answers',
-        description: 'Create governed, versioned answers bound to entities. One true answer per concept. Scoped by plan, role, and product version.',
+        title: 'Import starter knowledge',
+        description: 'Upload docs or starter articles. Canonica keeps support working through fallback while it prepares governed answer drafts.',
         visual: '✓',
     },
     {
         step: '3',
-        title: 'Retrieve deterministically',
-        description: 'Customer queries hit the canonical engine first. Entity matching → version filtering → specificity scoring. Same input = same output.',
+        title: 'Review approved answers',
+        description: 'Entity candidates and canonical answer drafts go to the review queue. Nothing becomes authoritative without owner approval.',
         visual: '→',
     },
     {
         step: '4',
-        title: 'Detect drift automatically',
-        description: 'Product changes trigger drift evaluation. Four classes: version mismatch, signal anomaly, scope conflict, deprecated entity. Nightly audits.',
+        title: 'Install page-aware support',
+        description: 'Embed the widget, lock allowed origins, and pass route context so billing, onboarding, and settings pages get relevant help.',
         visual: '⚡',
     },
     {
         step: '5',
-        title: 'Evolve from signals',
-        description: 'Tickets and negative feedback become structured signals. Signals cluster by entity. Clusters propose mutations. You approve. Knowledge improves.',
+        title: 'Improve from support gaps',
+        description: 'Repeated fallback, tickets, and negative feedback become signal-to-knowledge tasks you can review each week.',
         visual: '↻',
     },
 ];
@@ -41,7 +41,7 @@ export default function HowItWorksSection() {
                         How it works
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">
-                        From chaos to canonical in five steps
+                        Launch support without building a support team
                     </h2>
                 </div>
 

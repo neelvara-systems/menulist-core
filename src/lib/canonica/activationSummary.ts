@@ -97,6 +97,10 @@ export function buildCanonicaActivationSummary(params: {
     const hasWidgetSeenRecently = Boolean(runtimeStatus?.lastSeenAt && getTimestampMillis(runtimeStatus.lastSeenAt));
     const entityCount = Number(params.trustMetrics?.entityHealth?.totalEntities || 0);
     const activeCanonicalAnswerCount = Number(params.trustMetrics?.drift?.activeCount || 0);
+    const primarySurfaces = Array.isArray(storeData.primarySurfaces)
+        ? storeData.primarySurfaces.filter(Boolean)
+        : [];
+    const hasProductProfile = Boolean(storeData.productUrl && storeData.supportEmail);
 
     const steps: CanonicaActivationStep[] = [
         buildStep({
@@ -107,6 +111,17 @@ export function buildCanonicaActivationSummary(params: {
             route: CANONICA_ROUTES.SETTINGS,
             actionLabel: 'Review Settings',
             costNote: 'Uses the existing Canonica store document.',
+        }),
+        buildStep({
+            key: 'product-profile',
+            title: 'Product details captured',
+            description: hasProductProfile
+                ? 'Product URL and support email are saved for setup, widget, and help-center configuration.'
+                : 'Add your product URL and support email so Canonica can verify install and route users correctly.',
+            status: hasProductProfile ? 'complete' : 'attention',
+            route: CANONICA_ROUTES.SETTINGS,
+            actionLabel: 'Review Details',
+            costNote: 'Stored on the existing Canonica store document.',
         }),
         buildStep({
             key: 'license',
@@ -248,6 +263,10 @@ export function buildCanonicaActivationSummary(params: {
         allowedOriginCount: allowedOrigins.length,
         widgetPath: runtimeStatus?.lastPath || null,
         widgetContext: runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage || null,
+        productUrl: storeData.productUrl || null,
+        supportEmail: storeData.supportEmail || null,
+        billingModel: storeData.billingModel || null,
+        primarySurfaceCount: primarySurfaces.length,
         articleCount: content?.articleCount || 0,
         surfaceCount: content?.surfaceCount || 0,
         changelogCount: content?.changelogCount || 0,
@@ -267,6 +286,10 @@ export function buildCanonicaActivationSummary(params: {
         workspace: {
             companyName: storeData.companyName || storeData.businessName || storeData.tenantName || null,
             productName: storeData.productName || storeData.name || null,
+            productUrl: storeData.productUrl || null,
+            supportEmail: storeData.supportEmail || null,
+            billingModel: storeData.billingModel || null,
+            primarySurfaceCount: primarySurfaces.length,
         },
         subscription,
         widget: {

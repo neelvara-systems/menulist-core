@@ -159,6 +159,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
     const [productContext, setProductContext] = useState<Record<string, any> | null>(null);
     const [historyMode, setHistoryMode] = useState<WidgetHistoryMode>('session');
+    const [greeting, setGreeting] = useState('How can we help?');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -197,6 +198,12 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 if (e.data.state === 'closed' && e.data.clearHistory) {
                     clearConversation();
                 }
+            }
+            if (e.data?.type === 'canonica-widget-config') {
+                const nextGreeting = typeof e.data.config?.greeting === 'string'
+                    ? e.data.config.greeting.trim().slice(0, 120)
+                    : '';
+                if (nextGreeting) setGreeting(nextGreeting);
             }
             if (e.data?.type === 'canonica-widget-clear-history') {
                 clearConversation();
@@ -449,7 +456,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                         <div style={styles.welcomeIcon}>
                             <LuMessageCircle size={32} aria-hidden />
                         </div>
-                        <p style={styles.welcomeTitle}>How can we help?</p>
+                        <p style={styles.welcomeTitle}>{greeting}</p>
                         {contextLabel && (
                             <div style={styles.contextChip}>Help for {contextLabel}</div>
                         )}

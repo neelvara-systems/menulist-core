@@ -28,6 +28,7 @@
  *   data-shape         (optional) "rounded" (circle) | "pill" (rectangle)
  *   data-display       (optional) "icon" | "text" | "icon-text"
  *   data-label         (optional) Text for launcher (default: "?")
+ *   data-greeting      (optional) Empty-state greeting shown inside the widget
  *   data-size          (optional) "small" | "medium" | "large"
  *   data-offset-x      (optional) Horizontal offset in px (default: 20)
  *   data-offset-y      (optional) Vertical offset in px (default: 20)
@@ -67,6 +68,7 @@
         shape: 'rounded',
         display: 'icon',
         label: '?',
+        greeting: 'How can we help?',
         size: 'medium',
         offsetX: 20,
         offsetY: 20,
@@ -82,6 +84,7 @@
     var shape = defaultConfig.shape;
     var display = defaultConfig.display;
     var label = defaultConfig.label;
+    var greeting = defaultConfig.greeting;
     var size = defaultConfig.size;
     var offsetX = defaultConfig.offsetX;
     var offsetY = defaultConfig.offsetY;
@@ -212,6 +215,9 @@
         value = script.getAttribute('data-label');
         if (script.hasAttribute('data-label') && value && value.trim()) config.label = value.trim().slice(0, 24);
 
+        value = script.getAttribute('data-greeting');
+        if (script.hasAttribute('data-greeting') && value && value.trim()) config.greeting = value.trim().slice(0, 120);
+
         value = script.getAttribute('data-size');
         if (script.hasAttribute('data-size') && isValidChoice(value, ['small', 'medium', 'large'])) config.size = value;
 
@@ -248,6 +254,7 @@
         if (isValidChoice(input.shape, ['rounded', 'pill'])) config.shape = input.shape;
         if (isValidChoice(input.display, ['icon', 'text', 'icon-text'])) config.display = input.display;
         if (typeof input.label === 'string' && input.label.trim()) config.label = input.label.trim().slice(0, 24);
+        if (typeof input.greeting === 'string' && input.greeting.trim()) config.greeting = input.greeting.trim().slice(0, 120);
         if (isValidChoice(input.size, ['small', 'medium', 'large'])) config.size = input.size;
         if (Number.isFinite(input.offsetX)) config.offsetX = Math.max(0, Math.min(200, Math.floor(input.offsetX)));
         if (Number.isFinite(input.offsetY)) config.offsetY = Math.max(0, Math.min(200, Math.floor(input.offsetY)));
@@ -274,6 +281,7 @@
         shape = merged.shape;
         display = merged.display;
         label = merged.label;
+        greeting = merged.greeting;
         size = merged.size;
         offsetX = merged.offsetX;
         offsetY = merged.offsetY;
@@ -559,10 +567,15 @@
         }
     }
 
+    function sendConfigToIframe() {
+        postToIframe({ type: 'canonica-widget-config', config: { greeting: greeting } });
+    }
+
     function syncIframeState() {
         if (isOpen) {
             postToIframe({ type: 'canonica-widget-visibility', state: 'open', historyMode: historyMode });
         }
+        sendConfigToIframe();
         sendContextToIframe();
         sendSuggestionToIframe();
     }

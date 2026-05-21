@@ -1,35 +1,4 @@
-const PILLARS = [
-    {
-        number: '01',
-        title: 'Product Ontology',
-        description: 'Model your product as structured entities — features, plans, roles, workflows, states, integrations, errors. Not documents. Not tags. First-class concepts with relationships.',
-        highlight: 'Foundation layer',
-    },
-    {
-        number: '02',
-        title: 'Canonical Answer Engine',
-        description: 'Governed, versioned, entity-bound answers that replace generated guesses. Same query = same answer. Every time. Deterministic retrieval without generation.',
-        highlight: 'Core engine',
-    },
-    {
-        number: '03',
-        title: 'Drift Governance',
-        description: 'Four drift classes detect when answers become stale: version mismatch, signal anomaly, scope conflict, deprecated entity. Nightly automated audits. Advisory, never blocking.',
-        highlight: 'Control plane',
-    },
-    {
-        number: '04',
-        title: 'Signal Mutation',
-        description: 'Support friction — tickets, negative feedback, escalations — becomes structured signals. Signals cluster by entity. Clusters propose knowledge mutations. Humans approve.',
-        highlight: 'Self-improvement',
-    },
-    {
-        number: '05',
-        title: 'API & Integration',
-        description: 'Public API for canonical answers. Version-aware retrieval. Drift webhooks. Signal ingestion. Embed Canonica behind your existing support tools — Zendesk, Intercom, custom systems.',
-        highlight: 'Distribution',
-    },
-];
+import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 
 export default function PillarsSection() {
     return (
@@ -38,19 +7,19 @@ export default function PillarsSection() {
                 {/* Section header */}
                 <div className="mb-16 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
-                        Architecture
+                        Canonica Engine
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">
-                        Five pillars. One control plane.
+                        The support truth layer under your product.
                     </h2>
                     <p className="mt-4 text-lg text-[#a0a0c0]">
-                        Knowledge is the spine. Everything else orbits it.
+                        Canonica is built around structured product knowledge, approved answers, drift detection, and support-signal review.
                     </p>
                 </div>
 
                 {/* Pillar cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {PILLARS.map((pillar) => (
+                <div className="grid gap-4 md:grid-cols-2">
+                    {CANONICA_ENGINE_PILLARS.map((pillar) => (
                         <div
                             key={pillar.number}
                             className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all hover:border-indigo-500/30 hover:bg-white/[0.04]"

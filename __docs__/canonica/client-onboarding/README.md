@@ -4,7 +4,7 @@
 > **Status:** ✅ IMPLEMENTED
 > **Date:** 2026-05-21
 > **Auth:** Google OAuth through shared NextAuth login plus Canonica product-account bridge
-> **Billing:** Beta plan ($0, 6 months). Paid plans via Razorpay (same as MenuList).
+> **Billing:** Controlled beta plus INR Starter/Growth/Studio packaging. Payment capture can still run through the existing Razorpay subscription model when enabled.
 
 ---
 
@@ -17,6 +17,10 @@
 | 3 | `client-onboarding_impl.md` | Developers | Technical blueprint |
 | 4 | `client-onboarding_firebase.md` | Developers/Ops | Firestore cost |
 
+## Related Strategy
+
+- `../self-sellable-product-strategy.md` — Canonica's self-serve launch promise, pricing direction, onboarding expectations, widget verification requirements, and sellable-launch task list. Use this before changing client onboarding.
+
 ---
 
 ## What This Is
@@ -25,9 +29,9 @@ A self-service signup flow where external SaaS founders create a Canonica accoun
 
 1. Visit `canonica.app/get-started`
 2. Sign in with Google OAuth
-3. Enter company name + product name
-4. Account created instantly (Canonica tenant + store + subscription + widget key)
-5. Redirected to dashboard to start configuring KB + widget
+3. Enter company, product, product URL, support email, billing model, and main product pages
+4. Account created instantly (Canonica tenant + store + subscription + widget key + starter product surfaces)
+5. Redirected to Activation Command Center to import knowledge, review governance, and install the widget
 
 ## Onboarding Flow
 
@@ -37,7 +41,7 @@ canonica.app/get-started
   ├── Step 1: Google OAuth sign-in (existing NextAuth)
   │   → Creates/uses the default auth user record
   │
-  ├── Step 2: Enter company name + product name
+  ├── Step 2: Enter company, product profile, and first product surfaces
   │
   ├── Step 3: POST /api/canonica/onboard
   │   → Atomic transaction:
@@ -46,10 +50,12 @@ canonica.app/get-started
   │     ├── Create/update Canonica user
   │     ├── Create Canonica beta subscription
   │     ├── Generate widget key (cn_* prefix)
+  │     ├── Seed selected product surfaces
+  │     ├── Seed compact context summary
   │     ├── Update Canonica platform summaries
   │     └── Write productAccounts.CN bridge to the default auth user
   │
-  └── Step 4: Show API key + next steps
+  └── Step 4: Show widget key + next steps
       → Go to dashboard
 ```
 
@@ -60,7 +66,8 @@ canonica.app/get-started
 | `src/app/api/canonica/onboard/route.ts` | Onboarding API (Canonica tenant+store+subscription+widget key) |
 | `src/app/sites/canonica/get-started/OnboardingForm.tsx` | Self-service signup form UI |
 | `src/app/sites/canonica/get-started/page.tsx` | Get-started page (criteria + form) |
-| `src/data/CanonicaPlansList.ts` | Canonica plans config (beta, starter, pro) |
+| `src/data/canonica/plans.ts` | Canonica plans config (beta, starter, growth, studio) |
+| `src/app/api/canonica/workspace-profile/route.ts` | Edit product profile after onboarding |
 
 ## Reused MenuList Infrastructure
 

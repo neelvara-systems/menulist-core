@@ -1,14 +1,14 @@
 # Canonica Website — Spec
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-07
+> **Version:** 1.1.5
+> **Last Updated:** 2026-05-21
 > **Audience:** CEO / PM / Marketing
 
 ---
 
 ## Purpose
 
-Public-facing marketing website for Canonica at `canonica.app`. Serves as the primary discovery and evaluation surface for SaaS founders considering Canonica as their support knowledge control plane.
+Public-facing marketing website for Canonica at `canonica.app`. Serves as the primary discovery, demo, pricing, and onboarding surface for small SaaS founders considering Canonica as page-aware support knowledge infrastructure.
 
 ---
 
@@ -16,69 +16,167 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 
 | Attribute | Value |
 |-----------|-------|
-| Role | VP Engineering, Head of Support, CTO at mid-market SaaS |
-| ARR | $5M–$40M |
-| Release cadence | Biweekly or monthly |
-| Team size | 5+ support agents |
-| Pain | AI support gives inconsistent answers, knowledge drifts after product updates |
-| Current tools | Zendesk, Intercom, Freshdesk + AI chatbot with accuracy issues |
+| Role | Solo SaaS founder, technical founder, small SaaS operator, dev studio owner |
+| Business stage | Live or near-live SaaS product |
+| Release cadence | Frequent product, plan, onboarding, billing, or settings changes |
+| Team size | Founder-led or small team before a dedicated support team |
+| Pain | Support answers drift as the product changes, and users need help on exact product pages |
+| Current tools | Existing docs, FAQs, changelogs, tickets, or rough starter answers |
 
 ---
 
 ## Pages & Content Architecture
 
 ### 1. Homepage (`/`)
-**Goal:** Communicate what Canonica is in < 10 seconds. Drive to "Request Early Access" or "See How It Works".
+**Goal:** Communicate what Canonica is in < 10 seconds. Drive to the static demo or self-service onboarding.
 
 **Sections:**
-1. **Hero** — Headline, subheadline, 2 CTAs, "Now in private beta" badge
-2. **Pillars** — 5 cards showing the architectural pillars (numbered, with highlight labels)
-3. **How It Works** — 5-step vertical timeline (Model → Write → Retrieve → Detect → Evolve)
-4. **Comparison** — 8-row table comparing Traditional KB/RAG vs Canonica
-5. **CTA** — Final conversion section with "Request Early Access" + "Talk to Us"
+1. **Hero** — Small-SaaS support correctness promise with demo and start CTAs
+2. **Product Preview** — Static dashboard/widget/governance mock that shows the actual product shape without relying on external screenshots
+3. **Widget Install** — Page-aware widget positioning, allowed domains, blocked routes, and safe context
+4. **Canonica Engine** — Product Ontology, Canonical Answer Engine, Drift Governance, Signal Mutation
+5. **Product System** — Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
+6. **How It Works** — Create workspace, import knowledge, map surfaces, install widget, govern gaps
+7. **Comparison** — Separates Canonica from helpdesks, chatbots, and documentation CMS tools
+8. **CTA** — Final conversion section with demo and start-free actions
 
 ### 2. Product (`/product`)
-**Goal:** Deep technical credibility for evaluating SaaS technical leaders.
+**Goal:** Explain the product in founder/operator language while preserving the real Canonica architecture.
 
 **Sections:**
-- Hero with "Knowledge infrastructure, not another tool" headline
-- 5 feature deep-dive sections (one per pillar), each with:
-  - Badge (Pillar N)
+- Hero with page-aware support knowledge promise
+- Canonica Engine section:
+  - Product Ontology
+  - Canonical Answer Engine
+  - Drift Governance
+  - Signal Mutation
+- 5 feature deep-dive sections:
+  - Badge (Launch Setup / Support Control / Knowledge Governance / Release Awareness / Support Gap Loop)
   - Title + description
   - 5 capability bullet points
 - Bottom CTA
 
-### 3. Pricing (`/pricing`)
-**Goal:** Transparent pricing. During beta: $0 with all features included.
+### 3. Use Cases (`/use-cases`)
+**Goal:** Help small SaaS operators recognize when Canonica is useful.
 
 **Sections:**
-- Single beta pricing card ($0)
-- 10-item included features list
-- Post-beta pricing note (per-tenant, based on volume)
+- Launching a new SaaS product
+- Shipping frequent product changes
+- Supporting billing, roles, and settings flows
+- Reducing repeated tickets
+- Turning support friction into knowledge updates
+- Connecting use cases to Canonica's operating system
 
-### 4. About (`/about`)
+### 4. Widget Install (`/install`)
+**Goal:** Explain how Canonica connects to a client product through the implemented widget without overclaiming disabled API or adapter surfaces.
+
+**Sections:**
+- Widget key and script model
+- Allowed origins
+- Blocked routes
+- Safe page context
+- Runtime verification
+- Owner dashboard controls
+
+### 5. Resources (`/resources`)
+**Goal:** Give buyers and new users a website-side learning hub.
+
+**Sections:**
+- Start guide
+- Widget install guide
+- Knowledge governance guide
+- Product surface guide
+- Cost and cache guide
+- Links into demo, product, pricing, and get-started
+
+### 6. Updates (`/updates`)
+**Goal:** Show public product momentum without using dashboard-owned changelog routes that are reserved for Canonica workspaces.
+
+**Sections:**
+- Static public website update timeline
+- Links to product, install, resources, and demo
+- Calm factual update language only
+
+### 7. Demo (`/demo`)
+**Goal:** Let visitors understand Canonica without creating an account.
+
+**Rules:**
+- Static demo data only
+- No Firebase reads
+- No AI calls
+- Show canonical answer, fallback answer, and support gap states
+- Show page-aware behavior by switching product surfaces
+
+### 8. Pricing (`/pricing`)
+**Goal:** Transparent founder-friendly pricing.
+
+**Sections:**
+- Starter, Growth, and Studio INR packaging
+- Predictable limits, no public per-resolution pricing
+- Controlled beta note where payments are not fully enabled
+
+### 9. Security (`/security`)
+**Goal:** Give buyers a concise trust page without overclaiming compliance.
+
+**Sections:**
+- Security-at-a-glance facts for data boundary, runtime database, widget key storage, widget placement, answer authority, expensive request limits, scheduler output, and MenuList product boundary
+- Tenant-scoped data and workspace isolation
+- Safe widget context that is bounded to support relevance and never treated as trusted identity
+- Origin and blocked-route controls for widget placement
+- Owner-approved authority through canonical answers, drafts, proposals, and drift checks
+- Cost and abuse controls through rate-limited widget endpoints, cache freshness checks, and summary-backed dashboards
+- Separate Canonica product infrastructure with MenuList as a client/use case, not a hardcoded dependency
+- Responsible disclosure contact and safe reporting guidance
+
+### 10. FAQ (`/faq`)
+**Goal:** Answer common founder/buyer objections and support SEO with structured FAQ content.
+
+**Sections:**
+- Setup speed
+- Difference from a helpdesk
+- Page-aware context
+- Fallback behavior
+- Widget visibility controls
+- Release-aware answer review
+- Pricing model
+- Product separation from MenuList
+
+### 11. About (`/about`)
 **Goal:** Build trust. Explain the "why" behind Canonica.
 
 **Sections:**
-- Problem statement (knowledge scattered, AI inconsistent, drift silent)
-- 5 belief cards (infrastructure, LLM as assist, drift measurable, friction as signal, coverage as KPI)
+- Problem statement for fast-built SaaS products
+- 5 belief cards around correct answers, page context, measured fallback, founder approval, and coverage
 - Team origin (built by MenuList team)
 
-### 5. Contact (`/contact`)
+### 12. Contact (`/contact`)
 **Goal:** Multiple contact paths for different intents.
 
 **Sections:**
 - Email (hello@canonica.app)
 - Partnerships (partners@canonica.app)
-- Design partner program description
+- Founder setup help and early customer program description
 
-### 6. Get Started (`/get-started`)
-**Goal:** Beta application flow. Convert interested visitors to beta applications.
+### 13. Get Started (`/get-started`)
+**Goal:** Self-service onboarding flow for a new Canonica workspace.
 
 **Sections:**
-- Design partner criteria (5 items with descriptions)
-- Application card (email-based, beta@canonica.app)
+- Best-fit criteria for live/near-live SaaS products
+- Google sign-in and product details form
+- Product URL, support email, billing model, and main product pages
 - 3-step "what happens next" process
+
+### 14. Privacy Policy (`/privacy-policy`)
+**Goal:** Provide a public policy summary for account, workspace, support, and widget data.
+
+### 15. Terms of Service (`/terms-of-service`)
+**Goal:** Provide a public terms summary for account, support content, AI-assisted drafts, widget usage, billing, and acceptable use.
+
+## Market Pattern Check
+
+Comparable support platforms commonly expose product depth, pricing, demo/start actions, install/developer setup, resources, security/trust, and updates. Canonica leads with the implemented widget install path because non-widget delivery paths are rollout-gated, not default buyer-facing package promises. The site also avoids unsupported pages such as a live status page, because there is no implemented status/incident backend yet.
+
+Route naming must avoid conflicts with Canonica dashboard roots. Public website learning content uses `/resources` and public release communication uses `/updates`; dashboard-owned support routes keep `/docs`, `/help`, `/changelog`, and `/release-notes`.
 
 ---
 
@@ -102,14 +200,24 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | Canonica — The Support Knowledge Control Plane for SaaS | Canonica turns your support knowledge into a single, governed source of truth. Canonical answers. Zero drift. Enterprise-grade knowledge infrastructure. |
-| `/product` | Product \| Canonica | Canonica's five architectural pillars... |
+| `/` | Canonica — Page-Aware Support Knowledge for SaaS | Canonica keeps support answers correct, approved, and connected to the exact product screen where users need help. |
+| `/product` | Product \| Canonica | Canonica keeps support answers correct across help centers, widgets, changelogs, and tickets for small SaaS teams. |
+| `/use-cases` | Use Cases \| Canonica | See how Canonica helps small SaaS teams launch support, reduce repeated tickets, and govern product knowledge. |
+| `/demo` | Demo \| Canonica | Try a static page-aware support demo with canonical answers, fallback, and support gap states. |
+| `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, runtime verification, and safe page context. |
 | `/pricing` | Pricing \| Canonica | Simple, transparent pricing for Canonica... |
-| `/about` | About \| Canonica | Canonica is the Support Knowledge Control Plane for SaaS... |
-| `/contact` | Contact \| Canonica | Get in touch with the Canonica team... |
-| `/get-started` | Get Started \| Canonica | Request early access to Canonica... |
+| `/resources` | Resources \| Canonica | Guides for setting up Canonica, installing the widget, mapping product surfaces, and governing support knowledge. |
+| `/updates` | Updates \| Canonica | Product updates for Canonica website, launch setup, widget management, and knowledge governance. |
+| `/security` | Security \| Canonica | How Canonica protects support knowledge, widget context, and customer workspaces. |
+| `/faq` | FAQ \| Canonica | Answers to common questions about Canonica setup, widget context, pricing, tickets, and data handling. |
+| `/about` | About \| Canonica | Canonica helps small SaaS teams keep support answers correct as products change. |
+| `/contact` | Contact \| Canonica | Contact Canonica for product questions, onboarding help, and partnerships. |
+| `/get-started` | Get Started \| Canonica | Create your Canonica workspace and launch page-aware support for your SaaS product. |
+| `/privacy-policy` | Privacy Policy \| Canonica | How Canonica handles product support knowledge, account information, and widget data. |
+| `/terms-of-service` | Terms of Service \| Canonica | Terms for using Canonica website, dashboard, widget, and support knowledge features. |
 
-OpenGraph and Twitter cards configured in layout.tsx with `canonica-og-image.png` (TODO: create actual OG image).
+OpenGraph and Twitter cards configured in layout.tsx with `public/canonica-og-image.png`.
+Canonica product domains must serve their own `/sitemap.xml` and `/robots.txt`; do not rely on the MenuList platform sitemap.
 
 ---
 
@@ -118,13 +226,13 @@ OpenGraph and Twitter cards configured in layout.tsx with `canonica-og-image.png
 ```
 Visitor lands on homepage
   ↓
-Reads hero + pillars → "Request Early Access" or "See How It Works"
+Reads hero + pillars → "Try Demo" or "Start Free"
   ↓
-Product page → deep technical understanding
+Demo page → understands canonical answer vs fallback vs support gap
   ↓
-Pricing → confirms beta is free
+Pricing → chooses Starter/Growth/Studio direction
   ↓
-Get Started → reads criteria → sends email to beta@canonica.app
+Get Started → signs in → creates workspace → lands in Activation Command Center
 ```
 
 ---
@@ -134,3 +242,9 @@ Get Started → reads criteria → sends email to beta@canonica.app
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-03-07 | 1.0.0 | Initial spec |
+| 2026-05-21 | 1.1.0 | Repositioned website for small SaaS self-serve funnel, added demo/security/FAQ/legal pages, Canonica sitemap/robots, structured data, and removed enterprise/private-beta-first spec language |
+| 2026-05-21 | 1.1.1 | Restored implemented Canonica engine pillars on homepage and product page without claiming deferred API/integration pillar |
+| 2026-05-21 | 1.1.2 | Added homepage system coverage section from the codebase inventory |
+| 2026-05-21 | 1.1.3 | Added product preview plus public use-cases, integrations, resources, and updates pages based on website benchmark gaps and implemented Canonica capabilities |
+| 2026-05-21 | 1.1.4 | Replaced public integrations positioning with widget-first install positioning and removed API/adapters from buyer-facing website package copy |
+| 2026-05-21 | 1.1.5 | Expanded the security page from the MenuList trust-page reference pattern with Canonica-specific facts, widget runtime controls, tenant isolation, cost controls, product separation, and responsible disclosure |

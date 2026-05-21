@@ -6,7 +6,8 @@ import CanonicaHeader from '../components/Header';
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'Canonica is the Support Knowledge Control Plane for SaaS — built to make support knowledge governed, canonical, and drift-free.',
+    description: 'Canonica helps small SaaS teams keep support answers correct as products change.',
+    alternates: { canonical: '/about' },
 };
 
 function getBasePath(): string {
@@ -28,13 +29,13 @@ export default function CanonicaAboutPage() {
                     <div className="mx-auto max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">About</p>
                         <h1 className="mb-6 text-4xl font-bold leading-tight sm:text-5xl">
-                            Support knowledge deserves infrastructure, not tools.
+                            Fast-built SaaS products still need correct support.
                         </h1>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Every SaaS company has the same problem: support knowledge scattered across articles, tickets, chat logs, and people&apos;s heads. Automated answers can vary every time. No one knows if answers are still accurate after a product update. Knowledge drifts silently.
+                            More products are launching with smaller teams. The product can move quickly, but support answers still need to stay correct when billing, onboarding, settings, plans, and releases change.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica fixes this at the infrastructure level. Not another knowledge base. Not another chatbot. A control plane that governs what your product&apos;s support answers actually are — versioned, entity-bound, drift-detecting, and self-improving.
+                            Canonica keeps approved support knowledge connected to product surfaces. It gives founders a help center, widget, changelog binding, tickets as fallback, and a governance queue without asking them to run a large support operation.
                         </p>
                     </div>
                 </section>
@@ -44,11 +45,11 @@ export default function CanonicaAboutPage() {
                         <h2 className="mb-8 text-2xl font-bold">What we believe</h2>
                         <div className="space-y-6">
                             {[
-                                { title: 'Knowledge should behave like infrastructure', body: 'Boring, reliable, deterministic. Same query, same context, same answer. Every time. Not a creative exercise — a governance discipline.' },
-                                { title: 'Automation assists the control plane, never becomes it', body: 'Automation helps extract entities and cluster signals. But the canonical answer — the governed truth — is written and approved by humans. No autonomous rewriting.' },
-                                { title: 'Drift is measurable', body: 'When your product changes, your answers should flag themselves as potentially stale. Four drift classes, nightly audits, release-triggered evaluation. Advisory, never blocking.' },
-                                { title: 'Support friction is signal, not noise', body: 'Every ticket and negative feedback is a structured signal. Signals cluster. Clusters propose mutations. Knowledge evolves from real user pain, not guesswork.' },
-                                { title: 'Canonical coverage is the KPI', body: 'The percentage of customer queries answered by governed canonical answers is the metric that matters. It must increase over time.' },
+                                { title: 'Correct answers matter more than more channels', body: 'Canonica is not trying to become a full helpdesk. It keeps the knowledge behind support surfaces clear, approved, and current.' },
+                                { title: 'Page context should reduce user effort', body: 'A billing question from the billing screen should not get the same generic answer as a settings or onboarding question.' },
+                                { title: 'Fallback is useful, but measured', body: 'Fallback can help while coverage grows. Repeated fallback becomes a support gap, not hidden automation.' },
+                                { title: 'Founders should approve authority', body: 'Drafts, entity candidates, and mutation proposals stay reviewable. Canonica does not silently rewrite product truth.' },
+                                { title: 'Coverage should be visible', body: 'The main operating metric is whether product surfaces have enough approved answers for real user questions.' },
                             ].map((belief, i) => (
                                 <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
                                     <h3 className="mb-2 text-base font-semibold text-white">{belief.title}</h3>
@@ -65,14 +66,14 @@ export default function CanonicaAboutPage() {
                         <p className="mb-6 text-lg text-[#a0a0c0]">
                             Canonica is built by the same team behind{' '}
                             <a href="https://menulist.ai" className="text-indigo-400 hover:text-indigo-300" target="_blank" rel="noopener noreferrer">MenuList</a>
-                            , the canonical public business truth layer for SMBs. We learned that infrastructure that governs truth — not generates content — is what actually compounds.
+                            . MenuList is a separate product and one client use case; Canonica stays product-neutral so any SaaS team can embed it.
                         </p>
                         <CanonicaLink
                             basePath={basePath}
                             href="/get-started"
                             className="inline-block rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
                         >
-                            Request Early Access
+                            Start Free
                         </CanonicaLink>
                     </div>
                 </section>

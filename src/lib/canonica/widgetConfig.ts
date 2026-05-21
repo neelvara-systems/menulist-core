@@ -62,6 +62,7 @@ export const CanonicaWidgetConfigSchema = z.object({
     shape: z.enum(['rounded', 'pill']).default('rounded'),
     display: z.enum(['icon', 'text', 'icon-text']).default('icon'),
     label: z.string().trim().min(1).max(24).default('?'),
+    greeting: z.string().trim().min(1).max(120).default('How can we help?'),
     size: z.enum(['small', 'medium', 'large']).default('medium'),
     offsetX: z.coerce.number().int().min(0).max(200).default(20),
     offsetY: z.coerce.number().int().min(0).max(200).default(20),
@@ -149,6 +150,7 @@ export function buildCanonicaWidgetEmbedCode(params: {
     if (config.shape !== DEFAULT_CANONICA_WIDGET_CONFIG.shape) attrs.push(`  data-shape="${escapeHtmlAttribute(config.shape)}"`);
     if (config.display !== DEFAULT_CANONICA_WIDGET_CONFIG.display) attrs.push(`  data-display="${escapeHtmlAttribute(config.display)}"`);
     if (config.label !== DEFAULT_CANONICA_WIDGET_CONFIG.label) attrs.push(`  data-label="${escapeHtmlAttribute(config.label)}"`);
+    if (config.greeting !== DEFAULT_CANONICA_WIDGET_CONFIG.greeting) attrs.push(`  data-greeting="${escapeHtmlAttribute(config.greeting)}"`);
     if (config.size !== DEFAULT_CANONICA_WIDGET_CONFIG.size) attrs.push(`  data-size="${escapeHtmlAttribute(config.size)}"`);
     if (config.offsetX !== DEFAULT_CANONICA_WIDGET_CONFIG.offsetX) attrs.push(`  data-offset-x="${escapeHtmlAttribute(config.offsetX)}"`);
     if (config.offsetY !== DEFAULT_CANONICA_WIDGET_CONFIG.offsetY) attrs.push(`  data-offset-y="${escapeHtmlAttribute(config.offsetY)}"`);

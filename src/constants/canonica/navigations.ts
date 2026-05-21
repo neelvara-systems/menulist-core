@@ -17,6 +17,7 @@ import {
     LuGitPullRequest,
     LuLayoutDashboard,
     LuLayers,
+    LuMailCheck,
     LuMessageSquare,
     LuReceipt,
     LuRocket,
@@ -47,6 +48,7 @@ export const CANONICA_ROUTES = {
     CHANGELOG: `${CANONICA_BASE_PATH}/changelog`,
     PRODUCT_SURFACES: `${CANONICA_BASE_PATH}/product-surfaces`,
     WIDGET: `${CANONICA_BASE_PATH}/widget`,
+    WEEKLY_DIGEST: `${CANONICA_BASE_PATH}/weekly-digest`,
     SETTINGS: `${CANONICA_BASE_PATH}/settings`,
 } as const;
 
@@ -111,6 +113,7 @@ export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
     { key: 'changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, group: 'support', managementOnly: true },
     { key: 'tickets', label: 'Tickets', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, group: 'support', managementOnly: true },
     { key: 'conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, group: 'support', managementOnly: true },
+    { key: 'weekly-digest', label: 'Weekly Digest', route: CANONICA_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, group: 'support', managementOnly: true, featureFlag: 'ENABLE_CANONICA_WEEKLY_DIGEST' },
 
     // Knowledge Governance
     { key: 'dashboard', label: 'Readiness Metrics', route: CANONICA_ROUTES.DASHBOARD, icon: LuLayoutDashboard, group: 'governance', managementOnly: true },

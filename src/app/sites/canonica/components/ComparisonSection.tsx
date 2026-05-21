@@ -1,43 +1,43 @@
 const COMPARISON_ROWS = [
     {
-        feature: 'Answer consistency',
-        traditional: 'Different generated output every time',
-        canonica: 'Same query = same answer. Always.',
+        feature: 'Primary job',
+        traditional: 'Inbox, article storage, or generated replies',
+        canonica: 'Approved support truth that other surfaces use',
     },
     {
-        feature: 'Version awareness',
-        traditional: 'No concept of product versions',
-        canonica: 'Answers scoped to version windows',
+        feature: 'Small-team setup',
+        traditional: 'Many settings before value appears',
+        canonica: 'Product details, import, widget, verify',
     },
     {
-        feature: 'Staleness detection',
-        traditional: 'Manual review or nothing',
-        canonica: '4-class drift detection, nightly audits',
+        feature: 'Page relevance',
+        traditional: 'Same help everywhere',
+        canonica: 'Route and product-surface context shapes the answer',
     },
     {
-        feature: 'Knowledge improvement',
-        traditional: 'Ad-hoc article updates',
-        canonica: 'Signal-driven mutation proposals',
+        feature: 'Release changes',
+        traditional: 'Docs become stale silently',
+        canonica: 'Changelogs and drift checks surface review work',
     },
     {
-        feature: 'Product structure',
-        traditional: 'Flat article tags',
-        canonica: 'Entity ontology with relationships',
+        feature: 'Answer authority',
+        traditional: 'Generation or article search is treated as enough',
+        canonica: 'Canonical answers first; fallback is measured',
     },
     {
-        feature: 'Governance',
-        traditional: 'Anyone can edit anything',
-        canonica: 'Mutation pipeline + human approval',
+        feature: 'Support gaps',
+        traditional: 'Buried in chat logs or tickets',
+        canonica: 'Repeated gaps become a reviewable knowledge queue',
     },
     {
-        feature: 'Retrieval method',
-        traditional: 'Probabilistic RAG / vector search',
-        canonica: 'Deterministic entity resolution',
+        feature: 'Founder visibility',
+        traditional: 'Ticket volume and chat metrics',
+        canonica: 'Canonical coverage and surfaces that need answers',
     },
     {
-        feature: 'Coverage tracking',
-        traditional: 'No visibility',
-        canonica: 'Canonical coverage KPI per entity',
+        feature: 'Scope creep',
+        traditional: 'Expands into helpdesk or CMS features',
+        canonica: 'Knowledge control plane; operations stay secondary',
     },
 ];
 
@@ -50,10 +50,10 @@ export default function ComparisonSection() {
                         Why Canonica
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">
-                        Traditional KB vs. Canonica
+                        Helpdesks handle conversations. Canonica keeps answers correct.
                     </h2>
                     <p className="mt-4 text-lg text-[#a0a0c0]">
-                        Knowledge bases store articles. Canonica governs truth.
+                        It sits behind your help center, widget, tickets, and release notes as the governed knowledge layer.
                     </p>
                 </div>
 
@@ -66,7 +66,7 @@ export default function ComparisonSection() {
                                 Capability
                             </div>
                             <div className="border-l border-white/[0.06] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
-                                Traditional KB / RAG
+                                Helpdesk / Chatbot / KB
                             </div>
                             <div className="border-l border-white/[0.06] bg-indigo-500/[0.05] px-6 py-4 text-xs font-semibold uppercase tracking-wider text-indigo-400">
                                 Canonica

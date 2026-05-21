@@ -757,6 +757,10 @@ export interface CanonicaActivationSummary {
     workspace: {
         companyName?: string | null;
         productName?: string | null;
+        productUrl?: string | null;
+        supportEmail?: string | null;
+        billingModel?: string | null;
+        primarySurfaceCount?: number;
     };
     subscription: CanonicaActivationSubscriptionSummary | null;
     widget: {

@@ -19,7 +19,7 @@ Allow external SaaS founders to create a Canonica account via self-service. This
 3. **Sign Up** → Click "Get Early Access" → canonica.app/get-started
 4. **Authenticate** → Google OAuth (one click)
 5. **Configure** → Enter company name + product name
-6. **Provisioned** → Account created instantly (tenant + store + subscription + API key)
+6. **Provisioned** → Account created instantly (tenant + store + subscription + widget key)
 7. **Onboard** → Go to dashboard → Upload KB → Extract entities → Create canonical answers → Embed widget
 
 ---
@@ -41,10 +41,10 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 | Entity | Collection | Details |
 |--------|-----------|---------|
 | Tenant | `tenants` | Company profile, onboardingSource: CANONICA_ONBOARDING, productId: CN |
-| Store | `stores` | Product workspace, roles, API key auto-generated |
+| Store | `stores` | Product workspace, roles, widget key auto-generated |
 | User update | `users` | Canonica project user gets tenantId + storeId; default auth user gets `productAccounts.CN` bridge only |
 | Subscription | `subscriptions` | Beta: active immediately, 6-month window. Paid: Razorpay subscription starts as pending and activates through the existing payment webhook/reconciliation flow |
-| Widget API key | store.canonicaWidgetApi | `cn_*` key returned once; `apiKeyHash`, `keyPrefix`, purpose, productId, and widget scopes persisted for widget authentication |
+| Widget key | store.canonicaWidgetApi | `cn_*` key returned once; `apiKeyHash`, `keyPrefix`, purpose, productId, and widget scopes persisted for widget authentication |
 | Tenant summary | `platformSummary/canonicaTenantsSummary` | Tenant/store registry used by Canonica schedulers without scanning entity collections |
 
 ---
@@ -56,7 +56,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 - Rate limited: 3 onboarding attempts per user per hour
 - Validation: Company name required (min 2 chars)
 - Duplicate prevention: user with existing `productAccounts.CN` or Canonica-project user tenant/store is blocked from re-onboarding; a MenuList tenant alone does not block Canonica onboarding.
-- API key: Unique per store, cn_* prefix for Canonica identification
+- Widget key: Unique per store, cn_* prefix for Canonica identification
 
 ---
 

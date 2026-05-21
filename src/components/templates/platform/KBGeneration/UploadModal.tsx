@@ -4,9 +4,10 @@ import { addIngestionJob } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { uploadFile } from '@lib/firebase/storage';
+import { canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
-import { Button, Image, List, message, Modal, Progress, Typography, Upload, UploadProps } from 'antd';
+import { Button, Image, Input, List, message, Modal, Progress, Typography, Upload, UploadProps } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { LuTrash2, LuUploadCloud } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,6 +23,8 @@ interface UploadModalProps {
 const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
   const dispatch = useAppDispatch();
   const [fileList, setFileList] = useState<any[]>([]);
+  const [sourceUrls, setSourceUrls] = useState('');
+  const [starterAnswers, setStarterAnswers] = useState('');
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [isUploading, setIsUploading] = useState(false);
   const session = useClientAuthSession();
@@ -43,19 +46,53 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
   };
 
   const handleStartGeneration = async () => {
-    if (fileList.length === 0) {
-      message.error('Please upload at least one file.');
+    const hasTextSource = Boolean(sourceUrls.trim() || starterAnswers.trim());
+    if (fileList.length === 0 && !hasTextSource) {
+      message.error('Upload a file or add starter URLs/answers.');
+      return;
+    }
+
+    const tId = Number(session?.tId);
+    const sId = Number(session?.sId);
+    if (!Number.isFinite(tId) || !Number.isFinite(sId) || tId <= 0 || sId <= 0) {
+      message.error('Workspace scope is not available yet.');
       return;
     }
 
     setIsUploading(true);
     dispatch(startLoader('Uploading files...'));
 
-    const uploadPromises = fileList.map((file) => {
-      const storagePath = `ingestion_source_files/${session.tId}/${session.sId}/${uuidv4()}-${file.name.replace(/\s/g, '_')}`;
+    const textSourceFiles = [
+      sourceUrls.trim()
+        ? {
+          uid: 'source-urls',
+          name: 'product-doc-urls.txt',
+          originFileObj: new File(
+            [`Product documentation URLs:\n${sourceUrls.trim()}\n`],
+            'product-doc-urls.txt',
+            { type: 'text/plain' },
+          ),
+        }
+        : null,
+      starterAnswers.trim()
+        ? {
+          uid: 'starter-answers',
+          name: 'starter-support-answers.txt',
+          originFileObj: new File(
+            [`Starter support answers and known FAQs:\n${starterAnswers.trim()}\n`],
+            'starter-support-answers.txt',
+            { type: 'text/plain' },
+          ),
+        }
+        : null,
+    ].filter(Boolean) as Array<{ uid: string; name: string; originFileObj: File }>;
+
+    const uploadSources = [...fileList, ...textSourceFiles];
+    const uploadPromises = uploadSources.map((file) => {
+      const storagePath = `ingestion_source_files/${tId}/${sId}/${uuidv4()}-${file.name.replace(/\s/g, '_')}`;
       return uploadFile(storagePath, file.originFileObj, (progress) => {
         setUploadProgress((prev) => ({ ...prev, [file.uid]: progress }));
-      });
+      }, canonicaStorage);
     });
 
     try {
@@ -83,6 +120,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
 
   const handleClose = () => {
     setFileList([]);
+    setSourceUrls('');
+    setStarterAnswers('');
     setUploadProgress({});
     setIsUploading(false);
     onClose();
@@ -130,6 +169,26 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
           </p>
         </Dragger>
       </PasteUpload>
+
+      <Input.TextArea
+        value={sourceUrls}
+        onChange={(event) => setSourceUrls(event.target.value)}
+        rows={4}
+        maxLength={6000}
+        showCount
+        disabled={isUploading}
+        placeholder={'Paste docs/help URLs, one per line.\nhttps://app.example.com/docs/billing\nhttps://app.example.com/docs/onboarding'}
+      />
+
+      <Input.TextArea
+        value={starterAnswers}
+        onChange={(event) => setStarterAnswers(event.target.value)}
+        rows={5}
+        maxLength={10000}
+        showCount
+        disabled={isUploading}
+        placeholder={'Paste starter answers or known FAQs.\nQ: How do I update billing?\nA: Open Billing, update payment method, then retry the invoice.'}
+      />
 
       {fileList.length > 0 && (
         <List

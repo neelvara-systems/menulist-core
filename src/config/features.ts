@@ -1938,6 +1938,21 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER: true,
 
     /**
+     * Canonica Weekly Digest Surface
+     *
+     * true: Canonica clients can review a weekly readiness/action digest built
+     *       from existing compact activation, context, coverage, and trust
+     *       summaries. No new scheduler or AI generation is required.
+     * false: Weekly Digest route/nav item hidden.
+     *
+     * Cost model: reuses /api/canonica/activation/summary instead of scanning
+     * tickets, chats, KB, changelog, or signal collections.
+     *
+     * @see __docs__/canonica/self-sellable-product-strategy.md
+     */
+    ENABLE_CANONICA_WEEKLY_DIGEST: true,
+
+    /**
      * Canonica Email Notifications
      *
      * true: Email notifications sent for ticket replies, status changes, etc.

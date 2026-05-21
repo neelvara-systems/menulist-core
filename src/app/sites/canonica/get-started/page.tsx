@@ -7,7 +7,8 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your Canonica account — the Support Knowledge Control Plane for SaaS. Free during beta.',
+    description: 'Create your Canonica workspace and launch page-aware support for your SaaS product.',
+    alternates: { canonical: '/get-started' },
 };
 
 function getBasePath(): string {
@@ -19,11 +20,12 @@ function getBasePath(): string {
 }
 
 const CRITERIA = [
-    { label: 'ARR $5M–$40M', description: 'Mid-market SaaS with established support operation' },
-    { label: 'Biweekly or monthly releases', description: 'Regular product changes that create knowledge drift' },
-    { label: '5+ support agents', description: 'Team large enough that knowledge consistency matters' },
-    { label: 'Multi-feature product', description: 'Plans, roles, workflows, states — real product complexity' },
-    { label: 'Already using automated support', description: 'Seeing accuracy issues with generated answers' },
+    { label: 'One live or near-live SaaS product', description: 'A product with real users, billing, onboarding, settings, or release notes.' },
+    { label: 'Small team or solo founder', description: 'You need support to work before you build a full support team.' },
+    { label: 'Existing help content', description: 'Docs, FAQs, tickets, changelogs, or starter answers Canonica can learn from.' },
+    { label: 'Known product pages', description: 'Billing, onboarding, settings, account, team, connected app, or release pages where users ask questions.' },
+    { label: 'Owner-reviewed answers', description: 'You want approved answers before fallback automation becomes authoritative.' },
+    { label: 'Widget install access', description: 'You can add a script and safe page context to your product or ask your developer to do it.' },
 ];
 
 export default function CanonicaGetStartedPage() {
@@ -37,17 +39,17 @@ export default function CanonicaGetStartedPage() {
                     <div className="mx-auto w-full max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Get Started</p>
                         <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                            Request early access
+                            Launch support in 10 minutes
                         </h1>
                         <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica is in private beta. We work with a small number of design partners
-                            to validate the canonical answer model against real support traffic.
+                            Create a workspace, add your product details, import starter knowledge,
+                            and verify the widget against your own product pages.
                         </p>
 
                         <div className="grid w-full gap-8 md:grid-cols-2">
                             {/* Left: criteria */}
                             <div>
-                                <h2 className="mb-6 text-xl font-semibold">Ideal design partner</h2>
+                                <h2 className="mb-6 text-xl font-semibold">Best fit</h2>
                                 <div className="space-y-4">
                                     {CRITERIA.map((item, i) => (
                                         <div key={i} className="flex items-start gap-3">
@@ -71,12 +73,12 @@ export default function CanonicaGetStartedPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto max-w-3xl">
-                        <h2 className="mb-6 text-xl font-semibold">What happens after you apply?</h2>
+                        <h2 className="mb-6 text-xl font-semibold">What happens after you start?</h2>
                         <div className="grid gap-4 sm:grid-cols-3">
                             {[
-                                { step: '1', title: 'We review', description: 'We evaluate fit based on product complexity and support scale.' },
-                                { step: '2', title: 'Guided setup', description: 'We help you bootstrap your ontology and create initial canonical answers.' },
-                                { step: '3', title: '4-week experiment', description: 'Measure canonical hit rate, feedback improvement, and drift detection quality.' },
+                                { step: '1', title: 'Create workspace', description: 'Canonica creates the product workspace, beta subscription, and widget key.' },
+                                { step: '2', title: 'Import knowledge', description: 'Upload docs or paste starter answers so drafts and entities can be prepared.' },
+                                { step: '3', title: 'Verify install', description: 'Install the widget, pass page context, and review the first support gaps.' },
                             ].map((s) => (
                                 <div key={s.step} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
                                     <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/10 text-sm font-bold text-indigo-400">

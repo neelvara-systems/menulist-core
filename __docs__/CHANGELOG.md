@@ -6,15 +6,33 @@
 
 ---
 
+## May 21, 2026 — Canonica Website Widget Positioning
+
+### Changed
+
+- **Canonica public website corrected to widget-first positioning** — Homepage now includes the page-aware widget section, `/install` is the public widget setup page, and `/integrations` redirects to `/install` so buyer-facing copy does not imply enabled API or workflow-adapter packages.
+- **Public API/adapters removed from package copy** — Pricing, resources, sitemap metadata, and Canonica website docs now keep rollout-only API/adapters out of the public website promise while preserving the underlying feature-gated code paths.
+- **Canonica security page expanded from the MenuList trust pattern** — `/security` now uses facts, controls, and disclosure like the MenuList trust page, but the claims are Canonica-specific: widget context, tenant-scoped data, owner-reviewed answers, rate-limited runtime endpoints, summary-backed dashboards, product separation, and safe reporting guidance.
+
 ## May 21, 2026 — Canonica Activation Command Center
 
 ### Added
 
+- **Canonica system inventory added** — Added `__docs__/canonica/system-inventory/` as the codebase-first map of Canonica routes, features, source files, Firebase collections, scheduler behavior, rollout flags, and website-safe product claims.
 - **Canonica activation home added** — Canonica client owners now land on `/canonica/activation`, with launch readiness, widget install status, allowed-origin status, content counts, next action routing, and knowledge-health status.
 - **Activation summary API added** — `/api/canonica/activation/summary` reads compact store and `platformSummary` docs instead of scanning KB, changelog, tickets, or signal collections.
 - **Widget runtime marker added** — Installed Canonica widgets now pass sanitized route/context hints during config load so owners can verify that the widget and page context are reaching Canonica.
 - **Canonica three-mode dashboard added** — Canonica navigation now separates Launch Setup, Support Control, and Knowledge Governance, with deep links into entity review, canonical answers, trust metrics, and the signal-to-knowledge queue.
 - **Draft-to-canonical publishing added** — Generated mutation proposals can now be reviewed, edited, and published as active canonical answers from the Signal Queue.
+- **Canonica self-sellable strategy logged** — Added the non-enterprise Canonica positioning, pricing direction, public messaging bank, product guardrails, and execution task list in `__docs__/canonica/self-sellable-product-strategy.md`.
+- **Canonica self-serve funnel implemented** — Updated public positioning, added an account-free static demo, replaced beta-only pricing with Starter/Growth/Studio INR packaging, extended onboarding with product context fields, seeded initial product surfaces, added editable Product Details, added a summary-backed Weekly Digest route, and added widget greeting configuration.
+- **Canonica public website completed** — Tightened `/sites/canonica` into a coherent public website across homepage, product, demo, pricing, about, contact, get-started, privacy policy, and terms of service, with footer links kept on public Canonica routes.
+- **Canonica website production SEO completed** — Added Canonica-owned sitemap/robots routes, FAQ and security pages, page canonical metadata, Canonica manifest/icons, OpenGraph image, and homepage structured data.
+- **Canonica engine pillars restored on public website** — Homepage and Product now show Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation as the implemented control-plane layers, without claiming the deferred API/integration pillar.
+- **Canonica website system map added** — Homepage now explains the implemented Launch Setup, Support Control, Knowledge Governance, and Runtime layers so public copy matches the code-backed product surface.
+- **Canonica website product preview added** — Homepage now includes a static product preview for activation, page-aware widget context, and governance queue states so visitors can understand the product shape without account access.
+- **Canonica website public pages expanded** — Added `/use-cases`, `/install`, `/resources`, and `/updates`, and wired them into navigation, footer, and sitemap coverage without using dashboard-reserved support routes. `/integrations` remains a redirect alias for older links.
+- **Canonica website metadata separation tightened** — Canonica pages now set their own dark theme color and no longer inherit a hardcoded MenuList web-app title from the root layout head.
 
 ### Changed
 
