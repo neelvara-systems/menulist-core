@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import type { ProductId } from "@constant/product";
 
 // Core Types for the Payment System
 export type PaymentProvider = "razorpay";
@@ -52,6 +53,11 @@ export interface FirestoreSubscriptionDoc {
 
   // --- Core User & Tenant Context ---
   userId: string;
+  uId?: string;
+  pId?: ProductId | string;
+  productId?: ProductId | string;
+  tId?: number | string;
+  sId?: number | string;
   name: string;
   email: string;
   tenantId: number | string;
@@ -154,10 +160,17 @@ export interface FirestoreTopupDoc {
   currency: Currency;
   status: PaymentStatus;
   userId: string;
+  uId?: string;
+  pId?: ProductId | string;
+  productId?: ProductId | string;
+  tId?: number | string;
+  sId?: number | string;
   tenantId: number | string;
   storeId: number | string;
   paidAt?: Timestamp;
   packId?: string;
+  packName?: string;
+  type?: string;
 }
 
 export interface BillingHistoryItem {

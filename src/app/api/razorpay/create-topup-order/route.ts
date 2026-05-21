@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
-import { aiEnhancementPacksList } from '@data/PlatformPlansList';
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
-import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { getBillingFirestoreAdminForProduct, resolveBillingScopeFromSession } from "@lib/billing/productBillingServer";
+import { getCreditPacksForProduct, isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -19,14 +20,42 @@ const LOG_FILE = "razorpay-topup.log";
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
-    const { tenantId, storeId, id: userId } = session.user;
+    const { id: userId } = session.user;
+    let logTenantId: string | number | undefined = session.user?.tenantId;
+    let logStoreId: string | number | undefined = session.user?.storeId;
 
     try {
-        if (!tenantId || !storeId) {
+        // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
+        const body = await request.json();
+        const validation = validateAPIInput(CreateTopupOrderRequestSchema, body);
+
+        if (!validation.success) {
+            const validationError = 'error' in validation ? validation.error : 'Invalid input';
+            logger.security('Input Validation Failed', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/create-topup-order',
+                error: validationError,
+                attemptedData: {
+                    productId: body?.productId,
+                    packId: body?.packId,
+                    currency: body?.currency,
+                },
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: "Invalid credit pack request." },
+                { status: 400 }
+            );
+        }
+
+        const productId = normalizeBillingProductId(validation.data.productId);
+        const scope = resolveBillingScopeFromSession(session, productId);
+        if (!scope) {
             logger.security('User Not Onboarded - Create Topup Order', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
-                error: 'User attempted to create topup order without tenant/store',
+                error: 'User attempted to create topup order without product tenant/store',
+                productId,
             }, 'high');
 
             return NextResponse.json(
@@ -35,15 +64,18 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
+        const { tenantId, storeId } = scope;
+        logTenantId = tenantId;
+        logStoreId = storeId;
         // 🔒 CRITICAL: Verify user owns this tenant/store
-        if (!verifyTenantAccess(session, tenantId, storeId, request)) {
+        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
+        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-topup-order'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
@@ -53,7 +85,7 @@ export const POST = withAuth(async (request, session) => {
         // 🔒 RATE LIMITING: Prevent topup spam (centralized config)
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_TOPUP');
         const rateLimitResult = await checkRateLimit({
-            key: `topup:${userId}:${tenantId}`,
+            key: `topup:${productId}:${userId}:${tenantId}`,
             ...rateLimitConfig
         });
 
@@ -62,6 +94,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/create-topup-order',
                 error: 'Too many topup attempts',
+                productId,
                 currentAttempts: rateLimitResult.current,
             }, 'high');
 
@@ -71,36 +104,13 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 429 });
         }
 
-        // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const body = await request.json();
-        const validation = validateAPIInput(CreateTopupOrderRequestSchema, body);
-
-        if (!validation.success) {
-            const validationError = 'error' in validation ? validation.error : 'Invalid input';
-            // Log to Sentry (CRITICAL - topup order creation)
-            logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
-                endpoint: '/api/razorpay/create-topup-order',
-                error: validationError,
-                attemptedData: {
-                    packId: body?.packId,
-                    currency: body?.currency,
-                },
-            }, 'critical'); // CRITICAL - topup payment order
-
-            return NextResponse.json(
-                { error: "Invalid enhancement pack request." },
-                { status: 400 }
-            );
-        }
-
         const { packId, currency } = validation.data;
         const priceKey = `price${currency.toUpperCase()}`;
         // 3. Find Pack Details
-        const selectedPack = aiEnhancementPacksList.find((p) => p.packId === packId);
+        const selectedPack = getCreditPacksForProduct(productId).find((p) => p.packId === packId);
 
         if (!selectedPack) {
-            return NextResponse.json({ error: "Enhancement pack not found." }, { status: 404 });
+            return NextResponse.json({ error: "Credit pack not found." }, { status: 404 });
         }
 
         const price = selectedPack[priceKey].price;
@@ -114,9 +124,14 @@ export const POST = withAuth(async (request, session) => {
             amount: price,
             currency,
             notes: {
+                productId,
+                pId: productId,
                 tenantId,
                 storeId,
+                tId: tenantId,
+                sId: storeId,
                 userId,
+                uId: userId,
                 packId,
                 creditAmount: selectedPack.creditAmount,
                 packName: selectedPack.name,
@@ -125,7 +140,7 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        await firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).doc(razorpayOrder.id).set({
+        await getBillingFirestoreAdminForProduct(productId).collection(DB_COLLECTIONS.TOPUPS).doc(razorpayOrder.id).set({
             paymentProvider: 'razorpay',
             providerOrderId: razorpayOrder.id,
             creditsAdded: selectedPack.creditAmount,
@@ -135,8 +150,13 @@ export const POST = withAuth(async (request, session) => {
             userId,
             tenantId,
             storeId,
+            productId,
+            pId: productId,
+            tId: tenantId,
+            sId: storeId,
+            uId: userId,
             packId,
-            type: 'ai_enhancement_pack',
+            type: isCanonicaBillingProduct(productId) ? 'canonica_credit_pack' : 'ai_enhancement_pack',
             packName: selectedPack.name,
             createdOn: admin.firestore.FieldValue.serverTimestamp(),
             updatedOn: admin.firestore.FieldValue.serverTimestamp(),
@@ -148,8 +168,8 @@ export const POST = withAuth(async (request, session) => {
         logger.error('Top-up order creation failed', error as Error, {
             operation: 'create-topup-order',
             userId,
-            tenantId,
-            storeId,
+            tenantId: logTenantId,
+            storeId: logStoreId,
             endpoint: '/api/razorpay/create-topup-order',
         });
 

@@ -6,6 +6,7 @@
 'use client'
 
 import { helpCenterTabRouting } from '@constant/navigations';
+import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
@@ -37,15 +38,40 @@ interface ActiveSubscriptionCardProps {
     activeSubscription: FirestoreSubscriptionDoc,
     refetchActiveSubscription: () => void,
     setIsPricingModalOpen: (value: { action: "upgrade" | "new"; active: boolean }) => void,
-    setIsCreditsModalOpen: (value: boolean) => void
+    setIsCreditsModalOpen: (value: boolean) => void,
+    productId?: ProductId,
+    productName?: string,
+    supportRoute?: string,
+    usageRoute?: string,
+    creditTitle?: string,
+    creditDescription?: string,
+    creditBalanceLabel?: string,
+    creditPackButtonLabel?: string,
+    canUpgradePlan?: boolean,
+    allowSubscriptionSelfService?: boolean,
 }
-function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription, setIsPricingModalOpen, setIsCreditsModalOpen }: ActiveSubscriptionCardProps) {
+function ActiveSubscriptionCard({
+    activeSubscription,
+    refetchActiveSubscription,
+    setIsPricingModalOpen,
+    setIsCreditsModalOpen,
+    productId = PRODUCT_IDS.MENULIST,
+    productName = 'MenuList.ai',
+    supportRoute = helpCenterTabRouting('ticket'),
+    usageRoute = '/transactions',
+    creditTitle = 'Content Features',
+    creditDescription = 'Your plan includes enhancements for images, descriptions, and translations.',
+    creditBalanceLabel = 'Enhancements left',
+    creditPackButtonLabel,
+    canUpgradePlan,
+    allowSubscriptionSelfService = true,
+}: ActiveSubscriptionCardProps) {
     const { token } = theme.useToken();
     const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
     const dispatch = useAppDispatch();
     const router = useRouter();
     const formatter = useFormatter();
-    const { onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(dispatch);
+    const { onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(dispatch, { productId, productName });
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
     const monthlyCredits = Number(activeSubscription.monthlyCredits || 0);
     const topUpCredits = Number(activeSubscription.topUpCredits || 0);
@@ -121,6 +147,10 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
 
     // --- SMART BUTTON RENDERING LOGIC ---
     const renderActionButtons = () => {
+        if (!allowSubscriptionSelfService) {
+            return null;
+        }
+
         const isFinalCycle = Boolean(activeSubscription.renewsOn?.seconds && activeSubscription.subscriptionEndDate?.seconds)
             && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
         if (isPaymentPending) {
@@ -129,7 +159,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                     Pay Now
                 </Button>
             ) : (
-                <Button type="primary" onClick={() => router.push(helpCenterTabRouting('ticket'))}>
+                <Button type="primary" onClick={() => router.push(supportRoute)}>
                     Contact Support
                 </Button>
             );
@@ -143,7 +173,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                     {isFinalCycle ? <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })}>Change Plan</Button> :
                         <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
                     {canPauseSubscriptions && <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button>}
-                    {activeSubscription.planId !== 'premium' && <Button icon={<FaBolt />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
+                    {(canUpgradePlan ?? activeSubscription.planId !== 'premium') && <Button icon={<FaBolt />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
                 </Space>
             );
         }
@@ -154,7 +184,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                     {canPauseSubscriptions ? (
                         <Button icon={<LuPlay />} type="primary" onClick={handleResumeSubscription}>Resume Subscription</Button>
                     ) : (
-                        <Button type="primary" onClick={() => router.push(helpCenterTabRouting('ticket'))}>
+                        <Button type="primary" onClick={() => router.push(supportRoute)}>
                             Contact Support
                         </Button>
                     )}
@@ -175,7 +205,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                         Retry Payment
                     </Button>
                 ) : (
-                    <Button type="primary" onClick={() => router.push(helpCenterTabRouting('ticket'))}>
+                    <Button type="primary" onClick={() => router.push(supportRoute)}>
                         Contact Support
                     </Button>
                 )}
@@ -383,18 +413,18 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                     <Card style={creditCardStyle}>
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             <Flex justify="space-between" align="center" gap={16} style={{ width: '100%' }} >
-                                <Title level={5}>Content Features</Title>
+                                <Title level={5}>{creditTitle}</Title>
                                 <Tag color={totalCredits > 0 ? 'success' : 'warning'}>
                                     {totalCredits > 0 ? 'Active' : 'Exhausted'}
                                 </Tag>
                             </Flex>
 
                             <Text type="secondary">
-                                Your plan includes enhancements for images, descriptions, and translations.
+                                {creditDescription}
                             </Text>
 
                             <Statistic
-                                title="Enhancements left"
+                                title={creditBalanceLabel}
                                 value={totalCredits}
                                 valueStyle={{
                                     color: totalCredits > 0 ? token.colorSuccessText : token.colorWarningText,
@@ -432,9 +462,9 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                             ) : null}
 
                             <Flex align='end' style={{ width: '100%' }} gap={16}>
-                                <Button block icon={<LuHistory />} onClick={() => router.push('/transactions')}>View Usage</Button>
+                                <Button block icon={<LuHistory />} onClick={() => router.push(usageRoute)}>View Usage</Button>
                                 <Button type="primary" ghost block icon={<FaBolt />} onClick={() => setIsCreditsModalOpen(true)}>
-                                    {totalCredits > 0 ? 'Get Enhancements' : 'Get More Enhancements'}
+                                    {creditPackButtonLabel || (totalCredits > 0 ? 'Get Enhancements' : 'Get More Enhancements')}
                                 </Button>
                             </Flex>
                         </Space>

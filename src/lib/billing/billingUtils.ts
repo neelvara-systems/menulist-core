@@ -1,5 +1,6 @@
 import { getResellerPlanByPlanId } from "@config/resellerPricing";
 import { B2BplansList, B2CplansList } from "@data/PlatformPlansList";
+import { getBillingPlanDetailsFromNotes } from "./productBillingPlans";
 import { Timestamp } from "firebase/firestore";
 
 /**
@@ -16,6 +17,9 @@ export const getPlanDetailsFromConstants = (notes: any) => {
     if (!notes || !notes.planId || !notes.interval) {
         return null;
     }
+
+    const productPlan = getBillingPlanDetailsFromNotes(notes);
+    if (productPlan) return productPlan;
 
     // Check if this is a reseller plan (planId starts with 'reseller_')
     if (notes.planId.startsWith('reseller_')) {

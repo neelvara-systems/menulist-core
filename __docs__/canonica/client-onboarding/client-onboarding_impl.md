@@ -1,6 +1,6 @@
 # Canonica Client Onboarding — Implementation
 
-> **Version:** 1.4.0
+> **Version:** 1.5.0
 > **Last Updated:** 2026-05-21
 > **Audience:** Developers
 
@@ -36,6 +36,7 @@ src/data/canonica/plans.ts                       # Canonica plans config
 8. Bootstrap initial Canonica product surfaces and compact context summary from selected onboarding pages
 9. Generate widget key (`cn_` prefix) under `stores/{sId}.canonicaWidgetApi`
 10. Return tenantId, storeId, subscriptionId, apiKey
+11. Paid plans activate through the shared product-aware Razorpay verify/webhook flow using `productId: "CN"` and Canonica Firebase persistence.
 
 **Reuses from MenuList:**
 - Same atomic transaction pattern as `create-subscription/route.ts`
@@ -111,7 +112,7 @@ Response (success):
 }
 ```
 
-For paid plans, `subscription` contains the Razorpay subscription id, payment URL, and provider status. The Firestore subscription is created as `pending`; activation still depends on the existing Razorpay webhook/reconciliation flow.
+For paid plans, `subscription` contains the Razorpay subscription id, payment URL, and provider status. The Firestore subscription is created as `pending`; activation depends on the shared Razorpay verify/webhook flow, which now derives `productId: "CN"` from request body or Razorpay notes and updates Canonica Firebase.
 
 Errors: 400 (already onboarded / invalid input), 401 (not authenticated), 403 (feature unavailable), 429 (rate limited), 500 (server error)
 
@@ -133,6 +134,7 @@ This allows querying Canonica-specific tenants without a separate collection.
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-21 | 1.5.0 | Documented product-aware Razorpay activation for paid Canonica onboarding |
 | 2026-05-21 | 1.3.0 | Added richer product profile inputs, initial product-surface bootstrap, compact context summary seed, and Starter/Growth/Studio pricing |
 | 2026-05-21 | 1.2.0 | Documented separate-product onboarding sequence: Canonica-project user, default-auth `productAccounts.CN` bridge, tenant summary, and `canonicaWidgetApi` key |
 | 2026-05-16 | 1.1.0 | Added paid Canonica Razorpay subscription path and `currency` input |

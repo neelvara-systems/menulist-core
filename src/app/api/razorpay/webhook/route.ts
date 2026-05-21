@@ -1,8 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
-import { getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
-import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
+import {
+    getProductSubscriptionById,
+    safeSyncProductSubscriptionEntitlementFromSubscription,
+    updateProductSubscription,
+    writeProductPaymentTransactionAudit,
+} from "@lib/billing/productBillingServer";
+import { isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
@@ -35,6 +40,26 @@ const sanitizeForAdminFirestore = (value: any): any => {
 const normalizeNumericId = (value: unknown): number | null => {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
+};
+
+const getEventProductId = (eventPayload: any) => {
+    const payment = eventPayload?.payload?.payment?.entity || {};
+    const subscription = eventPayload?.payload?.subscription?.entity || {};
+    const order = eventPayload?.payload?.order?.entity || {};
+    const orderNotes = !Array.isArray(order?.notes) ? (order?.notes || {}) : {};
+    const subscriptionNotes = !Array.isArray(subscription?.notes) ? (subscription?.notes || {}) : {};
+    const paymentNotes = !Array.isArray(payment?.notes) ? (payment?.notes || {}) : {};
+
+    return normalizeBillingProductId(
+        eventPayload?.productId
+        || eventPayload?.pId
+        || orderNotes?.productId
+        || orderNotes?.pId
+        || subscriptionNotes?.productId
+        || subscriptionNotes?.pId
+        || paymentNotes?.productId
+        || paymentNotes?.pId,
+    );
 };
 
 const buildWebhookEventKey = (eventPayload: any, rawBody: string): string => {
@@ -114,9 +139,12 @@ const buildPaymentTransactionAudit = (eventPayload: any) => {
     const subscriptionNotes = !Array.isArray(subscription?.notes) ? (subscription?.notes || {}) : {};
     const tenantId = normalizeNumericId(eventPayload?.tenantId ?? orderNotes?.tenantId ?? subscriptionNotes?.tenantId);
     const storeId = normalizeNumericId(eventPayload?.storeId ?? orderNotes?.storeId ?? subscriptionNotes?.storeId);
+    const productId = getEventProductId(eventPayload);
 
     return {
         auditVersion: 2,
+        productId,
+        pId: productId,
         event: eventPayload?.event,
         transactionType: eventPayload?.transactionType || null,
         tenantId,
@@ -223,9 +251,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
     }
 
+    const eventProductId = getEventProductId(event);
+
     logger.info('Webhook event received', {
         eventType: event.event,
-        eventId: event.id || event.payload?.payment?.entity?.id || event.payload?.subscription?.entity?.id
+        eventId: event.id || event.payload?.payment?.entity?.id || event.payload?.subscription?.entity?.id,
+        productId: eventProductId,
     });
 
     const webhookClaim = await claimWebhookEventForProcessing(event, requestBody);
@@ -239,6 +270,18 @@ export async function POST(request: Request) {
 
     try {
         let eventPayloadToUpload = event;
+        eventPayloadToUpload.productId = eventProductId;
+        eventPayloadToUpload.pId = eventProductId;
+        const getSubscription = (id: string) => getProductSubscriptionById(eventProductId, id);
+        const updateSubscriptionForProduct = (id: string, data: Partial<FirestoreSubscriptionDoc>) => updateProductSubscription(eventProductId, id, data);
+        const syncSubscriptionForProduct = (subscription: FirestoreSubscriptionDoc, source: string) =>
+            safeSyncProductSubscriptionEntitlementFromSubscription(eventProductId, subscription, source);
+        const markResellerTransactionsForProduct = async (subscriptionId: string, source: string) => {
+            if (!isCanonicaBillingProduct(eventProductId)) {
+                await markResellerTransactionsActiveForSubscription(subscriptionId, source);
+            }
+        };
+        const shouldSendMenuListBillingMessages = !isCanonicaBillingProduct(eventProductId);
         const paymentEntity = event.payload?.payment?.entity;
         if (event.payload?.order) {
             const orderEntity = event.payload?.order?.entity;
@@ -262,10 +305,11 @@ export async function POST(request: Request) {
         }
         // await writeLogEntry({ logFileName: LOG_FILE, logType: `RAZORPAY_WEBHOOK_EVENT_${event.event}`, data: eventPayloadToUpload });
         const auditSummary = buildPaymentTransactionAudit(eventPayloadToUpload);
-        await writePaymentTransactionAudit(auditSummary);
+        await writeProductPaymentTransactionAudit(eventProductId, auditSummary);
         if (!eventPayloadToUpload.transactionType) {
             await markWebhookEvent(webhookClaim.eventKey, 'processed', {
                 transactionType: null,
+                productId: eventProductId,
                 tenantId: eventPayloadToUpload.tenantId ?? null,
                 storeId: eventPayloadToUpload.storeId ?? null,
             });
@@ -295,36 +339,38 @@ export async function POST(request: Request) {
                     });
                 } catch { /* non-blocking */ }
 
-                // 📧 LIFECYCLE MESSAGE: Notify store owner about payment failure
-                try {
-                    const { sendLifecycleMessage } = await import('@lib/messaging');
-                    const subForMsg = paymentEntity?.subscription_id
-                        ? await getSubscriptionById(paymentEntity.subscription_id)
-                        : (event.payload?.subscription?.entity?.id ? await getSubscriptionById(event.payload.subscription.entity.id) : null);
-                    if (subForMsg?.email) {
-                        sendLifecycleMessage({
-                            storeId: String(subForMsg.storeId),
-                            tenantId: String(subForMsg.tenantId),
-                            eventType: event.event === 'subscription.pending' ? 'GRACE_PERIOD_STARTED' : 'PAYMENT_FAILED',
-                            referenceId: `${event.event}-${paymentEntity?.id || event.payload?.subscription?.entity?.id || Date.now()}`,
-                            recipientEmail: subForMsg.email,
-                            storeName: subForMsg.name || '',
-                            metadata: {
-                                amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : subForMsg.amount || 0,
-                                currency: paymentEntity?.currency?.toUpperCase() || subForMsg.currency || 'INR',
-                            },
-                        }).catch(() => { /* non-blocking */ });
-                    }
-                } catch { /* non-blocking */ }
+                if (shouldSendMenuListBillingMessages) {
+                    // 📧 LIFECYCLE MESSAGE: Notify store owner about payment failure
+                    try {
+                        const { sendLifecycleMessage } = await import('@lib/messaging');
+                        const subForMsg = paymentEntity?.subscription_id
+                            ? await getSubscription(paymentEntity.subscription_id)
+                            : (event.payload?.subscription?.entity?.id ? await getSubscription(event.payload.subscription.entity.id) : null);
+                        if (subForMsg?.email) {
+                            sendLifecycleMessage({
+                                storeId: String(subForMsg.storeId),
+                                tenantId: String(subForMsg.tenantId),
+                                eventType: event.event === 'subscription.pending' ? 'GRACE_PERIOD_STARTED' : 'PAYMENT_FAILED',
+                                referenceId: `${event.event}-${paymentEntity?.id || event.payload?.subscription?.entity?.id || Date.now()}`,
+                                recipientEmail: subForMsg.email,
+                                storeName: subForMsg.name || '',
+                                metadata: {
+                                    amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : subForMsg.amount || 0,
+                                    currency: paymentEntity?.currency?.toUpperCase() || subForMsg.currency || 'INR',
+                                },
+                            }).catch(() => { /* non-blocking */ });
+                        }
+                    } catch { /* non-blocking */ }
+                }
 
                 if (paymentEntity?.subscription_id) {
-                    const internalSub = await getSubscriptionById(paymentEntity.subscription_id);
+                    const internalSub = await getSubscription(paymentEntity.subscription_id);
                     if (internalSub) {
                         if (!validateTransition(internalSub.status, 'past_due', `webhook:${event.event}`)) {
                             break;
                         }
                         const pastDueSince = internalSub.pastDueSinceAt || Timestamp.now();
-                        await updateSubscription(internalSub.id, {
+                        await updateSubscriptionForProduct(internalSub.id, {
                             status: 'past_due',
                             pastDueSinceAt: pastDueSince,
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
@@ -339,7 +385,7 @@ export async function POST(request: Request) {
                                 },
                             ],
                         });
-                        await safeSyncStorePlanEntitlementFromSubscription(
+                        await syncSubscriptionForProduct(
                             { ...internalSub, status: 'past_due' },
                             `webhook:${event.event}`,
                         );
@@ -347,13 +393,13 @@ export async function POST(request: Request) {
                 } else if (event.event === 'subscription.pending' || event.event === 'subscription.halted') {
                     const subscriptionEntity = event.payload?.subscription?.entity;
                     if (subscriptionEntity?.id) {
-                        const internalSub = await getSubscriptionById(subscriptionEntity.id);
+                        const internalSub = await getSubscription(subscriptionEntity.id);
                         if (internalSub) {
                             if (!validateTransition(internalSub.status, 'past_due', `webhook:${event.event}`)) {
                                 break;
                             }
                             const pastDueSince = internalSub.pastDueSinceAt || Timestamp.now();
-                            await updateSubscription(internalSub.id, {
+                            await updateSubscriptionForProduct(internalSub.id, {
                                 status: 'past_due',
                                 pastDueSinceAt: pastDueSince,
                                 lastWebhook: { event: event.event, timestamp: Timestamp.now() },
@@ -368,7 +414,7 @@ export async function POST(request: Request) {
                                     },
                                 ],
                             });
-                            await safeSyncStorePlanEntitlementFromSubscription(
+                            await syncSubscriptionForProduct(
                                 { ...internalSub, status: 'past_due' },
                                 `webhook:${event.event}`,
                             );
@@ -382,7 +428,7 @@ export async function POST(request: Request) {
                 const subscriptionEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_ACTIVATED', data: auditSummary });
                 if (!subscriptionEntity?.id) break;
-                const internalSub = await getSubscriptionById(subscriptionEntity.id);
+                const internalSub = await getSubscription(subscriptionEntity.id);
                 const planDetails = getPlanDetailsFromConstants(subscriptionEntity.notes);
 
                 if (internalSub && planDetails) {
@@ -440,9 +486,9 @@ export async function POST(request: Request) {
                             },
                         ],
                     };
-                    await updateSubscription(internalSub.id, updatePayload);
-                    await markResellerTransactionsActiveForSubscription(internalSub.id, `webhook:${event.event}`);
-                    await safeSyncStorePlanEntitlementFromSubscription(
+                    await updateSubscriptionForProduct(internalSub.id, updatePayload);
+                    await markResellerTransactionsForProduct(internalSub.id, `webhook:${event.event}`);
+                    await syncSubscriptionForProduct(
                         {
                             ...internalSub,
                             ...updatePayload,
@@ -452,48 +498,50 @@ export async function POST(request: Request) {
                         `webhook:${event.event}`,
                     );
 
-                    // 📧 LIFECYCLE MESSAGE: Payment success confirmation to store owner
-                    try {
-                        const { sendLifecycleMessage } = await import('@lib/messaging');
-                        const nextBilling = subscriptionEntity.charge_at
-                            ? new Date(subscriptionEntity.charge_at * 1000).toLocaleDateString()
-                            : 'See dashboard';
-                        sendLifecycleMessage({
-                            storeId: String(internalSub.storeId),
-                            tenantId: String(internalSub.tenantId),
-                            eventType: 'PAYMENT_SUCCESS',
-                            referenceId: `payment-${paymentEntity?.id || subscriptionEntity.id}`,
-                            recipientEmail: internalSub.email,
-                            storeName: internalSub.name || '',
-                            metadata: {
-                                amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
-                                currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
-                                planName: internalSub.planName || 'Subscription',
-                                nextBillingDate: nextBilling,
-                            },
-                        }).catch(() => { /* non-blocking */ });
-                    } catch { /* non-blocking */ }
-
-                    // 📧 INTERNAL: Notify founder about renewal revenue
-                    try {
-                        const { sendInternalNotification } = await import('@lib/messaging');
-                        sendInternalNotification({
-                            eventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
-                            storeId: String(internalSub.storeId),
-                            tenantId: String(internalSub.tenantId),
-                            metadata: {
-                                storeName: internalSub.name || '',
-                                planName: internalSub.planName || '',
-                                amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
-                                currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
-                                nextBillingDate: subscriptionEntity.charge_at
-                                    ? new Date(subscriptionEntity.charge_at * 1000).toLocaleDateString()
-                                    : 'N/A',
+                    if (shouldSendMenuListBillingMessages) {
+                        // 📧 LIFECYCLE MESSAGE: Payment success confirmation to store owner
+                        try {
+                            const { sendLifecycleMessage } = await import('@lib/messaging');
+                            const nextBilling = subscriptionEntity.charge_at
+                                ? new Date(subscriptionEntity.charge_at * 1000).toLocaleDateString()
+                                : 'See dashboard';
+                            sendLifecycleMessage({
                                 storeId: String(internalSub.storeId),
                                 tenantId: String(internalSub.tenantId),
-                            },
-                        }).catch(() => { /* non-blocking */ });
-                    } catch { /* non-blocking */ }
+                                eventType: 'PAYMENT_SUCCESS',
+                                referenceId: `payment-${paymentEntity?.id || subscriptionEntity.id}`,
+                                recipientEmail: internalSub.email,
+                                storeName: internalSub.name || '',
+                                metadata: {
+                                    amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
+                                    currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
+                                    planName: internalSub.planName || 'Subscription',
+                                    nextBillingDate: nextBilling,
+                                },
+                            }).catch(() => { /* non-blocking */ });
+                        } catch { /* non-blocking */ }
+
+                        // 📧 INTERNAL: Notify founder about renewal revenue
+                        try {
+                            const { sendInternalNotification } = await import('@lib/messaging');
+                            sendInternalNotification({
+                                eventType: event.event === 'subscription.activated' ? 'INTERNAL_SUBSCRIPTION_PURCHASED' : 'INTERNAL_SUBSCRIPTION_RENEWED',
+                                storeId: String(internalSub.storeId),
+                                tenantId: String(internalSub.tenantId),
+                                metadata: {
+                                    storeName: internalSub.name || '',
+                                    planName: internalSub.planName || '',
+                                    amount: paymentEntity?.amount ? (paymentEntity.amount / 100) : 0,
+                                    currency: paymentEntity?.currency?.toUpperCase() || internalSub.currency || 'INR',
+                                    nextBillingDate: subscriptionEntity.charge_at
+                                        ? new Date(subscriptionEntity.charge_at * 1000).toLocaleDateString()
+                                        : 'N/A',
+                                    storeId: String(internalSub.storeId),
+                                    tenantId: String(internalSub.tenantId),
+                                },
+                            }).catch(() => { /* non-blocking */ });
+                        } catch { /* non-blocking */ }
+                    }
                 }
                 break;
             }
@@ -502,12 +550,12 @@ export async function POST(request: Request) {
                 const subscriptionEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_COMPLETED', data: auditSummary });
                 if (!subscriptionEntity?.id) break;
-                const internalSub = await getSubscriptionById(subscriptionEntity.id);
+                const internalSub = await getSubscription(subscriptionEntity.id);
                 if (internalSub) {
                     if (!validateTransition(internalSub.status, 'completed', 'webhook:subscription.completed')) {
                         break;
                     }
-                    await updateSubscription(internalSub.id, {
+                    await updateSubscriptionForProduct(internalSub.id, {
                         status: 'completed',
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         statuses: [
@@ -522,7 +570,7 @@ export async function POST(request: Request) {
                         ],
                         subscriptionEndDate: subscriptionEntity.ended_at ? Timestamp.fromMillis(subscriptionEntity.ended_at * 1000) : Timestamp.now(),
                     });
-                    await safeSyncStorePlanEntitlementFromSubscription(
+                    await syncSubscriptionForProduct(
                         { ...internalSub, status: 'completed' },
                         'webhook:subscription.completed',
                     );
@@ -534,12 +582,12 @@ export async function POST(request: Request) {
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_CANCELLED', data: auditSummary });
                 const cancelledSubEntity = event.payload?.subscription?.entity;
                 if (cancelledSubEntity?.id) {
-                    const cancelledInternalSub = await getSubscriptionById(cancelledSubEntity.id);
+                    const cancelledInternalSub = await getSubscription(cancelledSubEntity.id);
                     if (cancelledInternalSub) {
                         if (!validateTransition(cancelledInternalSub.status, 'cancelled', 'webhook:subscription.cancelled')) {
                             break;
                         }
-                        await updateSubscription(cancelledInternalSub.id, {
+                        await updateSubscriptionForProduct(cancelledInternalSub.id, {
                             status: 'cancelled',
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                             subscriptionEndDate: cancelledSubEntity.ended_at ? Timestamp.fromMillis(cancelledSubEntity.ended_at * 1000) : (cancelledInternalSub.cycleEndDate || Timestamp.now()),
@@ -554,7 +602,7 @@ export async function POST(request: Request) {
                                 },
                             ],
                         });
-                        await safeSyncStorePlanEntitlementFromSubscription(
+                        await syncSubscriptionForProduct(
                             { ...cancelledInternalSub, status: 'cancelled' },
                             'webhook:subscription.cancelled',
                         );
@@ -567,12 +615,12 @@ export async function POST(request: Request) {
                 const pausedSubEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_PAUSED', data: auditSummary });
                 if (!pausedSubEntity?.id) break;
-                const pausedInternalSub = await getSubscriptionById(pausedSubEntity.id);
+                const pausedInternalSub = await getSubscription(pausedSubEntity.id);
                 if (pausedInternalSub) {
                     if (!validateTransition(pausedInternalSub.status, 'paused', 'webhook:subscription.paused')) {
                         break;
                     }
-                    await updateSubscription(pausedInternalSub.id, {
+                    await updateSubscriptionForProduct(pausedInternalSub.id, {
                         status: 'paused',
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         statuses: [
@@ -586,7 +634,7 @@ export async function POST(request: Request) {
                             },
                         ],
                     });
-                    await safeSyncStorePlanEntitlementFromSubscription(
+                    await syncSubscriptionForProduct(
                         { ...pausedInternalSub, status: 'paused' },
                         'webhook:subscription.paused',
                     );
@@ -599,9 +647,9 @@ export async function POST(request: Request) {
                 const updatedSubEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_UPDATED', data: auditSummary });
                 if (!updatedSubEntity?.id) break;
-                const updatedInternalSub = await getSubscriptionById(updatedSubEntity.id);
+                const updatedInternalSub = await getSubscription(updatedSubEntity.id);
                 if (updatedInternalSub && updatedSubEntity.quantity !== undefined) {
-                    await updateSubscription(updatedInternalSub.id, {
+                    await updateSubscriptionForProduct(updatedInternalSub.id, {
                         quantity: updatedSubEntity.quantity,
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                     });
@@ -613,12 +661,12 @@ export async function POST(request: Request) {
                 const resumedSubEntity = event.payload?.subscription?.entity;
                 await writeLogEntry({ logFileName: LOG_FILE, logType: 'RAZORPAY_WEBHOOK_SUBSCRIPTION_RESUMED', data: auditSummary });
                 if (!resumedSubEntity?.id) break;
-                const resumedInternalSub = await getSubscriptionById(resumedSubEntity.id);
+                const resumedInternalSub = await getSubscription(resumedSubEntity.id);
                 if (resumedInternalSub) {
                     if (!validateTransition(resumedInternalSub.status, 'active', 'webhook:subscription.resumed')) {
                         break;
                     }
-                    await updateSubscription(resumedInternalSub.id, {
+                    await updateSubscriptionForProduct(resumedInternalSub.id, {
                         status: 'active',
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         statuses: [
@@ -632,7 +680,7 @@ export async function POST(request: Request) {
                             },
                         ],
                     });
-                    await safeSyncStorePlanEntitlementFromSubscription(
+                    await syncSubscriptionForProduct(
                         { ...resumedInternalSub, status: 'active' },
                         'webhook:subscription.resumed',
                     );
@@ -651,6 +699,7 @@ export async function POST(request: Request) {
         // 3. Acknowledge receipt to Razorpay to prevent retries.
         await markWebhookEvent(webhookClaim.eventKey, 'processed', {
             transactionType: eventPayloadToUpload.transactionType || null,
+            productId: eventProductId,
             tenantId: eventPayloadToUpload.tenantId ?? null,
             storeId: eventPayloadToUpload.storeId ?? null,
         });

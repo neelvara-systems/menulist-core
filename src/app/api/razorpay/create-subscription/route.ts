@@ -1,7 +1,14 @@
 export const dynamic = 'force-dynamic';
-import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
-import { createInitialSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
+import {
+    createProductInitialSubscription,
+    resolveBillingScopeFromSession,
+} from "@lib/billing/productBillingServer";
+import {
+    getBillingPlansForProduct,
+    isCanonicaBillingProduct,
+    normalizeBillingProductId,
+} from "@lib/billing/productBillingPlans";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -46,14 +53,42 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
 
     try {
-        // 🔒 CRITICAL: ONLY use session data, NEVER body data
-        const { tenantId, storeId } = session.user;
+        const body = await request.json();
 
-        if (!tenantId || !storeId) {
+        // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
+        const validation = validateAPIInput(CreateSubscriptionRequestSchema, body);
+
+        if (!validation.success) {
+            const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
+
+            logger.security('Input Validation Failed', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/create-subscription',
+                error: errorMsg,
+                attemptedData: {
+                    productId: body?.productId,
+                    planId: body?.planId,
+                    interval: body?.interval,
+                    currency: body?.currency,
+                    userType: body?.userType,
+                    quantity: body?.quantity,
+                },
+            }, 'critical');
+
+            return NextResponse.json({
+                error: 'Invalid input',
+                details: errorMsg
+            }, { status: 400 });
+        }
+
+        const productId = normalizeBillingProductId(validation.data.productId);
+        const scope = resolveBillingScopeFromSession(session, productId);
+        if (!scope) {
             logger.security('User Not Onboarded - Create Subscription', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/create-subscription',
-                error: 'User attempted to create subscription without tenant/store',
+                error: 'User attempted to create subscription without product tenant/store',
+                productId,
             }, 'high');
 
             return NextResponse.json(
@@ -62,15 +97,16 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        // 🔒 CRITICAL: Verify user owns this tenant/store
-        if (!verifyTenantAccess(session, tenantId, storeId, request)) {
+        const { tenantId, storeId } = scope;
+
+        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
+        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/create-subscription'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
@@ -80,7 +116,7 @@ export const POST = withAuth(async (request, session) => {
         // 🔒 RATE LIMITING: Prevent subscription spam (centralized config)
         const rateLimitConfig = getRateLimitForFeature('PAYMENT_SUBSCRIPTION');
         const rateLimitResult = await checkRateLimit({
-            key: `subscription:${userId}:${tenantId}`,
+            key: `subscription:${productId}:${userId}:${tenantId}`,
             ...rateLimitConfig
         });
 
@@ -89,6 +125,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/create-subscription',
                 error: 'Too many subscription attempts',
+                productId,
                 currentAttempts: rateLimitResult.current,
                 resetAt: new Date(rateLimitResult.resetAt).toISOString(),
             }, 'high');
@@ -99,34 +136,6 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 429 });
         }
 
-        const body = await request.json();
-
-        // 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
-        const validation = validateAPIInput(CreateSubscriptionRequestSchema, body);
-
-        if (!validation.success) {
-            const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-
-            // Log to Sentry (CRITICAL - payment/subscription creation)
-            logger.security('Input Validation Failed', {
-                ...buildSecurityContext(session, request),
-                endpoint: '/api/razorpay/create-subscription',
-                error: errorMsg,
-                attemptedData: {
-                    planId: body?.planId,
-                    interval: body?.interval,
-                    currency: body?.currency,
-                    userType: body?.userType,
-                    quantity: body?.quantity,
-                },
-            }, 'critical'); // CRITICAL - money/subscription involved!
-
-            return NextResponse.json({
-                error: 'Invalid input',
-                details: errorMsg
-            }, { status: 400 });
-        }
-
         // 2. Extract validated data
         const { planId, interval, currency, userType, quantity: requestedQuantity = 1, rc = 0 } = validation.data;
         const name = session?.user?.name || body.name;
@@ -135,7 +144,7 @@ export const POST = withAuth(async (request, session) => {
         const quantity = Math.max(1, requestedQuantity);
 
         // 3. Find Plan Details from Local Constants
-        const plans = userType === "B2C" ? getB2CPlansList() : getB2BPlansList();
+        const plans = getBillingPlansForProduct(productId, userType || "B2C");
         const selectedPlan = plans.find((p) => p.planId === planId && p.billingInterval === interval);
 
         if (!selectedPlan) {
@@ -169,9 +178,14 @@ export const POST = withAuth(async (request, session) => {
             total_count: totalCount, // 36 cycles for monthly (3 years), 3 cycles for yearly (3 years)
             quantity,
             notes: {
+                productId,
+                pId: productId,
                 tenantId,
                 storeId,
+                tId: tenantId,
+                sId: storeId,
                 userId,
+                uId: userId,
                 userType,
                 planId,
                 quantity,
@@ -215,11 +229,16 @@ export const POST = withAuth(async (request, session) => {
             paymentProvider: "razorpay",
             providerSubscriptionId: razorpaySubscription.id,
             providerPlanId: razorpayPlanId,
+            productId,
+            pId: productId,
             userId,
+            uId: userId,
             name,
             email,
             tenantId,
             storeId,
+            tId: tenantId,
+            sId: storeId,
             planType: interval,
             userType,
             currency,
@@ -277,7 +296,7 @@ export const POST = withAuth(async (request, session) => {
                 status: subscriptionPayload.status,
             },
         });
-        await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
+        await createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload);
 
         // 5. Response
         return NextResponse.json({ subscription: razorpaySubscription });

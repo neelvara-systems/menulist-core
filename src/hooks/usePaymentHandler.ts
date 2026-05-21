@@ -1,4 +1,5 @@
 import { AIEnhancementPack, Currency, Plan, PurchaseIntent } from '@data/common';
+import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -13,10 +14,24 @@ declare global {
     }
 }
 
-const usePaymentHandler = (dispatcher: any) => {
+type PaymentHandlerOptions = {
+    productId?: ProductId;
+    productName?: string;
+    subscriptionCheckoutName?: string;
+    topupCheckoutName?: string;
+};
+
+const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {}) => {
     const [pendingPlan, setPendingPlan] = useState<{ plan: Plan; currency: Currency } | null>(null);
     const { data: session, update } = useSession();
     const isScriptLoaded = useRazorpayScript();
+    const productId = options.productId || PRODUCT_IDS.MENULIST;
+    const productName = options.productName || 'MenuList.ai';
+    const subscriptionCheckoutName = options.subscriptionCheckoutName || `${productName} Subscription`;
+    const topupCheckoutName = options.topupCheckoutName || `${productName} Credit Pack`;
+    const hasBillingScope = Boolean(productId === PRODUCT_IDS.CANONICA
+        ? ((session?.user as any)?.productAccounts?.[PRODUCT_IDS.CANONICA]?.tenantId || session?.user?.productId === PRODUCT_IDS.CANONICA)
+        : (session?.user?.tenantId && session?.user?.storeId));
 
     const createSubscription = async (plan: Plan, currency: Currency, user: any, remainingCredits: number = 0, quantity: number = 1) => {
         return new Promise<void>(async (resolve, reject) => {
@@ -28,6 +43,7 @@ const usePaymentHandler = (dispatcher: any) => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         planId: plan.planId,
+                        productId,
                         interval: plan.billingInterval,
                         currency,
                         userType: plan.type,
@@ -46,7 +62,7 @@ const usePaymentHandler = (dispatcher: any) => {
                 const options = {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     subscription_id: subscription.id,
-                    name: 'MenuList.ai Subscription',
+                    name: subscriptionCheckoutName,
                     description: subscriptionQuantity > 1
                         ? `${plan.name} for ${subscriptionQuantity} locations`
                         : plan.name,
@@ -79,7 +95,7 @@ const usePaymentHandler = (dispatcher: any) => {
     }
 
     const onClickPaymentCard = async (plan: Plan, currency: Currency, onAuthRequired: () => void, quantity: number = 1) => {
-        if (!session || !session.user || !session.user.tenantId || !session.user.storeId || !session.user.id) {
+        if (!session || !session.user || !session.user.id || !hasBillingScope) {
             setPendingPlan({ plan, currency });
             onAuthRequired();
             return;
@@ -104,7 +120,7 @@ const usePaymentHandler = (dispatcher: any) => {
             const response = await fetch('/api/razorpay/cancel-subscription', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason, otherReason, consent }),
+                body: JSON.stringify({ productId, reason, otherReason, consent }),
             });
 
             if (!response.ok) {
@@ -126,7 +142,7 @@ const usePaymentHandler = (dispatcher: any) => {
                 const response = await fetch('/api/razorpay/pause-subscription', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reason }),
+                    body: JSON.stringify({ productId, reason }),
                 });
 
                 if (!response.ok) {
@@ -151,7 +167,7 @@ const usePaymentHandler = (dispatcher: any) => {
                 const response = await fetch('/api/razorpay/resume-subscription', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}),
+                    body: JSON.stringify({ productId }),
                 });
 
                 if (!response.ok) {
@@ -171,7 +187,7 @@ const usePaymentHandler = (dispatcher: any) => {
             const response = await fetch('/api/razorpay/upgrade-subscription', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rc, nSi, oSi }),
+                body: JSON.stringify({ productId, rc, nSi, oSi }),
             });
 
             if (!response.ok) {
@@ -215,7 +231,7 @@ const usePaymentHandler = (dispatcher: any) => {
                 const response = await fetch('/api/razorpay/create-topup-order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ packId: pack.packId, currency }),
+                    body: JSON.stringify({ productId, packId: pack.packId, currency }),
                 });
 
                 if (!response.ok) {
@@ -228,7 +244,7 @@ const usePaymentHandler = (dispatcher: any) => {
                 const options = {
                     key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                     order_id: order.id,
-                    name: 'MenuList.ai AI Enhancement Pack',
+                    name: topupCheckoutName,
                     description: pack.name,
                     handler: async function (response: any) {
                         //this loader starts just after payment success
@@ -239,6 +255,7 @@ const usePaymentHandler = (dispatcher: any) => {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     razorpay_payment_id: response.razorpay_payment_id,
+                                    productId,
                                     razorpay_order_id: order.id,
                                     razorpay_signature: response.razorpay_signature,
                                 }),
@@ -371,7 +388,7 @@ const usePaymentHandler = (dispatcher: any) => {
                 reject(error);
             }
         })
-    }, [session, update, isScriptLoaded]); // Add dependencies used inside the function
+    }, [session, update, isScriptLoaded, productId]); // Add dependencies used inside the function
 
     const verifySubscriptionPaymentResponse = async (paymentResponse: any) => {
         return new Promise<void>(async (resolve, reject) => {
@@ -382,6 +399,7 @@ const usePaymentHandler = (dispatcher: any) => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                            productId,
                             razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
                         }),
                     });

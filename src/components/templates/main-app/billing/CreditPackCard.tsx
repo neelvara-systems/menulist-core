@@ -60,7 +60,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
         },
     };
 
-    const currentStyle = planStyles[pack.packId as keyof typeof planStyles];
+    const currentStyle = planStyles[pack.packId as keyof typeof planStyles] || planStyles.enhancement;
 
     return (
         <Card

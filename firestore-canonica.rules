@@ -158,6 +158,30 @@ service cloud.firestore {
       allow delete: if isCanonicaScopedDelete();
     }
 
+    match /stores/{storeId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            string(storeId) == string(request.auth.token.storeId)
+            && isCanonicaTenantStoreMember(resource.data)
+          )
+        );
+      allow write: if false;
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantStoreMember(resource.data));
+      allow write: if false;
+    }
+
+    match /payment_transactions/{transactionId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isCanonicaTenantStoreMember(resource.data));
+      allow write: if false;
+    }
+
     match /queryEmbeddings/{docId} {
       allow read, write: if false;
     }
@@ -259,6 +283,24 @@ service cloud.firestore {
         && request.auth.token.storeId != null
         && string(data.tId) == string(request.auth.token.tenantId)
         && string(data.sId) == string(request.auth.token.storeId);
+    }
+
+    function isCanonicaTenantStoreMember(data) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && (
+          (
+            data.keys().hasAll(['tId', 'sId'])
+            && string(data.tId) == string(request.auth.token.tenantId)
+            && string(data.sId) == string(request.auth.token.storeId)
+          )
+          || (
+            data.keys().hasAll(['tenantId', 'storeId'])
+            && string(data.tenantId) == string(request.auth.token.tenantId)
+            && string(data.storeId) == string(request.auth.token.storeId)
+          )
+        );
     }
 
     function isCanonicaTenantPath(tId, sId) {

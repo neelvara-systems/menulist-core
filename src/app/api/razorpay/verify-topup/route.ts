@@ -1,9 +1,13 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
-import { aiEnhancementPacksList } from "@data/PlatformPlansList";
-import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
-import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import {
+    getActiveProductSubscriptionForStore,
+    getBillingFirestoreAdminForProduct,
+    resolveBillingScopeFromSession,
+} from "@lib/billing/productBillingServer";
+import { getCreditPacksForProduct, isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
+import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -34,28 +38,6 @@ export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     try {
-        if (!session?.user?.tenantId || !session?.user?.storeId) {
-            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
-        }
-
-        const tenantId = session.user.tenantId;
-        const storeId = session.user.storeId;
-
-        // 🔒 CRITICAL: Verify user owns this tenant/store
-        if (!verifyTenantAccess(session, tenantId, storeId, request)) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
-        if (!(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const rawData = await request.json();
         const validation = validateAPIInput(VerifyTopupRequestSchema, rawData);
@@ -69,6 +51,7 @@ export const POST = withAuth(async (request, session) => {
                 endpoint: '/api/razorpay/verify-topup',
                 error: errorMsg,
                 attemptedData: {
+                    productId: rawData?.productId,
                     hasPaymentId: !!rawData?.razorpay_payment_id,
                     hasOrderId: !!rawData?.razorpay_order_id,
                 },
@@ -95,7 +78,52 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        const topupRef = firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).doc(razorpay_order_id);
+        // Step 3. --- SERVER-SIDE VERIFICATION ---
+        // This is the crucial security step. We ask Razorpay's servers for the truth.
+
+        // Step A: Fetch the full order details from Razorpay before capture.
+        const order = await razorpayClient.orders.fetch(razorpay_order_id);
+        const productId = normalizeBillingProductId(validation.data.productId || order.notes?.productId);
+        const scope = resolveBillingScopeFromSession(session, productId);
+        if (!scope) {
+            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
+        }
+
+        const { tenantId, storeId } = scope;
+        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        const orderTenantId = Number(order.notes?.tenantId);
+        const orderStoreId = Number(order.notes?.storeId);
+        if (orderTenantId !== Number(tenantId) || orderStoreId !== Number(storeId)) {
+            logger.security('Unauthorized Topup Order Verification Attempt', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Order tenant/store mismatch',
+                productId,
+                orderTenantId,
+                orderStoreId,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        const billingDb = getBillingFirestoreAdminForProduct(productId);
+        const topupRef = billingDb.collection(DB_COLLECTIONS.TOPUPS).doc(razorpay_order_id);
         const existingTopupSnap = await topupRef.get();
         const existingTopup = existingTopupSnap.exists ? existingTopupSnap.data() : null;
 
@@ -110,6 +138,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
                 error: 'Stored topup tenant/store mismatch',
+                productId,
                 orderId: razorpay_order_id,
                 storedTenantId: existingTopup.tenantId,
                 storedStoreId: existingTopup.storeId,
@@ -133,34 +162,12 @@ export const POST = withAuth(async (request, session) => {
                 return NextResponse.json({ error: 'Forbidden - payment mismatch' }, { status: 403 });
             }
 
-            const currentSub = await getActiveSubscriptionForStore(tenantId, storeId);
+            const currentSub = await getActiveProductSubscriptionForStore(productId, Number(tenantId), Number(storeId));
             return NextResponse.json({
                 success: true,
                 newCreditBalance: currentSub?.topUpCredits ?? existingTopup.creditsAdded ?? 0,
                 alreadyVerified: true,
             });
-        }
-
-        // Step 3. --- SERVER-SIDE VERIFICATION ---
-        // This is the crucial security step. We ask Razorpay's servers for the truth.
-
-        // Step A: Fetch the full order details from Razorpay before capture.
-        const order = await razorpayClient.orders.fetch(razorpay_order_id);
-        const orderTenantId = Number(order.notes?.tenantId);
-        const orderStoreId = Number(order.notes?.storeId);
-        if (orderTenantId !== Number(tenantId) || orderStoreId !== Number(storeId)) {
-            logger.security('Unauthorized Topup Order Verification Attempt', {
-                ...buildSecurityContext(session, request),
-                endpoint: '/api/razorpay/verify-topup',
-                error: 'Order tenant/store mismatch',
-                orderTenantId,
-                orderStoreId,
-            }, 'critical');
-
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
         }
 
         const packId = order.notes?.packId;
@@ -215,11 +222,12 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // Step D: Find the user's active subscription document in our database
-        const internalSub = await getActiveSubscriptionForStore(tenantId, storeId);
+        const internalSub = await getActiveProductSubscriptionForStore(productId, Number(tenantId), Number(storeId));
         if (!internalSub) {
             logger.error('No active subscription for top-up', undefined, {
                 tenantId,
-                storeId
+                storeId,
+                productId,
             });
             return NextResponse.json({ success: false, error: "No active subscription found." }, { status: 404 });
         }
@@ -231,6 +239,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-topup',
                 error: 'Subscription tenant mismatch',
+                productId,
                 subscriptionTenantId: internalSub.tenantId,
                 subscriptionStoreId: internalSub.storeId,
                 requestStoreId: storeId,
@@ -243,13 +252,14 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // Step E: Find the credit pack details from our constants to get the credit amount
-        const selectedPack = aiEnhancementPacksList.find((p) => p.packId === packId);
+        const selectedPack = getCreditPacksForProduct(productId).find((p) => p.packId === packId);
         if (!selectedPack) {
-            logger.error('Invalid enhancement pack', undefined, {
+            logger.error('Invalid credit pack', undefined, {
+                productId,
                 packId,
                 orderId: razorpay_order_id
             });
-            return NextResponse.json({ success: false, error: "Invalid enhancement pack." }, { status: 400 });
+            return NextResponse.json({ success: false, error: "Invalid credit pack." }, { status: 400 });
         }
         const creditsToAdd = selectedPack.creditAmount;
 
@@ -262,8 +272,8 @@ export const POST = withAuth(async (request, session) => {
             storeId
         });
 
-        const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(internalSub.id);
-        const transactionResult = await firestoreAdmin.runTransaction(async (tx) => {
+        const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(internalSub.id);
+        const transactionResult = await billingDb.runTransaction(async (tx) => {
             const [topupSnap, subscriptionSnap] = await Promise.all([
                 tx.get(topupRef),
                 tx.get(subscriptionRef),
@@ -305,8 +315,13 @@ export const POST = withAuth(async (request, session) => {
                 userId: session.user.id,
                 tenantId,
                 storeId,
+                productId,
+                pId: productId,
+                tId: tenantId,
+                sId: storeId,
+                uId: session.user.id,
                 packId,
-                type: 'ai_enhancement_pack',
+                type: isCanonicaBillingProduct(productId) ? 'canonica_credit_pack' : 'ai_enhancement_pack',
                 packName: selectedPack.name,
                 paidAt: serverNow,
                 updatedOn: serverNow,
@@ -337,43 +352,45 @@ export const POST = withAuth(async (request, session) => {
 
         const newBalance = transactionResult.newBalance;
 
-        // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
-        try {
-            const { sendLifecycleMessage } = await import('@lib/messaging');
-            sendLifecycleMessage({
-                storeId: String(storeId),
-                tenantId: String(tenantId),
-                eventType: 'CREDIT_PURCHASE_SUCCESS',
-                referenceId: `topup-${razorpay_order_id}`,
-                recipientEmail: internalSub.email || session.user.email || '',
-                storeName: internalSub.name || '',
-                metadata: {
-                    creditsAdded: creditsToAdd,
-                    newBalance,
-                    amount: order.amount ? (Number(order.amount) / 100) : 0,
-                    currency: (order.currency || 'INR').toUpperCase(),
-                },
-            }).catch(() => { /* non-blocking */ });
-        } catch { /* non-blocking */ }
-
-        // 📧 INTERNAL: Notify founder about credit pack revenue
-        try {
-            const { sendInternalNotification } = await import('@lib/messaging');
-            sendInternalNotification({
-                eventType: 'INTERNAL_CREDIT_PACK_PURCHASED',
-                storeId: String(storeId),
-                tenantId: String(tenantId),
-                metadata: {
-                    storeName: internalSub.name || '',
-                    creditsAdded: creditsToAdd,
-                    newBalance,
-                    amount: order.amount ? (Number(order.amount) / 100) : 0,
-                    currency: (order.currency || 'INR').toUpperCase(),
+        if (!isCanonicaBillingProduct(productId)) {
+            // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
+            try {
+                const { sendLifecycleMessage } = await import('@lib/messaging');
+                sendLifecycleMessage({
                     storeId: String(storeId),
                     tenantId: String(tenantId),
-                },
-            }).catch(() => { /* non-blocking */ });
-        } catch { /* non-blocking */ }
+                    eventType: 'CREDIT_PURCHASE_SUCCESS',
+                    referenceId: `topup-${razorpay_order_id}`,
+                    recipientEmail: internalSub.email || session.user.email || '',
+                    storeName: internalSub.name || '',
+                    metadata: {
+                        creditsAdded: creditsToAdd,
+                        newBalance,
+                        amount: order.amount ? (Number(order.amount) / 100) : 0,
+                        currency: (order.currency || 'INR').toUpperCase(),
+                    },
+                }).catch(() => { /* non-blocking */ });
+            } catch { /* non-blocking */ }
+
+            // 📧 INTERNAL: Notify founder about credit pack revenue
+            try {
+                const { sendInternalNotification } = await import('@lib/messaging');
+                sendInternalNotification({
+                    eventType: 'INTERNAL_CREDIT_PACK_PURCHASED',
+                    storeId: String(storeId),
+                    tenantId: String(tenantId),
+                    metadata: {
+                        storeName: internalSub.name || '',
+                        creditsAdded: creditsToAdd,
+                        newBalance,
+                        amount: order.amount ? (Number(order.amount) / 100) : 0,
+                        currency: (order.currency || 'INR').toUpperCase(),
+                        storeId: String(storeId),
+                        tenantId: String(tenantId),
+                    },
+                }).catch(() => { /* non-blocking */ });
+            } catch { /* non-blocking */ }
+        }
 
         // Step G: Respond to the client with the successful result
         return NextResponse.json({ success: true, newCreditBalance: newBalance });

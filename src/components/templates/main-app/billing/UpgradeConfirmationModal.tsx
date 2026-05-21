@@ -14,7 +14,7 @@ interface UpgradeConfirmationModalProps {
     onClose: () => void;
     onConfirm: () => void;
     newPlan: Plan | null;
-    activeSubscription: FirestoreSubscriptionDoc;
+    activeSubscription?: FirestoreSubscriptionDoc | null;
     currency: Currency;
 }
 

@@ -1,8 +1,13 @@
 export const dynamic = 'force-dynamic';
-import { getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { getPlanDetailsFromConstants, getSubscriptionEndDate } from "@lib/billing/billingUtils";
-import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
+import {
+    getProductSubscriptionById,
+    safeSyncProductSubscriptionEntitlementFromSubscription,
+    updateProductSubscription,
+    resolveBillingScopeFromSession,
+} from "@lib/billing/productBillingServer";
+import { isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -47,25 +52,6 @@ export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
 
     try {
-        if (!session?.user?.tenantId || !session?.user?.storeId) {
-            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
-        }
-
-        const { tenantId, storeId } = session.user;
-        if (!verifyTenantAccess(session, tenantId, storeId, request)) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
-        if (!(await canManageBillingMutation(session, request, '/api/razorpay/verify-subscription'))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
         const rawData = await request.json();
         const validation = validateAPIInput(VerifyPaymentRequestSchema, rawData);
@@ -79,6 +65,7 @@ export const POST = withAuth(async (request, session) => {
                 endpoint: '/api/razorpay/verify-subscription',
                 error: errorMsg,
                 attemptedData: {
+                    productId: rawData?.productId,
                     hasPaymentId: !!rawData?.razorpay_payment_id,
                     hasSubscriptionId: !!rawData?.razorpay_subscription_id,
                 },
@@ -114,14 +101,36 @@ export const POST = withAuth(async (request, session) => {
             data: summarizeSubscriptionForLog(providerSubscription),
         });
 
+        const productId = normalizeBillingProductId(validation.data.productId || providerSubscription?.notes?.productId);
+        const scope = resolveBillingScopeFromSession(session, productId);
+        if (!scope) {
+            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
+        }
+
+        const { tenantId, storeId } = scope;
+        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-subscription'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         // Step C: Find our internal Firestore document for this subscription
-        const internalSub = await getSubscriptionById(razorpay_subscription_id);
+        const internalSub = await getProductSubscriptionById(productId, razorpay_subscription_id);
         await writeLogEntry({
             logFileName: LOG_FILE,
             userId: userId,
             logType: 'INTERNAL_SUBSCRIPTION_RESPONSE_VERIFY_SUBSCRIPTION',
             data: {
                 subscriptionId: razorpay_subscription_id,
+                productId,
                 found: Boolean(internalSub),
                 status: internalSub?.status,
                 tenantId: internalSub?.tenantId,
@@ -141,11 +150,14 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 🔒 CRITICAL: Verify user owns this subscription's tenant/store
-        if (!verifyTenantAccess(session, internalSub.tenantId, internalSub.storeId, request)) {
+        const subscriptionMatchesScope = Number(internalSub.tenantId) === Number(tenantId)
+            && Number(internalSub.storeId) === Number(storeId);
+        if (!subscriptionMatchesScope || (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, internalSub.tenantId, internalSub.storeId, request))) {
             logger.security('Unauthorized Subscription Verification Attempt', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
                 error: 'User attempted to verify subscription for different tenant/store',
+                productId,
                 subscriptionTenantId: internalSub.tenantId,
                 subscriptionStoreId: internalSub.storeId,
             }, 'critical');
@@ -158,9 +170,10 @@ export const POST = withAuth(async (request, session) => {
 
         // If the subscription is already active (e.g., the webhook beat this call), we don't need to do anything.
         if (internalSub.status === 'active') {
-            await safeSyncStorePlanEntitlementFromSubscription(internalSub as FirestoreSubscriptionDoc, 'api:verify-subscription:already-active');
+            await safeSyncProductSubscriptionEntitlementFromSubscription(productId, internalSub as FirestoreSubscriptionDoc, 'api:verify-subscription:already-active');
             logger.info('Subscription already active', {
                 subscriptionId: razorpay_subscription_id,
+                productId,
                 userId: userId
             });
             return NextResponse.json({ success: true, status: 'active' });
@@ -257,9 +270,12 @@ export const POST = withAuth(async (request, session) => {
                 totalPaymentsNeededCount: updatePayload.totalPaymentsNeededCount,
             },
         });
-        await updateSubscription(razorpay_subscription_id, updatePayload);
-        await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
-        await safeSyncStorePlanEntitlementFromSubscription(
+        await updateProductSubscription(productId, razorpay_subscription_id, updatePayload);
+        if (!isCanonicaBillingProduct(productId)) {
+            await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
+        }
+        await safeSyncProductSubscriptionEntitlementFromSubscription(
+            productId,
             {
                 ...internalSub,
                 ...updatePayload,
@@ -268,46 +284,48 @@ export const POST = withAuth(async (request, session) => {
             'api:verify-subscription',
         );
 
-        // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
-        try {
-            const { sendLifecycleMessage } = await import('@lib/messaging');
-            const nextBilling = providerSubscription.charge_at
-                ? new Date(providerSubscription.charge_at * 1000).toLocaleDateString()
-                : 'See dashboard';
-            sendLifecycleMessage({
-                storeId: String(internalSub.storeId),
-                tenantId: String(internalSub.tenantId),
-                eventType: 'PAYMENT_SUCCESS',
-                referenceId: `payment-${razorpay_payment_id}`,
-                recipientEmail: internalSub.email || session.user.email || '',
-                storeName: internalSub.name || '',
-                metadata: {
-                    amount: payment.amount ? (Number(payment.amount) / 100) : 0,
-                    currency: payment.currency?.toUpperCase() || 'INR',
-                    planName: planDetails.name || 'Subscription',
-                    nextBillingDate: nextBilling,
-                },
-            }).catch(() => { /* non-blocking */ });
-        } catch { /* non-blocking */ }
-
-        // 📧 INTERNAL: Notify founder about new subscription revenue
-        try {
-            const { sendInternalNotification } = await import('@lib/messaging');
-            sendInternalNotification({
-                eventType: 'INTERNAL_SUBSCRIPTION_PURCHASED',
-                storeId: String(internalSub.storeId),
-                tenantId: String(internalSub.tenantId),
-                metadata: {
-                    storeName: internalSub.name || '',
-                    planName: planDetails.name || '',
-                    amount: payment.amount ? (Number(payment.amount) / 100) : 0,
-                    currency: payment.currency?.toUpperCase() || 'INR',
-                    customerEmail: internalSub.email || session.user.email || '',
+        if (!isCanonicaBillingProduct(productId)) {
+            // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
+            try {
+                const { sendLifecycleMessage } = await import('@lib/messaging');
+                const nextBilling = providerSubscription.charge_at
+                    ? new Date(providerSubscription.charge_at * 1000).toLocaleDateString()
+                    : 'See dashboard';
+                sendLifecycleMessage({
                     storeId: String(internalSub.storeId),
                     tenantId: String(internalSub.tenantId),
-                },
-            }).catch(() => { /* non-blocking */ });
-        } catch { /* non-blocking */ }
+                    eventType: 'PAYMENT_SUCCESS',
+                    referenceId: `payment-${razorpay_payment_id}`,
+                    recipientEmail: internalSub.email || session.user.email || '',
+                    storeName: internalSub.name || '',
+                    metadata: {
+                        amount: payment.amount ? (Number(payment.amount) / 100) : 0,
+                        currency: payment.currency?.toUpperCase() || 'INR',
+                        planName: planDetails.name || 'Subscription',
+                        nextBillingDate: nextBilling,
+                    },
+                }).catch(() => { /* non-blocking */ });
+            } catch { /* non-blocking */ }
+
+            // 📧 INTERNAL: Notify founder about new subscription revenue
+            try {
+                const { sendInternalNotification } = await import('@lib/messaging');
+                sendInternalNotification({
+                    eventType: 'INTERNAL_SUBSCRIPTION_PURCHASED',
+                    storeId: String(internalSub.storeId),
+                    tenantId: String(internalSub.tenantId),
+                    metadata: {
+                        storeName: internalSub.name || '',
+                        planName: planDetails.name || '',
+                        amount: payment.amount ? (Number(payment.amount) / 100) : 0,
+                        currency: payment.currency?.toUpperCase() || 'INR',
+                        customerEmail: internalSub.email || session.user.email || '',
+                        storeId: String(internalSub.storeId),
+                        tenantId: String(internalSub.tenantId),
+                    },
+                }).catch(() => { /* non-blocking */ });
+            } catch { /* non-blocking */ }
+        }
 
         // 5. Respond to the client
         return NextResponse.json({ success: true, status: 'active' });

@@ -76,9 +76,25 @@ const planStyles: any = {
 
 const PLAN_TIER_ORDER: Record<string, number> = { starter: 1, pro: 2, premium: 3, custom: 4 };
 
-const PlanCardComponent = ({ action, plan, currency, onPurchase, currentPlanId }: { action: "upgrade" | "new"; plan: Plan, currency: Currency, onPurchase: (plan: Plan) => void, currentPlanId?: string }) => {
+const PlanCardComponent = ({
+    action,
+    plan,
+    currency,
+    onPurchase,
+    currentPlanId,
+    planTierOrder = PLAN_TIER_ORDER,
+    renderFeatureItems,
+}: {
+    action: "upgrade" | "new";
+    plan: Plan,
+    currency: Currency,
+    onPurchase: (plan: Plan) => void,
+    currentPlanId?: string,
+    planTierOrder?: Record<string, number>,
+    renderFeatureItems?: (plan: Plan, currency: Currency) => any,
+}) => {
     const { token } = theme.useToken();
-    const style = planStyles[plan.planId as keyof typeof planStyles];
+    const style = planStyles[plan.planId as keyof typeof planStyles] || planStyles.pro;
     const price = plan[`price${currency}`].price;
     const monthlyCreditAllowance = plan[`price${currency}`].monthlyCredits || "Custom";
     const allPlatformFeatures = PlatformFeaturesList.B2C;
@@ -126,7 +142,7 @@ const PlanCardComponent = ({ action, plan, currency, onPurchase, currentPlanId }
                         </List.Item>
                     )}
 
-                    {plan.planId !== 'custom' && (
+                    {renderFeatureItems ? renderFeatureItems(plan, currency) : plan.planId !== 'custom' && (
                         <List.Item style={ListItemStyle}>
                             <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
                             <Text>Unlimited Core Content Tools</Text>
@@ -135,7 +151,7 @@ const PlanCardComponent = ({ action, plan, currency, onPurchase, currentPlanId }
                             </Tooltip>
                         </List.Item>
                     )}
-                    {plan.planId !== 'custom' && (
+                    {!renderFeatureItems && plan.planId !== 'custom' && (
                         <List.Item style={ListItemStyle}>
                             <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
                             <Text>{monthlyCreditAllowance} Monthly Credits</Text>
@@ -145,7 +161,7 @@ const PlanCardComponent = ({ action, plan, currency, onPurchase, currentPlanId }
                         </List.Item>
                     )}
 
-                    {allPlatformFeatures.map((feature: Feature) => {
+                    {!renderFeatureItems && allPlatformFeatures.map((feature: Feature) => {
                         if (!featuresListIds.includes(feature.id) || (!feature.values[plan.planId] && plan.planId !== 'custom')) return null;
 
                         const featureValue = feature.values[plan.planId];
@@ -182,7 +198,7 @@ const PlanCardComponent = ({ action, plan, currency, onPurchase, currentPlanId }
                 >
                     {plan.planId === 'custom' ? 'Contact Us'
                         : action === 'upgrade'
-                            ? (currentPlanId && (PLAN_TIER_ORDER[plan.planId] || 0) < (PLAN_TIER_ORDER[currentPlanId] || 0) ? 'Change Plan' : 'Upgrade')
+                            ? (currentPlanId && (planTierOrder[plan.planId] || 0) < (planTierOrder[currentPlanId] || 0) ? 'Change Plan' : 'Upgrade')
                             : 'Get Started'}
                 </Button>
             </div>
@@ -201,19 +217,37 @@ interface PricingPlansModalProps {
     handleConfirmUpgrade: (plan: Plan, currency: Currency) => void;
     isOpen: boolean;
     onClose: () => void;
-    activeSubscription: FirestoreSubscriptionDoc;
+    activeSubscription?: FirestoreSubscriptionDoc | null;
+    plansOverride?: Plan[];
+    currencyOverride?: Currency;
+    modalTitle?: string;
+    planTierOrder?: Record<string, number>;
+    renderFeatureItems?: (plan: Plan, currency: Currency) => any;
+    yearlyBadgeText?: string;
 }
 
-function PricingPlansModal({ action, isOpen, onClose, activeSubscription, handleConfirmUpgrade }: PricingPlansModalProps) {
+function PricingPlansModal({
+    action,
+    isOpen,
+    onClose,
+    activeSubscription,
+    handleConfirmUpgrade,
+    plansOverride,
+    currencyOverride,
+    modalTitle,
+    planTierOrder,
+    renderFeatureItems,
+    yearlyBadgeText = 'Save up to 20%',
+}: PricingPlansModalProps) {
     const [plans, setPlans] = useState<Plan[]>([]);
     const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('YEAR');
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
-    const [currency, setCurrency] = useState<Currency>(storeDetails?.currencyCode as Currency);
+    const [currency, setCurrency] = useState<Currency>(currencyOverride || (storeDetails?.currencyCode as Currency));
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState({ active: false, plan: null as Plan | null });
     const { token } = theme.useToken();
 
     useEffect(() => {
-        let allPlans = getB2CPlansList();
+        let allPlans = plansOverride || getB2CPlansList();
         if (isOpen && activeSubscription) {
             if (action === "upgrade") {
                 // Show all plans except the user's current plan (supports both upgrade AND downgrade)
@@ -223,10 +257,10 @@ function PricingPlansModal({ action, isOpen, onClose, activeSubscription, handle
         setPlans(allPlans);
 
         const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (userTimeZone === 'Asia/Kolkata' || userTimeZone === 'Asia/Calcutta') {
+        if (!currencyOverride && (userTimeZone === 'Asia/Kolkata' || userTimeZone === 'Asia/Calcutta')) {
             setCurrency('INR');
         }
-    }, [isOpen, activeSubscription]);
+    }, [isOpen, activeSubscription, plansOverride, currencyOverride]);
 
     if (!isOpen) return null;
 
@@ -241,7 +275,7 @@ function PricingPlansModal({ action, isOpen, onClose, activeSubscription, handle
             title={<>
                 <Flex vertical gap={4} align="flex-start" justify="flex-start">
                     <Text strong style={{ fontSize: token.fontSizeHeading4 }}>
-                        {action === "upgrade" ? "Upgrade Your Plan" : "Choose Your New Plan"}
+                        {modalTitle || (action === "upgrade" ? "Upgrade Your Plan" : "Choose Your New Plan")}
                     </Text>
                     {Boolean(activeSubscription) && <RemainingCreditNote activeSubscription={activeSubscription} />}
                 </Flex>
@@ -268,7 +302,7 @@ function PricingPlansModal({ action, isOpen, onClose, activeSubscription, handle
                                     color: billingInterval === 'YEAR' ? 'green' : 'gray',
                                     backgroundColor: billingInterval === 'YEAR' ? 'rgba(0, 128, 0, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                                     borderColor: billingInterval === 'YEAR' ? 'green' : 'gray',
-                                }} count="Save up to 20%" />
+                                }} count={yearlyBadgeText} />
                             </Flex>
                         </Flex>
                     </Col>
@@ -276,7 +310,15 @@ function PricingPlansModal({ action, isOpen, onClose, activeSubscription, handle
                 <Row gutter={[24, 24]} justify="center">
                     {filteredPlans.map(plan => (
                         <Col xs={24} sm={24} md={12} lg={8} key={plan.name} style={{ maxWidth: "max-content" }}>
-                            <PlanCardComponent action={action} plan={plan} currency={currency} onPurchase={onClickUpgrade} currentPlanId={activeSubscription?.planId} />
+                            <PlanCardComponent
+                                action={action}
+                                plan={plan}
+                                currency={currency}
+                                onPurchase={onClickUpgrade}
+                                currentPlanId={activeSubscription?.planId}
+                                planTierOrder={planTierOrder}
+                                renderFeatureItems={renderFeatureItems}
+                            />
                         </Col>
                     ))}
                 </Row>

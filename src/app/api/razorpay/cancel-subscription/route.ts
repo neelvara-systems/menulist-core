@@ -1,7 +1,13 @@
 export const dynamic = 'force-dynamic';
-import { getDirectActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
-import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
+import {
+    getDirectActiveProductSubscriptionForStore,
+    getProductSubscriptionById,
+    resolveBillingScopeFromSession,
+    safeSyncProductSubscriptionEntitlementFromSubscription,
+    updateProductSubscription,
+} from "@lib/billing/productBillingServer";
+import { isCanonicaBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -38,26 +44,6 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
         }
 
-        if (!session?.user?.tenantId || !session?.user?.storeId) {
-            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
-        }
-        const { tenantId, storeId } = session.user;
-
-        // 🔒 CRITICAL: Verify user owns this tenant/store
-        if (!verifyTenantAccess(session, tenantId, storeId, request)) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
-        if (!(await canManageBillingMutation(session, request, '/api/razorpay/cancel-subscription'))) {
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
         const body = await request.json();
         const validation = validateAPIInput(CancelSubscriptionRequestSchema, body);
 
@@ -69,6 +55,7 @@ export const POST = withAuth(async (request, session) => {
                 endpoint: '/api/razorpay/cancel-subscription',
                 error: errorMsg,
                 attemptedData: {
+                    productId: body?.productId,
                     hasReason: !!body?.reason,
                     hasConsent: body?.consent !== undefined,
                     subscriptionId: body?.subscriptionId,
@@ -78,10 +65,33 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Cancellation reason and consent are required." }, { status: 400 });
         }
 
+        const productId = normalizeBillingProductId(validation.data.productId);
+        const scope = resolveBillingScopeFromSession(session, productId);
+        if (!scope) {
+            return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
+        }
+        const { tenantId, storeId } = scope;
+
+        if (!isCanonicaBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        if (!isCanonicaBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/cancel-subscription'))) {
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
         const { reason, otherReason, consent, subscriptionId } = validation.data;
 
         // 2. Find the user's active subscription in our database
-        const internalSub = subscriptionId ? await getSubscriptionById(subscriptionId) : await getDirectActiveSubscriptionForStore(Number(tenantId), Number(storeId));
+        const internalSub = subscriptionId
+            ? await getProductSubscriptionById(productId, subscriptionId)
+            : await getDirectActiveProductSubscriptionForStore(productId, Number(tenantId), Number(storeId));
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No active subscription found to cancel." }, { status: 404 });
         }
@@ -92,6 +102,7 @@ export const POST = withAuth(async (request, session) => {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/cancel-subscription',
                 error: 'User attempted to cancel subscription for different tenant/store',
+                productId,
                 subscriptionTenantId: internalSub.tenantId,
                 subscriptionStoreId: internalSub.storeId,
             }, 'critical');
@@ -141,7 +152,7 @@ export const POST = withAuth(async (request, session) => {
             if (!validateTransition(internalSub.status, targetStatus, 'api:cancel-subscription:provider-status')) {
                 return NextResponse.json({ error: "Subscription state changed while cancelling. Please refresh and try again." }, { status: 409 });
             }
-            await updateSubscription(internalSub.id, {
+            await updateProductSubscription(productId, internalSub.id, {
                 status: targetStatus,
                 cycleEndDate: internalSub.cycleEndDate,
                 subscriptionEndDate: internalSub.cycleEndDate,
@@ -158,7 +169,8 @@ export const POST = withAuth(async (request, session) => {
                     },
                 ],
             });
-            await safeSyncStorePlanEntitlementFromSubscription(
+            await safeSyncProductSubscriptionEntitlementFromSubscription(
+                productId,
                 { ...internalSub, status: targetStatus },
                 'api:cancel-subscription',
             );

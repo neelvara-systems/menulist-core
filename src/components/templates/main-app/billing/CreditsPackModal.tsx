@@ -11,9 +11,12 @@ interface CreditsPackModalProps {
     onClose: () => void;
     handleCreditsPurchase: (packId: string) => void;
     activeSubscription?: FirestoreSubscriptionDoc;
+    packs?: AIEnhancementPack[];
+    title?: string;
+    description?: string;
 }
 
-function CreditsPackModal({ isOpen, onClose, handleCreditsPurchase, activeSubscription }: CreditsPackModalProps) {
+function CreditsPackModal({ isOpen, onClose, handleCreditsPurchase, activeSubscription, packs = aiEnhancementPacksList, title, description }: CreditsPackModalProps) {
     const labels = useOfferingLabels();
 
     return (
@@ -23,13 +26,13 @@ function CreditsPackModal({ isOpen, onClose, handleCreditsPurchase, activeSubscr
             footer={null}
             width={"auto"}
             title={<Flex vertical>
-                <Text strong >Get More Enhancements</Text>
-                <Text type="secondary">{labels.creditsDesc}</Text>
+                <Text strong >{title || 'Get More Enhancements'}</Text>
+                <Text type="secondary">{description || labels.creditsDesc}</Text>
             </Flex>}
             centered
         >
             <Row gutter={[24, 24]} justify="center" style={{ marginTop: '24px' }}>
-                {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (
+                {packs.map((pack: AIEnhancementPack) => (
                     <Col xs={24} sm={12} md={8} key={pack.packId}>
                         <CreditPackCard pack={pack} currency={activeSubscription?.currency || "INR"} handleCreditsPurchase={handleCreditsPurchase} />
                     </Col>

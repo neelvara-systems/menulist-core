@@ -97,6 +97,7 @@ const getEffectiveSessionForFirebaseAuth = (session: any) => {
 async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
     if (!session?.user?.email) return { ready: false };
+    const isCanonicaScope = shouldUseCanonicaScope();
 
     const tenantId = getSessionTenantId(session);
     const storeId = getSessionStoreId(session);
@@ -109,7 +110,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     if (currentUser) {
         try {
             const currentToken = await currentUser.getIdTokenResult();
-            if (claimsMatchSessionStore(currentToken.claims, session)) {
+            if (!isCanonicaScope && claimsMatchSessionStore(currentToken.claims, session)) {
                 return { ready: true, claims: currentToken.claims };
             }
             canRefreshCurrentUser = sameEmail(currentUser.email, session.user.email);

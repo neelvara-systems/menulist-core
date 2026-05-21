@@ -13,6 +13,7 @@
 import {
     LuBook,
     LuCode,
+    LuCreditCard,
     LuDatabase,
     LuGitPullRequest,
     LuLayoutDashboard,
@@ -49,6 +50,8 @@ export const CANONICA_ROUTES = {
     PRODUCT_SURFACES: `${CANONICA_BASE_PATH}/product-surfaces`,
     WIDGET: `${CANONICA_BASE_PATH}/widget`,
     WEEKLY_DIGEST: `${CANONICA_BASE_PATH}/weekly-digest`,
+    BILLING: `${CANONICA_BASE_PATH}/billing`,
+    TRANSACTIONS: `${CANONICA_BASE_PATH}/transactions`,
     SETTINGS: `${CANONICA_BASE_PATH}/settings`,
 } as const;
 
@@ -104,6 +107,7 @@ export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
     { key: 'kb-generation', label: 'Import Knowledge', route: CANONICA_ROUTES.KB_GENERATION, icon: LuDatabase, group: 'launch', managementOnly: true },
     { key: 'product-surfaces', label: 'Product Surfaces', route: CANONICA_ROUTES.PRODUCT_SURFACES, icon: LuLayers, group: 'launch', managementOnly: true, featureFlag: 'ENABLE_CANONICA_PRODUCT_SURFACES' },
     { key: 'widget', label: 'Widget Install', route: CANONICA_ROUTES.WIDGET, icon: LuCode, group: 'launch', managementOnly: true },
+    { key: 'billing', label: 'Billing', route: CANONICA_ROUTES.BILLING, icon: LuCreditCard, group: 'launch', managementOnly: true },
 
     // Support Control
     { key: 'help', label: 'Help Center', route: CANONICA_ROUTES.HELP, icon: LuLayoutDashboard, group: 'support' },
@@ -114,6 +118,7 @@ export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
     { key: 'tickets', label: 'Tickets', route: CANONICA_ROUTES.TICKETS, icon: LuTicket, group: 'support', managementOnly: true },
     { key: 'conversations', label: 'Conversations', route: CANONICA_ROUTES.CONVERSATIONS, icon: LuMessageSquare, group: 'support', managementOnly: true },
     { key: 'weekly-digest', label: 'Weekly Digest', route: CANONICA_ROUTES.WEEKLY_DIGEST, icon: LuMailCheck, group: 'support', managementOnly: true, featureFlag: 'ENABLE_CANONICA_WEEKLY_DIGEST' },
+    { key: 'transactions', label: 'Transactions', route: CANONICA_ROUTES.TRANSACTIONS, icon: LuReceipt, group: 'support', managementOnly: true },
 
     // Knowledge Governance
     { key: 'dashboard', label: 'Readiness Metrics', route: CANONICA_ROUTES.DASHBOARD, icon: LuLayoutDashboard, group: 'governance', managementOnly: true },

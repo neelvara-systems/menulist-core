@@ -27,6 +27,7 @@ const languageObjectSchema = z.object({
 const contentLengthSchema = z.enum(['Standard', 'Detailed']);
 
 const actionSchema = z.enum(['generate', 'translate', 'describe']);
+const billingProductIdSchema = z.enum(['ML', 'CN']).optional();
 
 // ═══════════════════════════════════════════════════════════
 // DESCRIPTION API
@@ -234,6 +235,7 @@ export type ImageEditingRequest = z.infer<typeof ImageEditingRequestSchema>;
 // ═══════════════════════════════════════════════════════════
 
 export const CreateSubscriptionRequestSchema = z.object({
+    productId: billingProductIdSchema,
     planId: z.string().regex(/^[a-zA-Z0-9_-]+$/),
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
@@ -259,6 +261,7 @@ export const OnboardingSubscriptionSchema = z.object({
 export type OnboardingSubscriptionRequest = z.infer<typeof OnboardingSubscriptionSchema>;
 
 export const VerifyPaymentRequestSchema = z.object({
+    productId: billingProductIdSchema,
     razorpay_payment_id: z.string().regex(/^pay_[a-zA-Z0-9]+$/),
     razorpay_subscription_id: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
     razorpay_order_id: z.string().regex(/^order_[a-zA-Z0-9]+$/).optional(),
@@ -268,6 +271,7 @@ export const VerifyPaymentRequestSchema = z.object({
 export type VerifyPaymentRequest = z.infer<typeof VerifyPaymentRequestSchema>;
 
 export const CreateTopupOrderRequestSchema = z.object({
+    productId: billingProductIdSchema,
     packId: z.string().regex(/^[a-zA-Z0-9_-]+$/),
     currency: z.enum(['INR', 'USD'])
 });
@@ -275,6 +279,7 @@ export const CreateTopupOrderRequestSchema = z.object({
 export type CreateTopupOrderRequest = z.infer<typeof CreateTopupOrderRequestSchema>;
 
 export const VerifyTopupRequestSchema = z.object({
+    productId: billingProductIdSchema,
     razorpay_payment_id: z.string().regex(/^pay_[a-zA-Z0-9]+$/),
     razorpay_order_id: z.string().regex(/^order_[a-zA-Z0-9]+$/),
     razorpay_signature: z.string().regex(/^[a-fA-F0-9]{64}$/)
@@ -283,6 +288,7 @@ export const VerifyTopupRequestSchema = z.object({
 export type VerifyTopupRequest = z.infer<typeof VerifyTopupRequestSchema>;
 
 export const CancelSubscriptionRequestSchema = z.object({
+    productId: billingProductIdSchema,
     subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).optional(),
     reason: z.string().min(1).max(500),
     otherReason: z.string().max(500).optional(),
@@ -292,6 +298,7 @@ export const CancelSubscriptionRequestSchema = z.object({
 export type CancelSubscriptionRequest = z.infer<typeof CancelSubscriptionRequestSchema>;
 
 export const PauseSubscriptionRequestSchema = z.object({
+    productId: billingProductIdSchema,
     subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).optional(),
     reason: z.string().max(500).optional()
 });
@@ -299,12 +306,14 @@ export const PauseSubscriptionRequestSchema = z.object({
 export type PauseSubscriptionRequest = z.infer<typeof PauseSubscriptionRequestSchema>;
 
 export const ResumeSubscriptionRequestSchema = z.object({
+    productId: billingProductIdSchema,
     subscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).optional()
 });
 
 export type ResumeSubscriptionRequest = z.infer<typeof ResumeSubscriptionRequestSchema>;
 
 export const UpgradeSubscriptionRequestSchema = z.object({
+    productId: billingProductIdSchema,
     rc: z.number().min(0).max(1_000_000),
     nSi: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
     oSi: z.string().regex(/^sub_[a-zA-Z0-9]+$/)
