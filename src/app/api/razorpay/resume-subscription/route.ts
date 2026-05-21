@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { isFeatureEnabled } from "@config/features";
 import { getDirectActiveSubscriptionForStore, getSubscriptionById, updateSubscription } from "@database/subscriptions/server";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
@@ -28,6 +29,10 @@ const summarizeSubscriptionForMutationLog = (subscription: any) => ({
 export const POST = withAuth(async (request, session) => {
     const userId = session.user.id;
     try {
+        if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
+            return NextResponse.json({ error: "Subscription resume is not available." }, { status: 404 });
+        }
+
         // 🔒 RATE LIMITING: Prevent rapid-fire subscription mutations
         const { checkRateLimit } = await import('@lib/rateLimit');
         const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');

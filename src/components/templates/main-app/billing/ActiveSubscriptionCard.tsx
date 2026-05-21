@@ -6,6 +6,7 @@
 'use client'
 
 import { helpCenterTabRouting } from '@constant/navigations';
+import { isFeatureEnabled } from '@config/features';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import { logger } from '@lib/monitoring/logger';
@@ -45,6 +46,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
     const router = useRouter();
     const formatter = useFormatter();
     const { onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(dispatch);
+    const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
     const monthlyCredits = Number(activeSubscription.monthlyCredits || 0);
     const topUpCredits = Number(activeSubscription.topUpCredits || 0);
     const monthlyCreditsAllowance = Number(activeSubscription.monthlyCreditsAllowance || 0);
@@ -140,7 +142,7 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
                 <Space>
                     {isFinalCycle ? <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })}>Change Plan</Button> :
                         <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
-                    {/* <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button> */}
+                    {canPauseSubscriptions && <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button>}
                     {activeSubscription.planId !== 'premium' && <Button icon={<FaBolt />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
                 </Space>
             );
@@ -149,7 +151,13 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
         if (activeSubscription.status === 'paused') {
             return (
                 <Space>
-                    <Button icon={<LuPlay />} type="primary" onClick={handleResumeSubscription}>Resume Subscription</Button>
+                    {canPauseSubscriptions ? (
+                        <Button icon={<LuPlay />} type="primary" onClick={handleResumeSubscription}>Resume Subscription</Button>
+                    ) : (
+                        <Button type="primary" onClick={() => router.push(helpCenterTabRouting('ticket'))}>
+                            Contact Support
+                        </Button>
+                    )}
                     <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>
                 </Space>
             );
@@ -319,9 +327,13 @@ function ActiveSubscriptionCard({ activeSubscription, refetchActiveSubscription,
 
                             {activeSubscription.status === 'paused' && <Row>
                                 <Text type="warning">
-                                    {!hasValidSubscriptionAccess(activeSubscription)
-                                        ? '⏸️ Your subscription is paused and your billing cycle has ended. Resume your subscription to continue accessing all features.'
-                                        : '⏸️ Your subscription is currently paused. Your credits and access remain available until the current billing cycle ends. Resume anytime to continue receiving renewals.'
+                                    {canPauseSubscriptions
+                                        ? (!hasValidSubscriptionAccess(activeSubscription)
+                                            ? 'Your subscription is paused and your billing cycle has ended. Resume your subscription to continue accessing all features.'
+                                            : 'Your subscription is currently paused. Your credits and access remain available until the current billing cycle ends. Resume anytime to continue receiving renewals.')
+                                        : (!hasValidSubscriptionAccess(activeSubscription)
+                                            ? 'This subscription is paused and the billing cycle has ended. Contact support to update it.'
+                                            : 'This subscription is paused. Access remains available until the current billing cycle ends. Contact support to update it.')
                                     }
                                 </Text>
                             </Row>}

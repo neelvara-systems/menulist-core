@@ -81,7 +81,7 @@ These files were Stripe-specific and safely deleted:
 | #   | Feature                 | Priority | Notes                                                                        |
 | --- | ----------------------- | -------- | ---------------------------------------------------------------------------- |
 | 1   | Downgrade plan flow     | P1       | Currently upgrade cancels old + creates new. Downgrade needs proration logic |
-| 2   | Pause subscription      | P2       | Razorpay supports `pause`/`resume` — not yet implemented                     |
+| 2   | Pause subscription      | P2       | Implemented but disabled by policy. Keep `ENABLE_SUBSCRIPTION_PAUSE=false` unless MenuList deliberately offers owner self-service pause. |
 | 3   | Invoice generation      | P2       | Razorpay auto-generates invoices — expose to user                            |
 | 4   | Failed payment retry UI | P2       | Show "Update payment method" when `past_due`                                 |
 | 5   | Subscription analytics  | P2       | MRR, churn rate, LTV tracking for founder dashboard                          |

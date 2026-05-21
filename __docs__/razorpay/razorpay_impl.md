@@ -1430,7 +1430,7 @@ Status: ✅ DONE (Feb 11, 2026) — Added to webhook switch with dual-path handl
 | **Dunning emails**          | ✅ `customer_notify: true`           | ✅ Default behavior                                      | N/A              |
 | **Grace period**            | ❌ Not built-in                      | ✅ 7-day grace in our DAL                                | N/A              |
 | **Cancel at cycle end**     | ✅ `cancel_at_cycle_end`             | ⚠️ We do immediate cancel + local access until cycle end | OK               |
-| **Pause/Resume**            | ✅ Pause/Resume API                  | ✅ Implemented (Feb 11, 2026)                            | Done             |
+| **Pause/Resume**            | ✅ Pause/Resume API                  | Implemented but self-service disabled by `ENABLE_SUBSCRIPTION_PAUSE=false` (May 21, 2026) | Disabled by policy |
 | **Plan upgrade (prorated)** | ✅ Update Subscription API           | ⚠️ We use cancel + new sub                               | OK (by design)   |
 | **Plan downgrade**          | ✅ Update Subscription API           | ✅ Implemented (Feb 11, 2026) — same cancel+new flow     | Done             |
 | **Invoice download**        | ✅ Razorpay generates invoices       | ✅ Fixed (Feb 11, 2026) — button condition corrected     | Done             |
@@ -1468,7 +1468,7 @@ These fields exist in Razorpay webhook payloads but we don't store/use them:
 | `auth_attempts`         | Card auth attempts         | Useful for debugging. Low priority.      |
 | `has_scheduled_changes` | Pending plan changes       | We don't use Razorpay's update API. N/A. |
 | `offer_id`              | Linked offer/discount      | Not using offers yet. N/A.               |
-| `pause_initiated_by`    | Who paused (self/customer) | Pause not implemented. N/A.              |
+| `pause_initiated_by`    | Who paused (self/customer) | Webhook-compatible only. Owner self-service pause is disabled by policy. |
 | `cancel_initiated_by`   | Who cancelled              | Could be useful for analytics. P3.       |
 
 ### 23.8 Summary — Action Items
@@ -1479,7 +1479,7 @@ These fields exist in Razorpay webhook payloads but we don't store/use them:
 | 2   | Update `lastWebhook` field in webhook handler     | P2       | ~5 lines per case | ✅ DONE (Feb 11, 2026)                   |
 | 3   | Webhook idempotency — check duplicate payment IDs | P2       | ~15 lines         | ✅ DONE (Feb 11, 2026)                   |
 | 4   | Invoice download button in billing history UI     | P2       | ~20 lines         | ✅ DONE (Feb 11, 2026)                   |
-| 5   | Pause/Resume subscription flow                    | P2       | ~200 lines        | ✅ DONE (Feb 11, 2026)                   |
+| 5   | Pause/Resume subscription flow                    | P2       | ~200 lines        | Disabled by default (May 21, 2026); API/UI gated behind `ENABLE_SUBSCRIPTION_PAUSE=false` |
 | 6   | Plan downgrade flow                               | P1       | ~300 lines        | ✅ DONE (Feb 11, 2026)                   |
 | 7   | Ensure Razorpay international payments enabled    | P0       | Dashboard config  | 📋 Checklist added (see §23.10)          |
 | 8   | Consider yearly `total_count: 3` for auto-renewal | P2       | 1 line change     | ✅ DONE (Feb 11, 2026) — changed to 3/36 |
@@ -1528,7 +1528,7 @@ These fields exist in Razorpay webhook payloads but we don't store/use them:
 | --- | --------------------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
 | 1   | ~~Downgrade plan flow~~                       | ~~P1~~   | ✅ DONE (Feb 11, 2026) — PricingPlansModal now shows all plans, uses same cancel+new-sub flow |
 | 2   | ~~Handle `subscription.pending` webhook~~     | ~~P1~~   | ✅ DONE (Feb 11, 2026) — Added to webhook switch with dual-path handling                      |
-| 3   | ~~Pause subscription~~                        | ~~P2~~   | ✅ DONE (Feb 11, 2026) — Full flow: API routes, webhook, frontend UI, PaymentStatus type      |
+| 3   | Pause subscription                           | P2       | Implemented but disabled by default (May 21, 2026). UI hides Pause/Resume and APIs return unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`. |
 | 4   | ~~Invoice download in billing history~~       | ~~P2~~   | ✅ DONE (Feb 11, 2026) — Fixed condition, button shows when invoiceUrl exists                 |
 | 5   | Failed payment retry UI                       | P2       | Show "Update payment method" when `past_due`. Currently links to Razorpay short_url.          |
 | 6   | Subscription analytics                        | P2       | MRR, churn rate, LTV tracking for founder dashboard.                                          |

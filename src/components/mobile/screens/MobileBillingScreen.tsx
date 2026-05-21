@@ -1,6 +1,7 @@
 'use client'
 
 import { AIEnhancementPack, Currency, Plan } from '@data/common';
+import { isFeatureEnabled } from '@config/features';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
@@ -78,6 +79,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const topUpCredits = sub?.topUpCredits || 0;
     const totalCredits = monthlyCredits + topUpCredits;
     const isLowOnEnhancements = Boolean(sub && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2));
+    const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
     const currentSubscriptionPlan = useMemo(() => {
         if (!sub) return null;
         const sourcePlans = sub.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList();
@@ -483,7 +485,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             {sub.status === 'paused' ? (
                                 <Card size="small" style={{ backgroundColor: '#fff7ed' }}>
                                     <Text>
-                                        {!hasValidSubscriptionAccess(sub) ? t('pausedCycleEnded') : t('pausedAccessAvailable')}
+                                        {canPauseSubscriptions
+                                            ? (!hasValidSubscriptionAccess(sub) ? t('pausedCycleEnded') : t('pausedAccessAvailable'))
+                                            : (!hasValidSubscriptionAccess(sub)
+                                                ? 'This subscription is paused and the billing cycle has ended. Contact support to update it.'
+                                                : 'This subscription is paused. Access remains available until the current billing cycle ends. Contact support to update it.')}
                                     </Text>
                                 </Card>
                             ) : null}
@@ -501,12 +507,14 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         ) : null}
                                         {!isManualBilling ? (
                                             <>
-                                                <Button fill="outline" onClick={handlePause} size="small">
-                                                    <Flex align="center" gap={6}>
-                                                        <LuPause size={14} />
-                                                        <Text>{t('pause')}</Text>
-                                                    </Flex>
-                                                </Button>
+                                                {canPauseSubscriptions ? (
+                                                    <Button fill="outline" onClick={handlePause} size="small">
+                                                        <Flex align="center" gap={6}>
+                                                            <LuPause size={14} />
+                                                            <Text>{t('pause')}</Text>
+                                                        </Flex>
+                                                    </Button>
+                                                ) : null}
                                                 <Button color="danger" fill="outline" onClick={handleCancel} size="small">
                                                     <Flex align="center" gap={6}>
                                                         <LuXCircle size={14} />
@@ -530,12 +538,21 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 ) : null}
                                 {sub.status === 'paused' ? (
                                     <>
-                                        <Button color="primary" onClick={handleResume} size="small">
-                                            <Flex align="center" gap={6}>
-                                                <LuPlay size={14} />
-                                                <Text>{t('resume')}</Text>
-                                            </Flex>
-                                        </Button>
+                                        {canPauseSubscriptions ? (
+                                            <Button color="primary" onClick={handleResume} size="small">
+                                                <Flex align="center" gap={6}>
+                                                    <LuPlay size={14} />
+                                                    <Text>{t('resume')}</Text>
+                                                </Flex>
+                                            </Button>
+                                        ) : (
+                                            <Button color="primary" onClick={() => router.push('/help-center/ticket')} size="small">
+                                                <Flex align="center" gap={6}>
+                                                    <LuMessageCircle size={14} />
+                                                    <Text>Contact support</Text>
+                                                </Flex>
+                                            </Button>
+                                        )}
                                         <Button color="danger" fill="outline" onClick={handleCancel} size="small">
                                             <Flex align="center" gap={6}>
                                                 <LuXCircle size={14} />

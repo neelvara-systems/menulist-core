@@ -29,13 +29,13 @@ export const getGracePeriodInfo = (pastDueTimestamp: Timestamp | null | undefine
  * 
  * A paused subscription whose billing cycle has ended does NOT grant access
  * (the user hasn't paid for this period), but the subscription is still
- * visible on the billing page so they can resume it.
+ * visible on the billing page for support recovery.
  */
 export function hasValidSubscriptionAccess(sub: FirestoreSubscriptionDoc | null): boolean {
     if (!sub) return false;
     if (sub.status === 'pending' || sub.status === 'expired' || sub.status === 'completed') return false;
 
-    // Paused subs with expired billing cycle → no access (but sub is resumable from billing page)
+    // Paused subs with expired billing cycle → no access (support recovery from billing page)
     if (sub.status === 'paused' && sub.cycleEndDate) {
         return sub.cycleEndDate.toMillis() >= Date.now();
     }

@@ -1,4 +1,5 @@
 import { AIEnhancementPack, Currency, Plan, PurchaseIntent } from '@data/common';
+import { isFeatureEnabled } from '@config/features';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { calculateRemainingCredits } from '@util/razorpay';
@@ -117,6 +118,10 @@ const usePaymentHandler = (dispatcher: any) => {
 
     const onPauseSubscription = ({ reason }: { reason?: string } = {}) => {
         return new Promise<void>(async (resolve, reject) => {
+            if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
+                reject(new Error('Subscription pause is not available.'));
+                return;
+            }
             try {
                 const response = await fetch('/api/razorpay/pause-subscription', {
                     method: 'POST',
@@ -138,6 +143,10 @@ const usePaymentHandler = (dispatcher: any) => {
 
     const onResumeSubscription = () => {
         return new Promise<void>(async (resolve, reject) => {
+            if (!isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')) {
+                reject(new Error('Subscription resume is not available.'));
+                return;
+            }
             try {
                 const response = await fetch('/api/razorpay/resume-subscription', {
                     method: 'POST',

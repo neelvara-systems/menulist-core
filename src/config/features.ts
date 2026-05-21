@@ -698,6 +698,19 @@ export const FEATURE_FLAGS = {
     ENABLE_CHAIN_CONTROL_PANEL: true,       // Show "Locations" sidebar item for master stores
 
     /**
+     * Self-service subscription pause/resume.
+     *
+     * false: Owners cannot pause or resume subscriptions from billing UI and
+     * direct pause/resume API calls return unavailable before provider mutation.
+     * true: Re-enables the existing Razorpay pause/resume flow.
+     *
+     * Keep false unless MenuList deliberately decides to offer pause as a
+     * billing policy. This preserves clear continuity: owners can change,
+     * cancel, retry, or contact support, but cannot pause access themselves.
+     */
+    ENABLE_SUBSCRIPTION_PAUSE: false,
+
+    /**
      * Maximum outlets per tenant (excluding master store).
      * Prevents runaway outlet creation. 30 covers large SMB chains.
      * Set to 0 for unlimited (not recommended).

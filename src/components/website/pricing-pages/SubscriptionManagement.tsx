@@ -142,7 +142,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                         </>}
                         {activeSubscription.status === 'paused' && !hasValidSubscriptionAccess(activeSubscription) && <>
                             <div style={{ padding: '12px 16px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', color: '#c2410c', fontSize: '14px' }}>
-                                ⏸️ Your subscription is paused and your billing cycle has ended. <a href="/billing" style={{ color: '#c2410c', textDecoration: 'underline' }}>Go to Billing</a> to resume.
+                                Your subscription is paused and the billing cycle has ended. Contact support to update it.
                             </div>
                         </>}
                     </CardContent>

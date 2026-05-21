@@ -17,8 +17,8 @@
 6. [Journey 6: Active User — Cancels Subscription](#journey-6)
 7. [Journey 7: Cancelled User — Cycle Ends → Loses Access](#journey-7)
 8. [Journey 8: Cancelled/Expired User — Resubscribes](#journey-8)
-9. [Journey 9: Active User — Pauses Subscription](#journey-9)
-10. [Journey 10: Paused User — Resumes Subscription](#journey-10)
+9. [Journey 9: Active User — Pause Is Disabled](#journey-9)
+10. [Journey 10: Paused User — Resume Is Disabled](#journey-10)
 11. [Journey 11: Paused User — Billing Cycle Ends While Paused](#journey-11)
 12. [Journey 12: Active User — Upgrades Plan](#journey-12)
 13. [Journey 13: Active User — Downgrades Plan](#journey-13)
@@ -280,51 +280,42 @@ statuses: [..., { status: "cancelled", remark: "Cancelled by user, reason: ..." 
 ---
 
 <a id="journey-9"></a>
-## Journey 9: Active User — Pauses Subscription
+## Journey 9: Active User — Pause Is Disabled
 
-**Status:** ✅ Fully Handled
+**Status:** ✅ Disabled by policy (`ENABLE_SUBSCRIPTION_PAUSE=false`)
 
-**Trigger:** User clicks "Pause" button on billing page.
+**Trigger:** User views Billing or attempts a direct pause API call.
 
 **Step-by-step path:**
 
 | Step | What Happens | File | Key Code |
 |------|-------------|------|----------|
-| 1 | User clicks "Pause" | `ActiveSubscriptionCard.tsx` | `handlePauseSubscription()` |
-| 2 | Calls pause API | `usePaymentHandler.ts` → `onPauseSubscription()` | POST `/api/razorpay/pause-subscription` |
-| 3 | Server: validates status is `active` | `api/razorpay/pause-subscription/route.ts` | `if (internalSub.status !== 'active')` guard |
-| 4 | Server: calls Razorpay pause API | `api/razorpay/pause-subscription/route.ts` | `razorpayClient.subscriptions.pause(id, { pause_at: 'now' })` |
-| 5 | Server: updates Firestore | `api/razorpay/pause-subscription/route.ts` | `status: 'paused'` |
-| 6 | Webhook `subscription.paused` fires → also sets paused (idempotent) | `api/razorpay/webhook/route.ts` | `status: 'paused'`, `pause_initiated_by` in remark |
-| 7 | Frontend: refetches, shows "Paused" tag + resume button | `ActiveSubscriptionCard.tsx` | `refetchActiveSubscription()` |
+| 1 | Active subscription renders without Pause action | `ActiveSubscriptionCard.tsx`, `MobileBillingScreen.tsx` | `isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE')` |
+| 2 | Hook refuses accidental calls before fetch | `usePaymentHandler.ts` → `onPauseSubscription()` | Returns `Subscription pause is not available.` |
+| 3 | API refuses direct calls before provider/database mutation | `api/razorpay/pause-subscription/route.ts` | Returns unavailable when flag is false |
 
-**UI after pause:**
-- Tag: 🟡 "Paused"
-- Date: "Paused Since" → last status change timestamp
-- Info text: "Your subscription is currently paused..."
-- Buttons: "Resume Subscription" + "Cancel Subscription"
+**UI result:**
+- Active subscriptions show Change/Upgrade/Cancel/Retry paths only.
+- No self-service Pause button is shown on desktop or mobile.
+- No Razorpay pause call or Firestore status write occurs while the flag is false.
 
 ---
 
 <a id="journey-10"></a>
-## Journey 10: Paused User — Resumes Subscription
+## Journey 10: Paused User — Resume Is Disabled
 
-**Status:** ✅ Fully Handled
+**Status:** ✅ Disabled by policy (`ENABLE_SUBSCRIPTION_PAUSE=false`)
 
-**Trigger:** User clicks "Resume Subscription" button.
+**Trigger:** Legacy/provider-side paused subscription is visible on Billing, or direct resume API is called.
 
 **Step-by-step path:**
 
 | Step | What Happens | File | Key Code |
 |------|-------------|------|----------|
-| 1 | User clicks "Resume Subscription" | `ActiveSubscriptionCard.tsx` | `handleResumeSubscription()` |
-| 2 | Calls resume API | `usePaymentHandler.ts` → `onResumeSubscription()` | POST `/api/razorpay/resume-subscription` |
-| 3 | Server: validates status is `paused` | `api/razorpay/resume-subscription/route.ts` | `if (internalSub.status !== 'paused')` guard |
-| 4 | Server: calls Razorpay resume API | `api/razorpay/resume-subscription/route.ts` | `razorpayClient.subscriptions.resume(id, { resume_at: 'now' })` |
-| 5 | Server: updates Firestore → status=`active` | `api/razorpay/resume-subscription/route.ts` | `status: 'active'` |
-| 6 | Webhook `subscription.resumed` fires → also sets active (idempotent) | `api/razorpay/webhook/route.ts` | `status: 'active'` |
-| 7 | Razorpay charges immediately → `subscription.charged` webhook → cycle dates updated | `api/razorpay/webhook/route.ts` | Same as Journey 2 |
-| 8 | Frontend: refetches, shows "Active" tag | `ActiveSubscriptionCard.tsx` | `refetchActiveSubscription()` |
+| 1 | Paused subscription remains visible for recovery | `database/subscriptions/index.ts` | Paused fallback query |
+| 2 | Billing shows support recovery, not Resume | `ActiveSubscriptionCard.tsx`, `MobileBillingScreen.tsx`, `SubscriptionManagement.tsx` | Flag-gated action rendering |
+| 3 | Hook refuses accidental calls before fetch | `usePaymentHandler.ts` → `onResumeSubscription()` | Returns `Subscription resume is not available.` |
+| 4 | API refuses direct calls before provider/database mutation | `api/razorpay/resume-subscription/route.ts` | Returns unavailable when flag is false |
 
 ---
 
@@ -347,8 +338,8 @@ statuses: [..., { status: "cancelled", remark: "Cancelled by user, reason: ..." 
 | 6 | Returns paused sub (with expired cycleEndDate) | `database/subscriptions/index.ts` | Returns sub data |
 | 7 | BillingPage: `activeSubscription` is not null → renders ActiveSubscriptionCard | `billing/index.tsx` | Card shown |
 | 8 | ActiveSubscriptionCard: detects paused + expired cycle | `ActiveSubscriptionCard.tsx` | `hasValidSubscriptionAccess()` returns `false` |
-| 9 | Shows: "Your subscription is paused and your billing cycle has ended. Resume to continue." | `ActiveSubscriptionCard.tsx` | Cycle-aware paused message |
-| 10 | Resume button visible → user can click to resume | `ActiveSubscriptionCard.tsx` | `handleResumeSubscription()` |
+| 9 | Shows support recovery message instead of self-service resume | `ActiveSubscriptionCard.tsx` | Cycle-aware paused message |
+| 10 | Direct resume API remains unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false` | `resume-subscription/route.ts` | Feature flag guard |
 | 11 | Dashboard: `hasValidSubscriptionAccess()` returns `false` → redirects to `/billing` | `dashboard/index.tsx` | Access blocked |
 | 12 | Projects: `hasValidSubscriptionAccess()` returns `false` → shows NoSubscriptionView | `projects/index.tsx` | Access blocked |
 
@@ -605,8 +596,8 @@ Credits are carried forward identically to upgrades.
 | `verify-subscription` | ✅ | ✅ | ✅ Zod | ✅ | — |
 | `cancel-subscription` | ✅ | ✅ | ✅ Manual | ✅ | — |
 | `upgrade-subscription` | ✅ | ✅ | ✅ Manual | ✅ | — |
-| `pause-subscription` | ✅ | ✅ | ✅ Status guard | ✅ | — |
-| `resume-subscription` | ✅ | ✅ | ✅ Status guard | ✅ | — |
+| `pause-subscription` | ✅ | ✅ | ✅ Feature flag + status guard if enabled | ✅ | ✅ disabled before mutation while `ENABLE_SUBSCRIPTION_PAUSE=false` |
+| `resume-subscription` | ✅ | ✅ | ✅ Feature flag + status guard if enabled | ✅ | ✅ disabled before mutation while `ENABLE_SUBSCRIPTION_PAUSE=false` |
 | `create-topup-order` | ✅ | ✅ | ✅ Zod | ✅ | ✅ |
 | `verify-topup` | ✅ | ✅ | ✅ Zod | ✅ | — |
 | `webhook` | N/A | N/A | ✅ HMAC-SHA256 signature | N/A (server-to-server) | — |

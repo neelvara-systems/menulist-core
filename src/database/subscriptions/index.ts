@@ -21,7 +21,8 @@ const getDocRef = (docId: string) => doc(getCollectionRef(), docId);
 // active: The user is in good standing and is scheduled to be billed again.
 // past_due: A payment failed, and the system is retrying. Access is often still granted for a grace period.
 // cancelled: The user has voluntarily requested to end their subscription. Auto-renewal is OFF. Access is still granted until cycleEndDate.
-// paused: The user has paused billing. Access valid until cycleEndDate. Resumable from billing page even after cycle ends.
+// paused: Legacy/provider-side pause state. Access valid until cycleEndDate.
+// Self-service pause/resume is disabled unless ENABLE_SUBSCRIPTION_PAUSE is enabled.
 // expired: The cycleEndDate for a cancelled subscription has passed, or grace period ended. The user has lost access to paid features.
 // completed: All billing cycles exhausted (total_count reached). User must purchase new plan.
 
@@ -44,7 +45,7 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
 
     if (querySnapshot.empty) {
         // Fallback: check for paused subscriptions whose billing cycle has ended.
-        // A paused sub should still be visible so the user can resume it from the billing page.
+        // A paused sub should still be visible for support recovery from the billing page.
         const pausedFallbackQuery = query(
             getCollectionRef(),
             where("status", "==", "paused"),

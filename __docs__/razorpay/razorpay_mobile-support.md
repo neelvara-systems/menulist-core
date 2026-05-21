@@ -1,6 +1,6 @@
 # Razorpay Payment System — Mobile Support
 
-**Last Updated:** February 16, 2026 (v2 — full mobile billing implemented)
+**Last Updated:** May 21, 2026 (v3 — pause/resume self-service disabled)
 **Decision:** ✅ FULL MOBILE SUPPORT — Zero desktop dependency for billing
 
 ---
@@ -24,8 +24,8 @@
 | AI credits (monthly + topup + progress) | `MobileBillingScreen`                        | ✅     |
 | Upgrade/change plan                     | `MobileBillingScreen` → Razorpay modal       | ✅     |
 | Buy AI credit packs                     | `MobileBillingScreen` → Razorpay modal       | ✅     |
-| Pause subscription                      | `MobileBillingScreen` → confirmation         | ✅     |
-| Resume subscription                     | `MobileBillingScreen`                        | ✅     |
+| Pause subscription                      | Hidden while `ENABLE_SUBSCRIPTION_PAUSE=false` | Disabled by policy |
+| Resume subscription                     | Hidden while `ENABLE_SUBSCRIPTION_PAUSE=false`; paused legacy records show support recovery | Disabled by policy |
 | Cancel subscription                     | `MobileBillingScreen` → confirmation         | ✅     |
 | Retry failed payment                    | `MobileBillingScreen` → Razorpay shortUrl    | ✅     |
 | Billing history                         | `MobileBillingScreen` → lazy-loaded list     | ✅     |

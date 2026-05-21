@@ -187,8 +187,8 @@ interface FirestoreSubscriptionDoc {
 | Route                                     | Action            | Fields Updated                                                         |
 | ----------------------------------------- | ----------------- | ---------------------------------------------------------------------- |
 | `POST /api/razorpay/cancel-subscription`  | User cancels      | `status: "cancelled"`, `statuses`                                      |
-| `POST /api/razorpay/pause-subscription`   | User pauses       | `status: "paused"`, `statuses` (also calls Razorpay Pause API)         |
-| `POST /api/razorpay/resume-subscription`  | User resumes      | `status: "active"`, `statuses` (also calls Razorpay Resume API)        |
+| `POST /api/razorpay/pause-subscription`   | Feature-gated self-service pause | Returns unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; if enabled, sets `status: "paused"` and calls Razorpay Pause API |
+| `POST /api/razorpay/resume-subscription`  | Feature-gated self-service resume | Returns unavailable while `ENABLE_SUBSCRIPTION_PAUSE=false`; if enabled, sets `status: "active"` and calls Razorpay Resume API |
 | `POST /api/razorpay/upgrade-subscription` | User upgrades     | Old sub: `status: "expired"`. New sub created via create-subscription. |
 | `POST /api/razorpay/verify-topup`         | User buys credits | `topUpCredits` incremented                                             |
 
@@ -269,7 +269,7 @@ BillingPage (billing/index.tsx)
   │     ├── renderTag()             ← Status badge (active/cancelled/paused/past_due/expired)
   │     ├── renderAccessUntillDate()← Smart date display per status
   │     ├── renderGracePeriodInfo() ← Warning text for past_due
-  │     ├── renderActionButtons()   ← Cancel/Pause/Resume/Upgrade buttons per status
+  │     ├── renderActionButtons()   ← Cancel/Upgrade/support buttons per status; Pause/Resume hidden unless feature flag is enabled
   │     └── CancellationModal       ← 2-step cancel flow (reason → confirm)
   │
   ├── BillingHistory                ← Table of past payments (NOT from activeSubscription directly)
@@ -317,8 +317,8 @@ LandingPage (landingPage/index.tsx)
 | New subscription  | `onClickPaymentCard()`    | `/api/razorpay/create-subscription`            | Creates subscription + opens Checkout | `verify-subscription` → active |
 | Upgrade/Downgrade | `onUpgradePlan()`         | `create-subscription` + `upgrade-subscription` | Cancel old + create new               | Credits carried forward        |
 | Cancel            | `onCancelSubscription()`  | `/api/razorpay/cancel-subscription`            | Cancels on Razorpay                   | Access until cycleEndDate      |
-| Pause             | `onPauseSubscription()`   | `/api/razorpay/pause-subscription`             | `POST /subscriptions/:id/pause`       | Status → paused                |
-| Resume            | `onResumeSubscription()`  | `/api/razorpay/resume-subscription`            | `POST /subscriptions/:id/resume`      | Status → active                |
+| Pause             | `onPauseSubscription()`   | `/api/razorpay/pause-subscription`             | Disabled while `ENABLE_SUBSCRIPTION_PAUSE=false` | Unavailable before mutation    |
+| Resume            | `onResumeSubscription()`  | `/api/razorpay/resume-subscription`            | Disabled while `ENABLE_SUBSCRIPTION_PAUSE=false` | Unavailable before mutation    |
 | Buy credits       | `handleTopupPurchase()`   | `create-topup-order` + `verify-topup`          | Creates order + captures              | topUpCredits incremented       |
 | Onboarding        | `executePostOnboarding()` | `/api/onboarding/create-subscription`          | Creates tenant + sub                  | Session updated with tId/sId   |
 
@@ -330,15 +330,15 @@ LandingPage (landingPage/index.tsx)
 
 | Status      | How User Gets Here                                | Tag Color             | Access?                  | Date Shown                                   | Actions Available      | Grace?    |
 | ----------- | ------------------------------------------------- | --------------------- | ------------------------ | -------------------------------------------- | ---------------------- | --------- |
-| `active`    | Payment succeeded                                 | 🟢 Green              | ✅ Yes                   | "Renews On" (or "Expires On" if final cycle) | Cancel, Pause, Upgrade | N/A       |
-| `paused`    | User clicked Pause                                | 🟡 Warning            | ✅ Yes (until cycle end) | "Paused Since"                               | Resume, Cancel         | N/A       |
+| `active`    | Payment succeeded                                 | 🟢 Green              | ✅ Yes                   | "Renews On" (or "Expires On" if final cycle) | Cancel, Upgrade. Pause only if `ENABLE_SUBSCRIPTION_PAUSE=true` | N/A       |
+| `paused`    | Legacy/provider-side pause                        | 🟡 Warning            | ✅ Yes (until cycle end) | "Paused Since"                               | Contact Support, Cancel. Resume only if `ENABLE_SUBSCRIPTION_PAUSE=true` | N/A       |
 | `past_due`  | Payment failed, Razorpay retrying                 | 🟡 Warning            | ✅ Yes (7-day grace)     | Grace period end date                        | Cancel, Retry Payment  | ✅ 7 days |
 | `cancelled` | User cancelled                                    | 🔴 Error              | ✅ Yes (until cycle end) | "Access Good Until" cycleEndDate             | Choose New Plan        | N/A       |
 | `expired`   | Grace period ended OR upgrade old sub             | ⚪ Default            | ❌ No                    | N/A                                          | Choose New Plan        | N/A       |
 | `completed` | All billing cycles finished (total_count reached) | N/A (not in UI query) | ❌ No                    | N/A                                          | N/A                    | N/A       |
 | `pending`   | Initial creation, not yet paid                    | N/A (not in UI query) | ❌ No                    | N/A                                          | N/A                    | N/A       |
 
-**Key insight:** The DAL primary query returns subscriptions with status in `["active", "past_due", "cancelled", "paused"]` AND `cycleEndDate >= now`. A **fallback query** additionally checks for `paused` subscriptions whose `cycleEndDate` has passed — so users can still see and resume their paused subscription from the billing page even after the paid cycle expires. Dashboard and Projects gates use `hasValidSubscriptionAccess()` to block access for paused subs with expired cycles.
+**Key insight:** The DAL primary query returns subscriptions with status in `["active", "past_due", "cancelled", "paused"]` AND `cycleEndDate >= now`. A **fallback query** additionally checks for `paused` subscriptions whose `cycleEndDate` has passed so legacy/provider-side paused records remain visible on Billing. With `ENABLE_SUBSCRIPTION_PAUSE=false`, the owner sees support recovery instead of self-service resume. Dashboard and Projects gates use `hasValidSubscriptionAccess()` to block access for paused subs with expired cycles.
 
 ---
 
@@ -450,8 +450,8 @@ User triggers AI operation (e.g., image generation)
 | `src/app/api/razorpay/create-subscription/route.ts`   | Creates new Razorpay subscription + Firestore doc   |
 | `src/app/api/razorpay/verify-subscription/route.ts`   | Verifies payment, activates subscription            |
 | `src/app/api/razorpay/cancel-subscription/route.ts`   | Cancels subscription on Razorpay + Firestore        |
-| `src/app/api/razorpay/pause-subscription/route.ts`    | Pauses subscription on Razorpay + Firestore         |
-| `src/app/api/razorpay/resume-subscription/route.ts`   | Resumes subscription on Razorpay + Firestore        |
+| `src/app/api/razorpay/pause-subscription/route.ts`    | Feature-gated pause route; unavailable before mutation while disabled |
+| `src/app/api/razorpay/resume-subscription/route.ts`   | Feature-gated resume route; unavailable before mutation while disabled |
 | `src/app/api/razorpay/upgrade-subscription/route.ts`  | Cancels old + marks expired, credits carried        |
 | `src/app/api/razorpay/create-topup-order/route.ts`    | Creates Razorpay order for credit purchase          |
 | `src/app/api/razorpay/verify-topup/route.ts`          | Verifies top-up payment, adds credits               |
@@ -558,17 +558,17 @@ User triggers AI operation (e.g., image generation)
 
 - **Rule:** Paused users retain access until current `cycleEndDate`
 - **Where enforced:** DAL primary query includes `"paused"` in status filter AND requires `cycleEndDate >= now`
-- **Note:** Razorpay does NOT charge during pause. When resumed, billing resumes from where it left off.
+- **Self-service policy:** Owner pause/resume is disabled while `ENABLE_SUBSCRIPTION_PAUSE=false`; paused records are treated as legacy/provider-side states and use support recovery.
 
 ### 12.3a Paused With Expired Billing Cycle
 
-- **Scenario:** User pauses subscription → billing cycle ends → user visits dashboard
+- **Scenario:** A legacy/provider-side pause exists → billing cycle ends → user visits dashboard
 - **DAL behavior:** Primary query returns null (cycleEndDate < now). **Fallback query** finds paused sub regardless of cycleEndDate → returns it.
 - **Access gates:** `hasValidSubscriptionAccess()` returns `false` for paused subs with expired cycle:
   - Dashboard → redirects to `/billing`
   - Projects → shows `NoSubscriptionView`
-  - BillingPage → shows subscription card with "Resume to continue" message
-- **User action:** Click Resume → Razorpay charges immediately → new cycle starts → access restored
+  - BillingPage → shows subscription card with support recovery while self-service pause is disabled
+- **Owner action:** Contact support. If `ENABLE_SUBSCRIPTION_PAUSE=true` in the future, Resume can be re-enabled.
 - **Files involved:** `src/utils/razorpay.ts` (`hasValidSubscriptionAccess`), `src/database/subscriptions/index.ts` (fallback query), `ActiveSubscriptionCard.tsx` (cycle-aware paused message)
 
 ### 12.4 Final Billing Cycle
@@ -615,10 +615,10 @@ User triggers AI operation (e.g., image generation)
 | Webhook handles all 9 Razorpay lifecycle states                                     | ✅     |
 | `lastWebhook` updated in ALL webhook cases                                          | ✅     |
 | `billingHistory` idempotency guard (dedup check)                                    | ✅     |
-| ActiveSubscriptionCard handles `paused` status (tag, date, buttons, info text)      | ✅     |
-| SubscriptionManagement (website) handles `paused` status (tag, date)                | ✅     |
-| Pause API uses correct Razorpay param (`pause_at: "now"`)                           | ✅     |
-| Resume API uses correct Razorpay param (`resume_at: "now"`)                         | ✅     |
+| ActiveSubscriptionCard handles `paused` status (tag, date, support fallback, optional feature-gated resume) | ✅     |
+| SubscriptionManagement (website) handles `paused` status (tag, date, support text)  | ✅     |
+| Pause API is blocked before provider/database mutation while feature flag is false   | ✅     |
+| Resume API is blocked before provider/database mutation while feature flag is false  | ✅     |
 | PricingPlansModal shows all plans except current (supports downgrade)               | ✅     |
 | `total_count` set to 3/36 in both create routes (3-year auto-renewal)               | ✅     |
 | Invoice button shows when `invoiceUrl` exists                                       | ✅     |
@@ -747,8 +747,8 @@ Run these tests with real money before freezing the billing architecture.
 | 4   | Upgrade (monthly→yearly)   | Click upgrade → Choose new plan → Pay     | Old sub: expired, new sub: active, credits carried      | ☐      |
 | 5   | Downgrade (yearly→monthly) | Click upgrade → Choose cheaper plan → Pay | Old sub: expired, new sub: active, credits carried      | ☐      |
 | 6   | Cancel subscription        | Click cancel → Confirm → Verify           | Status: cancelled, access until cycleEndDate            | ☐      |
-| 7   | Pause subscription         | Click pause → Verify                      | Status: paused, access until cycleEndDate               | ☐      |
-| 8   | Resume subscription        | From paused → Click resume → Verify       | Status: active, billing resumes                         | ☐      |
+| 7   | Pause disabled             | Active subscription → Billing UI + direct API | No Pause action shown; API returns unavailable before mutation | ☐      |
+| 8   | Resume disabled            | Paused legacy record → Billing UI + direct API | Support recovery shown; API returns unavailable before mutation | ☐      |
 | 9   | Failed payment             | Use test card that fails → Verify         | Status: past_due, grace period starts, retry link shown | ☐      |
 | 10  | Recovery after failure     | Retry payment → Success                   | Status: active, pastDueSinceAt cleared, credits reset   | ☐      |
 | 11  | Top-up credits             | Buy credit pack → Pay → Verify            | topUpCredits increased, transaction logged              | ☐      |
@@ -769,7 +769,7 @@ Run these tests with real money before freezing the billing architecture.
 | 2   | Webhook duplicate       | Replay same webhook event                                | Idempotent — billingHistory dedup, no double credits      | ☐      |
 | 3   | Webhook missing         | Block webhook, run reconciliation                        | Reconciliation syncs status from Razorpay                 | ☐      |
 | 4   | Grace period expiry     | Set pastDueSinceAt to 8 days ago → Load app              | Auto-expires to expired, loses access                     | ☐      |
-| 5   | Paused + cycle ended    | Pause sub → Wait for cycleEndDate                        | Sub visible on billing page, no dashboard/projects access | ☐      |
+| 5   | Paused + cycle ended    | Legacy/provider-side paused sub → Wait for cycleEndDate  | Sub visible on billing page with support recovery, no dashboard/projects access | ☐      |
 | 6   | Final cycle (completed) | Set totalPaymentsMadeCount = totalPaymentsNeededCount    | Shows "Choose New Plan", no cancel/pause buttons          | ☐      |
 | 7   | State machine warning   | Force invalid transition in test                         | Logger.warn fires, transition still proceeds              | ☐      |
 | 8   | Reconciliation mismatch | Manually desync Firestore status → Run nightly scheduler | Firestore synced to Razorpay's authoritative state        | ☐      |

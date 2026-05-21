@@ -228,12 +228,13 @@ export const RATE_LIMIT_CONFIGS = {
 
     // ─────────────────────────────────────────────────────────────
     // SUBSCRIPTION MUTATION (Deep Review — Feb 20, 2026)
-    // Prevents rapid-fire cancel/pause/resume/upgrade operations
+    // Prevents rapid-fire billing mutations. Pause/resume remain behind
+    // ENABLE_SUBSCRIPTION_PAUSE and return before mutation while disabled.
     // ─────────────────────────────────────────────────────────────
 
     /**
      * Subscription Mutations - Prevents abuse of billing state changes.
-     * Used by: cancel-subscription, pause, resume, upgrade
+     * Used by: cancel-subscription, upgrade, and feature-gated pause/resume
      * 
      * Why 5/hour per user:
      * - These are rare operations (once per billing cycle at most)

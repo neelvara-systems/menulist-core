@@ -1,7 +1,7 @@
 # Razorpay — Firebase Cost Tracking
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
-**Last Updated:** May 20, 2026
+**Last Updated:** May 21, 2026
 
 ---
 
@@ -65,8 +65,8 @@
 | Route | Reads | Writes | Description |
 |-------|-------|--------|-------------|
 | `cancel-subscription` | 1 (fetch direct store sub or provided sub) | 1 (update status) | Sets cancelled/completed + subscriptionEndDate. Uses direct store lookup, not outlet/master fallback. |
-| `pause-subscription` | 1 (fetch direct store sub or provided sub) | 1 (update status) | Sets paused. Uses direct store lookup, not outlet/master fallback. |
-| `resume-subscription` | 1 (fetch direct store sub or provided sub) | 1 (update status) | Sets active. Uses direct store lookup, not outlet/master fallback. |
+| `pause-subscription` | 0 while `ENABLE_SUBSCRIPTION_PAUSE=false` | 0 while disabled | Self-service pause is disabled by default. Route returns unavailable before Razorpay or Firestore mutation. If the flag is enabled later, the route uses the direct store lookup and sets paused. |
+| `resume-subscription` | 0 while `ENABLE_SUBSCRIPTION_PAUSE=false` | 0 while disabled | Self-service resume is disabled by default. Route returns unavailable before Razorpay or Firestore mutation. If the flag is enabled later, the route uses the direct store lookup and sets active. |
 | `upgrade-subscription` | 1 (fetch old sub) | 1 (expire old sub) | Old sub → expired, new sub created separately |
 
 ---
@@ -107,7 +107,7 @@ Mutation routes use the direct lookup variant when no explicit subscription ID i
 |---------|-------------|-------------|-------|
 | Nightly reconciliation | N+1 | 0-2 typical after entitlement backfill | N = active subscriptions. One-time entitlement repair may add store + storesSummary + subscription marker writes for stale records. |
 | Webhooks | ~3 per store/month | ~3 per store/month plus entitlement mirror on status change | Charged, renewed, failed, paused, resumed, cancelled, completed events. |
-| User actions | 1-2 per action | 1 subscription write plus entitlement mirror when status changes | Cancel, pause, resume, upgrade |
+| User actions | 1-2 per enabled action | 1 subscription write plus entitlement mirror when status changes | Cancel and upgrade/change plan. Pause/resume are feature-flag disabled by default and cost 0 Firestore reads/writes while disabled. |
 | Page loads | 1 per session | 0 (usually) | Cached after first load |
 
 **For 100 stores:** ~101 reads/night from reconciliation, ~300 webhook reads/month, ~100 writes/month total.

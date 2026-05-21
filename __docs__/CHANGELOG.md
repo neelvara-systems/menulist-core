@@ -6,6 +6,13 @@
 
 ---
 
+## May 21, 2026 — Billing Pause Option Disabled
+
+### Changed
+
+- **Subscription pause is disabled by default** — Added `ENABLE_SUBSCRIPTION_PAUSE: false`, hid Pause/Resume actions from desktop, mobile, and pricing subscription surfaces, and made direct pause/resume API calls return unavailable before any Razorpay or Firestore mutation.
+- **Paused legacy subscriptions use support recovery** — If an old subscription is already paused, Billing now shows a support path instead of self-service resume.
+
 ## May 20, 2026 — Public Starter Menu Entry Hardening
 
 ### Changed
