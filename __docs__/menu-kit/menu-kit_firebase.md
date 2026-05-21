@@ -1,15 +1,15 @@
 # Menu Kit — Firebase Cost Analysis
 
-**Version:** 1.1  
-**Status:** ✅ VERIFIED — Zero Firebase cost confirmed  
-**Last Updated:** March 8, 2026 — Added UTM tracking + download analytics cost note  
+**Version:** 1.2
+**Status:** ✅ VERIFIED — Zero Firebase cost confirmed
+**Last Updated:** May 21, 2026 — Mobile Share tab asset delivery verified
 **Companion:** `menu-kit_impl.md`
 
 ---
 
 ## Summary
 
-**Menu Kit has ZERO Firebase cost.**
+**Menu Kit has ZERO Firebase cost (₹0).**
 
 All generation happens client-side using browser Canvas API + jsPDF + qrcode. No Firestore reads, no Firestore writes, no Firebase Storage uploads.
 
@@ -21,9 +21,9 @@ All generation happens client-side using browser Canvas API + jsPDF + qrcode. No
 
 | Operation                          | Count | Source                                     | Notes              |
 | ---------------------------------- | ----- | ------------------------------------------ | ------------------ |
-| Store data (name, logo, subdomain) | 0     | Already in Redux state                     | No additional read |
-| Menu URL                           | 0     | Already computed in Share Modal            | No additional read |
-| Last publish date                  | 0     | Already available as `menuModifiedOn` prop | No additional read |
+| Store data (name, logo, subdomain) | 0     | Already in Redux/mobile context            | No additional read |
+| Menu URL                           | 0     | Already computed in Share Modal / Mobile Share tab | No additional read |
+| Last publish date                  | 0     | Already available from project summary when present | No additional read |
 
 **Total reads per Menu Kit download: 0**
 
@@ -49,9 +49,9 @@ All generation happens client-side using browser Canvas API + jsPDF + qrcode. No
 
 | Metric              | Cost  |
 | ------------------- | ----- |
-| Per download        | $0.00 |
-| Per 1,000 downloads | $0.00 |
-| Monthly (any scale) | $0.00 |
+| Per download        | ₹0 |
+| Per 1,000 downloads | ₹0 |
+| Monthly (any scale) | ₹0 |
 
 ---
 
@@ -84,12 +84,12 @@ A lightweight GA4-only event tracks when owners download or share Menu Kit asset
 
 | Approach                                            | Firebase Cost                              | Chosen? |
 | --------------------------------------------------- | ------------------------------------------ | ------- |
-| **Client-side generation (chosen)**                 | $0.00/download                             | ✅      |
-| Server-side generation (Cloud Function)             | ~$0.002/download (CPU + memory)            | ❌      |
-| Pre-generate on publish (store in Firebase Storage) | ~$0.001/store/month (storage) + write cost | ❌      |
-| Third-party API (Canva API, Bannerbear)             | ~$0.05-0.10/generation                     | ❌      |
+| **Client-side generation (chosen)**                 | ₹0/download                                | ✅      |
+| Server-side generation (Cloud Function)             | Paid CPU + memory per download             | ❌      |
+| Pre-generate on publish (store in Firebase Storage) | Storage + write cost                       | ❌      |
+| Third-party API (Canva API, Bannerbear)             | Paid per generation                        | ❌      |
 
 ---
 
-**Document Signature:** Firebase Cost Analysis  
+**Document Signature:** Firebase Cost Analysis
 **Created:** February 21, 2026

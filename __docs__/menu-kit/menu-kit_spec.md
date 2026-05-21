@@ -348,7 +348,7 @@ Share your menu
 ├── Menu PDF (existing)
 └── 📦 Menu Kit (NEW)
     └── "Download Menu Kit" button
-    └── Downloads ZIP with all 6 files + shows staff script
+    └── Downloads ZIP with all 9 asset files + shows staff script
 ```
 
 ### Option B: Standalone "Menu Kit" tab in Project View

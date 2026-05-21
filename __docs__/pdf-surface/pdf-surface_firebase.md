@@ -1,14 +1,14 @@
 # PDF Surface — Firebase Cost Analysis
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
-**Version:** 2.1
-**Last Updated:** 2026-03
+**Version:** 2.2
+**Last Updated:** 2026-05-21
 
 ---
 
 ## Summary
 
-**Firebase cost: $0.00**
+**Firebase cost: ₹0 for generation.** Mobile may perform one normal project read only when the selected project is not already cached and the owner taps Menu PDF.
 
 PDF generation is entirely client-side using `jsPDF`. No Firestore reads, writes, or deletes are triggered by PDF generation itself.
 
@@ -18,8 +18,9 @@ PDF generation is entirely client-side using `jsPDF`. No Firestore reads, writes
 
 ```
 Owner clicks "Download PDF"
-  └── ShareModal reads items/categories from React state (already loaded)
-        └── generateMenuPdf() — runs in browser, zero network calls
+  ├── Desktop ShareModal reads items/categories from React state (already loaded)
+  └── Mobile Share tab reads selected project data on tap if not already cached
+        └── generateMenuPdf() — runs in browser
               └── jsPDF renders PDF in memory
                     └── Blob URL → browser download trigger
                           └── localStorage.setItem() — browser storage, not Firebase
@@ -31,9 +32,10 @@ Owner clicks "Download PDF"
 
 | Operation | Trigger | Count | Cost |
 |-----------|---------|-------|------|
-| None | PDF generation | 0 | $0.00 |
+| Desktop PDF generation | Share modal download | 0 | ₹0 |
+| Mobile selected project read | First mobile PDF download if selected project data is not cached | 0-1 read | Negligible |
 
-The `items` and `categories` arrays passed to `generateMenuPdf()` come from data already loaded in the ShareModal's parent component. No additional Firestore reads are made at generation time.
+On desktop, the `items` and `categories` arrays passed to `generateMenuPdf()` come from data already loaded in the ShareModal's parent component. On mobile, `MobileShareScreen.tsx` uses the `MobileProjectsProvider` cache and falls back to `refreshCachedProject(projectId)` only when the owner taps Menu PDF and the selected project details are not already present.
 
 ---
 
@@ -50,19 +52,19 @@ These are browser `localStorage` writes — zero Firebase cost.
 
 ## Bundle Size Impact
 
-| Library | Already in bundle | Added by v2.1 |
+| Library | Already in bundle | Added by v2.2 |
 |---------|------------------|---------------|
 | `jspdf` | ✅ Yes (used since v1.0) | 0 bytes |
 
-No new dependencies. No bundle size increase from v2.0 to v2.1.
+No new dependencies. No bundle size increase from v2.1 to v2.2.
 
 ---
 
 ## Scale Analysis
 
 At 10,000 PDF downloads per month across all stores:
-- Firebase cost: **$0.00**
-- Server cost: **$0.00**
+- Firebase cost: **₹0 for generation; up to one cached-project fallback read on first mobile PDF tap**
+- Server cost: **₹0**
 - All computation happens in the user's browser
 
 This feature has zero marginal infrastructure cost regardless of usage volume.

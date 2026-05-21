@@ -2,11 +2,14 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
+import { getScreenState } from '@database/campaigns';
 import { recordStarterActivationSignal } from '@database/stores';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { trackMenuKitDownload } from '@lib/analytics/unified';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { downloadBlob, generateMenuKit, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import {
     STARTER_ACTIVATION_SIGNALS,
@@ -15,26 +18,40 @@ import {
     type StarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
+import { buildScreenUrl } from '@lib/screen/utils';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { buildExportDataFromProject, downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBookOpen,
+    LuCheck,
     LuCopy,
+    LuDownload,
     LuExternalLink,
+    LuFileJson,
+    LuFileText,
+    LuImage,
     LuLink2,
+    LuMapPin,
     LuMessageSquare,
+    LuMonitor,
+    LuPackage,
+    LuPlaySquare,
+    LuPrinter,
     LuQrCode,
+    LuSheet,
     LuShare2,
     LuShield,
     LuSmartphone,
+    LuX,
 } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, DotLoading, Flex, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
@@ -67,12 +84,29 @@ type ShareData = {
     hasPublishedMenu: boolean;
     installAppLink: string | null;
     menuLink: string;
+    menuModifiedOn?: unknown;
     obpLink: string;
     posSyncStatus: string | null;
     projectId: string | null;
     projectName: string | null;
+    storeLogo?: string | null;
+    storeMenuLink: string;
     storeName: string;
 };
+
+type ScreenLinksState = {
+    highlightsLink: string | null;
+    isLoading: boolean;
+    menuBoardLink: string | null;
+};
+
+type OutletQrLink = {
+    label: string;
+    storeId: string | number;
+    url: string;
+};
+
+type GuideKey = 'setup' | 'printing' | 'sharing';
 
 type QrSheetState = {
     filename: string;
@@ -82,21 +116,50 @@ type QrSheetState = {
     url: string;
 };
 
+type DownloadAssetKey =
+    | 'export_json'
+    | 'export_xlsx'
+    | 'menu_pdf'
+    | 'menu_kit'
+    | 'table_tent'
+    | 'counter_sticker'
+    | 'entrance_poster'
+    | 'feedback_qr'
+    | 'instagram_story'
+    | 'whatsapp_status'
+    | 'google_maps';
+
 interface MobileShareScreenProps {
+    onOpenDigitalScreens?: () => void;
     onOpenDesignEditor?: () => void;
+    onOpenPosSync?: () => void;
 }
 
-export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScreenProps) {
+export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEditor, onOpenPosSync }: MobileShareScreenProps) {
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
-    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { isMasterUser, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const labels = useOfferingLabels();
-    const { isLoading: loadingProjects, projectsList, selectedProjectId, selectProject } = useMobileProjects();
+    const {
+        isLoading: loadingProjects,
+        projectsList,
+        refreshCachedProject,
+        selectedProject,
+        selectedProjectId,
+        selectProject,
+    } = useMobileProjects();
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
+    const [activeGuide, setActiveGuide] = useState<GuideKey | null>(null);
+    const [generatingDownload, setGeneratingDownload] = useState<DownloadAssetKey | null>(null);
+    const [screenLinks, setScreenLinks] = useState<ScreenLinksState>({
+        highlightsLink: null,
+        isLoading: false,
+        menuBoardLink: null,
+    });
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
     const resolveProjectName = useCallback(
@@ -109,6 +172,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         [storeDetails, t]
     );
     const canManageSharing = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU]);
+    const canManageIntegrations = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_INTEGRATIONS]);
 
     const data = useMemo<ShareData | null>(() => {
         if (!storeDetails) return null;
@@ -123,6 +187,7 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         const subdomain = storeDetails.subdomain || '';
         const customDomain = storeDetails.customDomain;
         const obpLink = generateOBPUrl(subdomain, customDomain);
+        const storeMenuLink = `${obpLink.replace(/\/$/, '')}/menu`;
         const installAppLink =
             FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA
             && (storeDetails as any).pwaSettings?.enableInstallableApp !== false
@@ -159,13 +224,49 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             hasPublishedMenu: !!obpLink,
             installAppLink,
             menuLink,
+            menuModifiedOn: defaultProject.modifiedOn || null,
             obpLink,
             posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
             projectId: defaultProject.projectId || null,
             projectName: resolveProjectName(defaultProject.name, labels.offeringTitle),
+            storeLogo: storeDetails.logo || null,
+            storeMenuLink,
             storeName: storeDisplayName,
         };
     }, [labels.offeringTitle, projectsList, resolveProjectName, selectedProjectId, storeDetails, storeDisplayName, t]);
+
+    useEffect(() => {
+        if (!storeDetails?.storeId || !data?.obpLink) {
+            setScreenLinks({ highlightsLink: null, isLoading: false, menuBoardLink: null });
+            return;
+        }
+
+        let cancelled = false;
+        setScreenLinks((current) => ({ ...current, isLoading: true }));
+
+        const loadScreenLinks = async () => {
+            try {
+                const state = await getScreenState();
+                if (cancelled) return;
+                const menuBoardLink = state?.screenToken ? buildScreenUrl(state.screenToken, data.obpLink) : null;
+                setScreenLinks({
+                    highlightsLink: menuBoardLink ? `${menuBoardLink}?mode=highlights` : null,
+                    isLoading: false,
+                    menuBoardLink,
+                });
+            } catch {
+                if (!cancelled) {
+                    setScreenLinks({ highlightsLink: null, isLoading: false, menuBoardLink: null });
+                }
+            }
+        };
+
+        void loadScreenLinks();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [data?.obpLink, storeDetails?.storeId]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -181,6 +282,23 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         () => data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null,
         [data]
     );
+
+    const outletQrLinks = useMemo<OutletQrLink[]>(() => {
+        if (!data?.obpLink || !isMasterUser) return [];
+        const outlets = (tenantDetails?.storesList || [])
+            .filter((store: any) => store && !store.isMaster && store.active !== false && store.outletSlug);
+        const tenantBase = data.obpLink.replace(/\/$/, '');
+        return outlets.map((outlet: any) => ({
+            label: outlet.name || outlet.outletSlug,
+            storeId: outlet.storeId || outlet.outletSlug,
+            url: `${tenantBase}/${outlet.outletSlug}/menu`,
+        }));
+    }, [data?.obpLink, isMasterUser, tenantDetails?.storesList]);
+
+    const exportFilenameBase = useMemo(() => {
+        const source = data?.projectName || data?.storeName || 'menu_data';
+        return source.toLowerCase().replace(/[^a-z0-9\s_-]/g, '').trim().replace(/\s+/g, '_') || 'menu_data';
+    }, [data?.projectName, data?.storeName]);
 
     const withSource = (url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
         withAnalyticsSource(
@@ -219,6 +337,214 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
         setIsQrSheetOpen(true);
     };
 
+    const getSelectedProjectData = useCallback(async () => {
+        if (!data?.projectId) return null;
+        if (selectedProjectId === data.projectId && selectedProject) return selectedProject;
+        return refreshCachedProject(data.projectId, { showLoader: false });
+    }, [data?.projectId, refreshCachedProject, selectedProject, selectedProjectId]);
+
+    const getSelectedProjectExportData = useCallback(async () => {
+        const projectData = await getSelectedProjectData();
+        if (!projectData) {
+            return { categories: [], items: [], languages: [] };
+        }
+
+        const extractedData = (projectData as any)?.extractedData || {};
+        let items = Array.isArray(extractedData.items) ? extractedData.items : [];
+        let categories = Array.isArray(extractedData.categories) ? extractedData.categories : [];
+        let languages = Array.isArray((projectData as any)?.languages) ? (projectData as any).languages : [];
+
+        if (items.length === 0 && categories.length === 0 && Array.isArray((projectData as any)?.files)) {
+            const fileExportData = buildExportDataFromProject(projectData as any);
+            items = fileExportData.items;
+            categories = fileExportData.categories;
+            languages = fileExportData.languages;
+        }
+
+        const fallbackLanguage =
+            (projectData as any)?.defaultLanguage ||
+            storeDetails?.defaultLanguage ||
+            storeDetails?.activeLanguages?.[0] ||
+            storeDetails?.language ||
+            'en';
+
+        if (languages.length === 0 && fallbackLanguage) {
+            languages = [fallbackLanguage];
+        }
+
+        return { categories, items, languages };
+    }, [getSelectedProjectData, storeDetails?.activeLanguages, storeDetails?.defaultLanguage, storeDetails?.language]);
+
+    const parseTimestamp = (value: unknown): Date | undefined => {
+        if (!value) return undefined;
+        if (value instanceof Date) return value;
+        if (typeof value === 'number') return new Date(value);
+        if (typeof value === 'string') {
+            const parsed = Date.parse(value);
+            return Number.isNaN(parsed) ? undefined : new Date(parsed);
+        }
+        if (typeof value === 'object') {
+            const record = value as {
+                seconds?: number;
+                toDate?: () => Date;
+                toMillis?: () => number;
+            };
+            if (typeof record.toDate === 'function') return record.toDate();
+            if (typeof record.toMillis === 'function') return new Date(record.toMillis());
+            if (typeof record.seconds === 'number') return new Date(record.seconds * 1000);
+        }
+        return undefined;
+    };
+
+    const buildMenuKitInput = () => {
+        if (!data) return null;
+        return {
+            businessType: data.businessType,
+            lastPublishedAt: parseTimestamp(data.menuModifiedOn),
+            logoUrl: data.storeLogo || undefined,
+            menuUrl: data.menuLink,
+            shortLink: data.menuLink.replace(/^https?:\/\//, ''),
+            storeName: data.storeName,
+        };
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!data?.projectId) return;
+
+        setGeneratingDownload('menu_pdf');
+        try {
+            const projectData = await getSelectedProjectData();
+            const extractedData = (projectData as any)?.extractedData || {};
+            const items = Array.isArray(extractedData.items) ? extractedData.items : [];
+            const categories = Array.isArray(extractedData.categories) ? extractedData.categories : [];
+
+            if (items.length === 0) {
+                Toast.show({ content: t('noMenuItems'), duration: 1500 });
+                return;
+            }
+
+            const language =
+                (projectData as any)?.defaultLanguage ||
+                (Array.isArray((projectData as any)?.languages) ? (projectData as any).languages[0] : null) ||
+                storeDetails?.defaultLanguage ||
+                storeDetails?.activeLanguages?.[0] ||
+                storeDetails?.language ||
+                'en';
+
+            const { generateMenuPdf, downloadPdf } = await import('@lib/export/menuPdfGenerator');
+            const pdfResult = await generateMenuPdf({
+                categories,
+                currency: storeDetails?.currencySymbol || '',
+                items,
+                language,
+                menuUrl: data.menuLink,
+                projectName: data.projectName || labels.offeringTitle,
+                showDescriptions: true,
+                storeName: data.storeName,
+            });
+
+            downloadPdf(pdfResult);
+            localStorage.setItem(`menulist_last_pdf_download_${data.projectId}`, Date.now().toString());
+            if (pdfResult.snapshotHash) {
+                localStorage.setItem(`menulist_last_pdf_version_${data.projectId}`, pdfResult.snapshotHash);
+            }
+            Toast.show({ content: t('pdfDownloaded'), duration: 1400, icon: 'success' });
+        } catch {
+            Toast.show({ content: t('pdfFailed'), duration: 1600 });
+        } finally {
+            setGeneratingDownload(null);
+        }
+    };
+
+    const handleStructuredExport = async (type: 'json' | 'xlsx') => {
+        if (!data?.projectId) return;
+
+        setGeneratingDownload(type === 'xlsx' ? 'export_xlsx' : 'export_json');
+        try {
+            const exportData = await getSelectedProjectExportData();
+            if (exportData.items.length === 0 && exportData.categories.length === 0) {
+                Toast.show({ content: t('noMenuItems'), duration: 1500 });
+                return;
+            }
+
+            await downloadMenuData(exportData, type, { filenameBase: exportFilenameBase });
+            Toast.show({
+                content: type === 'xlsx' ? t('xlsxDownloaded') : t('jsonDownloaded'),
+                duration: 1400,
+                icon: 'success',
+            });
+        } catch {
+            Toast.show({ content: t('exportFailed', { type: type.toUpperCase() }), duration: 1600 });
+        } finally {
+            setGeneratingDownload(null);
+        }
+    };
+
+    const handleDownloadMenuKit = async () => {
+        const input = buildMenuKitInput();
+        if (!input) return;
+
+        setGeneratingDownload('menu_kit');
+        try {
+            const result = await generateMenuKit(input);
+            const safeName = input.storeName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') || 'Menu';
+            downloadBlob(result.zipBlob, `${safeName}_MenuKit.zip`);
+            void trackMenuKitDownload('zip_download');
+            recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
+            Toast.show({ content: t('menuKitDownloaded'), duration: 1400, icon: 'success' });
+        } catch {
+            Toast.show({ content: t('menuKitFailed'), duration: 1600 });
+        } finally {
+            setGeneratingDownload(null);
+        }
+    };
+
+    const handleMenuKitAsset = async (
+        key: DownloadAssetKey,
+        assetIndex: number,
+        label: string,
+        trackingAction?: 'share_instagram' | 'share_whatsapp' | 'share_google_maps',
+    ) => {
+        const input = buildMenuKitInput();
+        if (!input) return;
+
+        setGeneratingDownload(key);
+        try {
+            const result = await generateMenuKit(input);
+            const asset = result.assets[assetIndex];
+            if (!asset) throw new Error('Menu Kit asset missing');
+
+            const shared = trackingAction ? await shareBlob(asset.blob, asset.filename, label) : false;
+            if (shared) {
+                void trackMenuKitDownload(trackingAction);
+                Toast.show({ content: t('assetShared', { label }), duration: 1400, icon: 'success' });
+            } else {
+                downloadBlob(asset.blob, asset.filename);
+                Toast.show({ content: t('assetDownloaded', { label }), duration: 1400, icon: 'success' });
+            }
+        } catch {
+            Toast.show({ content: t('assetFailed', { label }), duration: 1600 });
+        } finally {
+            setGeneratingDownload(null);
+        }
+    };
+
+    const handleDownloadFeedbackQr = async () => {
+        if (!data?.projectId) return;
+
+        setGeneratingDownload('feedback_qr');
+        try {
+            const { downloadQrCode, generateFeedbackQrCode } = await import('@lib/utils/feedbackQrCode');
+            const qrDataUrl = await generateFeedbackQrCode(data.projectId, undefined, data.obpLink);
+            downloadQrCode(qrDataUrl, `${data.storeName.replace(/\s+/g, '-')}-feedback-qr`);
+            Toast.show({ content: t('assetDownloaded', { label: t('feedbackQr') }), duration: 1400, icon: 'success' });
+        } catch {
+            Toast.show({ content: t('assetFailed', { label: t('feedbackQr') }), duration: 1600 });
+        } finally {
+            setGeneratingDownload(null);
+        }
+    };
+
     const handleNativeShare = async ({ label, text, url }: { label: string; text?: string; url: string }) => {
         if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return;
 
@@ -233,6 +559,20 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
             if (error instanceof DOMException && error.name === 'AbortError') return;
             Toast.show({ content: t('couldNotCopy'), duration: 1500 });
         }
+    };
+
+    const handleCopyPosSetupInfo = () => {
+        const summary = [
+            'MenuList POS Sync - Setup Info',
+            '',
+            'Payload: Full menu snapshot (JSON)',
+            'Security: HMAC-SHA256 signed (header: X-MenuList-Signature)',
+            'Headers: X-MenuList-Signature, X-MenuList-Event, X-MenuList-Version, X-MenuList-Timestamp, X-MenuList-Delivery-Id',
+            'Response: HTTP 200 within 5 seconds',
+            '',
+            'Documentation: https://menulist.ai/pos-sync',
+        ].join('\n');
+        return handleCopy(summary, t('posSetupInfo'));
     };
 
     if (!canManageSharing) {
@@ -402,6 +742,113 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 />
             ) : null}
 
+            <Card style={{ borderRadius: 24 }}>
+                <Flex gap={12} vertical>
+                    <SectionHeader
+                        compact={isCompactHandheld}
+                        subtitle={t('printDownloadsDesc')}
+                        title={t('printDownloadsTitle')}
+                    />
+
+                    <Flex gap={10} wrap="wrap">
+                        <DownloadTile
+                            compact={isCompactHandheld}
+                            description={t('menuPdfDesc')}
+                            icon={<LuFileText size={18} />}
+                            loading={generatingDownload === 'menu_pdf'}
+                            onClick={() => void handleDownloadPdf()}
+                            title={t('menuPdf')}
+                            highlighted
+                        />
+                        {FEATURE_FLAGS.ENABLE_MENU_KIT ? (
+                            <DownloadTile
+                                compact={isCompactHandheld}
+                                description={t('completeMenuKitDesc')}
+                                icon={<LuPackage size={18} />}
+                                loading={generatingDownload === 'menu_kit'}
+                                onClick={() => void handleDownloadMenuKit()}
+                                title={t('completeMenuKit')}
+                                highlighted
+                            />
+                        ) : null}
+                    </Flex>
+
+                    {FEATURE_FLAGS.ENABLE_MENU_KIT ? (
+                        <>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: isCompactHandheld ? 11 : 12 }}>
+                                {t('printFiles')}
+                            </Text>
+                            <Flex gap={10} wrap="wrap">
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('tableTentDesc')}
+                                    icon={<LuQrCode size={18} />}
+                                    loading={generatingDownload === 'table_tent'}
+                                    onClick={() => void handleMenuKitAsset('table_tent', 0, t('tableTent'))}
+                                    title={t('tableTent')}
+                                />
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('counterStickerDesc')}
+                                    icon={<LuQrCode size={18} />}
+                                    loading={generatingDownload === 'counter_sticker'}
+                                    onClick={() => void handleMenuKitAsset('counter_sticker', 1, t('counterSticker'))}
+                                    title={t('counterSticker')}
+                                />
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('entrancePosterDesc')}
+                                    icon={<LuQrCode size={18} />}
+                                    loading={generatingDownload === 'entrance_poster'}
+                                    onClick={() => void handleMenuKitAsset('entrance_poster', 2, t('entrancePoster'))}
+                                    title={t('entrancePoster')}
+                                />
+                                {data.hasFeedbackEnabled ? (
+                                    <DownloadTile
+                                        compact={isCompactHandheld}
+                                        description={t('feedbackQrDesc')}
+                                        icon={<LuMessageSquare size={18} />}
+                                        loading={generatingDownload === 'feedback_qr'}
+                                        onClick={() => void handleDownloadFeedbackQr()}
+                                        title={t('feedbackQr')}
+                                    />
+                                ) : null}
+                            </Flex>
+
+                            <Text style={{ color: token.colorTextSecondary, fontSize: isCompactHandheld ? 11 : 12 }}>
+                                {t('socialFiles')}
+                            </Text>
+                            <Flex gap={10} wrap="wrap">
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('instagramStoryDesc')}
+                                    icon={<LuImage size={18} />}
+                                    loading={generatingDownload === 'instagram_story'}
+                                    onClick={() => void handleMenuKitAsset('instagram_story', 5, t('instagramStory'), 'share_instagram')}
+                                    title={t('instagramStory')}
+                                />
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('whatsappStatusDesc')}
+                                    icon={<LuShare2 size={18} />}
+                                    loading={generatingDownload === 'whatsapp_status'}
+                                    onClick={() => void handleMenuKitAsset('whatsapp_status', 6, t('whatsappStatus'), 'share_whatsapp')}
+                                    title={t('whatsappStatus')}
+                                />
+                                <DownloadTile
+                                    compact={isCompactHandheld}
+                                    description={t('googleMapsImageDesc')}
+                                    icon={<LuMapPin size={18} />}
+                                    loading={generatingDownload === 'google_maps'}
+                                    onClick={() => void handleMenuKitAsset('google_maps', 7, t('googleMapsImage'), 'share_google_maps')}
+                                    title={t('googleMapsImage')}
+                                />
+                            </Flex>
+                        </>
+                    ) : null}
+                </Flex>
+            </Card>
+
             {FEATURE_FLAGS.ENABLE_CUSTOMER_COMMUNICATION_KIT ? (
                 <Flex gap={12} style={{ marginTop: 6 }} vertical>
                     <MobileCommunicationKit
@@ -467,6 +914,54 @@ export default function MobileShareScreen({ onOpenDesignEditor }: MobileShareScr
                 visible={isQrSheetOpen}
             />
         </Flex>
+    );
+}
+
+function DownloadTile({
+    compact,
+    description,
+    highlighted,
+    icon,
+    loading,
+    onClick,
+    title,
+}: {
+    compact?: boolean;
+    description: string;
+    highlighted?: boolean;
+    icon: ReactNode;
+    loading: boolean;
+    onClick: () => void;
+    title: string;
+}) {
+    const { token } = theme.useToken();
+    const color = highlighted ? token.colorTextLightSolid : token.colorText;
+
+    return (
+        <Button
+            block
+            color={highlighted ? 'primary' : undefined}
+            fill={highlighted ? 'solid' : 'outline'}
+            loading={loading}
+            onClick={onClick}
+            style={{
+                flex: '1 1 calc(50% - 5px)',
+                minHeight: compact ? 86 : 94,
+                minWidth: compact ? 128 : 144,
+                paddingBlock: compact ? 9 : 11,
+                whiteSpace: 'normal',
+            }}
+        >
+            <Flex align="center" gap={6} justify="center" style={{ color }} vertical>
+                {loading ? <LuDownload size={18} /> : icon}
+                <Text strong style={{ color, fontSize: compact ? 12 : 13, lineHeight: 1.2, textAlign: 'center' }}>
+                    {title}
+                </Text>
+                <Text style={{ color: highlighted ? 'rgba(255,255,255,0.76)' : token.colorTextSecondary, fontSize: 11, lineHeight: 1.2, textAlign: 'center' }}>
+                    {description}
+                </Text>
+            </Flex>
+        </Button>
     );
 }
 

@@ -162,6 +162,7 @@ export const POST = withAuth(async (request, session) => {
         // 4. Orchestration Logic
         // Step A: Get Provider Plan
         const razorpayPlanId = await getOrCreateRazorpayPlan({
+            productId,
             price: unitAmount,
             currency,
             interval,

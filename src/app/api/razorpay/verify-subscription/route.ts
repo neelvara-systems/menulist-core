@@ -207,6 +207,14 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Subscription cannot be activated in its current state." }, { status: 409 });
         }
         const updatePayload: Partial<FirestoreSubscriptionDoc> = {
+            productId,
+            pId: productId,
+            tenantId,
+            storeId,
+            tId: tenantId,
+            sId: storeId,
+            userId,
+            uId: userId,
             status: 'active',
             planName: planDetails.name,
             planId: planDetails.planId,

@@ -269,9 +269,17 @@ export default function SessionProvider({ children, session }: Props) {
                 // console.log("fetchedTenant fetched inside SessionProvider", fetchedTenant)
                 getStoreById(session.user.storeId).then(async (fetchedStore: StoreDataType) => {
                     // Update the tenant details state with the fetched fetchedTenant
-                    const storeIndex = fetchedTenant.storesList.findIndex((s) => s.storeId == session.user.storeId);
-                    fetchedTenant.storesList[storeIndex].storeDetails = removeObjRef(fetchedStore)
-                    setTenantDetails(fetchedTenant);
+                    const fetchedStoresList = Array.isArray(fetchedTenant?.storesList) ? fetchedTenant.storesList : [];
+                    const storeIndex = fetchedStoresList.findIndex((s) => s.storeId == session.user.storeId);
+                    if (fetchedTenant && storeIndex >= 0) {
+                        fetchedStoresList[storeIndex].storeDetails = removeObjRef(fetchedStore)
+                        setTenantDetails({
+                            ...fetchedTenant,
+                            storesList: fetchedStoresList,
+                        });
+                    } else if (fetchedTenant) {
+                        setTenantDetails(fetchedTenant);
+                    }
 
                     // Update the store details state with the fetched fetchedStore
                     // console.log("storeDetails fetched inside SessionProvider", fetchedStore)
@@ -285,7 +293,7 @@ export default function SessionProvider({ children, session }: Props) {
                     const subscriptionData = await fetchActiveSubscriptionForStore(
                         Number(session.user.tenantId),
                         Number(session.user.storeId),
-                        fetchedTenant.storesList,
+                        fetchedStoresList,
                     )
 
                     // Set user context for Sentry with subscription info (client identification)
@@ -295,7 +303,7 @@ export default function SessionProvider({ children, session }: Props) {
                         name: session.user.name,
                         tId: session.user.tenantId,
                         sId: session.user.storeId,
-                        tenantName: fetchedTenant.name,
+                        tenantName: fetchedTenant?.name,
                         storeName: fetchedStore.name,
                         role: session.user.stores?.find((store: any) => Number(store.storeId) === Number(session.user.storeId))?.role || 'user',
                         subscriptionPlan: subscriptionData?.planId || 'free',

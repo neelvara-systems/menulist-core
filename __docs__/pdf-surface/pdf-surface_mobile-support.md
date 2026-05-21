@@ -1,8 +1,8 @@
 # PDF Surface — Mobile Support Assessment
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
-**Version:** 2.1
-**Last Updated:** 2026-03
+**Version:** 2.2
+**Last Updated:** 2026-05-21
 
 ---
 
@@ -18,7 +18,7 @@
 ### Gate 2 — Speed
 **Question:** Can this be done fast enough on mobile to be useful?
 
-- PDF generation is entirely client-side (jsPDF, no network calls)
+- PDF rendering is entirely client-side (jsPDF); mobile may read the selected project on tap if the full project is not already cached
 - Generation time: ~500ms–2s depending on menu size
 - File download triggers native browser save/open dialog on mobile
 - **PASS** — Fast enough. No loading state beyond 2s even on large menus.
@@ -26,48 +26,41 @@
 ### Gate 3 — Touch
 **Question:** Does the mobile UI surface this correctly with proper touch targets?
 
-- PDF download is accessed via Share Modal
-- Share Modal exists on both desktop (`ShareModal/index.tsx`) and mobile (`MobileShareScreen.tsx`)
-- `MobileShareScreen.tsx` already has PDF download button with `minHeight: '36px'` — meets 44px target with padding
+- Desktop PDF download is accessed via Share Modal
+- Mobile PDF download is accessed from `MobileShareScreen.tsx` under **Print & downloads**
+- Mobile uses large download tiles with 44px+ touch targets
 - **PASS** — Mobile entry point exists and is touch-accessible.
 
 ### Gate 4 — Value
 **Question:** Does the owner actually get value from this on mobile?
 
 - Owner is at their restaurant, menu prices just changed, needs fresh PDFs for the evening service
-- Opens MenuList on phone → Share Modal → Download PDF → Sends to WhatsApp → Staff print at front desk
+- Opens MenuList on phone → Share tab → Print & downloads → Menu PDF → Sends to WhatsApp → Staff print at front desk
 - **PASS** — This is the realistic use case. Mobile is often the fastest path.
 
 ---
 
 ## Verdict: ✅ All 4 Gates Pass
 
-Mobile PDF generation is OPERATIONAL. The mobile path uses the same `generateAndDownloadMenuPdf` function as desktop.
+Mobile PDF generation is OPERATIONAL. The mobile path uses the same `generateMenuPdf()` and `downloadPdf()` functions as desktop.
 
 ---
 
 ## Mobile Implementation Status
 
 ### Existing Mobile Entry Point
-`src/components/mobile/screens/MobileShareScreen.tsx` — PDF download already implemented.
+`src/components/mobile/screens/MobileShareScreen.tsx` — PDF download is available in the mobile Share tab under **Print & downloads**.
 
-Current mobile call (lines ~217–227):
+Current mobile path:
 ```typescript
-const { generateAndDownloadMenuPdf } = await import('@lib/export/menuPdfGenerator');
-await generateAndDownloadMenuPdf({
-    projectName: fullProject?.name || defaultProject?.name || 'menu',
-    storeName: storeDetails?.name || 'Menu',
-    language: fullProject?.languages?.[0] || 'en',
-    menuUrl,
-    currency: storeDetails?.currencySymbol || '',
-    showDescriptions: true,
-    items,
-    categories,
-});
+MobileShareScreen
+  -> selected project cache / refreshCachedProject(projectId)
+  -> generateMenuPdf()
+  -> downloadPdf()
 ```
 
-### v2.1 Status
-The mobile screen still uses `generateAndDownloadMenuPdf` (the backward-compatible wrapper). This is correct behavior — the same professional bistro layout is generated on mobile as on desktop. No mobile-specific layout changes needed.
+### v2.2 Status
+The mobile screen uses the same `generateMenuPdf()` and `downloadPdf()` functions as desktop. It reads the selected project's `extractedData` only when the owner taps Menu PDF, then generates the PDF client-side.
 
 ### Known Mobile Behavior
 - iOS Safari: PDF opens in browser viewer (then share/save)
@@ -76,6 +69,6 @@ The mobile screen still uses `generateAndDownloadMenuPdf` (the backward-compatib
 
 ---
 
-## No New Mobile Work Required
+## No Further Mobile Layout Work Required
 
-The PDF generation library (`jsPDF`) runs in-browser on mobile without modification. The v2.1 layout improvements apply automatically. No new mobile components needed.
+The PDF generation library (`jsPDF`) runs in-browser on mobile without modification. The v2.2 layout applies automatically through the shared generator; no separate mobile PDF renderer is needed.

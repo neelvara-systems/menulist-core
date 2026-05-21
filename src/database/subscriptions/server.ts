@@ -45,13 +45,18 @@ const composeServerSubscriptionPayload = (
     options: { isNew?: boolean } = {},
 ) => {
     const now = admin.firestore.Timestamp.now();
+    const productId = data.productId ?? data.pId ?? DEFAULT_PRODUCT_ID;
+    const tenantId = data.tId ?? data.tenantId ?? (options.isNew ? ECOMSAI_PLATFORM_TENANT_ID : undefined);
+    const storeId = data.sId ?? data.storeId ?? (options.isNew ? ECOMSAI_PLATFORM_STORE_ID : undefined);
+    const userId = data.uId ?? data.userId ?? (options.isNew ? ECOMSAI_PLATFORM_USER_ID : undefined);
     const payload = sanitizeForAdminFirestore({
         ...data,
-        pId: data.pId ?? DEFAULT_PRODUCT_ID,
-        sId: data.sId ?? data.storeId ?? ECOMSAI_PLATFORM_STORE_ID,
-        tId: data.tId ?? data.tenantId ?? ECOMSAI_PLATFORM_TENANT_ID,
-        role: data.role ?? ECOMSAI_PLATFORM_USER_ROLE,
-        uId: data.uId ?? data.userId ?? ECOMSAI_PLATFORM_USER_ID,
+        productId,
+        pId: productId,
+        ...(storeId !== undefined ? { sId: storeId } : {}),
+        ...(tenantId !== undefined ? { tId: tenantId } : {}),
+        ...(data.role || options.isNew ? { role: data.role ?? ECOMSAI_PLATFORM_USER_ROLE } : {}),
+        ...(userId !== undefined ? { uId: userId } : {}),
         modifiedBy: data.modifiedBy ?? ECOMSAI_PLATFORM_USER_NAME,
         modifiedOn: now,
         ...(options.isNew && !data.createdOn ? { createdOn: now } : {}),

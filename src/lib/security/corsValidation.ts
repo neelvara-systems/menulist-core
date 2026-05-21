@@ -20,6 +20,7 @@ import { secureLog } from './secureLogger';
 const ALLOWED_ORIGINS = [
     process.env.NEXT_PUBLIC_APP_URL,
     'http://localhost:3000',
+    ...(process.env.NODE_ENV !== 'production' ? ['http://127.0.0.1:3000'] : []),
     PLATFORM_URL,
     DASHBOARD_URL,
 ].filter(Boolean) as string[]; // Remove undefined values

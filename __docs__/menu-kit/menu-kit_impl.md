@@ -1,8 +1,8 @@
 # Menu Kit — Implementation Blueprint
 
-**Version:** 1.3  
-**Status:** ✅ IMPLEMENTED — All code complete, feature flags ON  
-**Last Updated:** March 14, 2026 — Entrance poster, print instructions, QR hardening, placement guide enhancements  
+**Version:** 1.4
+**Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
+**Last Updated:** May 21, 2026 — Mobile Share tab print/social downloads and 9-asset ZIP count verified
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -14,13 +14,13 @@ Menu Kit is **100% client-side**. No server endpoints. No Firebase writes. No st
 ```
 Owner clicks "Download Menu Kit"
     ↓
-Client generates 7 files using:
+Client generates 9 asset files using:
     - jsPDF (tent card PDF, entrance poster PDF)
     - Canvas API (sticker PNG, social images, placement guide)
     - qrcode npm package (QR codes)
     - UTM-tagged URLs per surface (if ENABLE_MENU_KIT_UTM)
     ↓
-JSZip bundles into single ZIP (7 assets + PRINT_INSTRUCTIONS.txt)
+JSZip bundles into single ZIP (9 assets + PRINT_INSTRUCTIONS.txt)
     ↓
 Browser downloads ZIP + GA4 event tracked
     ↓
@@ -311,7 +311,7 @@ npm install jszip
 ```
 
 **Package:** `jszip` — ~100KB gzipped. Widely used, well-maintained.
-**Purpose:** Bundle 6 files into single ZIP download.
+**Purpose:** Bundle 9 files into single ZIP download.
 **Alternative considered:** Individual file downloads. Rejected because 6 separate downloads is bad UX.
 
 ---
@@ -335,7 +335,7 @@ npm install jszip
 
 1. Open Share Modal for any project
 2. Click "Download Menu Kit"
-3. Verify ZIP contains 7 asset files + PRINT_INSTRUCTIONS.txt
+3. Verify ZIP contains 9 asset files + PRINT_INSTRUCTIONS.txt
 4. Open each file — verify store name, QR code, layout
 5. Scan QR from tent card PDF → should open menu
 6. Scan QR from sticker PNG → should open menu
@@ -363,7 +363,7 @@ npm install jszip
 6. **Create orchestrator** (`menuKitGenerator.ts`)
 7. **Create UI component** (`MenuKitSection.tsx`)
 8. **Integrate into Share Modal**
-9. **Test all 6 assets + ZIP download**
+9. **Test all 9 assets + ZIP download**
 
 ---
 
@@ -401,7 +401,7 @@ npm install jszip
 
 ---
 
-**Document Signature:** Implementation Blueprint  
-**Created:** February 21, 2026  
-**Last Updated:** March 14, 2026  
+**Document Signature:** Implementation Blueprint
+**Created:** February 21, 2026
+**Last Updated:** March 14, 2026
 **Review:** Implementation complete — all code matches spec. Parity audit passed.

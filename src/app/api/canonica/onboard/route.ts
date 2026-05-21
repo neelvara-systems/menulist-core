@@ -588,6 +588,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const price = currency === 'USD' ? plan.priceUSD.price : plan.priceINR.price;
             const monthlyCredits = currency === 'USD' ? plan.priceUSD.monthlyCredits : plan.priceINR.monthlyCredits;
             const razorpayPlanId = await getOrCreateRazorpayPlan({
+                productId: PRODUCT_IDS.CANONICA,
                 price,
                 currency,
                 interval,
@@ -602,9 +603,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 quantity: 1,
                 notes: {
                     productId: PRODUCT_IDS.CANONICA,
+                    pId: PRODUCT_IDS.CANONICA,
                     tenantId: result.tenantId,
                     storeId: result.storeId,
+                    tId: result.tenantId,
+                    sId: result.storeId,
                     userId,
+                    uId: userId,
                     userType: 'B2B',
                     planId: plan.planId,
                     interval,

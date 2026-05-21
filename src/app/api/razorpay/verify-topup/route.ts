@@ -273,6 +273,8 @@ export const POST = withAuth(async (request, session) => {
         });
 
         const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(internalSub.id);
+        const subscriptionTenantId = Number(internalSub.tenantId ?? internalSub.tId ?? tenantId);
+        const subscriptionStoreId = Number(internalSub.storeId ?? internalSub.sId ?? storeId);
         const transactionResult = await billingDb.runTransaction(async (tx) => {
             const [topupSnap, subscriptionSnap] = await Promise.all([
                 tx.get(topupRef),
@@ -302,6 +304,12 @@ export const POST = withAuth(async (request, session) => {
 
             tx.set(subscriptionRef, {
                 topUpCredits: newBalance,
+                productId,
+                pId: productId,
+                tenantId: subscriptionTenantId,
+                storeId: subscriptionStoreId,
+                tId: subscriptionTenantId,
+                sId: subscriptionStoreId,
                 modifiedOn: serverNow,
             }, { merge: true });
             tx.set(topupRef, {

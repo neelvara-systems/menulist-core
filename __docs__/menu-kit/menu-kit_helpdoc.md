@@ -39,7 +39,7 @@ All files already have your restaurant name and QR code. No editing needed.
 2. Click **Share**
 3. Click **Download Menu Kit**
 4. A ZIP file downloads to your device
-5. Open the ZIP — all 6 files are inside
+5. Open the ZIP — all 9 asset files are inside
 
 ---
 

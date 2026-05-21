@@ -1,7 +1,8 @@
 # Menu Kit — Mobile Support Assessment
 
-**Version:** 1.0  
-**Status:** ✅ IMPLEMENTED — Desktop ZIP flow complete, mobile Web Share API ready  
+**Version:** 1.1
+**Status:** ✅ IMPLEMENTED — Desktop ZIP flow complete, mobile Share tab assets live
+**Last Updated:** May 21, 2026
 **Companion:** `menu-kit_spec.md`
 
 ---
@@ -44,7 +45,7 @@ Menu Kit is a strong mobile candidate because its primary output (social images)
 
 ### ZIP vs Individual Downloads
 
-On desktop, ZIP bundle makes sense (6 files in one download).
+On desktop, ZIP bundle makes sense (9 asset files in one download).
 On mobile, ZIP is awkward — users can't easily open ZIPs on many phones.
 
 **Mobile approach:** Instead of ZIP, show individual share/download buttons per asset. Use Web Share API for direct sharing to WhatsApp/Instagram.
@@ -97,14 +98,29 @@ All buttons must be minimum 44px height (ICP compliance). Large, clear, one acti
 
 ---
 
+## Current Mobile Implementation
+
+`src/components/mobile/screens/MobileShareScreen.tsx` now exposes Menu Kit under **Print & downloads**:
+
+- Complete Menu Kit ZIP
+- Table Tent
+- Counter Sticker
+- Entrance Poster
+- Feedback QR when feedback is enabled
+- Instagram Story
+- WhatsApp Status
+- Google Maps image
+
+Print files download directly. Social files use the Web Share API when available and fall back to file download.
+
 ## Mobile Implementation Notes
 
 1. Detect mobile via `navigator.share` availability (not user agent)
-2. If mobile: show individual share buttons with Web Share API
-3. If desktop: show "Download Menu Kit" ZIP button
+2. If mobile: show the complete ZIP plus individual print/social asset buttons
+3. If desktop: show "Download Menu Kit" ZIP button, with share buttons where the browser supports file sharing
 4. Both paths use same generator functions — only the delivery mechanism differs
 
 ---
 
-**Document Signature:** Mobile Support Assessment  
+**Document Signature:** Mobile Support Assessment
 **Created:** February 21, 2026

@@ -101,13 +101,16 @@ const productDocPayload = (
     options: { isNew?: boolean } = {},
 ) => {
     const now = admin.firestore.Timestamp.now();
+    const tenantId = data.tId ?? data.tenantId;
+    const storeId = data.sId ?? data.storeId;
+    const userId = data.uId ?? data.userId;
     return sanitizeForAdminFirestore({
         ...data,
         pId: data.pId ?? productId,
         productId: data.productId ?? productId,
-        sId: data.sId ?? data.storeId,
-        tId: data.tId ?? data.tenantId,
-        uId: data.uId ?? data.userId,
+        ...(storeId !== undefined ? { sId: storeId } : {}),
+        ...(tenantId !== undefined ? { tId: tenantId } : {}),
+        ...(userId !== undefined ? { uId: userId } : {}),
         modifiedOn: now,
         ...(options.isNew && !data.createdOn ? { createdOn: now } : {}),
         ...(options.isNew && !data.createdBy ? { createdBy: data.name || data.email || 'Billing' } : {}),

@@ -1,6 +1,7 @@
 # Use MenuList — Mobile Support
 
-> **Version:** 1.0
+> **Version:** 1.1
+> **Last Updated:** May 21, 2026
 
 ## Feature Admission Test
 
@@ -16,8 +17,8 @@
 ## Mobile Architecture
 
 - Desktop: full `UseMenuList` page with asset generation, guides, and broader distribution tooling
-- Mobile: dedicated `MobileShareScreen.tsx` optimized for fast in-service actions
-- Shared logic: same DAL/data sources for project links, OBP links, feedback links, and screen URLs
+- Mobile: dedicated `MobileShareScreen.tsx` optimized for fast in-service actions, mobile PDF download, and Menu Kit asset downloads
+- Shared logic: same DAL/data sources for project links, OBP links, feedback links, selected project data, PDF generation, and Menu Kit generation
 
 ## Mobile UX Requirements
 
@@ -30,13 +31,17 @@
 
 ## Current Mobile Contract
 
-Mobile prioritizes the highest-frequency sharing actions:
+Mobile prioritizes the highest-frequency sharing and in-service print actions:
 - copy/open main menu link
 - copy/open direct project link
 - copy/open feedback link
+- download the selected menu PDF
+- download the complete Menu Kit ZIP
+- download/share Menu Kit print and social assets: table tent, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image
+- download feedback QR when feedback is enabled
 - digital screen links
 - menu presence monitor
 - customer communication kit
 - project switching for multi-project stores
 
-Desktop remains the richer distribution workspace for print assets, full guides, and bulk download flows.
+Desktop remains the richer distribution workspace for full guides, screen setup details, and broader output-center context.
