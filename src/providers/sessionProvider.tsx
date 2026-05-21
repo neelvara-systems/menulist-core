@@ -127,7 +127,7 @@ export default function SessionProvider({ children, session }: Props) {
         || (isPlatformSession && isStoreIndependentRoute)
         || (isResellerSession && (normalizedPathname === '/reseller' || normalizedPathname.startsWith('/reseller/')))
     );
-    const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData && !isCanonicaRoute;
+    const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData;
 
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string>();
@@ -237,12 +237,12 @@ export default function SessionProvider({ children, session }: Props) {
             console.info('[MenuList session debug]', debugSession);
         }
 
-        if (effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId && !firebaseAuthReady) {
+        if (isCanonicaRoute) {
+            setActiveSubscriptionLoading(false);
             return;
         }
 
-        if (isCanonicaRoute) {
-            setActiveSubscriptionLoading(false);
+        if (effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId && !firebaseAuthReady) {
             return;
         }
 

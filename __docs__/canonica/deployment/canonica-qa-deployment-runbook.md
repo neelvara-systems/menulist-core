@@ -257,12 +257,12 @@ curl -sS -X POST \
   https://us-central1-canonica-qa.cloudfunctions.net/triggerCanonicaNightly
 ```
 
-Expected QA result while `ENABLE_CANONICA_NIGHTLY=false`:
+Expected QA result when the code default `ENABLE_CANONICA_NIGHTLY=true` is deployed and no eligible tenant has `hasEntities=true`:
 
 ```json
 {
   "status": "skipped",
-  "enabled": false,
+  "enabled": true,
   "trigger": "manual"
 }
 ```
@@ -271,9 +271,9 @@ The manual trigger must also write a matching document under `canonica_scheduler
 
 - `product: "canonica"`
 - `trigger: "manual"`
-- `status: "skipped"`
+- `status: "skipped"` when no eligible tenants exist, otherwise `success` or `partial`
 - `phase: "completed"`
-- `enabled: false`
+- `enabled: true`
 
 ## Local Development Notes
 
@@ -312,8 +312,8 @@ Before production launch on `canonica.app`:
 6. Create production `CANONICA_CRON_SECRET` in Secret Manager.
 7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-canonica.json` against the production Canonica project.
 8. Run the manual scheduler smoke test and verify the `canonica_schedulerRunLogs/{runLogId}` document.
-9. Keep `ENABLE_CANONICA_NIGHTLY=false` until production tenant data and alerts are verified.
-10. Enable Canonica feature flags one by one and verify logs/cost after each change.
+9. Confirm the target branch's Canonica function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap; expensive optional friction, graph, workflow, ticket-resolution, and predictive flows remain disabled.
+10. Verify manual scheduler logs, tenant summary discovery, and cost expectations before sending production customer traffic.
 
 ## Production Warnings
 
@@ -321,4 +321,4 @@ Before production launch on `canonica.app`:
 - Do not store service account JSON or secret values in docs or Git.
 - Do not point production Canonica at the MenuList Firebase project.
 - Do not add Canonica scheduled functions to MenuList functions; Canonica scheduled work stays in `functions-canonica/`.
-- Do not enable `ENABLE_CANONICA_NIGHTLY` until manual trigger logs, tenant summary discovery, and cost expectations are verified in production.
+- Do not send production customer traffic until manual trigger logs, tenant summary discovery, and cost expectations are verified in production.

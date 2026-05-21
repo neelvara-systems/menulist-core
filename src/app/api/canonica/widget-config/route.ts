@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { getWidgetRuntimeStatusFromStoreData } from '@lib/canonica/widgetRuntimeStatus';
 import {
     CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
     parseWidgetConfigSaveInput,
@@ -26,8 +27,10 @@ import { withAuth } from '../../../../middleware/auth';
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
     const canonicaScope = resolveCanonicaSessionScope(session);
-    const tenantId = Number(canonicaScope?.tenantId ?? session?.tId ?? session?.user?.tenantId);
-    const storeId = Number(canonicaScope?.storeId ?? session?.sId ?? session?.user?.storeId);
+    if (!canonicaScope) return null;
+
+    const tenantId = Number(canonicaScope.tenantId);
+    const storeId = Number(canonicaScope.storeId);
     if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return null;
     return { tenantId, storeId };
 };
@@ -48,6 +51,7 @@ const buildConfigResponse = (storeData: Record<string, any>) => ({
         || storeData.publicApi?.apiKey
     ),
     configVersion: Number(storeData.widgetConfigVersion || 0),
+    runtimeStatus: getWidgetRuntimeStatusFromStoreData(storeData),
 });
 
 const widgetConfigEquals = (

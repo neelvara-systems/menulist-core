@@ -2238,7 +2238,7 @@
         "Surfaces": {
             "title": "One menu for the places customers check.",
             "highlight": "places customers check",
-            "subtitle": "The public output is the proof. MenuList connects the official page, QR menu, public link, customer actions, saved shortcut, discovery source, activity signals, and customer feedback loop around the same approved menu.",
+            "subtitle": "The public output is the proof. The official page, QR menu, share link, saved shortcut, customer actions, activity signals, and issue reports all point back to the same approved menu.",
             "surface0Title": "QR menu",
             "surface0Subtitle": "Customers scan and see your current menu",
             "surface0Desc": "Items, prices, and photos from the current published menu.",
@@ -2260,9 +2260,9 @@
             "surface6Title": "Simple activity signals",
             "surface6Subtitle": "Usage and freshness without another dashboard",
             "surface6Desc": "See whether customers open the menu, use QR or links, and reach the latest approved version.",
-            "surface7Title": "Customer feedback loop",
-            "surface7Subtitle": "Customers can flag wrong public details",
-            "surface7Desc": "Customers can report wrong prices, missing items, outdated details, or menu issues. The owner reviews the feedback and corrects the same approved source.",
+            "surface7Title": "Customer-reported issues",
+            "surface7Subtitle": "Wrong price, missing item, or outdated detail",
+            "surface7Desc": "Customers can report menu or business-detail issues from the public view. You review the feedback and correct the approved source.",
             "soon": "Pronto",
             "bottomCaption": "The goal is not more links. The goal is one current menu customers can trust wherever they find you."
         },

@@ -705,6 +705,90 @@ export interface CanonicaSurfaceContentSummary {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CLIENT ACTIVATION COMMAND CENTER
+// Cost-optimized launch/readiness layer backed by compact summary docs.
+// ═══════════════════════════════════════════════════════════════
+
+export type CanonicaActivationStepStatus = 'complete' | 'attention' | 'pending' | 'optional';
+export type CanonicaActivationStage = 'setup' | 'install' | 'knowledge' | 'live';
+
+export interface CanonicaWidgetRuntimeStatus {
+    lastSeenAt?: any;
+    lastOrigin?: string | null;
+    lastPath?: string | null;
+    lastContextKey?: string | null;
+    lastFeature?: string | null;
+    lastPage?: string | null;
+    userAgentFamily?: string | null;
+    seenCount?: number;
+}
+
+export interface CanonicaActivationSubscriptionSummary {
+    id?: string | null;
+    planId?: string | null;
+    planName?: string | null;
+    status?: string | null;
+    currency?: string | null;
+    amount?: number | null;
+    isBeta?: boolean;
+    subscriptionEndDate?: any;
+}
+
+export interface CanonicaActivationStep {
+    key: string;
+    title: string;
+    description: string;
+    status: CanonicaActivationStepStatus;
+    required: boolean;
+    actionLabel?: string;
+    route?: string;
+    costNote?: string;
+}
+
+export interface CanonicaActivationSummary {
+    id?: string;
+    pId?: ProductId;
+    tId: number;
+    sId: number;
+    readinessScore: number;
+    stage: CanonicaActivationStage;
+    computedAtIso: string;
+    signature: string;
+    workspace: {
+        companyName?: string | null;
+        productName?: string | null;
+    };
+    subscription: CanonicaActivationSubscriptionSummary | null;
+    widget: {
+        hasWidgetKey: boolean;
+        keyPrefix?: string | null;
+        allowedOriginCount: number;
+        configVersion: number;
+        runtimeStatus?: CanonicaWidgetRuntimeStatus | null;
+    };
+    content: {
+        surfaceCount: number;
+        articleCount: number;
+        changelogCount: number;
+        ticketCount: number;
+        summaryGeneratedAt?: any;
+    };
+    governance: {
+        canonicalCoverageRate?: number | null;
+        canonicalCoverageTotal?: number | null;
+        trustScore?: number | null;
+    };
+    steps: CanonicaActivationStep[];
+    readModel: {
+        firestoreReads: number;
+        firestoreWrites: string;
+        source: string;
+        legacySubscriptionFallbackUsed?: boolean;
+        legacySubscriptionFallbackReadCap?: number;
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // PRODUCT FRICTION INTELLIGENCE (Expansion Item #5)
 // Nightly friction aggregation + weekly AI insight generation.
 // Feature-flagged: ENABLE_CANONICA_FRICTION_INTELLIGENCE

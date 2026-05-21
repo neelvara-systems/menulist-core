@@ -70,7 +70,7 @@ export default function CanonicaHeader({ showMenuButton = false, onMenuClick }: 
 
     const handleReturn = () => {
         clearForceDesktopMode();
-        router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.DASHBOARD, currentHostname));
+        router.push(toCanonicaDashboardRoute(CANONICA_ROUTES.ACTIVATION, currentHostname));
     };
 
     return (

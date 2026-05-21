@@ -179,8 +179,8 @@ function OnboardingFormInner() {
                         </ol>
                     </div>
 
-                    <a href="/canonica/dashboard" style={styles.primaryBtn}>
-                        Go to Dashboard
+                    <a href="/canonica/activation" style={styles.primaryBtn}>
+                        Open Activation
                     </a>
                 </div>
             )}

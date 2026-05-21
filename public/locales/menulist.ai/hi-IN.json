@@ -2427,7 +2427,7 @@
         "Surfaces": {
             "title": "एक menu उन जगहों के लिए जहाँ ग्राहक देखते हैं।",
             "highlight": "जहाँ ग्राहक देखते हैं",
-            "subtitle": "Public output ही proof है। MenuList official page, QR menu, public link, customer actions, saved shortcut, discovery source, activity signals और customer feedback loop को उसी approved menu से जोड़ता है।",
+            "subtitle": "Public output ही proof है। Official page, QR menu, share link, saved shortcut, customer actions, activity signals और issue reports सभी उसी approved menu से जुड़े रहते हैं।",
             "surface0Title": "QR मेन्यू",
             "surface0Subtitle": "ग्राहक स्कैन करें और अपडेटेड मेन्यू देखें",
             "surface0Desc": "Items, prices और photos current published menu से.",
@@ -2449,9 +2449,9 @@
             "surface6Title": "Simple activity signals",
             "surface6Subtitle": "Another dashboard के बिना usage और freshness",
             "surface6Desc": "देखें customers menu खोल रहे हैं या नहीं, QR/link use हो रहा है या नहीं, और latest approved version तक पहुंच रहे हैं या नहीं।",
-            "surface7Title": "Customer feedback loop",
-            "surface7Subtitle": "Customers wrong public details flag कर सकते हैं",
-            "surface7Desc": "Customers wrong prices, missing items, outdated details या menu issues report कर सकते हैं। Owner feedback review करके उसी approved source को correct करता है।",
+            "surface7Title": "Customer-reported issues",
+            "surface7Subtitle": "Wrong price, missing item या outdated detail",
+            "surface7Desc": "Customers public view से menu या business-detail issues report कर सकते हैं। आप feedback review करके approved source correct करते हैं।",
             "soon": "जल्द",
             "bottomCaption": "Goal ज्यादा links नहीं है। Goal एक ऐसा current menu है जिस पर customers भरोसा कर सकें।"
         },

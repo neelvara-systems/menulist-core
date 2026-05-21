@@ -1861,7 +1861,7 @@ export const FEATURE_FLAGS = {
      * Pillar 1 of 5 — Foundation layer. Everything else depends on this.
      * @see __docs__/canonica/doctrine/01-core-doctrine.md
      */
-    ENABLE_CANONICA_ONTOLOGY: false,
+    ENABLE_CANONICA_ONTOLOGY: true,
 
     /**
      * Canonica Canonical Answer Engine
@@ -1872,7 +1872,7 @@ export const FEATURE_FLAGS = {
      * Pillar 2 of 5 — Governed, versioned, scoped answer assets.
      * Requires: ENABLE_CANONICA_ONTOLOGY = true
      */
-    ENABLE_CANONICA_CANONICAL_ANSWERS: false,
+    ENABLE_CANONICA_CANONICAL_ANSWERS: true,
 
     /**
      * Canonica Drift Detection Engine
@@ -1883,7 +1883,7 @@ export const FEATURE_FLAGS = {
      * Pillar 3 of 5 — Deterministic, rule-driven governance.
      * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
      */
-    ENABLE_CANONICA_DRIFT_DETECTION: false,
+    ENABLE_CANONICA_DRIFT_DETECTION: true,
 
     /**
      * Canonica Signal Mutation Engine
@@ -1894,7 +1894,7 @@ export const FEATURE_FLAGS = {
      * Pillar 4 of 5 — Self-improving knowledge layer.
      * Requires: ENABLE_CANONICA_DRIFT_DETECTION = true
      */
-    ENABLE_CANONICA_SIGNAL_MUTATION: false,
+    ENABLE_CANONICA_SIGNAL_MUTATION: true,
 
     /**
      * Canonica Public API
@@ -1920,6 +1920,22 @@ export const FEATURE_FLAGS = {
      * @see __docs__/canonica/help-widget/
      */
     ENABLE_CANONICA_WIDGET: true,
+
+    /**
+     * Canonica Client Activation Command Center
+     *
+     * true: Canonica clients get a launch/readiness home that shows workspace,
+     *       license, knowledge, product surfaces, widget install, context, and
+     *       support signal setup from compact summary docs.
+     * false: Canonica clients use the standard governance dashboard directly.
+     *
+     * Cost model: reads existing store + platformSummary docs; no broad KB,
+     * changelog, ticket, or signal scans on page load. Runtime widget telemetry
+     * is throttled onto the existing store doc.
+     *
+     * @see __docs__/canonica/client-activation-command-center/
+     */
+    ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER: true,
 
     /**
      * Canonica Email Notifications
@@ -1948,7 +1964,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_ONTOLOGY + ENABLE_CANONICA_CANONICAL_ANSWERS = true
      * @see __docs__/canonica/canonica-build-priority-roadmap.md Phase 3
      */
-    ENABLE_CANONICA_GOVERNANCE_UI: false,
+    ENABLE_CANONICA_GOVERNANCE_UI: true,
 
     /**
      * Canonica Signal Quality Improvements
@@ -2054,7 +2070,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
      * @see __docs__/canonica/instant-response-infrastructure/
      */
-    ENABLE_CANONICA_INSTANT_CACHE: false,
+    ENABLE_CANONICA_INSTANT_CACHE: true,
 
     /**
      * Canonica Automatic Knowledge Creation (AI Draft Generation)
@@ -2075,7 +2091,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
      * @see __docs__/canonica/automatic-knowledge-creation/
      */
-    ENABLE_CANONICA_AUTO_KNOWLEDGE: false,
+    ENABLE_CANONICA_AUTO_KNOWLEDGE: true,
 
     /**
      * Canonica Product Friction Intelligence
@@ -2108,7 +2124,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_ONTOLOGY = true + ENABLE_CANONICA_CANONICAL_ANSWERS = true
      * @see __docs__/canonica/founder-onboarding/
      */
-    ENABLE_CANONICA_FOUNDER_ONBOARDING: false,
+    ENABLE_CANONICA_FOUNDER_ONBOARDING: true,
 
     /**
      * Canonica External Workflow Integrations
@@ -2177,7 +2193,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_ONTOLOGY + ENABLE_CANONICA_CANONICAL_ANSWERS + ENABLE_CANONICA_DRIFT_DETECTION = true
      * @see __docs__/canonica/founder-trust-layer/
      */
-    ENABLE_CANONICA_TRUST_METRICS: false,
+    ENABLE_CANONICA_TRUST_METRICS: true,
 
     /**
      * Canonica Knowledge Graph Exploitation (Multi-Entity Retrieval)

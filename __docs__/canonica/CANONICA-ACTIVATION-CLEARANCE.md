@@ -188,7 +188,7 @@ INTEGRATION POINTS (existing system):
 
 **When:** Every day at 3:00 AM UTC, exported from `functions-canonica/src/index.ts` as `canonicaNightly`.
 
-**Feature flag:** `ENABLE_CANONICA_NIGHTLY` in `functions-canonica/src/constants/features.ts` (default: false)
+**Feature flag:** `ENABLE_CANONICA_NIGHTLY` in `functions-canonica/src/constants/features.ts` (ready-to-use default: true)
 
 **What happens:**
 
@@ -550,13 +550,12 @@ Every integration point is designed to fail silently:
 
 ### Recommended Next Steps
 
-1. **Enable `ENABLE_CANONICA_NIGHTLY`** in `functions-canonica/src/constants/features.ts` — Start the nightly operational loop
-2. **Enable `ENABLE_CANONICA_SIGNAL_MUTATION`** — Start collecting signals (zero risk)
-3. **Run entity extraction** on existing KB articles — Bootstrap the ontology
-4. **Approve entities via promoteCandidate()** — Creates entities + search index
-5. **Create 5-10 canonical answers** for highest-traffic entities — Test retrieval
-6. **Enable `ENABLE_CANONICA_CANONICAL_ANSWERS`** — Monitor canonical hit rate via coverage KPI
-7. **Enable `ENABLE_CANONICA_DRIFT_DETECTION`** — Monitor drift flags
+1. **Run the manual scheduler smoke test** — Verify the deployed function writes `canonica_schedulerRunLogs/{runLogId}` and discovers tenants from `platformSummary/canonicaTenantsSummary`.
+2. **Complete Launch Setup for the first client** — Import KB content, map product surfaces, configure widget allowed origins, and verify widget runtime context.
+3. **Review generated entity candidates and draft canonical answers** — Use `/canonica/governance?tab=candidates` and `/canonica/governance?tab=signal-queue`.
+4. **Publish 5-10 canonical answers** for highest-traffic entities — Confirm canonical retrieval and cache-version behavior.
+5. **Monitor coverage, drift, and trust metrics** — Use `/canonica/dashboard` and `/canonica/governance?tab=trust`.
+6. **Keep optional expansion flags disabled** until usage justifies their cost — friction, graph, workflow integrations, ticket-resolution extraction, and predictive support remain non-core.
 
 ---
 
@@ -651,7 +650,7 @@ Every integration point is designed to fail silently:
 | 1   | TypeScript compiles with 0 errors (dashboard)                             | ✅     |
 | 2   | TypeScript compiles with 0 errors (functions)                             | ✅     |
 | 3   | All 14 Canonica DB collections defined in all database constant mirrors    | ✅     |
-| 4   | All 10 feature flags defined and set to FALSE                             | ✅     |
+| 4   | Core feature flags defined; ready-to-use defaults enable ontology, canonical answers, drift, signal mutation, activation, governance UI, instant cache, capped auto knowledge, capped founder onboarding, nightly, and trust metrics | ✅     |
 | 5   | All 33 Canonica Firestore query/vector indexes mirrored in shared and dedicated index files | ✅     |
 | 6   | Nightly job exported from functions-canonica/src/index.ts                 | ✅     |
 | 7   | Signal emitter wired to ticket creation (fire-and-forget)                 | ✅     |
@@ -680,7 +679,7 @@ Every integration point is designed to fail silently:
 
 **Verdict: CLEARED FOR CONTROLLED EXPERIMENT (Operational Loop Complete)**
 
-All flags OFF = zero impact on production. Enable one pillar at a time, starting with `ENABLE_CANONICA_NIGHTLY` in `functions-canonica` (CF) + `ENABLE_CANONICA_SIGNAL_MUTATION` (client).
+Ready-to-use defaults now keep the core operational loop on. Optional high-expansion flows remain disabled until usage justifies their additional cost.
 
 > **Important:** Cost estimates in Section 10 are average-case. For worst-case projections (300+ canonical answers per tenant, multi-tenant scaling), see `canonica-activation-experiment.md` Section 8.
 

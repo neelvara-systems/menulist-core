@@ -22,10 +22,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const scope = resolveCanonicaSessionScope(session) || {
-        tenantId: Number(session?.tId || session?.user?.tenantId),
-        storeId: Number(session?.sId || session?.user?.storeId),
-    };
+    const scope = resolveCanonicaSessionScope(session);
     const tenantId = Number(scope?.tenantId);
     const storeId = Number(scope?.storeId);
     if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {

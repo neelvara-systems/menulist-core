@@ -54,7 +54,7 @@ ENABLE_CANONICA_ONTOLOGY (Pillar 1) — all OFF
               └── ENABLE_CANONICA_PUBLIC_API (Pillar 5)
 ```
 
-All flags currently `false`. Correct for pre-activation state.
+Core ready-to-use flags are now enabled for Canonica activation. Public API and higher-cost optional expansion flags remain disabled until rollout gates are met.
 
 ---
 

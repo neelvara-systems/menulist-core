@@ -291,6 +291,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ? `canonica_beta_${result.tenantId}_${result.storeId}_${Date.now()}`
             : `canonica_${result.tenantId}_${result.storeId}_${Date.now()}`;
         let razorpaySubscription: any = null;
+        let subscriptionSummary: Record<string, any> | null = null;
 
         if (isBeta) {
             // Beta: Create free subscription directly (no Razorpay)
@@ -342,6 +343,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             };
 
             await createCanonicaSubscription(db, subscriptionId, subscriptionPayload);
+            subscriptionSummary = {
+                id: subscriptionId,
+                providerSubscriptionId: subscriptionId,
+                planId: 'canonica_beta',
+                planName: 'Canonica Beta',
+                status: 'active',
+                currency: 'INR',
+                amount: 0,
+                isBeta: true,
+                subscriptionEndDate: admin.firestore.Timestamp.fromDate(betaEnd),
+                monthlyCreditsAllowance: plan.priceINR.monthlyCredits,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
         } else {
             const { getOrCreateRazorpayPlan } = await import('@lib/razorpay/plan-handler');
             const { razorpayClient } = await import('@lib/razorpay/razorpay');
@@ -423,11 +437,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             };
 
             await createCanonicaSubscription(db, razorpaySubscription.id, subscriptionPayload);
+            subscriptionSummary = {
+                id: razorpaySubscription.id,
+                providerSubscriptionId: razorpaySubscription.id,
+                planId: plan.planId,
+                planName: plan.name,
+                status: 'pending',
+                currency,
+                amount: price,
+                isBeta: false,
+                subscriptionEndDate: null,
+                monthlyCreditsAllowance: monthlyCredits,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
         }
 
         // 7. Generate API key for the widget
         const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
         await db.collection(DB_COLLECTIONS.STORES).doc(String(result.storeId)).update({
+            canonicaSubscription: subscriptionSummary,
             canonicaWidgetApi: {
                 apiKeyHash: hashApiKey(apiKey),
                 keyPrefix: apiKey.slice(0, 7),

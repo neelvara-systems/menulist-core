@@ -14,7 +14,7 @@
 
 import { useAppSelector } from '@hook/useAppSelector';
 import {
-    CANONICA_ADMIN_ROUTES,
+    CANONICA_MANAGEMENT_ROUTES,
     CANONICA_ROUTES,
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
@@ -42,19 +42,19 @@ export default function CanonicaDashboardLayout({ children }: { children: React.
     const isDesktop = screens.lg === true;
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const layoutBackground = isDarkMode ? '#141414' : '#f5f5f5';
-    const canUsePlatformSurfaces = canUseCanonicaManagement(session);
+    const canUseManagementSurfaces = canUseCanonicaManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
     const isAdminRoute = useMemo(() => (
-        CANONICA_ADMIN_ROUTES.some((route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`))
+        CANONICA_MANAGEMENT_ROUTES.some((route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`))
     ), [normalizedPathname]);
 
     useEffect(() => {
         if (status === 'loading') return;
-        if (isAdminRoute && !canUsePlatformSurfaces) {
+        if (isAdminRoute && !canUseManagementSurfaces) {
             router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
         }
-    }, [canUsePlatformSurfaces, currentHostname, isAdminRoute, router, status]);
+    }, [canUseManagementSurfaces, currentHostname, isAdminRoute, router, status]);
 
     return (
         <AntdThemeProvider>
@@ -90,7 +90,7 @@ export default function CanonicaDashboardLayout({ children }: { children: React.
                                 background: layoutBackground,
                             }}
                         >
-                            {status === 'loading' || (isAdminRoute && !canUsePlatformSurfaces) ? null : children}
+                            {status === 'loading' || (isAdminRoute && !canUseManagementSurfaces) ? null : children}
                         </Content>
                     </Layout>
                 </Layout>

@@ -63,6 +63,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Rate limit exceeded. Try again later.' }, { status: 429 });
         }
 
+        const sessionScope = resolveCanonicaSessionScope(session);
+        if (!sessionScope) {
+            return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        }
+
         // Fetch article
         const db = canonicaFirestoreAdmin;
         const articleDoc = await db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(articleId).get();
@@ -73,10 +78,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const article = articleDoc.data()!;
         const articleTenantId = Number(article.tId ?? article.tenantId);
         const articleStoreId = Number(article.sId ?? article.storeId);
-        const sessionScope = resolveCanonicaSessionScope(session) || {
-            tenantId: Number(session.tId),
-            storeId: Number(session.sId),
-        };
         if (
             !Number.isFinite(articleTenantId) ||
             !Number.isFinite(articleStoreId) ||

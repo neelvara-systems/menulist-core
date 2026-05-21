@@ -78,7 +78,7 @@ export default function SurfacesSection() {
                 style={{
                   display: 'flex',
                   gap: 'var(--ws-space-4)',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   height: '100%',
                 }}
               >

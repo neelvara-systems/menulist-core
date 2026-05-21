@@ -25,8 +25,8 @@ const TenantSummarySyncSchema = z.object({
 
 const getSessionScope = (session: any) => {
     const canonicaScope = resolveCanonicaSessionScope(session);
-    const tenantId = Number(canonicaScope?.tenantId ?? session?.tId ?? session?.tenantId ?? session?.user?.tenantId);
-    const storeId = Number(canonicaScope?.storeId ?? session?.sId ?? session?.storeId ?? session?.user?.storeId);
+    const tenantId = Number(canonicaScope?.tenantId);
+    const storeId = Number(canonicaScope?.storeId);
     const platformRole = String(session?.platformRole ?? session?.user?.platformRole ?? '').toUpperCase();
 
     return {

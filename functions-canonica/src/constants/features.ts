@@ -28,7 +28,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/doctrine/05-architecture-evolution.md
      */
-    ENABLE_CANONICA_NIGHTLY: false,
+    ENABLE_CANONICA_NIGHTLY: true,
 
     /**
      * Canonica Automatic Knowledge Creation (AI Draft Generation)
@@ -41,7 +41,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/automatic-knowledge-creation/
      */
-    ENABLE_CANONICA_AUTO_KNOWLEDGE: false,
+    ENABLE_CANONICA_AUTO_KNOWLEDGE: true,
 
     /**
      * Canonica Product Friction Intelligence (nightly + weekly)
@@ -64,7 +64,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/founder-trust-layer/
      */
-    ENABLE_CANONICA_TRUST_METRICS: false,
+    ENABLE_CANONICA_TRUST_METRICS: true,
 
     /**
      * Canonica Founder Onboarding (Knowledge Bootstrap Engine)
@@ -77,7 +77,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/founder-onboarding/
      */
-    ENABLE_CANONICA_FOUNDER_ONBOARDING: false,
+    ENABLE_CANONICA_FOUNDER_ONBOARDING: true,
 
     /**
      * Canonica External Workflow Integrations

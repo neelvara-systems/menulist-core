@@ -23,6 +23,20 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - **Search History Cache** — Full response caching for repeated queries
 - **AI Intelligence Layer** — Cloud Functions for feedback intelligence, KB quality, weekly narratives
 
+Canonica is now maintained as a separate Support Knowledge Control Plane product. MenuList is only a client/test host for shared support surfaces; Canonica-owned dashboard, onboarding, widget, scheduler, and Firebase data stay under Canonica routes, constants, flags, and product-scoped session data.
+
+## Canonica Product Operating Model
+
+Canonica dashboard navigation is structured into three client modes:
+
+| Mode | Purpose | Primary routes |
+| --- | --- | --- |
+| Launch Setup | Activate a new client workspace, import knowledge, map product surfaces, verify widget install, and review generated ontology/canonical answer drafts. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget` |
+| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, changelog, tickets, conversations, and widget operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/knowledge-base`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations` |
+| Knowledge Governance | Govern answer quality, product ontology, drift, signal-to-knowledge proposals, coverage, and trust metrics. | `/canonica/dashboard`, `/canonica/governance`, `/canonica/governance?tab=signal-queue` |
+
+The Activation Command Center reads compact summary docs only. Generated entity candidates and canonical answer drafts appear in Governance for human approval; drafts are never auto-published.
+
 ---
 
 ## Document Index
@@ -89,6 +103,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 
 ### Canonica Operator Routes
 
+- `/canonica/activation` → `src/app/(canonica)/canonica/activation/page.tsx`
 - `/canonica/dashboard` → `src/app/(canonica)/canonica/dashboard/page.tsx`
 - `/canonica/governance` → `src/app/(canonica)/canonica/governance/page.tsx`
 - `/canonica/settings` → `src/app/(canonica)/canonica/settings/page.tsx`
@@ -98,8 +113,9 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/kb-generation` → `src/app/(canonica)/canonica/kb-generation/page.tsx`
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
 - `/canonica/product-surfaces` → `src/app/(canonica)/canonica/product-surfaces/page.tsx`
+- `/canonica/widget` → `src/app/(canonica)/canonica/widget/page.tsx`
 
-The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client sessions see only the client support routes; `PLATFORM` and `PLATFORM_SUPPORT` sessions can also access operator management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
+The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client support users see only the client support routes; Canonica owner/admin/manager sessions and `PLATFORM` / `PLATFORM_SUPPORT` sessions can access management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
 ### MenuList Help Center Boundary
 
@@ -123,13 +139,14 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 - `/sites/canonica/product`, `/pricing`, `/about`, `/contact` → public site pages
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/dashboard`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/activation`.
 
 ### API Routes
 
 - `POST /api/helpCenter/search-kb` — Non-streaming RAG search
 - `POST /api/helpCenter/search-kb-stream` — Streaming RAG search (SSE)
 - `POST /api/helpCenter/article-embedding` — Generate & store article embeddings
+- `GET /api/canonica/activation/summary` — Cost-optimized client readiness summary from compact store/platformSummary docs
 - `POST /api/canonica/tenant-summary` — Authenticated server-side sync for `platformSummary/canonicaTenantsSummary` after client-side entity creation
 - `POST /api/canonica/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
 
@@ -199,18 +216,25 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | ----------------------------------- | ---------------------------------------------- | ------- | ------------------------------------------------ |
 | `ENABLE_STREAMING_RESPONSES`        | `src/config/features.ts`                       | `false` | Toggle streaming vs non-streaming RAG            |
 | `ENABLE_RATE_LIMITING`              | `src/config/features.ts`                       | `true`  | Upstash rate limiting                            |
-| `ENABLE_CANONICA_ONTOLOGY`          | `src/config/features.ts`                       | `false` | Entity extraction + ontology bootstrap           |
-| `ENABLE_CANONICA_CANONICAL_ANSWERS` | `src/config/features.ts`                       | `false` | Canonical-first retrieval + coverage KPI         |
-| `ENABLE_CANONICA_DRIFT_DETECTION`   | `src/config/features.ts`                       | `false` | 4-class drift engine                             |
-| `ENABLE_CANONICA_SIGNAL_MUTATION`   | `src/config/features.ts`                       | `false` | Signal mutation + proposal review                |
+| `ENABLE_CANONICA_ONTOLOGY`          | `src/config/features.ts`                       | `true`  | Entity extraction + ontology bootstrap           |
+| `ENABLE_CANONICA_CANONICAL_ANSWERS` | `src/config/features.ts`                       | `true`  | Canonical-first retrieval + coverage KPI         |
+| `ENABLE_CANONICA_DRIFT_DETECTION`   | `src/config/features.ts`                       | `true`  | 4-class drift engine                             |
+| `ENABLE_CANONICA_SIGNAL_MUTATION`   | `src/config/features.ts`                       | `true`  | Signal mutation + proposal review                |
 | `ENABLE_CANONICA_PUBLIC_API`        | `src/config/features.ts`                       | `false` | Public answers, entities, and signal ingestion API (Pillar 5; implemented and rollout-gated) |
 | `ENABLE_CANONICA_WIDGET`            | `src/config/features.ts`                       | `true`  | Embeddable help widget + onboarding gate         |
+| `ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER` | `src/config/features.ts`              | `true`  | Client launch/readiness home                     |
 | `ENABLE_CANONICA_NOTIFICATIONS`     | `src/config/features.ts`                       | `false` | Email notifications for ticket events            |
-| `ENABLE_CANONICA_GOVERNANCE_UI`     | `src/config/features.ts`                       | `false` | Governance hub (answer editor, drift, analytics) |
+| `ENABLE_CANONICA_GOVERNANCE_UI`     | `src/config/features.ts`                       | `true`  | Governance hub (answer editor, drift, analytics) |
 | `ENABLE_CANONICA_SIGNAL_QUALITY`    | `src/config/features.ts`                       | `false` | Severity weighting, time decay, batch queries    |
 | `ENABLE_CANONICA_WHITE_LABEL`       | `src/config/features.ts`                       | `false` | Per-tenant branding (colors, logo, company name) |
 | `ENABLE_CANONICA_MULTI_LANGUAGE`    | `src/config/features.ts`                       | `false` | Multi-language KB article translations           |
-| `ENABLE_CANONICA_NIGHTLY`           | `functions-canonica/src/constants/features.ts` | `false` | Server-side 8-step nightly batch (3:00 AM UTC)   |
+| `ENABLE_CANONICA_CONTEXT_AWARE`     | `src/config/features.ts`                       | `true`  | Route/page/workflow context-aware retrieval      |
+| `ENABLE_CANONICA_PRODUCT_SURFACES`  | `src/config/features.ts`                       | `true`  | Route/page/workflow surface mapping              |
+| `ENABLE_CANONICA_INSTANT_CACHE`     | `src/config/features.ts`                       | `true`  | Redis cache for canonical answer hits; no-op without Upstash env |
+| `ENABLE_CANONICA_AUTO_KNOWLEDGE`    | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Capped draft generation for new answer proposals |
+| `ENABLE_CANONICA_FOUNDER_ONBOARDING` | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Capped initial entity/draft bootstrap after KB publish |
+| `ENABLE_CANONICA_TRUST_METRICS`     | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Compact trust metrics summary                    |
+| `ENABLE_CANONICA_NIGHTLY`           | `functions-canonica/src/constants/features.ts` | `true`  | Server-side nightly batch (3:00 AM UTC)          |
 
 ---
 

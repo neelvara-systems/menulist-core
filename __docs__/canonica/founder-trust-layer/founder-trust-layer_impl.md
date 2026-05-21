@@ -427,14 +427,14 @@ export const getTrustMetrics = async (
 
 ```typescript
 // src/config/features.ts
-ENABLE_CANONICA_TRUST_METRICS: false,
+ENABLE_CANONICA_TRUST_METRICS: true,
 ```
 
 ### Cloud Functions
 
 ```typescript
 // functions-canonica/src/constants/features.ts
-ENABLE_CANONICA_TRUST_METRICS: false,
+ENABLE_CANONICA_TRUST_METRICS: true,
 ```
 
 ### Gate Logic

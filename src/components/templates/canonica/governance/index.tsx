@@ -15,8 +15,11 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getBrandingConfig, saveBrandingConfig } from '@database/canonica/branding';
+import EntityCandidateReview from '@/components/templates/canonica/EntityCandidateReview';
+import MutationProposalReview from '@/components/templates/canonica/MutationProposalReview';
 import { CanonicaBrandingConfig } from '@type/canonica';
 import { Empty, Grid, Tabs } from 'antd';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ComponentType } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -24,6 +27,7 @@ import {
     LuBookOpen,
     LuBoxes,
     LuFlame,
+    LuGitPullRequest,
     LuHeart,
     LuHistory,
     LuLanguages,
@@ -51,7 +55,11 @@ interface GovernanceHubProps {
 }
 
 export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) {
-    const [activeTab, setActiveTab] = useState('answers');
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const requestedTab = searchParams.get('tab');
+    const [activeTab, setActiveTab] = useState(requestedTab || 'answers');
     const [brandingConfig, setBrandingConfig] = useState<Partial<CanonicaBrandingConfig> | undefined>(undefined);
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
@@ -101,11 +109,6 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
                 children: <EntityManagementDashboard />,
             },
             {
-                key: 'drift',
-                label: tabLabel(LuShieldAlert, 'Drift Governance', 'Drift'),
-                children: <DriftDashboard />,
-            },
-            {
                 key: 'analytics',
                 label: tabLabel(LuBarChart3, 'Answer Analytics', 'Analytics'),
                 children: <AnswerUsageAnalytics />,
@@ -122,6 +125,30 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
                 children: <AnswerVersionHistory tId={tId} sId={sId} />,
             },
         ];
+
+        if (FEATURE_FLAGS.ENABLE_CANONICA_ONTOLOGY) {
+            items.push({
+                key: 'candidates',
+                label: tabLabel(LuGitPullRequest, 'Entity Candidates', 'Candidates'),
+                children: <EntityCandidateReview />,
+            });
+        }
+
+        if (FEATURE_FLAGS.ENABLE_CANONICA_DRIFT_DETECTION) {
+            items.push({
+                key: 'drift',
+                label: tabLabel(LuShieldAlert, 'Drift Governance', 'Drift'),
+                children: <DriftDashboard />,
+            });
+        }
+
+        if (FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) {
+            items.push({
+                key: 'signal-queue',
+                label: tabLabel(LuGitPullRequest, 'Signal Queue', 'Signals'),
+                children: <MutationProposalReview />,
+            });
+        }
 
         // Conditionally add feature-flagged tabs
         if (FEATURE_FLAGS.ENABLE_CANONICA_TRUST_METRICS) {
@@ -167,6 +194,19 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
         return items;
     }, [tId, sId, brandingConfig, handleSaveBranding, handleTranslateArticle, isMobile]);
 
+    useEffect(() => {
+        if (!tabItems.length) return;
+        const tabExists = tabItems.some(item => item.key === requestedTab);
+        setActiveTab(tabExists && requestedTab ? requestedTab : String(tabItems[0]?.key || 'answers'));
+    }, [requestedTab, tabItems]);
+
+    const handleTabChange = useCallback((key: string) => {
+        setActiveTab(key);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('tab', key);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }, [pathname, router, searchParams]);
+
     if (!FEATURE_FLAGS.ENABLE_CANONICA_GOVERNANCE_UI) {
         return <Empty description="Canonica Governance UI is not enabled" />;
     }
@@ -174,7 +214,7 @@ export default function GovernanceHub({ tId = 0, sId = 0 }: GovernanceHubProps) 
     return (
         <Tabs
             activeKey={activeTab}
-            onChange={setActiveTab}
+            onChange={handleTabChange}
             items={tabItems}
             type={isMobile ? 'line' : 'card'}
             size="small"

@@ -37,10 +37,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: 'Canonica widget is not enabled.' }, { status: 403 });
         }
 
-        const scope = resolveCanonicaSessionScope(session) || {
-            tenantId: Number(session.tId),
-            storeId: Number(session.sId),
-        };
+        const scope = resolveCanonicaSessionScope(session);
+        if (!scope) {
+            return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        }
+
         const { tenantId, storeId } = scope;
         if (!tenantId || !storeId) {
             return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
@@ -65,6 +66,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+        const storeSnap = await storeRef.get();
+        if (!storeSnap.exists) {
+            return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+        }
+
+        const storeTenantId = Number(storeSnap.data()?.tenantId || storeSnap.data()?.tId);
+        if (Number.isFinite(storeTenantId) && storeTenantId !== Number(tenantId)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         if (validation.data.action === 'generate') {
             const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
@@ -88,7 +98,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const revokePayload: Record<string, any> = {
             canonicaWidgetApi: admin.firestore.FieldValue.delete(),
         };
-        const storeSnap = await storeRef.get();
         const publicApiPurpose = storeSnap.exists ? storeSnap.data()?.publicApi?.purpose : null;
         if (publicApiPurpose === 'canonica_widget') {
             revokePayload.publicApi = admin.firestore.FieldValue.delete();
@@ -99,7 +108,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         secureLog('[Canonica Widget] Key revoked', { storeId });
         return NextResponse.json({ success: true });
     } catch (error) {
-        secureError('[Canonica Widget] Failed to manage key', error as Error, { storeId: session.sId });
+        secureError('[Canonica Widget] Failed to manage key', error as Error, {
+            userId: session?.user?.id,
+        });
         return NextResponse.json({ error: 'Failed to manage widget key' }, { status: 500 });
     }
 });

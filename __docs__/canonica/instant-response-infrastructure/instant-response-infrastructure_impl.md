@@ -478,7 +478,7 @@ if (
  * Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
  * @see __docs__/canonica/instant-response-infrastructure/
  */
-ENABLE_CANONICA_INSTANT_CACHE: false,
+ENABLE_CANONICA_INSTANT_CACHE: true,
 ```
 
 ---

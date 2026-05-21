@@ -20,8 +20,14 @@ import { isCachedCanonicalAnswerFresh } from './cacheFreshness';
 import { CachedCanonicalAnswer, INSTANT_CACHE_DEFAULTS } from './instantCache.types';
 import type { CanonicaCacheSourceVersions } from './cacheVersionManifest';
 
-// Reuse existing Upstash connection pattern from rateLimit.ts
-const redis = FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE
+const hasRedisConfig = Boolean(
+    process.env.UPSTASH_REDIS_REST_URL &&
+    process.env.UPSTASH_REDIS_REST_TOKEN,
+);
+
+// Reuse existing Upstash connection pattern from rateLimit.ts. Missing Redis
+// env must degrade to the live retrieval pipeline, never crash module import.
+const redis = FEATURE_FLAGS.ENABLE_CANONICA_INSTANT_CACHE && hasRedisConfig
     ? new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL!,
         token: process.env.UPSTASH_REDIS_REST_TOKEN!,

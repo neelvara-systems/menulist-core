@@ -6,6 +6,23 @@
 
 ---
 
+## May 21, 2026 — Canonica Activation Command Center
+
+### Added
+
+- **Canonica activation home added** — Canonica client owners now land on `/canonica/activation`, with launch readiness, widget install status, allowed-origin status, content counts, next action routing, and knowledge-health status.
+- **Activation summary API added** — `/api/canonica/activation/summary` reads compact store and `platformSummary` docs instead of scanning KB, changelog, tickets, or signal collections.
+- **Widget runtime marker added** — Installed Canonica widgets now pass sanitized route/context hints during config load so owners can verify that the widget and page context are reaching Canonica.
+- **Canonica three-mode dashboard added** — Canonica navigation now separates Launch Setup, Support Control, and Knowledge Governance, with deep links into entity review, canonical answers, trust metrics, and the signal-to-knowledge queue.
+- **Draft-to-canonical publishing added** — Generated mutation proposals can now be reviewed, edited, and published as active canonical answers from the Signal Queue.
+
+### Changed
+
+- **Onboarding routes to Activation** — Completed Canonica onboarding now sends owners to the Activation Command Center instead of the operations dashboard.
+- **Subscription status is mirrored to the store summary** — New Canonica onboarding writes a compact `stores/{sId}.canonicaSubscription` summary, avoiding normal activation-page subscription queries.
+- **Canonica API scope hardening** — Canonica management APIs now require a Canonica product scope instead of falling back to generic MenuList tenant/store session fields.
+- **Canonica core flags are ready-to-use** — Ontology, canonical answers, drift, signal mutation, governance UI, instant canonical cache, capped auto knowledge, capped founder onboarding, nightly scheduler, and trust metrics are enabled; higher-cost optional expansion flows remain disabled.
+
 ## May 21, 2026 — Billing Pause Option Disabled
 
 ### Changed

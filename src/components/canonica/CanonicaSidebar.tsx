@@ -11,9 +11,12 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import {
+    CANONICA_GOVERNANCE_TABS,
+    CANONICA_ROUTES,
     CANONICA_NAV_GROUPS,
     CANONICA_SIDEBAR_NAV,
     CanonicaNavItem,
+    getCanonicaGovernanceRoute,
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
@@ -21,7 +24,7 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
 import type { MenuProps } from 'antd';
 import { Layout, Menu, theme, Typography } from 'antd';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
 const { Sider } = Layout;
@@ -35,9 +38,10 @@ interface CanonicaSidebarProps {
 export default function CanonicaSidebar({ mobile = false, onNavigate }: CanonicaSidebarProps) {
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { token } = theme.useToken();
     const session = useClientAuthSession();
-    const canUsePlatformSurfaces = canUseCanonicaManagement(session);
+    const canUseManagementSurfaces = canUseCanonicaManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeCanonicaRoutePathname(pathname);
 
@@ -47,7 +51,7 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
         let lastGroup = '';
 
         const visibleNav = CANONICA_SIDEBAR_NAV.filter((nav: CanonicaNavItem) => {
-            if (nav.platformOnly && !canUsePlatformSurfaces) return false;
+            if ((nav.managementOnly || nav.platformOnly) && !canUseManagementSurfaces) return false;
             if (!nav.featureFlag) return true;
             return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
         });
@@ -79,10 +83,17 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
         });
 
         return items;
-    }, [canUsePlatformSurfaces, currentHostname, onNavigate, router]);
+    }, [canUseManagementSurfaces, currentHostname, onNavigate, router]);
 
     // Determine selected key from pathname
     const selectedKey = useMemo(() => {
+        if (
+            normalizedPathname === CANONICA_ROUTES.GOVERNANCE &&
+            searchParams.get('tab') === CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE
+        ) {
+            return getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE);
+        }
+
         // Exact match first
         const exact = CANONICA_SIDEBAR_NAV.find(n => n.route === normalizedPathname);
         if (exact) return exact.route;
@@ -90,7 +101,7 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
         const prefix = CANONICA_SIDEBAR_NAV.find(n => normalizedPathname.startsWith(n.route + '/'));
         if (prefix) return prefix.route;
         return CANONICA_SIDEBAR_NAV[0]?.route || '';
-    }, [normalizedPathname]);
+    }, [normalizedPathname, searchParams]);
 
     const sidebarContent = (
         <>

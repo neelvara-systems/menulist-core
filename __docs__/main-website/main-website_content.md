@@ -245,7 +245,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 **Supporting text:**
 
-> The public output is the proof. MenuList connects the official page, QR menu, public link, customer actions, saved shortcut, discovery source, activity signals, and customer feedback loop around the same approved menu.
+> The public output is the proof. The official page, QR menu, share link, saved shortcut, customer actions, activity signals, and issue reports all point back to the same approved menu.
 
 **Surface tiles (8):**
 
@@ -258,7 +258,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | 5 | Saved Menu Shortcut | Repeat customers keep the current menu close on their phone. |
 | 6 | Clear Public Source | Search and answer systems get cleaner public business information without ranking promises. |
 | 7 | Simple Activity Signals | A small usage/freshness trust signal, not a full analytics section. |
-| 8 | Customer Feedback Loop | Customers can flag wrong prices, missing items, outdated details, or menu issues so the owner can correct the approved source. |
+| 8 | Customer-Reported Issues | Customers can report menu or business-detail issues from the public view so the owner can correct the approved source. |
 
 **Notes:**
 

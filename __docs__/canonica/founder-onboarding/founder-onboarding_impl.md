@@ -263,13 +263,13 @@ export const ONBOARDING_BOOTSTRAP_CONFIG = {
 ### Client-side (`src/config/features.ts`)
 
 ```typescript
-ENABLE_CANONICA_FOUNDER_ONBOARDING: false,
+ENABLE_CANONICA_FOUNDER_ONBOARDING: true,
 ```
 
 ### Cloud Functions (`functions-canonica/src/constants/features.ts`)
 
 ```typescript
-ENABLE_CANONICA_FOUNDER_ONBOARDING: false,
+ENABLE_CANONICA_FOUNDER_ONBOARDING: true,
 ```
 
 **Dependencies:**

@@ -53,7 +53,7 @@ The user shared an external ChatGPT audit of the live MenuList homepage. The fee
 - Rephrased homepage-facing `Customer app` copy to `saved menu shortcut`.
 - Swept the Website locale namespace for stale public-copy payload terms, including the old `From menu to customer action` eyebrow, `Customer App` labels in secondary locales, and risky `instantly` wording in supporting feature copy.
 - Kept analytics and Search/AEO as small confidence cards inside the public-surfaces section instead of restoring full sections.
-- Replaced the small multi-location homepage card with a customer feedback loop card because end-to-end feedback directly supports the core public-truth promise: customers flag wrong public details, and owners correct the same approved source.
+- Replaced the small multi-location homepage card with a customer-reported issues card because end-to-end feedback directly supports the core public-truth promise: customers flag wrong public details, and owners correct the same approved source.
 - Reduced setup relief from 6 setup cards to 3 owner-outcome cards, and reduced real-world rollout from 6 placement cards to 5.
 - Tightened FAQ security language to say MenuList does not store a password for Google sign-in accounts, rather than saying there are no passwords to breach.
 - Updated default homepage metadata description and schema description.

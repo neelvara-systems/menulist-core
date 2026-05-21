@@ -381,15 +381,15 @@ All UI changes are within the existing `MutationProposalReview` component in the
 
 ```typescript
 // src/config/features.ts
-ENABLE_CANONICA_AUTO_KNOWLEDGE: false,
+ENABLE_CANONICA_AUTO_KNOWLEDGE: true,
 // When true: AI drafts generated for new_answer_required proposals
-// When false: Proposals created without drafts (current behavior)
+// When false: Proposals created without drafts
 // Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
 ```
 
 ```typescript
 // functions-canonica/src/constants/features.ts
-ENABLE_CANONICA_AUTO_KNOWLEDGE: false,
+ENABLE_CANONICA_AUTO_KNOWLEDGE: true,
 ```
 
 ---

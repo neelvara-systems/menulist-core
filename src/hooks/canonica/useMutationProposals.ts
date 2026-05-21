@@ -9,14 +9,23 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import {
+    approveDraftAsCanonicalAnswer,
     approveMutationProposal,
     getPendingMutationProposals,
-    rejectMutationProposal,
     markMutationImplemented,
+    rejectMutationProposal,
 } from '@database/canonica/mutationProposals';
 import { CanonicaMutationProposal } from '@type/canonica';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+
+type DraftApprovalContent = {
+    title?: string;
+    structuredSummary?: string;
+    detailedExplanation?: string;
+    edgeCases?: string;
+    constraints?: string;
+};
 
 interface UseMutationProposalsReturn {
     proposals: CanonicaMutationProposal[];
@@ -25,6 +34,7 @@ interface UseMutationProposalsReturn {
     approve: (proposalId: string) => Promise<void>;
     reject: (proposalId: string) => Promise<void>;
     implement: (proposalId: string) => Promise<void>;
+    approveDraft: (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => Promise<void>;
     refresh: () => Promise<void>;
 }
 
@@ -82,5 +92,16 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
     }, [refresh]);
 
-    return { proposals, loading, error, approve, reject, implement, refresh };
+    const approveDraft = useCallback(async (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => {
+        try {
+            await approveDraftAsCanonicalAnswer(proposalId, editedContent, tId, sId, approvedBy);
+            message.success('Canonical answer published');
+            await refresh();
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : 'Failed to publish canonical answer');
+            throw err;
+        }
+    }, [refresh, sId, tId]);
+
+    return { proposals, loading, error, approve, reject, implement, approveDraft, refresh };
 }

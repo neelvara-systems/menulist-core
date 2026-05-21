@@ -143,7 +143,7 @@ Cache keys include `answerVersion`, and new cache payloads include `sourceVersio
 - Version-based automatic invalidation
 - Source freshness validation before serving cached canonical/RAG answers
 - Cache hit/miss performance logging
-- Feature flag: `ENABLE_CANONICA_INSTANT_CACHE` (default OFF)
+- Feature flag: `ENABLE_CANONICA_INSTANT_CACHE` (ready-to-use default ON; no-op when Upstash env is missing)
 
 ### OUT of Scope (Permanently or Deferred)
 - ❌ Semantic caching (correctness risk)

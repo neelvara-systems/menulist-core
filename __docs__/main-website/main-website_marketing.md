@@ -19,7 +19,7 @@
 
 > Homepage compression note (May 21, 2026): The homepage should sell faster by using a shorter sequence: Hero -> Problem -> Solution -> How it works -> Public proof -> Customer preview -> Real-world rollout -> FAQ -> CTA. Advanced proof such as analytics, SEO/AEO, POS Sync, staff access, and industry breadth should support Features/How It Works/future pages unless a focused section is needed. Public brand display should be `MenuList`, and homepage-facing "Customer app" copy should usually be phrased as a saved menu shortcut so SMB owners do not assume a native app-store product.
 
-> Feedback-loop note (May 21, 2026): Customer feedback belongs on the homepage only when framed as public correction: customers flag wrong prices, missing items, outdated details, or menu issues, and the owner corrects the approved source. Do not frame this as reviews, reputation management, testimonials, or growth marketing.
+> Feedback-loop note (May 21, 2026): Customer feedback belongs on the homepage only when framed as public correction: customers report wrong prices, missing items, outdated details, or menu/business-detail issues, and the owner corrects the approved source. Prefer owner-readable labels such as "Customer-reported issues" over review/reputation language. Do not frame this as reviews, reputation management, testimonials, or growth marketing.
 
 ---
 

@@ -753,6 +753,23 @@
         } catch (_) {}
     }
 
+    function buildRemoteConfigUrl() {
+        var params = [];
+        function addParam(key, value) {
+            if (!value || typeof value !== 'string') return;
+            params.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+        }
+
+        addParam('path', getCurrentRoutePath());
+        if (productContext) {
+            addParam('contextKey', productContext.contextKey || '');
+            addParam('feature', productContext.feature || '');
+            addParam('page', productContext.page || '');
+        }
+
+        return widgetHost + '/api/widget/config' + (params.length ? '?' + params.join('&') : '');
+    }
+
     function loadRemoteConfig() {
         if (!useRemoteConfig || !window.fetch) return;
 
@@ -762,7 +779,7 @@
             return;
         }
 
-        fetch(widgetHost + '/api/widget/config', {
+        fetch(buildRemoteConfigUrl(), {
             method: 'GET',
             headers: { 'X-API-Key': apiKey },
         }).then(function (response) {

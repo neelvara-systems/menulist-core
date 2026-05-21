@@ -21,6 +21,7 @@ export const CANONICA_PRODUCT_DOMAINS = [
 ] as const;
 
 export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
+    'activation',
     'changelog',
     'conversations',
     'dashboard',
@@ -29,6 +30,7 @@ export const CANONICA_DASHBOARD_ROUTE_ROOTS = [
     'help',
     'kb-generation',
     'knowledge-base',
+    'product-surfaces',
     'release-notes',
     'settings',
     'support',

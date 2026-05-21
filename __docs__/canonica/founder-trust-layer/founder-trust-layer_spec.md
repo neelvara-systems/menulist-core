@@ -206,7 +206,7 @@ failureScore = (escalations × 3) + (entityMismatches × 3) + (lowConfidence × 
 ## §8 — Feature Flag
 
 ```typescript
-ENABLE_CANONICA_TRUST_METRICS: false
+ENABLE_CANONICA_TRUST_METRICS: true
 ```
 
 **Requires:**
@@ -215,6 +215,8 @@ ENABLE_CANONICA_TRUST_METRICS: false
 - `ENABLE_CANONICA_DRIFT_DETECTION` = true
 
 **When OFF:** Trust dashboard tab hidden in GovernanceHub. Nightly step skipped. Zero cost.
+
+**Current ready-to-use default:** ON for frontend and Canonica functions. The writer stores one compact `platformSummary/trustMetrics_{tId}_{sId}` document per eligible tenant/night.
 
 ---
 

@@ -4,7 +4,7 @@
 > **Version:** 1.0.0
 > **Created:** 2026-03-09
 > **Last Updated:** 2026-03-09
-> **Feature Flag:** `ENABLE_CANONICA_AUTO_KNOWLEDGE` (new, default OFF)
+> **Feature Flag:** `ENABLE_CANONICA_AUTO_KNOWLEDGE` (ready-to-use default ON; capped and human-reviewed)
 > **Expansion Item:** #4 in canonica-expansion-tracker.md
 > **Doctrine Compliance:** ⚠️ CAREFUL — AI drafts are PROPOSALS only, never auto-published
 

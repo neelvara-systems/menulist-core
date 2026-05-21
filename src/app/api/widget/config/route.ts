@@ -8,6 +8,14 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { DB_COLLECTIONS } from '@constant/database';
+import {
+    buildWidgetRuntimeStatusWrite,
+    getWidgetRuntimeStatusFromStoreData,
+    sanitizeWidgetRuntimeTelemetry,
+    shouldUpdateWidgetRuntimeStatus,
+} from '@lib/canonica/widgetRuntimeStatus';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import {
     CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
     CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
@@ -161,6 +169,27 @@ export async function GET(request: NextRequest) {
 
         if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
             return withPublicApiCors(NextResponse.json({ error: 'Origin not allowed' }, { status: 403 }), request);
+        }
+
+        const runtimeStatus = getWidgetRuntimeStatusFromStoreData(storeData);
+        const nextRuntimeStatus = sanitizeWidgetRuntimeTelemetry(request);
+        const db = canonicaFirestoreAdmin as any;
+        if (
+            db
+            && typeof db.collection === 'function'
+            && shouldUpdateWidgetRuntimeStatus(runtimeStatus, nextRuntimeStatus)
+        ) {
+            try {
+                await canonicaFirestoreAdmin
+                    .collection(DB_COLLECTIONS.STORES)
+                    .doc(String(sId))
+                    .set(buildWidgetRuntimeStatusWrite(nextRuntimeStatus), { merge: true });
+            } catch (telemetryError) {
+                secureError('[Widget Config] Runtime telemetry write failed', telemetryError as Error, {
+                    storeId: sId,
+                    tenantId: tId,
+                });
+            }
         }
 
         const body = {
