@@ -598,12 +598,110 @@ export const CANONICA_PROCEDURE_CONSTRAINTS = {
  */
 export interface CanonicaContextPayload {
     contextVersion?: number;       // Schema version (default: 1)
+    contextKey?: string;           // Optional Canonica product surface key (e.g., "billing_invoices")
     feature?: string;              // Product subsystem (e.g., "integrations")
     page?: string;                 // UI location identifier (e.g., "stripe_integration_page")
     workflow?: string;             // Current action (e.g., "connect_integration")
     entityHints?: string[];        // Explicit entity references (max 5)
     userRole?: string;             // Permission level (e.g., "admin")
     plan?: string;                 // Subscription tier (e.g., "pro")
+    /**
+     * Trusted runtime-only entity IDs resolved from Canonica-owned surface maps.
+     * External client payloads cannot set this field because context validation
+     * strips unknown fields. It is added server-side before retrieval.
+     */
+    surfaceEntityIds?: string[];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRODUCT SURFACE CONTEXTS
+// ═══════════════════════════════════════════════════════════════
+
+export interface CanonicaProductSurfaceVisibility {
+    helpWidget: boolean;
+    helpCenter: boolean;
+    changelog: boolean;
+}
+
+export interface CanonicaProductSurface extends CanonicaDocumentIdentity {
+    id: string;
+    tId: number;
+    sId: number;
+
+    key: string;
+    label: string;
+    description?: string;
+    routePatterns: string[];
+
+    feature?: string;
+    page?: string;
+    workflow?: string;
+    entityHints?: string[];
+    entityIds?: string[];
+    tags?: string[];
+
+    visibility: CanonicaProductSurfaceVisibility;
+    active: boolean;
+    priority: number;
+
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    modifiedBy?: string;
+    uId?: number;
+}
+
+export interface CanonicaRelatedArticleRef {
+    id: string;
+    title: string;
+    categoryTitle?: string;
+    sectionTitle?: string;
+    url?: string;
+    tags?: string[];
+}
+
+export interface CanonicaRelatedChangelogRef {
+    id: string;
+    pageId: string;
+    title: string;
+    version?: string | null;
+    releasedOn?: any;
+    tags?: string[];
+}
+
+export interface CanonicaSurfaceTicketStats {
+    total: number;
+    open: number;
+    recentDisplayIds: string[];
+}
+
+export interface CanonicaSurfaceContentItem {
+    key: string;
+    label: string;
+    routePatterns: string[];
+    feature?: string;
+    page?: string;
+    workflow?: string;
+    entityHints?: string[];
+    entityIds?: string[];
+    tags?: string[];
+    visibility?: CanonicaProductSurfaceVisibility;
+    articles: CanonicaRelatedArticleRef[];
+    changelogs: CanonicaRelatedChangelogRef[];
+    tickets: CanonicaSurfaceTicketStats;
+}
+
+export interface CanonicaSurfaceContentSummary {
+    id?: string;
+    pId?: ProductId;
+    tId: number;
+    sId: number;
+    generatedAt?: any;
+    surfaceCount: number;
+    articleCount: number;
+    changelogCount: number;
+    ticketCount: number;
+    surfaces: Record<string, CanonicaSurfaceContentItem>;
 }
 
 // ═══════════════════════════════════════════════════════════════

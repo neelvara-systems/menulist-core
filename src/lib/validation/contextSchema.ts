@@ -45,6 +45,7 @@ const ContextStringSchema = z.string()
  */
 export const CanonicaContextSchema = z.object({
     contextVersion: z.number().int().min(1).max(10).optional().default(1),
+    contextKey: ContextStringSchema.optional(),
     feature: ContextStringSchema.optional(),
     page: ContextStringSchema.optional(),
     workflow: ContextStringSchema.optional(),

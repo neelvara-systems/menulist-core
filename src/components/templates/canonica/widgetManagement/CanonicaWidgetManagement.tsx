@@ -228,10 +228,12 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         'export function CanonicaRouteContext() {',
         '  const pathname = usePathname();',
         '  useEffect(() => {',
+        "    const contextKey = pathname.replace(/^\\//, '').replace(/\\//g, '_') || 'home';",
         '    window.CanonicaWidget?.page({',
         '      contextVersion: 1,',
+        '      contextKey,',
         "      feature: pathname.split('/')[1] || 'app',",
-        "      page: pathname.replace(/^\\//, '').replace(/\\//g, '_') || 'home',",
+        "      page: contextKey,",
         '    });',
         '  }, [pathname]);',
         '  return null;',
@@ -475,7 +477,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                     <Card title={<Flex align="center" gap={8}><LuCode size={16} /> Page Context</Flex>}>
                                         <Flex vertical gap={12}>
                                             <Paragraph style={{ margin: 0 }}>
-                                                Send page, feature, workflow, and entity hints after route changes. Do not send account IDs, emails, phone numbers, or tenant/store IDs.
+                                                Send a stable contextKey plus page, feature, workflow, and entity hints after route changes. Do not send account IDs, emails, phone numbers, or tenant/store IDs.
                                             </Paragraph>
                                             <Input.TextArea
                                                 value={spaSnippet}

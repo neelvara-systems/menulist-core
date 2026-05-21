@@ -49,4 +49,9 @@ export const DB_COLLECTIONS = {
     // Feature-flagged: ENABLE_CANONICA_PREDICTIVE_SUPPORT
     // @see __docs__/canonica/predictive-support/
     CANONICA_PREDICTIVE_TRIGGERS: 'canonica_predictiveTriggers',
+
+    // Product Surface Contexts
+    // Owner-managed route/page/workflow map for context-aware retrieval.
+    // @see __docs__/canonica/product-surface-contexts/
+    CANONICA_PRODUCT_SURFACES: 'canonica_productSurfaces',
 } as const;

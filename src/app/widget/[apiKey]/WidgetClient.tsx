@@ -45,6 +45,12 @@ interface WidgetMessage {
     canonical?: boolean;
     confidence?: string;
     references?: { id: string; title: string }[];
+    relatedContent?: {
+        key?: string;
+        label?: string;
+        articles?: Array<{ id: string; title: string; url?: string }>;
+        changelogs?: Array<{ id: string; pageId?: string; title: string; version?: string | null }>;
+    };
     suggestedQuestions?: string[];
     searchHistoryId?: string;
     feedback?: 'up' | 'down' | null;
@@ -67,7 +73,7 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const input = value as Record<string, unknown>;
     const output: Record<string, any> = {};
-    ['feature', 'page', 'workflow', 'userRole', 'plan'].forEach((key) => {
+    ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].forEach((key) => {
         const current = sanitizeContextString(input[key]);
         if (current) output[key] = current;
     });
@@ -80,7 +86,7 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
             .map((hint) => sanitizeContextString(hint, 64))
             .filter((hint): hint is string => Boolean(hint));
     }
-    const hasMeaningfulContext = ['feature', 'page', 'workflow', 'userRole', 'plan'].some((key) => Boolean(output[key]))
+    const hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].some((key) => Boolean(output[key]))
         || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
     if (!hasMeaningfulContext) return null;
 
@@ -124,14 +130,16 @@ const normalizeSuggestions = (values: unknown[]): string[] => {
 };
 
 const formatContextLabel = (context: Record<string, any> | null): string | null => {
-    const rawValue = typeof context?.page === 'string'
+    const rawValue = typeof context?.contextKey === 'string'
+        ? context.contextKey
+        : typeof context?.page === 'string'
         ? context.page
         : typeof context?.feature === 'string'
             ? context.feature
             : '';
     if (!rawValue) return null;
 
-    const ignored = new Set(['menulist', 'owner', 'app', 'home', 'page']);
+    const ignored = new Set(['app', 'home', 'page']);
     const words = rawValue
         .split(/[_-]+/)
         .filter((part) => part && !ignored.has(part))
@@ -315,6 +323,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 searchHistoryId: data.searchHistoryId,
                 feedback: null,
                 procedure: data.procedure,
+                relatedContent: data.relatedContent,
             };
 
             setMessages(prev => [...prev, aiMsg]);
@@ -537,6 +546,37 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 </div>
                             )}
 
+                            {msg.relatedContent && (
+                                <div style={styles.relatedContainer}>
+                                    <div style={styles.relatedHeader}>
+                                        Related to {msg.relatedContent.label || msg.relatedContent.key || 'this page'}
+                                    </div>
+                                    <div style={styles.relatedList}>
+                                        {(msg.relatedContent.articles || []).slice(0, 3).map((article) => (
+                                            <button
+                                                key={`article-${article.id}`}
+                                                style={styles.relatedBtn}
+                                                onClick={() => article.url && window.open(article.url, '_blank', 'noopener,noreferrer')}
+                                                title={article.title}
+                                            >
+                                                <LuBookOpen size={12} aria-hidden />
+                                                <span style={styles.relatedBtnText}>{article.title}</span>
+                                            </button>
+                                        ))}
+                                        {(msg.relatedContent.changelogs || []).slice(0, 2).map((entry) => (
+                                            <button
+                                                key={`changelog-${entry.pageId || 'page'}-${entry.id}`}
+                                                style={styles.relatedBtn}
+                                                title={entry.title}
+                                            >
+                                                <LuInfo size={12} aria-hidden />
+                                                <span style={styles.relatedBtnText}>{entry.title}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Feedback buttons for AI messages */}
                             {msg.role === 'assistant' && msg.searchHistoryId && (
                                 <div style={styles.feedbackRow}>
@@ -705,6 +745,11 @@ const styles: Record<string, CSSProperties> = {
     procedureTroubleshoot: { margin: '3px 0 0 0', color: '#6b7280', fontSize: 11, lineHeight: 1.4, fontStyle: 'italic', overflowWrap: 'break-word' },
     refsContainer: { marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 },
     refTag: { padding: '3px 8px', borderRadius: 4, background: '#e5e7eb', fontSize: 11, color: '#4b5563', display: 'inline-flex', alignItems: 'center', gap: 4 },
+    relatedContainer: { marginTop: 10, padding: 8, borderRadius: 10, background: '#ffffff', border: '1px solid #e5e7eb' },
+    relatedHeader: { marginBottom: 6, color: '#374151', fontSize: 11, fontWeight: 700 },
+    relatedList: { display: 'flex', flexDirection: 'column', gap: 5 },
+    relatedBtn: { minHeight: 34, width: '100%', padding: '5px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', color: '#374151', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left' as const },
+    relatedBtnText: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
     feedbackRow: { marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 },
     feedbackBtn: { width: 36, height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#ffffff', color: '#4b5563', fontSize: 14, cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
     feedbackDone: { fontSize: 11, color: '#9ca3af', display: 'inline-flex', alignItems: 'center', gap: 4 },

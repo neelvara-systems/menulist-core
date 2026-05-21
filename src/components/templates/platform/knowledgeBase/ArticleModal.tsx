@@ -1,4 +1,6 @@
 import TiptapEditor from "@atoms/TiptapEditor";
+import { FEATURE_FLAGS } from "@config/features";
+import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
 import { addArticle, updateArticle } from '@database/knowledgeBase/articles';
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { extractEditortextForComparison } from "@lib/vectorEmbeddings/articleEmbeddings";
@@ -8,7 +10,7 @@ import { getObjectDifferance } from "@util/deepMerge";
 import { getNewIndex } from '@util/utils';
 import { Alert, Button, Col, Form, Input, InputNumber, Modal, Row, Select, Tag, Tooltip, message, theme } from "antd";
 import { FormInstance } from 'antd/lib/form';
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LuCheckCircle } from "react-icons/lu";
 
 interface ArticleModalProps {
@@ -27,11 +29,15 @@ interface ArticleModalProps {
 const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, selectedCategory, selectedSection, categoriesData, from }: ArticleModalProps) => {
     const dispatch = useAppDispatch();
     const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
+    const [surfaceOptions, setSurfaceOptions] = useState<Array<{ label: string; value: string }>>([]);
     const selectedCategoryData = currentCategoryId ? categoriesData?.categories[currentCategoryId] : null;
     const hasSections = selectedCategoryData && selectedCategoryData.sections && selectedCategoryData.sections.length > 0;
     const { token } = theme.useToken();
 
     const titleValue = Form.useWatch('title', form);
+    const showSurfaceBinding = FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES && from !== 'review';
+
+    const surfaceSelectOptions = useMemo(() => surfaceOptions, [surfaceOptions]);
 
     useEffect(() => {
         if (Boolean(titleValue)) {
@@ -63,6 +69,22 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
             form.resetFields();
         }
     }, [open, editingArticle, selectedCategory, selectedSection, form]);
+
+    useEffect(() => {
+        if (!open || !showSurfaceBinding) return;
+        let mounted = true;
+        getProductSurfacesForSession()
+            .then((surfaces = []) => {
+                if (!mounted) return;
+                setSurfaceOptions(
+                    surfaces
+                        .filter(surface => surface.active !== false)
+                        .map(surface => ({ label: surface.label, value: surface.key })),
+                );
+            })
+            .catch(() => undefined);
+        return () => { mounted = false; };
+    }, [open, showSurfaceBinding]);
 
     const generateEmbedding = async (article: KnowledgeBaseArticleType) => {
         const category = categoriesData?.categories[article.categoryId];
@@ -118,6 +140,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
 
                 // Ensure the ID is included for the update operation
                 const updatedArticle = await updateArticle(dataToUpload);
+                rebuildProductSurfaceContentSummary().catch(() => undefined);
                 message.success("Article updated successfully!");
 
                 const newContent = extractEditortextForComparison(dataToUpload.content);
@@ -138,6 +161,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                     index: values.index,
                 };
                 const createdArticle = await addArticle(newArticleData as KnowledgeBaseArticleType);
+                rebuildProductSurfaceContentSummary().catch(() => undefined);
                 await generateEmbedding(createdArticle);
                 message.success("Article created successfully!");
                 onSuccess(createdArticle);
@@ -216,6 +240,16 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                         <Form.Item name="tags" label="Tags (Optional)">
                             <Select mode="tags" style={{ width: '100%' }} placeholder="Add tags" />
                         </Form.Item>
+                        {showSurfaceBinding && (
+                            <Form.Item name="contextKeys" label="Product Surfaces">
+                                <Select
+                                    mode="multiple"
+                                    allowClear
+                                    options={surfaceSelectOptions}
+                                    placeholder="Show this article on related pages"
+                                />
+                            </Form.Item>
+                        )}
                     </Col>
                     <Col span={16}>
                         <Form.Item

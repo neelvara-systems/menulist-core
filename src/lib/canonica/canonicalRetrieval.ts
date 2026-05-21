@@ -330,6 +330,17 @@ function applyContextBoosts(
         }
     }
 
+    // Product Surface Contexts: trusted server-resolved entity IDs. External
+    // client payloads cannot set this field because context validation strips
+    // unknown fields before coreSearch().
+    if (Array.isArray(context.surfaceEntityIds)) {
+        for (const entityId of context.surfaceEntityIds.slice(0, 10)) {
+            if (typeof entityId !== 'string' || !entityId.trim()) continue;
+            const current = boosts.get(entityId) || 0;
+            boosts.set(entityId, Math.min(current + MAX_CONTEXT_BOOST, MAX_CONTEXT_BOOST));
+        }
+    }
+
     // Apply page, workflow, feature context
     boostFromString(context.page, CONTEXT_WEIGHTS.page);
     boostFromString(context.workflow, CONTEXT_WEIGHTS.workflow);

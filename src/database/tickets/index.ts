@@ -95,6 +95,7 @@ export const addTicket = async (data: SupportTicketType) => {
                     ticketId: docRef.id,
                     subject: data.subject,
                     category: data.category,
+                    contextKeys: data.contextKeys || [],
                     priority: data.priority,
                     ...(data.source === 'ai_escalation' && {
                         query: data.escalationContext?.query,

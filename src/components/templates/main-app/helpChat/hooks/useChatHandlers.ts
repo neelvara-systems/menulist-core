@@ -132,17 +132,25 @@ export function useChatHandlers({
                     id: `msg-${Date.now()}-escalation`,
                     role: 'assistant',
                     createdOn: Timestamp.now(),
-                    escalation: {
-                        suggested: true,
-                        type: 'hard',
-                        triggers: ['explicit_user_request'],
-                        context: {
-                            triggerTypes: ['explicit_user_request'],
-                            query: content,
-                            conversationId: activeSession?.id || undefined,
-                            escalatedAt: new Date().toISOString(),
+                        escalation: {
+                            suggested: true,
+                            type: 'hard',
+                            triggers: ['explicit_user_request'],
+                            context: {
+                                triggerTypes: ['explicit_user_request'],
+                                query: content,
+                                conversationId: activeSession?.id || undefined,
+                                productContext: productContext ? {
+                                    contextKey: String(productContext.contextKey || ''),
+                                    feature: String(productContext.feature || ''),
+                                    page: String(productContext.page || ''),
+                                    workflow: String(productContext.workflow || ''),
+                                    plan: String(productContext.plan || ''),
+                                    userRole: String(productContext.userRole || ''),
+                                } : undefined,
+                                escalatedAt: new Date().toISOString(),
+                            },
                         },
-                    },
                 };
                 handleEscalate(syntheticMessage);
                 return;
@@ -244,6 +252,7 @@ export function useChatHandlers({
                         craftedAnswer: result.craftedAnswer,
                         searchHistoryId: result.id,
                         references: result.references, // Includes similarityScore for quality calculation
+                        relatedContent: result.relatedContent,
                         suggestedQuestions: result.suggestedQuestions, // AI-generated follow-up questions
                         // AI Failure Escalation (Item #8) — attach escalation data to message
                         ...(result.escalation?.suggested && { escalation: result.escalation }),
@@ -358,6 +367,7 @@ export function useChatHandlers({
                 craftedAnswer: result.craftedAnswer,
                 searchHistoryId: result.id,
                 references: result.references, // Includes similarityScore for quality calculation
+                relatedContent: result.relatedContent,
                 suggestedQuestions: result.suggestedQuestions, // AI-generated follow-up questions
                 generationMetadata: {
                     isRetry: true,
@@ -618,6 +628,7 @@ export function useChatHandlers({
                 documents: [],
                 platformNotes: '',
                 platformTags: [],
+                contextKeys: message.relatedContent?.key ? [message.relatedContent.key] : [],
                 statuses: [],
                 source: 'ai_escalation',
                 knowledgeCandidate: true,

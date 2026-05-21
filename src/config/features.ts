@@ -2004,7 +2004,22 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/canonica/context-aware-support/
      */
-    ENABLE_CANONICA_CONTEXT_AWARE: false,
+    ENABLE_CANONICA_CONTEXT_AWARE: true,
+
+    /**
+     * Canonica Product Surface Contexts
+     *
+     * true: Canonica owners can map product routes/pages/workflows to semantic
+     *       support context. KB articles, changelogs, tickets, and runtime
+     *       widget/search responses can use the same surface key.
+     * false: Context-aware support continues to use only transient page payloads.
+     *
+     * Uses one owner-managed collection plus one compact platformSummary read
+     * model per tenant/store. Runtime reads are cached and bounded.
+     *
+     * @see __docs__/canonica/product-surface-contexts/
+     */
+    ENABLE_CANONICA_PRODUCT_SURFACES: true,
 
     /**
      * Canonica Guided Workflows (Structured Procedure Answers)

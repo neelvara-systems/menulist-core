@@ -2,7 +2,9 @@
 
 import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
 import TiptapEditor from '@atoms/TiptapEditor';
+import { FEATURE_FLAGS } from '@config/features';
 import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
+import { getProductSurfacesForSession, rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
 import { addChangelogEntry, updateChangelogEntry } from '@database/changelog';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -59,12 +61,29 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     const [kbSources, setKbSources] = useState<{ categoryId: string, sectionId?: string, articleId?: string }[]>([]);
     const [youtubeLink, setYoutubeLink] = useState('');
     const [youtubeLinks, setYoutubeLinks] = useState<string[]>([]);
+    const [surfaceOptions, setSurfaceOptions] = useState<Array<{ label: string; value: string }>>([]);
 
 
 
 
     useEffect(() => {
         isFormActive.current = open;
+    }, [open]);
+
+    useEffect(() => {
+        if (!open || !FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) return;
+        let mounted = true;
+        getProductSurfacesForSession()
+            .then((surfaces = []) => {
+                if (!mounted) return;
+                setSurfaceOptions(
+                    surfaces
+                        .filter(surface => surface.active !== false)
+                        .map(surface => ({ label: surface.label, value: surface.key })),
+                );
+            })
+            .catch(() => undefined);
+        return () => { mounted = false; };
     }, [open]);
 
     const handleAddYoutubeLink = () => {
@@ -122,6 +141,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 releaseDate: releasedOnDate,
                 releaseTime: releasedOnDate,
                 version: initialData.version,
+                contextKeys: initialData.contextKeys || [],
                 // Set form values for TreeSelect
                 kbSources: (initialData.kbSources || []).map(s => s.articleId ? `art-${s.articleId}` : s.sectionId ? `sec-${s.sectionId}` : `cat-${s.categoryId}`)
                 // The above line is now correct as it's just for setting the initial form value.
@@ -135,7 +155,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     }, [initialData, form, open]);
 
     const handleSave = async (values: any) => {
-        const { title, description, tags, releaseDate, releaseTime, published, version } = values;
+        const { title, description, tags, releaseDate, releaseTime, published, version, contextKeys } = values;
 
         const combinedDateTime = releaseDate
             .hour(releaseTime.hour())
@@ -160,6 +180,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             releasedOn: Timestamp.fromDate(combinedDateTime.toDate()),
             published: published || false,
             version: version || null,
+            contextKeys: contextKeys || [],
             kbSources: kbSources,
             youtubeLinks: youtubeLinks,
         };
@@ -182,6 +203,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 message.success('Changelog entry saved successfully!');
                 onSave(result);
             }
+            rebuildProductSurfaceContentSummary().catch(() => undefined);
             form.resetFields();
             setAttachments([]);
             setKbSources([]);
@@ -266,6 +288,17 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 <Form.Item name="kbSources" label="Link to Knowledge Base Article">
                     <KbTreeSelect onChange={handleKbSourceChange} />
                 </Form.Item>
+
+                {FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES && (
+                    <Form.Item name="contextKeys" label="Product Surfaces">
+                        <Select
+                            mode="multiple"
+                            allowClear
+                            options={surfaceOptions}
+                            placeholder="Show this release note on related pages"
+                        />
+                    </Form.Item>
+                )}
 
                 <Form.Item label="Embed YouTube Video">
                     <Flex vertical gap="middle">

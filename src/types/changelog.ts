@@ -17,6 +17,7 @@ export interface ChangelogEntry {
     dislikes?: number;
     files?: UserUploadedFileType[],
     kbSources: { categoryId: string, sectionId?: string, articleId?: string }[],
+    contextKeys?: string[],
     youtubeLinks?: string[];
 }
 

@@ -68,6 +68,9 @@ export interface CoreSearchResult {
     /** KB article references (full objects with similarityScore) */
     references: any[];
 
+    /** Context-aware related content resolved from Canonica Product Surfaces */
+    relatedContent?: import('@type/canonica').CanonicaSurfaceContentItem;
+
     /** AI-generated follow-up questions */
     suggestedQuestions: string[];
 

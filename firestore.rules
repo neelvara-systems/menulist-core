@@ -294,6 +294,13 @@ service cloud.firestore {
       allow delete: if isCanonicaScopedDelete();
     }
 
+    match /canonica_productSurfaces/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
     match /canonica_cacheVersions/{docId} {
       allow read: if isCanonicaScopedRead();
       allow create: if isCanonicaScopedCreate();
@@ -1034,7 +1041,7 @@ service cloud.firestore {
     }
 
     function isCanonicaPlatformSummaryDoc(document) {
-      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers)_.*$');
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$');
     }
 
     function isCanonicaTenantMember(data) {

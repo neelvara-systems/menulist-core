@@ -1,6 +1,8 @@
 'use client';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import { FEATURE_FLAGS } from '@config/features';
+import { rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
 import { updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
@@ -88,6 +90,9 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
         try {
             const res = await updateTicket({ ...updatePayload, id: ticket.id });
             onUpdate({ ...res, ...updatePayload, id: ticket.id });
+            if (FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) {
+                rebuildProductSurfaceContentSummary().catch(() => undefined);
+            }
 
             // Ticket → Knowledge Loop (Item #9): emit enriched resolution signal
             // Fire-and-forget — never blocks ticket update flow

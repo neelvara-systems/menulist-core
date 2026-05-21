@@ -14,8 +14,8 @@
  *   </script>
  *
  * JavaScript API (optional):
- *   window.CanonicaWidget.setContext({ feature: 'billing', page: 'invoices' })
- *   window.CanonicaWidget.page({ feature: 'billing', page: 'invoices' })
+ *   window.CanonicaWidget.setContext({ contextKey: 'billing_invoices', feature: 'billing', page: 'invoices' })
+ *   window.CanonicaWidget.page({ contextKey: 'billing_invoices', feature: 'billing', page: 'invoices' })
  *   window.CanonicaWidget.open()
  *   window.CanonicaWidget.close()
  *   window.CanonicaWidget.clearHistory()
@@ -36,6 +36,7 @@
  *   data-launcher-visibility (optional) "visible" | "manual" (default: visible)
  *   data-mobile-visibility   (optional) "show" | "hide" (default: show)
  *   data-blocked-routes      (optional) comma-separated route patterns such as "/help-center,/help-center/*"
+ *   data-context-key         (optional) stable product surface key such as "billing_invoices"
  *   data-use-remote-config   (optional) "false" disables dashboard config fetch
  */
 (function () {
@@ -304,7 +305,7 @@
     function sanitizeContextPayload(ctx) {
         if (!ctx || typeof ctx !== 'object' || Array.isArray(ctx)) return null;
         var output = {};
-        ['feature', 'page', 'workflow', 'userRole', 'plan'].forEach(function (key) {
+        ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].forEach(function (key) {
             var value = sanitizeContextString(ctx[key], 100);
             if (value) output[key] = value;
         });
@@ -317,7 +318,7 @@
                 .map(function (hint) { return sanitizeContextString(hint, 64); })
                 .filter(Boolean);
         }
-        var hasMeaningfulContext = ['feature', 'page', 'workflow', 'userRole', 'plan'].some(function (key) {
+        var hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan'].some(function (key) {
             return Boolean(output[key]);
         }) || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
         if (!hasMeaningfulContext) return null;
@@ -327,6 +328,7 @@
     function readInitialContextFromAttributes() {
         var ctx = {
             contextVersion: 1,
+            contextKey: script.getAttribute('data-context-key'),
             feature: script.getAttribute('data-feature'),
             page: script.getAttribute('data-page'),
             workflow: script.getAttribute('data-workflow'),
@@ -665,6 +667,7 @@
         if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);
 
         var contextKey = JSON.stringify({
+            contextKey: ctx.contextKey || '',
             page: ctx.page || '',
             feature: ctx.feature || '',
             workflow: ctx.workflow || '',

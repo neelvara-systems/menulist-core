@@ -143,12 +143,16 @@ const buildProductContextCacheToken = (productContext: CoreSearchInput['productC
 
     const stableContext = {
         contextVersion: productContext.contextVersion || 1,
+        contextKey: (productContext as any).contextKey || '',
         entityHints: Array.isArray(productContext.entityHints)
             ? productContext.entityHints.map(String).sort()
             : [],
         feature: productContext.feature || '',
         page: productContext.page || '',
         plan: productContext.plan || '',
+        surfaceEntityIds: Array.isArray((productContext as any).surfaceEntityIds)
+            ? (productContext as any).surfaceEntityIds.map(String).sort()
+            : [],
         userRole: productContext.userRole || '',
         workflow: productContext.workflow || '',
     };
@@ -179,6 +183,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     let generatedQueryFromImage: string | undefined;
     let imageBufferForAi: { imageBase64: string; mimeType: string } | undefined;
     let imageCacheToken: string | undefined;
+    let relatedContent: CoreSearchResult['relatedContent'];
 
     const {
         query: searchQuery,
@@ -194,6 +199,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     } = input;
 
     const withAiProviderUsage = <T extends CoreSearchResult>(result: T): T => ({
+        ...(relatedContent && !result.relatedContent ? { relatedContent } : {}),
         ...result,
         aiProviderOperations: Array.from(aiProviderOperations),
         aiProviderUsed: aiProviderOperations.size > 0,
@@ -321,6 +327,35 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     const queryForEmbedding = generatedQueryFromImage || searchQuery;
+    let effectiveProductContext = productContext;
+
+    if (
+        FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES &&
+        FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_AWARE &&
+        productContext
+    ) {
+        try {
+            const { resolveRelatedContentForSearch } = await import('@lib/canonica/productSurfaceContentServer');
+            const resolved = await resolveRelatedContentForSearch({
+                tId: Number(tId),
+                sId: Number(sId),
+                context: productContext,
+                target: mountContext === 'widget' ? 'helpWidget' : 'helpCenter',
+            });
+            effectiveProductContext = resolved.retrievalContext as typeof effectiveProductContext;
+            relatedContent = resolved.relatedContent;
+        } catch (error: any) {
+            await writeLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'PRODUCT_SURFACE_CONTEXT_ERROR',
+                data: {
+                    error: error?.message || String(error),
+                    mountContext,
+                },
+            }).catch(() => undefined);
+        }
+    }
 
     // ===== STAGE 2.5: INSTANT CACHE (Upstash Redis) =====
     // Only for canonical answers — deterministic, versioned, perfect cache objects.
@@ -362,8 +397,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     instantCacheLatestRelease = release;
                     const version = release?.versionNormalized || 0;
 
-                    const effectivePlan = productContext?.plan;
-                    const effectiveRole = productContext?.userRole;
+                    const effectivePlan = effectiveProductContext?.plan;
+                    const effectiveRole = effectiveProductContext?.userRole;
 
                     const cached = await instantCacheLookup(
                         tId, sId, topEntityId, version, effectivePlan, effectiveRole
@@ -377,7 +412,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                         const instantCacheKeyBase = imageCacheToken
                             ? `${normalizedTextQueryForKey}::IMAGE::${imageCacheToken}`
                             : normalizedTextQueryForKey;
-                        const instantCacheContextToken = buildProductContextCacheToken(productContext);
+                        const instantCacheContextToken = buildProductContextCacheToken(effectiveProductContext);
                         const instantCacheMode = hasConversationHistory ? 'assistant' : 'qna';
                         const instantCacheKey = `${tId}:${sId}:${SEARCH_CACHE_VERSION}:${instantCacheKeyBase}::CTX::${instantCacheContextToken}::MODE::${instantCacheMode}`;
 
@@ -442,7 +477,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const cacheLookupKeyBase = imageCacheToken
         ? `${normalizedTextQuery}::IMAGE::${imageCacheToken}`
         : normalizedTextQuery;
-    const contextCacheToken = buildProductContextCacheToken(productContext);
+    const contextCacheToken = buildProductContextCacheToken(effectiveProductContext);
     const modeCacheToken = hasConversationHistory ? 'assistant' : 'qna';
     const scopedCacheLookupKeyBase = `${cacheLookupKeyBase}::CTX::${contextCacheToken}::MODE::${modeCacheToken}`;
     const kbCacheState = await getKnowledgeBaseCacheState(tId, sId);
@@ -519,7 +554,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const { FEATURE_FLAGS: contextFlags } = await import('@config/features');
 
     // Parse product context (feature-flagged)
-    let validatedContext = productContext;
+    let validatedContext = effectiveProductContext;
     if (!validatedContext && contextFlags.ENABLE_CANONICA_CONTEXT_AWARE) {
         // Context already validated by caller if provided
         validatedContext = undefined;
@@ -627,8 +662,8 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     canonicalResult.matchedEntityIds[0],
                     answer,
                     canonicalResult.matchedEntityIds,
-                    productContext?.plan,
-                    productContext?.userRole,
+                    effectiveProductContext?.plan,
+                    effectiveProductContext?.userRole,
                     canonicalSourceVersions,
                 );
             } catch {
@@ -665,7 +700,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 ragDocuments: [],
                 searchQuery,
                 sessionFailureCount: input.sessionFailureCount,
-                productContext,
+                productContext: effectiveProductContext,
                 effectiveQuery: queryForEmbedding,
                 answerWasEmpty: true,
             });
@@ -953,7 +988,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     })),
                     searchQuery,
                     sessionFailureCount: input.sessionFailureCount,
-                    productContext,
+                    productContext: effectiveProductContext,
                     effectiveQuery: queryForEmbedding,
                     answerWasEmpty: !craftedAnswer,
                 });

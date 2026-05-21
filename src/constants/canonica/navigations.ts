@@ -15,6 +15,7 @@ import {
     LuCode,
     LuDatabase,
     LuLayoutDashboard,
+    LuLayers,
     LuMessageSquare,
     LuReceipt,
     LuSettings,
@@ -41,6 +42,7 @@ export const CANONICA_ROUTES = {
     CONVERSATIONS: `${CANONICA_BASE_PATH}/conversations`,
     GOVERNANCE: `${CANONICA_BASE_PATH}/governance`,
     CHANGELOG: `${CANONICA_BASE_PATH}/changelog`,
+    PRODUCT_SURFACES: `${CANONICA_BASE_PATH}/product-surfaces`,
     WIDGET: `${CANONICA_BASE_PATH}/widget`,
     SETTINGS: `${CANONICA_BASE_PATH}/settings`,
 } as const;
@@ -95,6 +97,7 @@ export const CANONICA_SIDEBAR_NAV: CanonicaNavItem[] = [
 
     // Management
     { key: 'changelog', label: 'Changelog', route: CANONICA_ROUTES.CHANGELOG, icon: LuReceipt, group: 'management', platformOnly: true },
+    { key: 'product-surfaces', label: 'Product Surfaces', route: CANONICA_ROUTES.PRODUCT_SURFACES, icon: LuLayers, group: 'management', platformOnly: true, featureFlag: 'ENABLE_CANONICA_PRODUCT_SURFACES' },
     { key: 'widget', label: 'Widget', route: CANONICA_ROUTES.WIDGET, icon: LuCode, group: 'management', platformOnly: true },
     { key: 'settings', label: 'Settings', route: CANONICA_ROUTES.SETTINGS, icon: LuSettings, group: 'management', platformOnly: true },
 ];

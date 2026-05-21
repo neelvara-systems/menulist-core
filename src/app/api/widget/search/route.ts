@@ -217,6 +217,15 @@ export async function POST(request: NextRequest) {
             imageProcessed: result.imageProcessed,
         };
 
+        if (result.relatedContent) {
+            response.relatedContent = {
+                key: result.relatedContent.key,
+                label: result.relatedContent.label,
+                articles: result.relatedContent.articles || [],
+                changelogs: result.relatedContent.changelogs || [],
+            };
+        }
+
         // Add canonical-specific fields when applicable
         if (result.canonical) {
             response.confidence = result.confidence;

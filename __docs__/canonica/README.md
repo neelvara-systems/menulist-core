@@ -40,6 +40,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 | 9   | `help-center/help-center_decoupling-analysis.md` | Strategy/Arch   | Future standalone SaaS readiness assessment                   |
 | 10  | `firebase-cost-optimization-audit.md`            | Developers/Ops  | Canonica-wide Firebase read/write/listener cost map and latest optimizations |
 | 11  | `deployment/canonica-qa-deployment-runbook.md`   | Developers/Ops  | QA deployment evidence, commands, secret handling, and production checklist |
+| 12  | `product-surface-contexts/`                      | Product/Ops/Dev | Route/page/workflow context model for related KB, changelog, ticket, and widget answers |
 
 ---
 
@@ -96,6 +97,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/knowledge-base` → `src/app/(canonica)/canonica/knowledge-base/page.tsx`
 - `/canonica/kb-generation` → `src/app/(canonica)/canonica/kb-generation/page.tsx`
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
+- `/canonica/product-surfaces` → `src/app/(canonica)/canonica/product-surfaces/page.tsx`
 
 The Canonica shell is responsive: desktop uses a fixed Canonica sidebar, while mobile uses a sticky header and drawer navigation. Client sessions see only the client support routes; `PLATFORM` and `PLATFORM_SUPPORT` sessions can also access operator management routes. Governance tables use horizontal scroll on narrow screens, and detail drawers/modals collapse to viewport width.
 
@@ -129,6 +131,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `POST /api/helpCenter/search-kb-stream` — Streaming RAG search (SSE)
 - `POST /api/helpCenter/article-embedding` — Generate & store article embeddings
 - `POST /api/canonica/tenant-summary` — Authenticated server-side sync for `platformSummary/canonicaTenantsSummary` after client-side entity creation
+- `POST /api/canonica/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
 
 ### Database Layer (DAL)
 
@@ -152,6 +155,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `src/database/canonica/releases.ts` — Immutable release registry
 - `src/database/canonica/auditLogs.ts` — Governance audit trail
 - `src/database/canonica/coverageKPI.ts` — Coverage KPI reads
+- `src/database/canonica/productSurfaces.ts` — Product surface CRUD and compact related-content summary reads
 
 ### Cloud Functions
 
@@ -248,6 +252,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_integrationEvents`     | Workflow integration events             | Tenant+Store scoped, server-written |
 | `canonica_integrationDeliveryLogs` | Integration delivery attempt logs      | Tenant+Store scoped, server-written |
 | `canonica_predictiveTriggers`    | Predictive support trigger rules        | Tenant+Store scoped                 |
+| `canonica_productSurfaces`       | Route/page/workflow context definitions | Tenant+Store scoped                 |
+| `platformSummary/contextContent_{tId}_{sId}` | Compact related-content surface summary | Tenant+Store scoped summary |
 
 **Rules, auth, and indexes:** Canonica tenant-scoped rules are mirrored in `firestore.rules` for shared-DB local/test mode and `firestore-canonica.rules` for dedicated Canonica Firebase deployments. `/api/auth/set-claims` returns a separate Canonica custom token when `CANONICA_FIREBASE_MODE=separate`. The client signs into the Canonica Firebase app with Canonica-scoped `platformRole`, `tenantId`, and `storeId` claims resolved from the default user document's `productAccounts.CN` bridge or from the Canonica `users` document. Canonica query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 

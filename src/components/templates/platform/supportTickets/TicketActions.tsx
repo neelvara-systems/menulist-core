@@ -1,11 +1,13 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import { FEATURE_FLAGS } from '@config/features';
+import { getProductSurfacesForSession } from '@database/canonica/productSurfaces';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategory';
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
 import SupportTicketStatus from '@organisms/SupportTicket/SupportTicketStatus';
 import { PLATFORM_SUPPORT_TICKET_TAG_OPTIONS, SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
 import { Image as AntImage, Divider, Flex, Input, Select, Typography, theme } from 'antd';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { LuPaperclip } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
@@ -19,10 +21,27 @@ interface TicketActionsProps {
 
 const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }) => {
     const { token } = theme.useToken();
+    const [surfaceOptions, setSurfaceOptions] = useState<Array<{ label: string; value: string }>>([]);
 
     const handleUpdate = (key: string, value: string | string[]) => {
         setTicket({ ...ticket, [key]: value });
     };
+
+    useEffect(() => {
+        if (from !== 'platform' || !FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) return;
+        let mounted = true;
+        getProductSurfacesForSession()
+            .then((surfaces = []) => {
+                if (!mounted) return;
+                setSurfaceOptions(
+                    surfaces
+                        .filter(surface => surface.active !== false)
+                        .map(surface => ({ label: surface.label, value: surface.key })),
+                );
+            })
+            .catch(() => undefined);
+        return () => { mounted = false; };
+    }, [from]);
 
     return (
         <Flex vertical gap={24}>
@@ -241,6 +260,17 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
                         >
                             {PLATFORM_SUPPORT_TICKET_TAG_OPTIONS.map(tag => <Option key={tag} value={tag}>{tag}</Option>)}
                         </Select>
+                        {FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES && (
+                            <Select
+                                mode="multiple"
+                                allowClear
+                                style={{ width: '100%' }}
+                                placeholder="Link to product surfaces..."
+                                value={ticket.contextKeys || []}
+                                options={surfaceOptions}
+                                onChange={(value) => handleUpdate('contextKeys', value)}
+                            />
+                        )}
                     </Flex>
                 </Flex>
             )}
@@ -250,4 +280,3 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
 };
 
 export default TicketActions;
-

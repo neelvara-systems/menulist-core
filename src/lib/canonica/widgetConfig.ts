@@ -165,6 +165,7 @@ export function buildCanonicaWidgetRouteSnippet(): string {
     return [
         'window.CanonicaWidget?.page({',
         "  contextVersion: 1,",
+        "  contextKey: 'billing_invoices',",
         "  feature: 'billing',",
         "  page: 'invoices',",
         "  workflow: 'manage_subscription',",

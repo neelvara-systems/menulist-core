@@ -112,6 +112,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             imageProcessed: result.imageProcessed,
         };
 
+        if (result.relatedContent) {
+            response.relatedContent = result.relatedContent;
+        }
+
         // Add canonical-specific fields when applicable
         if (result.canonical) {
             response.canonical = true;

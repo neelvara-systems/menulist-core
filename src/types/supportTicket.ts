@@ -30,6 +30,7 @@ export interface SupportTicketType {
     documents: any[];
     platformNotes: string;
     platformTags: string[];
+    contextKeys?: string[];
     deleted?: boolean; // Soft delete flag
     satisfaction?: { rating: number; comment?: string; submittedAt?: Timestamp }; // CSAT survey after resolution
     statuses: {

@@ -11,6 +11,7 @@ export interface ChatMessage {
     createdOn?: Timestamp; // Firestore Timestamp
     searchHistoryId?: string; // Links to aiSearchHistory for analytics
     references?: KnowledgeBaseArticleType[]; // KB articles with similarity scores
+    relatedContent?: import('@type/canonica').CanonicaSurfaceContentItem;
     suggestedQuestions?: string[]; // AI-generated follow-up questions (3 contextual questions)
     image?: UserUploadedFileType;
     // Feedback stored directly in message for easy UI display

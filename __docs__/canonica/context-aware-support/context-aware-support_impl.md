@@ -533,7 +533,7 @@ Current server-side read path:
 **File:** `src/config/features.ts`
 
 ```typescript
-ENABLE_CANONICA_CONTEXT_AWARE: false, // Context-aware retrieval: inject product state into canonical matching
+ENABLE_CANONICA_CONTEXT_AWARE: true, // Context-aware retrieval: inject product state into canonical matching
 ```
 
 ---

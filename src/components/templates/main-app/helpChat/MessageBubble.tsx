@@ -5,7 +5,7 @@ import ArticleViewModal from '@organisms/ArticleViewModal';
 import { Button, Card, Flex, Image, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { memo, useEffect, useState } from 'react';
-import { LuAlertCircle, LuFileText, LuSparkles, LuUser } from 'react-icons/lu';
+import { LuAlertCircle, LuBookOpen, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
@@ -38,6 +38,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
     // Use content for user messages, craftedAnswer for assistant messages
     const fullText = isUser ? message.content : message.craftedAnswer;
     const messageText = isTyping ? displayedText : fullText;
+    const relatedContent = !isUser && !isTyping ? message.relatedContent : undefined;
 
     // Get best reference (highest similarity score) for source tag
     const bestReference = message.references && message.references.length > 0
@@ -256,6 +257,51 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                     onArticleModalOpen={handleArticleModalOpen}
                                     isMobile={isMobile}
                                 />
+                            )}
+
+                            {!isUser && relatedContent && (
+                                <div
+                                    style={{
+                                        marginTop: 12,
+                                        padding: '10px 12px',
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 10,
+                                        background: token.colorFillQuaternary,
+                                    }}
+                                >
+                                    <Text strong style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+                                        Related to {relatedContent.label}
+                                    </Text>
+                                    <Flex gap={6} wrap="wrap">
+                                        {(relatedContent.articles || []).slice(0, isMobile ? 3 : 5).map(article => (
+                                            <Button
+                                                key={`article-${article.id}`}
+                                                size="small"
+                                                type="text"
+                                                icon={<LuBookOpen size={13} />}
+                                                onClick={() => article.url && window.open(article.url, '_blank', 'noopener,noreferrer')}
+                                                style={{ maxWidth: isMobile ? '100%' : 240 }}
+                                            >
+                                                <Text ellipsis style={{ maxWidth: isMobile ? 220 : 180 }}>
+                                                    {article.title}
+                                                </Text>
+                                            </Button>
+                                        ))}
+                                        {(relatedContent.changelogs || []).slice(0, 2).map(entry => (
+                                            <Button
+                                                key={`changelog-${entry.pageId}-${entry.id}`}
+                                                size="small"
+                                                type="text"
+                                                icon={<LuReceipt size={13} />}
+                                                style={{ maxWidth: isMobile ? '100%' : 240 }}
+                                            >
+                                                <Text ellipsis style={{ maxWidth: isMobile ? 220 : 180 }}>
+                                                    {entry.title}
+                                                </Text>
+                                            </Button>
+                                        ))}
+                                    </Flex>
+                                </div>
                             )}
 
                             {/* AI Failure Escalation — "Still need help?" button (Item #8) */}

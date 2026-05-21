@@ -181,6 +181,7 @@ function buildEscalationContext(
         triggerTypes: triggers,
         query: input.searchQuery,
         productContext: input.productContext ? {
+            contextKey: input.productContext.contextKey,
             page: input.productContext.page,
             feature: input.productContext.feature,
             workflow: input.productContext.workflow,

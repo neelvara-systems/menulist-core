@@ -23,4 +23,5 @@ export const CANONICA_DB_COLLECTIONS = {
     CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
     CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
     CANONICA_PREDICTIVE_TRIGGERS: 'canonica_predictiveTriggers',
+    CANONICA_PRODUCT_SURFACES: 'canonica_productSurfaces',
 } as const;

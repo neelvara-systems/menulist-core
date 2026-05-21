@@ -54,6 +54,7 @@ export interface EscalationContext {
 
     /** Product context at time of failure */
     productContext?: {
+        contextKey?: string;
         page?: string;
         feature?: string;
         workflow?: string;

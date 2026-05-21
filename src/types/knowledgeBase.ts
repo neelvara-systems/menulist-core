@@ -199,6 +199,7 @@ export interface KnowledgeBaseArticleType {
     lastReviewedOn?: Timestamp; // Content freshness tracking — when was this article last reviewed/validated
     reconciliation?: { status?: string; similarArticleIds?: string[]; similarArticles?: KnowledgeBaseArticleType[] }; // Reconciliation metadata from generation
     entityIds?: string[]; // Canonica entity IDs linked to this article (max 10) — powers entity-centric retrieval
+    contextKeys?: string[]; // Canonica product surface keys linked to this article
     tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc. Required by CANONICA_RULES Rule 6.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
 }

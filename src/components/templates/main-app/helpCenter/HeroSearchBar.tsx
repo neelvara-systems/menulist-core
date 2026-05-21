@@ -38,6 +38,7 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
 
         return {
             contextVersion: 1,
+            contextKey: normalizedTab === HOME_TAB_KEY ? 'help_center_home' : `help_center_${normalizedTab}`,
             feature: 'help_center',
             page: normalizedTab === HOME_TAB_KEY ? 'help_center_home' : `help_center_${normalizedTab}`,
             workflow: workflowByTab[normalizedTab] || 'search_help',
