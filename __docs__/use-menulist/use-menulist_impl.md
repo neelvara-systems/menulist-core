@@ -1,7 +1,8 @@
 # Use MenuList — Technical Implementation
 
-> **Version:** 1.0
+> **Version:** 1.1
 > **Feature Flag:** `ENABLE_USE_MENULIST`
+> **Last Updated:** May 22, 2026
 
 ## 1. Architecture
 
@@ -19,7 +20,8 @@ UseMenuListPage (client component)
     ├── generateProjectUrl() → menu/OBP links
     ├── buildScreenUrl() → screen link
     ├── getFeedbackUrl() → feedback link
-    └── generateMenuKit() → ZIP download (on-demand, client-side)
+    ├── generateMenuKit() → ZIP/downloadable assets (on-demand, client-side)
+    └── downloadMenuData() → XLSX/JSON export (on-demand, client-side)
 ```
 
 ## 3. Data Contract
@@ -29,6 +31,7 @@ interface UseMenuListData {
     // Links
     obpLink: string;          // {subdomain}.menulist.ai
     menuLink: string;         // {subdomain}.menulist.ai/{slug} or root if default
+    storeMenuLink: string;    // {subdomain}.menulist.ai/menu stable store alias
     feedbackLink: string;     // menulist.ai/feedback/{projectId}
     
     // Screen
@@ -64,10 +67,22 @@ UseMenuListPage
  ├── HeaderStatus           — "Your menu is live and ready to share"
  ├── QuickActions           — Copy Menu Link, Open Menu, Copy Screen Link, Download Menu Kit
  ├── ShareSection           — OBP link card + Direct menu link card
+ ├── QRSection              — Store Menu QR, Business Profile QR, Project Menu QR, outlet QRs
  ├── ScreensSection         — Menu Board + Highlights link cards
- ├── PrintSection           — Individual asset cards (table, counter, entrance, feedback, PDF)
+ ├── PrintSection           — Individual asset cards (table, counter, entrance, feedback, PDF, Menu Kit)
+ ├── ExportSection          — XLSX/JSON backup downloads
+ ├── POSSection             — POS provider setup summary + settings handoff
  └── ResourcesSection       — Setup/Printing/Sharing guide modals
 ```
+
+Mobile implements the same owner output jobs in `src/components/mobile/screens/MobileShareScreen.tsx` using mobile cards and sheets:
+- project/OBP/customer app/feedback link cards
+- raw QR sheet for Store Menu, Business Profile, Project Menu, and outlet aliases
+- PDF, Menu Kit ZIP, print assets, social assets, and feedback QR downloads
+- XLSX/JSON export from the selected project cache
+- Menu Board and Highlights links from `getScreenState()`
+- POS setup summary copy and mobile POS settings handoff
+- setup, printing, and sharing guide sheets
 
 ## 5. Key Files
 
@@ -98,6 +113,7 @@ UseMenuListPage
 | `src/lib/utils/feedbackQrCode.ts` | `generateFeedbackQrCode()`, `getFeedbackUrl()` |
 | `src/lib/menu-kit/menuKitGenerator.ts` | `generateMenuKit()` |
 | `src/lib/export/menuPdfGenerator.ts` | `generateMenuPdf()` |
+| `src/components/templates/main-app/projects/utils/excelUtils.ts` | `downloadMenuData()` |
 | `src/database/campaigns/index.ts` | `getScreenState()` |
 | `src/lib/menu-kit/businessTypeLabels.ts` | `getOfferingLabels()` |
 

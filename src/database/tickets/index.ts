@@ -66,7 +66,6 @@ export const addTicket = async (data: SupportTicketType) => {
     return await apiCallComposer(
         async () => {
             const capturedLogs = getCapturedLogs();
-            clearCapturedLogs(); // Clear after capturing to prevent duplicates
 
             const submitData = await canonicaRequestBodyComposer({ ...data, deleted: false, logs: capturedLogs });
             delete submitData.documents;
@@ -78,6 +77,7 @@ export const addTicket = async (data: SupportTicketType) => {
                 }
             }
             const docRef = await addDoc(getCollectionRef(), submitData);
+            clearCapturedLogs(); // Clear only after the ticket is persisted successfully.
             const displayId = getDisplayId(docRef.id);
 
             // Canonica: emit ticket creation signal (fire-and-forget)

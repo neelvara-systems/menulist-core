@@ -89,7 +89,8 @@ export async function regenerateDraftForProposal(
     proposalId: string,
     tId: number,
     sId: number,
-    callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>
+    callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>,
+    regeneratedBy = 'canonica_owner'
 ): Promise<ClientDraftResult> {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_AUTO_KNOWLEDGE) {
         return { success: false, error: 'Automatic Knowledge Creation is disabled' };
@@ -148,9 +149,9 @@ export async function regenerateDraftForProposal(
             const { setDoc, doc } = await import('firebase/firestore');
             const { canonicaFirebaseClient } = await import('@lib/firebase/canonicaFirebaseClient');
             const { DB_COLLECTIONS } = await import('@constant/database');
-            const { requestBodyComposer } = await import('@lib/apiHelper');
+            const { canonicaRequestBodyComposer } = await import('@lib/canonica/documentComposer');
 
-            const updateData = await requestBodyComposer({
+            const updateData = await canonicaRequestBodyComposer({
                 suggestedChange: {
                     ...proposal.suggestedChange,
                     draftStatus: 'failed',
@@ -169,9 +170,9 @@ export async function regenerateDraftForProposal(
         const { setDoc, doc } = await import('firebase/firestore');
         const { canonicaFirebaseClient } = await import('@lib/firebase/canonicaFirebaseClient');
         const { DB_COLLECTIONS } = await import('@constant/database');
-        const { requestBodyComposer } = await import('@lib/apiHelper');
+        const { canonicaRequestBodyComposer } = await import('@lib/canonica/documentComposer');
 
-        const updateData = await requestBodyComposer({
+        const updateData = await canonicaRequestBodyComposer({
             suggestedChange: {
                 ...proposal.suggestedChange,
                 draftTitle: parsed.title,
@@ -209,7 +210,7 @@ export async function regenerateDraftForProposal(
                 draftSource: 'signal_cluster',
                 promptVersion: DRAFT_PROMPT_VERSION,
             },
-            performedBy: 'admin',
+            performedBy: regeneratedBy,
             timestamp: Timestamp.now(),
         });
 

@@ -75,7 +75,7 @@ src/
 │       │   ├── MobileDashboardScreen.tsx    ← More > Dashboard analytics
 │       │   ├── MobileTodayScreen.tsx        ← More > Today campaigns
 │       │   ├── MobileUsersScreen.tsx        ← More > Staff management
-│       │   ├── MobileTransactionsScreen.tsx ← More > AI credit history
+│       │   ├── MobileTransactionsScreen.tsx ← More > AI usage history, filters, details
 │       │   ├── MobileHelpScreen.tsx         ← More > Help center
 │       │   ├── MobileBasicSettingsScreen.tsx     ← More > Basic settings
 │       │   ├── MobileLocaleSettingsScreen.tsx    ← More > Language & region
@@ -188,12 +188,16 @@ export default function AntdLayoutWrapper(props: any) {
 
 ### 2. Routing Strategy: Same Routes, Different Rendering
 
-Mobile and desktop share the same Next.js routes. The layout wrapper decides which shell to render. This means:
+Mobile and desktop share the same Next.js routes. The layout wrapper decides which shell to render. On handheld devices, `MobileShell` maps canonical desktop owner URLs to the matching phone surface so owners can open shared/bookmarked desktop links without needing a laptop:
 
-- `/dashboard` on mobile → MobileShell → Mobile Menu Screen (redirected)
-- `/dashboard` on desktop → Desktop Shell → Dashboard Page
-- `/feedback` on mobile → MobileShell → Mobile Feedback Screen
-- `/feedback` on desktop → Desktop Shell → Desktop Feedback Page
+- `/dashboard` on mobile → MobileShell → Today tab → Dashboard
+- `/today` and `/today/history` on mobile → MobileShell → Today tab
+- `/projects` on mobile → MobileShell → Menu tab
+- `/use-menulist`, `/qr-code`, and legacy `/qrCode` on mobile → MobileShell → Share tab
+- `/feedback`, `/billing`, `/transactions`, `/locations`, `/users`, and `/users/permissions` on mobile → MobileShell → More sub-screen
+- `/business-settings` on mobile → MobileShell → More hub with searchable settings
+
+`/transactions` keeps the desktop source of truth (`getPaginatedAiOperations`) and renders the phone-native equivalent of desktop filtering and drilldown: action filter, date range, reset, refresh, infinite scroll, and transaction detail sheet.
 
 For mobile, we intercept the route content and render the appropriate mobile screen. The page files in `src/app/(main)/` remain unchanged.
 
@@ -206,23 +210,9 @@ const MobileShell = ({ children }) => {
 
     const getMobileContent = () => {
         // Mobile has its own screen mapping
-        switch(true) {
-            case pathname.startsWith('/projects'):
-            case pathname === '/dashboard':
-                return <MobileMenuScreen />;
-            case pathname === '/today':
-                return <MobileHoursScreen />;
-            case pathname === '/feedback':
-                return <MobileFeedbackScreen />;
-            case pathname === '/billing':
-                return <MobileBillingScreen />;
-            case pathname === '/business-settings':
-                return <MobilePublicInfoScreen />;
-            case pathname === '/qr-code':
-                return <MobileShareScreen />;
-            default:
-                return <MobileMoreScreen />;
-        }
+        // OWNER_PATH_TO_MOBILE_ROUTE maps desktop owner paths to
+        // { tab, todayScreen, moreScreen } and keeps hash navigation in sync.
+        return parseMobileRoutePathname(pathname) || parseMobileRouteHash(window.location.hash);
     };
 
     return (

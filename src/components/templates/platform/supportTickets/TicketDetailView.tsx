@@ -15,7 +15,7 @@ import { Badge, Button, Card, Drawer, Flex, Grid, Image as AntImage, message, Ta
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { LuClock, LuFile, LuMessageSquare, LuPaperclip, LuPen } from 'react-icons/lu';
+import { LuBug, LuClock, LuFile, LuMessageSquare, LuPaperclip, LuPen } from 'react-icons/lu';
 import ConversationTimeline from './ConversationTimeline';
 import TicketActions from './TicketActions';
 import TicketLogsView from './TicketLogsView';
@@ -121,6 +121,9 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
 
     if (!Boolean(activeTicket) || !ticket) return null;
 
+    const ticketLogCount = ticket.logs?.length || 0;
+    const canViewTicketLogs = !isClientView && ticketLogCount > 0;
+
     const drawerTitle = isMobile ? (
         <Flex vertical gap={6} style={{ minWidth: 0, padding: '2px 0' }}>
             <Flex align="center" gap={8} wrap>
@@ -139,6 +142,18 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                     status={ticket.status === SUPPORT_TICKET_STATUS.RESOLVED ? "success" : "processing"}
                     text={ticket.status}
                 />
+                {!isClientView && (
+                    <Tooltip title={canViewTicketLogs ? `View ${ticketLogCount} captured browser log${ticketLogCount === 1 ? '' : 's'}` : 'No captured browser logs'}>
+                        <Button
+                            aria-label="View captured browser logs"
+                            disabled={!canViewTicketLogs}
+                            icon={<LuBug size={14} />}
+                            onClick={() => setIsLogsModalVisible(true)}
+                            size="small"
+                            type="text"
+                        />
+                    </Tooltip>
+                )}
             </Flex>
             <Text
                 strong
@@ -162,6 +177,18 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 <Tag icon={<LuPen size={14} />} color="green" style={{ margin: 0 }}>
                     Edit Mode
                 </Tag>
+            )}
+            {!isClientView && (
+                <Tooltip title={canViewTicketLogs ? `View ${ticketLogCount} captured browser log${ticketLogCount === 1 ? '' : 's'}` : 'No captured browser logs'}>
+                    <Button
+                        disabled={!canViewTicketLogs}
+                        icon={<LuBug size={14} />}
+                        onClick={() => setIsLogsModalVisible(true)}
+                        size="small"
+                    >
+                        Logs
+                    </Button>
+                </Tooltip>
             )}
             <Badge
                 status={ticket.status === SUPPORT_TICKET_STATUS.RESOLVED ? "success" : "processing"}

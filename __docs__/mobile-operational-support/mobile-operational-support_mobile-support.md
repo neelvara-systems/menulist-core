@@ -1,7 +1,7 @@
 # Mobile Operational Support — Mobile Support
 
 **Created:** February 15, 2026  
-**Last Updated:** April 5, 2026 (v3 — current navigation contract)  
+**Last Updated:** May 22, 2026 (v4 — owner-route and transaction parity)
 **Status:** ✅ PWA END-TO-END — Full mobile-only operation supported  
 **Feature Flag:** `ENABLE_MOBILE_UI`
 
@@ -38,10 +38,10 @@
 | `MobileWorkingHoursEditScreen` | More > Hours Edit   | `updateStore`                                                                     | `BusinessSettings > WorkingHoursTab`   |
 | `MobileRolesScreen`            | More > Roles        | `updateStore` (roles array)                                                       | `UserPermissionsPage`                  |
 | `MobileDigitalScreensScreen`   | More > Screens      | `getScreenState`, `initializeScreenState`, `updateScreenSettings`                 | `DigitalScreenSettings`                |
-| `MobileLocationsScreen`        | More > Locations    | `updateOutletPolicy`, `/api/outlets/create`, `/api/auth/switch-store`             | `LocationsPage`                        |
+| `MobileLocationsScreen`        | More > Locations    | `updateOutletPolicy`, `/api/outlets/create`, `/api/outlets/rename`, `/api/auth/switch-store` | `LocationsPage`                        |
 | `MobileDashboardScreen`        | More > Dashboard    | `useOwnerDashboard`, `getProjectsList`                                            | `OwnerDashboard`                       |
 | `MobileUsersScreen`            | More > Staff        | `addPlatformUser`, `updatePlatformUser`                                           | `UsersListPage`                        |
-| `MobileTransactionsScreen`     | More > Transactions | `getPaginatedAiOperations`                                                        | `TransactionPage`                      |
+| `MobileTransactionsScreen`     | More > Transactions | `getPaginatedAiOperations` with shared action/date filters                        | `TransactionPage`                      |
 | `MobileHelpScreen`             | More > Help         | (external links + FAQ)                                                            | `HelpCenter`                           |
 | `MobileAdvancedSettingsScreen` | More > Advanced     | `updateStore` (contact, social, feedback)                                         | `BusinessSettings` (3 tabs)            |
 | `BulkActionsSheet`             | Menu (sheet)        | `getProjectData`, `updateProject`                                                 | `CommandCenterModal`                   |
@@ -63,7 +63,7 @@
 AntdLayoutWrapper (src/components/antdComponent/layoutWrapper/index.tsx)
   └─ if isMobile && ENABLE_MOBILE_UI && !forceDesktop → MobileShell
      ├─ MobileNavigation (TabBar: Today, Menu, Share, More)
-     ├─ MobileTodayScreen
+     ├─ MobileHoursScreen
      ├─ MobileMenuScreen
      ├─ MobileShareScreen
      └─ MobileMoreScreen
@@ -93,6 +93,10 @@ AntdLayoutWrapper (src/components/antdComponent/layoutWrapper/index.tsx)
      MobileMenuScreen
          └─ BulkActionsSheet (bottom sheet)
 ```
+
+Route parity contract: handheld users remain in `MobileShell` for canonical owner desktop paths. `MobileShell` maps `/dashboard`, `/today`, `/today/history`, `/projects`, `/use-menulist`, `/qr-code`, `/feedback`, `/business-settings`, `/transactions`, `/billing`, `/locations`, `/users`, and `/users/permissions` to their matching mobile tab or More sub-screen.
+
+Transactions parity note: `MobileTransactionsScreen` keeps the existing mobile More-tab placement, but now carries the desktop transaction essentials on phone: action filter, date-range filter, reset, refresh, infinite scroll, credits/tokens summary, and tap-through transaction details. It still uses the same `getPaginatedAiOperations` DAL as desktop; no mobile-only transaction data path exists.
 
 ---
 
@@ -184,10 +188,11 @@ All mobile screens write data in **identical format** to desktop:
 | 9. Share links/screens | `MobileShareScreen`                                                                 | ✅     |
 | 10. View feedback      | `MobileFeedbackScreen` / `MobileFeedbackDetail`                                     | ✅     |
 | 11. Business settings  | `MobileBasicSettingsScreen`, `MobileLocaleSettingsScreen`, `MobilePublicInfoScreen` | ✅     |
-| 12. Billing            | `MobileBillingScreen` (redirects to desktop for plan changes)                       | ✅     |
-| 13. Logout             | `MobileMoreScreen` (confirmation dialog)                                            | ✅     |
-| 14. Delete item        | `ItemEditSheet` → confirmation → optimistic delete                                  | ✅     |
-| 15. Manage staff roles | `MobileRolesScreen` → view/add/edit/delete roles + toggle permissions               | ✅     |
+| 12. Billing            | `MobileBillingScreen`                                                              | ✅     |
+| 13. Enhancement usage  | `MobileTransactionsScreen` → filters, infinite scroll, and transaction details      | ✅     |
+| 14. Logout             | `MobileMoreScreen` (confirmation dialog)                                            | ✅     |
+| 15. Delete item        | `ItemEditSheet` → confirmation → optimistic delete                                  | ✅     |
+| 16. Manage staff roles | `MobileRolesScreen` → view/add/edit/delete roles + toggle permissions               | ✅     |
 
 ---
 

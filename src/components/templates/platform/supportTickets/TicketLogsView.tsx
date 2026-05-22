@@ -27,7 +27,7 @@ const TicketLogsView: React.FC<AdminTicketLogsProps> = ({ open, onClose, logs })
             open={open}
             onCancel={onClose}
             footer={null}
-            width={700}
+            width="min(700px, calc(100vw - 24px))"
         >
             {logs?.length ? (
                 <List

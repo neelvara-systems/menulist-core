@@ -33,6 +33,25 @@ const StarterActivationBanner = dynamic(() => import('../onboarding/StarterActiv
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
 const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
+type MobileRouteState = { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen };
+const MOBILE_ROUTE_DEFAULT: MobileRouteState = { tab: 'today', todayScreen: 'main', moreScreen: 'main' };
+const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
+    '/dashboard': { tab: 'today', todayScreen: 'dashboard', moreScreen: 'main' },
+    '/today': MOBILE_ROUTE_DEFAULT,
+    '/today/history': { tab: 'today', todayScreen: 'history', moreScreen: 'main' },
+    '/projects': { tab: 'menu', todayScreen: 'main', moreScreen: 'main' },
+    '/use-menulist': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
+    '/qr-code': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
+    '/qrCode': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
+    '/feedback': { tab: 'more', todayScreen: 'main', moreScreen: 'feedback' },
+    '/business-settings': { tab: 'more', todayScreen: 'main', moreScreen: 'main' },
+    '/transactions': { tab: 'more', todayScreen: 'main', moreScreen: 'transactions' },
+    '/billing': { tab: 'more', todayScreen: 'main', moreScreen: 'billing' },
+    '/locations': { tab: 'more', todayScreen: 'main', moreScreen: 'locations' },
+    '/users': { tab: 'more', todayScreen: 'main', moreScreen: 'users' },
+    '/users/list': { tab: 'more', todayScreen: 'main', moreScreen: 'users' },
+    '/users/permissions': { tab: 'more', todayScreen: 'main', moreScreen: 'roles' },
+};
 const PLATFORM_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/platform': 'platformHub',
     '/platform/entity-blocks': 'entityBlocks',
@@ -91,8 +110,8 @@ function getHelpCenterMoreScreen(pathname: string, search: string) {
     return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'canonicaHelp';
 }
 
-function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } {
-    const fallback = { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen };
+function parseMobileRouteHash(hash: string): MobileRouteState {
+    const fallback = MOBILE_ROUTE_DEFAULT;
     if (!hash.startsWith(MOBILE_ROUTE_HASH_PREFIX)) {
         return fallback;
     }
@@ -127,11 +146,19 @@ function parseMobileRouteHash(hash: string): { tab: MobileTab; todayScreen: 'mai
     };
 }
 
-function parseMobileRoutePathname(pathname: string, search = ''): { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen } | null {
+function parseMobileRoutePathname(pathname: string, search = ''): MobileRouteState | null {
     const normalizedPathname = normalizePathname(pathname);
+    const ownerRoute = OWNER_PATH_TO_MOBILE_ROUTE[normalizedPathname];
     const platformScreen = PLATFORM_PATH_TO_MORE_SCREEN[normalizedPathname];
     const opsScreen = OPS_PATH_TO_MORE_SCREEN[normalizedPathname];
     const resellerScreen = RESELLER_PATH_TO_MORE_SCREEN[normalizedPathname];
+
+    if (ownerRoute) {
+        if (ownerRoute.todayScreen === 'history' && !FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
+            return MOBILE_ROUTE_DEFAULT;
+        }
+        return ownerRoute;
+    }
 
     if (normalizedPathname === '/help-center' || normalizedPathname.startsWith('/help-center/')) {
         return {
@@ -389,6 +416,20 @@ export default function MobileShell() {
         setTodayScreen('main');
     }, []);
 
+    const handleOpenDigitalScreens = useCallback(() => {
+        setActiveTab('more');
+        setMoreScreen('digitalScreens');
+        setIsMoreRootScreen(false);
+        setTodayScreen('main');
+    }, []);
+
+    const handleOpenPosSync = useCallback(() => {
+        setActiveTab('more');
+        setMoreScreen('posSync');
+        setIsMoreRootScreen(false);
+        setTodayScreen('main');
+    }, []);
+
     const handleOpenHistory = useCallback(() => {
         if (!FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
             return;
@@ -423,7 +464,7 @@ export default function MobileShell() {
                     )
         )
         : activeTab === 'share'
-            ? <MobileShareScreen onOpenDesignEditor={handleOpenDesignEditor} />
+            ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenPosSync={handleOpenPosSync} />
         : activeTab === 'more'
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} />;

@@ -15,6 +15,7 @@ import {
     markMutationImplemented,
     rejectMutationProposal,
 } from '@database/canonica/mutationProposals';
+import { regenerateDraftForProposal } from '@lib/canonica/draftGenerator';
 import { CanonicaMutationProposal } from '@type/canonica';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -35,6 +36,7 @@ interface UseMutationProposalsReturn {
     reject: (proposalId: string) => Promise<void>;
     implement: (proposalId: string) => Promise<void>;
     approveDraft: (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => Promise<void>;
+    regenerateDraft: (proposalId: string, regeneratedBy: string) => Promise<void>;
     refresh: () => Promise<void>;
 }
 
@@ -103,5 +105,36 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
     }, [refresh, sId, tId]);
 
-    return { proposals, loading, error, approve, reject, implement, approveDraft, refresh };
+    const regenerateDraft = useCallback(async (proposalId: string, regeneratedBy: string) => {
+        if (!tId || !sId) {
+            message.error('Canonica workspace scope is missing');
+            return;
+        }
+
+        try {
+            const { callGeminiChat } = await import('@lib/vectorEmbeddings');
+            const result = await regenerateDraftForProposal(
+                proposalId,
+                tId,
+                sId,
+                async (systemPrompt: string, userPrompt: string) => {
+                    const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
+                    return callGeminiChat(combinedPrompt, []);
+                },
+                regeneratedBy
+            );
+
+            if (!result.success) {
+                throw new Error(result.error || 'Draft generation failed');
+            }
+
+            message.success('Draft generated');
+            await refresh();
+        } catch (err) {
+            message.error(err instanceof Error ? err.message : 'Failed to generate draft');
+            throw err;
+        }
+    }, [refresh, sId, tId]);
+
+    return { proposals, loading, error, approve, reject, implement, approveDraft, regenerateDraft, refresh };
 }

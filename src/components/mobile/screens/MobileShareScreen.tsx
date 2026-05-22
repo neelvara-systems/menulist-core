@@ -575,6 +575,44 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
         return handleCopy(summary, t('posSetupInfo'));
     };
 
+    const activeGuideSheet = activeGuide === 'setup'
+        ? {
+            items: [
+                { body: t('setupGuideStepTables') },
+                { body: t('setupGuideStepEntrance') },
+                { body: t('setupGuideStepCounter') },
+                { body: t('setupGuideStepFeedback') },
+                { body: t('setupGuideStepScreens') },
+                { body: t('setupGuideStepGoogle', { offering: labels.offeringLower }) },
+            ],
+            ordered: true,
+            title: t('setupGuide'),
+        }
+        : activeGuide === 'printing'
+            ? {
+                items: [
+                    { body: t('printingGuidePaper'), title: t('printingGuidePaperTitle') },
+                    { body: t('printingGuidePrint'), title: t('printingGuidePrintTitle') },
+                    { body: t('printingGuideTent'), title: t('printingGuideTentTitle') },
+                    { body: t('printingGuideSize'), title: t('printingGuideSizeTitle') },
+                    { body: t('printingGuideDistance'), title: t('printingGuideDistanceTitle') },
+                ],
+                ordered: false,
+                title: t('printingGuide'),
+            }
+            : activeGuide === 'sharing'
+                ? {
+                    items: [
+                        { body: t('sharingGuideWhatsapp', { offering: labels.offeringLower }), title: t('sharingGuideWhatsappTitle') },
+                        { body: t('sharingGuideInstagram'), title: t('sharingGuideInstagramTitle') },
+                        { body: t('sharingGuideGoogle'), title: t('sharingGuideGoogleTitle') },
+                        { body: t('sharingGuideStaff', { offering: labels.offeringLower }), title: t('sharingGuideStaffTitle') },
+                    ],
+                    ordered: false,
+                    title: t('sharingGuide'),
+                }
+                : null;
+
     if (!canManageSharing) {
         return (
             <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24, textAlign: 'center' }} vertical>
@@ -746,6 +784,91 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                 <Flex gap={12} vertical>
                     <SectionHeader
                         compact={isCompactHandheld}
+                        subtitle={t('qrCodesDesc')}
+                        title={t('qrCodesTitle')}
+                    />
+
+                    <Flex gap={10} wrap="wrap">
+                        <DownloadTile
+                            compact={isCompactHandheld}
+                            description={t('storeMenuQrDesc')}
+                            icon={<LuQrCode size={18} />}
+                            loading={false}
+                            onClick={() => handleOpenQr({
+                                filename: buildQrCodeFilename(`${data.storeName}-store-menu`, 'qr'),
+                                helperText: t('storeMenuQrDesc'),
+                                starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                                title: t('storeMenuQr'),
+                                url: withSource(data.storeMenuLink, 'qr'),
+                            })}
+                            title={t('storeMenuQr')}
+                            highlighted
+                        />
+                        <DownloadTile
+                            compact={isCompactHandheld}
+                            description={t('businessProfileQrDesc')}
+                            icon={<LuQrCode size={18} />}
+                            loading={false}
+                            onClick={() => handleOpenQr({
+                                filename: buildQrCodeFilename(`${data.storeName}-business-profile`, 'qr'),
+                                helperText: t('businessProfileQrDesc'),
+                                starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                                title: t('businessProfileQr'),
+                                url: withSource(data.obpLink, 'qr'),
+                            })}
+                            title={t('businessProfileQr')}
+                        />
+                        <DownloadTile
+                            compact={isCompactHandheld}
+                            description={t('projectMenuQrDesc', { projectName: data.projectName || t('projectFallback') })}
+                            icon={<LuQrCode size={18} />}
+                            loading={false}
+                            onClick={() => handleOpenQr({
+                                filename: buildQrCodeFilename(`${data.storeName}-${data.projectName || 'project'}-menu`, 'qr'),
+                                helperText: t('projectMenuQrDesc', { projectName: data.projectName || t('projectFallback') }),
+                                starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
+                                title: t('projectMenuQr'),
+                                url: withSource(data.menuLink, 'qr'),
+                            })}
+                            title={t('projectMenuQr')}
+                        />
+                    </Flex>
+
+                    {outletQrLinks.length > 0 ? (
+                        <Flex gap={8} vertical>
+                            <Text style={{ color: token.colorTextSecondary, fontSize: isCompactHandheld ? 11 : 12 }}>
+                                {t('outletQrSectionHelper')}
+                            </Text>
+                            {outletQrLinks.map((outlet) => (
+                                <Button
+                                    fill="outline"
+                                    key={outlet.storeId}
+                                    onClick={() => handleOpenQr({
+                                        filename: buildQrCodeFilename(`${outlet.label}-store-menu`, 'qr'),
+                                        helperText: t('outletQrHelper', { outlet: outlet.label }),
+                                        title: t('outletQrTitle', { outlet: outlet.label }),
+                                        url: withSource(outlet.url, 'qr'),
+                                    })}
+                                    style={{ justifyContent: 'flex-start', textAlign: 'left' }}
+                                >
+                                    <Flex align="center" gap={8} style={{ minWidth: 0, width: '100%' }}>
+                                        <LuQrCode size={16} />
+                                        <Flex gap={1} style={{ minWidth: 0 }} vertical>
+                                            <Text strong style={{ fontSize: 13 }}>{outlet.label}</Text>
+                                            <Text ellipsis style={{ color: token.colorTextSecondary, fontSize: 11 }}>{outlet.url}</Text>
+                                        </Flex>
+                                    </Flex>
+                                </Button>
+                            ))}
+                        </Flex>
+                    ) : null}
+                </Flex>
+            </Card>
+
+            <Card style={{ borderRadius: 24 }}>
+                <Flex gap={12} vertical>
+                    <SectionHeader
+                        compact={isCompactHandheld}
                         subtitle={t('printDownloadsDesc')}
                         title={t('printDownloadsTitle')}
                     />
@@ -771,6 +894,28 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                 highlighted
                             />
                         ) : null}
+                    </Flex>
+
+                    <Text style={{ color: token.colorTextSecondary, fontSize: isCompactHandheld ? 11 : 12 }}>
+                        {t('exportData')}
+                    </Text>
+                    <Flex gap={10} wrap="wrap">
+                        <DownloadTile
+                            compact={isCompactHandheld}
+                            description={t('exportXlsxDesc')}
+                            icon={<LuSheet size={18} />}
+                            loading={generatingDownload === 'export_xlsx'}
+                            onClick={() => void handleStructuredExport('xlsx')}
+                            title={t('exportXlsx')}
+                        />
+                        <DownloadTile
+                            compact={isCompactHandheld}
+                            description={t('exportJsonDesc')}
+                            icon={<LuFileJson size={18} />}
+                            loading={generatingDownload === 'export_json'}
+                            onClick={() => void handleStructuredExport('json')}
+                            title={t('exportJson')}
+                        />
                     </Flex>
 
                     {FEATURE_FLAGS.ENABLE_MENU_KIT ? (
@@ -871,9 +1016,77 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                 </Flex>
             ) : null}
 
+            <Card style={{ borderRadius: 24 }}>
+                <Flex gap={12} vertical>
+                    <SectionHeader
+                        compact={isCompactHandheld}
+                        subtitle={screenLinks.menuBoardLink ? t('digitalScreensReadyDesc', { offering: labels.offeringLower }) : t('screensNotSetUpHelp')}
+                        title={t('digitalScreens')}
+                    />
+                    {screenLinks.isLoading ? (
+                        <Flex align="center" gap={8}>
+                            <DotLoading color="primary" />
+                            <Text type="secondary">{t('loadingScreenLinks')}</Text>
+                        </Flex>
+                    ) : screenLinks.menuBoardLink && screenLinks.highlightsLink ? (
+                        <>
+                            <ScreenLinkPanel
+                                compact={isCompactHandheld}
+                                description={t('menuBoardDesc', { offering: labels.offeringLower })}
+                                icon={<LuMonitor size={18} />}
+                                label={t('menuBoard')}
+                                link={screenLinks.menuBoardLink}
+                                onCopy={() => void handleCopy(screenLinks.menuBoardLink as string, t('menuBoardLink'))}
+                                onOpen={() => openInternalLink(screenLinks.menuBoardLink as string)}
+                                tag={t('mainTv')}
+                            />
+                            <ScreenLinkPanel
+                                compact={isCompactHandheld}
+                                description={t('highlightsScreenDesc')}
+                                icon={<LuPlaySquare size={18} />}
+                                label={t('highlightsScreen')}
+                                link={screenLinks.highlightsLink}
+                                onCopy={() => void handleCopy(screenLinks.highlightsLink as string, t('highlightsLink'))}
+                                onOpen={() => openInternalLink(screenLinks.highlightsLink as string)}
+                                tag={t('secondTv')}
+                            />
+                            <Flex
+                                align="flex-start"
+                                gap={6}
+                                style={{
+                                    background: token.colorSuccessBg,
+                                    border: `1px solid ${token.colorSuccessBorder}`,
+                                    borderRadius: 12,
+                                    padding: '10px 12px',
+                                }}
+                            >
+                                <LuCheck color={token.colorSuccess} size={15} style={{ flexShrink: 0, marginTop: 3 }} />
+                                <Text style={{ fontSize: 12 }}>{t('screenSetupTip')}</Text>
+                            </Flex>
+                        </>
+                    ) : (
+                        <Flex gap={10} vertical>
+                            <Text type="secondary">{t('screensNotSetUpHelp')}</Text>
+                            <Button fill="outline" onClick={() => {
+                                if (onOpenDigitalScreens) {
+                                    onOpenDigitalScreens();
+                                    return;
+                                }
+                                window.location.assign('/business-settings');
+                            }}>
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuMonitor size={16} />
+                                    <Text>{t('setUpScreens')}</Text>
+                                </Flex>
+                            </Button>
+                        </Flex>
+                    )}
+                </Flex>
+            </Card>
+
             {data.hasPosSync ? (
                 <Card style={{ borderRadius: 24 }}>
-                    <Flex gap={8} vertical>
+                    <Flex gap={10} vertical>
                         <SectionHeader compact={isCompactHandheld} subtitle={t('posSyncDesc', { offering: labels.offeringLower })} title={t('posSync')} />
                         <Flex align="center" gap={8} wrap="wrap">
                             <LuShield color={token.colorTextSecondary} size={18} />
@@ -882,9 +1095,42 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                                 {data.posSyncStatus || t('active')}
                             </Tag>
                         </Flex>
+                        <Flex gap={8} wrap="wrap">
+                            <Button fill="outline" onClick={() => void handleCopyPosSetupInfo()} style={{ flex: '1 1 160px' }}>
+                                <Flex align="center" gap={6} justify="center">
+                                    <LuCopy size={15} />
+                                    <Text>{t('copyPosSetupInfo')}</Text>
+                                </Flex>
+                            </Button>
+                            {canManageIntegrations ? (
+                                <Button fill="outline" onClick={() => {
+                                    if (onOpenPosSync) {
+                                        onOpenPosSync();
+                                        return;
+                                    }
+                                    window.location.assign('/business-settings');
+                                }} style={{ flex: '1 1 140px' }}>
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuShield size={15} />
+                                        <Text>{t('posSettings')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
+                        </Flex>
                     </Flex>
                 </Card>
             ) : null}
+
+            <Card style={{ borderRadius: 24 }}>
+                <Flex gap={12} vertical>
+                    <SectionHeader compact={isCompactHandheld} subtitle={t('resourcesDesc')} title={t('resources')} />
+                    <Flex gap={10} wrap="wrap">
+                        <GuideButton compact={isCompactHandheld} icon={<LuBookOpen size={17} />} label={t('setupGuide')} onClick={() => setActiveGuide('setup')} />
+                        <GuideButton compact={isCompactHandheld} icon={<LuPrinter size={17} />} label={t('printingGuide')} onClick={() => setActiveGuide('printing')} />
+                        <GuideButton compact={isCompactHandheld} icon={<LuExternalLink size={17} />} label={t('sharingGuide')} onClick={() => setActiveGuide('sharing')} />
+                    </Flex>
+                </Flex>
+            </Card>
 
             <MobileProjectSelectorSheet
                 currentProjectId={data.projectId}
@@ -897,6 +1143,8 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
                 }}
                 visible={isProjectSelectorOpen}
             />
+
+            <GuideSheet guide={activeGuideSheet} onClose={() => setActiveGuide(null)} visible={!!activeGuideSheet} />
 
             <MobileQrCodeSheet
                 copyErrorMessage={t('couldNotCopy')}
@@ -962,6 +1210,150 @@ function DownloadTile({
                 </Text>
             </Flex>
         </Button>
+    );
+}
+
+function ScreenLinkPanel({
+    compact,
+    description,
+    icon,
+    label,
+    link,
+    onCopy,
+    onOpen,
+    tag,
+}: {
+    compact?: boolean;
+    description: string;
+    icon: ReactNode;
+    label: string;
+    link: string;
+    onCopy: () => void;
+    onOpen: () => void;
+    tag: string;
+}) {
+    const { token } = theme.useToken();
+
+    return (
+        <Card style={{ background: token.colorBgLayout, borderRadius: 16 }}>
+            <Flex gap={10} vertical>
+                <Flex align="center" gap={8} wrap="wrap">
+                    {icon}
+                    <Text strong style={{ fontSize: compact ? 13 : 14 }}>{label}</Text>
+                    <Tag color="primary">{tag}</Tag>
+                </Flex>
+                <Text style={{ color: token.colorTextSecondary, fontSize: compact ? 11 : 12 }}>{description}</Text>
+                <Text
+                    style={{
+                        background: token.colorBgContainer,
+                        borderRadius: 8,
+                        color: token.colorTextSecondary,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        padding: '6px 8px',
+                        wordBreak: 'break-all',
+                    }}
+                >
+                    {link.replace(/^https?:\/\//, '')}
+                </Text>
+                <Flex gap={8}>
+                    <Button block fill="outline" onClick={onCopy}>
+                        <Flex align="center" gap={6} justify="center">
+                            <LuCopy size={14} />
+                            <Text>Copy</Text>
+                        </Flex>
+                    </Button>
+                    <Button block fill="outline" onClick={onOpen}>
+                        <Flex align="center" gap={6} justify="center">
+                            <LuExternalLink size={14} />
+                            <Text>Open</Text>
+                        </Flex>
+                    </Button>
+                </Flex>
+            </Flex>
+        </Card>
+    );
+}
+
+function GuideButton({
+    compact,
+    icon,
+    label,
+    onClick,
+}: {
+    compact?: boolean;
+    icon: ReactNode;
+    label: string;
+    onClick: () => void;
+}) {
+    return (
+        <Button fill="outline" onClick={onClick} style={{ flex: '1 1 calc(33.33% - 7px)', minHeight: compact ? 68 : 74, minWidth: 104, whiteSpace: 'normal' }}>
+            <Flex align="center" gap={6} justify="center" vertical>
+                {icon}
+                <Text strong style={{ fontSize: compact ? 12 : 13, lineHeight: 1.2, textAlign: 'center' }}>{label}</Text>
+            </Flex>
+        </Button>
+    );
+}
+
+function GuideSheet({
+    guide,
+    onClose,
+    visible,
+}: {
+    guide: {
+        items: Array<{ body: string; title?: string }>;
+        ordered: boolean;
+        title: string;
+    } | null;
+    onClose: () => void;
+    visible: boolean;
+}) {
+    const { token } = theme.useToken();
+
+    return (
+        <Popup
+            bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
+            destroyOnClose
+            onMaskClick={onClose}
+            visible={visible}
+        >
+            <Flex style={{ height: '100%', maxHeight: '94vh' }} vertical>
+                <NavBar backIcon={<LuX size={20} />} onBack={onClose}>
+                    {guide?.title || ''}
+                </NavBar>
+                <Flex gap={10} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                    {guide?.items.map((item, index) => (
+                        <Card key={`${item.title || item.body}-${index}`} style={{ background: token.colorBgLayout, borderRadius: 16 }}>
+                            <Flex align="flex-start" gap={10}>
+                                {guide.ordered ? (
+                                    <Flex
+                                        align="center"
+                                        justify="center"
+                                        style={{
+                                            background: token.colorPrimary,
+                                            borderRadius: 999,
+                                            color: token.colorTextLightSolid,
+                                            flexShrink: 0,
+                                            fontSize: 12,
+                                            fontWeight: 700,
+                                            height: 24,
+                                            width: 24,
+                                        }}
+                                    >
+                                        {index + 1}
+                                    </Flex>
+                                ) : null}
+                                <Flex gap={2} vertical>
+                                    {item.title ? <Text strong>{item.title}</Text> : null}
+                                    <Text style={{ color: token.colorTextSecondary }}>{item.body}</Text>
+                                </Flex>
+                            </Flex>
+                        </Card>
+                    ))}
+                </Flex>
+            </Flex>
+        </Popup>
     );
 }
 

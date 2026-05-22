@@ -1,6 +1,6 @@
 # Canonica Billing — Firebase Cost
 
-> **Version:** 1.1.1
+> **Version:** 1.1.2
 > **Last Updated:** 2026-05-21
 > **Audience:** Developers / Ops
 
@@ -27,6 +27,7 @@ Canonica billing uses the same collection names as MenuList, but in Canonica Fir
 - Single-object billing reads do not use the generic client `apiCallComposer`, because that helper returns `[]` on error for list-style DAL calls.
 - Webhook writes compact transaction summaries instead of full raw Razorpay payloads.
 - Canonica entitlement sync updates only `stores/{sId}` and the subscription doc; it does not fan out to MenuList public cache tags.
+- Payment verification writes product/scope mirror keys back to the touched subscription document. This repairs legacy records during normal successful payments and prevents helper defaults from replacing missing tenant/store keys with platform defaults.
 
 ## Rules And Indexes
 
@@ -44,6 +45,7 @@ The active-subscription direct-doc path avoids the old composite query on `statu
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-21 | 1.1.2 | Added product-scoped Razorpay plan lookup and subscription metadata normalization notes |
 | 2026-05-21 | 1.1.1 | Aligned server-side Canonica billing lookup with the store-summary direct subscription path |
 | 2026-05-21 | 1.1.0 | Switched billing reads to store-summary direct subscription lookup, documented Canonica read-only rules, and removed composite-heavy history query shape |
 | 2026-05-21 | 1.0.0 | Initial Canonica billing cost model |

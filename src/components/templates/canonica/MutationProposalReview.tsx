@@ -16,7 +16,7 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { CanonicaMutationProposal } from '@type/canonica';
 import { Badge, Button, Card, Empty, Flex, Form, Input, List, Modal, Popconfirm, Space, Tag, Typography } from 'antd';
 import { useCallback, useState } from 'react';
-import { LuCheck, LuFileCheck, LuRefreshCw, LuX } from 'react-icons/lu';
+import { LuCheck, LuFileCheck, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -40,20 +40,37 @@ function ProposalItem({
     onApprove,
     onReject,
     onOpenDraft,
+    onRegenerateDraft,
+    regenerating,
 }: {
     proposal: CanonicaMutationProposal;
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
     onOpenDraft: (proposal: CanonicaMutationProposal) => void;
+    onRegenerateDraft: (proposal: CanonicaMutationProposal) => void;
+    regenerating: boolean;
 }) {
     const hasGeneratedDraft = proposal.mutationType === 'new_answer_required'
         && proposal.suggestedChange?.draftStatus === 'generated'
         && Boolean(proposal.suggestedChange?.draftTitle);
+    const canGenerateDraft = FEATURE_FLAGS.ENABLE_CANONICA_AUTO_KNOWLEDGE
+        && proposal.mutationType === 'new_answer_required';
     const actions = hasGeneratedDraft
         ? [
             <Button key="publish" type="primary" icon={<LuFileCheck />} onClick={() => onOpenDraft(proposal)}>
                 Publish answer
             </Button>,
+            <Popconfirm
+                key="regenerate"
+                title="Regenerate this draft?"
+                description="This uses one AI request and replaces the current draft on this proposal."
+                onConfirm={() => onRegenerateDraft(proposal)}
+                okText="Regenerate"
+            >
+                <Button type="text" icon={<LuSparkles />} loading={regenerating}>
+                    Regenerate
+                </Button>
+            </Popconfirm>,
             <Popconfirm
                 key="reject"
                 title="Reject this proposal?"
@@ -68,6 +85,19 @@ function ProposalItem({
             </Popconfirm>,
         ]
         : [
+            ...(canGenerateDraft ? [
+                <Popconfirm
+                    key="generate"
+                    title="Generate a canonical answer draft?"
+                    description="This uses one AI request and keeps the draft in review until you publish it."
+                    onConfirm={() => onRegenerateDraft(proposal)}
+                    okText="Generate"
+                >
+                    <Button type="primary" ghost icon={<LuSparkles />} loading={regenerating}>
+                        Generate draft
+                    </Button>
+                </Popconfirm>,
+            ] : []),
             <Popconfirm
                 key="approve"
                 title="Approve this proposal?"
@@ -117,12 +147,32 @@ function ProposalItem({
                         </Text>
                         {hasGeneratedDraft && (
                             <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, background: '#fafafa' }}>
-                                <Flex vertical gap={4}>
+                                <Flex vertical gap={8}>
                                     <Text strong>{proposal.suggestedChange.draftTitle}</Text>
                                     <Text type="secondary">{proposal.suggestedChange.structuredSummary}</Text>
-                                    <Tag color="processing" style={{ width: 'fit-content' }}>
-                                        Draft from {proposal.suggestedChange.draftSource || 'signal'}
-                                    </Tag>
+                                    <Space size={[6, 6]} wrap>
+                                        <Tag color="processing" style={{ width: 'fit-content' }}>
+                                            Draft from {proposal.suggestedChange.draftSource || 'signal'}
+                                        </Tag>
+                                        {proposal.suggestedChange.draftPromptVersion && (
+                                            <Tag color="default">Prompt {proposal.suggestedChange.draftPromptVersion}</Tag>
+                                        )}
+                                    </Space>
+                                    {proposal.suggestedChange.draftEntityContext && (
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Entity context: {proposal.suggestedChange.draftEntityContext}
+                                        </Text>
+                                    )}
+                                    {Array.isArray(proposal.suggestedChange.draftSignalExamples) && proposal.suggestedChange.draftSignalExamples.length > 0 && (
+                                        <Flex vertical gap={4}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>Signal examples</Text>
+                                            {proposal.suggestedChange.draftSignalExamples.slice(0, 3).map((example, index) => (
+                                                <Text key={`${proposal.id}-signal-${index}`} style={{ fontSize: 12 }}>
+                                                    {index + 1}. {example}
+                                                </Text>
+                                            ))}
+                                        </Flex>
+                                    )}
                                 </Flex>
                             </div>
                         )}
@@ -139,13 +189,14 @@ function ProposalItem({
 
 export default function MutationProposalReview() {
     const session = useClientAuthSession();
-    const { proposals, loading, approve, reject, approveDraft, refresh } = useMutationProposals(
+    const { proposals, loading, approve, reject, approveDraft, regenerateDraft, refresh } = useMutationProposals(
         session?.tId || 0,
         session?.sId || 0,
     );
     const [draftForm] = Form.useForm();
     const [draftProposal, setDraftProposal] = useState<CanonicaMutationProposal | null>(null);
     const [publishing, setPublishing] = useState(false);
+    const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
     const openDraftModal = useCallback((proposal: CanonicaMutationProposal) => {
         setDraftProposal(proposal);
@@ -176,6 +227,16 @@ export default function MutationProposalReview() {
             setPublishing(false);
         }
     }, [approveDraft, closeDraftModal, draftForm, draftProposal, session?.uId, session?.user?.email]);
+
+    const handleRegenerateDraft = useCallback(async (proposal: CanonicaMutationProposal) => {
+        const regeneratedBy = String(session?.user?.email || session?.uId || 'canonica_owner');
+        setRegeneratingId(proposal.id);
+        try {
+            await regenerateDraft(proposal.id, regeneratedBy);
+        } finally {
+            setRegeneratingId(null);
+        }
+    }, [regenerateDraft, session?.uId, session?.user?.email]);
 
     if (!FEATURE_FLAGS.ENABLE_CANONICA_SIGNAL_MUTATION) {
         return (
@@ -210,6 +271,8 @@ export default function MutationProposalReview() {
                         onApprove={approve}
                         onReject={reject}
                         onOpenDraft={openDraftModal}
+                        onRegenerateDraft={handleRegenerateDraft}
+                        regenerating={regeneratingId === proposal.id}
                     />
                 )}
             />

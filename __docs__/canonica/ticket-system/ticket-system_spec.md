@@ -190,7 +190,7 @@ Real-time indicator badge shows "Live" when subscription is active.
 
 ## 9. Browser Log Capture
 
-On ticket creation, the system captures recent browser console logs via `getCapturedLogs()` from `@lib/localLogs/localLogsTracker`. These logs are stored in the ticket document and viewable by platform admins through the `TicketLogsView` modal. This provides debugging context without requiring the owner to describe technical details.
+On ticket creation, the system captures the last 5 sanitized browser console logs via `getCapturedLogs()` from `@lib/localLogs/localLogsTracker`. These logs are stored in the ticket document and viewable by platform admins from the ticket detail Logs button through the `TicketLogsView` modal. This provides debugging context without requiring the owner to describe technical details.
 
 Log entries include: timestamp, message, level (info/warn/error).
 

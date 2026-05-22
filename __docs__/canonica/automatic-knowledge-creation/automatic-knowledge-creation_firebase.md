@@ -57,10 +57,12 @@
 |-----------|-----------|------|-------|---------|
 | Read proposal | `canonica_mutation_proposals` | R | 1 | Fetch entity + signal context |
 | Read entity | `canonica_entities` | R | 1 | Entity context |
+| Read recent entity signals | `canonica_signal_events` | R | 1 bounded query | Draft evidence examples |
 | Read existing answers | `canonica_canonical_answers` | R | 1 query | Grounding |
 | Update proposal | `canonica_mutation_proposals` | W | 1 | Store new draft |
+| Write audit log | `canonica_audit_logs` | W | 1 | Record explicit regeneration |
 
-**Total per regeneration: 3 reads + 1 write**
+**Total per regeneration: 4 reads/queries + 2 writes**
 
 ---
 

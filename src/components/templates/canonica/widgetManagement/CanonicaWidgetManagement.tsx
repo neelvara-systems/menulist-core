@@ -559,7 +559,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                     <Card title={<Flex align="center" gap={8}><LuCode size={16} /> Page Context</Flex>}>
                                         <Flex vertical gap={12}>
                                             <Paragraph style={{ margin: 0 }}>
-                                                Send a stable contextKey plus page, feature, workflow, and entity hints after route changes. Do not send account IDs, emails, phone numbers, or tenant/store IDs.
+                                                Send a stable contextKey plus page, feature, workflow, and entity hints after route changes. Do not send internal account IDs, workspace IDs, emails, or phone numbers.
                                             </Paragraph>
                                             <Input.TextArea
                                                 value={spaSnippet}

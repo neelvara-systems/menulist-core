@@ -80,6 +80,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 
 - `getDisplayId(id)`: `id.slice(0, 6).toUpperCase()` — first 6 chars of Firestore auto-ID
 - `uploadImage()`: Uses `generateStoragePath()` for tenant-scoped paths
+- `startLogCapture()`: Started for authenticated app sessions by `src/providers/sessionProvider.tsx`; keeps the last 5 sanitized browser logs for ticket submission.
 - Ticket queries use the active NextAuth session values for `tId` and `sId`; Canonica documents keep the standard `pId`/`tId`/`sId` shape.
 
 ### 2.6 Types

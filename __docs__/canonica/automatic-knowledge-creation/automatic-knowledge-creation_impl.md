@@ -41,10 +41,10 @@ Governance UI → founder reviews draft → approve → canonical answer
 |-----------|------|--------|
 | Signal collection | `src/lib/canonica/signalEmitter.ts` | ✅ Built |
 | Signal events DAL | `src/database/canonica/signalEvents.ts` | ✅ Built (4 functions) |
-| Entity-based clustering | `src/lib/canonica/signalMutation.ts` → `clusterSignalsByEntity()` | ✅ Built |
-| Mutation type determination | `src/lib/canonica/signalMutation.ts` → `determineMutationType()` | ✅ Built |
+| Entity-based clustering | `src/lib/canonica/signalMutation.ts` reference utility; production batch logic lives in `functions-canonica/src/canonica/canonicaNightly.ts` | ✅ Built |
+| Mutation type determination | `src/lib/canonica/signalMutation.ts` reference utility; production batch logic lives in `functions-canonica/src/canonica/canonicaNightly.ts` | ✅ Built |
 | Proposal creation | `src/database/canonica/mutationProposals.ts` → `addMutationProposal()` | ✅ Built (7 functions) |
-| Nightly batch (CF) | `functions-canonica/src/canonica/canonicaNightly.ts` → `runSignalMutation()` | ✅ Built (8 steps) |
+| Nightly batch (CF) | `functions-canonica/src/canonica/canonicaNightly.ts` → `runSignalMutation()` | ✅ Built (multi-step scheduler) |
 | Recurring fallback detection | `functions-canonica/src/canonica/canonicaNightly.ts` → `detectRecurringFallbacks()` | ✅ Built |
 | Proposal review UI | `src/components/templates/canonica/governance/MutationProposalReview` | ✅ Built |
 | Canonical answer DAL | `src/database/canonica/canonicalAnswers.ts` | ✅ Built (8 functions) |
@@ -247,6 +247,8 @@ functions-canonica/src/constants/features.ts         — Add ENABLE_CANONICA_AUT
 functions-canonica/src/canonica/canonicaNightly.ts   — Add draft generation step (step 9)
 src/types/canonica/index.ts                          — Extend suggestedChange type
 src/database/canonica/mutationProposals.ts           — Add approveDraftAsCanonicalAnswer()
+src/hooks/canonica/useMutationProposals.ts           — Add manual generate/regenerate draft action
+src/components/templates/canonica/MutationProposalReview.tsx — Surface draft evidence, publish, reject, and generate/regenerate actions
 ```
 
 ---
@@ -369,7 +371,7 @@ Enhanced UI adds:
   - "Approve Draft" → creates canonical answer from draft content
   - "Edit & Approve" → opens editor, then creates answer
   - "Reject" → unchanged
-  - "Regenerate Draft" → calls Gemini again with same context
+  - "Generate Draft" / "Regenerate Draft" → explicit owner action, one AI request per click, keeps result in review
 
 ### §8.2 — No New Pages Required
 

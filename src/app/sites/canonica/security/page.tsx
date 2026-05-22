@@ -25,8 +25,8 @@ function getBasePath(): string {
 
 const CONTROLS = [
     {
-        title: 'Tenant-scoped data',
-        body: 'Canonica documents use product, tenant, and store scope so support knowledge, tickets, widget settings, and summaries stay tied to the correct workspace.',
+        title: 'Account-scoped data',
+        body: 'Canonica documents use product, account, and workspace scope so support knowledge, tickets, widget settings, and summaries stay tied to the correct workspace.',
     },
     {
         title: 'Safe widget context',
@@ -66,7 +66,7 @@ const TRUST_AREAS = [
         title: 'Workspace isolation',
         body: 'Canonica management routes resolve a Canonica product account and workspace before reading or writing workspace data.',
         points: [
-            'Canonica documents use product, tenant, and store scope.',
+            'Canonica documents use product, account, and workspace scope.',
             'Dashboard APIs check Canonica scope before mutations.',
             'Canonica Firebase rules default to deny and allow tenant-scoped access explicitly.',
         ],

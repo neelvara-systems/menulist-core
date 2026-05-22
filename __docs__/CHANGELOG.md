@@ -6,6 +6,14 @@
 
 ---
 
+## May 22, 2026 — Mobile Transactions Parity
+
+### Changed
+
+- **Mobile Transactions now matches the desktop essentials** — The More-tab Transactions screen keeps its mobile placement and now supports action filtering, date-range filtering, reset, refresh, infinite scroll, credits/tokens summary, and tap-through transaction details using the shared `getPaginatedAiOperations` DAL.
+
+---
+
 ## May 21, 2026 — Canonica Website Widget Positioning
 
 ### Changed

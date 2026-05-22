@@ -224,8 +224,11 @@ export interface MutationEngineResult {
  * Analyzes recent signal events, clusters by entity, generates mutation proposals.
  * 
  * Called by:
- * - Nightly scheduled job (Cloud Function)
- * - Manual trigger from governance dashboard
+ * - Legacy/manual utility paths only.
+ *
+ * Production batch mutation runs inside functions-canonica/src/canonica/canonicaNightly.ts.
+ * Do not expose this client-side engine as a broad dashboard trigger; it can read
+ * up to 500 signal docs and belongs in the server scheduler for cost and access control.
  * 
  * Feature-flagged: ENABLE_CANONICA_SIGNAL_MUTATION
  */

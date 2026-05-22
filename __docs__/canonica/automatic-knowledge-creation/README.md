@@ -67,6 +67,11 @@ Governance UI → MutationProposalReview → Founder REVIEWS draft → edits →
 Canonical Answer created from approved draft
 ```
 
+Current governance UI coverage:
+- Generated drafts appear inside the Signal-to-Knowledge Queue.
+- Product owners can publish a generated draft as a canonical answer after editing.
+- Product owners can explicitly generate/regenerate a draft from the queue; this is manual, feature-flagged by `ENABLE_CANONICA_AUTO_KNOWLEDGE`, and uses one AI request per click.
+
 ---
 
 ## Key Decisions (Cascade, NOT ChatGPT)

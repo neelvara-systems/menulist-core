@@ -6,13 +6,14 @@ import { updateOutletPolicy } from '@database/multiOutlet';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import { slugify } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 import { formatCurrency } from '@util/formatters';
 import { calculateProration } from '@util/razorpay';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCreditCard, LuMapPin, LuPlus, LuStar, LuX } from 'react-icons/lu';
+import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -46,6 +47,10 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     const [policy, setPolicy] = useState<OutletPolicy>(policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY);
     const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(policySourceStore?.outletPolicy || DEFAULT_OUTLET_POLICY);
     const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+    const [renameTarget, setRenameTarget] = useState<any | null>(null);
+    const [renameName, setRenameName] = useState('');
+    const [renameSlug, setRenameSlug] = useState('');
+    const [isRenaming, setIsRenaming] = useState(false);
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
@@ -71,6 +76,15 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
     const hasPolicyChanges = useMemo(
         () => Object.keys(DEFAULT_OUTLET_POLICY).some((key) => policy[key as keyof OutletPolicy] !== draftPolicy[key as keyof OutletPolicy]),
         [draftPolicy, policy],
+    );
+    const proposedRenameSlug = useMemo(() => {
+        const raw = renameSlug.trim() || renameName.trim();
+        return raw ? slugify(raw) : '';
+    }, [renameName, renameSlug]);
+    const renameSlugChanged = Boolean(
+        renameTarget
+        && proposedRenameSlug
+        && proposedRenameSlug !== String(renameTarget?.outletSlug || '').toLowerCase(),
     );
 
     if (!canManageLocations) {
@@ -176,6 +190,76 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             Toast.show({ content: t('failedToDeactivate'), duration: 2000 });
         } finally {
             setDeactivatingStoreId(null);
+        }
+    };
+
+    const handleOpenRenameOutlet = (store: any) => {
+        setRenameTarget(store);
+        setRenameName(store?.name || '');
+        setRenameSlug('');
+        setIsRenaming(false);
+    };
+
+    const handleCloseRenameOutlet = () => {
+        if (isRenaming) return;
+        setRenameTarget(null);
+        setRenameName('');
+        setRenameSlug('');
+    };
+
+    const handleRenameOutlet = async () => {
+        if (!renameTarget?.storeId || !renameSlugChanged) return;
+        setIsRenaming(true);
+        try {
+            const res = await fetch('/api/outlets/rename', {
+                body: JSON.stringify({
+                    newOutletName: renameName.trim() || undefined,
+                    newOutletSlug: proposedRenameSlug,
+                    outletStoreId: renameTarget.storeId,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                Toast.show({ content: data?.error || 'Rename failed', duration: 2200 });
+                return;
+            }
+
+            const outletStoreId = String(data.outletStoreId || renameTarget.storeId);
+            const outletSlug = data.outletSlug || proposedRenameSlug;
+            const nextName = renameName.trim() || renameTarget.name;
+            setTenantDetails((previous: any) => previous?.storesList
+                ? {
+                    ...previous,
+                    storesList: previous.storesList.map((store: any) => (
+                        Number(store.storeId) === Number(outletStoreId)
+                            ? {
+                                ...store,
+                                ...(nextName ? { name: nextName } : {}),
+                                outletSlug,
+                                previousOutletSlugs: data.previousOutletSlugs || store.previousOutletSlugs,
+                                storeDetails: store.storeDetails
+                                    ? {
+                                        ...store.storeDetails,
+                                        ...(nextName ? { name: nextName } : {}),
+                                        outletSlug,
+                                        previousOutletSlugs: data.previousOutletSlugs || store.storeDetails.previousOutletSlugs,
+                                    }
+                                    : store.storeDetails,
+                            }
+                            : store
+                    )),
+                }
+                : previous);
+            Toast.show({ content: `Outlet renamed to /${outletSlug}`, duration: 1800 });
+            setRenameTarget(null);
+            setRenameName('');
+            setRenameSlug('');
+        } catch {
+            Toast.show({ content: 'Rename failed. Try again.', duration: 2200 });
+        } finally {
+            setIsRenaming(false);
         }
     };
 
@@ -339,9 +423,23 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                     ) : store.active === false ? (
                                         <Tag>{t('inactive')}</Tag>
                                     ) : (
-                                        <Flex align="center" gap={6}>
+                                        <Flex align="center" gap={6} justify="end" wrap="wrap">
                                             <Tag>View</Tag>
                                             {Number(store.storeId) === Number(storeDetails?.storeId) ? <Tag color="processing">Current</Tag> : null}
+                                            <Button
+                                                fill="outline"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    handleOpenRenameOutlet(store);
+                                                }}
+                                                size="mini"
+                                                style={{ minHeight: 44 }}
+                                            >
+                                                <Flex align="center" gap={4}>
+                                                    <LuPencil size={13} />
+                                                    <Text>Rename</Text>
+                                                </Flex>
+                                            </Button>
                                             <Button
                                                 color="danger"
                                                 fill="outline"
@@ -351,6 +449,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                                     void handleDeactivateOutlet(store);
                                                 }}
                                                 size="mini"
+                                                style={{ minHeight: 44 }}
                                             >
                                                 {t('deactivate')}
                                             </Button>
@@ -480,6 +579,73 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                 size="large"
                             >
                                 {t('addOutlet')}
+                            </Button>
+                        </Flex>
+                    </Flex>
+                </Flex>
+            </Popup>
+
+            <Popup
+                bodyStyle={{ maxHeight: '74vh', overflow: 'hidden', padding: 0 }}
+                onMaskClick={isRenaming ? undefined : handleCloseRenameOutlet}
+                position="bottom"
+                visible={Boolean(renameTarget)}
+            >
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={handleCloseRenameOutlet}>
+                        Rename outlet URL
+                    </NavBar>
+
+                    <Flex gap={14} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        <Card size="small" style={{ backgroundColor: '#eff6ff' }}>
+                            <Flex gap={4} vertical>
+                                <Text strong>Old URLs keep working</Text>
+                                <Text type="secondary">
+                                    Printed QRs and shared links for /{renameTarget?.outletSlug || '...'} redirect for 12 months. The redirect chain keeps the latest 5 old URLs.
+                                </Text>
+                            </Flex>
+                        </Card>
+
+                        <Flex gap={6} vertical>
+                            <Text strong>New outlet name</Text>
+                            <Text type="secondary">Used in breadcrumbs, the official page, and owner screens.</Text>
+                            <Input
+                                disabled={isRenaming}
+                                maxLength={200}
+                                onChange={setRenameName}
+                                placeholder="e.g. Pune Central"
+                                value={renameName}
+                            />
+                        </Flex>
+
+                        <Flex gap={6} vertical>
+                            <Text strong>New outlet URL segment</Text>
+                            <Text type="secondary">Leave blank to derive it from the name.</Text>
+                            <Input
+                                disabled={isRenaming}
+                                maxLength={60}
+                                onChange={setRenameSlug}
+                                placeholder={renameTarget?.outletSlug || 'pune-central'}
+                                value={renameSlug}
+                            />
+                            {proposedRenameSlug ? (
+                                <Text type="secondary">New outlet URL will be /{proposedRenameSlug}</Text>
+                            ) : null}
+                        </Flex>
+
+                        <Flex gap={12}>
+                            <Button block disabled={isRenaming} fill="outline" onClick={handleCloseRenameOutlet} size="large">
+                                {t('cancel')}
+                            </Button>
+                            <Button
+                                block
+                                color="primary"
+                                disabled={!renameSlugChanged || !renameTarget?.storeId}
+                                loading={isRenaming}
+                                onClick={() => void handleRenameOutlet()}
+                                size="large"
+                            >
+                                Rename outlet
                             </Button>
                         </Flex>
                     </Flex>

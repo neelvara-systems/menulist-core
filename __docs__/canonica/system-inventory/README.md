@@ -70,8 +70,8 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Guided workflow answer model | Implemented but rollout-gated | `src/lib/canonica/procedureValidation.ts`, canonical answer types | `canonica_canonicalAnswers.content.procedure` | Adds ordered procedures, prerequisites, warnings, and action metadata to canonical answers. |
 | Instant cache + freshness manifest | Implemented | `src/lib/canonica/instantCache.ts`, `src/lib/canonica/cacheFreshness.ts`, `src/lib/canonica/cacheVersion*.ts`, `functions-canonica/src/canonica/cacheVersionManifest.ts` | Upstash Redis when configured, `canonica_cacheVersions` | Caches repeated canonical hits while checking compact source versions instead of scanning source docs. |
 | Drift governance | Implemented | `src/lib/canonica/driftDetection.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/governance/DriftDashboard.tsx` | canonical answers, entities, releases, signals | Flags version mismatch, signal anomaly, scope conflict, and deprecated entity drift. |
-| Signal mutation engine | Implemented | `src/lib/canonica/signalEmitter.ts`, `src/lib/canonica/signalMutation.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/MutationProposalReview.tsx` | `canonica_signalEvents`, `canonica_mutationProposals` | Turns repeated tickets, negative feedback, fallback, and escalation signals into reviewable knowledge changes. |
-| Auto knowledge drafts | Implemented with caps | `src/lib/canonica/draftGenerator.ts`, `functions-canonica/src/canonica/draftGenerator.ts`, `src/lib/canonica/draftPrompt.ts` | mutation proposals, entities, signals | Generates draft canonical answers for human review; never auto-publishes as authoritative content. |
+| Signal mutation engine | Implemented | `src/lib/canonica/signalEmitter.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/MutationProposalReview.tsx`; `src/lib/canonica/signalMutation.ts` is a reference/manual utility only | `canonica_signalEvents`, `canonica_mutationProposals` | Turns repeated tickets, negative feedback, fallback, and escalation signals into reviewable knowledge changes. Production clustering stays server-side for cost and access control. |
+| Auto knowledge drafts | Implemented with caps | `src/lib/canonica/draftGenerator.ts`, `functions-canonica/src/canonica/draftGenerator.ts`, `src/lib/canonica/draftPrompt.ts`, `src/components/templates/canonica/MutationProposalReview.tsx` | mutation proposals, entities, signals | Generates draft canonical answers for human review; queue UI supports publish, reject, and explicit generate/regenerate. Never auto-publishes authoritative content. |
 | Ticket system | Implemented | `src/components/templates/main-app/helpCenter/TicketView.tsx`, `src/app/(canonica)/canonica/support/page.tsx`, `src/app/(canonica)/canonica/tickets/page.tsx` | support tickets collection | Provides ticket fallback and operator review path when content does not answer the user. |
 | Ticket knowledge loop | Implemented but disabled by server flag | `functions-canonica/src/canonica/resolutionExtractor.ts`, `src/lib/canonica/signalEmitter.ts` | resolved tickets, signals, mutation proposals | Extracts reusable knowledge from resolved ticket clusters when enabled. |
 | Changelog / release notes | Implemented | `src/app/(canonica)/canonica/changelog/page.tsx`, `src/app/(canonica)/canonica/release-notes/page.tsx`, `src/database/canonica/releases.ts`, shared changelog templates | `canonica_releases`, shared changelog collection | Connects release changes to surfaces, tags, entities, and stale-answer review. |
@@ -299,3 +299,32 @@ The following remain intentional rollout controls:
 - notifications
 
 Those features exist in code but should stay conservative in website copy unless enabled for a client.
+
+---
+
+## Implemented-But-Hidden Audit — 2026-05-22
+
+This pass checked route constants, Canonica dashboard pages, governance tabs, APIs, widget runtime/config, DAL modules, Cloud Functions, and the feature map for code that existed but was not practically exposed.
+
+Findings:
+
+- Dashboard route constants and `/canonica/*` page files are aligned: no route constant is missing a page, and no page is missing a route constant.
+- Ticket browser-log capture was implemented in DAL/types/modal but was not fully exposed. The runtime now starts sanitized last-5 browser-log capture for authenticated app sessions, ticket creation clears logs only after a successful write, and platform ticket details expose a Logs button.
+- Auto-knowledge manual draft regeneration was implemented in `src/lib/canonica/draftGenerator.ts` but not reachable from the Signal-to-Knowledge Queue. The queue now exposes explicit Generate/Regenerate actions, preserves the one-click human review model, and shows draft evidence/context.
+- `src/lib/canonica/signalMutation.ts` is a reference/manual utility, not the production batch path. The production mutation pipeline remains in `functions-canonica/src/canonica/canonicaNightly.ts` to avoid broad client-side signal scans.
+- Widget blocked routes, allowed origins, mobile visibility, history mode, and remote runtime config are wired in both management UI and public widget loader.
+
+Intentional rollout-gated features still found in code:
+
+- Public API v1
+- Workflow integrations and delivery logs
+- Predictive support
+- Ticket knowledge extraction
+- Product friction intelligence
+- Knowledge graph traversal
+- Multi-language articles
+- White-label branding
+- AI escalation
+- Notifications
+
+These should not be enabled merely because code exists. They add integration surface, AI cost, scheduler work, or client-facing scope, so they remain behind `ENABLE_CANONICA_*` flags until a product rollout decision enables them.

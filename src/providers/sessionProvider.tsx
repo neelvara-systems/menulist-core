@@ -14,6 +14,7 @@ import {
     isCanonicaRuntimeRoute,
     resolveCanonicaSessionScope,
 } from '@lib/canonica/sessionScope';
+import { startLogCapture } from '@lib/localLogs/localLogsTracker';
 import { clearUserContext, logger, setUserContext } from '@lib/monitoring/logger';
 import {
     readActiveStoreContextId,
@@ -543,9 +544,10 @@ export default function SessionProvider({ children, session }: Props) {
         tenantDetails?.tenantId,
     ]);
 
-    // useEffect(() => {
-    //     startLogCapture();
-    // }, []);
+    useEffect(() => {
+        if (!session?.user?.id) return;
+        startLogCapture();
+    }, [session?.user?.id]);
 
     const loginStoreIsMaster = isMasterLocationContext({
         storeDetails: loginStoreDetails || storeDetails,

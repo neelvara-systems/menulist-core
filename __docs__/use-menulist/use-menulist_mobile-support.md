@@ -1,7 +1,7 @@
 # Use MenuList — Mobile Support
 
-> **Version:** 1.1
-> **Last Updated:** May 21, 2026
+> **Version:** 1.2
+> **Last Updated:** May 22, 2026
 
 ## Feature Admission Test
 
@@ -17,8 +17,8 @@
 ## Mobile Architecture
 
 - Desktop: full `UseMenuList` page with asset generation, guides, and broader distribution tooling
-- Mobile: dedicated `MobileShareScreen.tsx` optimized for fast in-service actions, mobile PDF download, and Menu Kit asset downloads
-- Shared logic: same DAL/data sources for project links, OBP links, feedback links, selected project data, PDF generation, and Menu Kit generation
+- Mobile: dedicated `MobileShareScreen.tsx` is the phone-side output center for the same owner distribution jobs
+- Shared logic: same DAL/data sources for project links, OBP links, feedback links, screen state, selected project data, PDF generation, structured export, and Menu Kit generation
 
 ## Mobile UX Requirements
 
@@ -31,17 +31,21 @@
 
 ## Current Mobile Contract
 
-Mobile prioritizes the highest-frequency sharing and in-service print actions:
+Mobile covers the owner output actions that previously required desktop:
 - copy/open main menu link
 - copy/open direct project link
 - copy/open feedback link
+- show/download Store Menu QR, Business Profile QR, Project Menu QR, and outlet-scoped Store Menu QRs for master owners
 - download the selected menu PDF
+- export the selected menu data as XLSX or JSON
 - download the complete Menu Kit ZIP
 - download/share Menu Kit print and social assets: table tent, counter sticker, entrance poster, Instagram story, WhatsApp status, Google Maps image
 - download feedback QR when feedback is enabled
-- digital screen links
+- copy/open Menu Board and Highlights digital screen links, with setup handoff when screens are not configured
 - menu presence monitor
 - customer communication kit
+- copy POS provider setup details and jump to POS settings when permitted
+- setup, printing, and sharing guide sheets
 - project switching for multi-project stores
 
-Desktop remains the richer distribution workspace for full guides, screen setup details, and broader output-center context.
+Desktop and mobile are now parity for practical owner distribution actions. Desktop may still present some actions with a wider layout or modal preview, but owners should not need a laptop to deploy links, QRs, screen URLs, print files, exports, POS setup details, or staff guides.

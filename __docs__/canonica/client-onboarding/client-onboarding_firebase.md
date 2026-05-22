@@ -1,6 +1,6 @@
 # Canonica Client Onboarding — Firebase Cost
 
-> **Version:** 1.6.0
+> **Version:** 1.6.1
 > **Last Updated:** 2026-05-21
 > **Audience:** Developers / Ops
 
@@ -75,6 +75,7 @@ The import flow must use Canonica session scope and `canonicaStorage` in separat
 
 - Beta plan: $0 (no Razorpay call)
 - Paid plans: Standard Razorpay subscription creation fee (same provider flow as MenuList)
+- Paid onboarding passes `productId: "CN"` into Razorpay plan lookup and provider notes, so Canonica paid plans cannot reuse or collide with MenuList plan lookup keys.
 - Paid activation: shared Razorpay verify/webhook routes write to Canonica Firebase when `productId: "CN"` is present in request body or Razorpay notes.
 - Support credit packs: one `topups` write on order creation, one transaction update on verification, and one subscription balance update.
 
@@ -84,6 +85,7 @@ The import flow must use Canonica session scope and `canonicaStorage` in separat
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-21 | 1.6.1 | Documented product-scoped Razorpay plan lookup for paid Canonica onboarding |
 | 2026-05-21 | 1.6.0 | Added Canonica subscription ownership fields and store-summary direct-read billing contract |
 | 2026-05-21 | 1.5.0 | Added product-aware Razorpay activation and support credit pack cost notes |
 | 2026-05-21 | 1.4.0 | Added KB import source cost notes for URL/starter-answer text sources and Canonica storage usage |
