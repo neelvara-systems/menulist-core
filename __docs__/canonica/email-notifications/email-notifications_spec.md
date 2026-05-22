@@ -1,7 +1,7 @@
 # Canonica Email Notifications — Spec
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-07
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-22
 > **Audience:** CEO / PM
 
 ---
@@ -19,6 +19,7 @@ Users who submit support tickets have no way to know when their ticket is answer
 | **Ticket Created** | Ticket submitter | Immediately after ticket creation | Confirmation with ticket ID, subject, category |
 | **Ticket Reply** | Ticket creator | When support agent posts a reply | Reply preview (300 chars), replier name, link to ticket |
 | **Ticket Status Changed** | Ticket creator | When status changes (open → in_progress → resolved, etc.) | New status, remark, link to ticket |
+| **Notification Test** | Workspace support inbox | Owner clicks Send Test Email in Activation | Sender/readiness verification |
 
 ---
 
@@ -39,9 +40,11 @@ Users who submit support tickets have no way to know when their ticket is answer
 
 - **Generic** — System supports any event type via template registry. Not ticket-specific.
 - **Fire-and-forget** — Notification failure never blocks the triggering operation
-- **Idempotent** — Same event + reference ID within 24h = no duplicate email
+- **Idempotent** — Same event + reference ID = no duplicate email unless caller explicitly skips dedupe for unique/test events
 - **Rate-limited** — Max 20 emails per recipient per day (prevents spam on rapid status changes)
-- **Feature-flagged** — `ENABLE_CANONICA_NOTIFICATIONS` (OFF by default, zero impact until enabled)
+- **Feature-flagged** — `ENABLE_CANONICA_NOTIFICATIONS` (ON for launch; can be disabled globally)
+- **Verifiable** — Product owners can send a rate-limited test email before inviting customers.
+- **Abuse-bounded** — Internal client route validates known ticket events only and throttles each authenticated user.
 
 ---
 
@@ -52,7 +55,7 @@ Users who submit support tickets have no way to know when their ticket is answer
 | SMTP transport | Lifecycle messaging (`src/lib/messaging/index.ts`) | Same nodemailer, same env vars (SMTP_HOST, SMTP_USER, SMTP_PASS) |
 | Email styling | Lifecycle messaging templates | Same infrastructure-grade tone, same CSS styles |
 | Auth pattern | `withAuth()` middleware | API route protected by session auth |
-| Logging | Firestore `notificationLogs` collection | Same append-only pattern as `messageLogs` |
+| Logging | Firestore `canonica_notificationLogs` collection | Canonica-scoped append-only delivery/failure log |
 
 ---
 
@@ -60,4 +63,5 @@ Users who submit support tickets have no way to know when their ticket is answer
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-22 | 1.1.0 | Added owner test-send requirement, Canonica-scoped notification logs, and updated flag state. |
 | 2026-03-07 | 1.0.0 | Initial spec: 3 ticket notification types |

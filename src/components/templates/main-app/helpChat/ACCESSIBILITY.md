@@ -5,7 +5,7 @@
 ### Global Shortcuts
 | Shortcut | Action | Description |
 |----------|--------|-------------|
-| **Ctrl+K** / **Cmd+K** | Open AI Chat | Open the help chat modal from anywhere |
+| **Ctrl+/** / **Cmd+/** | Open AI Chat | Open the help chat modal from anywhere |
 | **Escape** | Close Modal | Close the help chat modal |
 | **Tab** | Navigate | Navigate between interactive elements |
 | **Shift+Tab** | Navigate Backward | Navigate backward through elements |
@@ -83,7 +83,7 @@
 <div 
   role="button"
   aria-label="Open AI search assistant"
-  aria-description="Press Ctrl+K or Cmd+K to open"
+  aria-description="Press Ctrl+/ or Cmd+/ to open"
 >
   <Input aria-label="Search help center" />
 </div>
@@ -136,7 +136,7 @@ All interactive elements support keyboard navigation:
 
 ### Additional Enhancements
 - Tooltips provide additional context
-- Keyboard shortcuts shown visually (⌘K badge)
+- Keyboard shortcuts shown visually (⌘/ badge)
 - Disabled state clearly communicated
 - Error states announced to screen readers
 
@@ -145,7 +145,7 @@ All interactive elements support keyboard navigation:
 ## 🔍 Testing Checklist
 
 ### Keyboard Navigation
-- [x] Can open modal with Ctrl+K / Cmd+K
+- [x] Can open modal with Ctrl+/ or Cmd+/
 - [x] Can close modal with Escape
 - [x] Can navigate all elements with Tab
 - [x] Can activate buttons with Enter/Space

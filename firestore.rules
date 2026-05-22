@@ -171,17 +171,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function isStoreScopedSummaryDoc(document) {
+      return document.matches('^(projects|campaigns)_[^_]+$');
+    }
+
+    function summaryDocStoreId(document) {
+      return document.split('_')[1];
+    }
+
     function isCurrentStoreSummaryDoc(document) {
       return request.auth != null
-        && (
-          document == 'projects_' + string(request.auth.token.storeId)
-          || document == 'campaigns_' + string(request.auth.token.storeId)
-        );
+        && isStoreScopedSummaryDoc(document)
+        && belongsToStoreById(summaryDocStoreId(document));
     }
 
     function canWriteCurrentStoreSummaryDoc(document) {
-      return isCurrentStoreSummaryDoc(document)
-        && isTenantAdmin(string(request.auth.token.tenantId), string(request.auth.token.storeId));
+      return request.auth != null
+        && isStoreScopedSummaryDoc(document)
+        && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document));
     }
 
     function canWriteStoresSummaryDoc(document) {
@@ -295,6 +302,13 @@ service cloud.firestore {
     }
 
     match /canonica_productSurfaces/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
+    match /canonica_faqs/{docId} {
       allow read: if isCanonicaScopedRead();
       allow create: if isCanonicaScopedCreate();
       allow update: if isCanonicaScopedUpdate();

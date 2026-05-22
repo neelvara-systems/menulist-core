@@ -33,6 +33,16 @@ export interface IngestionJobSection {
     articles?: IngestionJobArticle[];
 }
 
+export interface KnowledgeBaseGeneratedFaq {
+    id?: string;
+    question: string;
+    answer: string;
+    tags?: string[];
+    contextKeys?: string[];
+    entityIds?: string[];
+    sortOrder?: number;
+}
+
 export interface IngestionJobArticle {
     id: string;
     title: string;
@@ -40,6 +50,7 @@ export interface IngestionJobArticle {
     reEmbedding?: boolean;//when category or section title changes this field need to set as true
     qualityScore?: number;//0-1 confidence score based on content length, structure, source coverage
     entityIds?: string[];//Canonica entity IDs extracted during ingestion (max 10)
+    generatedFaqs?: KnowledgeBaseGeneratedFaq[];//Reviewable FAQ suggestions generated from this article/import source
 }
 
 export interface IngestionJobCategory {
@@ -200,6 +211,8 @@ export interface KnowledgeBaseArticleType {
     reconciliation?: { status?: string; similarArticleIds?: string[]; similarArticles?: KnowledgeBaseArticleType[] }; // Reconciliation metadata from generation
     entityIds?: string[]; // Canonica entity IDs linked to this article (max 10) — powers entity-centric retrieval
     contextKeys?: string[]; // Canonica product surface keys linked to this article
+    faqIds?: string[]; // Canonica FAQ IDs linked to this article
+    generatedFaqs?: KnowledgeBaseGeneratedFaq[]; // Review-only FAQ suggestions, removed after publish
     tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc. Required by CANONICA_RULES Rule 6.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
 }

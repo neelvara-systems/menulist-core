@@ -205,8 +205,14 @@ End users interact with the **AI chatbot** through the search modal or help chat
 
 ### 3.11 FAQ
 
-**Purpose:** Frequently asked questions page.
-**Implementation:** Standalone component (`FaqView.tsx`)
+**Purpose:** Public short-answer page for repeated customer questions.
+**Implementation:** `FaqView.tsx` reads published Canonica FAQs through `getPublishedFaqsForSession()` with a hard cap and falls back to static legacy copy if Canonica FAQ data is unavailable.
+
+**Owner management:** `/canonica/faqs`
+
+**Data model:** `canonica_faqs` with optional `articleId`, `contextKeys`, `entityIds`, and `tags`.
+
+**Relationship:** FAQ owns the article link; `kb_articles.faqIds` is only a bounded mirror for cheap article-side lookup.
 
 ### 3.12 Search Experience
 

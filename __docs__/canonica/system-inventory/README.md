@@ -1,7 +1,7 @@
 # Canonica System Inventory
 
 > **Status:** Codebase-first inventory  
-> **Last Updated:** 2026-05-21  
+> **Last Updated:** 2026-05-22
 > **Source of Truth:** Runtime code, routes, constants, data-access modules, Cloud Functions, Firebase rules/indexes, then existing docs  
 > **Product Boundary:** Canonica is a separate product. MenuList is only a client/test host and shared codebase neighbor.
 
@@ -56,12 +56,16 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Product website demo | Implemented | `src/app/sites/canonica/demo/` | Static demo data | Shows page-aware help, canonical answer, fallback, and gap flow without account setup. |
 | Self-service onboarding | Implemented | `src/app/api/canonica/onboard/route.ts`, `src/app/sites/canonica/get-started/` | `users`, `stores`, `subscriptions`, `canonica_productSurfaces`, `platformSummary/contextContent_*` | Creates Canonica workspace and routes users to activation. Payment can stay manual/cash until paid flow is added. |
 | Product details / workspace profile | Implemented | `src/app/api/canonica/workspace-profile/route.ts`, `src/components/templates/canonica/CanonicaSettings.tsx` | `stores/{sId}.canonicaWorkspaceProfile` | Stores product URL, support email, billing model, and initial product context. |
-| Activation Command Center | Implemented | `src/app/(canonica)/canonica/activation/page.tsx`, `src/components/templates/canonica/activation/CanonicaActivationCommandCenter.tsx`, `src/lib/canonica/activationSummary.ts` | Compact store + `platformSummary` docs | Shows launch readiness without scanning large collections at page load. |
+| Activation Command Center | Implemented | `src/app/(canonica)/canonica/activation/page.tsx`, `src/components/templates/canonica/activation/CanonicaActivationCommandCenter.tsx`, `src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`, `src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`, `src/lib/canonica/activationSummary.ts` | Compact store + `platformSummary` docs | Shows launch readiness, product-owner content workflow, and customer-path testing without scanning large collections at page load. |
 | Product surfaces | Implemented | `src/components/templates/canonica/productSurfaces/CanonicaProductSurfaces.tsx`, `src/database/canonica/productSurfaces.ts`, `src/lib/canonica/productSurfaceContent*.ts` | `canonica_productSurfaces`, `platformSummary/contextContent_{tId}_{sId}` | Maps routes/pages/workflows to entities, tags, articles, changelogs, and tickets. |
+| Content Control workbench | Implemented | `src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`, `/canonica/activation`, `/canonica/dashboard` | Activation summary read model | Gives product owners one low-cost path into product profile, import, articles, surfaces, changelog, signal queue, widget, and tickets. |
+| Surface Readiness matrix | Implemented | `src/components/templates/canonica/content/CanonicaSurfaceReadinessMatrix.tsx`, `src/lib/canonica/activationSummary.ts`, `/canonica/dashboard` | `platformSummary/contextContent_{tId}_{sId}` via activation summary | Shows which product areas are ready, missing mapping, missing content, or carrying open ticket signals using 0 extra dashboard reads. |
+| Test-as-Customer checklist | Implemented | `src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`, `/canonica/activation`, `/canonica/dashboard` | Activation summary read model | Gives product owners a launch-proof checklist for help center, widget, page context, ticket fallback, release notes, and Signal Queue. |
 | Context-aware support mounting | Implemented | `src/components/templates/main-app/helpCenter/HeroSearchBar.tsx`, `src/lib/canonica/productSurfaceContent.ts`, `src/app/api/helpCenter/search-kb/route.ts`, widget APIs | Safe context payload + product surface summary | Passes page/feature/workflow context into Canonica without trusting raw client data as tenant scope. |
 | Widget management | Implemented | `src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx`, `src/app/api/canonica/widget-config/route.ts`, `src/app/api/canonica/widget-key/route.ts`, `src/lib/canonica/widgetConfig.ts` | `stores/{sId}.canonicaWidgetConfig`, key hash fields, runtime status | Configure appearance, install snippet, allowed origins, blocked routes, history, mobile visibility, and runtime status. |
 | Embedded public widget runtime | Implemented | `public/widget/canonica-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/config/route.ts`, `src/app/api/widget/search/route.ts`, `src/app/api/widget/feedback/route.ts` | Store widget config, API key hash, AI search history, KB/canonical retrieval | Gives client products page-aware support through one embeddable script. |
-| Help center | Implemented | `src/app/(main)/help-center/`, `src/components/templates/main-app/helpCenter/`, `/canonica/help` compatibility route | KB, tickets, changelog, search history | Public/customer support home reused by client support surfaces. |
+| Help center | Implemented | `src/app/(main)/help-center/`, `src/components/templates/main-app/helpCenter/`, `/canonica/help` compatibility route, `/api/canonica/public-content` | Cached KB, FAQ, changelog, tickets, search history | Public/customer support home reused by client support surfaces. KB categories, article reads, FAQ lists, and changelog pages use tenant/store-tagged public cache with owner-write invalidation. |
+| Hosted public Help Center | Implemented | `src/app/canonica-hosted-help/`, `src/components/templates/canonica/hostedHelp/`, `src/app/api/canonica/hosted-help-settings/route.ts`, `src/lib/canonica/hostedHelpServer.ts` | `stores/{sId}.hostedHelpConfig`, `canonica_publicHelpSites/{domain}`, cached KB/FAQ/changelog | Renders anonymous docs, FAQ, changelog, sitemap, and robots on domains such as `help.example.com` without exposing authenticated tickets/chat/user data. |
 | Knowledge base explorer | Implemented | `src/app/(canonica)/canonica/docs/page.tsx`, `src/app/(canonica)/canonica/knowledge-base/page.tsx`, KB templates | `kb_categories`, `kb_articles` | Browse and manage support documentation. |
 | KB generation pipeline | Implemented | `src/app/(canonica)/canonica/kb-generation/page.tsx`, `src/components/templates/platform/KBGeneration/`, `functions-canonica/src/logic/*` | `kb_generation_jobs`, `kb_articles`, `kb_categories`, storage | Upload, generate, review, publish, and embed KB content. |
 | Product ontology | Implemented | `src/database/canonica/entities.ts`, `src/lib/canonica/entityExtraction.ts`, `src/components/templates/canonica/governance/EntityManagementDashboard.tsx` | `canonica_entities`, `canonica_entityRelations`, `canonica_entitySearchIndex`, `canonica_entityCandidates` | Models product features, plans, roles, workflows, states, integrations, and errors as first-class concepts. |
@@ -73,18 +77,19 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Signal mutation engine | Implemented | `src/lib/canonica/signalEmitter.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/MutationProposalReview.tsx`; `src/lib/canonica/signalMutation.ts` is a reference/manual utility only | `canonica_signalEvents`, `canonica_mutationProposals` | Turns repeated tickets, negative feedback, fallback, and escalation signals into reviewable knowledge changes. Production clustering stays server-side for cost and access control. |
 | Auto knowledge drafts | Implemented with caps | `src/lib/canonica/draftGenerator.ts`, `functions-canonica/src/canonica/draftGenerator.ts`, `src/lib/canonica/draftPrompt.ts`, `src/components/templates/canonica/MutationProposalReview.tsx` | mutation proposals, entities, signals | Generates draft canonical answers for human review; queue UI supports publish, reject, and explicit generate/regenerate. Never auto-publishes authoritative content. |
 | Ticket system | Implemented | `src/components/templates/main-app/helpCenter/TicketView.tsx`, `src/app/(canonica)/canonica/support/page.tsx`, `src/app/(canonica)/canonica/tickets/page.tsx` | support tickets collection | Provides ticket fallback and operator review path when content does not answer the user. |
-| Ticket knowledge loop | Implemented but disabled by server flag | `functions-canonica/src/canonica/resolutionExtractor.ts`, `src/lib/canonica/signalEmitter.ts` | resolved tickets, signals, mutation proposals | Extracts reusable knowledge from resolved ticket clusters when enabled. |
+| Ticket knowledge loop | Implemented and enabled with caps | `functions-canonica/src/canonica/resolutionExtractor.ts`, `src/lib/canonica/signalEmitter.ts` | resolved tickets, signals, mutation proposals | Extracts reusable knowledge from resolved ticket clusters after 3+ resolved tickets per entity. |
 | Changelog / release notes | Implemented | `src/app/(canonica)/canonica/changelog/page.tsx`, `src/app/(canonica)/canonica/release-notes/page.tsx`, `src/database/canonica/releases.ts`, shared changelog templates | `canonica_releases`, shared changelog collection | Connects release changes to surfaces, tags, entities, and stale-answer review. |
 | Weekly digest | Implemented | `src/app/(canonica)/canonica/weekly-digest/page.tsx`, `src/components/templates/canonica/weeklyDigest/CanonicaWeeklyDigest.tsx` | summary-backed support/governance data | Gives owners a review queue summary instead of forcing collection scans. |
 | Founder trust/readiness metrics | Implemented | `src/database/canonica/trustMetrics.ts`, `src/components/templates/canonica/governance/FounderTrustDashboard.tsx`, `functions-canonica/src/canonica/canonicaNightly.ts` | `platformSummary/trustMetrics_{tId}_{sId}` | Summarizes coverage, resolution readiness, drift pressure, escalations, and top failing entities. |
 | Coverage KPI | Implemented | `src/database/canonica/coverageKPI.ts`, `src/components/templates/canonica/CanonicaCoverageKPI.tsx`, nightly functions | `platformSummary/coverage_{tId}_{sId}` | Tracks canonical coverage without dashboard collection scans. |
-| Product friction intelligence | Implemented but disabled by server flag | `functions-canonica/src/canonica/frictionAggregation.ts`, `frictionInsight.ts`, `src/database/canonica/frictionStats.ts`, `FrictionTab.tsx` | `canonica_frictionDailyStats`, `platformSummary/friction*` | Aggregates recurring support friction and optional weekly insight generation. |
+| Product friction intelligence | Implemented and enabled with caps | `functions-canonica/src/canonica/frictionAggregation.ts`, `frictionInsight.ts`, `src/database/canonica/frictionStats.ts`, `FrictionTab.tsx` | `canonica_frictionDailyStats`, `platformSummary/friction*` | Aggregates recurring support friction and optional weekly insight generation from bounded nightly queries. |
 | Predictive support | Implemented but disabled by default | `src/lib/canonica/predictiveEngine.ts`, `functions-canonica/src/canonica/predictiveTriggerSync.ts`, `PredictiveTriggerManager.tsx` | `canonica_predictiveTriggers`, `platformSummary/predictiveTriggers_*` | Suggests contextual help before the user asks when trigger rules match. |
 | Knowledge graph traversal | Implemented but disabled by default | `src/lib/canonica/graphTraversal.ts`, nightly graph rebuild | `platformSummary/entityGraphIndex_*`, `canonica_entityRelations` | Expands answers through related ontology nodes when enabled. |
 | Public API v1 | Implemented but rollout-gated | `src/app/api/canonica/public/v1/answers`, `/entities`, `/signals`, `src/lib/canonica/publicApi.ts` | Public API keys, canonical retrieval, entities, signals | External product integration surface. Feature flag remains off until product rollout is intentional. |
 | Workflow integrations | Implemented but disabled by server flag | `functions-canonica/src/integrations/` | `canonica_integrationEvents`, `canonica_integrationDeliveryLogs`, integration config summary doc | Emits governance events to Slack, Email, Linear, and GitHub when enabled. |
-| Email notifications | Documented and partially represented | `__docs__/canonica/email-notifications/`, notification flags | Ticket/event data | Product direction exists; default flag is off. Keep website claims conservative. |
-| White-label branding | Implemented but disabled by default | `src/database/canonica/branding.ts`, `WhiteLabelBranding.tsx` | `platformSummary/branding_{tId}_{sId}` | Tenant branding controls for support surfaces when enabled. |
+| Email notifications | Implemented and enabled | `src/lib/notifications/`, `src/app/api/canonica/notifications/test/route.ts`, ticket DAL notification triggers | Ticket/event data, `canonica_notificationLogs` | Ticket-created/reply/status emails are fire-and-forget, rate-limited, logged in Canonica Firebase, and testable from Activation. |
+| Widget branding | Implemented | `src/lib/canonica/widgetConfig.ts`, `CanonicaWidgetManagement.tsx`, `public/widget/canonica-widget.js`, `WidgetClient.tsx` | `stores/{sId}.widgetConfig` | Widget header title, accent color, greeting, launcher, and powered-by visibility are tenant-configurable without extra runtime reads. |
+| Advanced white-label branding | Implemented but disabled by default | `src/database/canonica/branding.ts`, `WhiteLabelBranding.tsx` | `platformSummary/branding_{tId}_{sId}` | Broader KB/email branding controls remain guarded until all public support surfaces consume the same branding read model. |
 | Multi-language articles | Implemented but disabled by default | `src/app/api/canonica/translate/route.ts`, `MultiLanguageArticles.tsx` | `kb_articles.translations` | Article translation workflow behind feature flag. |
 | AI failure escalation | Implemented but disabled by default | `src/lib/canonica/escalationEvaluator.ts`, `escalationTypes.ts` | search/retrieval result metadata and signal events | Detects low-confidence or repeated failures that should become support escalation signals. |
 | Separate Firebase/project support | Implemented | `src/lib/firebase/canonicaFirebase.ts`, `functions-canonica/src/firebaseAdmin.ts`, Canonica rules/indexes | Canonica Firebase app/admin config | Keeps Canonica data isolated from MenuList when `CANONICA_FIREBASE_MODE=separate`. |
@@ -167,6 +172,7 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 - `canonica_schedulerRunLogs`
 - `canonica_aiOperations`
 - `canonica_cacheVersions`
+- `canonica_notificationLogs`
 - `canonica_integrationEvents`
 - `canonica_integrationDeliveryLogs`
 - `canonica_predictiveTriggers`
@@ -212,21 +218,21 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_CANONICA_PRODUCT_SURFACES`
 - `ENABLE_CANONICA_INSTANT_CACHE`
 - `ENABLE_CANONICA_AUTO_KNOWLEDGE`
+- `ENABLE_CANONICA_NOTIFICATIONS`
+- `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
+- `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 - `ENABLE_CANONICA_FOUNDER_ONBOARDING`
 - `ENABLE_CANONICA_TRUST_METRICS`
 
 ### Disabled / rollout-gated by default
 
 - `ENABLE_CANONICA_PUBLIC_API`
-- `ENABLE_CANONICA_NOTIFICATIONS`
 - `ENABLE_CANONICA_SIGNAL_QUALITY`
 - `ENABLE_CANONICA_WHITE_LABEL`
 - `ENABLE_CANONICA_MULTI_LANGUAGE`
 - `ENABLE_CANONICA_GUIDED_WORKFLOWS`
-- `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
 - `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS`
 - `ENABLE_CANONICA_AI_ESCALATION`
-- `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 - `ENABLE_CANONICA_KNOWLEDGE_GRAPH`
 - `ENABLE_CANONICA_PREDICTIVE_SUPPORT`
 
@@ -234,10 +240,12 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 
 - `ENABLE_CANONICA_NIGHTLY`
 - `ENABLE_CANONICA_AUTO_KNOWLEDGE`
+- `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
+- `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 - `ENABLE_CANONICA_TRUST_METRICS`
 - `ENABLE_CANONICA_FOUNDER_ONBOARDING`
 
-Higher-cost or integration-heavy server features stay disabled until explicitly enabled.
+Integration-heavy server features stay disabled until explicitly enabled. The enabled nightly intelligence loops are capped and summary-backed.
 
 ---
 
@@ -251,7 +259,9 @@ The Canonica website can safely claim these implemented capabilities:
 - Help center, KB, changelog/release notes, tickets, and widget as support surfaces.
 - Summary-backed coverage/readiness/trust metrics.
 - Cost-conscious scheduler and dashboard design using compact summary docs.
-- Widget install, allowed origins, blocked routes, runtime verification, and safe page context as the default client integration path.
+- Widget install, allowed origins, blocked routes, runtime verification, safe page context, and tenant-level widget branding as the default client integration path.
+- Ticket notification delivery readiness with test-send verification and Canonica-scoped failure logs.
+- Product friction intelligence and ticket-to-knowledge extraction as controlled, capped governance loops.
 
 The website should not claim:
 
@@ -291,12 +301,9 @@ The following remain intentional rollout controls:
 - public API
 - workflow integrations
 - predictive support
-- ticket knowledge extraction
-- friction intelligence
 - knowledge graph traversal
 - multi-language
-- white-label branding
-- notifications
+- advanced cross-surface white-label branding
 
 Those features exist in code but should stay conservative in website copy unless enabled for a client.
 
@@ -319,12 +326,22 @@ Intentional rollout-gated features still found in code:
 - Public API v1
 - Workflow integrations and delivery logs
 - Predictive support
-- Ticket knowledge extraction
-- Product friction intelligence
 - Knowledge graph traversal
 - Multi-language articles
-- White-label branding
+- Advanced cross-surface white-label branding
 - AI escalation
-- Notifications
 
 These should not be enabled merely because code exists. They add integration surface, AI cost, scheduler work, or client-facing scope, so they remain behind `ENABLE_CANONICA_*` flags until a product rollout decision enables them.
+
+Launch-hardening changes enabled in the 2026-05-22 pass:
+
+- Ticket/email notification verification is enabled and visible in Activation.
+- Widget install/runtime verification remains in Activation and `/canonica/widget`; branding controls now include header title and powered-by visibility.
+- Signal-to-Knowledge Queue manual draft generation/regeneration remains reachable from governance.
+- Ticket browser-log capture stays on ticket creation and is visible in ticket details.
+- Ticket-to-knowledge extraction and product friction intelligence are enabled with nightly caps.
+- Basic usage/readiness stays summary-backed; raw cache/cost/internal logs are not exposed to Canonica clients.
+- Product-owner content management is now surfaced as a single Content Control workbench on Activation and Readiness Metrics. It links profile, import, articles, product surfaces, changelog, signal queue, widget, and tickets from the existing summary read model instead of adding new dashboard reads.
+- Surface Readiness and Test-as-Customer projections now tell owners which product areas are ready, what to test before launch, and where repeated ticket signals need review, all from the existing activation summary.
+- Ticket details now include operator-only Knowledge Loop guidance so resolved tickets can become reviewed knowledge proposals without adding a new ticket workflow.
+- Knowledge Base, article editor, changelog, and Signal-to-Knowledge Queue were tightened for mobile/product-owner use: stacked mobile content panes, responsive article modal, mobile changelog actions, clearer empty states, and less internal technical wording.

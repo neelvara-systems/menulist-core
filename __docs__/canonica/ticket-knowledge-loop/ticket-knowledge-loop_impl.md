@@ -1,9 +1,9 @@
 # Ticket → Knowledge Loop — Implementation Blueprint
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 
@@ -433,13 +433,13 @@ ticketKnowledge: {
  * Requires: ENABLE_CANONICA_AUTO_KNOWLEDGE = true (for draft generation)
  * @see __docs__/canonica/ticket-knowledge-loop/
  */
-ENABLE_CANONICA_TICKET_KNOWLEDGE: false,
+ENABLE_CANONICA_TICKET_KNOWLEDGE: true,
 ```
 
 ### Cloud Function (`functions-canonica/src/constants/features.ts`)
 
 ```typescript
-ENABLE_CANONICA_TICKET_KNOWLEDGE: false,
+ENABLE_CANONICA_TICKET_KNOWLEDGE: true,
 ```
 
 ---

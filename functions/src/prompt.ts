@@ -32,6 +32,7 @@ The root object is a map where keys are temporary IDs and values are Category Ob
     - "title": (string) A concise, descriptive title.
     - "content": (object) A valid Tiptap JSON object for the article's body.
     - **"sources": (array of Source Objects) - A new, mandatory top-level array.**
+    - "faqs": (array of FAQ Objects, optional) Short customer questions answered by this article. Use only when the source clearly supports the answer. Maximum 5 FAQs per article.
 
 4.  **Source Object** (must be included in the 'sources' array for each article):
     - "type": (string) The type of the source file. Must be one of: 'video', 'pdf', 'image', 'document', 'web'.
@@ -39,6 +40,12 @@ The root object is a map where keys are temporary IDs and values are Category Ob
     - "name": (string) The original, user-friendly filename of the source.
     - "timestamp": (string, optional) If the source is a video, provide the relevant 'HH:MM:SS' timestamp. Omit if not applicable.
     - "page": (number, optional) If the source is a PDF or document, provide the relevant page number. Omit if not applicable.
+
+5.  **FAQ Object** (optional, nested in an Article Object):
+    - "question": (string) A direct customer question, max 160 characters.
+    - "answer": (string) A concise answer fully supported by the article/source, max 600 characters.
+    - "tags": (array of strings, optional) Topic tags such as billing, setup, plan, integration.
+    - "contextKeys": (array of strings, optional) Stable product surface keys if obvious from the source, such as billing_invoices.
 
 
 **CRITICAL RULE:** A Category Object MUST contain EITHER "articles" OR "sections", but NEVER both.
@@ -79,6 +86,14 @@ The root object is a map where keys are temporary IDs and values are Category Ob
       "url": "gs://my-bucket/uploads/billing_faq.pdf",
       "name": "billing_faq.pdf",
       "page": 5
+      }
+  ],
+  "faqs": [
+    {
+      "question": "How do I update my billing information?",
+      "answer": "Open Billing from the dashboard, update the payment method, then retry any unpaid invoice.",
+      "tags": ["billing"],
+      "contextKeys": ["billing"]
     }
   ]
 }
@@ -87,6 +102,8 @@ The root object is a map where keys are temporary IDs and values are Category Ob
 **Instructions:**
 - Adhere strictly to the JSON schema and all critical rules.
 - Do not invent information. All content must be traceable to the source files.
+- Generate FAQs only for direct, source-backed questions. Do not create speculative FAQs.
+- Keep FAQ answers short. The article remains the detailed source of truth.
 - Ensure the final output is a single, raw JSON object, ready for parsing.
 `;
 };

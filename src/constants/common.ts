@@ -149,6 +149,7 @@ export const AI_ACTIONS_TYPES: any = {
     HELP_CENTER_SEARCH: "help_center_search",
     HELP_CENTER_EMBEDDING: "help_center_embedding",
     CANONICA_TRANSLATION: "canonica_translation",
+    CANONICA_FAQ_GENERATION: "canonica_faq_generation",
     //new item metadata actions
     NEW_ITEM_METADATA: "new_item_metadata",
 }

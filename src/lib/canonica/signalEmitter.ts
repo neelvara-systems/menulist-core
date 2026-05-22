@@ -89,6 +89,9 @@ function getDeduplicationKey(params: EmitSignalParams): string | null {
         return `chat_${meta.sessionId}_${meta.messageId}`;
     }
     if (params.type === 'ticket' && meta.ticketId) {
+        if (meta.signalPurpose === 'ticket_resolution' || Array.isArray(meta.resolutionMessages)) {
+            return `ticket_resolution_${meta.ticketId}`;
+        }
         return `ticket_${meta.ticketId}`;
     }
     return null;
@@ -131,6 +134,7 @@ export const emitTicketResolutionSignal = async (params: {
         tId: params.tId,
         sId: params.sId,
         metadata: {
+            signalPurpose: 'ticket_resolution',
             ticketId: params.ticketId,
             subject: params.subject,
             resolutionMessages,

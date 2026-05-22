@@ -130,11 +130,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /canonica_faqs/{docId} {
+      allow read: if isCanonicaScopedRead();
+      allow create: if isCanonicaScopedCreate();
+      allow update: if isCanonicaScopedUpdate();
+      allow delete: if false;
+    }
+
     match /canonica_cacheVersions/{docId} {
       allow read: if isCanonicaScopedRead();
       allow create: if isCanonicaScopedCreate();
       allow update: if isCanonicaScopedUpdate();
       allow delete: if false;
+    }
+
+    match /canonica_notificationLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
     }
 
     match /chatSessions/{docId} {

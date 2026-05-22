@@ -14,7 +14,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useMutationProposals } from '@hook/canonica/useMutationProposals';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { CanonicaMutationProposal } from '@type/canonica';
-import { Badge, Button, Card, Empty, Flex, Form, Input, List, Modal, Popconfirm, Space, Tag, Typography } from 'antd';
+import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Space, Tag, Typography } from 'antd';
 import { useCallback, useState } from 'react';
 import { LuCheck, LuFileCheck, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 
@@ -42,6 +42,7 @@ function ProposalItem({
     onOpenDraft,
     onRegenerateDraft,
     regenerating,
+    isMobile,
 }: {
     proposal: CanonicaMutationProposal;
     onApprove: (id: string) => void;
@@ -49,6 +50,7 @@ function ProposalItem({
     onOpenDraft: (proposal: CanonicaMutationProposal) => void;
     onRegenerateDraft: (proposal: CanonicaMutationProposal) => void;
     regenerating: boolean;
+    isMobile?: boolean;
 }) {
     const hasGeneratedDraft = proposal.mutationType === 'new_answer_required'
         && proposal.suggestedChange?.draftStatus === 'generated'
@@ -125,7 +127,7 @@ function ProposalItem({
         ];
 
     return (
-        <List.Item actions={actions}>
+        <List.Item actions={isMobile ? undefined : actions}>
             <List.Item.Meta
                 title={
                     <Space>
@@ -183,12 +185,19 @@ function ProposalItem({
                     </Flex>
                 }
             />
+            {isMobile && (
+                <Flex vertical gap={8} style={{ width: '100%', marginTop: 12 }}>
+                    {actions}
+                </Flex>
+            )}
         </List.Item>
     );
 }
 
 export default function MutationProposalReview() {
     const session = useClientAuthSession();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const { proposals, loading, approve, reject, approveDraft, regenerateDraft, refresh } = useMutationProposals(
         session?.tId || 0,
         session?.sId || 0,
@@ -246,8 +255,8 @@ export default function MutationProposalReview() {
 
     return (
         <Card>
-            <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
-                <Space>
+            <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} gap={12} vertical={isMobile} style={{ marginBottom: 16 }}>
+                <Space wrap>
                     <Title level={5} style={{ margin: 0 }}>Signal-to-Knowledge Queue</Title>
                     <Badge count={proposals.length} style={{ backgroundColor: proposals.length > 0 ? '#1677ff' : '#d9d9d9' }} />
                 </Space>
@@ -260,11 +269,18 @@ export default function MutationProposalReview() {
                     Refresh
                 </Button>
             </Flex>
+            <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="Review repeated support gaps before they become answers"
+                description="Canonica can draft from ticket and chat signals, but owners approve the final canonical answer."
+            />
 
             <List
                 dataSource={proposals}
                 loading={loading}
-                locale={{ emptyText: <Empty description="No pending signal proposals" /> }}
+                locale={{ emptyText: <Empty description="No pending signal proposals. Resolve tickets and collect customer feedback; repeated gaps will appear here for review." /> }}
                 renderItem={(proposal) => (
                     <ProposalItem
                         proposal={proposal}
@@ -273,6 +289,7 @@ export default function MutationProposalReview() {
                         onOpenDraft={openDraftModal}
                         onRegenerateDraft={handleRegenerateDraft}
                         regenerating={regeneratingId === proposal.id}
+                        isMobile={isMobile}
                     />
                 )}
             />

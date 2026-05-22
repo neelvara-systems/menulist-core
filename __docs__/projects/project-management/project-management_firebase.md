@@ -13,6 +13,7 @@
 - **Storage Buckets:** None (project management only — file uploads tracked in upload-file-processing)
 - **Cloud Functions:** None
 - **Estimated Monthly Cost:** **Very Low**
+- **Access rule:** Client writes to `platformSummary/projects_{sId}` are tenant-admin writes scoped by the Firebase auth tenant plus the user's current `storeId` or `storeIds` claim. This covers desktop and mobile active-store/outlet context without broad platformSummary access.
 
 ---
 
@@ -32,8 +33,8 @@
 | Create new project | `projects/{tId}/{sId}/{projectId}` | User clicks "New Project" | Per creation | 1 | Full project doc | `addProject()` generates ID, creates with defaults. File: `src/database/projects/index.ts:303` |
 | Create summary entry | `platformSummary/projects_{sId}` | With project creation | Per creation | 1 | name, active, isDefault | `syncProjectToSummary()`. File: `src/database/projects/index.ts:230` |
 | Update project metadata | `platformSummary/projects_{sId}` | Name/default change | Per metadata edit | 1 | Merge update | `updateProjectMetadata()`. Reads current summary first. File: `src/database/projects/index.ts:357` |
-| Soft delete project | `projects/{tId}/{sId}/{projectId}` | User deletes project | Rare | 1 | deleted: true, deletedAt | `updateProject()` with soft delete fields. |
-| Remove from summary | `platformSummary/projects_{sId}` | With soft delete | Rare | 1 | deleteField() | `removeProjectFromSummary()`. File: `src/database/projects/index.ts:255` |
+| Soft delete project | `projects/{tId}/{sId}/{projectId}` | User deletes project | Rare | 1 | deleted: true, deletedAt | `deleteProject()` batches this with summary removal. |
+| Remove from summary | `platformSummary/projects_{sId}` | With soft delete | Rare | 1 | deleteField() | `deleteProject()` removes the summary entry in the same batched commit. Standalone helper: `removeProjectFromSummary()`. |
 
 ### Deletes
 

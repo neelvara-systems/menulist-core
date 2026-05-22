@@ -2,7 +2,7 @@ import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import React from 'react';
 import { LuArrowUpDown, LuImage, LuLanguages, LuLayoutGrid, LuSettings2, LuSparkles, LuZap } from "react-icons/lu";
 
-export type EditorAction = 'language' | 'description' | 'images' | 'activeInactive' | 'reorder' | 'decisionBlocks' | 'storeCustomization' | 'commandCenter';
+export type EditorAction = 'aiDefaults' | 'language' | 'description' | 'images' | 'activeInactive' | 'reorder' | 'decisionBlocks' | 'storeCustomization' | 'commandCenter';
 
 export type EditorActionConfig = {
     key: EditorAction;
@@ -19,8 +19,14 @@ export function getEditorActions(labels: OfferingLabels): EditorActionConfig[] {
             key: 'commandCenter',
             icon: <LuLayoutGrid style={{ fontSize: 20 }} />,
             title: labels.commandCenterLabel,
-            description: 'Bulk update prices, availability, and categories for many items at once',
+            description: 'Bulk update prices, availability, text case, languages, and menu repairs',
             isNew: true,
+        },
+        {
+            key: 'aiDefaults',
+            icon: <LuSettings2 style={{ fontSize: 20 }} />,
+            title: 'Generation defaults',
+            description: 'Set the default writing and photo style for this menu',
         },
         {
             key: 'language',

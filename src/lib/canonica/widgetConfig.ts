@@ -62,6 +62,7 @@ export const CanonicaWidgetConfigSchema = z.object({
     shape: z.enum(['rounded', 'pill']).default('rounded'),
     display: z.enum(['icon', 'text', 'icon-text']).default('icon'),
     label: z.string().trim().min(1).max(24).default('?'),
+    headerTitle: z.string().trim().min(1).max(40).default('Help'),
     greeting: z.string().trim().min(1).max(120).default('How can we help?'),
     size: z.enum(['small', 'medium', 'large']).default('medium'),
     offsetX: z.coerce.number().int().min(0).max(200).default(20),
@@ -70,6 +71,7 @@ export const CanonicaWidgetConfigSchema = z.object({
     historyMode: z.enum(['session', 'forget']).default('session'),
     launcherVisibility: z.enum(['visible', 'manual']).default('visible'),
     mobileVisibility: z.enum(['show', 'hide']).default('show'),
+    poweredByVisible: z.boolean().default(true),
     blockedRoutes: z.preprocess(
         normalizeWidgetBlockedRoutes,
         z.array(z.string().min(1).max(MAX_WIDGET_BLOCKED_ROUTE_LENGTH)).max(MAX_WIDGET_BLOCKED_ROUTES).default([])
@@ -150,6 +152,7 @@ export function buildCanonicaWidgetEmbedCode(params: {
     if (config.shape !== DEFAULT_CANONICA_WIDGET_CONFIG.shape) attrs.push(`  data-shape="${escapeHtmlAttribute(config.shape)}"`);
     if (config.display !== DEFAULT_CANONICA_WIDGET_CONFIG.display) attrs.push(`  data-display="${escapeHtmlAttribute(config.display)}"`);
     if (config.label !== DEFAULT_CANONICA_WIDGET_CONFIG.label) attrs.push(`  data-label="${escapeHtmlAttribute(config.label)}"`);
+    if (config.headerTitle !== DEFAULT_CANONICA_WIDGET_CONFIG.headerTitle) attrs.push(`  data-header-title="${escapeHtmlAttribute(config.headerTitle)}"`);
     if (config.greeting !== DEFAULT_CANONICA_WIDGET_CONFIG.greeting) attrs.push(`  data-greeting="${escapeHtmlAttribute(config.greeting)}"`);
     if (config.size !== DEFAULT_CANONICA_WIDGET_CONFIG.size) attrs.push(`  data-size="${escapeHtmlAttribute(config.size)}"`);
     if (config.offsetX !== DEFAULT_CANONICA_WIDGET_CONFIG.offsetX) attrs.push(`  data-offset-x="${escapeHtmlAttribute(config.offsetX)}"`);
@@ -158,6 +161,7 @@ export function buildCanonicaWidgetEmbedCode(params: {
     if (config.historyMode !== DEFAULT_CANONICA_WIDGET_CONFIG.historyMode) attrs.push(`  data-history="${escapeHtmlAttribute(config.historyMode)}"`);
     if (config.launcherVisibility !== DEFAULT_CANONICA_WIDGET_CONFIG.launcherVisibility) attrs.push(`  data-launcher-visibility="${escapeHtmlAttribute(config.launcherVisibility)}"`);
     if (config.mobileVisibility !== DEFAULT_CANONICA_WIDGET_CONFIG.mobileVisibility) attrs.push(`  data-mobile-visibility="${escapeHtmlAttribute(config.mobileVisibility)}"`);
+    if (config.poweredByVisible !== DEFAULT_CANONICA_WIDGET_CONFIG.poweredByVisible) attrs.push(`  data-powered-by="${escapeHtmlAttribute(config.poweredByVisible ? 'true' : 'false')}"`);
     if (config.blockedRoutes.length > 0) attrs.push(`  data-blocked-routes="${escapeHtmlAttribute(config.blockedRoutes.join(','))}"`);
 
     return `<script\n${attrs.join('\n')}\n></script>`;

@@ -1,7 +1,7 @@
 # Canonica Email Notifications — Implementation
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-07
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-22
 > **Audience:** Developers
 
 ---
@@ -16,6 +16,9 @@ src/lib/notifications/
 
 src/app/api/notifications/
 └── send/route.ts     # API route (withAuth, bridges client → server)
+
+src/app/api/canonica/notifications/
+└── test/route.ts     # Canonica workspace test-send verification
 
 src/config/features.ts  # ENABLE_CANONICA_NOTIFICATIONS flag
 src/database/tickets/index.ts  # Wired: addTicket, addTicketMessage, updateTicketStatus
@@ -33,35 +36,37 @@ src/database/tickets/index.ts  # Wired: addTicket, addTicketMessage, updateTicke
 **Flow:**
 1. Feature flag check (`ENABLE_CANONICA_NOTIFICATIONS`)
 2. Input validation (email, eventType, referenceId required)
-3. Idempotency check (dedup by eventType + referenceId within 24h)
+3. Idempotency check (deterministic eventType + referenceId log document)
 4. Rate limit check (20/day per recipient email)
 5. Template resolution (eventType → subject + HTML)
 6. SMTP send via cached nodemailer transporter
-7. Log result to `notificationLogs` collection
+7. Log result to `canonica_notificationLogs` for Canonica events
 
 **Key properties:**
 - Never throws — always returns boolean
 - SMTP transporter cached (single connection reused)
 - Same SMTP env vars as lifecycle messaging (SMTP_HOST, SMTP_USER, SMTP_PASS)
-- Idempotency window: 24 hours
+- Idempotency: deterministic by event type + reference ID unless caller sets `skipDedup`
 - Rate limit: 20 emails/day per recipient
+- Canonica readiness helper: `getNotificationReadiness(PRODUCT_IDS.CANONICA)`
 
 ### 2. Client Trigger (`src/lib/notifications/client.ts`)
 
 **Runtime:** Client-side (browser)
 **Main function:** `triggerNotification(params)` → returns `void`
 
-**Design:** Simple `fetch()` POST to `/api/notifications/send`, wrapped in `.catch(() => {})` for silent failure. Intentionally not `await`ed by callers — true fire-and-forget.
+**Design:** Simple `fetch()` POST to `/api/notifications/send`, wrapped in `.catch()` for non-blocking failure. Intentionally not `await`ed by callers — true fire-and-forget. Development builds log trigger-request failures to the console; production ticket writes are never blocked by email delivery.
 
 ### 3. Templates (`src/lib/notifications/templates.ts`)
 
-**3 templates registered:**
+**4 templates registered:**
 
 | Event Type | Subject | Content |
 |-----------|---------|---------|
 | `TICKET_CREATED` | "Ticket received: {subject}" | Confirmation with ID, category, priority |
 | `TICKET_REPLY` | "Reply on your ticket: {subject}" | Reply preview (300 chars), replier name |
 | `TICKET_STATUS_CHANGED` | "Ticket updated: {subject} — {status}" | New status, remark |
+| `CANONICA_NOTIFICATION_TEST` | "Canonica notification test" | Activation verification email for the workspace support inbox |
 
 **Template structure:** Each template is a function `(metadata) => { subject, html }`. HTML uses inline styles matching lifecycle messaging tone (infrastructure-grade, calm, non-marketing).
 
@@ -70,11 +75,21 @@ src/database/tickets/index.ts  # Wired: addTicket, addTicketMessage, updateTicke
 ### 4. API Route (`src/app/api/notifications/send/route.ts`)
 
 **Auth:** `withAuth()` — only authenticated users can trigger notifications
+**Rate limit:** 120 attempts/hour per authenticated user
 **Method:** POST
-**Body:** `{ eventType, recipientEmail, recipientName?, referenceId, metadata?, skipDedup? }`
+**Body:** `{ eventType, recipientEmail, recipientName?, referenceId, metadata?, productId?, skipDedup? }`
 **Response:** `{ sent: boolean }`
 
-### 5. Ticket DAL Wiring (`src/database/tickets/index.ts`)
+Accepted client events are limited to `TICKET_CREATED`, `TICKET_REPLY`, and `TICKET_STATUS_CHANGED`. The Activation test event uses the dedicated Canonica test route instead of the generic client route. Request metadata is capped at 8KB to avoid accidental large payload logging or email rendering.
+
+### 5. Canonica Test Route (`src/app/api/canonica/notifications/test/route.ts`)
+
+**Auth:** `withAuth()` plus Canonica session-scope resolution.
+**Rate limit:** 3 test emails per workspace per hour.
+**Recipient:** `stores/{sId}.supportEmail`.
+**Purpose:** lets a Canonica buyer verify sender configuration before paid launch without creating a fake ticket.
+
+### 6. Ticket DAL Wiring (`src/database/tickets/index.ts`)
 
 | Function | Notification | Recipient |
 |----------|-------------|-----------|
@@ -88,22 +103,25 @@ src/database/tickets/index.ts  # Wired: addTicket, addTicketMessage, updateTicke
 
 ## Firestore Collection
 
-**Collection:** `notificationLogs` (NEW)
+**Canonica collection:** `canonica_notificationLogs`
+
+Legacy/non-Canonica callers still use `notificationLogs`. Canonica ticket and test notifications pass `productId: "CN"` and write logs in the Canonica Firebase project.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `eventType` | string | Event identifier (e.g., 'TICKET_REPLY') |
 | `recipientEmail` | string | Recipient email address |
 | `referenceId` | string | Unique reference for idempotency |
-| `status` | string | 'sent' or 'failed' |
+| `status` | string | 'sent', 'failed', or 'skipped' |
 | `subject` | string | Email subject line |
 | `messageId` | string/null | SMTP message ID (if sent) |
 | `error` | string/null | Error message (if failed) |
+| `reason` | string/null | Skip reason such as `rate_limited` |
 | `createdAt` | Timestamp | When the notification was sent/attempted |
 
 **Indexes needed:**
-- `eventType` + `referenceId` + `status` + `createdAt` (idempotency query)
-- `recipientEmail` + `status` + `createdAt` (rate limit query)
+- `recipientEmail` + `status` + `createdAt` on `canonica_notificationLogs` for rate-limit checks.
+- Idempotency uses deterministic document IDs and does not require a composite query.
 
 ---
 
@@ -121,4 +139,5 @@ Same as lifecycle messaging — no new env vars needed:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-22 | 1.1.0 | Enabled Canonica verification, product-aware logs, deterministic idempotency, test-send route, and cost-safe DAL guards. |
 | 2026-03-07 | 1.0.0 | Initial implementation |

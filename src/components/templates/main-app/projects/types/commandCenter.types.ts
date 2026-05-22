@@ -9,7 +9,19 @@
 // COMMAND CENTER ACTION TYPES
 // ─────────────────────────────────────────
 
-export type CommandCenterAction = 'pricing' | 'availability' | 'moveCategory' | 'activeInactive';
+export type CommandCenterAction = 'repairMenu' | 'pricing' | 'availability' | 'moveCategory' | 'textCase' | 'activeInactive';
+
+export interface RepairMenuSummary {
+    descriptionsToGenerate: number;
+    fixableNowCount: number;
+    languageIssueCount: number;
+    languagesToRepair: number;
+    manualReviewCount: number;
+    missingImages: number;
+    missingPrices: number;
+    projectContentIssueCount: number;
+    projectContentLanguagesToRepair: number;
+}
 
 // ─────────────────────────────────────────
 // SELECTION STATE

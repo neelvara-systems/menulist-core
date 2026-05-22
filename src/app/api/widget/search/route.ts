@@ -222,6 +222,7 @@ export async function POST(request: NextRequest) {
                 key: result.relatedContent.key,
                 label: result.relatedContent.label,
                 articles: result.relatedContent.articles || [],
+                faqs: result.relatedContent.faqs || [],
                 changelogs: result.relatedContent.changelogs || [],
             };
         }

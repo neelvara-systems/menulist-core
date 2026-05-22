@@ -98,6 +98,8 @@ Route parity contract: handheld users remain in `MobileShell` for canonical owne
 
 Transactions parity note: `MobileTransactionsScreen` keeps the existing mobile More-tab placement, but now carries the desktop transaction essentials on phone: action filter, date-range filter, reset, refresh, infinite scroll, credits/tokens summary, and tap-through transaction details. It still uses the same `getPaginatedAiOperations` DAL as desktop; no mobile-only transaction data path exists.
 
+Reverse parity note: mobile Menu actions must not become mobile-only capability. The desktop `CommandCenterModal` now carries the mobile Menu command-sheet gaps found in the reverse audit: Repair Menu, Fix Text Case, and the same shared repair/text-case utilities used by mobile. Desktop `EditorActionsPopover` also exposes Generation defaults from the editor context, matching the mobile Menu command sheet.
+
 ---
 
 ## Key Files

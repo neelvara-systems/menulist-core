@@ -1,4 +1,6 @@
-import { useChangelogCache } from '@hook/useChangelogCache';
+import { fetchCanonicaPublicChangelogPage } from '@lib/canonica/publicContentClient';
+import { useAppDispatch } from '@hook/useAppDispatch';
+import { startLoader, stopLoader } from '@reduxSlices/loader';
 import DisplayChangelog from '@template/platform/changelog/displayChangelog';
 import { ChangelogPage } from '@type/changelog';
 import { message } from 'antd';
@@ -11,26 +13,34 @@ interface ChangelogViewProps {
 
 const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
     const t = useTranslations('HelpCenter');
-    const { getItem } = useChangelogCache();
+    const dispatch = useAppDispatch();
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
 
     const fetchLatestPage = useCallback(async () => {
+        dispatch(startLoader('Fetching Changelog...'));
         try {
-            const page = await getItem();
+            const page = await fetchCanonicaPublicChangelogPage();
             if (page) {
                 setChangelogPage(page);
             }
         } catch (error) {
             message.error(t('failedToLoadChangelogPage'));
+        } finally {
+            dispatch(stopLoader('Fetching Changelog...'));
         }
-    }, [getItem, t]);
+    }, [dispatch, t]);
 
     useEffect(() => {
         void fetchLatestPage();
     }, [fetchLatestPage]);
 
     return (
-        <DisplayChangelog initialEntryId={initialEntryId} pageData={changelogPage} />
+        <DisplayChangelog
+            initialEntryId={initialEntryId}
+            loadOlderPage={(pageNumber) => fetchCanonicaPublicChangelogPage({ beforePageNumber: pageNumber })}
+            pageData={changelogPage}
+            useInternalFallback={false}
+        />
     );
 };
 

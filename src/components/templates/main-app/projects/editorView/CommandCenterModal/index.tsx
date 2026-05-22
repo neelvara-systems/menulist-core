@@ -13,12 +13,17 @@
  */
 
 import type { InheritanceState } from '@type/multiOutlet.types';
-import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { updateProjectMetadata } from '@database/projects';
+import { AI_ACTIONS_TYPES } from '@constant/common';
+import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
+import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { removeObjRef } from '@util/utils';
 import { Button, Flex, Modal, Splitter, Typography, message as antdMessage, theme } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
-import type { Project } from '../../types';
+import { AICapacityError } from '@services/ai/capacityError';
+import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
+import type { Project, ProjectSummaryData } from '../../types';
 
 const { Panel } = Splitter;
 
@@ -30,11 +35,22 @@ import type {
     CommandCenterAction,
     ImpactSummary,
     MoveCategoryPreview,
-    PricingConfig
+    PricingConfig,
+    RepairMenuSummary
 } from '../../types/commandCenter.types';
 import ActionEngine from './ActionEngine';
 import ImpactPreview from './ImpactPreview';
 import SelectionContext from './SelectionContext';
+import {
+    getDescriptionGenerationStats,
+    runDescriptionGeneration,
+} from '../descriptionGeneration.shared';
+import { getProjectLanguageIssues, repairLanguageProject } from '../languageRepair.shared';
+import {
+    applyTextCaseToProject,
+    type TextCaseConfig,
+    type TextCasePreview,
+} from '../textCase.shared';
 import {
     applyBulkActiveInactive,
     applyBulkAvailability,
@@ -53,7 +69,10 @@ interface CommandCenterModalProps {
     itemStates: Record<string, InheritanceState>;
     categoryStates: Record<string, InheritanceState>;
     masterPrices: Record<string, string>;
+    businessType?: string;
     storeName?: string;
+    storeDetails?: any;
+    allowInheritedDescriptionOverride?: boolean;
     onClose: () => void;
     onApply: (updatedProject: Project) => void;
 }
@@ -65,7 +84,10 @@ export default function CommandCenterModal({
     itemStates,
     categoryStates,
     masterPrices,
+    businessType,
     storeName,
+    storeDetails,
+    allowInheritedDescriptionOverride = false,
     onClose,
     onApply,
 }: CommandCenterModalProps) {
@@ -95,6 +117,14 @@ export default function CommandCenterModal({
     const [activeInactivePreview, setActiveInactivePreview] = useState<ActiveInactivePreview | null>(null);
     const [activeInactiveTarget, setActiveInactiveTarget] = useState<ActiveInactiveTarget | null>(null);
 
+    // ─── Text case state ───
+    const [textCasePreview, setTextCasePreview] = useState<TextCasePreview | null>(null);
+    const [textCaseConfig, setTextCaseConfig] = useState<TextCaseConfig | null>(null);
+
+    // ─── Repair Menu state ───
+    const [isRepairing, setIsRepairing] = useState(false);
+    const [repairStep, setRepairStep] = useState<string | null>(null);
+
     // ─── Undo state ───
     const undoProjectRef = useRef<Project | null>(null);
     const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,6 +146,10 @@ export default function CommandCenterModal({
             setMoveCategoryDestination(null);
             setActiveInactivePreview(null);
             setActiveInactiveTarget(null);
+            setTextCasePreview(null);
+            setTextCaseConfig(null);
+            setIsRepairing(false);
+            setRepairStep(null);
             undoProjectRef.current = null;
             setInternalProject(removeObjRef(projectData));
         }
@@ -139,6 +173,95 @@ export default function CommandCenterModal({
         [selectedItems, isMasterLinked, storeName]
     );
 
+    const descriptionGovernance = useMemo(() => (
+        isMasterLinked && itemStates && !allowInheritedDescriptionOverride
+            ? { itemStates }
+            : undefined
+    ), [allowInheritedDescriptionOverride, isMasterLinked, itemStates]);
+
+    const descriptionStats = useMemo(
+        () => getDescriptionGenerationStats(internalProject, null, descriptionGovernance),
+        [descriptionGovernance, internalProject]
+    );
+
+    const repairLanguageIssues = useMemo(() => {
+        const sourceLanguageCode = getProjectDefaultLanguage(internalProject);
+        return getProjectLanguageIssues(internalProject, sourceLanguageCode);
+    }, [internalProject]);
+
+    const languagesNeedingRepair = useMemo(
+        () => repairLanguageIssues.filter((issue) => issue.total > 0),
+        [repairLanguageIssues]
+    );
+
+    const projectPublicContentGaps = useMemo(
+        () => getMissingProjectPublicContentGaps(internalProject, internalProject.languages),
+        [internalProject]
+    );
+
+    const projectPublicContentLanguagesNeedingRepair = useMemo(
+        () => Array.from(new Set(projectPublicContentGaps.map((gap) => gap.languageCode))),
+        [projectPublicContentGaps]
+    );
+
+    const manualReviewSummary = useMemo(() => {
+        let missingImages = 0;
+        let missingPrices = 0;
+
+        internalProject.files?.forEach((file) => {
+            const data = file.extractedData?.data;
+            if (!data) return;
+            const categoryActiveMap = new Map<string, boolean>();
+            data.categories?.forEach((category) => {
+                categoryActiveMap.set(category.id, category.active !== false);
+            });
+
+            data.items?.forEach((item) => {
+                const categoryActive = categoryActiveMap.get(item.category) !== false;
+                if (item.active === false || !categoryActive) return;
+
+                const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
+                if (!(Number.isFinite(price) && price > 0) && !item.attributes?.length) {
+                    missingPrices += 1;
+                }
+
+                const imageUrl = item.images?.[0]?.url;
+                if (typeof imageUrl !== 'string' || imageUrl.trim().length === 0) {
+                    missingImages += 1;
+                }
+            });
+        });
+
+        return { missingImages, missingPrices };
+    }, [internalProject]);
+
+    const repairSummary = useMemo<RepairMenuSummary>(() => {
+        const languageIssueCount = languagesNeedingRepair.reduce((total, issue) => total + issue.total, 0);
+        const fixableNowCount = languageIssueCount
+            + descriptionStats.itemsWithoutDescriptions
+            + projectPublicContentGaps.length;
+        const manualReviewCount = manualReviewSummary.missingImages + manualReviewSummary.missingPrices;
+
+        return {
+            descriptionsToGenerate: descriptionStats.itemsWithoutDescriptions,
+            fixableNowCount,
+            languageIssueCount,
+            languagesToRepair: languagesNeedingRepair.length,
+            manualReviewCount,
+            missingImages: manualReviewSummary.missingImages,
+            missingPrices: manualReviewSummary.missingPrices,
+            projectContentIssueCount: projectPublicContentGaps.length,
+            projectContentLanguagesToRepair: projectPublicContentLanguagesNeedingRepair.length,
+        };
+    }, [
+        descriptionStats.itemsWithoutDescriptions,
+        languagesNeedingRepair,
+        manualReviewSummary.missingImages,
+        manualReviewSummary.missingPrices,
+        projectPublicContentGaps.length,
+        projectPublicContentLanguagesNeedingRepair.length,
+    ]);
+
     // ─── Action handlers ───
 
     const handleActionSelect = (action: CommandCenterAction) => {
@@ -153,6 +276,9 @@ export default function CommandCenterModal({
         setMoveCategoryDestination(null);
         setActiveInactivePreview(null);
         setActiveInactiveTarget(null);
+        setTextCasePreview(null);
+        setTextCaseConfig(null);
+        setRepairStep(null);
     };
 
     const handleBack = () => {
@@ -179,23 +305,150 @@ export default function CommandCenterModal({
         if (activeAction === 'availability') return availabilityTarget !== null;
         if (activeAction === 'moveCategory') return moveCategoryDestination !== null;
         if (activeAction === 'activeInactive') return activeInactiveTarget !== null;
+        if (activeAction === 'textCase') return textCaseConfig !== null;
+        if (activeAction === 'repairMenu') return isRepairing;
         return false;
-    }, [activeAction, pricingConfig, availabilityTarget, moveCategoryDestination, activeInactiveTarget]);
+    }, [activeAction, pricingConfig, availabilityTarget, moveCategoryDestination, activeInactiveTarget, textCaseConfig, isRepairing]);
 
     // Can apply current action?
     const canApply = useMemo(() => {
+        if (activeAction === 'repairMenu') return repairSummary.fixableNowCount > 0 && !isRepairing;
         if (selectedIds.size === 0) return false;
         if (activeAction === 'pricing') return pricingConfig !== null;
         if (activeAction === 'availability') return availabilityTarget !== null && (availabilityPreview?.itemsToChange ?? 0) > 0;
         if (activeAction === 'moveCategory') return moveCategoryDestination !== null && (moveCategoryPreview?.itemsToMove ?? 0) > 0;
         if (activeAction === 'activeInactive') return activeInactiveTarget !== null && (activeInactivePreview?.itemsToChange ?? 0) > 0;
+        if (activeAction === 'textCase') return textCaseConfig !== null && (textCasePreview?.totalFields ?? 0) > 0;
         return false;
-    }, [selectedIds.size, activeAction, pricingConfig, availabilityTarget, availabilityPreview, moveCategoryDestination, moveCategoryPreview, activeInactiveTarget, activeInactivePreview]);
+    }, [selectedIds.size, activeAction, pricingConfig, availabilityTarget, availabilityPreview, moveCategoryDestination, moveCategoryPreview, activeInactiveTarget, activeInactivePreview, textCaseConfig, textCasePreview, repairSummary.fixableNowCount, isRepairing]);
+
+    const handleRepairMenuApply = useCallback(async () => {
+        if (repairSummary.fixableNowCount === 0 || isRepairing) return;
+
+        setIsRepairing(true);
+        setRepairStep('Preparing repair');
+
+        try {
+            undoProjectRef.current = null;
+            let updated = removeObjRef(internalProject);
+            const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
+            const sourceLanguageCode = getProjectDefaultLanguage(updated);
+
+            for (const issue of languagesNeedingRepair) {
+                setRepairStep(`Repairing ${issue.code.toUpperCase()} text`);
+                updated = await repairLanguageProject(updated, issue.code, sourceLanguageCode);
+            }
+
+            if (descriptionStats.itemsWithoutDescriptions > 0) {
+                setRepairStep('Adding missing descriptions');
+                updated = await runDescriptionGeneration({
+                    action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+                    contentLength: getProjectDescriptionContentLength(updated, businessType),
+                    tone: getProjectDescriptionTone(updated, businessType),
+                    projectData: updated,
+                    governance: descriptionGovernance,
+                    skipPersist: true,
+                });
+            }
+
+            if (projectPublicContentLanguagesNeedingRepair.length > 0) {
+                setRepairStep('Repairing project details');
+                const translatedProjectContent = await translateProjectPublicContent({
+                    projectDetails: updated,
+                    projectId: updated.projectId,
+                    storeDetails,
+                    targetLanguageCodes: projectPublicContentLanguagesNeedingRepair,
+                });
+
+                if (translatedProjectContent) {
+                    if (translatedProjectContent.name) {
+                        updated.name = translatedProjectContent.name as any;
+                        projectMetadataTranslationUpdate.name = translatedProjectContent.name;
+                    }
+                    if (translatedProjectContent.description) {
+                        updated.description = translatedProjectContent.description as any;
+                        projectMetadataTranslationUpdate.description = translatedProjectContent.description;
+                    }
+                    if (translatedProjectContent.specialNote) {
+                        updated.menuSettings = {
+                            ...(updated.menuSettings || {}),
+                            specialNote: translatedProjectContent.specialNote,
+                        };
+                    }
+                    if (translatedProjectContent.specialMenuDisplayName) {
+                        updated._specialMenu = {
+                            ...(updated._specialMenu || {}),
+                            displayName: translatedProjectContent.specialMenuDisplayName,
+                        };
+                        (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                        projectMetadataTranslationUpdate.specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
+                    }
+                }
+            }
+
+            if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
+                await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+            }
+
+            const repairSummaryParts = [
+                repairSummary.languageIssueCount > 0
+                    ? `${repairSummary.languageIssueCount} language issues`
+                    : null,
+                repairSummary.descriptionsToGenerate > 0
+                    ? `${repairSummary.descriptionsToGenerate} descriptions`
+                    : null,
+                repairSummary.projectContentIssueCount > 0
+                    ? `${repairSummary.projectContentIssueCount} project detail${repairSummary.projectContentIssueCount !== 1 ? 's' : ''}`
+                    : null,
+                repairSummary.missingPrices > 0
+                    ? `${repairSummary.missingPrices} prices need review`
+                    : null,
+            ].filter(Boolean) as string[];
+            const successMessage = repairSummaryParts.length > 0
+                ? repairSummaryParts.join(' · ')
+                : 'Menu repair finished';
+
+            setInternalProject(updated);
+            onApply(updated);
+            setActiveAction(null);
+            setLastApplyMessage(successMessage);
+            antdMessage.success('Menu repair finished.');
+        } catch (error) {
+            if (error instanceof AICapacityError) {
+                antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+            } else {
+                antdMessage.error('Could not repair menu.');
+            }
+        } finally {
+            setRepairStep(null);
+            setIsRepairing(false);
+        }
+    }, [
+        businessType,
+        descriptionGovernance,
+        descriptionStats.itemsWithoutDescriptions,
+        internalProject,
+        isRepairing,
+        languagesNeedingRepair,
+        onApply,
+        projectPublicContentLanguagesNeedingRepair,
+        repairSummary.descriptionsToGenerate,
+        repairSummary.fixableNowCount,
+        repairSummary.languageIssueCount,
+        repairSummary.missingPrices,
+        repairSummary.projectContentIssueCount,
+        storeDetails,
+    ]);
 
     // ─── Apply logic ───
 
-    const handleApply = useCallback(() => {
+    const handleApply = useCallback(async () => {
         if (!canApply) return;
+
+        if (activeAction === 'repairMenu') {
+            await handleRepairMenuApply();
+            return;
+        }
 
         const editableIds = new Set(
             selectedItems.filter((i) => !i.isLocked).map((i) => i.id)
@@ -222,6 +475,10 @@ export default function CommandCenterModal({
             updatedProject = applyBulkActiveInactive(internalProject, editableIds, activeInactiveTarget);
             const verb = activeInactiveTarget === 'show' ? 'shown' : 'hidden';
             successMessage = `${activeInactivePreview?.itemsToChange || editableIds.size} items ${verb}`;
+        } else if (activeAction === 'textCase' && textCaseConfig) {
+            undoProjectRef.current = removeObjRef(internalProject);
+            updatedProject = applyTextCaseToProject(internalProject, textCaseConfig);
+            successMessage = `Text case updated for ${textCasePreview?.totalFields || 0} values`;
         } else {
             return;
         }
@@ -283,6 +540,9 @@ export default function CommandCenterModal({
         moveCategoryPreview,
         activeInactiveTarget,
         activeInactivePreview,
+        textCaseConfig,
+        textCasePreview,
+        handleRepairMenuApply,
         onApply,
     ]);
 
@@ -340,7 +600,9 @@ export default function CommandCenterModal({
                     <Text type="secondary" style={{ fontSize: 11 }}>
                         {selectedIds.size > 0
                             ? `${selectedIds.size} items selected`
-                            : 'Select items to get started'}
+                            : activeAction === 'repairMenu' || activeAction === 'textCase'
+                                ? 'Whole menu action'
+                                : 'Select items to get started'}
                     </Text>
                     <Flex gap={8}>
                         {activeAction && (
@@ -355,23 +617,28 @@ export default function CommandCenterModal({
                             <Button
                                 type="primary"
                                 disabled={!canApply}
+                                loading={activeAction === 'repairMenu' && isRepairing}
                                 onClick={() => {
                                     Modal.confirm({
-                                        title: 'Apply changes?',
-                                        content: activeAction === 'pricing'
-                                            ? `Apply price update to ${pricingPreview?.itemsAffected || selectedItems.length} items?`
-                                            : activeAction === 'availability'
-                                                ? `Update availability for ${availabilityPreview?.itemsToChange || selectedItems.length} items?`
-                                                : activeAction === 'activeInactive'
-                                                    ? `${activeInactiveTarget === 'show' ? 'Show' : 'Hide'} ${activeInactivePreview?.itemsToChange || selectedItems.length} items?`
-                                                    : `Move ${moveCategoryPreview?.itemsToMove || selectedItems.length} items?`,
-                                        okText: 'Apply',
+                                        title: activeAction === 'repairMenu' ? 'Repair menu?' : 'Apply changes?',
+                                        content: activeAction === 'repairMenu'
+                                            ? `This will rebuild ${repairSummary.languagesToRepair} language areas, add ${repairSummary.descriptionsToGenerate} missing descriptions, and fill ${repairSummary.projectContentIssueCount} project detail translations. Prices and photos will stay unchanged.`
+                                            : activeAction === 'textCase'
+                                                ? `Apply text case cleanup to ${textCasePreview?.totalFields || 0} text values?`
+                                                : activeAction === 'pricing'
+                                                    ? `Apply price update to ${pricingPreview?.itemsAffected || selectedItems.length} items?`
+                                                    : activeAction === 'availability'
+                                                        ? `Update availability for ${availabilityPreview?.itemsToChange || selectedItems.length} items?`
+                                                        : activeAction === 'activeInactive'
+                                                            ? `${activeInactiveTarget === 'show' ? 'Show' : 'Hide'} ${activeInactivePreview?.itemsToChange || selectedItems.length} items?`
+                                                            : `Move ${moveCategoryPreview?.itemsToMove || selectedItems.length} items?`,
+                                        okText: activeAction === 'repairMenu' ? 'Repair Menu' : 'Apply',
                                         cancelText: 'Cancel',
-                                        onOk: handleApply,
+                                        onOk: () => handleApply(),
                                     });
                                 }}
                             >
-                                Apply Changes
+                                {activeAction === 'repairMenu' ? 'Repair Menu' : 'Apply Changes'}
                             </Button>
                         )}
                     </Flex>
@@ -415,6 +682,12 @@ export default function CommandCenterModal({
                             selectedItems={selectedItems}
                             projectData={internalProject}
                             hasSelection={selectedIds.size > 0}
+                            repairSummary={repairSummary}
+                            repairLanguageIssues={repairLanguageIssues}
+                            isRepairing={isRepairing}
+                            repairStep={repairStep}
+                            onTextCasePreview={setTextCasePreview}
+                            onTextCaseConfigReady={setTextCaseConfig}
                             onPricingPreview={setPricingPreview}
                             onPricingConfigReady={setPricingConfig}
                             onAvailabilityPreview={setAvailabilityPreview}
@@ -440,6 +713,8 @@ export default function CommandCenterModal({
                         availabilityPreview={availabilityPreview}
                         moveCategoryPreview={moveCategoryPreview}
                         activeInactivePreview={activeInactivePreview}
+                        repairSummary={repairSummary}
+                        textCasePreview={textCasePreview}
                         lastApplyMessage={lastApplyMessage}
                         selectedItems={selectedItems}
                     />

@@ -4,8 +4,10 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import type {
     CanonicaProductSurface,
+    CanonicaFaq,
     CanonicaRelatedArticleRef,
     CanonicaRelatedChangelogRef,
+    CanonicaRelatedFaqRef,
     CanonicaSurfaceContentItem,
     CanonicaSurfaceContentSummary,
     CanonicaContextPayload,
@@ -26,6 +28,7 @@ import {
 const SUMMARY_CACHE_TTL_MS = 60_000;
 const MAX_SUMMARY_CACHE_ENTRIES = 300;
 const MAX_ARTICLES_FOR_SUMMARY = 500;
+const MAX_FAQS_FOR_SUMMARY = 500;
 const MAX_CHANGELOG_PAGES_FOR_SUMMARY = 3;
 const MAX_TICKETS_FOR_SUMMARY = 300;
 
@@ -77,6 +80,15 @@ const compactChangelog = (entry: ChangelogEntry, pageId: string): CanonicaRelate
     tags: Array.isArray(entry.tags) ? entry.tags.slice(0, 8) : [],
 });
 
+const compactFaq = (faq: CanonicaFaq): CanonicaRelatedFaqRef => ({
+    id: faq.id,
+    question: faq.question,
+    answer: faq.answer,
+    articleId: faq.articleId || null,
+    articleTitle: faq.articleTitle || null,
+    tags: Array.isArray(faq.tags) ? faq.tags.slice(0, 8) : [],
+});
+
 const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase();
 
 const buildTicketStats = (tickets: SupportTicketType[]): CanonicaSurfaceTicketStats => ({
@@ -109,6 +121,21 @@ async function loadPublishedArticles(tId: number, sId: number): Promise<Knowledg
         .get();
 
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as KnowledgeBaseArticleType));
+}
+
+async function loadPublishedFaqs(tId: number, sId: number): Promise<CanonicaFaq[]> {
+    const snapshot = await getCanonicaDb()
+        .collection(DB_COLLECTIONS.CANONICA_FAQS)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('status', '==', 'published')
+        .where('active', '==', true)
+        .orderBy('sortOrder', 'asc')
+        .orderBy('modifiedOn', 'desc')
+        .limit(MAX_FAQS_FOR_SUMMARY)
+        .get();
+
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CanonicaFaq));
 }
 
 async function loadRecentChangelogEntries(tId: number, sId: number): Promise<Array<ChangelogEntry & { pageId: string }>> {
@@ -154,9 +181,10 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
         throw new Error('Invalid Canonica tenant scope.');
     }
 
-    const [surfaces, articles, changelogEntries, tickets] = await Promise.all([
+    const [surfaces, articles, faqs, changelogEntries, tickets] = await Promise.all([
         loadActiveSurfaces(tId, sId),
         loadPublishedArticles(tId, sId),
+        loadPublishedFaqs(tId, sId),
         loadRecentChangelogEntries(tId, sId),
         loadRecentTickets(tId, sId),
     ]);
@@ -172,6 +200,16 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
             .map(item => compactArticle(item.article));
 
         const matchedArticleIds = new Set(matchedArticles.map(article => article.id));
+        const matchedFaqs = faqs
+            .map(faq => ({
+                faq,
+                score: scoreContentForSurface(faq as any, surface) + (faq.articleId && matchedArticleIds.has(faq.articleId) ? 30 : 0),
+            }))
+            .filter(item => item.score > 0)
+            .sort((a, b) => b.score - a.score || getTimestampMillis(b.faq.modifiedOn) - getTimestampMillis(a.faq.modifiedOn))
+            .slice(0, 6)
+            .map(item => compactFaq(item.faq));
+
         const matchedChangelogs = changelogEntries
             .map(entry => {
                 const sourceArticleMatch = (entry.kbSources || []).some(source => source.articleId && matchedArticleIds.has(source.articleId));
@@ -204,6 +242,7 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
             tags: surface.tags || [],
             visibility: surface.visibility,
             articles: matchedArticles,
+            faqs: matchedFaqs,
             changelogs: matchedChangelogs,
             tickets: buildTicketStats(matchedTickets),
         };
@@ -216,6 +255,7 @@ export async function rebuildProductSurfaceContentSummaryServer(params: {
         generatedAt: admin.firestore.FieldValue.serverTimestamp(),
         surfaceCount: surfaces.length,
         articleCount: articles.length,
+        faqCount: faqs.length,
         changelogCount: changelogEntries.length,
         ticketCount: tickets.length,
         surfaces: surfaceItems,

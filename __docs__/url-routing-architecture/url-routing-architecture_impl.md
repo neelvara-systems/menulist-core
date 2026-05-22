@@ -75,7 +75,8 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | ------------------------------------------------------------------- | --------------------------------------------------------- |
 | `src/constants/reservedSlugs.ts`                                    | Reserved slug/subdomain namespace constants + validators  |
 | `src/app/api/subdomain/check/route.ts`                              | Subdomain availability checker API (GET)                  |
-| `src/app/api/domain/route.ts`                                       | Custom domain management via Vercel API (POST/GET/DELETE) |
+| `src/app/api/domain/route.ts`                                       | MenuList store custom-domain management via Vercel API (POST/GET/DELETE) |
+| `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Canonica hosted help |
 | `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
 | `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Custom domain UI with DNS verification flow               |
 | `src/app/_client/obp/BrandOBPContent.tsx`                           | Multi-store brand OBP (store selector)                    |
@@ -183,7 +184,7 @@ When disabled: slugs derived from name at runtime (current behavior), no redirec
 
 | Variable            | Required                 | Purpose                                                                             |
 | ------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
-| `VERCEL_TOKEN`      | Yes (for custom domains) | Vercel API Bearer token — used by `/api/domain` to add/verify/remove custom domains |
+| `VERCEL_TOKEN`      | Yes (for custom domains) | Vercel API Bearer token — used by `/api/domain` and Canonica hosted-help settings to add/verify/remove custom domains |
 | `VERCEL_PROJECT_ID` | Yes (for custom domains) | Vercel project ID — identifies which project to manage domains for                  |
 | `VERCEL_TEAM_ID`    | No                       | Vercel team ID — only needed for team-owned projects                                |
 

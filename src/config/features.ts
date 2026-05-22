@@ -1922,6 +1922,20 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_WIDGET: true,
 
     /**
+     * Canonica Hosted Help Center
+     *
+     * true: Customer-owned help/docs domains such as help.example.com render
+     *       published Canonica KB, FAQ, and changelog content without a user session.
+     * false: Hosted help domains return not found while the authenticated Help
+     *        Center and widget continue to work.
+     *
+     * Cost model: one cached domain-registry doc read plus the existing
+     * tenant/store-tagged public content cache. No anonymous ticket, feedback,
+     * chat-history, or AI-provider work is performed on page load.
+     */
+    ENABLE_CANONICA_HOSTED_HELP_CENTER: true,
+
+    /**
      * Canonica Client Activation Command Center
      *
      * true: Canonica clients get a launch/readiness home that shows workspace,
@@ -1964,7 +1978,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/canonica/email-notifications/
      */
-    ENABLE_CANONICA_NOTIFICATIONS: false,
+    ENABLE_CANONICA_NOTIFICATIONS: true,
 
     /**
      * Canonica Governance UI
@@ -2053,6 +2067,21 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_PRODUCT_SURFACES: true,
 
     /**
+     * Canonica FAQ Management
+     *
+     * true: Owners can review, create, publish, and archive short FAQ answers
+     *       linked to KB articles, product surfaces, entities, and tags.
+     *       The public Help Center "Read FAQ" tab reads only published FAQs.
+     * false: FAQ tab falls back to static legacy copy and owner FAQ management is hidden.
+     *
+     * Cost model: one bounded FAQ query for the public tab, paginated owner
+     * queries, summary-backed contextual FAQ discovery, and atomic feedback writes.
+     *
+     * @see __docs__/canonica/faq-management/
+     */
+    ENABLE_CANONICA_FAQ_MANAGEMENT: true,
+
+    /**
      * Canonica Guided Workflows (Structured Procedure Answers)
      *
      * true: Canonical answers support answerType (explanation/navigation/procedure)
@@ -2122,7 +2151,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
      * @see __docs__/canonica/product-friction-intelligence/
      */
-    ENABLE_CANONICA_FRICTION_INTELLIGENCE: false,
+    ENABLE_CANONICA_FRICTION_INTELLIGENCE: true,
 
     /**
      * Canonica Founder Onboarding (Knowledge Bootstrap Engine)
@@ -2185,13 +2214,13 @@ export const FEATURE_FLAGS = {
      * false: Standard ticket signals only (no resolution extraction)
      *
      * Accumulation architecture: requires 3+ resolved tickets per entity before extraction.
-     * Max 5 drafts per nightly run. Cost: ~$0.12/tenant/month.
+     * Max 5 drafts per nightly run. Working estimate: ~INR 10/tenant/month.
      *
      * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
      * Requires: ENABLE_CANONICA_AUTO_KNOWLEDGE = true (for draft generation)
      * @see __docs__/canonica/ticket-knowledge-loop/
      */
-    ENABLE_CANONICA_TICKET_KNOWLEDGE: false,
+    ENABLE_CANONICA_TICKET_KNOWLEDGE: true,
 
     /**
      * Canonica Founder Trust Layer (Trust Metrics Dashboard)

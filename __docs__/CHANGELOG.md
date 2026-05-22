@@ -11,6 +11,7 @@
 ### Changed
 
 - **Mobile Transactions now matches the desktop essentials** — The More-tab Transactions screen keeps its mobile placement and now supports action filtering, date-range filtering, reset, refresh, infinite scroll, credits/tokens summary, and tap-through transaction details using the shared `getPaginatedAiOperations` DAL.
+- **Desktop Menu actions now match mobile command gaps** — The desktop Menu Command Center now includes Repair Menu and Fix Text Case, using shared logic with mobile. The desktop editor More Actions menu also exposes Generation defaults from the same menu-management context.
 
 ---
 

@@ -10,11 +10,13 @@ import {
     Grid,
     Input,
     InputNumber,
+    List,
     message,
     Row,
     Segmented,
     Select,
     Skeleton,
+    Switch,
     Tag,
     Tabs,
     Typography,
@@ -46,6 +48,13 @@ import {
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
 } from '@lib/canonica/widgetConfig';
+import {
+    CanonicaHostedHelpConfig,
+    DEFAULT_CANONICA_HOSTED_HELP_CONFIG,
+    normalizeHostedHelpConfig,
+    normalizeHostedHelpDomains,
+} from '@lib/canonica/hostedHelpConfig';
+import { normalizeHostedHelpDomain } from '@constant/canonica/hostedHelp';
 import type { CanonicaWidgetRuntimeStatus } from '@type/canonica';
 
 const { Title, Text, Paragraph } = Typography;
@@ -64,7 +73,68 @@ type WidgetConfigResponse = {
     runtimeStatus?: CanonicaWidgetRuntimeStatus | null;
 };
 
+type HostedHelpSettingsResponse = {
+    config?: Partial<CanonicaHostedHelpConfig>;
+    domainStatuses?: HostedHelpDomainStatus[];
+};
+
 const CONTROL_LABEL_STYLE = { fontSize: 12 } as const;
+
+type HostedHelpDomainStatus = {
+    domain: string;
+    status?: 'pending' | 'verified' | 'error';
+    verified?: boolean;
+    verifiedAt?: string | null;
+    lastCheckedAt?: string | null;
+    verification?: any;
+    error?: string | null;
+};
+
+function normalizeHostedHelpDnsRecords(config: any, domain: string) {
+    const records: { type: string; name: string; value: string }[] = [];
+
+    if (Array.isArray(config?.verificationRecords)) {
+        config.verificationRecords.forEach((record: any) => {
+            records.push({
+                type: record.type || 'TXT',
+                name: record.domain || record.name || '_vercel',
+                value: record.value || record.reason || '',
+            });
+        });
+    }
+
+    if (Array.isArray(config?.configuredBy)) {
+        config.configuredBy.forEach((record: any) => {
+            records.push({
+                type: record.type || 'CNAME',
+                name: record.name || (domain.startsWith('www.') ? 'www' : '@'),
+                value: record.value || '',
+            });
+        });
+    }
+
+    if (records.length === 0 && domain) {
+        records.push({
+            type: 'CNAME',
+            name: domain.startsWith('www.') ? 'www' : '@',
+            value: 'cname.vercel-dns.com',
+        });
+    }
+
+    return records;
+}
+
+const getHostedHelpStatusColor = (status?: HostedHelpDomainStatus | null) => {
+    if (status?.verified || status?.status === 'verified') return 'success';
+    if (status?.status === 'error') return 'error';
+    return 'warning';
+};
+
+const getHostedHelpStatusLabel = (status?: HostedHelpDomainStatus | null) => {
+    if (status?.verified || status?.status === 'verified') return 'Live';
+    if (status?.status === 'error') return 'Needs review';
+    return 'DNS pending';
+};
 
 const formatRuntimeDate = (value: any): string => {
     if (!value) return 'Not seen yet';
@@ -97,10 +167,16 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     const [keyPrefix, setKeyPrefix] = useState<string | null>(null);
     const [hasWidgetKey, setHasWidgetKey] = useState(false);
     const [runtimeStatus, setRuntimeStatus] = useState<CanonicaWidgetRuntimeStatus | null>(null);
+    const [hostedHelpConfig, setHostedHelpConfig] = useState<CanonicaHostedHelpConfig>(DEFAULT_CANONICA_HOSTED_HELP_CONFIG);
+    const [hostedHelpDomainStatuses, setHostedHelpDomainStatuses] = useState<HostedHelpDomainStatus[]>([]);
+    const [newHostedDomain, setNewHostedDomain] = useState('');
+    const [savingHostedHelp, setSavingHostedHelp] = useState(false);
+    const [checkingHostedDomains, setCheckingHostedDomains] = useState(false);
     const [snippetType, setSnippetType] = useState<SnippetType>('html');
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [scriptSrc, setScriptSrc] = useState('https://canonica.app/widget/canonica-widget.js');
     const [dirty, setDirty] = useState(false);
+    const [hostedHelpDirty, setHostedHelpDirty] = useState(false);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -119,6 +195,15 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setKeyPrefix(data.keyPrefix || null);
             setHasWidgetKey(Boolean(data.hasWidgetKey));
             setRuntimeStatus(data.runtimeStatus || null);
+
+            const hostedRes = await fetch('/api/canonica/hosted-help-settings', { method: 'GET' });
+            const hostedData: HostedHelpSettingsResponse = await hostedRes.json().catch(() => ({}));
+            if (hostedRes.ok) {
+                setHostedHelpConfig(normalizeHostedHelpConfig(hostedData.config));
+                setHostedHelpDomainStatuses(hostedData.domainStatuses || []);
+                setHostedHelpDirty(false);
+            }
+
             setDirty(false);
         } catch (error: any) {
             message.error(error?.message || 'Failed to load widget settings');
@@ -240,6 +325,76 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         updateConfig('blockedRoutes', config.blockedRoutes.filter(item => item !== route));
     }, [config.blockedRoutes, updateConfig]);
 
+    const updateHostedHelpConfig = useCallback(<K extends keyof CanonicaHostedHelpConfig>(
+        key: K,
+        value: CanonicaHostedHelpConfig[K],
+    ) => {
+        setHostedHelpConfig(prev => normalizeHostedHelpConfig({ ...prev, [key]: value }));
+        setHostedHelpDirty(true);
+    }, []);
+
+    const addHostedDomain = useCallback(() => {
+        const normalized = normalizeHostedHelpDomain(newHostedDomain);
+        if (!normalized) {
+            message.error('Enter a valid help domain, for example https://help.example.com');
+            return;
+        }
+        if (hostedHelpConfig.domains.includes(normalized)) {
+            message.info('Domain already added');
+            return;
+        }
+        updateHostedHelpConfig('domains', normalizeHostedHelpDomains([...hostedHelpConfig.domains, normalized]));
+        setNewHostedDomain('');
+    }, [hostedHelpConfig.domains, newHostedDomain, updateHostedHelpConfig]);
+
+    const removeHostedDomain = useCallback((domain: string) => {
+        const nextDomains = hostedHelpConfig.domains.filter(item => item !== domain);
+        setHostedHelpDomainStatuses(prev => prev.filter(item => item.domain !== domain));
+        setHostedHelpConfig(prev => normalizeHostedHelpConfig({
+            ...prev,
+            domains: nextDomains,
+            primaryDomain: prev.primaryDomain === domain ? nextDomains[0] || null : prev.primaryDomain,
+        }));
+        setHostedHelpDirty(true);
+    }, [hostedHelpConfig.domains]);
+
+    const handleSaveHostedHelp = useCallback(async () => {
+        setSavingHostedHelp(true);
+        try {
+            const res = await fetch('/api/canonica/hosted-help-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config: hostedHelpConfig }),
+            });
+            const data: HostedHelpSettingsResponse & { error?: string } = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to save hosted help settings');
+            setHostedHelpConfig(normalizeHostedHelpConfig(data.config));
+            setHostedHelpDomainStatuses(data.domainStatuses || []);
+            setHostedHelpDirty(false);
+            message.success('Hosted Help Center settings saved');
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to save hosted help settings');
+        } finally {
+            setSavingHostedHelp(false);
+        }
+    }, [hostedHelpConfig]);
+
+    const refreshHostedHelpDomains = useCallback(async () => {
+        setCheckingHostedDomains(true);
+        try {
+            const res = await fetch('/api/canonica/hosted-help-settings?refreshDomains=1', { method: 'GET' });
+            const data: HostedHelpSettingsResponse & { error?: string } = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to check hosted help DNS');
+            setHostedHelpConfig(normalizeHostedHelpConfig(data.config));
+            setHostedHelpDomainStatuses(data.domainStatuses || []);
+            message.success('Hosted Help DNS status updated');
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to check hosted help DNS');
+        } finally {
+            setCheckingHostedDomains(false);
+        }
+    }, []);
+
     const embedCode = useMemo(() => buildCanonicaWidgetEmbedCode({ apiKey, config, scriptSrc }), [apiKey, config, scriptSrc]);
     const spaSnippet = useMemo(() => buildCanonicaWidgetRouteSnippet(), []);
     const nextSnippet = useMemo(() => [
@@ -266,6 +421,15 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     const activeSnippet = snippetType === 'html' ? embedCode : snippetType === 'spa' ? spaSnippet : nextSnippet;
     const widgetSeen = Boolean(runtimeStatus?.lastSeenAt);
     const contextSeen = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
+    const hostedHelpUrl = hostedHelpConfig.primaryDomain || hostedHelpConfig.domains[0] || '';
+    const hostedHelpStatusByDomain = useMemo(() => new Map(
+        hostedHelpDomainStatuses.map(status => [status.domain, status]),
+    ), [hostedHelpDomainStatuses]);
+    const primaryHostedHelpStatus = hostedHelpUrl ? hostedHelpStatusByDomain.get(hostedHelpUrl) : null;
+    const hostedHelpDnsRecords = useMemo(
+        () => normalizeHostedHelpDnsRecords(primaryHostedHelpStatus?.verification, hostedHelpUrl),
+        [hostedHelpUrl, primaryHostedHelpStatus?.verification],
+    );
 
     const copyText = useCallback(async (value: string, successMessage = 'Copied') => {
         try {
@@ -302,7 +466,16 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                     type="warning"
                     showIcon
                     message="Unsaved widget changes"
-                    description="Save before testing the installed widget. Existing installs read the latest dashboard config through the runtime config endpoint."
+                    description="Save before testing the installed widget. Existing installs pick up the latest saved dashboard settings automatically."
+                />
+            )}
+
+            {hostedHelpDirty && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Unsaved hosted Help Center changes"
+                    description="Save hosted settings before testing your public help domain."
                 />
             )}
 
@@ -382,7 +555,28 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                     />
                                                 </Flex>
                                             </Col>
-                                            <Col xs={24} sm={16}>
+                                            <Col xs={24} sm={8}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Header Title</Text>
+                                                    <Input
+                                                        value={config.headerTitle}
+                                                        maxLength={40}
+                                                        onChange={(event) => updateConfig('headerTitle', event.target.value || DEFAULT_CANONICA_WIDGET_CONFIG.headerTitle)}
+                                                    />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={24} sm={8}>
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Powered by Badge</Text>
+                                                    <Switch
+                                                        checked={config.poweredByVisible}
+                                                        checkedChildren="Shown"
+                                                        unCheckedChildren="Hidden"
+                                                        onChange={(checked) => updateConfig('poweredByVisible', checked)}
+                                                    />
+                                                </Flex>
+                                            </Col>
+                                            <Col xs={24}>
                                                 <Flex vertical gap={4}>
                                                     <Text strong style={CONTROL_LABEL_STYLE}>Greeting</Text>
                                                     <Input
@@ -506,7 +700,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                 style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
                                             />
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                The script reads saved dashboard settings automatically. Script attributes are still supported for per-environment overrides.
+                                                The script reads saved dashboard settings automatically. Script attributes are still supported for environment-specific overrides.
                                             </Text>
                                         </Flex>
                                     </Card>
@@ -580,8 +774,234 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                             type="info"
                                             showIcon
                                             message="Installed widgets update automatically"
-                                            description="Changes saved here are picked up by installed widgets through Canonica's runtime config endpoint. Updates can take up to 60 seconds to appear; there is no cache setting for the customer to manage."
+                                            description="Changes saved here are picked up by installed widgets automatically. Updates can take up to 60 seconds to appear."
                                         />
+                                    </Card>
+                                </Col>
+                            </Row>
+                        ),
+                    },
+                    {
+                        key: 'hosted-help',
+                        label: 'Hosted Help',
+                        children: (
+                            <Row gutter={[16, 16]}>
+                                <Col xs={24} lg={10}>
+                                    <Card title={<Flex align="center" gap={8}><LuGlobe size={16} /> Public Help Domain</Flex>}>
+                                        <Flex vertical gap={14}>
+                                            <Alert
+                                                type="info"
+                                                showIcon
+                                                message="Hosted Help Center"
+                                                description="Publish your docs, FAQ, and changelog on a customer-facing domain such as help.example.com. This is separate from the in-app widget."
+                                            />
+                                            <Flex align="center" justify="space-between" gap={12}>
+                                                <Text strong>Enable hosted help</Text>
+                                                <Switch
+                                                    checked={hostedHelpConfig.enabled}
+                                                    checkedChildren="On"
+                                                    unCheckedChildren="Off"
+                                                    onChange={(checked) => updateHostedHelpConfig('enabled', checked)}
+                                                />
+                                            </Flex>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Help domains</Text>
+                                                <Flex gap={8} vertical={isMobile} align={isMobile ? 'stretch' : 'center'}>
+                                                    <Input
+                                                        value={newHostedDomain}
+                                                        onChange={(event) => setNewHostedDomain(event.target.value)}
+                                                        onPressEnter={addHostedDomain}
+                                                        placeholder="https://help.example.com"
+                                                    />
+                                                    <Button icon={<LuGlobe size={14} />} onClick={addHostedDomain}>Add</Button>
+                                                </Flex>
+                                            </Flex>
+                                            {hostedHelpConfig.domains.length > 0 ? (
+                                                <Flex gap={8} wrap="wrap">
+                                                    {hostedHelpConfig.domains.map(domain => {
+                                                        const domainStatus = hostedHelpStatusByDomain.get(domain);
+                                                        return (
+                                                            <Tag
+                                                                key={domain}
+                                                                closable
+                                                                color={getHostedHelpStatusColor(domainStatus)}
+                                                                onClose={(event) => { event.preventDefault(); removeHostedDomain(domain); }}
+                                                            >
+                                                                {domain} · {getHostedHelpStatusLabel(domainStatus)}
+                                                            </Tag>
+                                                        );
+                                                    })}
+                                                </Flex>
+                                            ) : (
+                                                <Alert type="warning" showIcon message="Add at least one help domain before enabling hosted help." />
+                                            )}
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Primary domain</Text>
+                                                <Select
+                                                    value={hostedHelpConfig.primaryDomain || undefined}
+                                                    placeholder="Select primary domain"
+                                                    disabled={hostedHelpConfig.domains.length === 0}
+                                                    onChange={(value) => updateHostedHelpConfig('primaryDomain', value)}
+                                                    options={hostedHelpConfig.domains.map(domain => ({ value: domain, label: domain }))}
+                                                />
+                                            </Flex>
+                                            {hostedHelpConfig.domains.length > 0 ? (
+                                                <Button
+                                                    icon={<LuRefreshCw size={14} />}
+                                                    loading={checkingHostedDomains}
+                                                    onClick={refreshHostedHelpDomains}
+                                                    style={{ alignSelf: isMobile ? 'stretch' : 'flex-start' }}
+                                                >
+                                                    Check DNS Status
+                                                </Button>
+                                            ) : null}
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24} lg={14}>
+                                    <Card title={<Flex align="center" gap={8}><LuSettings size={16} /> Hosted Page Content</Flex>}>
+                                        <Flex vertical gap={14}>
+                                            <Row gutter={[12, 12]}>
+                                                <Col xs={24} md={12}>
+                                                    <Flex vertical gap={4}>
+                                                        <Text strong style={CONTROL_LABEL_STYLE}>Page title</Text>
+                                                        <Input
+                                                            value={hostedHelpConfig.title}
+                                                            maxLength={120}
+                                                            onChange={(event) => updateHostedHelpConfig('title', event.target.value || DEFAULT_CANONICA_HOSTED_HELP_CONFIG.title)}
+                                                        />
+                                                    </Flex>
+                                                </Col>
+                                                <Col xs={24} md={12}>
+                                                    <Flex vertical gap={4}>
+                                                        <Text strong style={CONTROL_LABEL_STYLE}>Search indexing</Text>
+                                                        <Segmented
+                                                            block
+                                                            value={hostedHelpConfig.noIndex ? 'noindex' : 'index'}
+                                                            onChange={(value) => updateHostedHelpConfig('noIndex', value === 'noindex')}
+                                                            options={[
+                                                                { value: 'index', label: 'Allow indexing' },
+                                                                { value: 'noindex', label: 'No index' },
+                                                            ]}
+                                                        />
+                                                    </Flex>
+                                                </Col>
+                                                <Col xs={24}>
+                                                    <Flex vertical gap={4}>
+                                                        <Text strong style={CONTROL_LABEL_STYLE}>Description</Text>
+                                                        <Input.TextArea
+                                                            value={hostedHelpConfig.description}
+                                                            maxLength={220}
+                                                            rows={3}
+                                                            onChange={(event) => updateHostedHelpConfig('description', event.target.value || DEFAULT_CANONICA_HOSTED_HELP_CONFIG.description)}
+                                                        />
+                                                    </Flex>
+                                                </Col>
+                                            </Row>
+                                            <Row gutter={[12, 12]}>
+                                                <Col xs={24} md={12}>
+                                                    <Flex align="center" justify="space-between" gap={12}>
+                                                        <div>
+                                                            <Text strong>Show FAQ</Text>
+                                                            <br />
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Published FAQ only.</Text>
+                                                        </div>
+                                                        <Switch checked={hostedHelpConfig.showFaqs} onChange={(checked) => updateHostedHelpConfig('showFaqs', checked)} />
+                                                    </Flex>
+                                                </Col>
+                                                <Col xs={24} md={12}>
+                                                    <Flex align="center" justify="space-between" gap={12}>
+                                                        <div>
+                                                            <Text strong>Show changelog</Text>
+                                                            <br />
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Published release notes only.</Text>
+                                                        </div>
+                                                        <Switch checked={hostedHelpConfig.showChangelog} onChange={(checked) => updateHostedHelpConfig('showChangelog', checked)} />
+                                                    </Flex>
+                                                </Col>
+                                            </Row>
+                                            <Flex gap={8} wrap="wrap">
+                                                <Button type="primary" icon={<LuSave size={14} />} loading={savingHostedHelp} onClick={handleSaveHostedHelp}>
+                                                    Save Hosted Help
+                                                </Button>
+                                                <Button
+                                                    icon={<LuCopy size={14} />}
+                                                    disabled={!hostedHelpUrl}
+                                                    onClick={() => copyText(`https://${hostedHelpUrl}`, 'Hosted help URL copied')}
+                                                >
+                                                    Copy URL
+                                                </Button>
+                                            </Flex>
+                                        </Flex>
+                                    </Card>
+                                </Col>
+
+                                <Col xs={24}>
+                                    <Card title={<Flex align="center" gap={8}><LuShield size={16} /> DNS and Security</Flex>}>
+                                        <Row gutter={[12, 12]}>
+                                            <Col xs={24} md={8}>
+                                                <Alert
+                                                    type="info"
+                                                    showIcon
+                                                    message="DNS target"
+                                                    description="Canonica adds the help domain to Vercel when you save. Point your DNS to the records shown here, then check DNS status."
+                                                />
+                                            </Col>
+                                            <Col xs={24} md={8}>
+                                                <Alert
+                                                    type={hostedHelpConfig.enabled && primaryHostedHelpStatus?.verified ? 'success' : 'warning'}
+                                                    showIcon
+                                                    message={hostedHelpConfig.enabled ? 'Hosted help enabled' : 'Hosted help disabled'}
+                                                    description={hostedHelpConfig.enabled
+                                                        ? `Primary domain: ${hostedHelpUrl || 'not selected'} · ${getHostedHelpStatusLabel(primaryHostedHelpStatus)}`
+                                                        : 'Save with a domain and enable when DNS is ready.'}
+                                                />
+                                            </Col>
+                                            <Col xs={24} md={8}>
+                                                <Alert
+                                                    type="success"
+                                                    showIcon
+                                                    message="Cost protected"
+                                                    description="Public pages use cached domain registry and published-content cache. Tickets, chat history, and feedback stay authenticated."
+                                                />
+                                            </Col>
+                                            {hostedHelpUrl ? (
+                                                <Col xs={24}>
+                                                    <Flex vertical gap={8}>
+                                                        <Text strong style={CONTROL_LABEL_STYLE}>DNS records for {hostedHelpUrl}</Text>
+                                                        {primaryHostedHelpStatus?.error ? (
+                                                            <Alert type="error" showIcon message={primaryHostedHelpStatus.error} />
+                                                        ) : null}
+                                                        <List
+                                                            bordered
+                                                            dataSource={hostedHelpDnsRecords}
+                                                            renderItem={(record, index) => (
+                                                                <List.Item
+                                                                    actions={[
+                                                                        <Button
+                                                                            icon={<LuCopy size={14} />}
+                                                                            key={`copy-dns-${index}`}
+                                                                            onClick={() => copyText(record.value, 'DNS value copied')}
+                                                                            size="small"
+                                                                            type="text"
+                                                                        >
+                                                                            Copy
+                                                                        </Button>,
+                                                                    ]}
+                                                                >
+                                                                    <List.Item.Meta
+                                                                        description={<Text code>{`${record.name} -> ${record.value}`}</Text>}
+                                                                        title={<Flex align="center" gap={8}><Tag>{record.type}</Tag><Text>{record.name}</Text></Flex>}
+                                                                    />
+                                                                </List.Item>
+                                                            )}
+                                                            size="small"
+                                                        />
+                                                    </Flex>
+                                                </Col>
+                                            ) : null}
+                                        </Row>
                                     </Card>
                                 </Col>
                             </Row>

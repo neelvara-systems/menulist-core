@@ -20,8 +20,11 @@ export const CANONICA_DB_COLLECTIONS = {
     CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
     CANONICA_AI_OPERATIONS: 'canonica_aiOperations',
     CANONICA_CACHE_VERSIONS: 'canonica_cacheVersions',
+    CANONICA_NOTIFICATION_LOGS: 'canonica_notificationLogs',
     CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
     CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
     CANONICA_PREDICTIVE_TRIGGERS: 'canonica_predictiveTriggers',
     CANONICA_PRODUCT_SURFACES: 'canonica_productSurfaces',
+    CANONICA_FAQS: 'canonica_faqs',
+    CANONICA_PUBLIC_HELP_SITES: 'canonica_publicHelpSites',
 } as const;

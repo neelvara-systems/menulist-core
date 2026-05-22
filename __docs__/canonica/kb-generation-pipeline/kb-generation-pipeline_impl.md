@@ -90,7 +90,7 @@ The KB Generation Pipeline is a **hybrid client + Cloud Functions feature**:
 - `IngestionJob` — Full job with status, sourceFiles, categories, articlesToReview, embedding counts
 - `IngestionJobCategory` — Category within job (id, title, description, active, sections[], articles[])
 - `IngestionJobSection` — Section within job category
-- `IngestionJobArticle` — Article within job (id, title, content as TipTap JSON, reEmbedding flag)
+- `IngestionJobArticle` — Article within job (id, title, content as TipTap JSON, reEmbedding flag, optional `generatedFaqs`)
 - `IngestionJobSourceFile` — Uploaded file metadata (storagePath, fileName, type, gsUri, downloadURL)
 - `IngestionJobArticleToReview` — Reconciliation item (id, title, status, similarArticles[])
 - `IngestionJobCategoriesMap` — `Record<string, IngestionJobCategory>`
@@ -122,6 +122,7 @@ Firestore trigger: onCreate on kb_generation_jobs (status=pending)
   → AI processes files → generates categories/sections/articles
   → Update job: status='processing', then status='needs_review'
   → Store generated content in job.categories field
+  → Store up to 5 source-backed FAQ suggestions per article in `generatedFaqs`
   → If duplicate articles detected: populate job.articlesToReview
 ```
 
@@ -132,7 +133,7 @@ KBGenerationTemplate detects activeJob.status === 'needs_review'
   → If unresolved: show ReconciliationModal first
     → Admin resolves each: replace / discard / keep_both
   → Then: show ReviewModal
-    → Admin reviews generated content
+    → Admin reviews generated content and optional FAQ suggestions
     → Can edit articles before publishing
     → Approve → publish
 ```
@@ -142,6 +143,7 @@ KBGenerationTemplate detects activeJob.status === 'needs_review'
 Publish approved
   → Job status: 'publishing'
   → Articles written to kb_articles collection
+  → Generated FAQs written to canonica_faqs and mirrored to kb_articles.faqIds
   → Article metadata synced to kb_categories document
   → Each article queued for embedding generation
   → embedArticleWorker processes queue:

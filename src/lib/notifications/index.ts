@@ -8,7 +8,7 @@
  * - Generic: any event type, any template, any recipient
  * - Fire-and-forget: never blocks the calling operation
  * - Feature-flagged: ENABLE_CANONICA_NOTIFICATIONS
- * - Idempotent: dedup by eventType + referenceId within 24h
+ * - Idempotent: dedup by eventType + referenceId
  * - Rate-limited: max 20 notifications per recipient per day
  * - Logged: all sends/failures written to notificationLogs collection
  *
@@ -26,13 +26,18 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS, ProductId } from '@constant/product';
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { secureError, secureLog } from '@lib/security/secureLogger';
+import { createHash } from 'crypto';
+import type { Firestore } from 'firebase-admin/firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
 import { resolveNotificationTemplate } from './templates';
 
-const db = admin.firestore();
 const NOTIFICATION_LOGS = 'notificationLogs';
 const DEFAULT_FROM = SYSTEM_EMAIL_FROM;
 const MAX_PER_DAY_PER_RECIPIENT = 20;
@@ -54,15 +59,69 @@ export interface NotificationPayload {
     metadata: Record<string, any>;
     /** Optional: override the "from" address */
     from?: string;
+    /** Product owning this notification. Canonica writes logs to Canonica Firebase. */
+    productId?: ProductId | string;
     /** Optional: skip idempotency check (for time-sensitive notifications) */
     skipDedup?: boolean;
 }
+
+type NotificationLogTarget = {
+    db: Firestore;
+    collectionName: string;
+};
 
 // ================================================================
 // SMTP TRANSPORT (reuses same pattern as lifecycle messaging)
 // ================================================================
 
 let cachedTransporter: nodemailer.Transporter | null = null;
+
+export function isNotificationSmtpConfigured(): boolean {
+    return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+export function getNotificationReadiness(productId: ProductId | string = PRODUCT_IDS.CANONICA) {
+    const isCanonica = productId === PRODUCT_IDS.CANONICA;
+    const canonicaDbAvailable = Boolean(
+        canonicaFirestoreAdmin
+        && typeof (canonicaFirestoreAdmin as any).collection === 'function'
+    );
+
+    return {
+        enabled: FEATURE_FLAGS.ENABLE_CANONICA_NOTIFICATIONS,
+        smtpConfigured: isNotificationSmtpConfigured(),
+        fromAddress: DEFAULT_FROM,
+        logTarget: isCanonica ? DB_COLLECTIONS.CANONICA_NOTIFICATION_LOGS : NOTIFICATION_LOGS,
+        productId,
+        canonicaDbAvailable,
+    };
+}
+
+function getNotificationLogTarget(productId?: ProductId | string): NotificationLogTarget | null {
+    if (productId === PRODUCT_IDS.CANONICA) {
+        if (canonicaFirestoreAdmin && typeof (canonicaFirestoreAdmin as any).collection === 'function') {
+            return {
+                db: canonicaFirestoreAdmin,
+                collectionName: DB_COLLECTIONS.CANONICA_NOTIFICATION_LOGS,
+            };
+        }
+        return null;
+    }
+
+    return {
+        db: admin.firestore(),
+        collectionName: NOTIFICATION_LOGS,
+    };
+}
+
+function getSafeLogId(eventType: string, referenceId: string): string {
+    const hash = createHash('sha256')
+        .update(`${eventType}:${referenceId}`)
+        .digest('hex')
+        .slice(0, 32);
+    const eventKey = eventType.toLowerCase().replace(/[^a-z0-9_]+/g, '_').slice(0, 40) || 'notification';
+    return `${eventKey}_${hash}`;
+}
 
 function getTransporter(): nodemailer.Transporter | null {
     if (cachedTransporter) return cachedTransporter;
@@ -104,19 +163,19 @@ async function sendViaSMTP(
 // IDEMPOTENCY (dedup within 24h by eventType + referenceId)
 // ================================================================
 
-async function isDuplicate(eventType: string, referenceId: string): Promise<boolean> {
+async function isDuplicate(
+    target: NotificationLogTarget,
+    eventType: string,
+    referenceId: string
+): Promise<boolean> {
     try {
-        const yesterday = new Date();
-        yesterday.setHours(yesterday.getHours() - 24);
-        const snap = await db.collection(NOTIFICATION_LOGS)
-            .where('eventType', '==', eventType)
-            .where('referenceId', '==', referenceId)
-            .where('status', '==', 'sent')
-            .where('createdAt', '>=', Timestamp.fromDate(yesterday))
-            .limit(1)
+        const docSnap = await target.db
+            .collection(target.collectionName)
+            .doc(getSafeLogId(eventType, referenceId))
             .get();
-        return !snap.empty;
-    } catch {
+        return docSnap.exists && docSnap.data()?.status === 'sent';
+    } catch (error) {
+        secureError('[Notification] Duplicate check failed', error as Error, { eventType });
         return false; // On error, allow the send (fail-open)
     }
 }
@@ -125,19 +184,55 @@ async function isDuplicate(eventType: string, referenceId: string): Promise<bool
 // RATE LIMIT (per recipient per day)
 // ================================================================
 
-async function isRateLimited(recipientEmail: string): Promise<boolean> {
+async function isRateLimited(target: NotificationLogTarget, recipientEmail: string): Promise<boolean> {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const snap = await db.collection(NOTIFICATION_LOGS)
+        const snap = await target.db.collection(target.collectionName)
             .where('recipientEmail', '==', recipientEmail)
             .where('status', '==', 'sent')
             .where('createdAt', '>=', Timestamp.fromDate(today))
             .limit(MAX_PER_DAY_PER_RECIPIENT + 1)
             .get();
         return snap.size >= MAX_PER_DAY_PER_RECIPIENT;
-    } catch {
+    } catch (error) {
+        secureError('[Notification] Rate-limit check failed', error as Error, { recipientEmail });
         return false; // Fail-open
+    }
+}
+
+async function writeNotificationLog(
+    target: NotificationLogTarget,
+    payload: NotificationPayload,
+    status: 'sent' | 'failed' | 'skipped',
+    details: {
+        subject?: string;
+        messageId?: string | null;
+        error?: string | null;
+        reason?: string | null;
+    } = {}
+): Promise<void> {
+    try {
+        await target.db
+            .collection(target.collectionName)
+            .doc(getSafeLogId(payload.eventType, payload.referenceId))
+            .set({
+                productId: payload.productId || null,
+                eventType: payload.eventType,
+                recipientEmail: payload.recipientEmail,
+                referenceId: payload.referenceId,
+                status,
+                subject: details.subject || null,
+                messageId: details.messageId || null,
+                error: details.error || null,
+                reason: details.reason || null,
+                createdAt: Timestamp.now(),
+            }, { merge: true });
+    } catch (error) {
+        secureError('[Notification] Log write failed', error as Error, {
+            eventType: payload.eventType,
+            productId: payload.productId,
+        });
     }
 }
 
@@ -159,6 +254,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
             referenceId,
             metadata,
             from,
+            productId = PRODUCT_IDS.CANONICA,
             skipDedup = false,
         } = payload;
 
@@ -168,11 +264,24 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
         // 2. Basic validation
         if (!recipientEmail || !eventType || !referenceId) return false;
 
+        const logTarget = getNotificationLogTarget(productId);
+        if (!logTarget) {
+            secureError(
+                '[Notification] No log target available',
+                new Error('Notification log target is not configured'),
+                { productId, eventType }
+            );
+            return false;
+        }
+
         // 3. Idempotency
-        if (!skipDedup && await isDuplicate(eventType, referenceId)) return false;
+        if (!skipDedup && await isDuplicate(logTarget, eventType, referenceId)) return false;
 
         // 4. Rate limit
-        if (await isRateLimited(recipientEmail)) return false;
+        if (await isRateLimited(logTarget, recipientEmail)) {
+            await writeNotificationLog(logTarget, { ...payload, productId }, 'skipped', { reason: 'rate_limited' });
+            return false;
+        }
 
         // 5. Resolve template
         const template = resolveNotificationTemplate(eventType, {
@@ -181,25 +290,27 @@ export async function sendNotification(payload: NotificationPayload): Promise<bo
         });
         if (!template) {
             console.warn(`[Notification] No template for event: ${eventType}`);
+            await writeNotificationLog(logTarget, { ...payload, productId }, 'failed', { error: 'template_not_found' });
             return false;
         }
 
         // 6. Send
         const result = await sendViaSMTP(recipientEmail, template.subject, template.html, from);
 
-        // 7. Log (fire-and-forget)
-        try {
-            await db.collection(NOTIFICATION_LOGS).add({
+        // 7. Log. This is the production diagnostic trail for delivery failure.
+        await writeNotificationLog(logTarget, { ...payload, productId }, result.ok ? 'sent' : 'failed', {
+            subject: template.subject,
+            messageId: result.messageId || null,
+            error: result.error || null,
+        });
+
+        if (result.ok) {
+            secureLog('[Notification] Email sent', {
                 eventType,
-                recipientEmail,
+                productId,
                 referenceId,
-                status: result.ok ? 'sent' : 'failed',
-                subject: template.subject,
-                messageId: result.messageId || null,
-                error: result.error || null,
-                createdAt: Timestamp.now(),
             });
-        } catch { /* logging failure is non-blocking */ }
+        }
 
         return result.ok;
     } catch (err) {

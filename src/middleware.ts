@@ -24,6 +24,12 @@ import {
     CANONICA_PRODUCT_PASSTHROUGH_PATHS,
     getCanonicaDashboardRewritePath,
 } from '@constant/canonica/domains';
+import {
+    CANONICA_HOSTED_HELP_DEV_PREFIX,
+    CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH,
+    getCanonicaHostedHelpRewritePath,
+    isCanonicaHostedHelpCandidateHostname,
+} from '@constant/canonica/hostedHelp';
 import { resolveProductSiteByDevPath } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import { NextRequest, NextResponse } from 'next/server';
@@ -165,6 +171,36 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(url, 301);
     }
 
+    // Block direct access to the internal hosted-help route in production.
+    // Hosted Help must be reached through a mapped help/docs/support domain so
+    // SEO, canonical URLs, and tenant-domain validation stay aligned.
+    if (
+        process.env.VERCEL === '1'
+        && (pathname === CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH || pathname.startsWith(`${CANONICA_HOSTED_HELP_INTERNAL_BASE_PATH}/`))
+    ) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/';
+        url.search = '';
+        return NextResponse.redirect(url, 301);
+    }
+
+    // Canonica hosted Help Center domains (help.example.com, docs.example.com).
+    // Middleware only routes likely support-domain hostnames; the target page
+    // validates the host against Canonica's cached public registry before
+    // rendering any tenant content.
+    if (
+        domainInfo.type === 'custom'
+        && isCanonicaHostedHelpCandidateHostname(domainInfo.hostname)
+        && !shouldBypassDomainRouting(pathname)
+    ) {
+        const url = request.nextUrl.clone();
+        url.pathname = getCanonicaHostedHelpRewritePath(pathname);
+        const response = NextResponse.rewrite(url);
+        response.headers.set('x-canonica-hosted-help-domain', domainInfo.hostname);
+        response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+        return applySecurityHeaders(request, response);
+    }
+
     // Block direct access to /client/* on platform domain (only reachable via middleware rewrite)
     // Tenant traffic arrives here via NextResponse.rewrite() with host = subdomain/custom domain.
     // Direct hits like menulist.ai/client/... should not leak the internal route structure.
@@ -214,6 +250,15 @@ export function middleware(request: NextRequest) {
 
     // 1b. Local dev: path-prefix product routing (/__canonica/pricing → /_sites/canonica/pricing)
     if (process.env.NODE_ENV === 'development' || !process.env.VERCEL) {
+        if (pathname === CANONICA_HOSTED_HELP_DEV_PREFIX || pathname.startsWith(`${CANONICA_HOSTED_HELP_DEV_PREFIX}/`)) {
+            const url = request.nextUrl.clone();
+            const strippedPath = pathname.slice(CANONICA_HOSTED_HELP_DEV_PREFIX.length) || '/';
+            url.pathname = getCanonicaHostedHelpRewritePath(strippedPath);
+            const response = NextResponse.rewrite(url);
+            response.headers.set('x-canonica-hosted-help-dev', '1');
+            return applySecurityHeaders(request, response);
+        }
+
         const devProductMatch = resolveProductSiteByDevPath(pathname);
         if (devProductMatch) {
             const { product, strippedPath } = devProductMatch;

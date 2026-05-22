@@ -47,11 +47,24 @@ export interface IngestionJobSection {
     articles?: IngestionJobArticle[];
 }
 
+export interface KnowledgeBaseGeneratedFaq {
+    id?: string;
+    question: string;
+    answer: string;
+    tags?: string[];
+    contextKeys?: string[];
+    entityIds?: string[];
+    sortOrder?: number;
+}
+
 export interface IngestionJobArticle {
     id: string;
     title: string;
     content: any; // tiptap json with provenance
     reEmbedding?: boolean;
+    qualityScore?: number;
+    entityIds?: string[];
+    generatedFaqs?: KnowledgeBaseGeneratedFaq[];
 }
 
 export interface IngestionJobCategory {
@@ -182,6 +195,8 @@ export interface KnowledgeBaseArticleType {
     status: typeof ARTICLE_STATUS[keyof typeof ARTICLE_STATUS];
     jobId: string;
     sources: KnowledgeBaseArticleSource[] | null;
+    faqIds?: string[];
+    generatedFaqs?: KnowledgeBaseGeneratedFaq[];
     tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
 }
@@ -212,6 +227,8 @@ export type ProcessedKBArticle = {
     content: any; // tiptap JSON
     sources: KnowledgeBaseArticleSource[];
     qualityScore?: number; // 0-1 deterministic score based on content length, structure, sources
+    entityIds?: string[];
+    generatedFaqs?: KnowledgeBaseGeneratedFaq[];
 };
 
 export type ProcessedKBSection = {

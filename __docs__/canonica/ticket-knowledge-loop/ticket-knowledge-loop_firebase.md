@@ -1,8 +1,8 @@
 # Ticket → Knowledge Loop — Firebase Cost & Operations
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 
@@ -16,7 +16,7 @@
 | `canonica_mutationProposals` | Canonica | Read + Write | Proposals with `draftSource: 'ticket_resolution'` |
 | `canonica_canonicalAnswers` | Canonica | Read | Deduplication check |
 | `canonica_auditLogs` | Canonica | Write | Provenance tracking |
-| `supportTickets` | ecomsai (MenuList) | Read (signal metadata only) | Resolution messages captured at signal emission time |
+| `supportTickets` | Canonica Firebase in separate mode | Source UI data only; nightly uses copied signal metadata | Resolution messages are captured at signal emission time so nightly does not re-read ticket documents |
 
 **New collections: ZERO**
 
@@ -66,19 +66,21 @@
 
 ### Total Monthly Cost Per Tenant
 
+Assumption for INR estimates: ₹85/USD placeholder.
+
 | Component | Cost |
 |-----------|------|
-| Firestore | ~$0.002 |
-| LLM (Gemini Flash) | ~$0.12 |
-| **Total** | **~$0.12/tenant/month** |
+| Firestore | ~₹0.20 |
+| LLM (Gemini Flash) | ~₹10 |
+| **Total** | **~₹10/tenant/month** |
 
 ### Scale Projection
 
 | Tenants | Monthly Cost |
 |---------|-------------|
-| 10 | ~$1.20 |
-| 100 | ~$12.00 |
-| 1,000 | ~$120.00 |
+| 10 | ~₹100 |
+| 100 | ~₹1,000 |
+| 1,000 | ~₹10,000 |
 
 ---
 
@@ -102,7 +104,7 @@ No new composite indexes required.
 | Max ticket clusters analyzed | 50 | Cap Firestore reads per nightly run |
 | Min tickets per cluster | 3 | Prevent single-ticket extraction (reduces LLM calls) |
 | Batch processing (nightly) | 1/day | No real-time processing spikes |
-| Feature flag default | OFF | Zero cost when disabled |
+| Feature flag default | ON | Work still remains bounded by tenant summary discovery, resolved-ticket threshold, and draft caps |
 
 ---
 

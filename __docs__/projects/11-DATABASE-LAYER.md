@@ -868,6 +868,8 @@ All queries automatically scoped by:
 `platformSummary/projects_${session.sId}`;
 ```
 
+`platformSummary/projects_{sId}` and `platformSummary/campaigns_{sId}` writes are allowed only when Firestore auth claims prove the user belongs to that store (`storeId` or `storeIds`) and has a tenant write role. This is required for mobile and desktop active-store/outlet context because `session.sId` may differ from the user's login store.
+
 ### **2. Soft Delete**
 
 ```typescript

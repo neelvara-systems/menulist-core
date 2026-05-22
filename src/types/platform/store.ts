@@ -580,6 +580,27 @@ export type StoreDataType = {
      */
     widgetAllowedOrigins?: string[];
 
+    /**
+     * Canonica hosted Help Center settings.
+     * Powers anonymous customer-facing docs domains such as help.example.com.
+     * Domain resolution uses canonica_publicHelpSites registry docs, not this
+     * store document, to keep public page reads to one cached lookup.
+     *
+     * Feature flag: ENABLE_CANONICA_HOSTED_HELP_CENTER
+     */
+    hostedHelpConfig?: {
+        enabled?: boolean;
+        domains?: string[];
+        primaryDomain?: string | null;
+        title?: string;
+        description?: string;
+        showFaqs?: boolean;
+        showChangelog?: boolean;
+        noIndex?: boolean;
+    };
+    hostedHelpConfigVersion?: number;
+    hostedHelpUpdatedAt?: string;
+
     // ─────────────────────────────────────────────────────────────
     // SPECIAL MENU SWITCHING (Feature: Temporary Menu Override)
     // @see __docs__/special-menu-switching/special-menu-switching_impl.md

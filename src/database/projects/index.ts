@@ -24,6 +24,7 @@ import {
     setDoc,
     Timestamp,
     where,
+    writeBatch,
 } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
@@ -1501,7 +1502,7 @@ export const deleteProject = async (
     projectId: string,
     options?: { skipLinkedOutletCheck?: boolean }
 ) => {
-    return await apiCallComposer(
+    const result = await apiCallComposer(
         async () => {
             const summaryDoc = await getDoc(await getProjectsSummaryDocRef());
             const summaryProjects = summaryDoc.exists()
@@ -1565,26 +1566,38 @@ export const deleteProject = async (
                 }
             }
 
-            // Mark project as deleted in projects collection
             const updateData = {
                 deleted: true,
                 deletedAt: Timestamp.now(),
                 active: false,
             };
-            await setDoc(await getDataDocRef(projectId), updateData, { merge: true });
-
-            // Remove from projectsSummary (deleted projects don't appear in listing)
-            await removeProjectFromSummary(projectId);
+            const dataDocRef = await getDataDocRef(projectId);
+            const summaryDocRef = await getProjectsSummaryDocRef();
+            const summaryUpdate: Record<string, any> = {
+                lastUpdated: serverTimestamp(),
+                [`projects.${projectId}`]: deleteField(),
+            };
 
             if (wasDefaultProject && fallbackDefaultEntry) {
                 const [fallbackProjectId, fallbackSummary] = fallbackDefaultEntry;
-                await syncProjectToSummary(fallbackProjectId, {
-                    ...fallbackSummary,
-                    isDefault: true,
-                    active: fallbackSummary.active ?? true,
-                    name: fallbackSummary.name || 'Untitled',
-                });
+                const fallbackDefaultSummary = Object.fromEntries(
+                    Object.entries({
+                        ...fallbackSummary,
+                        isDefault: true,
+                        active: fallbackSummary.active ?? true,
+                        name: fallbackSummary.name || 'Untitled',
+                    }).filter(([, value]) => value !== undefined),
+                ) as unknown as ProjectSummaryData;
+
+                Object.assign(summaryUpdate, buildSummaryProjectPayload(fallbackProjectId, fallbackDefaultSummary));
             }
+
+            const batch = writeBatch(firebaseClient);
+            batch.set(dataDocRef, updateData, { merge: true });
+            batch.set(summaryDocRef, summaryUpdate, { merge: true });
+            await batch.commit();
+
+            await revalidatePublicClientCacheForProject(projectId, "deleteProject");
 
             // Security Audit: Log project deletion
             logger.security('Project Deleted', {
@@ -1598,6 +1611,12 @@ export const deleteProject = async (
         projectId,
         "deleteProject",
     );
+
+    if (!result || Array.isArray(result) || result.deleted !== true || result.projectId !== projectId) {
+        throw new Error("Project delete failed");
+    }
+
+    return result;
 };
 
 export const restoreProject = async (projectId: string) => {

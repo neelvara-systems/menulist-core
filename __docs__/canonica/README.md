@@ -32,7 +32,7 @@ Canonica dashboard navigation is structured into three client modes:
 | Mode | Purpose | Primary routes |
 | --- | --- | --- |
 | Launch Setup | Activate a new client workspace, import knowledge, map product surfaces, verify widget install, and review generated ontology/canonical answer drafts. | `/canonica/activation`, `/canonica/settings`, `/canonica/kb-generation`, `/canonica/product-surfaces`, `/canonica/widget` |
-| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, changelog, tickets, conversations, and widget operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/knowledge-base`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations` |
+| Support Control | Run day-to-day support content and fallback loops: help center, docs, KB, FAQs, changelog, tickets, conversations, and widget operations. | `/canonica/help`, `/canonica/docs`, `/canonica/release-notes`, `/canonica/knowledge-base`, `/canonica/faqs`, `/canonica/changelog`, `/canonica/tickets`, `/canonica/conversations` |
 | Knowledge Governance | Govern answer quality, product ontology, drift, signal-to-knowledge proposals, coverage, and trust metrics. | `/canonica/dashboard`, `/canonica/governance`, `/canonica/governance?tab=signal-queue` |
 
 The Activation Command Center reads compact summary docs only. Generated entity candidates and canonical answer drafts appear in Governance for human approval; drafts are never auto-published.
@@ -57,6 +57,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 12  | `product-surface-contexts/`                      | Product/Ops/Dev | Route/page/workflow context model for related KB, changelog, ticket, and widget answers |
 | 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Canonica feature map, route map, Firebase map, file inventory, and website truth |
 | 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Canonica self-serve positioning, non-enterprise ICP, pricing direction, and execution task list |
+| 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
 
 ---
 
@@ -76,7 +77,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 10  | **Feature Requests**           | ✅ `helpCenter/FeatureRequests`                   | —                           | —                             |
 | 11  | **Feature Usage Feedback**     | ✅ `helpCenter/FeatureUsage`                      | —                           | —                             |
 | 12  | **Contact Us**                 | ✅ `helpCenter/ContactUsView`                     | —                           | —                             |
-| 13  | **FAQ**                        | ✅ `helpCenter/FaqView`                           | —                           | —                             |
+| 13  | **FAQ**                        | ✅ `canonica/faqManagement`                       | ✅ `helpCenter/FaqView`      | ✅ `canonica_faqs` DAL        |
 | 14  | **Chat Monitoring**            | —                                                 | —                           | ✅ `chatManagement/`          |
 | 15  | **AI Intelligence Layer**      | —                                                 | —                           | ✅ Cloud Functions            |
 | 16  | **Canonica Knowledge Plane**   | ✅ `CanonicaCoverageKPI` `MutationProposalReview` | —                           | ✅ `canonicaNightly` CF       |
@@ -112,6 +113,7 @@ The `/help-center` surface belongs to the MenuList owner app. Canonica dashboard
 - `/canonica/tickets` → `src/app/(canonica)/canonica/tickets/page.tsx`
 - `/canonica/conversations` → `src/app/(canonica)/canonica/conversations/page.tsx`
 - `/canonica/knowledge-base` → `src/app/(canonica)/canonica/knowledge-base/page.tsx`
+- `/canonica/faqs` → `src/app/(canonica)/canonica/faqs/page.tsx`
 - `/canonica/kb-generation` → `src/app/(canonica)/canonica/kb-generation/page.tsx`
 - `/canonica/changelog` → `src/app/(canonica)/canonica/changelog/page.tsx`
 - `/canonica/product-surfaces` → `src/app/(canonica)/canonica/product-surfaces/page.tsx`
@@ -233,7 +235,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `ENABLE_CANONICA_PUBLIC_API`        | `src/config/features.ts`                       | `false` | Public answers, entities, and signal ingestion API (Pillar 5; implemented and rollout-gated) |
 | `ENABLE_CANONICA_WIDGET`            | `src/config/features.ts`                       | `true`  | Embeddable help widget + onboarding gate         |
 | `ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER` | `src/config/features.ts`              | `true`  | Client launch/readiness home                     |
-| `ENABLE_CANONICA_NOTIFICATIONS`     | `src/config/features.ts`                       | `false` | Email notifications for ticket events            |
+| `ENABLE_CANONICA_NOTIFICATIONS`     | `src/config/features.ts`                       | `true`  | Email notifications for ticket events and Activation test-send |
 | `ENABLE_CANONICA_GOVERNANCE_UI`     | `src/config/features.ts`                       | `true`  | Governance hub (answer editor, drift, analytics) |
 | `ENABLE_CANONICA_SIGNAL_QUALITY`    | `src/config/features.ts`                       | `false` | Severity weighting, time decay, batch queries    |
 | `ENABLE_CANONICA_WHITE_LABEL`       | `src/config/features.ts`                       | `false` | Per-tenant branding (colors, logo, company name) |
@@ -242,6 +244,8 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `ENABLE_CANONICA_PRODUCT_SURFACES`  | `src/config/features.ts`                       | `true`  | Route/page/workflow surface mapping              |
 | `ENABLE_CANONICA_INSTANT_CACHE`     | `src/config/features.ts`                       | `true`  | Redis cache for canonical answer hits; no-op without Upstash env |
 | `ENABLE_CANONICA_AUTO_KNOWLEDGE`    | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Capped draft generation for new answer proposals |
+| `ENABLE_CANONICA_FRICTION_INTELLIGENCE` | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Capped nightly product friction summaries |
+| `ENABLE_CANONICA_TICKET_KNOWLEDGE`  | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Capped resolved-ticket to knowledge proposals |
 | `ENABLE_CANONICA_FOUNDER_ONBOARDING` | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Capped initial entity/draft bootstrap after KB publish |
 | `ENABLE_CANONICA_TRUST_METRICS`     | `src/config/features.ts` / `functions-canonica/src/constants/features.ts` | `true` | Compact trust metrics summary                    |
 | `ENABLE_CANONICA_NIGHTLY`           | `functions-canonica/src/constants/features.ts` | `true`  | Server-side nightly batch (3:00 AM UTC)          |
@@ -281,6 +285,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_frictionDailyStats`    | Daily friction aggregates               | Tenant+Store scoped                 |
 | `canonica_schedulerRunLogs`      | Canonica nightly run logs and diagnostics | Platform-only read, server-written |
 | `canonica_aiOperations`          | Canonica AI operation/cost logs           | Tenant+Store scoped, server-written |
+| `canonica_notificationLogs`      | Canonica ticket/test notification delivery logs | Platform-only read, server-written |
 | `platformSummary/canonicaTenantsSummary` | Scheduler tenant/store registry | Server-written, platform-only summary |
 | `platformSummary/trustMetrics_{tId}_{sId}` | Founder trust metrics dashboard read model | Tenant+Store scoped summary |
 | `canonica_integrationEvents`     | Workflow integration events             | Tenant+Store scoped, server-written |
@@ -354,8 +359,9 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 5   | **[Changelog System](./changelog-system/README.md)**             | `changelog-system/`       | 8 docs | 14+ files, 7 DAL functions                    |
 | 6   | **[Feedback System](./feedback-system/README.md)**               | `feedback-system/`        | 8 docs | 9 files, 5 DAL functions                      |
 | 7   | **[Chat Monitoring](./chat-monitoring/README.md)**               | `chat-monitoring/`        | 8 docs | 35 items, 13 DAL functions, 4 Cloud Functions |
+| 8   | **[FAQ Management](./faq-management/README.md)**                 | `faq-management/`         | 7 docs | Bounded FAQ DAL, import generation, public FAQ tab |
 
-**Total:** 7 features × 8 docs = **56 sub-feature documents** + 9 parent documents = **65 documents total**
+**Total:** 8 deep-dive feature folders, including FAQ Management.
 
 Each sub-feature folder contains:
 
@@ -374,6 +380,7 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-22 | 3.3.0   | Added FAQ Management as a first-class Canonica owner/public feature with import generation, article links, product-surface context, and cost-bounded Firebase reads.                   |
 | 2026-05-21 | 3.2.0   | Updated Canonica separate-product auth/Firebase notes: `productAccounts.CN`, dedicated widget credentials, Canonica AI operation logs, and enabled core widget flag.                   |
 | 2026-03-06 | 3.1.0   | ChatGPT domain/launch review — 10 failure modes, entity categories, authoring guidelines added to activation experiment. Archive: `_archive/chatgpt-review-domain-launch-readiness.md` |
 | 2026-03-02 | 3.0.0   | Canonica strategic doctrine — 9 governance documents from ChatGPT strategic session                                                                                                    |

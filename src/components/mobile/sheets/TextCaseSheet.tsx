@@ -2,55 +2,18 @@
 
 import type { Project } from '../../templates/main-app/projects/types';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { removeObjRef } from '@util/utils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
 import { Button, Card, Flex, NavBar, Popup, Switch, Text } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
-
-type CaseMode = 'lower' | 'upper' | 'sentence' | 'title';
+import { applyTextCaseToProject, type TextCaseMode } from '../../templates/main-app/projects/editorView/textCase.shared';
 
 interface TextCaseSheetProps {
     onClose: () => void;
     onSaved: (updatedProject: Project) => void;
     projectData: Project;
     visible: boolean;
-}
-
-function convertText(value: string, mode: CaseMode): string {
-    if (!value.trim()) return value;
-
-    if (mode === 'lower') return value.toLowerCase();
-    if (mode === 'upper') return value.toUpperCase();
-    if (mode === 'sentence') {
-        const normalized = value.toLowerCase();
-        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-    }
-
-    return value
-        .toLowerCase()
-        .replace(/\b([a-z])/g, (match) => match.toUpperCase());
-}
-
-function updateLocalizedField(
-    value: unknown,
-    mode: CaseMode
-): unknown {
-    if (typeof value === 'string') {
-        return convertText(value, mode);
-    }
-
-    if (!value || typeof value !== 'object') {
-        return value;
-    }
-
-    return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).map(([language, textValue]) => ([
-            language,
-            typeof textValue === 'string' ? convertText(textValue, mode) : textValue,
-        ]))
-    );
 }
 
 export default function TextCaseSheet({
@@ -62,7 +25,7 @@ export default function TextCaseSheet({
     const t = useTranslations('MobileMenu');
     const labels = useOfferingLabels();
     const { token } = theme.useToken();
-    const [caseMode, setCaseMode] = useState<CaseMode>('title');
+    const [caseMode, setCaseMode] = useState<TextCaseMode>('title');
     const [applyToCategories, setApplyToCategories] = useState(true);
     const [applyToItems, setApplyToItems] = useState(true);
     const [applyToDescriptions, setApplyToDescriptions] = useState(false);
@@ -81,28 +44,12 @@ export default function TextCaseSheet({
     ]), [t]);
 
     const handleApply = () => {
-        const updated = removeObjRef(projectData);
-
-        updated.files?.forEach((file: any) => {
-            file.extractedData?.data?.categories?.forEach((category: any) => {
-                if (applyToCategories) {
-                    category.name = updateLocalizedField(category.name, caseMode);
-                }
-            });
-
-            file.extractedData?.data?.items?.forEach((item: any) => {
-                if (applyToItems) {
-                    item.name = updateLocalizedField(item.name, caseMode);
-                }
-                if (applyToDescriptions) {
-                    item.description = updateLocalizedField(item.description, caseMode);
-                }
-                if (applyToAttributes) {
-                    item.attributes?.forEach((attribute: any) => {
-                        attribute.name = updateLocalizedField(attribute.name, caseMode);
-                    });
-                }
-            });
+        const updated = applyTextCaseToProject(projectData, {
+            applyToAttributes,
+            applyToCategories,
+            applyToDescriptions,
+            applyToItems,
+            mode: caseMode,
         });
 
         onSaved(updated);

@@ -30,6 +30,7 @@ Contents:
 
 - surface metadata
 - compact article refs
+- compact FAQ refs
 - compact changelog refs
 - ticket counts only
 
@@ -41,6 +42,7 @@ The summary rebuild endpoint uses bounded reads:
 
 - product surfaces: max 300
 - published KB articles: max 500
+- published FAQs: max 500
 - latest changelog pages: max 3 pages
 - recent support tickets: max 300
 
@@ -55,6 +57,6 @@ Required composite indexes:
 
 ## Cost Impact
 
-Runtime cost stays low because the widget/search flow reads one compact summary instead of querying articles, changelogs, and tickets by tag on every request.
+Runtime cost stays low because the widget/search flow reads one compact summary instead of querying articles, FAQs, changelogs, and tickets by tag on every request.
 
 The heavier scan is moved to owner save/manual rebuild time where freshness matters and frequency is low.

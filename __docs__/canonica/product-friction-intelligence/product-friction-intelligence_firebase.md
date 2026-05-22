@@ -2,6 +2,7 @@
 
 > **Version:** 1.0.0
 > **Created:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Feature Flag:** `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
 
 ---
@@ -84,14 +85,16 @@
 
 ## §4 — Total Monthly Cost Projection
 
+Assumption for INR estimates: ₹85/USD placeholder.
+
 | Scale | Nightly Agg | Weekly Insight | Cleanup | Frontend | **Total** |
 |-------|-------------|----------------|---------|----------|-----------|
-| 10 tenants | $0.30 | $0.08 | $0.02 | ~$0 | **~$0.40** |
-| 100 tenants | $3.00 | $0.80 | $0.15 | ~$0 | **~$3.95** |
-| 500 tenants | $15.00 | $4.00 | $0.75 | ~$0 | **~$19.75** |
-| 1000 tenants | $30.00 | $8.00 | $1.50 | ~$0 | **~$39.50** |
+| 10 tenants | ~₹26 | ~₹7 | ~₹2 | ~₹0 | **~₹35** |
+| 100 tenants | ~₹255 | ~₹68 | ~₹13 | ~₹0 | **~₹336** |
+| 500 tenants | ~₹1,275 | ~₹340 | ~₹64 | ~₹0 | **~₹1,679** |
+| 1000 tenants | ~₹2,550 | ~₹680 | ~₹128 | ~₹0 | **~₹3,358** |
 
-**Cost assessment:** Extremely cheap. Even at 1000 tenants, <$40/month.
+**Cost assessment:** Very low because product owners read summary documents and the nightly process is capped. Even at 1000 tenants, the working estimate is roughly ₹3.4k/month.
 
 ---
 

@@ -66,6 +66,13 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **Record durable learnings**: if the confidence loop or repeated-error research reveals a reusable project rule, update the right rule/doc/memory location instead of leaving it only in chat.
 - **Keep memories current by default across the whole project**: after non-trivial MenuList, Canonica, product, architecture, mobile, security, cache, scheduler, deploy, AI, Firebase, or production-hardening work, update the appropriate project docs/rules and, when the active Codex memory policy allows, write the matching memory note before final handoff without waiting for a separate reminder.
 
+### Firebase Infrastructure Auto-Deploy
+
+- If a change modifies Firestore rules, Firestore indexes, Storage rules, or Firebase Cloud Function logic for MenuList or Canonica, deploy the matching Firebase target in the same session after validation. Do not wait for a separate user instruction.
+- Scope this auto-deploy rule only to Firebase rules, indexes, and Firebase function logic changes. Do not use it to deploy unrelated Next.js, website, hosting, or app changes unless the user explicitly asks.
+- Use the smallest safe deploy target: MenuList uses the `ecomsai` Firebase project and default `firebase.json`; Canonica uses `firebase-canonica.json`, `firestore-canonica.rules`, `firestore-canonica.indexes.json`, and `functions-canonica/`.
+- If validation or deploy fails, fix and retry when safe; if blocked by credentials, project access, missing secrets, or destructive deploy risk, report the blocker with the exact command and error.
+
 ### IDE Prompt Registry
 
 - `IDE_PROMPTS/00. MASTER RULES & WORKFLOW.md`: universal laws; read before feature, docs, implementation, audit, or refactor work.
@@ -360,6 +367,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - Verify operational monitoring for modified API routes and Cloud Functions.
 - Verify public content language governance and website/help/changelog impact when public capability changes.
 - Verify public cache invalidation for any touched public-facing `projects` or `stores` write path, including direct Firestore writes that bypass shared desktop/mobile DAL functions.
+- Deploy changed Firebase rules, indexes, or Firebase function logic to the matching MenuList or Canonica Firebase target after validation; this applies only to those infrastructure changes.
 - Run `npx tsc --noEmit --incremental false` unless the task is documentation-only.
 - Preserve important decisions in docs when they would otherwise be lost in chat.
 

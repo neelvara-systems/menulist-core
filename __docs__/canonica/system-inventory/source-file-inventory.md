@@ -1,6 +1,6 @@
 # Canonica Source File Inventory
 
-> **Status:** Current as of 2026-05-21  
+> **Status:** Current as of 2026-05-22
 > **Purpose:** Record the Canonica source/doc surface reviewed for the system inventory.  
 > **Rule:** Code paths are primary. Existing docs are secondary and must be reconciled to runtime behavior.
 
@@ -158,6 +158,9 @@ Top-level Canonica docs included:
 - `src/components/templates/canonica/MutationProposalReview.tsx`
 - `src/components/templates/canonica/activation/CanonicaActivationCommandCenter.tsx`
 - `src/components/templates/canonica/clientPortal/CanonicaClientHome.tsx`
+- `src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`
+- `src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`
+- `src/components/templates/canonica/content/CanonicaSurfaceReadinessMatrix.tsx`
 - `src/components/templates/canonica/governance/AnswerUsageAnalytics.tsx`
 - `src/components/templates/canonica/governance/AnswerVersionHistory.tsx`
 - `src/components/templates/canonica/governance/CanonicalAnswerEditor.tsx`
@@ -202,6 +205,7 @@ Top-level Canonica docs included:
 - `src/components/templates/main-app/helpCenter/landing/index.tsx`
 - `src/components/templates/main-app/helpCenter/onboarding/GettingStarted.tsx`
 - `src/components/templates/main-app/helpCenter/tabsConfig.tsx`
+- `src/components/templates/platform/supportTickets/TicketDetailView.tsx`
 
 ---
 
@@ -317,5 +321,6 @@ Top-level Canonica docs included:
 - `functions-canonica` is intentionally separate from MenuList Cloud Functions.
 - Canonica dashboard and website routes are intentionally separate from the MenuList owner dashboard.
 - MenuList Help Center components are shared support surfaces, not Canonica management screens.
-- Public API, workflow integrations, predictive support, graph traversal, ticket knowledge extraction, multi-language, white-label, and notifications are present but rollout-gated or disabled by default.
+- Public API, workflow integrations, predictive support, graph traversal, multi-language, advanced white-label, and AI escalation are present but rollout-gated or disabled by default.
+- Notifications, ticket knowledge extraction, and product friction intelligence are enabled with rate limits, nightly caps, and summary-backed UI reads.
 - Website copy must treat rollout-gated code as controlled capability, not as a default promise.

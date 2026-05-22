@@ -1,11 +1,13 @@
 import { CANONICA_GOVERNANCE_TABS, CANONICA_ROUTES, getCanonicaGovernanceRoute } from '@constant/canonica/navigations';
 import { PRODUCT_IDS } from '@constant/product';
+import { getNotificationReadiness } from '@lib/notifications';
 import type {
     CanonicaActivationStage,
     CanonicaActivationStep,
     CanonicaActivationStepStatus,
     CanonicaActivationSubscriptionSummary,
     CanonicaActivationSummary,
+    CanonicaSurfaceReadinessItem,
     CanonicaSurfaceContentSummary,
     CanonicaTrustMetrics,
     CanonicaWidgetRuntimeStatus,
@@ -72,6 +74,98 @@ const getTrustScore = (trust: CanonicaTrustMetrics | null | undefined): number |
     return Math.round(parts.reduce((sum, value) => sum + value, 0) / parts.length);
 };
 
+const getSurfaceReadinessPriority = (item: CanonicaSurfaceReadinessItem): number => {
+    const priority: Record<CanonicaSurfaceReadinessItem['status'], number> = {
+        needs_articles: 4,
+        open_signals: 3,
+        needs_mapping: 2,
+        ready: 1,
+    };
+    return priority[item.status] || 0;
+};
+
+const buildSurfaceReadiness = (content: CanonicaSurfaceContentSummary | null | undefined): CanonicaSurfaceReadinessItem[] => {
+    if (!content?.surfaces) return [];
+
+    return Object.values(content.surfaces)
+        .map((surface): CanonicaSurfaceReadinessItem => {
+            const articleCount = surface.articles?.length || 0;
+            const faqCount = surface.faqs?.length || 0;
+            const changelogCount = surface.changelogs?.length || 0;
+            const ticketCount = surface.tickets?.total || 0;
+            const openTicketCount = surface.tickets?.open || 0;
+            const hasRoutingSignal = Boolean(
+                (surface.routePatterns || []).length
+                || surface.feature
+                || surface.page
+                || surface.workflow
+                || (surface.entityHints || []).length
+                || (surface.tags || []).length
+            );
+
+            if (!hasRoutingSignal) {
+                return {
+                    key: surface.key,
+                    label: surface.label,
+                    routePatterns: surface.routePatterns || [],
+                    articleCount,
+                    faqCount,
+                    changelogCount,
+                    ticketCount,
+                    openTicketCount,
+                    status: 'needs_mapping',
+                };
+            }
+
+            if (articleCount === 0 && faqCount === 0) {
+                return {
+                    key: surface.key,
+                    label: surface.label,
+                    routePatterns: surface.routePatterns || [],
+                    articleCount,
+                    faqCount,
+                    changelogCount,
+                    ticketCount,
+                    openTicketCount,
+                    status: 'needs_articles',
+                };
+            }
+
+            if (openTicketCount > 0) {
+                return {
+                    key: surface.key,
+                    label: surface.label,
+                    routePatterns: surface.routePatterns || [],
+                    articleCount,
+                    faqCount,
+                    changelogCount,
+                    ticketCount,
+                    openTicketCount,
+                    status: 'open_signals',
+                };
+            }
+
+            return {
+                key: surface.key,
+                label: surface.label,
+                routePatterns: surface.routePatterns || [],
+                articleCount,
+                faqCount,
+                changelogCount,
+                ticketCount,
+                openTicketCount,
+                status: 'ready',
+            };
+        })
+        .sort((left, right) => (
+            getSurfaceReadinessPriority(right) - getSurfaceReadinessPriority(left)
+            || right.openTicketCount - left.openTicketCount
+            || (left.articleCount + (left.faqCount || 0)) - (right.articleCount + (right.faqCount || 0))
+            || left.label.localeCompare(right.label)
+        ))
+        .slice(0, 8);
+};
+
 export function buildCanonicaActivationSummary(params: {
     tId: number;
     sId: number;
@@ -101,6 +195,9 @@ export function buildCanonicaActivationSummary(params: {
         ? storeData.primarySurfaces.filter(Boolean)
         : [];
     const hasProductProfile = Boolean(storeData.productUrl && storeData.supportEmail);
+    const notificationReadiness = getNotificationReadiness(PRODUCT_IDS.CANONICA);
+    const notificationsReady = notificationReadiness.enabled && notificationReadiness.smtpConfigured && hasProductProfile;
+    const surfaceReadiness = buildSurfaceReadiness(content);
 
     const steps: CanonicaActivationStep[] = [
         buildStep({
@@ -137,8 +234,8 @@ export function buildCanonicaActivationSummary(params: {
         buildStep({
             key: 'knowledge',
             title: 'Knowledge imported',
-            description: `${content?.articleCount || 0} published article${(content?.articleCount || 0) === 1 ? '' : 's'} available in the compact content summary.`,
-            status: (content?.articleCount || 0) > 0 ? 'complete' : 'pending',
+            description: `${content?.articleCount || 0} published article${(content?.articleCount || 0) === 1 ? '' : 's'} and ${content?.faqCount || 0} FAQ${(content?.faqCount || 0) === 1 ? '' : 's'} available in the compact content summary.`,
+            status: ((content?.articleCount || 0) + (content?.faqCount || 0)) > 0 ? 'complete' : 'pending',
             route: CANONICA_ROUTES.KB_GENERATION,
             actionLabel: 'Import Content',
             costNote: 'Reads platformSummary context content; no article collection scan on this page.',
@@ -146,13 +243,13 @@ export function buildCanonicaActivationSummary(params: {
         buildStep({
             key: 'help-center',
             title: 'Help center ready',
-            description: (content?.articleCount || 0) > 0
+            description: ((content?.articleCount || 0) + (content?.faqCount || 0)) > 0
                 ? 'The public help center has published content to show customers.'
-                : 'Publish at least one article before sending customers to the help center.',
-            status: (content?.articleCount || 0) > 0 ? 'complete' : 'pending',
+                : 'Publish at least one article or FAQ before sending customers to the help center.',
+            status: ((content?.articleCount || 0) + (content?.faqCount || 0)) > 0 ? 'complete' : 'pending',
             route: CANONICA_ROUTES.DOCS,
             actionLabel: 'Preview Docs',
-            costNote: 'Uses the existing context summary article count.',
+            costNote: 'Uses the existing context summary content counts.',
         }),
         buildStep({
             key: 'entities',
@@ -228,6 +325,19 @@ export function buildCanonicaActivationSummary(params: {
             costNote: 'Context is transient at runtime; only a sanitized last-seen marker is stored.',
         }),
         buildStep({
+            key: 'notifications',
+            title: 'Ticket notifications ready',
+            description: notificationsReady
+                ? `Ticket emails are enabled from ${notificationReadiness.fromAddress}. Send a test email before launch.`
+                : notificationReadiness.enabled
+                    ? 'Add sender configuration and support email so ticket replies do not go unnoticed.'
+                    : 'Enable Canonica notifications before launching support to customers.',
+            status: notificationsReady ? 'complete' : 'attention',
+            route: CANONICA_ROUTES.ACTIVATION,
+            actionLabel: 'Test Email',
+            costNote: 'No collection scan. Sends are rate-limited and logged to the Canonica notification log only when an email is attempted.',
+        }),
+        buildStep({
             key: 'release-notes',
             title: 'Changelog published',
             description: `${content?.changelogCount || 0} recent release note${(content?.changelogCount || 0) === 1 ? '' : 's'} linked in the context summary.`,
@@ -263,14 +373,25 @@ export function buildCanonicaActivationSummary(params: {
         allowedOriginCount: allowedOrigins.length,
         widgetPath: runtimeStatus?.lastPath || null,
         widgetContext: runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage || null,
+        notificationsEnabled: notificationReadiness.enabled,
+        smtpConfigured: notificationReadiness.smtpConfigured,
         productUrl: storeData.productUrl || null,
         supportEmail: storeData.supportEmail || null,
         billingModel: storeData.billingModel || null,
         primarySurfaceCount: primarySurfaces.length,
         articleCount: content?.articleCount || 0,
+        faqCount: content?.faqCount || 0,
         surfaceCount: content?.surfaceCount || 0,
         changelogCount: content?.changelogCount || 0,
         ticketCount: content?.ticketCount || 0,
+        surfaceReadiness: surfaceReadiness.map(surface => ({
+            key: surface.key,
+            status: surface.status,
+            articleCount: surface.articleCount,
+            faqCount: surface.faqCount || 0,
+            openTicketCount: surface.openTicketCount,
+            changelogCount: surface.changelogCount,
+        })),
         entityCount,
         activeCanonicalAnswerCount,
     };
@@ -299,12 +420,20 @@ export function buildCanonicaActivationSummary(params: {
             configVersion: Number(storeData.widgetConfigVersion || 0),
             runtimeStatus,
         },
+        notifications: {
+            enabled: notificationReadiness.enabled,
+            smtpConfigured: notificationReadiness.smtpConfigured,
+            fromAddress: notificationReadiness.fromAddress,
+            logTarget: notificationReadiness.logTarget,
+        },
         content: {
             surfaceCount: content?.surfaceCount || 0,
             articleCount: content?.articleCount || 0,
+            faqCount: content?.faqCount || 0,
             changelogCount: content?.changelogCount || 0,
             ticketCount: content?.ticketCount || 0,
             summaryGeneratedAt: content?.generatedAt || null,
+            surfaceReadiness,
         },
         governance: {
             canonicalCoverageRate: Number.isFinite(Number(params.coverage?.coverage?.rate)) ? Number(params.coverage?.coverage?.rate) : null,

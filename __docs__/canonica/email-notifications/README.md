@@ -1,9 +1,10 @@
 # Canonica Email Notifications
 
 > **Feature:** Generic, reusable email notification system for ticket events
-> **Status:** ✅ IMPLEMENTED (Phase 2 Step 3: DISTRIBUTE)
+> **Status:** ✅ IMPLEMENTED AND ENABLED
 > **Date:** 2026-03-07
-> **Feature Flag:** `ENABLE_CANONICA_NOTIFICATIONS` (default: OFF)
+> **Last Updated:** 2026-05-22
+> **Feature Flag:** `ENABLE_CANONICA_NOTIFICATIONS` (default: ON)
 > **SMTP:** Reuses existing nodemailer infrastructure (same as lifecycle messaging)
 
 ---
@@ -34,20 +35,24 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
   └── triggerNotification() — fire-and-forget POST to /api/notifications/send
         │
         ├── Feature flag check (ENABLE_CANONICA_NOTIFICATIONS)
-        ├── Idempotency (dedup by eventType + referenceId within 24h)
+        ├── Request validation + per-user route throttle
+        ├── Idempotency (deterministic log doc by eventType + referenceId)
         ├── Rate limiting (20/day per recipient)
         ├── Template resolution (event type → subject + HTML)
         ├── SMTP send via nodemailer (reuses existing transporter)
-        └── Logging to notificationLogs collection
+        └── Logging to canonica_notificationLogs for Canonica events
 ```
 
 ## Key Design Decisions
 
 1. **Generic & reusable** — Not ticket-specific. Any feature can add notification types by adding a template to `templates.ts`
-2. **Fire-and-forget** — `triggerNotification()` never blocks the calling operation. Errors are silently caught.
+2. **Fire-and-forget** — `triggerNotification()` never blocks the calling operation. Dev builds warn on trigger failure; production ticket flow is not blocked.
 3. **Client → API → Server** — DAL runs client-side, so notifications go through an API route to access firebase-admin
 4. **Reuses existing SMTP** — Same nodemailer transporter, same SMTP env vars as lifecycle messaging. Zero new infrastructure.
 5. **Separate from lifecycle messaging** — Lifecycle messages are for billing/subscription events. Notifications are for operational events (tickets, etc.)
+6. **Canonica-scoped logs** — Canonica events write to `canonica_notificationLogs` in the Canonica Firebase project; non-Canonica callers still use the legacy generic `notificationLogs` target.
+7. **Activation verification** — `/canonica/activation` exposes a test-email action through `/api/canonica/notifications/test` with a 3/hour workspace rate limit.
+8. **Route guardrails** — `/api/notifications/send` accepts only the three client ticket events, validates email/reference/metadata shape, limits metadata to 8KB, and throttles each authenticated user to 120 notification attempts/hour.
 
 ## Files Created
 
@@ -57,13 +62,16 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 | `src/lib/notifications/client.ts` | Client-side fire-and-forget trigger helper |
 | `src/lib/notifications/templates.ts` | Template registry (3 ticket templates) |
 | `src/app/api/notifications/send/route.ts` | API route (withAuth, bridges client → server) |
+| `src/app/api/canonica/notifications/test/route.ts` | Workspace test-send route used by Activation |
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/config/features.ts` | Added `ENABLE_CANONICA_NOTIFICATIONS: false` |
-| `src/database/tickets/index.ts` | Added `triggerNotification()` calls to addTicket, addTicketMessage, updateTicketStatus |
+| `src/config/features.ts` | `ENABLE_CANONICA_NOTIFICATIONS: true` |
+| `src/database/tickets/index.ts` | `triggerNotification()` calls for addTicket, addTicketMessage, updateTicketStatus with product-aware Canonica logging |
+| `firestore-canonica.rules` | Platform-admin read access for `canonica_notificationLogs`; no client writes |
+| `firestore-canonica.indexes.json` | Rate-limit index for `canonica_notificationLogs` |
 
 ## Adding a New Notification Type
 
@@ -77,4 +85,5 @@ Client-side DAL (addTicket, addTicketMessage, updateTicketStatus)
 
 | Date | Change |
 |------|--------|
+| 2026-05-22 | Enabled Canonica notification verification from Activation, moved Canonica logs to `canonica_notificationLogs`, added test-send template and rate limit, and removed unnecessary reply/status notification reads. |
 | 2026-03-07 | Initial implementation: 3 ticket notification types, generic service, API route |

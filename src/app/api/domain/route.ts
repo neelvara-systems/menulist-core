@@ -15,17 +15,17 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import {
+    addDomainToVercelProject,
+    getVercelDomainConfig,
+    isVercelDomainConfigured,
+    removeDomainFromVercelProject,
+} from "@lib/domains/vercelDomains";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "../../../middleware/auth";
-
-const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
-const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID;
-const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID;
-
-const VERCEL_API_BASE = "https://api.vercel.com";
 
 // Validation
 const AddDomainSchema = z.object({
@@ -36,29 +36,6 @@ const AddDomainSchema = z.object({
             message: "Invalid domain format. Example: yourbusiness.com",
         }),
 });
-
-// Helper: Make Vercel API request
-async function vercelFetch(path: string, options: RequestInit = {}) {
-    if (!VERCEL_TOKEN || !VERCEL_PROJECT_ID) {
-        throw new Error("Vercel API not configured. Set VERCEL_TOKEN and VERCEL_PROJECT_ID.");
-    }
-
-    const teamParam = VERCEL_TEAM_ID ? `&teamId=${VERCEL_TEAM_ID}` : "";
-    const separator = path.includes("?") ? "&" : "?";
-    const url = `${VERCEL_API_BASE}${path}${separator}${teamParam}`;
-
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            Authorization: `Bearer ${VERCEL_TOKEN}`,
-            "Content-Type": "application/json",
-            ...options.headers,
-        },
-    });
-
-    const data = await response.json();
-    return { ok: response.ok, status: response.status, data };
-}
 
 /**
  * POST /api/domain — Add custom domain to Vercel project + store in Firestore
@@ -105,10 +82,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     try {
         // Add domain to Vercel project
-        const result = await vercelFetch(`/v10/projects/${VERCEL_PROJECT_ID}/domains`, {
-            method: "POST",
-            body: JSON.stringify({ name: normalizedDomain }),
-        });
+        const result = await addDomainToVercelProject(normalizedDomain);
 
         if (!result.ok && result.status !== 409) {
             // 409 = domain already exists on project (re-adding is fine)
@@ -120,9 +94,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         // Get verification info
-        const configResult = await vercelFetch(
-            `/v6/domains/${normalizedDomain}/config`
-        );
+        const configResult = await getVercelDomainConfig(normalizedDomain);
 
         // Update store doc with custom domain info
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
@@ -176,10 +148,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     try {
         // Check domain config from Vercel
-        const configResult = await vercelFetch(`/v6/domains/${domain}/config`);
+        const configResult = await getVercelDomainConfig(domain);
 
         // Check if domain is properly configured
-        const isConfigured = configResult.data?.misconfigured === false;
+        const isConfigured = isVercelDomainConfigured(configResult.data);
 
         // If newly verified, update store doc + invalidate cache
         if (isConfigured && !storeData.domainVerified) {
@@ -232,9 +204,7 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
 
     try {
         // Remove from Vercel
-        await vercelFetch(`/v9/projects/${VERCEL_PROJECT_ID}/domains/${domain}`, {
-            method: "DELETE",
-        });
+        await removeDomainFromVercelProject(domain);
     } catch {
         // Non-blocking — even if Vercel fails, remove from our side
     }

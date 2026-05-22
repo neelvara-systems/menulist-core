@@ -103,6 +103,25 @@ const NOTIFICATION_TEMPLATES: Record<string, TemplateFn> = {
                 : '')
         ),
     }),
+
+    /**
+     * Sent from the Canonica activation command center to verify sender config.
+     * Recipient: workspace support email.
+     */
+    CANONICA_NOTIFICATION_TEST: (m) => ({
+        subject: `Canonica notification test for ${m.productName || 'your product'}`,
+        html: wrap(
+            `<h2 style="${S.h2}">Notification delivery is connected</h2>` +
+            `<p style="${S.p}">Hi ${m.recipientName || 'there'},</p>` +
+            `<p style="${S.p}">This test confirms Canonica can send ticket and support notifications for <strong>${m.productName || 'your product'}</strong>.</p>` +
+            `<div style="${S.info}">` +
+            `<strong>Workspace:</strong> ${m.workspaceName || 'Canonica workspace'}<br>` +
+            `<strong>Sent at:</strong> ${m.sentAt || 'Now'}` +
+            `</div>` +
+            `<p style="${S.p}">No action is needed if this arrived in the expected inbox.</p>`,
+            m.productName || 'Canonica'
+        ),
+    }),
 };
 
 // ================================================================

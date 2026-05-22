@@ -1,7 +1,8 @@
 'use client';
 
 import { updateJob } from "@database/kb-generation/jobs";
-import { getArticleById } from "@database/knowledgeBase/articles";
+import { rebuildProductSurfaceContentSummary } from "@database/canonica/productSurfaces";
+import { getArticleById, updateArticle } from "@database/knowledgeBase/articles";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { publishApprovedJob, PublishApprovedJobPayload, regenerateEmbedding } from '@lib/firebase/functions';
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -186,8 +187,9 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                 if (!job) return;
                 dispatch(startLoader('Publishing job...'));
                 try {
-                    const payload: PublishApprovedJobPayload = { jobId: job.id, finalCategories: job.categories }
+                    const payload: PublishApprovedJobPayload = { jobId: job.id, finalCategories: (categoriesData?.categories || job.categories) as any }
                     await publishApprovedJob(payload);
+                    rebuildProductSurfaceContentSummary().catch(() => undefined);
                     message.success('Job has been successfully published!');
                     onClose(); // Close the modal on success
                 } catch (error) {
@@ -242,24 +244,48 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
 
     const handleArticleSaveSuccess = async (savedArticle: KnowledgeBaseArticleType) => {
         dispatch(startLoader('Updating article...'));
-        setActiveModal({ type: "", data: null });
-        const isNewArticle = !activeModal.data;
-        // For now, let's assume regeneration is needed on any save within the review flow.
-        // More sophisticated check can be added later if performance becomes an issue.
-        const needsRegeneration = true;
+        try {
+            const isNewArticle = !activeModal.data;
+            await updateArticle(savedArticle);
 
-        if (needsRegeneration) {
-            try {
-                await regenerateEmbedding(savedArticle.id);
-                message.info(`Embedding ${isNewArticle ? 'generation' : 'regeneration'} has been triggered.`);
-            } catch (error) {
-                dispatch(stopLoader('Updating article...'));
-                message.error(`Failed to trigger embedding ${isNewArticle ? 'generation' : 'regeneration'}.`);
+            if (job && categoriesData && selectedCategory) {
+                const updatedCategories: any = JSON.parse(JSON.stringify(categoriesData.categories));
+                const category = updatedCategories[selectedCategory.id];
+                const articleMeta = {
+                    id: savedArticle.id,
+                    title: savedArticle.title,
+                    active: savedArticle.active !== false,
+                    index: Number(savedArticle.index || 0),
+                    url: savedArticle.url || '',
+                    reEmbedding: true,
+                };
+
+                if (selectedSection?.id && category?.sections) {
+                    const section = category.sections.find((item: IngestionJobSection) => item.id === selectedSection.id);
+                    const articles = section?.articles || [];
+                    const articleIndex = articles.findIndex((item: IngestionJobArticle) => item.id === savedArticle.id);
+                    if (articleIndex >= 0) {
+                        articles[articleIndex] = { ...articles[articleIndex], ...articleMeta };
+                    }
+                } else if (category?.articles) {
+                    const articleIndex = category.articles.findIndex((item: IngestionJobArticle) => item.id === savedArticle.id);
+                    if (articleIndex >= 0) {
+                        category.articles[articleIndex] = { ...category.articles[articleIndex], ...articleMeta };
+                    }
+                }
+
+                setCategoriesData({ categories: updatedCategories });
+                await updateJob(job.id, { categories: updatedCategories as any });
             }
-        }
 
-        dispatch(stopLoader('Updating article...'));
-        setActiveModal({ type: "", data: null });
+            await regenerateEmbedding(savedArticle.id);
+            message.info(`Embedding ${isNewArticle ? 'generation' : 'regeneration'} has been triggered.`);
+            setActiveModal({ type: "", data: null });
+        } catch (error) {
+            message.error('Failed to update article review changes.');
+        } finally {
+            dispatch(stopLoader('Updating article...'));
+        }
     };
 
 

@@ -1,9 +1,9 @@
 # Ticket → Knowledge Loop — Product Specification
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Audience:** CEO, PM, Clients
 > **Feature Flag:** `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 

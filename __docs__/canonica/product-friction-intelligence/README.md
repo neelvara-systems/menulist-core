@@ -1,9 +1,9 @@
 # Product Friction Intelligence — Canonica Expansion Item #5
 
-> **Status:** DOCUMENTED v1.0 — Implementation Pending
+> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
 > **Feature Flag:** `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Expansion Tracker:** `__docs__/canonica/canonica-expansion-tracker.md` (Item #5)
 > **Doctrine Compliance:** Freeze-compliant (additive fields, 1 new collection, extends existing scheduler)
 
@@ -23,7 +23,7 @@ Instead of building dashboards or analytics tools, this system generates a **pri
 Existing Canonica Signal Pipeline (built):
   signalEmitter → canonica_signalEvents → signalMutation → mutationProposals
 
-NEW Friction Intelligence Layer (this feature):
+Friction Intelligence Layer:
   canonica_signalEvents ──→ frictionAggregation (nightly) ──→ canonica_frictionDailyStats
                                                                       ↓
   canonica_frictionDailyStats ──→ frictionInsightGenerator (weekly) ──→ platformSummary/friction_{tId}_{sId}
@@ -80,6 +80,14 @@ ChatGPT proposed 6 components with 68 capability blocks. After deep codebase aud
 - **Required:** `ENABLE_CANONICA_CANONICAL_ANSWERS: true` (for hit/miss coverage data)
 - **Optional:** `ENABLE_CANONICA_CONTEXT_AWARE: true` (enriches signals with page/feature context)
 - **Extends:** `functions-canonica/src/canonica/canonicaNightly.ts` (adds Step 9 + Step 10)
+
+## Current Runtime Guardrails
+
+- Enabled in both frontend and Canonica functions flags.
+- Runs inside the existing `canonicaNightly` scheduler, not a separate scheduled job.
+- Uses capped daily signal/search-history windows and writes compact `platformSummary/frictionSnapshot_*` / `platformSummary/friction_*` documents for UI reads.
+- Governance UI reads summaries only; it does not scan `canonica_signalEvents` or `aiSearchHistory` on page load.
+- Friction is product support intelligence only. It does not track session replay, product analytics, or user behavior telemetry.
 
 ---
 

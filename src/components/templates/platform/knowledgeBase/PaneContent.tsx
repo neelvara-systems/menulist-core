@@ -122,7 +122,7 @@ const PaneContent = <T extends PaneContentItem, S extends PaneContentItem>({ fro
                                 <Flex align="center" justify="flex-start" gap={4}>
                                     <Badge status={item.active ? 'success' : 'error'} />
                                     {item.title}
-                                    {from === 'Article' && <Tooltip title="Embedding generated for AI responses">
+                                    {from === 'Article' && <Tooltip title="Search data is ready for this article">
                                         <LuCheckCircle color={token.colorSuccess} />
                                     </Tooltip>}
                                     {from === 'Article' && isStaleArticle(item) && (

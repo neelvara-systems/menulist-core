@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LuArrowRight } from 'react-icons/lu';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { useChangelogCache } from '@hook/useChangelogCache';
+import { fetchCanonicaPublicChangelogPage } from '@lib/canonica/publicContentClient';
 import ChangelogPreview from '@template/platform/changelog/ChangelogPreview';
 import ChangelogTagRenderer from '@template/platform/changelog/ChangelogTagRenderer';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
@@ -46,13 +46,12 @@ function WhatsNew() {
     const t = useTranslations('HelpCenter');
     const router = useRouter();
     const screens = Grid.useBreakpoint();
-    const { getItem } = useChangelogCache();
     const [selectedEntry, setSelectedEntry] = useState<ChangelogEntry | null>(null);
     const [changelog, setChangelog] = useState<ChangelogPage | null>(null);
 
     const fetchInitialData = async () => {
         try {
-            const changelogData = await getItem();
+            const changelogData = await fetchCanonicaPublicChangelogPage();
             setChangelog(changelogData);
         } catch (error) {
             message.error(t('failedToLoadChangelog'));

@@ -28,6 +28,7 @@
  *   data-shape         (optional) "rounded" (circle) | "pill" (rectangle)
  *   data-display       (optional) "icon" | "text" | "icon-text"
  *   data-label         (optional) Text for launcher (default: "?")
+ *   data-header-title  (optional) Header title inside the widget (default: "Help")
  *   data-greeting      (optional) Empty-state greeting shown inside the widget
  *   data-size          (optional) "small" | "medium" | "large"
  *   data-offset-x      (optional) Horizontal offset in px (default: 20)
@@ -36,6 +37,7 @@
  *   data-history       (optional) "session" | "forget" (default: session, no persistent storage)
  *   data-launcher-visibility (optional) "visible" | "manual" (default: visible)
  *   data-mobile-visibility   (optional) "show" | "hide" (default: show)
+ *   data-powered-by          (optional) "true" | "false" (default: true)
  *   data-blocked-routes      (optional) comma-separated route patterns such as "/help-center,/help-center/*"
  *   data-context-key         (optional) stable product surface key such as "billing_invoices"
  *   data-use-remote-config   (optional) "false" disables dashboard config fetch
@@ -68,6 +70,7 @@
         shape: 'rounded',
         display: 'icon',
         label: '?',
+        headerTitle: 'Help',
         greeting: 'How can we help?',
         size: 'medium',
         offsetX: 20,
@@ -76,6 +79,7 @@
         historyMode: 'session',
         launcherVisibility: 'visible',
         mobileVisibility: 'show',
+        poweredByVisible: true,
         blockedRoutes: [],
     };
     var explicitConfig = {};
@@ -84,6 +88,7 @@
     var shape = defaultConfig.shape;
     var display = defaultConfig.display;
     var label = defaultConfig.label;
+    var headerTitle = defaultConfig.headerTitle;
     var greeting = defaultConfig.greeting;
     var size = defaultConfig.size;
     var offsetX = defaultConfig.offsetX;
@@ -92,6 +97,7 @@
     var historyMode = defaultConfig.historyMode;
     var launcherVisibility = defaultConfig.launcherVisibility;
     var mobileVisibility = defaultConfig.mobileVisibility;
+    var poweredByVisible = defaultConfig.poweredByVisible;
     var blockedRoutes = defaultConfig.blockedRoutes;
     var useRemoteConfig = script.getAttribute('data-use-remote-config') !== 'false';
     var widgetHost = new URL(script.src).origin;
@@ -215,6 +221,9 @@
         value = script.getAttribute('data-label');
         if (script.hasAttribute('data-label') && value && value.trim()) config.label = value.trim().slice(0, 24);
 
+        value = script.getAttribute('data-header-title');
+        if (script.hasAttribute('data-header-title') && value && value.trim()) config.headerTitle = value.trim().slice(0, 40);
+
         value = script.getAttribute('data-greeting');
         if (script.hasAttribute('data-greeting') && value && value.trim()) config.greeting = value.trim().slice(0, 120);
 
@@ -239,6 +248,9 @@
         value = script.getAttribute('data-mobile-visibility');
         if (script.hasAttribute('data-mobile-visibility') && isValidChoice(value, ['show', 'hide'])) config.mobileVisibility = value;
 
+        value = script.getAttribute('data-powered-by');
+        if (script.hasAttribute('data-powered-by') && isValidChoice(value, ['true', 'false'])) config.poweredByVisible = value !== 'false';
+
         value = script.getAttribute('data-blocked-routes');
         if (script.hasAttribute('data-blocked-routes')) config.blockedRoutes = normalizeBlockedRoutes(value);
 
@@ -254,6 +266,7 @@
         if (isValidChoice(input.shape, ['rounded', 'pill'])) config.shape = input.shape;
         if (isValidChoice(input.display, ['icon', 'text', 'icon-text'])) config.display = input.display;
         if (typeof input.label === 'string' && input.label.trim()) config.label = input.label.trim().slice(0, 24);
+        if (typeof input.headerTitle === 'string' && input.headerTitle.trim()) config.headerTitle = input.headerTitle.trim().slice(0, 40);
         if (typeof input.greeting === 'string' && input.greeting.trim()) config.greeting = input.greeting.trim().slice(0, 120);
         if (isValidChoice(input.size, ['small', 'medium', 'large'])) config.size = input.size;
         if (Number.isFinite(input.offsetX)) config.offsetX = Math.max(0, Math.min(200, Math.floor(input.offsetX)));
@@ -262,6 +275,7 @@
         if (isValidChoice(input.historyMode, ['session', 'forget'])) config.historyMode = input.historyMode;
         if (isValidChoice(input.launcherVisibility, ['visible', 'manual'])) config.launcherVisibility = input.launcherVisibility;
         if (isValidChoice(input.mobileVisibility, ['show', 'hide'])) config.mobileVisibility = input.mobileVisibility;
+        if (typeof input.poweredByVisible === 'boolean') config.poweredByVisible = input.poweredByVisible;
         if (Array.isArray(input.blockedRoutes)) config.blockedRoutes = normalizeBlockedRoutes(input.blockedRoutes);
         return config;
     }
@@ -281,6 +295,7 @@
         shape = merged.shape;
         display = merged.display;
         label = merged.label;
+        headerTitle = merged.headerTitle;
         greeting = merged.greeting;
         size = merged.size;
         offsetX = merged.offsetX;
@@ -289,6 +304,7 @@
         historyMode = merged.historyMode;
         launcherVisibility = merged.launcherVisibility;
         mobileVisibility = merged.mobileVisibility;
+        poweredByVisible = merged.poweredByVisible;
         blockedRoutes = normalizeBlockedRoutes(merged.blockedRoutes);
         s = sizes[size] || sizes.medium;
 
@@ -568,7 +584,15 @@
     }
 
     function sendConfigToIframe() {
-        postToIframe({ type: 'canonica-widget-config', config: { greeting: greeting } });
+        postToIframe({
+            type: 'canonica-widget-config',
+            config: {
+                accentColor: accentColor,
+                headerTitle: headerTitle,
+                greeting: greeting,
+                poweredByVisible: poweredByVisible,
+            },
+        });
     }
 
     function syncIframeState() {

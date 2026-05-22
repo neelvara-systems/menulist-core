@@ -2,6 +2,7 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
+import { CANONICA_GOVERNANCE_TABS, getCanonicaGovernanceRoute, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
 import { rebuildProductSurfaceContentSummary } from '@database/canonica/productSurfaces';
 import { updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -14,8 +15,9 @@ import { SUPPORT_TICKET_STATUS, SupportTicketType, TicketMessage } from '@type/s
 import { Badge, Button, Card, Drawer, Flex, Grid, Image as AntImage, message, Tag, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LuBug, LuClock, LuFile, LuMessageSquare, LuPaperclip, LuPen } from 'react-icons/lu';
+import { LuBookOpen, LuBug, LuClock, LuFile, LuGitPullRequest, LuMessageSquare, LuPaperclip, LuPen } from 'react-icons/lu';
 import ConversationTimeline from './ConversationTimeline';
 import TicketActions from './TicketActions';
 import TicketLogsView from './TicketLogsView';
@@ -33,11 +35,13 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
+    const router = useRouter();
     const { data: session } = useSession();
     const [ticket, setTicket] = useState<SupportTicketType | null>(activeTicket);
     const [isLogsModalVisible, setIsLogsModalVisible] = useState(false);
     const isMobile = !screens.md;
     const isClientView = from === "client";
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
     useEffect(() => {
         setTicket(activeTicket);
@@ -123,6 +127,21 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
 
     const ticketLogCount = ticket.logs?.length || 0;
     const canViewTicketLogs = !isClientView && ticketLogCount > 0;
+    const resolvedForKnowledge = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
+    const resolutionContextLength = (ticket.messages || [])
+        .filter(item => item.type !== 'system')
+        .slice(-5)
+        .map(item => item.text || '')
+        .join(' ')
+        .trim()
+        .length;
+    const hasResolutionContext = resolutionContextLength >= 50;
+    const openSignalQueue = () => {
+        router.push(toCanonicaDashboardRoute(
+            getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.SIGNAL_QUEUE),
+            currentHostname,
+        ));
+    };
 
     const drawerTitle = isMobile ? (
         <Flex vertical gap={6} style={{ minWidth: 0, padding: '2px 0' }}>
@@ -364,6 +383,48 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
         </Card>
     );
 
+    const knowledgeLoopCard = !isClientView ? (
+        <Card
+            size="small"
+            title={
+                <Flex align="center" gap={8}>
+                    <LuBookOpen size={16} />
+                    <Text strong>Knowledge Loop</Text>
+                </Flex>
+            }
+            style={{ borderRadius: isMobile ? 12 : 8, marginTop: isMobile ? undefined : 16 }}
+            styles={{ body: { padding: isMobile ? 14 : 12 } }}
+        >
+            <Flex vertical gap={10}>
+                <Flex align="center" gap={8} wrap="wrap">
+                    <Tag color={resolvedForKnowledge && hasResolutionContext ? 'success' : resolvedForKnowledge ? 'warning' : 'default'}>
+                        {resolvedForKnowledge && hasResolutionContext
+                            ? 'Ready for review queue'
+                            : resolvedForKnowledge
+                                ? 'Needs clearer resolution'
+                                : 'Resolve to capture signal'}
+                    </Tag>
+                    {ticket.contextKeys?.slice(0, 3).map(key => <Tag key={key}>{key}</Tag>)}
+                </Flex>
+                <Text type="secondary">
+                    {resolvedForKnowledge
+                        ? hasResolutionContext
+                            ? 'Canonica uses the last support replies as evidence for repeated-gap proposals. Review recurring patterns in Signal Queue.'
+                            : 'Add a clear resolution reply before closing similar tickets so Canonica can draft useful knowledge later.'
+                        : 'When this ticket is resolved, Canonica can turn repeated issues into owner-approved knowledge proposals.'}
+                </Text>
+                <Button
+                    icon={<LuGitPullRequest />}
+                    onClick={openSignalQueue}
+                    style={{ minHeight: 38 }}
+                    block={isMobile}
+                >
+                    Open Signal Queue
+                </Button>
+            </Flex>
+        </Card>
+    ) : null;
+
     const mobileLayout = (
         <Flex
             vertical
@@ -392,6 +453,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                             />
                         </Card>
                     )}
+                    {knowledgeLoopCard}
                     {mobileAttachments}
                     <Card
                         size="small"
@@ -466,6 +528,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                             ticket={ticket}
                             setTicket={setTicket}
                         />
+                        {knowledgeLoopCard}
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 24 }}>

@@ -1,4 +1,4 @@
-import { getCategories } from '@database/knowledgeBase/categories';
+import { fetchCanonicaPublicCategories } from '@lib/canonica/publicContentClient';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Timestamp } from 'firebase/firestore';
@@ -33,7 +33,7 @@ export const useKBCategoriesCache = () => {
         }
 
         if (!categoriesFetchInFlight) {
-            categoriesFetchInFlight = getCategories()
+            categoriesFetchInFlight = fetchCanonicaPublicCategories()
                 .then((result) => normalizeCategoriesPayload(result))
                 .finally(() => {
                     categoriesFetchInFlight = null;

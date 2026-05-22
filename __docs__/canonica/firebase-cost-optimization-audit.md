@@ -1,6 +1,6 @@
 # Canonica — Firebase Cost Optimization Audit
 
-> **Status:** Updated after May 16, 2026 code audit
+> **Status:** Updated after May 22, 2026 public-surface cache pass
 > **Scope:** Canonica help center, KB, tickets, chat, changelog, feedback, governance, public API, widget, and scheduler functions
 > **Rule:** Correctness stays higher priority than lower Firebase spend.
 
@@ -8,7 +8,7 @@
 
 ## Executive Verdict
 
-Canonica is Firebase-cost-conscious after this pass. The live user-facing paths now avoid duplicate KB category reads, bound customer chat/ticket history reads, use aggregated chat analytics for ROI, avoid an extra feedback refetch after submit, and validate cached search answers through tiny source-version manifests instead of repeatedly reading every source document on fresh cache hits. Governance and scheduler paths remain feature-flagged and bounded.
+Canonica is Firebase-cost-conscious after this pass. The live user-facing paths now avoid duplicate KB category reads, route public KB/FAQ/changelog reads through tenant/store-tagged Next cache, bound customer chat/ticket history reads, use aggregated chat analytics for ROI, avoid an extra feedback refetch after submit, and validate cached search answers through tiny source-version manifests instead of repeatedly reading every source document on fresh cache hits. Governance and scheduler paths remain feature-flagged and bounded.
 
 Remaining cost risks are non-blocking and documented below.
 
@@ -18,8 +18,11 @@ Remaining cost risks are non-blocking and documented below.
 
 | Area | File / Flow | Operation | Path | Trigger | Freshness Need | Realtime Needed | Risk Before | Decision |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Help Center KB categories | `useKBCategoriesCache`, `BrowseCategories`, `TrendingTopics`, `KnowledgeBaseExplorer`, `KbTreeSelect`, `useChatData` | `getDoc` with legacy fallback | `kb_categories/categories_{tId}_{sId}` then `kb_categories/categories` | Help center home, KB tab, chat modal, changelog source picker | Session fresh | No | Medium | Shared in-flight/context cache prevents same-mount duplicate reads and keeps one data shape. |
-| Help Center changelog | `useChangelogCache` | `getDocs(limit 1)` | `changelog/{tId}/{sId}` | Home and changelog tab | Session fresh | No | Low/Medium | Added in-flight dedupe for concurrent latest-page reads. |
+| Help Center KB categories | `useKBCategoriesCache`, `BrowseCategories`, `TrendingTopics`, `KnowledgeBaseExplorer`, `KbTreeSelect`, `useChatData`, `/api/canonica/public-content` | Cached server `getDoc` | `kb_categories/categories_{tId}_{sId}` | Help center home, KB tab, chat modal, changelog source picker | 60s cache or owner-write invalidation | No | Medium | Moved from browser Firestore reads to tenant/store-tagged `unstable_cache`; shared in-flight/context cache remains for same-mount reuse. |
+| Help Center articles | `useArticleCache`, `ArticleViewModal`, `KnowledgeBaseExplorer/Articles`, `/api/canonica/public-content` | Cached server `getDoc` | `kb_articles/{articleId}` with `tId+sId` validation | Article modal/full article render | 60s cache or owner-write invalidation | No | Medium | Moved article fetches off browser Firestore, strips embeddings/generated internals from public payload, and validates tenant/store scope server-side. |
+| Help Center FAQ tab | `FaqView`, `/api/canonica/public-content` | Cached server query | `canonica_faqs` filtered by `tId+sId+published+active` | FAQ tab mount | 60s cache or owner-write invalidation | No | Medium | Public FAQ list now uses the same public cache/revalidation strategy as MenuList menu data. |
+| Help Center changelog | `ChangelogView`, `WhatsNew`, `DisplayChangelog`, `/api/canonica/public-content` | Cached server `getDocs(limit 1)` and older-page query | `changelog/{tId}/{sId}` | Home and changelog tab | 60s cache or owner-write invalidation | No | Low/Medium | Public latest/older changelog page reads moved behind cache; Help Center disables the old browser-Firestore fallback; owner CRUD invalidates changelog/context tags. |
+| Hosted public Help Center | `src/app/canonica-hosted-help`, `hostedHelpServer`, Hosted Help settings | Cached registry doc + cached content reads | `canonica_publicHelpSites/{domain}`, cached KB/FAQ/changelog | Anonymous help domain visit | 60s registry/content cache or owner-write invalidation | No | Medium | Uses one domain registry doc instead of querying stores; search is client-side over loaded public content; tickets/chat/feedback stay authenticated. |
 | Store tickets | `subscribeStoreTickets`, `getStoresTickets` | `onSnapshot`, `getDocs` | `supportTickets` filtered by `tId+sId+deleted` | Help Center home/ticket tab | Live for support thread updates | Yes | High | Realtime remains, but owner listener/query is capped to latest 100 tickets. |
 | Platform tickets | `subscribeSupportTickets`, `getSupportTickets` | `onSnapshot`, `getDocs` | `supportTickets` | Platform queue/dashboard | Live platform queue | Yes | Medium | Existing 500 cap retained via shared constant. |
 | Feedback | `ShareFeedbackView`, `addFeedback`, `getLatestFeedbackForUser` | `addDoc`, `getDocs(limit 1)` | `feedback` | Feedback tab mount and submit | Submitted item must show immediately | No | Low/Medium | Submit now uses returned `addDoc` payload; removed post-submit read. |
@@ -76,6 +79,21 @@ Remaining cost risks are non-blocking and documented below.
    - Firestore `aiSearchHistory` cache rows and Redis canonical cache payloads capture `sourceVersions`.
    - Cache hits now validate freshness with one tiny manifest read when source versions exist; when the manifest has not been initialized yet, KB cache rows use the already-required latest-article modified timestamp as the source version. Older rows without any source version safely fall back to direct source document validation.
 
+9. **Public Help Center content cache**
+   - Added `src/app/api/canonica/public-content/route.ts` and `src/lib/canonica/publicContentCache.ts`.
+   - KB categories, full article reads, FAQ lists, latest changelog, and older changelog pages now use server-side `unstable_cache` with tenant/store tags.
+   - Help Center changelog passes `useInternalFallback={false}` so the shared changelog renderer cannot issue its older direct browser Firestore read while the cached API response is loading.
+   - Changelog management preview also disables the shared renderer fallback because the parent management screen already owns the changelog page fetch.
+   - Changelog related-article breadcrumbs lazy-load the shared cached KB category payload only when an entry has `kbSources`.
+   - Added `/api/revalidate/canonica` plus `revalidateCanonicaPublicClientCache()` so owner FAQ, KB category, article, and changelog writes clear the affected public cache tags.
+   - Public article payloads remove embedding/generated/internal fields before returning to the browser.
+
+10. **Hosted public Help Center**
+   - Added `canonica_publicHelpSites/{domain}` registry docs so anonymous help domains resolve with one cached direct doc read.
+   - Added hosted docs/FAQ/changelog pages, robots, sitemap, owner settings, and domain registry invalidation.
+   - Hosted search is client-side over already-loaded published content and does not call AI or write search history.
+   - Anonymous hosted pages do not expose tickets, chat sessions, feedback writes, or user/session data.
+
 ---
 
 ## Before / After Cost Impact
@@ -83,6 +101,12 @@ Remaining cost risks are non-blocking and documented below.
 | Flow | Before | After |
 | --- | --- | --- |
 | Help Center home KB categories | `BrowseCategories` and `TrendingTopics` could both read the same categories doc on first mount | One shared in-flight fetch, then context cache |
+| Help Center repeat KB/FAQ/changelog visits | Each browser session/tab could hit Canonica Firestore again | Cached API response; Firestore only on cache miss or after owner-write invalidation |
+| Help Center changelog first render | Shared renderer could call the older direct browser changelog cache while the public-content response was loading | Help Center disables internal fallback and waits for the cached API result |
+| Changelog related article links | Related-article breadcrumbs depended on category data already being present in global context | Lazy shared category cache fetch only when a changelog entry has KB sources |
+| Full article render | Browser read returned the whole article document including embedding/internal fields | Cached server read validates tenant/store and returns compact public article payload |
+| Hosted help domain resolution | Would require store-domain query or authenticated session reuse | Direct cached registry doc per help domain |
+| Hosted help search | Could have used anonymous AI search and provider cost | Client-side filtering over already-loaded published content |
 | AI chat opening after Help Center | Could refetch categories and store the wrong cache shape | Reuses same `{ categories }` cache payload |
 | Store ticket listener | Unbounded live snapshot for all non-deleted store tickets | Latest 100 non-deleted tickets |
 | User chat history | Unbounded tenant/user query and no `sId` filter | Store-scoped latest 50 sessions |
@@ -105,6 +129,7 @@ Remaining cost risks are non-blocking and documented below.
 | Public API key validation reads `stores` on each request | Security-sensitive auth path. In-memory caching could delay revocation. | Keep current fail-closed behavior unless revocation-aware cache is designed. |
 | Governance tabs can still refetch on tab navigation when enabled | Feature is off by default; active governance users need fresh review state. | Future improvement: governance-level data provider with explicit refresh. |
 | Today live analytics capped at 500 sessions | Prevents runaway dashboard reads but can undercount extreme same-day volume until nightly aggregate catches up. | Use nightly/manual aggregation for exact high-volume reporting. |
+| Hosted help domain prefixes are intentionally narrow | Middleware cannot query Firestore at the edge, so only common help/docs/support/kb host prefixes route to the hosted resolver. | Add explicit prefixes only when needed; do not reroute all custom domains because MenuList custom domains share this Vercel project. |
 
 ---
 
@@ -123,6 +148,7 @@ Remaining cost risks are non-blocking and documented below.
 | Scope review | No schema-breaking changes |
 | Realtime review | Realtime kept only for ticket flows that need live updates |
 | Tenant scope review | Added `sId` guard to user chat history and KB delete helper queries |
+| Public cache route review | New route derives tenant/store from session only; client-supplied tenant/store IDs are not trusted |
 
 ---
 

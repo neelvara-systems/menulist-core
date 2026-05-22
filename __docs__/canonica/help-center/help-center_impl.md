@@ -61,7 +61,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `MainSectionTabs.tsx`        | —     | Tab grid navigation cards                                                             |
 | `ChangelogView.tsx`          | —     | Changelog viewer (reads from DAL)                                                     |
 | `ContactUsView.tsx`          | —     | Escalation chooser: ticket, assistant, feedback, support email, partnership email      |
-| `FaqView.tsx`                | —     | FAQ display                                                                           |
+| `FaqView.tsx`                | —     | Published Canonica FAQ display with article links and feedback; static fallback       |
 | `ShareFeedbackView.tsx`      | 164   | 3-step feedback wizard (general → usage → requests)                                   |
 | `GeneralFeedback.tsx`        | 30    | Step 1: Star rating + comment                                                         |
 | `FeatureUsage.tsx`           | —     | Step 2: Feature issues checklist                                                      |

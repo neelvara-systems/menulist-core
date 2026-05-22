@@ -9,7 +9,7 @@
 
 ## What Is This
 
-The KB Generation Pipeline is MenuList's **AI-powered article generation system** — platform administrators upload raw source files (PDFs, documents, videos, images, websites), and the system uses AI to generate structured knowledge base articles with categories, sections, and content. Generated articles go through a review → reconciliation → publish → embed workflow before becoming searchable by the AI QnA Chatbot.
+The KB Generation Pipeline is Canonica's article and FAQ generation system — product owners upload raw source files (PDFs, documents, videos, images, websites, copied text), and the system generates structured knowledge base articles with optional source-backed FAQ suggestions. Generated articles and FAQs go through review → reconciliation → publish → embed workflow before becoming searchable and visible in the Help Center.
 
 ---
 
@@ -58,11 +58,11 @@ The KB Generation Pipeline is MenuList's **AI-powered article generation system*
 
 ```
 Upload Files → Create Job (pending)
-  → Cloud Function processes files → AI generates categories/sections/articles
+  → Cloud Function processes files → generates categories/sections/articles and optional FAQs
   → Job status: processing → needs_review
   → Platform admin reviews generated content
   → Reconciliation: handle duplicate articles (replace/discard/keep_both)
-  → Publish: articles written to kb_articles + embeddings generated
+  → Publish: articles written to kb_articles, FAQs written to canonica_faqs, embeddings generated
   → Job status: publishing → published
 ```
 

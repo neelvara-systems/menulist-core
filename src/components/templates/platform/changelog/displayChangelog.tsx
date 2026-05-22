@@ -57,7 +57,17 @@ function isNewEntry(entry: ChangelogEntry, lastViewedAt: number): boolean {
     } catch { return false; }
 }
 
-function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?: string; pageData: ChangelogPage | null }) {
+function DisplayChangelog({
+    initialEntryId,
+    loadOlderPage,
+    pageData = null,
+    useInternalFallback = true,
+}: {
+    initialEntryId?: string;
+    loadOlderPage?: (currentPageNumber: number) => Promise<ChangelogPage | null>;
+    pageData: ChangelogPage | null;
+    useInternalFallback?: boolean;
+}) {
     const { getItem } = useChangelogCache();
     const [changelogPage, setChangelogPage] = useState<ChangelogPage | null>(null);
     const [entries, setEntries] = useState<ChangelogEntry[]>([]);
@@ -108,7 +118,19 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
     }, [entries, searchQuery, selectedTags]);
 
     const fetchLatestPage = useCallback(async () => {
-        dispatch(startLoader('Fetching Changelog...'));
+        const shouldFetchInternalFallback = !pageData && useInternalFallback;
+
+        if (!pageData && !useInternalFallback) {
+            setChangelogPage(null);
+            setEntries([]);
+            setHasMore(false);
+            return;
+        }
+
+        if (shouldFetchInternalFallback) {
+            dispatch(startLoader('Fetching Changelog...'));
+        }
+
         try {
             let page = pageData;
             if (!pageData) {
@@ -125,9 +147,11 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
         } catch (error) {
             message.error('Failed to fetch changelog.');
         } finally {
-            dispatch(stopLoader('Fetching Changelog...'));
+            if (shouldFetchInternalFallback) {
+                dispatch(stopLoader('Fetching Changelog...'));
+            }
         }
-    }, [dispatch, getItem, pageData]);
+    }, [dispatch, getItem, pageData, useInternalFallback]);
 
     useEffect(() => {
         void fetchLatestPage();
@@ -150,7 +174,9 @@ function DisplayChangelog({ initialEntryId, pageData = null }: { initialEntryId?
         if (!changelogPage) return;
         dispatch(startLoader('Loading More...'));
         try {
-            const olderPage = await loadOlderChangelogPage(changelogPage.pageNumber);
+            const olderPage = loadOlderPage
+                ? await loadOlderPage(changelogPage.pageNumber)
+                : await loadOlderChangelogPage(changelogPage.pageNumber);
             if (olderPage) {
                 setChangelogPage(olderPage as ChangelogPage);
                 setEntries(prev => [...prev, ...olderPage.entries]);

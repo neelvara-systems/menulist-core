@@ -184,18 +184,38 @@ const HeroSearchBar = ({ activeTab, setActiveTab }: { activeTab: string; setActi
                                 aria-label="Search help center"
                                 prefix={<LuSearch className="help-center-search-icon" size={18} color={token.colorTextPlaceholder} aria-hidden="true" />}
                                 suffix={(
-                                    <span className="help-center-search-control-suffix">
+                                    <span
+                                        className="help-center-search-control-suffix"
+                                        style={{
+                                            alignItems: 'center',
+                                            display: 'inline-flex',
+                                            gap: 8,
+                                            height: '100%',
+                                            justifyContent: 'flex-end',
+                                        }}
+                                    >
                                         <span
                                             className="help-center-search-shortcut"
                                             aria-hidden="true"
+                                            style={{
+                                                alignItems: 'center',
+                                                display: 'inline-flex',
+                                                flexShrink: 0,
+                                            }}
                                         >
                                             <kbd style={{
-                                                padding: '2px 6px',
+                                                alignItems: 'center',
+                                                display: 'inline-flex',
+                                                height: 22,
+                                                justifyContent: 'center',
+                                                lineHeight: 1,
+                                                minWidth: 30,
+                                                padding: '0 6px',
                                                 borderRadius: 4,
                                                 background: token.colorBgElevated,
                                                 border: `1px solid ${token.colorBorder}`,
                                                 fontSize: 10
-                                            }}>⌘K</kbd>
+                                            }}>⌘/</kbd>
                                         </span>
                                         <Button
                                             className="help-center-search-button"

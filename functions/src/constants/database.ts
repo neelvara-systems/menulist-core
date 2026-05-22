@@ -140,6 +140,7 @@ export const DB_COLLECTIONS = {
     CANONICA_ENTITY_SEARCH_INDEX: 'canonica_entitySearchIndex',
     CANONICA_ENTITY_CANDIDATES: 'canonica_entityCandidates',
     CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
+    CANONICA_FAQS: 'canonica_faqs',
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

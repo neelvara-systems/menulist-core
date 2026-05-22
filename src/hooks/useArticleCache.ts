@@ -1,4 +1,4 @@
-import { getArticleById } from '@database/knowledgeBase/articles';
+import { fetchCanonicaPublicArticle } from '@lib/canonica/publicContentClient';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { Timestamp } from 'firebase/firestore';
@@ -170,7 +170,7 @@ export const useArticleCache = () => {
             options.onCacheMiss?.();
 
             try {
-                const article = await getArticleById(articleId);
+                const article = await fetchCanonicaPublicArticle(articleId);
 
                 // Filter: Only cache active articles
                 if (article && isArticleActive(article)) {
@@ -208,7 +208,7 @@ export const useArticleCache = () => {
         options?.onCacheMiss?.();
 
         try {
-            const article = await getArticleById(articleId);
+            const article = await fetchCanonicaPublicArticle(articleId);
 
             // Filter: Only cache and return active articles
             if (article && isArticleActive(article)) {

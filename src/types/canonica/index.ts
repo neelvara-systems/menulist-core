@@ -184,6 +184,75 @@ export interface CanonicaCanonicalAnswer extends CanonicaDocumentIdentity {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// FAQ MANAGEMENT
+// Owner-reviewed short answers linked to articles and product surfaces.
+// ═══════════════════════════════════════════════════════════════
+
+export const CANONICA_FAQ_STATUS = {
+    DRAFT: 'draft',
+    NEEDS_REVIEW: 'needs_review',
+    PUBLISHED: 'published',
+    ARCHIVED: 'archived',
+} as const;
+
+export type CanonicaFaqStatus = typeof CANONICA_FAQ_STATUS[keyof typeof CANONICA_FAQ_STATUS];
+
+export const CANONICA_FAQ_SOURCE = {
+    IMPORT: 'import',
+    MANUAL: 'manual',
+    TICKET_SIGNAL: 'ticket_signal',
+    ARTICLE: 'article',
+} as const;
+
+export type CanonicaFaqSource = typeof CANONICA_FAQ_SOURCE[keyof typeof CANONICA_FAQ_SOURCE];
+
+export interface CanonicaFaq extends CanonicaDocumentIdentity {
+    id: string;
+    tId: number;
+    sId: number;
+
+    question: string;
+    answer: string;
+    status: CanonicaFaqStatus;
+    source: CanonicaFaqSource;
+    active: boolean;
+
+    articleId?: string | null;
+    articleTitle?: string | null;
+    canonicalAnswerId?: string | null;
+    entityIds?: string[];
+    contextKeys?: string[];
+    tags?: string[];
+
+    likes?: number;
+    dislikes?: number;
+    sortOrder?: number;
+    publishedOn?: Timestamp | null;
+    lastReviewedOn?: Timestamp | null;
+    reviewRequestedOn?: Timestamp | null;
+
+    jobId?: string | null;
+    generatedFromArticleId?: string | null;
+
+    createdOn?: Timestamp;
+    modifiedOn?: Timestamp;
+    createdBy?: string;
+    modifiedBy?: string;
+    uId?: number;
+}
+
+export interface CanonicaGeneratedFaq {
+    id?: string;
+    question: string;
+    answer: string;
+    tags?: string[];
+    contextKeys?: string[];
+    entityIds?: string[];
+    source?: CanonicaFaqSource;
+    sortOrder?: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // PILLAR 3 — DRIFT GOVERNANCE
 // ═══════════════════════════════════════════════════════════════
 
@@ -669,6 +738,15 @@ export interface CanonicaRelatedChangelogRef {
     tags?: string[];
 }
 
+export interface CanonicaRelatedFaqRef {
+    id: string;
+    question: string;
+    answer?: string;
+    articleId?: string | null;
+    articleTitle?: string | null;
+    tags?: string[];
+}
+
 export interface CanonicaSurfaceTicketStats {
     total: number;
     open: number;
@@ -688,6 +766,7 @@ export interface CanonicaSurfaceContentItem {
     visibility?: CanonicaProductSurfaceVisibility;
     articles: CanonicaRelatedArticleRef[];
     changelogs: CanonicaRelatedChangelogRef[];
+    faqs?: CanonicaRelatedFaqRef[];
     tickets: CanonicaSurfaceTicketStats;
 }
 
@@ -699,6 +778,7 @@ export interface CanonicaSurfaceContentSummary {
     generatedAt?: any;
     surfaceCount: number;
     articleCount: number;
+    faqCount?: number;
     changelogCount: number;
     ticketCount: number;
     surfaces: Record<string, CanonicaSurfaceContentItem>;
@@ -745,6 +825,20 @@ export interface CanonicaActivationStep {
     costNote?: string;
 }
 
+export type CanonicaSurfaceReadinessStatus = 'ready' | 'needs_mapping' | 'needs_articles' | 'open_signals';
+
+export interface CanonicaSurfaceReadinessItem {
+    key: string;
+    label: string;
+    routePatterns: string[];
+    articleCount: number;
+    faqCount?: number;
+    changelogCount: number;
+    ticketCount: number;
+    openTicketCount: number;
+    status: CanonicaSurfaceReadinessStatus;
+}
+
 export interface CanonicaActivationSummary {
     id?: string;
     pId?: ProductId;
@@ -770,12 +864,20 @@ export interface CanonicaActivationSummary {
         configVersion: number;
         runtimeStatus?: CanonicaWidgetRuntimeStatus | null;
     };
+    notifications: {
+        enabled: boolean;
+        smtpConfigured: boolean;
+        fromAddress?: string | null;
+        logTarget?: string | null;
+    };
     content: {
         surfaceCount: number;
         articleCount: number;
+        faqCount?: number;
         changelogCount: number;
         ticketCount: number;
         summaryGeneratedAt?: any;
+        surfaceReadiness: CanonicaSurfaceReadinessItem[];
     };
     governance: {
         canonicalCoverageRate?: number | null;

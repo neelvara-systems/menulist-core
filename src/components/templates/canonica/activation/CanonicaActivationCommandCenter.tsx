@@ -2,6 +2,8 @@
 
 import { CANONICA_GOVERNANCE_TABS, CANONICA_ROUTES, getCanonicaGovernanceRoute, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
 import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
+import CanonicaCustomerFlowChecklist from '@template/canonica/content/CanonicaCustomerFlowChecklist';
+import CanonicaContentWorkbench from '@template/canonica/content/CanonicaContentWorkbench';
 import {
     Alert,
     Button,
@@ -26,10 +28,12 @@ import {
     LuBookOpen,
     LuBoxes,
     LuCheckCircle2,
+    LuHelpCircle,
     LuCircle,
     LuCode,
     LuExternalLink,
     LuLayers,
+    LuMail,
     LuRadioTower,
     LuRefreshCw,
     LuRocket,
@@ -94,6 +98,7 @@ export default function CanonicaActivationCommandCenter() {
     const [summary, setSummary] = useState<ActivationSummaryResponse['summary']>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [testingNotification, setTestingNotification] = useState(false);
 
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
@@ -158,6 +163,23 @@ export default function CanonicaActivationCommandCenter() {
         if (!route) return;
         router.push(toCanonicaDashboardRoute(route, currentHostname));
     }, [currentHostname, router]);
+
+    const testNotifications = useCallback(async () => {
+        setTestingNotification(true);
+        try {
+            const response = await fetch('/api/canonica/notifications/test', { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.sent) {
+                throw new Error(data.error || 'Notification test failed');
+            }
+            message.success(`Test email sent to ${data.recipientEmail}`);
+            await loadSummary(true);
+        } catch (error: any) {
+            message.error(error?.message || 'Notification test failed');
+        } finally {
+            setTestingNotification(false);
+        }
+    }, [loadSummary]);
 
     if (loading) {
         return <Skeleton active paragraph={{ rows: 10 }} />;
@@ -235,7 +257,7 @@ export default function CanonicaActivationCommandCenter() {
             </Row>
 
             <Row gutter={[12, 12]}>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={9}>
                     <Card>
                         <Flex align="center" gap={16}>
                             <Progress
@@ -252,27 +274,44 @@ export default function CanonicaActivationCommandCenter() {
                         </Flex>
                     </Card>
                 </Col>
-                <Col xs={12} md={4}>
+                <Col xs={12} md={3}>
                     <Card>
                         <Statistic title="Articles" value={summary.content.articleCount} prefix={<LuBookOpen />} />
                     </Card>
                 </Col>
-                <Col xs={12} md={4}>
+                <Col xs={12} md={3}>
+                    <Card>
+                        <Statistic title="FAQs" value={summary.content.faqCount || 0} prefix={<LuHelpCircle />} />
+                    </Card>
+                </Col>
+                <Col xs={12} md={3}>
                     <Card>
                         <Statistic title="Surfaces" value={summary.content.surfaceCount} prefix={<LuLayers />} />
                     </Card>
                 </Col>
-                <Col xs={12} md={4}>
+                <Col xs={12} md={3}>
                     <Card>
                         <Statistic title="Releases" value={summary.content.changelogCount} prefix={<LuRadioTower />} />
                     </Card>
                 </Col>
-                <Col xs={12} md={4}>
+                <Col xs={12} md={3}>
                     <Card>
                         <Statistic title="Tickets" value={summary.content.ticketCount} prefix={<LuTicket />} />
                     </Card>
                 </Col>
             </Row>
+
+            <CanonicaContentWorkbench
+                summary={summary}
+                isMobile={isMobile}
+                onOpen={openRoute}
+            />
+
+            <CanonicaCustomerFlowChecklist
+                summary={summary}
+                isMobile={isMobile}
+                onOpen={openRoute}
+            />
 
             <Row gutter={[12, 12]}>
                 <Col xs={24} lg={16}>
@@ -341,6 +380,37 @@ export default function CanonicaActivationCommandCenter() {
                                         <Text code style={{ whiteSpace: 'normal', textAlign: 'right' }}>{summary.widget.runtimeStatus.lastPath}</Text>
                                     </Flex>
                                 )}
+                            </Space>
+                        </Card>
+                        <Card title="Ticket Notifications">
+                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Email events</Text>
+                                    <Tag color={summary.notifications.enabled ? 'success' : 'default'}>
+                                        {summary.notifications.enabled ? 'Enabled' : 'Off'}
+                                    </Tag>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Sender</Text>
+                                    <Tag color={summary.notifications.smtpConfigured ? 'success' : 'warning'}>
+                                        {summary.notifications.smtpConfigured ? 'Configured' : 'Missing'}
+                                    </Tag>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">From</Text>
+                                    <Text style={{ textAlign: 'right', wordBreak: 'break-all' }}>
+                                        {summary.notifications.fromAddress || 'Not set'}
+                                    </Text>
+                                </Flex>
+                                <Button
+                                    block
+                                    icon={<LuMail />}
+                                    loading={testingNotification}
+                                    disabled={!summary.notifications.enabled || !summary.notifications.smtpConfigured || !summary.workspace.supportEmail}
+                                    onClick={testNotifications}
+                                >
+                                    Send Test Email
+                                </Button>
                             </Space>
                         </Card>
                         <Card title="License">

@@ -1,8 +1,9 @@
 # Product Friction Intelligence — Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Status:** DOCUMENTED — Implementation Pending
+> **Version:** 1.1.0
+> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
 > **Created:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Feature Flag:** `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
 
 ---
@@ -23,7 +24,7 @@
            │
            ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│              NEW: FRICTION INTELLIGENCE LAYER                        │
+│              FRICTION INTELLIGENCE LAYER                             │
 │                                                                      │
 │  STEP 9 — Nightly Friction Aggregation                              │
 │  canonica_signalEvents + aiSearchHistory                             │
@@ -341,7 +342,7 @@ firestore.indexes.json                                     — Add 2 composite i
  * Requires: ENABLE_CANONICA_SIGNAL_MUTATION = true
  * @see __docs__/canonica/product-friction-intelligence/
  */
-ENABLE_CANONICA_FRICTION_INTELLIGENCE: false,
+ENABLE_CANONICA_FRICTION_INTELLIGENCE: true,
 ```
 
 ---

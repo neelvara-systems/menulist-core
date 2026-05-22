@@ -8,15 +8,15 @@ import { addContentFeedback } from '@database/contentFeedback';
 import { updateChangelogFeedbackGeneric } from '@database/feedback/genericFeedback';
 import { useContentViewTracking } from '@hook/useContentViewTracking';
 import { useFeedback } from '@hook/useFeedback';
+import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import ArticleViewModal from '@organisms/ArticleViewModal';
-import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { generateHTML } from '@tiptap/core';
 import { ChangelogEntry } from '@type/changelog';
 import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import { getYouTubeID } from '@util/utils';
 import { Breadcrumb, Card, Flex, Grid, Image, Typography, theme } from 'antd';
-import React, { useContext, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ChangelogTagRenderer from './ChangelogTagRenderer';
 
 const { Title, Text } = Typography;
@@ -32,9 +32,14 @@ interface ChangelogPreviewProps {
 const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode, disableTracking = false }) => {
     const { token } = useToken();
     const screens = Grid.useBreakpoint();
-    const { cachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { categoriesData, getCategoriesCached } = useKBCategoriesCache();
     const [articleModal, setArticleModal] = useState<{ active: boolean; article: KnowledgeBaseArticleMeta | null }>({ active: false, article: null });
     const isMobile = screens.md === false;
+
+    useEffect(() => {
+        if (!item.kbSources?.length) return;
+        void getCategoriesCached().catch(() => undefined);
+    }, [getCategoriesCached, item.id, item.kbSources?.length]);
 
     // Track changelog view for analytics and recently viewed (disabled when viewing from Recently Viewed)
     useContentViewTracking(
@@ -226,7 +231,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                             <Title level={5}>Related Articles</Title>
                             <Flex vertical gap={8}>
                                 {item.kbSources.map((source, i) => {
-                                    const category = cachedKBCategories?.kBCategories?.categories?.[source.categoryId];
+                                    const category = categoriesData?.categories?.[source.categoryId];
                                     const section = category?.sections?.find(s => s.id === source.sectionId);
                                     const article = section?.articles?.find(a => a.id === source.articleId) || category?.articles?.find(a => a.id === source.articleId);
 

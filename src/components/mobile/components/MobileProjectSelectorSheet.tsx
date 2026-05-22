@@ -977,22 +977,27 @@ export default function MobileProjectSelectorSheet({
             return;
         }
 
-        const isCurrent = project.projectId === currentProjectId;
-        const fallback = getDeleteFallbackProject(project.projectId);
-        const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
-        setManagingProjectId(null);
-        await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
-        removeCachedProject(project.projectId);
-        if (defaultReplacement?.projectId) {
-            upsertCachedProject({
-                ...(projectsById[defaultReplacement.projectId] || defaultReplacement),
-                ...defaultReplacement,
-                isDefault: true,
-                projectId: defaultReplacement.projectId,
-            });
+        try {
+            const isCurrent = project.projectId === currentProjectId;
+            const fallback = getDeleteFallbackProject(project.projectId);
+            const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
+            await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            setManagingProjectId(null);
+            removeCachedProject(project.projectId);
+            if (defaultReplacement?.projectId) {
+                upsertCachedProject({
+                    ...(projectsById[defaultReplacement.projectId] || defaultReplacement),
+                    ...defaultReplacement,
+                    isDefault: true,
+                    projectId: defaultReplacement.projectId,
+                });
+            }
+            await syncSelectionOnly(isCurrent ? fallback?.projectId || null : currentProjectId || null);
+            Toast.show({ content: t('catalogDeleted'), duration: 1400 });
+        } catch (error) {
+            console.error('Error deleting project:', error);
+            Toast.show({ content: `Could not delete ${labels.offeringLower}`, duration: 1800 });
         }
-        await syncSelectionOnly(isCurrent ? fallback?.projectId || null : currentProjectId || null);
-        Toast.show({ content: t('catalogDeleted'), duration: 1400 });
     };
 
     const getProjectShareUrl = (project: ProjectSheetProject) => {

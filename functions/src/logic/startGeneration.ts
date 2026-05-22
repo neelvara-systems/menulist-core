@@ -60,6 +60,7 @@ export const startGenerationLogic = async (jobId: string, job: IngestionJob) => 
                 content: article.content,
                 embedding: FieldValue.vector(embeddingVector),
                 tags: [],
+                generatedFaqs: Array.isArray(article.generatedFaqs) ? article.generatedFaqs : [],
                 createdOn: Timestamp.now() as any,
                 modifiedOn: Timestamp.now() as any,
                 status: ARTICLE_STATUS.NEEDS_REVIEW as any,

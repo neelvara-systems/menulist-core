@@ -36,6 +36,7 @@ export const DB_COLLECTIONS = {
     CANONICA_FRICTION_DAILY_STATS: 'canonica_frictionDailyStats',
     CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
     CANONICA_CACHE_VERSIONS: 'canonica_cacheVersions',
+    CANONICA_NOTIFICATION_LOGS: 'canonica_notificationLogs',
 
     // External Workflow Integrations (Expansion Item #7)
     // Append-only event log + delivery attempt logs
@@ -54,4 +55,9 @@ export const DB_COLLECTIONS = {
     // Owner-managed route/page/workflow map for context-aware retrieval.
     // @see __docs__/canonica/product-surface-contexts/
     CANONICA_PRODUCT_SURFACES: 'canonica_productSurfaces',
+
+    // FAQ Management
+    // Owner-reviewed short answers linked to articles, product surfaces, and entities.
+    // @see __docs__/canonica/faq-management/
+    CANONICA_FAQS: 'canonica_faqs',
 } as const;

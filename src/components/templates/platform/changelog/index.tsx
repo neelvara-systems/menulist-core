@@ -4,7 +4,7 @@ import { deleteChangelogEntry, loadOlderChangelogPage } from '@database/changelo
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useChangelogCache } from '@hook/useChangelogCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { Button, Divider, Flex, Layout, Modal, Steps, Typography, message } from 'antd';
+import { Button, Divider, Flex, Grid, Layout, Modal, Steps, Typography, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { LuBookOpen, LuDot, LuEye, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import InfiniteScroll from 'react-infinite-scroll-component';
@@ -28,6 +28,8 @@ function ChangelogTemplate() {
     const [entries, setEntries] = useState<any[]>([]);
     const [hasMore, setHasMore] = useState(true);
     const { clearCache: clearChangelogCache, getItem: getCachedChangelog } = useChangelogCache();
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
 
     const sortEntries = (entriesToSort: any[]) => {
@@ -122,15 +124,26 @@ function ChangelogTemplate() {
     };
 
     return (
-        <Layout style={{ height: '100%', padding: 24 }}>
+        <Layout style={{ height: '100%', padding: isMobile ? 12 : 24 }}>
             <Content>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                    <Title level={3}>Changelog Management</Title>
-                    <Flex gap={16}>
+                <Flex
+                    justify="space-between"
+                    align={isMobile ? 'stretch' : 'center'}
+                    gap={12}
+                    vertical={isMobile}
+                    style={{ marginBottom: isMobile ? 16 : 24 }}
+                >
+                    <div>
+                        <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Changelog</Title>
+                        <Typography.Text type="secondary">
+                            Publish release notes and connect them to affected product surfaces and articles.
+                        </Typography.Text>
+                    </div>
+                    <Flex gap={8} vertical={isMobile}>
                         <Button icon={<LuBookOpen />} onClick={() => setIsPreviewModalVisible(true)}>View Preview</Button>
                         <Button type="primary" icon={<LuPlus />} onClick={() => { setEditingEntry(null); setIsModalVisible(true); }}>Add New Entry</Button>
                     </Flex>
-                </div>
+                </Flex>
 
                 {isModalVisible ? (
                     <AddEditChangelog
@@ -144,7 +157,7 @@ function ChangelogTemplate() {
                     />
                 ) : null}
 
-                <div id="scrollableDiv" style={{ height: 'calc(100vh - 200px)', overflow: 'auto' }}>
+                <div id="scrollableDiv" style={{ height: isMobile ? 'auto' : 'calc(100vh - 200px)', overflow: isMobile ? 'visible' : 'auto' }}>
                     <InfiniteScroll
                         dataLength={entries.length}
                         next={loadMore}
@@ -161,16 +174,16 @@ function ChangelogTemplate() {
                                     title={item.title}
                                     description={
                                         <Flex vertical>
-                                            <Flex justify="space-between" align="center">
-                                                <Flex gap={16} align="center">
+                                            <Flex justify="space-between" align={isMobile ? 'flex-start' : 'center'} gap={8} vertical={isMobile}>
+                                                <Flex gap={8} align="center" wrap="wrap">
                                                     {item.version && <Typography.Text strong>V{item.version}</Typography.Text>}
                                                     <DateTimeDisplay value={item.releasedOn} />
-                                                    <Flex gap={8}>
+                                                    <Flex gap={8} wrap="wrap">
                                                         {item.tags?.map((tag: string) => <ChangelogTagRenderer key={tag} tag={tag} />)}
                                                     </Flex>
                                                 </Flex>
-                                                <Flex gap={16} align="center">
-                                                    <Flex>
+                                                <Flex gap={isMobile ? 8 : 16} align={isMobile ? 'flex-start' : 'center'} vertical={isMobile}>
+                                                    <Flex style={{ display: isMobile ? 'none' : undefined }}>
                                                         <DateTimeDisplay value={item.createdOn} mode="datetime" label="Created On" style={{ fontStyle: 'italic' }} />
                                                     </Flex>
                                                     <Flex gap={8}>
@@ -192,10 +205,10 @@ function ChangelogTemplate() {
                     open={isPreviewModalVisible}
                     onCancel={() => setIsPreviewModalVisible(false)}
                     footer={null}
-                    width="80vw"
+                    width={isMobile ? '96vw' : '80vw'}
                     centered
                 >
-                    <DisplayChangelog pageData={changelogPage} />
+                    <DisplayChangelog pageData={changelogPage} useInternalFallback={false} />
                 </Modal>
 
                 {previewingEntry && (
@@ -203,7 +216,7 @@ function ChangelogTemplate() {
                         open={!!previewingEntry}
                         onCancel={() => setPreviewingEntry(null)}
                         footer={null}
-                        width="60vw"
+                        width={isMobile ? '96vw' : '60vw'}
                         centered
                     >
                         <ChangelogPreview item={previewingEntry} mode="modal" pageId={changelogPage?.id || ''} />

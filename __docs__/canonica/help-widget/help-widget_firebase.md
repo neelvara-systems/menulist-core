@@ -1,7 +1,7 @@
 # Canonica Help Widget — Firebase Operations & Cost
 
-> **Version:** 2.4.0
-> **Last Updated:** 2026-05-19
+> **Version:** 2.4.4
+> **Last Updated:** 2026-05-22
 > **Audience:** Developers / Ops
 
 ---
@@ -90,6 +90,7 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 19. **Duplicate feedback guard** — repeated identical thumbs feedback returns success without another `aiSearchHistory` write or duplicate negative signal event.
 20. **Predictive context cache** — the loader caches same-page predictive results/misses for a short TTL, avoiding repeated auth/index reads from route remounts with identical context.
 21. **Route blocklist is local** — blocked routes ride the existing runtime config response and use `window.location.pathname`; route changes do not create Firebase reads, writes, or listeners.
+22. **Branding rides runtime config** — header title, accent color, greeting, and powered-by visibility use the existing `/api/widget/config` response; no separate white-label collection or listener is needed for the launch-grade widget controls.
 
 ## Cache Strategy Decision
 
@@ -121,6 +122,7 @@ The mutation engine (signal events from widget feedback → mutation proposals �
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-22 | 2.4.4   | Added widget branding cost note: launch-grade branding rides existing runtime config and adds no Firestore reads/listeners. |
 | 2026-05-21 | 2.4.3   | Removed temporary client-product connector cost notes after separating Canonica runtime from client product code. |
 | 2026-05-20 | 2.4.2   | Added route blocklist cost note: no new collections, reads, writes, or Firestore listeners. |
 | 2026-05-19 | 2.4.1   | Added widget cost pass: 60-second runtime config server cache, negative auth cache, no-op config save guard, duplicate feedback guard, and predictive context cache. |

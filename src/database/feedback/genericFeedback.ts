@@ -7,6 +7,7 @@
 
 import { updateArticleFeedback } from '@database/knowledgeBase/articles';
 import { updateChangelogFeedback } from '@database/changelog';
+import { updateFaqFeedback } from '@database/canonica/faqs';
 
 export type ContentType = 'article' | 'changelog' | 'faq' | 'workflow';
 
@@ -57,8 +58,7 @@ export const updateContentFeedback = async (params: FeedbackUpdateParams) => {
             return await updateChangelogFeedback(pageId, contentId, feedbackType, increment);
 
         case 'faq':
-            // TODO: Implement FAQ feedback when FAQ feature is added
-            throw new Error('FAQ feedback not yet implemented');
+            return await updateFaqFeedback(contentId, feedbackType, increment);
 
         case 'workflow':
             // TODO: Implement Workflow feedback when Workflow feature is added

@@ -67,6 +67,8 @@ Any client-specific context must be passed through the generic widget SDK or scr
 
 Canonica operators manage the embeddable widget from `/canonica/widget`. This is the single dashboard surface for widget keys, install snippets, appearance, behavior, origin allowlists, route blocklists, context snippets, and desktop/mobile preview. The screen is organized as UI Configuration, Install & Embed, and Access & Security so customer-facing settings stay separate from operational internals.
 
+The UI Configuration tab now covers the low-cost branding controls SaaS owners expect at launch: launcher label, header title, greeting, accent color, launcher shape/display, mobile visibility, and whether the "Powered by Canonica" badge is shown. These settings ride the existing remote widget config response and do not introduce a new branding collection or realtime listener.
+
 Saved widget settings are stored on the workspace store document under `widgetConfig`, `widgetAllowedOrigins`, and `widgetConfigVersion`. The installed script reads those settings through `GET /api/widget/config` with the widget key, so already-installed snippets can pick up dashboard changes without requiring customers to edit script attributes. Script attributes remain supported and intentionally override remote config for per-environment exceptions.
 
 Runtime config and predictive suggestions are intentionally short-cached. The server and browser both avoid repeated config reads for the same widget key/origin, unchanged dashboard saves do not write, and identical page-context predictive checks reuse a short-lived suggestion/miss. This keeps the embed centrally configurable without adding realtime listeners or page-load writes. Cache policy is not exposed as a customer setting; the management UI only tells operators that installed widgets can take up to 60 seconds to pick up saved changes.
@@ -146,6 +148,7 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-22 | 2.4.4   | Added launch-grade widget branding controls for header title, accent color propagation, greeting, and powered-by visibility without adding runtime Firestore reads. |
 | 2026-05-20 | 2.4.2   | Added route blocklist settings for hiding the widget on selected client routes without adding Firebase reads. |
 | 2026-05-20 | 2.4.1   | Split widget management into customer-understandable tabs and removed the standalone Cost & Cache customer-facing section. |
 | 2026-05-19 | 2.4.0   | Added dedicated `/canonica/widget` management console, scoped `canonicaWidgetApi` credentials, public runtime config endpoint, and dashboard-backed script config loading. |

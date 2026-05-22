@@ -36,7 +36,7 @@ import {
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuArchive, LuBookOpen, LuLayers, LuPlus, LuRefreshCw, LuSave, LuTicket } from 'react-icons/lu';
+import { LuArchive, LuBookOpen, LuHelpCircle, LuLayers, LuPlus, LuRefreshCw, LuSave, LuTicket } from 'react-icons/lu';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 
 const { Paragraph, Text, Title } = Typography;
@@ -220,7 +220,7 @@ export default function CanonicaProductSurfaces() {
                 type="info"
                 style={{ marginTop: 16, marginBottom: 16 }}
                 message="Use stable context keys in your app"
-                description="For example, pass contextKey: billing_invoices from the billing route. Canonica then boosts linked entities and returns related articles or release notes without scanning every document at runtime."
+                description="For example, pass contextKey: billing_invoices from the billing route. Canonica then prefers the articles, release notes, entities, and ticket signals connected to that product area."
             />
 
             {loading ? (
@@ -259,7 +259,7 @@ export default function CanonicaProductSurfaces() {
                                                             </Flex>
                                                             {itemSummary && (
                                                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                                                    {itemSummary.articles?.length || 0} articles · {itemSummary.changelogs?.length || 0} releases · {itemSummary.tickets?.total || 0} tickets
+                                                                    {itemSummary.articles?.length || 0} articles · {itemSummary.faqs?.length || 0} FAQs · {itemSummary.changelogs?.length || 0} releases · {itemSummary.tickets?.total || 0} tickets
                                                                 </Text>
                                                             )}
                                                         </Space>
@@ -400,6 +400,15 @@ export default function CanonicaProductSurfaces() {
                                                             dataSource={selectedSummary.articles || []}
                                                             locale={{ emptyText: 'No linked articles' }}
                                                             renderItem={article => <List.Item>{article.title}</List.Item>}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Text strong><LuHelpCircle /> FAQs</Text>
+                                                        <List
+                                                            size="small"
+                                                            dataSource={selectedSummary.faqs || []}
+                                                            locale={{ emptyText: 'No linked FAQs' }}
+                                                            renderItem={faq => <List.Item>{faq.question}</List.Item>}
                                                         />
                                                     </div>
                                                     <div>

@@ -14,6 +14,9 @@ import {
     getCanonicaGovernanceRoute,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
+import CanonicaContentWorkbench from '@template/canonica/content/CanonicaContentWorkbench';
+import CanonicaCustomerFlowChecklist from '@template/canonica/content/CanonicaCustomerFlowChecklist';
+import CanonicaSurfaceReadinessMatrix from '@template/canonica/content/CanonicaSurfaceReadinessMatrix';
 import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
 import {
     Alert,
@@ -155,7 +158,7 @@ export default function CanonicaDashboardPage() {
                 type={attentionSteps.length ? 'warning' : summary.readinessScore >= 85 ? 'success' : 'info'}
                 showIcon
                 message={summary.readinessScore >= 85 ? 'Support readiness is launch-ready' : 'Support readiness is still building'}
-                description={`${summary.readinessScore}% ready from ${requiredSteps.length} required setup checks. This page uses compact summary docs, not full collection scans.`}
+                description={`${summary.readinessScore}% ready from ${requiredSteps.length} required setup checks.`}
             />
 
             <Row gutter={[12, 12]}>
@@ -215,6 +218,24 @@ export default function CanonicaDashboardPage() {
                 </Col>
             </Row>
 
+            <CanonicaContentWorkbench
+                summary={summary}
+                isMobile={isMobile}
+                onOpen={openRoute}
+            />
+
+            <CanonicaSurfaceReadinessMatrix
+                summary={summary}
+                isMobile={isMobile}
+                onOpen={openRoute}
+            />
+
+            <CanonicaCustomerFlowChecklist
+                summary={summary}
+                isMobile={isMobile}
+                onOpen={openRoute}
+            />
+
             <Row gutter={[12, 12]}>
                 <Col xs={24} lg={14}>
                     <Card title="Next Actions">
@@ -270,7 +291,7 @@ export default function CanonicaDashboardPage() {
                                 <Text strong>{summary.widget.allowedOriginCount}</Text>
                             </Flex>
                             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                                Open deep governance only when you need answer-level review. This keeps the normal landing page cheap and predictable.
+                                Open governance when you need answer-level review, drift checks, or signal-to-knowledge decisions.
                             </Paragraph>
                             <Button onClick={() => openRoute(getCanonicaGovernanceRoute(CANONICA_GOVERNANCE_TABS.ANSWERS))}>
                                 Open Governance

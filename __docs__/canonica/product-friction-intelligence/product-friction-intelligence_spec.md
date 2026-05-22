@@ -1,8 +1,9 @@
 # Product Friction Intelligence — Specification
 
-> **Version:** 1.0.0
-> **Status:** DOCUMENTED — Implementation Pending
+> **Version:** 1.1.0
+> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
 > **Created:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Feature Flag:** `ENABLE_CANONICA_FRICTION_INTELLIGENCE`
 > **Expansion Item:** #5 in `canonica-expansion-tracker.md`
 
@@ -18,7 +19,9 @@ SaaS founders using Canonica receive support signals (tickets, negative chat fee
 4. Did a recent product change increase support friction?
 5. Are things getting better or worse over time?
 
-**Current state:** Canonica collects signals → clusters by entity → generates mutation proposals. But the intelligence stops at "fix this answer." It never surfaces the meta-question: "fix this product area."
+**Original gap:** Canonica collected signals → clustered by entity → generated mutation proposals, but did not surface the meta-question: "fix this product area."
+
+**Current runtime:** This is implemented through capped Canonica nightly aggregation and summary-backed GovernanceHub friction UI.
 
 ---
 

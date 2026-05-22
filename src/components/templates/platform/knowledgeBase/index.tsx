@@ -6,7 +6,7 @@ import { useAppDispatch } from "@hook/useAppDispatch";
 import AISearchModal from "@organisms/AISearchModal";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
-import { FloatButton, Form, Layout, message, Modal, Splitter, Typography } from "antd";
+import { Alert, Flex, FloatButton, Form, Grid, Layout, message, Modal, Splitter, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { LuBookOpen, LuMessageCircle, LuView } from "react-icons/lu";
 import ArticleModal from "./ArticleModal";
@@ -17,7 +17,7 @@ import KnowledgeBaseModal from './KnowledgeBaseModal';
 import SectionModal from "./SectionModal";
 import SectionPane from "./SectionPane";
 
-const { Title } = Typography;
+const { Title, Paragraph } = Typography;
 
 function PlatformKnowledgeBase() {
     const dispatch = useAppDispatch()
@@ -31,6 +31,8 @@ function PlatformKnowledgeBase() {
     const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
     const [isArticleLoading, setIsArticleLoading] = useState(false);
     const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
 
     const [form] = Form.useForm();
     const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
@@ -247,65 +249,96 @@ function PlatformKnowledgeBase() {
 
     const categoriesList = categoriesData ? Object.values(categoriesData.categories).sort((a, b) => a.index - b.index) : [];
 
+    const categoryPane = (
+        <CategoryPane
+            isLoading={isCategoriesLoading}
+            categories={categoriesList}
+            selectedCategory={selectedCategory}
+            onCategorySelect={handleCategorySelect}
+            onAddCategory={() => {
+                setEditingCategory(null);
+                setIsCategoryModalVisible(true);
+            }}
+            onEditCategory={(cat) => {
+                setEditingCategory(cat);
+                setIsCategoryModalVisible(true);
+            }}
+            onDeleteCategory={(id) => handleDelete('category', id)}
+        />
+    );
+
+    const sectionPane = (
+        <SectionPane
+            isLoading={isCategoriesLoading && !categoriesData}
+            selectedCategory={selectedCategory}
+            selectedSection={selectedSection}
+            onSectionSelect={handleSectionSelect}
+            onAddSection={() => {
+                setEditingSection(null);
+                sectionForm.setFieldsValue({
+                    title: '',
+                    description: '',
+                    url: '',
+                    active: true,
+                    index: selectedCategory?.sections?.length ?? 0
+                });
+                setIsSectionModalVisible(true);
+            }}
+            onEditSection={(sec) => {
+                setEditingSection(sec);
+                sectionForm.setFieldsValue(sec);
+                setIsSectionModalVisible(true);
+            }}
+            onDeleteSection={(id) => handleDelete('section', id)}
+        />
+    );
+
+    const articlePane = (
+        <ArticlePane
+            selectedContainer={selectedSection || selectedCategory}
+            articles={selectedSection?.articles || selectedCategory?.articles || []}
+            selectedArticle={selectedArticle}
+            onArticleSelect={handleArticleSelect}
+            onAddArticle={handleAddArticle}
+            onEditArticle={handleArticleSelect}
+            onDeleteArticle={(id) => handleDelete('article', id)}
+            isArticleLoading={isArticleLoading}
+        />
+    );
+
     return (
-        <Layout style={{ minHeight: '100dvh', padding: 16 }}>
-            <Title level={3} style={{ margin: '0 0 16px' }}>Knowledge Base</Title>
-            <Splitter style={{ flex: 1, minHeight: 'calc(100dvh - 88px)', width: '100%' }}>
-                <Splitter.Panel defaultSize="33%" min={300}>
-                    <CategoryPane
-                        isLoading={isCategoriesLoading}
-                        categories={categoriesList}
-                        selectedCategory={selectedCategory}
-                        onCategorySelect={handleCategorySelect}
-                        onAddCategory={() => {
-                            setEditingCategory(null);
-                            setIsCategoryModalVisible(true);
-                        }}
-                        onEditCategory={(cat) => {
-                            setEditingCategory(cat);
-                            setIsCategoryModalVisible(true);
-                        }}
-                        onDeleteCategory={(id) => handleDelete('category', id)}
+        <Layout style={{ minHeight: '100dvh', padding: isMobile ? 12 : 16 }}>
+            <Flex vertical gap={4} style={{ marginBottom: 16 }}>
+                <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Knowledge Base</Title>
+                <Paragraph type="secondary" style={{ margin: 0 }}>
+                    Organize the articles that power help-center browsing, widget answers, and product-surface context.
+                </Paragraph>
+            </Flex>
+            {isMobile ? (
+                <Flex vertical gap={12}>
+                    <Alert
+                        type="info"
+                        showIcon
+                        message="Work top to bottom"
+                        description="Choose a category, choose a section when needed, then add or edit articles for that area."
                     />
-                </Splitter.Panel>
-                <Splitter.Panel defaultSize="33%" min={300}>
-                    <SectionPane
-                        isLoading={isCategoriesLoading && !categoriesData}
-                        selectedCategory={selectedCategory}
-                        selectedSection={selectedSection}
-                        onSectionSelect={handleSectionSelect}
-                        onAddSection={() => {
-                            setEditingSection(null);
-                            sectionForm.setFieldsValue({
-                                title: '',
-                                description: '',
-                                url: '',
-                                active: true,
-                                index: selectedCategory?.sections?.length ?? 0
-                            });
-                            setIsSectionModalVisible(true);
-                        }}
-                        onEditSection={(sec) => {
-                            setEditingSection(sec);
-                            sectionForm.setFieldsValue(sec);
-                            setIsSectionModalVisible(true);
-                        }}
-                        onDeleteSection={(id) => handleDelete('section', id)}
-                    />
-                </Splitter.Panel>
-                <Splitter.Panel min={300}>
-                    <ArticlePane
-                        selectedContainer={selectedSection || selectedCategory}
-                        articles={selectedSection?.articles || selectedCategory?.articles || []}
-                        selectedArticle={selectedArticle}
-                        onArticleSelect={handleArticleSelect}
-                        onAddArticle={handleAddArticle}
-                        onEditArticle={handleArticleSelect}
-                        onDeleteArticle={(id) => handleDelete('article', id)}
-                        isArticleLoading={isArticleLoading}
-                    />
-                </Splitter.Panel>
-            </Splitter>
+                    <div style={{ minHeight: 280, border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>{categoryPane}</div>
+                    <div style={{ minHeight: 240, border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>{sectionPane}</div>
+                    <div style={{ minHeight: 300, border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>{articlePane}</div>
+                </Flex>
+            ) : (
+                <Splitter style={{ flex: 1, minHeight: 'calc(100dvh - 104px)', width: '100%' }}>
+                    <Splitter.Panel defaultSize="33%" min={300}>
+                        {categoryPane}
+                    </Splitter.Panel>
+                    <Splitter.Panel defaultSize="33%" min={300}>
+                        {sectionPane}
+                    </Splitter.Panel>
+                    <Splitter.Panel min={300}>
+                        {articlePane}
+                    </Splitter.Panel>
+                </Splitter>
+            )}
             <FloatButton.Group
                 trigger="click"
                 type="primary"

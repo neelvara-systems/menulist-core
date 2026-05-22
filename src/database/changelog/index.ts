@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { revalidateCanonicaPublicClientCache } from '@lib/cache/canonicaPublicClientCache';
 import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChangelogPage } from '@type/changelog';
@@ -87,7 +88,7 @@ export const addChangelogEntry = async (entryPayload: any) => {
     }
 
     const session = await getActiveSession();
-    return runTransaction(db, async (tx) => {
+    const result = await runTransaction(db, async (tx) => {
         const pagesCollectionRef = getCollectionRef(session);
         const latestPageQuery = query(pagesCollectionRef, orderBy('pageNumber', 'desc'), limit(1));
         const latestPageSnap = await getDocs(latestPageQuery);
@@ -153,6 +154,8 @@ export const addChangelogEntry = async (entryPayload: any) => {
             }
         }
     });
+    await revalidateCanonicaPublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'addChangelogEntry');
+    return result;
 };
 
 /**
@@ -247,7 +250,7 @@ export const updateChangelogFeedback = async (pageId: string, entryId: string, f
  */
 export const deleteChangelogEntry = async (entryId: string) => {
     const session = await getActiveSession();
-    return runTransaction(db, async (tx) => {
+    const result = await runTransaction(db, async (tx) => {
         const pagesCollectionRef = getCollectionRef(session);
         const q = query(pagesCollectionRef, where('entryIds', 'array-contains', entryId));
         const querySnapshot = await getDocs(q);
@@ -274,6 +277,8 @@ export const deleteChangelogEntry = async (entryId: string) => {
 
         return { deleted: true, entryId: entryId, pageId: pageDoc.id };
     });
+    await revalidateCanonicaPublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'deleteChangelogEntry');
+    return result;
 };
 
 export const updateChangelogEntry = async (entryId: string, updatedPayload: any) => {
@@ -287,7 +292,7 @@ export const updateChangelogEntry = async (entryId: string, updatedPayload: any)
     }
 
     const session = await getActiveSession();
-    return runTransaction(db, async (tx) => {
+    const result = await runTransaction(db, async (tx) => {
         const pagesCollectionRef = getCollectionRef(session);
         const q = query(pagesCollectionRef, where('entryIds', 'array-contains', entryId));
         const querySnapshot = await getDocs(q);
@@ -317,4 +322,6 @@ export const updateChangelogEntry = async (entryId: string, updatedPayload: any)
 
         return { updated: true, entryId: entryId, pageId: pageDoc.id };
     });
+    await revalidateCanonicaPublicClientCache({ tId: session?.tId, sId: session?.sId }, ['changelog', 'context'], 'updateChangelogEntry');
+    return result;
 };

@@ -275,6 +275,7 @@ export function buildPublicRelatedContent(surface: CanonicaSurfaceContentItem | 
     return {
         ...surface,
         articles: (surface.articles || []).slice(0, 5),
+        faqs: (surface.faqs || []).slice(0, 5),
         changelogs: (surface.changelogs || []).slice(0, 3),
         tickets: { total: 0, open: 0, recentDisplayIds: [] },
     };

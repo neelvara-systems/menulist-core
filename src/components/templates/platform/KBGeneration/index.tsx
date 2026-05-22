@@ -7,7 +7,7 @@ import { useIngestionJobsListener } from '@hook/useIngestionJobsListener';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ARTICLE_RECONCILIATION_STATUS, INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
-import { Alert, Button, Card, Col, Empty, Flex, Layout, message, Row, Typography } from 'antd';
+import { Alert, Button, Card, Col, Empty, Flex, Grid, Layout, message, Row, Typography } from 'antd';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuEye, LuPlus } from 'react-icons/lu';
 import JobCard from './jobCard';
@@ -30,6 +30,8 @@ function KBGenerationTemplate() {
     const [showReconciliationModal, setShowReconciliationModal] = useState(false);
     const [articlesToReview, setArticlesToReview] = useState<IngestionJob['articlesToReview']>([]);
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const screens = Grid.useBreakpoint();
+    const isMobile = screens.md !== true;
     const dispatch = useAppDispatch()
     const [isHistoryfetched, setisHistoryfetched] = useState(false)
     const scope = useMemo(() => {
@@ -130,9 +132,14 @@ function KBGenerationTemplate() {
     };
 
     return (
-        <Layout style={{ height: '100%', padding: 24 }}>
+        <Layout style={{ height: '100%', padding: isMobile ? 12 : 24 }}>
             <Content>
-                <Title level={3}>KB Generation Dashboard</Title>
+                <Flex vertical gap={4} style={{ marginBottom: 16 }}>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Import Knowledge</Title>
+                    <Paragraph type="secondary" style={{ margin: 0 }}>
+                        Upload source content, review generated articles, resolve duplicates, and publish only what should answer customers.
+                    </Paragraph>
+                </Flex>
                 {!hasScope && (
                     <Alert
                         type="warning"

@@ -5,7 +5,7 @@ import ArticleViewModal from '@organisms/ArticleViewModal';
 import { Button, Card, Flex, Image, Typography, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { memo, useEffect, useState } from 'react';
-import { LuAlertCircle, LuBookOpen, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
+import { LuAlertCircle, LuBookOpen, LuHelpCircle, LuFileText, LuReceipt, LuSparkles, LuUser } from 'react-icons/lu';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
@@ -284,6 +284,19 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                                             >
                                                 <Text ellipsis style={{ maxWidth: isMobile ? 220 : 180 }}>
                                                     {article.title}
+                                                </Text>
+                                            </Button>
+                                        ))}
+                                        {(relatedContent.faqs || []).slice(0, isMobile ? 3 : 5).map(faq => (
+                                            <Button
+                                                key={`faq-${faq.id}`}
+                                                size="small"
+                                                type="text"
+                                                icon={<LuHelpCircle size={13} />}
+                                                style={{ maxWidth: isMobile ? '100%' : 240 }}
+                                            >
+                                                <Text ellipsis style={{ maxWidth: isMobile ? 220 : 180 }}>
+                                                    {faq.question}
                                                 </Text>
                                             </Button>
                                         ))}

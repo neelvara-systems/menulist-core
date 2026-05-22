@@ -5,6 +5,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
 import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
+import { revalidateCanonicaPublicClientCache } from "@lib/cache/canonicaPublicClientCache";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { updateList } from "@util/utils";
@@ -43,6 +44,8 @@ const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: str
         sourceId,
         sourceType: 'kb_category',
     });
+
+    return { tId, sId };
 };
 
 export const getCategories = async () => {
@@ -81,8 +84,9 @@ export const getCategories = async () => {
 export const deleteCategory = async (data: any) => {
     return await apiCallComposer(
         async () => {
-            await bumpKnowledgeBaseVersionForSession('category_delete');
+            const scope = await bumpKnowledgeBaseVersionForSession('category_delete');
             await setDoc(await getDocRef(), data);
+            await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'deleteCategory');
             return data;
         },
         data,
@@ -95,8 +99,9 @@ export const addCategory = async (category: any) => {
         async () => {
             const docRef = await getDocRef();
             const composedCategory = await canonicaRequestBodyComposer(category);
-            await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
+            const scope = await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
+            await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'addCategory');
             return composedCategory;
         },
         category,
@@ -109,8 +114,9 @@ export const updateCategory = async (category: any) => {
         async () => {
             const docRef = await getDocRef();
             const composedCategory = await canonicaRequestBodyComposer(category);
-            await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
+            const scope = await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
             await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
+            await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'updateCategory');
             return composedCategory;
         },
         category,
@@ -137,8 +143,9 @@ const _updateSectionArticles = async (
         ...category,
         sections: updatedSections,
     };
-    await bumpKnowledgeBaseVersionForSession('category_section_articles_update', categoryId);
+    const scope = await bumpKnowledgeBaseVersionForSession('category_section_articles_update', categoryId);
     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
+    await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'updateSectionArticles');
 
     const updatedData = { ...categoriesData };
     updatedData.categories[categoryId] = updatedCategory;
@@ -184,8 +191,9 @@ export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategor
                         ...category,
                         articles,
                     };
-                    await bumpKnowledgeBaseVersionForSession('category_article_link_update', categoryId);
+                    const scope = await bumpKnowledgeBaseVersionForSession('category_article_link_update', categoryId);
                     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
+                    await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'updateArticleInParent');
 
                     const updatedData = { ...categoriesData };
                     updatedData.categories[categoryId] = updatedCategory;
@@ -224,8 +232,9 @@ export const deleteArticleFromParent = async (
                         ...category,
                         articles,
                     };
-                    await bumpKnowledgeBaseVersionForSession('category_article_link_delete', categoryId);
+                    const scope = await bumpKnowledgeBaseVersionForSession('category_article_link_delete', categoryId);
                     await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
+                    await revalidateCanonicaPublicClientCache(scope, ['kb', 'context'], 'deleteArticleFromParent');
 
                     const updatedData = { ...categoriesData };
                     updatedData.categories[categoryId] = updatedCategory;

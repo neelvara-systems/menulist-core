@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBookOpen,
+    LuHelpCircle,
     LuCheckCircle,
     LuImage,
     LuInfo,
@@ -49,6 +50,7 @@ interface WidgetMessage {
         key?: string;
         label?: string;
         articles?: Array<{ id: string; title: string; url?: string }>;
+        faqs?: Array<{ id: string; question: string; answer?: string; articleId?: string | null }>;
         changelogs?: Array<{ id: string; pageId?: string; title: string; version?: string | null }>;
     };
     suggestedQuestions?: string[];
@@ -129,6 +131,12 @@ const normalizeSuggestions = (values: unknown[]): string[] => {
     return normalized;
 };
 
+const normalizeHexColor = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const color = value.trim();
+    return /^#[0-9a-fA-F]{6}$/.test(color) ? color : null;
+};
+
 const formatContextLabel = (context: Record<string, any> | null): string | null => {
     const rawValue = typeof context?.contextKey === 'string'
         ? context.contextKey
@@ -160,6 +168,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [productContext, setProductContext] = useState<Record<string, any> | null>(null);
     const [historyMode, setHistoryMode] = useState<WidgetHistoryMode>('session');
     const [greeting, setGreeting] = useState('How can we help?');
+    const [headerTitle, setHeaderTitle] = useState('Help');
+    const [accentColor, setAccentColor] = useState('#6366f1');
+    const [poweredByVisible, setPoweredByVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -200,10 +211,22 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 }
             }
             if (e.data?.type === 'canonica-widget-config') {
+                const nextAccentColor = normalizeHexColor(e.data.config?.accentColor);
+                if (nextAccentColor) setAccentColor(nextAccentColor);
+
+                const nextHeaderTitle = typeof e.data.config?.headerTitle === 'string'
+                    ? e.data.config.headerTitle.trim().slice(0, 40)
+                    : '';
+                if (nextHeaderTitle) setHeaderTitle(nextHeaderTitle);
+
                 const nextGreeting = typeof e.data.config?.greeting === 'string'
                     ? e.data.config.greeting.trim().slice(0, 120)
                     : '';
                 if (nextGreeting) setGreeting(nextGreeting);
+
+                if (typeof e.data.config?.poweredByVisible === 'boolean') {
+                    setPoweredByVisible(e.data.config.poweredByVisible);
+                }
             }
             if (e.data?.type === 'canonica-widget-clear-history') {
                 clearConversation();
@@ -419,13 +442,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             `}</style>
 
             {/* Header */}
-            <div style={styles.header}>
+            <div style={{ ...styles.header, background: accentColor }}>
                 <div style={styles.headerMain}>
                     <div style={styles.headerIcon}>
                         <LuMessageCircle size={16} aria-hidden />
                     </div>
                     <div style={styles.headerText}>
-                        <span style={styles.headerTitle}>Help</span>
+                        <span style={styles.headerTitle}>{headerTitle}</span>
                         {historyMode === 'session' && messages.length > 0 && (
                             <span style={styles.headerSubtitle}>This chat stays on this page until reload.</span>
                         )}
@@ -453,7 +476,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             <div style={styles.messagesArea}>
                 {messages.length === 0 && !loading && (
                     <div style={styles.welcomeContainer}>
-                        <div style={styles.welcomeIcon}>
+                        <div style={{ ...styles.welcomeIcon, color: accentColor }}>
                             <LuMessageCircle size={32} aria-hidden />
                         </div>
                         <p style={styles.welcomeTitle}>{greeting}</p>
@@ -475,7 +498,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
                 {messages.map((msg) => (
                     <div key={msg.id} style={msg.role === 'user' ? styles.userMsgRow : styles.aiMsgRow}>
-                        <div style={msg.role === 'user' ? styles.userBubble : styles.aiBubble}>
+                        <div style={msg.role === 'user' ? { ...styles.userBubble, background: accentColor } : styles.aiBubble}>
                             {msg.imageBase64 && (
                                 <img
                                     src={`data:${msg.imageMimeType || 'image/png'};base64,${msg.imageBase64}`}
@@ -526,7 +549,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                             .sort((a, b) => a.stepOrder - b.stepOrder)
                                             .map((step, i) => (
                                                 <div key={`${step.stepOrder}-${i}`} style={styles.procedureStep}>
-                                                    <span style={styles.procedureStepNumber}>{step.stepOrder || i + 1}</span>
+                                                    <span style={{ ...styles.procedureStepNumber, background: accentColor }}>{step.stepOrder || i + 1}</span>
                                                     <div style={styles.procedureStepBody}>
                                                         <p style={styles.procedureStepText}>{step.instruction}</p>
                                                         {step.expectedResult && (
@@ -568,6 +591,16 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                             >
                                                 <LuBookOpen size={12} aria-hidden />
                                                 <span style={styles.relatedBtnText}>{article.title}</span>
+                                            </button>
+                                        ))}
+                                        {(msg.relatedContent.faqs || []).slice(0, 3).map((faq) => (
+                                            <button
+                                                key={`faq-${faq.id}`}
+                                                style={styles.relatedBtn}
+                                                title={faq.question}
+                                            >
+                                                <LuHelpCircle size={12} aria-hidden />
+                                                <span style={styles.relatedBtnText}>{faq.question}</span>
                                             </button>
                                         ))}
                                         {(msg.relatedContent.changelogs || []).slice(0, 2).map((entry) => (
@@ -693,7 +726,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 <button
                     onClick={() => handleSearch()}
                     disabled={loading || !query.trim()}
-                    style={{ ...styles.sendBtn, opacity: loading || !query.trim() ? 0.5 : 1 }}
+                    style={{ ...styles.sendBtn, background: accentColor, opacity: loading || !query.trim() ? 0.5 : 1 }}
                     aria-label="Send question"
                 >
                     <LuSend size={16} aria-hidden />
@@ -701,14 +734,16 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             </div>
 
             {/* Footer */}
-            <div style={styles.footer}>
-                <span style={styles.footerText}>
-                    Powered by{' '}
-                    <a href="https://canonica.app" target="_blank" rel="noopener noreferrer" style={styles.footerLink}>
-                        Canonica
-                    </a>
-                </span>
-            </div>
+            {poweredByVisible && (
+                <div style={styles.footer}>
+                    <span style={styles.footerText}>
+                        Powered by{' '}
+                        <a href="https://canonica.app" target="_blank" rel="noopener noreferrer" style={{ ...styles.footerLink, color: accentColor }}>
+                            Canonica
+                        </a>
+                    </span>
+                </div>
+            )}
         </div>
     );
 }

@@ -130,6 +130,21 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Canonica Hosted Help Center - anonymous read-only pages.
+     * Used by: help.example.com hosted KB/FAQ/changelog pages.
+     *
+     * Why 240/min:
+     * - Page data is cached and read-only, so normal browsing should not feel capped.
+     * - Still creates a bot-cost brake before repeated anonymous page requests
+     *   can force server rendering or cache misses.
+     */
+    CANONICA_HOSTED_HELP: {
+        limit: 240,
+        window: 60,
+        description: 'Canonica hosted help - 240 page/API reads per minute per IP/domain'
+    },
+
+    /**
      * Public Analytics - Anonymous customer analytics flushes
      * Used by: POST /api/public/analytics/track
      *

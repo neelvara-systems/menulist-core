@@ -29,7 +29,7 @@ function SectionPane({
     if (!selectedCategory) {
         return (
             <div style={{ background: token.colorBgContainer, padding: '16px', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Text type="secondary">Select a category to see setcions</Text>
+                <Text type="secondary">Select a category to see sections</Text>
             </div>
         );
     }

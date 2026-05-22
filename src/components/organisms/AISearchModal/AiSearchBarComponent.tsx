@@ -1,6 +1,6 @@
 'use client';
 
-import { getCategories } from '@database/knowledgeBase/categories';
+import { fetchCanonicaPublicCategories } from '@lib/canonica/publicContentClient';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import { Alert, Button, Flex, theme, Typography } from 'antd';
 import { useEffect, useReducer, useRef, useState } from 'react';
@@ -26,7 +26,7 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
     const fetchCategories = async () => {
         // appDispatch(startLoader("Fetching knowledge base categories"));
         try {
-            const categoriesResult = await getCategories();
+            const categoriesResult = await fetchCanonicaPublicCategories();
             if (categoriesResult) {
                 // console.log("knowledge base categories", categoriesResult);
                 setCategoriesData(categoriesResult);

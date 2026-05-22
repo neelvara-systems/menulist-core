@@ -1,9 +1,9 @@
 # Ticket → Knowledge Loop — Feature Hub
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED AND ENABLED WITH CAPS
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-05-22
 > **Feature Flag:** `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 > **Expansion Tracker:** Item #9
 > **Depends On:** Item #4 (Automatic Knowledge Creation) — ✅ IMPLEMENTED
@@ -68,11 +68,19 @@ Existing Canonica Architecture:
 ## Feature Flag
 
 ```typescript
-ENABLE_CANONICA_TICKET_KNOWLEDGE: false; // in src/config/features.ts
-ENABLE_CANONICA_TICKET_KNOWLEDGE: false; // in functions-canonica/src/constants/features.ts
+ENABLE_CANONICA_TICKET_KNOWLEDGE: true; // in src/config/features.ts
+ENABLE_CANONICA_TICKET_KNOWLEDGE: true; // in functions-canonica/src/constants/features.ts
 ```
 
 Requires: `ENABLE_CANONICA_SIGNAL_MUTATION = true`
+
+Current production guardrails:
+
+- Only resolved/closed ticket signals are eligible.
+- Creation signals and resolution signals use separate dedupe keys so one does not suppress the other.
+- Nightly extraction waits for 3+ resolved tickets on the same entity before proposing knowledge.
+- Draft generation remains capped at 5 proposals per nightly run.
+- Nothing is auto-published; founders still review and approve canonical answers.
 
 ## Document Set
 

@@ -89,6 +89,7 @@ import LanguageSelectorModal from "./LanguageSelectorModal";
 import ReorderMenuModal from "./ReorderMenuModal";
 import StoreCustomizationModal from "./StoreCustomizationModal";
 import { filterItemsWithFiles, ItemWithFile } from "./utils/itemFilters";
+import AIDefaultsModal from "./AIDefaultsModal";
 import { AdvancedView } from "./views/AdvancedView";
 import { FocusView } from "./views/FocusView";
 import { TraditionalView } from "./views/TraditionalView";
@@ -140,6 +141,7 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
     const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
     const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
+    const [isAIDefaultsOpen, setIsAIDefaultsOpen] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
 
@@ -984,6 +986,9 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
 
     const handleActionClick = (action: EditorAction) => {
         switch (action) {
+            case "aiDefaults":
+                setIsAIDefaultsOpen(true);
+                break;
             case "language":
                 if (projectData?.masterProjectId && outletPolicy?.canAddLanguages === false) {
                     antdMessage.info("Language changes are not enabled for this store.");
@@ -1272,6 +1277,19 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                 </Tooltip>
             </Flex>
 
+            <AIDefaultsModal
+                businessType={tenantDetails?.businessType}
+                onClose={() => setIsAIDefaultsOpen(false)}
+                open={isAIDefaultsOpen}
+                projectData={projectData}
+                setProjectData={(updatedProject) => {
+                    setProjectData(updatedProject);
+                    setActiveProject(updatedProject);
+                    setHasChanges(true);
+                    hasChangesRef.current = true;
+                }}
+            />
+
             <DescriptionGenerationModal
                 businessType={tenantDetails?.businessType}
                 modalData={isDescModalOpen}
@@ -1431,7 +1449,10 @@ function Editor({ selectedProject, onRemove, addFileButton }: EditorProps) {
                     itemStates={itemStates}
                     categoryStates={categoryStates}
                     masterPrices={masterPrices}
+                    businessType={tenantDetails?.businessType}
                     storeName={storeContextName}
+                    storeDetails={storeDetails}
+                    allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
                     onClose={() => setIsCommandCenterOpen(false)}
                     onApply={(updatedProject) => {
                         setProjectData(updatedProject);

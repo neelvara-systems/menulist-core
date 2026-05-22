@@ -5,6 +5,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
 import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
+import { revalidateCanonicaPublicClientCache } from "@lib/cache/canonicaPublicClientCache";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { KnowledgeBaseArticleType } from "@type/knowledgeBase";
 import { addDoc } from "firebase/firestore";
@@ -81,6 +82,7 @@ export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => 
             await bumpKnowledgeBaseVersion(submitData as Partial<KnowledgeBaseArticleType>, 'article_create');
             const docRef = await addDoc(await getCollectionRef(), submitData);
             const savedArticle = { ...submitData, id: docRef.id };
+            await revalidateCanonicaPublicClientCache(await resolveArticleScope(savedArticle as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'addArticle');
 
             // E4: Fire-and-forget entity extraction after article creation
             _triggerEntityExtraction(savedArticle as KnowledgeBaseArticleType);
@@ -98,6 +100,16 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
             const composedData = await canonicaRequestBodyComposer(data);
             await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_update', data.id);
             await setDoc(await getDocRef(data.id), composedData, { merge: true });
+            await revalidateCanonicaPublicClientCache(await resolveArticleScope(composedData as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'updateArticle');
+
+            // Mark linked FAQs for review when article truth changes.
+            if ((data.content || data.title) && data.id) {
+                import('@database/canonica/faqs')
+                    .then(({ markFaqsNeedReviewForArticle }) => {
+                        markFaqsNeedReviewForArticle({ id: data.id as string, tId: data.tId, sId: data.sId }).catch(() => undefined);
+                    })
+                    .catch(() => undefined);
+            }
 
             // E4: Fire-and-forget entity extraction when article content changes
             if (data.content && data.id && data.title) {
@@ -124,6 +136,12 @@ export const deleteArticle = async (id: string) => {
             const articleData = docSnap.exists() ? docSnap.data() as Partial<KnowledgeBaseArticleType> : null;
             await bumpKnowledgeBaseVersion(articleData, 'article_delete', id);
             await deleteDoc(docRef);
+            await revalidateCanonicaPublicClientCache(await resolveArticleScope(articleData), ['kb', 'context'], 'deleteArticle');
+            import('@database/canonica/faqs')
+                .then(({ archiveFaqsForArticle }) => {
+                    archiveFaqsForArticle({ id, tId: articleData?.tId, sId: articleData?.sId }).catch(() => undefined);
+                })
+                .catch(() => undefined);
             return null;
         },
         id,
@@ -144,6 +162,7 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
                 batch.update(docRef, composedData);
             }
             await batch.commit();
+            await revalidateCanonicaPublicClientCache(await resolveArticleScope(composedData as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'bulkUpdateArticleStatus');
             return { updatedCount: ids.length, status };
         },
         { ids, status },
@@ -163,6 +182,7 @@ export const deleteMultipleArticles = async (ids: string[]) => {
                 batch.delete(docRef);
             }
             await batch.commit();
+            await revalidateCanonicaPublicClientCache(undefined, ['kb', 'context'], 'deleteMultipleArticles');
             return null;
         },
         ids,

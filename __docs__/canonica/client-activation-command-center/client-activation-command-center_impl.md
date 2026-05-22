@@ -15,6 +15,13 @@ Activation links directly into:
 - `/canonica/widget` for install, allowed origins, and keys
 - `/canonica/governance?tab=entities` and `/canonica/governance?tab=answers` for product ontology and canonical answer review
 - `/canonica/governance?tab=signal-queue` for support signals that should become knowledge
+- `/canonica/knowledge-base`, `/canonica/changelog`, and `/canonica/tickets` through the shared Content Control workbench
+
+The Content Control workbench (`src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`) is shared by Activation and Readiness Metrics. It reuses the loaded activation summary to give product owners one practical map for profile, import, articles, surfaces, changelog, signal queue, widget, and tickets without adding collection reads.
+
+The Test-as-Customer checklist (`src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`) turns the same summary into a practical launch proof: preview help center, ask from the widget, confirm page context, submit a ticket fallback, check release notes, and open the Signal Queue. It is intentionally a checklist, not an automation layer, so owners keep control over what goes live.
+
+Readiness Metrics also renders the Surface Readiness matrix (`src/components/templates/canonica/content/CanonicaSurfaceReadinessMatrix.tsx`). It uses compact `summary.content.surfaceReadiness` status/count fields, derived from the context summary, to show each mapped surface as Ready, Needs mapping, Needs content, or Open signals. UI recommendations and action labels stay in the component so the persisted activation snapshot does not duplicate long copy.
 
 ## Server API
 
@@ -29,6 +36,8 @@ Activation links directly into:
 The API response includes an internal `readModel` so platform audits can verify Firebase cost behavior. The client-facing dashboard does not show Firebase or cache terminology to Canonica customers.
 
 Entity readiness and canonical-answer readiness are derived from `platformSummary/trustMetrics_{tId}_{sId}`. Activation does not scan `canonica_entities` or `canonica_canonicalAnswers`.
+
+Surface readiness is derived in `src/lib/canonica/activationSummary.ts` from the already-read `platformSummary/contextContent_{tId}_{sId}` document. The readiness signature includes the compact per-surface status so the persisted activation snapshot refreshes when a product area changes from missing content to ready, or when open ticket signals appear.
 
 Security note: the API must not fall back to the generic MenuList `session.user.tenantId/storeId`. A user needs a real Canonica product scope (`productAccounts.CN` or a native Canonica session) before any Canonica workspace summary is loaded.
 
@@ -56,3 +65,5 @@ If an older workspace does not yet have the store-level subscription mirror, the
 The Governance hub supports deep-link tabs. The Signal Queue tab renders generated mutation proposals from existing `canonica_mutationProposals` docs.
 
 When a proposal contains a generated draft, the owner can review/edit the draft and publish it as an active canonical answer. Publishing creates the canonical answer, updates the entity search index, marks the proposal implemented, and writes an audit log. Proposals without generated drafts can still be approved or rejected for manual implementation.
+
+The ticket detail drawer now surfaces a lightweight Knowledge Loop card for operators. It does not read additional documents; it only evaluates the current ticket status, context keys, and latest support replies already loaded in the drawer. The card explains when a resolved ticket has enough evidence for future Signal Queue proposals and gives owners a direct path to the queue.

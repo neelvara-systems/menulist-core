@@ -1,10 +1,10 @@
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getFunctions } from "firebase-admin/functions";
 import * as functions from 'firebase-functions';
 import { HttpsError } from "firebase-functions/v2/https";
 import { CANONICA_CACHE_SOURCES, getCanonicaCacheVersionBumpData, getCanonicaCacheVersionDocId } from "../canonica/cacheVersionManifest";
 import { firestoreAdmin } from "../firebaseAdmin";
-import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, CANONICA_CACHE_VERSIONS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseCategoriesType } from "../types";
+import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, CANONICA_CACHE_VERSIONS_COLLECTION, CANONICA_FAQS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from "../types";
 
 const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
     const tenantId = Number(tId);
@@ -13,6 +13,110 @@ const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) => {
         return `categories_${tenantId}_${storeId}`;
     }
     return 'categories';
+};
+
+const normalizeFaqText = (value: unknown, maxLength: number): string => {
+    if (typeof value !== "string") return "";
+    return value
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, maxLength);
+};
+
+const normalizeFaqList = (value: unknown, maxItems: number, maxLength: number): string[] => {
+    const raw = typeof value === "string"
+        ? value.split(/[\n,]/)
+        : Array.isArray(value) ? value : [];
+
+    return Array.from(new Set(
+        raw
+            .map(item => normalizeFaqText(item, maxLength).toLowerCase().replace(/[^a-z0-9_\-\s/]/g, "").replace(/\s+/g, "_"))
+            .filter(Boolean)
+    )).slice(0, maxItems);
+};
+
+const normalizeFaqIdList = (value: unknown, maxItems: number, maxLength: number): string[] => {
+    const raw = typeof value === "string"
+        ? value.split(/[\n,]/)
+        : Array.isArray(value) ? value : [];
+
+    return Array.from(new Set(
+        raw
+            .map(item => normalizeFaqText(item, maxLength).replace(/[^a-zA-Z0-9_\-:.]/g, ""))
+            .filter(Boolean)
+    )).slice(0, maxItems);
+};
+
+const buildGeneratedFaqDocId = (articleId: string, index: number) =>
+    `${articleId}_faq_${index + 1}`.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 180);
+
+const normalizeGeneratedFaqs = (value: unknown) => {
+    const raw = Array.isArray(value) ? value : [];
+    return raw
+        .map((item, index) => {
+            if (!item || typeof item !== "object") return null;
+            const record = item as Record<string, unknown>;
+            const question = normalizeFaqText(record.question, 240);
+            const answer = normalizeFaqText(record.answer, 2000);
+            if (!question || !answer) return null;
+            return {
+                id: normalizeFaqText(record.id, 180),
+                question,
+                answer,
+                tags: normalizeFaqList(record.tags, 20, 64),
+                contextKeys: normalizeFaqList(record.contextKeys, 20, 80),
+                entityIds: normalizeFaqIdList(record.entityIds, 25, 160),
+                sortOrder: Number.isFinite(Number(record.sortOrder)) ? Number(record.sortOrder) : index,
+            };
+        })
+        .filter(Boolean)
+        .slice(0, 5);
+};
+
+type PublishedFaqDraft = {
+    id: string;
+    data: Record<string, unknown>;
+};
+
+const buildPublishedFaqDraftsForArticle = (
+    article: KnowledgeBaseArticleType | null,
+    articleId: string,
+    job: IngestionJob,
+    tenantId: number,
+    storeId: number,
+): PublishedFaqDraft[] => {
+    const generatedFaqs = normalizeGeneratedFaqs(article?.generatedFaqs);
+    return generatedFaqs.map((faq: any, index) => {
+        const id = faq.id || buildGeneratedFaqDocId(articleId, index);
+        return {
+            id,
+            data: {
+                id,
+                pId: "CN",
+                tId: tenantId,
+                sId: storeId,
+                uId: job.uId,
+                question: faq.question,
+                answer: faq.answer,
+                status: "published",
+                source: "import",
+                active: true,
+                articleId,
+                articleTitle: article?.title || "",
+                tags: faq.tags,
+                contextKeys: faq.contextKeys,
+                entityIds: faq.entityIds?.length ? faq.entityIds : (article as any)?.entityIds || [],
+                sortOrder: faq.sortOrder ?? index,
+                jobId: job.id,
+                generatedFromArticleId: articleId,
+                publishedOn: Timestamp.now(),
+                lastReviewedOn: Timestamp.now(),
+                reviewRequestedOn: null,
+                modifiedOn: Timestamp.now(),
+            },
+        };
+    });
 };
 
 export const publishApprovedJobLogic = async (jobId: string, finalCategories: IngestionJobCategoriesMap) => {
@@ -101,22 +205,22 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
 
             const tenantId = Number(job.tId);
             const storeId = Number(job.sId);
-            const cacheVersionRef = firestoreAdmin
-                .collection(CANONICA_CACHE_VERSIONS_COLLECTION)
-                .doc(getCanonicaCacheVersionDocId(CANONICA_CACHE_SOURCES.KB, tenantId, storeId));
-            transaction.set(cacheVersionRef, getCanonicaCacheVersionBumpData(CANONICA_CACHE_SOURCES.KB, tenantId, storeId, {
-                reason: "publish_approved_job",
-                sourceId: jobId,
-                sourceType: "kb_generation_job",
-            }), { merge: true });
 
             const categoriesDocId = getKnowledgeBaseCategoriesDocId(job.tId, job.sId);
             const categoriesDocRef = firestoreAdmin.collection(KB_CATEGORIES_COLLECTION).doc(categoriesDocId);
+            const allArticleIds = job.articleIds || [];
+            const articleDocs = new Map<string, KnowledgeBaseArticleType | null>();
 
             // 3. Update Master Navigation Document
             const categoriesMetaDoc = await transaction.get(categoriesDocRef);
             const currentCategoriesData: KnowledgeBaseCategoriesType = categoriesMetaDoc.exists ? categoriesMetaDoc.data() as KnowledgeBaseCategoriesType : { categories: {} };
             logger.info(`[publishApprovedJobLogic] Pre-flight check. with job id ${jobId} and job data ${job}`);
+
+            for (const articleId of allArticleIds) {
+                const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
+                const articleDoc = await transaction.get(articleRef);
+                articleDocs.set(articleId, articleDoc.exists ? articleDoc.data() as KnowledgeBaseArticleType : null);
+            }
 
             // Merge the final, human-approved navigation blueprint from the client
             for (const catId in finalCategories) {
@@ -128,6 +232,8 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                     category.articles.forEach((article: any) => {
                         article.active = true;
                         delete article.content;
+                        delete article.generatedFaqs;
+                        delete article.faqIds;
                     });
                 }
 
@@ -139,6 +245,8 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                             section.articles.forEach((article: any) => {
                                 article.active = true;
                                 delete article.content;
+                                delete article.generatedFaqs;
+                                delete article.faqIds;
                             });
                         }
                     });
@@ -196,13 +304,37 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
             logger.info(`[publishApprovedJobLogic] Merged navigation blueprint into kb_categories/${categoriesDocId}.`);
 
             // 4. Update articles that DO NOT need re-embedding
-            const allArticleIds = job.articleIds || [];
-
             const articlesToPublishNow = articlesToReEmbed.length > 0 ? allArticleIds.filter(id => !articlesToReEmbed.find(article => article.id === id)) : allArticleIds;
+            const cacheVersionRef = firestoreAdmin
+                .collection(CANONICA_CACHE_VERSIONS_COLLECTION)
+                .doc(getCanonicaCacheVersionDocId(CANONICA_CACHE_SOURCES.KB, tenantId, storeId));
+            transaction.set(cacheVersionRef, getCanonicaCacheVersionBumpData(CANONICA_CACHE_SOURCES.KB, tenantId, storeId, {
+                reason: "publish_approved_job",
+                sourceId: jobId,
+                sourceType: "kb_generation_job",
+            }), { merge: true });
 
-            for (const articleId of articlesToPublishNow) {
+            for (const articleId of allArticleIds) {
                 const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
-                transaction.update(articleRef, { status: ARTICLE_STATUS.PUBLISHED, active: true, lastReviewedOn: Timestamp.now() });
+                const faqDrafts = buildPublishedFaqDraftsForArticle(articleDocs.get(articleId) || null, articleId, job, tenantId, storeId);
+                const faqIds = faqDrafts.map(faq => faq.id);
+                const updatePayload: Record<string, unknown> = {
+                    active: true,
+                    lastReviewedOn: Timestamp.now(),
+                    generatedFaqs: FieldValue.delete(),
+                };
+                if (articlesToPublishNow.includes(articleId)) {
+                    updatePayload.status = ARTICLE_STATUS.PUBLISHED;
+                }
+                if (faqIds.length > 0) {
+                    updatePayload.faqIds = faqIds;
+                }
+                transaction.update(articleRef, updatePayload);
+
+                for (const faqDraft of faqDrafts) {
+                    const faqRef = firestoreAdmin.collection(CANONICA_FAQS_COLLECTION).doc(faqDraft.id);
+                    transaction.set(faqRef, faqDraft.data, { merge: true });
+                }
             }
 
             // 5. Update articles that DO need re-embedding

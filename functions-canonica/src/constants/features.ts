@@ -51,7 +51,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/product-friction-intelligence/
      */
-    ENABLE_CANONICA_FRICTION_INTELLIGENCE: false,
+    ENABLE_CANONICA_FRICTION_INTELLIGENCE: true,
 
     /**
      * Canonica Founder Trust Layer
@@ -106,7 +106,7 @@ export const FUNCTION_FLAGS = {
      * Requires: ENABLE_CANONICA_NIGHTLY + ENABLE_CANONICA_AUTO_KNOWLEDGE
      * @see __docs__/canonica/ticket-knowledge-loop/
      */
-    ENABLE_CANONICA_TICKET_KNOWLEDGE: false,
+    ENABLE_CANONICA_TICKET_KNOWLEDGE: true,
 
     /**
      * Canonica Knowledge Graph Exploitation (Nightly Graph Index Rebuild)

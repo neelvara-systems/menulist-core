@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from "@constant/product";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where } from "@firebase/firestore";
@@ -112,6 +113,7 @@ export const addTicket = async (data: SupportTicketType) => {
                     recipientEmail: data.clientDetails.email,
                     recipientName: data.clientDetails.storeName || undefined,
                     referenceId: `ticket-created-${docRef.id}`,
+                    productId: PRODUCT_IDS.CANONICA,
                     metadata: {
                         ticketId: docRef.id,
                         ticketDisplayId: displayId,
@@ -186,12 +188,14 @@ export const addTicketMessage = async (ticketId: string, currentMessages: Ticket
 
             // Notification: ticket reply (fire-and-forget)
             // Only notify when the sender is NOT the ticket creator (i.e., support agent replied)
-            if (message.sender?.email && message.type !== 'system') {
+            const notifyEmail = (message as any)._notifyEmail;
+            if (message.sender?.email && message.type !== 'system' && notifyEmail) {
                 triggerNotification({
                     eventType: 'TICKET_REPLY',
-                    recipientEmail: (message as any)._notifyEmail || '',
+                    recipientEmail: notifyEmail,
                     recipientName: (message as any)._notifyName || undefined,
                     referenceId: `ticket-reply-${ticketId}-${message.id}`,
+                    productId: PRODUCT_IDS.CANONICA,
                     metadata: {
                         ticketId,
                         ticketSubject: (message as any)._ticketSubject || 'Support Request',
@@ -241,6 +245,8 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
                     recipientEmail: notifyEmail,
                     recipientName: (changedBy as any)._notifyName || undefined,
                     referenceId: `ticket-status-${ticketId}-${newStatus}-${Date.now()}`,
+                    productId: PRODUCT_IDS.CANONICA,
+                    skipDedup: true,
                     metadata: {
                         ticketId,
                         ticketSubject: (changedBy as any)._ticketSubject || 'Support Request',

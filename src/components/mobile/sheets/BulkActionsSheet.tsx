@@ -34,7 +34,7 @@ import {
 import type { Project, ProjectSummaryData } from '../../templates/main-app/projects/types';
 import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popover, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
-import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
+import { getProjectLanguageIssues, repairLanguageProject } from '../../templates/main-app/projects/editorView/languageRepair.shared';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 interface BulkActionsSheetProps {

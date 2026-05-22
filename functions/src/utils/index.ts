@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions';
-import { ProcessedArticleToSave, ProcessedKBArticle, ProcessedKBCategory, ProcessedKBMap, ProcessedKBSection } from '../types';
+import { KnowledgeBaseGeneratedFaq, ProcessedArticleToSave, ProcessedKBArticle, ProcessedKBCategory, ProcessedKBMap, ProcessedKBSection } from '../types';
 
 function normalizeContent(article: ProcessedKBArticle) {
     const rawContent = article.content;
@@ -22,6 +22,63 @@ function normalizeContent(article: ProcessedKBArticle) {
     // Fallback: empty doc
     return { type: "doc", content: [] };
 }
+
+const normalizeText = (value: unknown, maxLength: number): string => {
+    if (typeof value !== "string") return "";
+    return value
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, maxLength);
+};
+
+const normalizeStringList = (value: unknown, maxItems: number, maxLength: number): string[] => {
+    const raw = typeof value === "string"
+        ? value.split(/[\n,]/)
+        : Array.isArray(value) ? value : [];
+
+    return Array.from(new Set(
+        raw
+            .map(item => normalizeText(item, maxLength).toLowerCase().replace(/[^a-z0-9_\-\s/]/g, "").replace(/\s+/g, "_"))
+            .filter(Boolean)
+    )).slice(0, maxItems);
+};
+
+const normalizeIdList = (value: unknown, maxItems: number, maxLength: number): string[] => {
+    const raw = typeof value === "string"
+        ? value.split(/[\n,]/)
+        : Array.isArray(value) ? value : [];
+
+    return Array.from(new Set(
+        raw
+            .map(item => normalizeText(item, maxLength).replace(/[^a-zA-Z0-9_\-:.]/g, ""))
+            .filter(Boolean)
+    )).slice(0, maxItems);
+};
+
+const normalizeGeneratedFaqs = (value: unknown): KnowledgeBaseGeneratedFaq[] => {
+    const raw = Array.isArray(value) ? value : [];
+
+    return raw
+        .map((item, index) => {
+            if (!item || typeof item !== "object") return null;
+            const record = item as Record<string, unknown>;
+            const question = normalizeText(record.question, 240);
+            const answer = normalizeText(record.answer, 2000);
+            if (!question || !answer) return null;
+
+            return {
+                question,
+                answer,
+                tags: normalizeStringList(record.tags, 20, 64),
+                contextKeys: normalizeStringList(record.contextKeys, 20, 80),
+                entityIds: normalizeIdList(record.entityIds, 25, 160),
+                sortOrder: Number.isFinite(Number(record.sortOrder)) ? Number(record.sortOrder) : index,
+            };
+        })
+        .filter(Boolean)
+        .slice(0, 5) as KnowledgeBaseGeneratedFaq[];
+};
 
 export function normalizeProcessedKBData(responseText: any): ProcessedKBMap {
 
@@ -76,6 +133,7 @@ export function normalizeProcessedKBData(responseText: any): ProcessedKBMap {
                             title: String(art.title).trim(),
                             content: normalizeContent(art),
                             sources: [],  // Sources are added later during embedding
+                            generatedFaqs: normalizeGeneratedFaqs(art.faqs || art.generatedFaqs),
                         });
                     }
                 }
@@ -95,6 +153,7 @@ export function normalizeProcessedKBData(responseText: any): ProcessedKBMap {
                     title: String(art.title).trim(),
                     content: normalizeContent(art),
                     sources: [],  // Sources are added later during embedding
+                    generatedFaqs: normalizeGeneratedFaqs(art.faqs || art.generatedFaqs),
                 });
             }
         }

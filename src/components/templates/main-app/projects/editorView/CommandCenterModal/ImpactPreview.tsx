@@ -1,6 +1,6 @@
 import { Alert, Collapse, Flex, Statistic, Tag, Typography, theme } from 'antd';
 import { useState } from 'react';
-import { LuArrowDown, LuArrowRight, LuArrowUp } from 'react-icons/lu';
+import { LuArrowDown, LuArrowRight, LuArrowUp, LuFileText, LuLanguages, LuSparkles } from 'react-icons/lu';
 import type {
     ActiveInactivePreview,
     AvailabilityPreview,
@@ -8,8 +8,10 @@ import type {
     ImpactSummary,
     MoveCategoryPreview,
     PriceChangePreview,
+    RepairMenuSummary,
     SelectedItemInfo,
 } from '../../types/commandCenter.types';
+import type { TextCasePreview } from '../textCase.shared';
 
 const { Text } = Typography;
 const { Panel } = Collapse;
@@ -20,6 +22,8 @@ interface ImpactPreviewProps {
     availabilityPreview: AvailabilityPreview | null;
     moveCategoryPreview: MoveCategoryPreview | null;
     activeInactivePreview: ActiveInactivePreview | null;
+    repairSummary: RepairMenuSummary;
+    textCasePreview: TextCasePreview | null;
     lastApplyMessage: string | null;
     selectedItems: SelectedItemInfo[];
 }
@@ -30,6 +34,8 @@ export default function ImpactPreview({
     availabilityPreview,
     moveCategoryPreview,
     activeInactivePreview,
+    repairSummary,
+    textCasePreview,
     lastApplyMessage,
     selectedItems,
 }: ImpactPreviewProps) {
@@ -92,6 +98,132 @@ export default function ImpactPreview({
                 <Text type="secondary" style={{ fontSize: 13 }}>
                     Select an action to preview impact
                 </Text>
+            </Flex>
+        );
+    }
+
+    if (activeAction === 'repairMenu') {
+        return (
+            <Flex vertical gap={12} style={{ padding: 16, height: '100%', overflowY: 'auto' }}>
+                <Text strong style={{ fontSize: 14 }}>Repair Preview</Text>
+                <Flex
+                    gap={16}
+                    wrap="wrap"
+                    style={{
+                        padding: '12px',
+                        backgroundColor: token.colorBgLayout,
+                        borderRadius: 8,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                    }}
+                >
+                    <Statistic
+                        title={<Text type="secondary" style={{ fontSize: 10 }}>Fixable now</Text>}
+                        value={repairSummary.fixableNowCount}
+                        valueStyle={{ fontSize: 16 }}
+                        formatter={(value) => value?.toLocaleString()}
+                    />
+                    <Statistic
+                        title={<Text type="secondary" style={{ fontSize: 10 }}>Manual review</Text>}
+                        value={repairSummary.manualReviewCount}
+                        valueStyle={{ fontSize: 16 }}
+                        formatter={(value) => value?.toLocaleString()}
+                    />
+                </Flex>
+
+                <Flex vertical gap={8}>
+                    <Flex align="center" gap={8}>
+                        <LuSparkles style={{ color: token.colorSuccess }} />
+                        <Text strong style={{ fontSize: 12 }}>Will repair</Text>
+                    </Flex>
+                    {repairSummary.fixableNowCount > 0 ? (
+                        <Flex gap={8} wrap="wrap">
+                            {repairSummary.descriptionsToGenerate > 0 ? (
+                                <Tag color="success">{repairSummary.descriptionsToGenerate} descriptions</Tag>
+                            ) : null}
+                            {repairSummary.languageIssueCount > 0 ? (
+                                <Tag color="processing">{repairSummary.languageIssueCount} language issues</Tag>
+                            ) : null}
+                            {repairSummary.projectContentIssueCount > 0 ? (
+                                <Tag color="processing">{repairSummary.projectContentIssueCount} project details</Tag>
+                            ) : null}
+                        </Flex>
+                    ) : (
+                        <Text type="secondary" style={{ fontSize: 12 }}>No action needed.</Text>
+                    )}
+                </Flex>
+
+                {repairSummary.manualReviewCount > 0 ? (
+                    <Flex vertical gap={8}>
+                        <Flex align="center" gap={8}>
+                            <LuFileText style={{ color: token.colorWarning }} />
+                            <Text strong style={{ fontSize: 12 }}>Will not change automatically</Text>
+                        </Flex>
+                        <Flex gap={8} wrap="wrap">
+                            {repairSummary.missingPrices > 0 ? (
+                                <Tag>{repairSummary.missingPrices} missing prices</Tag>
+                            ) : null}
+                            {repairSummary.missingImages > 0 ? (
+                                <Tag>{repairSummary.missingImages} missing photos</Tag>
+                            ) : null}
+                        </Flex>
+                    </Flex>
+                ) : null}
+
+                {repairSummary.projectContentLanguagesToRepair > 0 ? (
+                    <Flex align="center" gap={8}>
+                        <LuLanguages style={{ color: token.colorPrimary }} />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Project details will be filled for {repairSummary.projectContentLanguagesToRepair} language{repairSummary.projectContentLanguagesToRepair !== 1 ? 's' : ''}.
+                        </Text>
+                    </Flex>
+                ) : null}
+            </Flex>
+        );
+    }
+
+    if (activeAction === 'textCase') {
+        return (
+            <Flex vertical gap={12} style={{ padding: 16, height: '100%', overflowY: 'auto' }}>
+                <Text strong style={{ fontSize: 14 }}>Text Case Preview</Text>
+                {textCasePreview ? (
+                    <>
+                        <Flex
+                            gap={16}
+                            wrap="wrap"
+                            style={{
+                                padding: '12px',
+                                backgroundColor: token.colorBgLayout,
+                                borderRadius: 8,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                            }}
+                        >
+                            <Statistic
+                                title={<Text type="secondary" style={{ fontSize: 10 }}>Text values</Text>}
+                                value={textCasePreview.totalFields}
+                                valueStyle={{ fontSize: 16 }}
+                                formatter={(value) => value?.toLocaleString()}
+                            />
+                        </Flex>
+                        <Flex gap={8} wrap="wrap">
+                            {textCasePreview.categories > 0 ? (
+                                <Tag>{textCasePreview.categories} category names</Tag>
+                            ) : null}
+                            {textCasePreview.items > 0 ? (
+                                <Tag>{textCasePreview.items} item names</Tag>
+                            ) : null}
+                            {textCasePreview.attributes > 0 ? (
+                                <Tag>{textCasePreview.attributes} attribute names</Tag>
+                            ) : null}
+                            {textCasePreview.descriptions > 0 ? (
+                                <Tag>{textCasePreview.descriptions} descriptions</Tag>
+                            ) : null}
+                        </Flex>
+                    </>
+                ) : (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Choose at least one text area to preview the change.
+                    </Text>
+                )}
             </Flex>
         );
     }
