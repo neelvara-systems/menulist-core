@@ -14,7 +14,7 @@ import WidgetSection from './components/WidgetSection';
 import { CANONICA_SITE_DESCRIPTION } from './siteConfig';
 
 export const metadata: Metadata = {
-    title: 'Canonica — Page-Aware Support Knowledge for SaaS',
+    title: 'Canonica — Support Knowledge Control Plane for SaaS',
     description: CANONICA_SITE_DESCRIPTION,
     alternates: { canonical: '/' },
 };

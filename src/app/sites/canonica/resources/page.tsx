@@ -31,7 +31,7 @@ const RESOURCE_GROUPS = [
         title: 'Plan the rollout',
         items: [
             ['Use cases', '/use-cases', 'Map Canonica to billing, onboarding, settings, releases, and tickets.'],
-            ['Widget install', '/install', 'Understand the script, allowed origins, blocked routes, runtime verification, and context passing.'],
+            ['Widget and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
             ['Security', '/security', 'Review tenant isolation, widget origin controls, and owner-approved authority.'],
         ],
     },

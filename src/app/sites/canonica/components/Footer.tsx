@@ -6,7 +6,7 @@ const FOOTER_LINKS = {
         { label: 'Use Cases', href: '/use-cases' },
         { label: 'Demo', href: '/demo' },
         { label: 'Pricing', href: '/pricing' },
-        { label: 'Start Free', href: '/get-started' },
+        { label: 'Start Setup', href: '/get-started' },
     ],
     Resources: [
         { label: 'Resources', href: '/resources' },
@@ -37,8 +37,8 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                             <span className="text-lg font-semibold text-white">Canonica</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
-                            Page-aware support knowledge for small SaaS teams.
-                            Approved answers before fallback.
+                            Support knowledge control plane for small SaaS teams.
+                            Page-aware help, hosted docs, and approved answers before fallback.
                         </p>
                     </div>
 

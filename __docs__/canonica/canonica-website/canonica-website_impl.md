@@ -1,7 +1,7 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.1.5
-> **Last Updated:** 2026-05-21
+> **Version:** 1.1.6
+> **Last Updated:** 2026-05-22
 > **Audience:** Developers
 
 ---
@@ -83,6 +83,10 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - homepage emits Organization, WebSite, and SoftwareApplication structured data
 - Canonica website layout sets Canonica metadata, manifest, icons, and dark theme color so public pages do not inherit MenuList web-app title metadata
 - copy differentiates Canonica from helpdesks, chatbots, and documentation CMS products without claiming to replace them
+- May 22 refresh changed the hero from page-aware support copy to the implemented support knowledge control plane category.
+- Website copy now includes hosted help domains, FAQ management/article-backed FAQ generation, product-scoped Canonica billing/support credits, source-version cache freshness, and separate Firebase/product boundaries.
+- `/pricing` now explains that public setup starts on beta while paid plan changes and support-credit top-ups happen from Canonica Billing using product-scoped Razorpay requests.
+- `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
 
 ---
 
@@ -207,7 +211,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 
 ## Firebase Cost
 
-**$0.00/month** — The website is entirely static. No database reads, no API calls, no Cloud Functions.
+**$0.00/month for normal browsing** — The website pages are static. No database reads, no API calls, no Cloud Functions.
 
 The public demo is static interaction state only. Security, FAQ, privacy, and terms pages are static content. The self-service onboarding form is the only public website surface that calls Canonica APIs, and it runs only after explicit user submission.
 
@@ -238,3 +242,4 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 | 2026-05-21 | 1.1.3 | Added static product preview and public use-cases, integrations, resources, and updates pages; updated nav, footer, sitemap registry, and docs |
 | 2026-05-21 | 1.1.4 | Added widget-first `/install`, made `/integrations` a redirect alias, and removed rollout-only API/adapters from buyer-facing website claims |
 | 2026-05-21 | 1.1.5 | Expanded `/security` with MenuList-inspired trust-page structure adapted to Canonica's implemented widget runtime, tenant isolation, governed answers, rate limits, summaries, and product separation |
+| 2026-05-22 | 1.1.6 | Refreshed website to match current Canonica implementation: support knowledge control plane hero, hosted help, FAQ generation/management, product-scoped billing/support credits, cache freshness, and separate Firebase/product boundaries |

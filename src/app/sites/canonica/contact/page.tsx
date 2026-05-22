@@ -29,7 +29,7 @@ export default function CanonicaContactPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Contact</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Get in touch</h1>
                         <p className="mb-12 text-lg text-[#a0a0c0]">
-                            Have questions about Canonica, onboarding, widget install, or whether it fits your SaaS product?
+                            Have questions about Canonica, onboarding, widget install, hosted help, billing, or whether it fits your SaaS product?
                             Reach the team here.
                         </p>
 

@@ -7,7 +7,7 @@ import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica keeps support answers correct across help centers, widgets, changelogs, and tickets for small SaaS teams.',
+    description: 'Canonica brings launch setup, support control, page-aware widget, hosted help, canonical answers, and knowledge governance into one SaaS support control plane.',
     alternates: { canonical: '/product' },
 };
 
@@ -26,9 +26,9 @@ const FEATURES = [
         title: 'Go from blank support to a working support layer',
         description: 'Create a workspace, add your product details, import the help content you already have, and verify the widget on your own product pages.',
         capabilities: [
-            'Product profile, support email, billing model, and main product pages',
+            'Product profile, support email, billing model, workspace subscription, and main product pages',
             'Knowledge import for docs, FAQs, starter answers, and existing files',
-            'Activation checklist for widget install, allowed origins, and first answer readiness',
+            'Activation checklist for widget install, hosted help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
             'Human review before generated drafts become approved answers',
         ],
@@ -40,8 +40,9 @@ const FEATURES = [
         description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help.',
         capabilities: [
             'Widget install script with allowed-origin and blocked-route controls',
+            'Hosted help center for docs, FAQ, and changelog on help/docs/support domains',
             'Safe context payloads for page, feature, workflow, plan, and role hints',
-            'Related articles and changelog entries filtered by product surface',
+            'Related articles, FAQs, and changelog entries filtered by product surface',
             'Tickets as fallback when approved content is missing',
             'Mobile-first widget UI for end users inside client products',
         ],
@@ -54,6 +55,7 @@ const FEATURES = [
         capabilities: [
             'Canonical-first retrieval before RAG fallback',
             'Owner-approved answer drafts and mutation proposals',
+            'Article-backed FAQ generation and review for short support answers',
             'Coverage metrics by surface, entity, and answer readiness',
             'Cache freshness checks so updated content does not serve stale answers',
             'Audit trail for answer review and governance actions',
@@ -69,7 +71,7 @@ const FEATURES = [
             'Drift flags for stale or conflicting support knowledge',
             'Release impact checks without creating a separate scheduler',
             'Weekly digest of what needs review next',
-            'Summary-backed readiness metrics to avoid expensive dashboard scans',
+            'Summary-backed coverage, trust, and readiness metrics to avoid expensive dashboard scans',
         ],
     },
     {
@@ -82,7 +84,7 @@ const FEATURES = [
             'Signal-to-knowledge queue for recurring gaps',
             'Draft canonical answers for owner review',
             'Ticket resolution extraction when a support case teaches the product',
-            'Cost-conscious summaries for dashboards and scheduler discovery',
+            'Cost-conscious summaries for dashboards, scheduler discovery, and product friction review',
         ],
     },
 ];
@@ -98,10 +100,10 @@ export default function CanonicaProductPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Support answers tied to the product screen where users need help.
+                        Launch setup, support control, and knowledge governance in one product.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica gives small SaaS teams a governed support knowledge layer: product surfaces, canonical answers, release-aware review, and a signal queue for recurring gaps.
+                        Canonica gives small SaaS teams a governed support layer: product surfaces, page-aware widget, hosted help, canonical answers, release-aware review, and a signal queue for recurring gaps.
                     </p>
                 </section>
 
@@ -185,7 +187,7 @@ export default function CanonicaProductPage() {
                         href="/get-started"
                         className="inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
                     >
-                        Start Free
+                        Start Setup
                     </CanonicaLink>
                 </section>
             </main>

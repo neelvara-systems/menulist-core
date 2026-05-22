@@ -40,6 +40,11 @@ const USE_CASES = [
         outcome: 'Connect changelog entries to affected answers so stale support content becomes visible.',
     },
     {
+        title: 'Hosted help for public support',
+        context: 'help.myapp.com, docs.myapp.com, FAQ, changelog, public article pages',
+        outcome: 'Publish reviewed docs, FAQs, and release notes without exposing tickets, chat history, or workspace internals.',
+    },
+    {
         title: 'Support fallback',
         context: 'No canonical answer, low-confidence result, negative feedback, ticket resolution',
         outcome: 'Capture the gap as a signal and route it toward mutation proposals for owner review.',

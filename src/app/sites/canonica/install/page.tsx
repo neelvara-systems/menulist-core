@@ -6,7 +6,7 @@ import CanonicaLink from '../components/CanonicaLink';
 
 export const metadata: Metadata = {
     title: 'Widget Install',
-    description: 'Install Canonica with one widget script, allowed origins, blocked routes, runtime verification, and safe page context.',
+    description: 'Install Canonica with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context.',
     alternates: { canonical: '/install' },
 };
 
@@ -30,6 +30,10 @@ const INSTALL_STEPS = [
     {
         title: 'Restrict where it runs',
         detail: 'Allowed origins and blocked routes decide which domains and product pages can show the launcher.',
+    },
+    {
+        title: 'Publish hosted help',
+        detail: 'Add help, docs, support, or kb domains so published articles, FAQs, and changelog entries have a public home.',
     },
     {
         title: 'Pass safe page context',
@@ -69,12 +73,12 @@ export default function CanonicaInstallPage() {
                         Add Canonica to the product pages where users ask for help.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        The first integration is the page-aware widget: one script, controlled domains, blocked routes, and bounded page context.
+                        The first integration is the page-aware widget. The same setup also gives you hosted help domains for docs, FAQ, and changelog when your product needs a public support home.
                     </p>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-5">
+                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {INSTALL_STEPS.map((item, index) => (
                             <article key={item.title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                                 <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-xs font-bold text-indigo-300">
@@ -88,7 +92,7 @@ export default function CanonicaInstallPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
-                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2">
+                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
                         <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
                             <h2 className="text-xl font-semibold text-white">Install snippet</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">
@@ -108,6 +112,20 @@ export default function CanonicaInstallPage() {
                                 <code>{CONTEXT_SNIPPET}</code>
                             </pre>
                         </article>
+
+                        <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
+                            <h2 className="text-xl font-semibold text-white">Hosted help domains</h2>
+                            <p className="mt-2 text-sm leading-relaxed text-[#808099]">
+                                The Hosted Help tab maps a domain such as help.example.com to published articles, FAQ, changelog, robots, and sitemap output.
+                            </p>
+                            <div className="mt-5 space-y-2 text-sm text-[#d6d6ef]">
+                                {['/docs', '/articles/{slug}', '/faq', '/changelog', '/sitemap.xml'].map((route) => (
+                                    <div key={route} className="rounded-lg border border-white/[0.06] bg-[#070714] px-3 py-2">
+                                        {route}
+                                    </div>
+                                ))}
+                            </div>
+                        </article>
                     </div>
                 </section>
 
@@ -121,7 +139,7 @@ export default function CanonicaInstallPage() {
                             </p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
-                            {['Allowed origins', 'Blocked routes', 'Mobile visibility', 'Runtime status'].map((label) => (
+                            {['Allowed origins', 'Blocked routes', 'Mobile visibility', 'Hosted help DNS', 'Runtime status', 'Appearance'].map((label) => (
                                 <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
                                     <div className="text-sm font-semibold text-white">{label}</div>
                                     <p className="mt-2 text-sm leading-relaxed text-[#808099]">
@@ -136,7 +154,7 @@ export default function CanonicaInstallPage() {
                 <section className="border-t border-white/[0.06] px-6 py-20 text-center">
                     <h2 className="text-3xl font-bold">Start with a clean widget install.</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
-                        Create a workspace, map product surfaces, install the widget, then verify that page context reaches Canonica.
+                        Create a workspace, map product surfaces, install the widget, publish hosted help if needed, then verify that page context reaches Canonica.
                     </p>
                     <CanonicaLink
                         basePath={basePath}

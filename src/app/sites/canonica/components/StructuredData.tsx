@@ -10,7 +10,6 @@ export default function CanonicaStructuredData() {
                 name: 'Canonica',
                 url: CANONICA_SITE_URL,
                 email: 'hello@canonica.app',
-                sameAs: ['https://menulist.ai'],
             },
             {
                 '@type': 'WebSite',
@@ -26,7 +25,7 @@ export default function CanonicaStructuredData() {
                 applicationCategory: 'CustomerSupportApplication',
                 operatingSystem: 'Web',
                 url: CANONICA_SITE_URL,
-                description: 'Page-aware support knowledge infrastructure for small SaaS teams.',
+                description: 'Support knowledge control plane for SaaS products with launch setup, page-aware widget, hosted help, canonical answers, and drift governance.',
                 offers: {
                     '@type': 'Offer',
                     price: '999',

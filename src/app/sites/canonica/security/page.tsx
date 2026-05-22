@@ -37,6 +37,10 @@ const CONTROLS = [
         body: 'Workspace owners can configure allowed origins and blocked routes so the widget appears only where the product owner wants it.',
     },
     {
+        title: 'Hosted help domain registry',
+        body: 'Hosted help domains resolve through Canonica-owned registry documents so anonymous docs, FAQ, changelog, robots, and sitemap pages never depend on client-supplied tenant IDs.',
+    },
+    {
         title: 'Owner-approved authority',
         body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active canonical answers.',
     },
@@ -55,6 +59,7 @@ const SECURITY_FACTS = [
     { label: 'Runtime database', value: 'Canonica Firebase project' },
     { label: 'Widget key storage', value: 'Hashed key, shown once' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
+    { label: 'Hosted help', value: 'Registry-scoped domains' },
     { label: 'Answer authority', value: 'Owner-reviewed canonical answers' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Compact summary docs' },
@@ -78,6 +83,16 @@ const TRUST_AREAS = [
             'Widget keys are stored as hashes after creation.',
             'Allowed origins restrict where runtime config can be used.',
             'Blocked routes let owners hide the launcher on sensitive screens.',
+            'Malformed cn_* keys are rejected before expensive lookup work.',
+        ],
+    },
+    {
+        title: 'Hosted public help',
+        body: 'Canonica can publish reviewed support content on support domains without exposing authenticated support operations.',
+        points: [
+            'Domain registry docs resolve workspace scope server-side.',
+            'Anonymous pages render published docs, FAQ, changelog, robots, and sitemap only.',
+            'Tickets, chat history, feedback writes, and account data stay out of hosted help.',
         ],
     },
     {
@@ -105,6 +120,7 @@ const TRUST_AREAS = [
             'Public widget config, search, and feedback endpoints are rate limited.',
             'Repeated canonical hits can use cache with freshness checks.',
             'Dashboards prefer summary documents over broad collection scans.',
+            'Hosted help content uses cached public payloads and compact display fields.',
         ],
     },
     {

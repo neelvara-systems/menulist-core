@@ -21,7 +21,7 @@ const SECTIONS = [
     {
         title: 'Using Canonica',
         body: [
-            'Canonica helps SaaS teams manage product support knowledge, approved answers, help widgets, changelogs, tickets, and support-gap review flows.',
+            'Canonica helps SaaS teams manage product support knowledge, approved answers, help widgets, hosted help centers, FAQs, changelogs, tickets, and support-gap review flows.',
             'You are responsible for the content you upload, the workspace users you invite, and the page context your product sends to Canonica.',
         ],
     },
@@ -49,7 +49,7 @@ const SECTIONS = [
     {
         title: 'Billing and Availability',
         body: [
-            'Paid plans, trial periods, limits, and optional onboarding services are shown on the pricing or checkout flow available at the time of purchase.',
+            'Paid plans, beta access, support credits, trial periods, limits, and optional onboarding services are shown on the pricing or checkout flow available at the time of purchase.',
             'Canonica is operated with reasonable care, but no online service can guarantee uninterrupted availability. Maintenance, provider outages, abuse protection, or operational incidents may affect access.',
         ],
     },
@@ -72,7 +72,7 @@ export default function CanonicaTermsOfServicePage() {
                     <div className="mx-auto max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Terms of Service</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Terms of Service</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 21, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 22, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             These terms describe the expected use of Canonica&apos;s website, dashboard, help widget, and
                             support knowledge features.

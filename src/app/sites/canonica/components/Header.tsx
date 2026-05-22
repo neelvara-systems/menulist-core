@@ -37,7 +37,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                 <div className="hidden items-center gap-3 md:flex">
                     <L href="/contact" className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">Contact</L>
                     <L href="/get-started" className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-600">
-                        Start Free
+                        Start Setup
                     </L>
                 </div>
 
@@ -63,7 +63,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                 href="/get-started"
                                 className="mt-2 rounded-lg bg-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-white"
                             >
-                                Start Free
+                                Start Setup
                             </L>
                         </nav>
                     </div>

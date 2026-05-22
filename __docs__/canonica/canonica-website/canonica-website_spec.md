@@ -1,14 +1,14 @@
 # Canonica Website — Spec
 
-> **Version:** 1.1.5
-> **Last Updated:** 2026-05-21
+> **Version:** 1.1.6
+> **Last Updated:** 2026-05-22
 > **Audience:** CEO / PM / Marketing
 
 ---
 
 ## Purpose
 
-Public-facing marketing website for Canonica at `canonica.app`. Serves as the primary discovery, demo, pricing, and onboarding surface for small SaaS founders considering Canonica as page-aware support knowledge infrastructure.
+Public-facing marketing website for Canonica at `canonica.app`. Serves as the primary discovery, demo, pricing, and onboarding surface for small SaaS founders considering Canonica as a support knowledge control plane with launch setup, support control, page-aware widget, hosted help, and knowledge governance.
 
 ---
 
@@ -31,9 +31,9 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 **Goal:** Communicate what Canonica is in < 10 seconds. Drive to the static demo or self-service onboarding.
 
 **Sections:**
-1. **Hero** — Small-SaaS support correctness promise with demo and start CTAs
-2. **Product Preview** — Static dashboard/widget/governance mock that shows the actual product shape without relying on external screenshots
-3. **Widget Install** — Page-aware widget positioning, allowed domains, blocked routes, and safe context
+1. **Hero** — Support knowledge control plane category promise with Launch Setup, Support Control, and Knowledge Governance proof
+2. **Product Preview** — Static dashboard/widget/hosted-help/governance mock that shows the actual product shape without relying on external screenshots
+3. **Widget Install** — Page-aware widget, hosted help domains, allowed domains, blocked routes, and safe context
 4. **Canonica Engine** — Product Ontology, Canonical Answer Engine, Drift Governance, Signal Mutation
 5. **Product System** — Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
 6. **How It Works** — Create workspace, import knowledge, map surfaces, install widget, govern gaps
@@ -68,12 +68,13 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 - Connecting use cases to Canonica's operating system
 
 ### 4. Widget Install (`/install`)
-**Goal:** Explain how Canonica connects to a client product through the implemented widget without overclaiming disabled API or adapter surfaces.
+**Goal:** Explain how Canonica connects to a client product through the implemented widget and hosted help center without overclaiming disabled API or adapter surfaces.
 
 **Sections:**
 - Widget key and script model
 - Allowed origins
 - Blocked routes
+- Hosted help domains for docs, articles, FAQ, changelog, robots, and sitemap
 - Safe page context
 - Runtime verification
 - Owner dashboard controls
@@ -113,7 +114,8 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 **Sections:**
 - Starter, Growth, and Studio INR packaging
 - Predictable limits, no public per-resolution pricing
-- Controlled beta note where payments are not fully enabled
+- Public setup starts with beta workspace creation
+- Paid plan changes, transactions, invoices, and support-credit top-ups are handled through Canonica Billing with product-scoped Razorpay requests
 
 ### 9. Security (`/security`)
 **Goal:** Give buyers a concise trust page without overclaiming compliance.
@@ -123,6 +125,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 - Tenant-scoped data and workspace isolation
 - Safe widget context that is bounded to support relevance and never treated as trusted identity
 - Origin and blocked-route controls for widget placement
+- Hosted help domain registry for anonymous public docs/FAQ/changelog without exposing tickets or workspace internals
 - Owner-approved authority through canonical answers, drafts, proposals, and drift checks
 - Cost and abuse controls through rate-limited widget endpoints, cache freshness checks, and summary-backed dashboards
 - Separate Canonica product infrastructure with MenuList as a client/use case, not a hardcoded dependency
@@ -137,6 +140,8 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 - Page-aware context
 - Fallback behavior
 - Widget visibility controls
+- Hosted help domains
+- Article-backed FAQ generation and review
 - Release-aware answer review
 - Pricing model
 - Product separation from MenuList
@@ -200,12 +205,12 @@ Route naming must avoid conflicts with Canonica dashboard roots. Public website 
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | Canonica — Page-Aware Support Knowledge for SaaS | Canonica keeps support answers correct, approved, and connected to the exact product screen where users need help. |
-| `/product` | Product \| Canonica | Canonica keeps support answers correct across help centers, widgets, changelogs, and tickets for small SaaS teams. |
+| `/` | Canonica — Support Knowledge Control Plane for SaaS | Canonica is the support knowledge control plane for SaaS products: launch setup, page-aware widget, hosted help, canonical answers, drift review, and support-gap governance. |
+| `/product` | Product \| Canonica | Canonica brings launch setup, support control, page-aware widget, hosted help, canonical answers, and knowledge governance into one SaaS support control plane. |
 | `/use-cases` | Use Cases \| Canonica | See how Canonica helps small SaaS teams launch support, reduce repeated tickets, and govern product knowledge. |
 | `/demo` | Demo \| Canonica | Try a static page-aware support demo with canonical answers, fallback, and support gap states. |
-| `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, runtime verification, and safe page context. |
-| `/pricing` | Pricing \| Canonica | Simple, transparent pricing for Canonica... |
+| `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context. |
+| `/pricing` | Pricing \| Canonica | Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for small SaaS teams. |
 | `/resources` | Resources \| Canonica | Guides for setting up Canonica, installing the widget, mapping product surfaces, and governing support knowledge. |
 | `/updates` | Updates \| Canonica | Product updates for Canonica website, launch setup, widget management, and knowledge governance. |
 | `/security` | Security \| Canonica | How Canonica protects support knowledge, widget context, and customer workspaces. |
@@ -226,7 +231,7 @@ Canonica product domains must serve their own `/sitemap.xml` and `/robots.txt`; 
 ```
 Visitor lands on homepage
   ↓
-Reads hero + pillars → "Try Demo" or "Start Free"
+Reads hero + pillars → "Try Demo" or "Start Setup"
   ↓
 Demo page → understands canonical answer vs fallback vs support gap
   ↓
@@ -248,3 +253,4 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-21 | 1.1.3 | Added product preview plus public use-cases, integrations, resources, and updates pages based on website benchmark gaps and implemented Canonica capabilities |
 | 2026-05-21 | 1.1.4 | Replaced public integrations positioning with widget-first install positioning and removed API/adapters from buyer-facing website package copy |
 | 2026-05-21 | 1.1.5 | Expanded the security page from the MenuList trust-page reference pattern with Canonica-specific facts, widget runtime controls, tenant isolation, cost controls, product separation, and responsible disclosure |
+| 2026-05-22 | 1.1.6 | Refreshed website claims for current Canonica implementation: support knowledge control plane positioning, hosted help domains, FAQ generation/management, product-scoped billing and support credits, cache freshness, and separate product/Firebase boundaries |

@@ -45,6 +45,14 @@ const FAQS = [
         answer: 'Yes. Widget settings include blocked routes and allowed origins so customers can control where the widget appears.',
     },
     {
+        question: 'Can Canonica publish a public help center?',
+        answer: 'Yes. Hosted Help can publish reviewed docs, FAQs, and changelog content on support domains such as help.myapp.com. It does not expose authenticated tickets, chat history, or workspace internals.',
+    },
+    {
+        question: 'How are FAQs created?',
+        answer: 'Product owners can manage FAQs directly. Canonica can also generate article-backed FAQ suggestions during the knowledge workflow, but they stay reviewable instead of publishing automatically.',
+    },
+    {
         question: 'What happens when a product release changes an answer?',
         answer: 'Changelogs can be tied to product surfaces and affected answers. Drift and release-impact checks then show which support content needs review.',
     },
@@ -54,7 +62,7 @@ const FAQS = [
     },
     {
         question: 'Is pricing per resolved question?',
-        answer: 'No. Public packaging is predictable monthly pricing in INR. Usage limits can protect infrastructure, but the buying decision should not punish successful support deflection.',
+        answer: 'No. Public packaging is predictable monthly pricing in INR. Beta setup can start free, paid plans and support-credit top-ups live in Canonica Billing, and usage limits protect infrastructure without punishing support deflection.',
     },
     {
         question: 'Does Canonica use MenuList data?',

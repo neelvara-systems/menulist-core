@@ -1,8 +1,8 @@
 const COMPARISON_ROWS = [
     {
         feature: 'Primary job',
-        traditional: 'Inbox, article storage, or generated replies',
-        canonica: 'Approved support truth that other surfaces use',
+        traditional: 'Inbox, article storage, generated replies, or agent automation',
+        canonica: 'Approved support truth that widgets, hosted help, tickets, and release notes use',
     },
     {
         feature: 'Small-team setup',
@@ -12,7 +12,7 @@ const COMPARISON_ROWS = [
     {
         feature: 'Page relevance',
         traditional: 'Same help everywhere',
-        canonica: 'Route and product-surface context shapes the answer',
+        canonica: 'Route, product-surface, role, plan, and workflow context shapes the answer',
     },
     {
         feature: 'Release changes',
@@ -32,7 +32,12 @@ const COMPARISON_ROWS = [
     {
         feature: 'Founder visibility',
         traditional: 'Ticket volume and chat metrics',
-        canonica: 'Canonical coverage and surfaces that need answers',
+        canonica: 'Coverage, trust/readiness, drift pressure, and surfaces that need answers',
+    },
+    {
+        feature: 'Public support home',
+        traditional: 'Separate docs site or generic help center',
+        canonica: 'Hosted help domains reuse the same governed KB, FAQ, and changelog content',
     },
     {
         feature: 'Scope creep',

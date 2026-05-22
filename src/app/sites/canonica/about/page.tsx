@@ -35,7 +35,7 @@ export default function CanonicaAboutPage() {
                             More products are launching with smaller teams. The product can move quickly, but support answers still need to stay correct when billing, onboarding, settings, plans, and releases change.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica keeps approved support knowledge connected to product surfaces. It gives founders a help center, widget, changelog binding, tickets as fallback, and a governance queue without asking them to run a large support operation.
+                            Canonica keeps approved support knowledge connected to product surfaces. It gives founders launch setup, a help center, hosted docs, widget, changelog binding, tickets as fallback, and a governance queue without asking them to run a large support operation.
                         </p>
                     </div>
                 </section>
@@ -73,7 +73,7 @@ export default function CanonicaAboutPage() {
                             href="/get-started"
                             className="inline-block rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
                         >
-                            Start Free
+                            Start Setup
                         </CanonicaLink>
                     </div>
                 </section>

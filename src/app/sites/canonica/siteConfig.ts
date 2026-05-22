@@ -1,7 +1,7 @@
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica keeps support answers correct, approved, and connected to the exact product screen where users need help.';
+    'Canonica is the support knowledge control plane for SaaS products: launch setup, page-aware widget, hosted help, canonical answers, drift review, and support-gap governance.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -12,7 +12,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
 }> = [
     {
         path: '/',
-        title: 'Canonica — Page-Aware Support Knowledge for SaaS',
+        title: 'Canonica — Support Knowledge Control Plane for SaaS',
         description: CANONICA_SITE_DESCRIPTION,
         priority: 1,
         changeFrequency: 'weekly',
@@ -20,7 +20,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Launch setup, page-aware support, canonical answers, release awareness, and support-gap review for SaaS teams.',
+        description: 'Launch setup, support control, knowledge governance, page-aware widget, hosted help, canonical answers, and support-gap review for SaaS teams.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -41,7 +41,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/install',
         title: 'Widget Install | Canonica',
-        description: 'Install Canonica with one widget script, allowed origins, blocked routes, runtime verification, and safe page context.',
+        description: 'Install Canonica with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -62,7 +62,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/pricing',
         title: 'Pricing | Canonica',
-        description: 'Founder-friendly INR pricing for Canonica support knowledge infrastructure.',
+        description: 'Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for small SaaS teams.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },

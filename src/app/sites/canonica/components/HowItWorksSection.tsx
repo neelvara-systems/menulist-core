@@ -8,7 +8,7 @@ const STEPS = [
     {
         step: '2',
         title: 'Import starter knowledge',
-        description: 'Upload docs or starter articles. Canonica keeps support working through fallback while it prepares governed answer drafts.',
+        description: 'Upload docs, starter articles, and FAQs. Canonica keeps support working through fallback while it prepares governed answer and FAQ drafts.',
         visual: '✓',
     },
     {
@@ -20,7 +20,7 @@ const STEPS = [
     {
         step: '4',
         title: 'Install page-aware support',
-        description: 'Embed the widget, lock allowed origins, and pass route context so billing, onboarding, and settings pages get relevant help.',
+        description: 'Embed the widget, lock allowed origins, block sensitive routes, publish hosted help if needed, and pass route context so billing, onboarding, and settings pages get relevant help.',
         visual: '⚡',
     },
     {

@@ -9,7 +9,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Knowledge import',
-                detail: 'Existing docs, FAQs, and starter files move through generation, review, publishing, and embedding.',
+                detail: 'Existing docs, FAQs, starter files, and article-backed FAQ suggestions move through generation, review, publishing, and embedding.',
             },
             {
                 title: 'Product surfaces',
@@ -19,6 +19,10 @@ export const CANONICA_SYSTEM_COVERAGE = [
                 title: 'Widget install',
                 detail: 'The owner configures appearance, allowed origins, blocked routes, install snippets, and runtime verification.',
             },
+            {
+                title: 'Billing and credits',
+                detail: 'Beta setup starts immediately; paid plans, invoices, transactions, and support credit top-ups live inside Canonica billing.',
+            },
         ],
     },
     {
@@ -26,8 +30,8 @@ export const CANONICA_SYSTEM_COVERAGE = [
         summary: 'Customer-facing support surfaces stay connected instead of becoming separate content silos.',
         items: [
             {
-                title: 'Help center and docs',
-                detail: 'Articles, categories, search, tickets, contact flows, and release notes live behind one support home.',
+                title: 'Help center and hosted docs',
+                detail: 'Articles, categories, FAQ, search, contact flows, and release notes can run in the app or on a hosted help domain.',
             },
             {
                 title: 'Page-aware widget',
@@ -40,6 +44,10 @@ export const CANONICA_SYSTEM_COVERAGE = [
             {
                 title: 'Changelog awareness',
                 detail: 'Release notes can be tied to surfaces, entities, tags, and support content that may need review.',
+            },
+            {
+                title: 'Email notifications',
+                detail: 'Ticket-created, reply, and status events can notify owners while leaving knowledge governance as the core product.',
             },
         ],
     },
@@ -63,6 +71,10 @@ export const CANONICA_SYSTEM_COVERAGE = [
                 title: 'Signal queue',
                 detail: 'Tickets, negative feedback, fallback, and escalations become reviewable mutation proposals.',
             },
+            {
+                title: 'Trust and readiness metrics',
+                detail: 'Coverage, drift pressure, failing entities, and escalation pressure are summarized for owners without raw log hunting.',
+            },
         ],
     },
     {
@@ -84,6 +96,10 @@ export const CANONICA_SYSTEM_COVERAGE = [
             {
                 title: 'Runtime verification',
                 detail: 'Widget config, allowed origins, blocked routes, context checks, and install status stay visible to the owner.',
+            },
+            {
+                title: 'Separate Firebase mode',
+                detail: 'Canonica can run against its own Firebase project, rules, indexes, storage, and Cloud Functions while sharing the web deployment.',
             },
         ],
     },

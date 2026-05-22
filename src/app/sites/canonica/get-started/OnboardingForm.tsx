@@ -218,7 +218,7 @@ function OnboardingFormInner() {
                     <div style={styles.planBadge}>
                         <span style={styles.planLabel}>Beta Plan</span>
                         <span style={styles.planPrice}>Free during beta</span>
-                        <span style={styles.planDesc}>All launch features included during controlled beta.</span>
+                        <span style={styles.planDesc}>Creates the workspace, product account bridge, beta subscription, product surfaces, and one-time widget key.</span>
                     </div>
 
                     {error && <p style={styles.error}>{error}</p>}
@@ -243,7 +243,7 @@ function OnboardingFormInner() {
                 <div style={styles.card}>
                     <div style={styles.successIcon}>✓</div>
                     <h2 style={styles.cardTitle}>Your Canonica account is ready!</h2>
-                    <p style={styles.cardSubtext}>Save your widget key. You will need it when you add Canonica to your product.</p>
+                    <p style={styles.cardSubtext}>Save your widget key now. Canonica stores only the secure hash and will show the prefix later.</p>
 
                     <div style={styles.detailsGrid}>
                         <div style={styles.detailItem}>
@@ -262,7 +262,7 @@ function OnboardingFormInner() {
                             <li>Check your activation dashboard</li>
                             <li>Upload docs or starter answers</li>
                             <li>Review generated product topics and answer drafts</li>
-                            <li>Add the widget to your product with this key</li>
+                            <li>Add the widget to your product and configure hosted help if needed</li>
                         </ol>
                     </div>
 

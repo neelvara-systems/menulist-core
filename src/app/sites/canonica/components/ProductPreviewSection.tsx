@@ -3,12 +3,14 @@ const LAUNCH_ITEMS = [
     ['Knowledge import', 'In review'],
     ['Product surfaces', 'Live'],
     ['Widget install', 'Verified'],
+    ['Hosted help domain', 'Ready'],
 ];
 
 const GOVERNANCE_ROWS = [
     ['Billing invoices', 'Canonical answer', 'Ready'],
-    ['Plan downgrade', 'Drift check', 'Review'],
+    ['Plan downgrade', 'Drift review', 'Review'],
     ['Webhook errors', 'Signal queue', 'Draft'],
+    ['FAQ refresh', 'Article-backed', 'Needs review'],
 ];
 
 export default function ProductPreviewSection() {
@@ -27,8 +29,8 @@ export default function ProductPreviewSection() {
                     </p>
                     <div className="mt-6 grid gap-3 text-sm text-[#808099] sm:grid-cols-2">
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                            <div className="font-semibold text-white">No collection scans for readiness</div>
-                            <p className="mt-1">Activation and governance cards read compact summary docs.</p>
+                            <div className="font-semibold text-white">Support surfaces stay connected</div>
+                            <p className="mt-1">Widget, hosted help, FAQs, changelogs, and tickets share the same product-surface map.</p>
                         </div>
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
                             <div className="font-semibold text-white">Owner approval stays central</div>
@@ -61,11 +63,12 @@ export default function ProductPreviewSection() {
                         <div className="rounded-xl border border-white/[0.06] bg-[#0b0b1e] p-4">
                             <div className="text-sm font-semibold text-white">Need help with this invoice?</div>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">
-                                Canonica found an approved billing answer and two related release notes for this page.
+                                Canonica found an approved billing answer, a related FAQ, and two release notes for this page.
                             </p>
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-xs text-[#a0a0c0]">Canonical</span>
                                 <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-xs text-[#a0a0c0]">Plan scope</span>
+                                <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-xs text-[#a0a0c0]">FAQ</span>
                             </div>
                         </div>
                     </div>
@@ -73,7 +76,7 @@ export default function ProductPreviewSection() {
                     <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-4 shadow-2xl shadow-black/20 md:col-span-2">
                         <div className="mb-4 flex items-center justify-between border-b border-white/[0.06] pb-3">
                             <span className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Governance Queue</span>
-                            <span className="text-xs text-[#808099]">3 items</span>
+                            <span className="text-xs text-[#808099]">{GOVERNANCE_ROWS.length} items</span>
                         </div>
                         <div className="grid gap-2">
                             {GOVERNANCE_ROWS.map(([entity, source, state]) => (
@@ -90,4 +93,3 @@ export default function ProductPreviewSection() {
         </section>
     );
 }
-

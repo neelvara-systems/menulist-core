@@ -39,11 +39,10 @@ export default function CanonicaGetStartedPage() {
                     <div className="mx-auto w-full max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Get Started</p>
                         <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                            Launch support in 10 minutes
+                            Launch your Canonica workspace in 10 minutes
                         </h1>
                         <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                            Create a workspace, add your product details, import starter knowledge,
-                            and verify the widget against your own product pages.
+                            Sign in with Google, add your product details, choose the pages users ask about, and create the beta workspace with a one-time widget key.
                         </p>
 
                         <div className="grid w-full gap-8 md:grid-cols-2">
@@ -76,9 +75,9 @@ export default function CanonicaGetStartedPage() {
                         <h2 className="mb-6 text-xl font-semibold">What happens after you start?</h2>
                         <div className="grid gap-4 sm:grid-cols-3">
                             {[
-                                { step: '1', title: 'Create workspace', description: 'Canonica creates the product workspace, beta subscription, and widget key.' },
-                                { step: '2', title: 'Import knowledge', description: 'Upload docs or paste starter answers so drafts and entities can be prepared.' },
-                                { step: '3', title: 'Verify install', description: 'Install the widget, pass page context, and review the first support gaps.' },
+                                { step: '1', title: 'Create workspace', description: 'Canonica creates the product workspace, product account bridge, beta subscription, and widget key.' },
+                                { step: '2', title: 'Import knowledge', description: 'Upload docs, FAQs, or starter answers so drafts, entities, and surface coverage can be prepared.' },
+                                { step: '3', title: 'Verify install', description: 'Install the widget, publish hosted help if needed, pass page context, and review the first support gaps.' },
                             ].map((s) => (
                                 <div key={s.step} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
                                     <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/10 text-sm font-bold text-indigo-400">

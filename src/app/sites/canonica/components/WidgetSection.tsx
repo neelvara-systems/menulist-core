@@ -10,6 +10,10 @@ const WIDGET_STEPS = [
         detail: 'Allowed origins and blocked routes decide where the launcher can appear.',
     },
     {
+        title: 'Publish hosted help',
+        detail: 'Map help, docs, support, or kb domains to the same published articles, FAQs, and release notes.',
+    },
+    {
         title: 'Pass page context',
         detail: 'Send safe route, feature, workflow, role, and plan hints so help matches the current screen.',
     },
@@ -38,7 +42,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         Put support inside the product screen where the question happens.
                     </h2>
                     <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                        Canonica is built for new SaaS teams that need support before they need a full support stack. Start with a governed help widget, then let tickets exist only as fallback and learning signals.
+                        Canonica is built for new SaaS teams that need support before they need a full support stack. Start with a governed widget, publish a hosted help center, and let tickets exist as fallback and learning signals.
                     </p>
                     <div className="mt-8 grid gap-3 sm:grid-cols-2">
                         {WIDGET_STEPS.map((item) => (
@@ -73,8 +77,8 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
                             Canonica uses the current page context to prefer billing articles, invoice release notes, and approved plan-scope answers.
                         </p>
-                        <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
-                            {['Canonical answer', 'Related article', 'Ticket fallback'].map((label) => (
+                        <div className="mt-4 grid gap-2 text-xs sm:grid-cols-4">
+                            {['Canonical answer', 'Related FAQ', 'Release note', 'Ticket fallback'].map((label) => (
                                 <span key={label} className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[#d6d6ef]">
                                     {label}
                                 </span>

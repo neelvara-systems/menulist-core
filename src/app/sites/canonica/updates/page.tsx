@@ -20,6 +20,25 @@ function getBasePath(): string {
 
 const UPDATES = [
     {
+        date: 'May 22, 2026',
+        title: 'Hosted help, FAQ, billing, and public-site refresh',
+        items: [
+            'Hosted Help added for docs, FAQ, changelog, robots, and sitemap on support domains such as help.example.com.',
+            'Article-backed FAQ generation and FAQ management are now part of the public product story.',
+            'Canonica billing now uses product-scoped plans, support credits, transactions, and Razorpay flows from the Canonica dashboard.',
+            'Website copy refreshed around Launch Setup, Support Control, Knowledge Governance, and the cost-conscious runtime layer.',
+        ],
+    },
+    {
+        date: 'May 22, 2026',
+        title: 'Public runtime cache and security hardening',
+        items: [
+            'Public KB, FAQ, changelog, and hosted-help content now use cached compact payloads with owner-write invalidation.',
+            'Search cache freshness now uses source-version manifests so repeated answers can be fast without serving stale content.',
+            'Direct production access to the internal hosted-help rewrite route is blocked; hosted help renders through registered domains.',
+        ],
+    },
+    {
         date: 'May 21, 2026',
         title: 'Canonica system inventory and product website map',
         items: [

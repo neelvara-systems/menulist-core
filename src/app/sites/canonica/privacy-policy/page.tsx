@@ -21,14 +21,14 @@ const SECTIONS = [
     {
         title: 'Information Canonica Handles',
         body: [
-            'Canonica handles account details, workspace details, product support content, knowledge-base imports, changelog entries, tickets, widget configuration, and safe page context that a customer chooses to send through the widget.',
+            'Canonica handles account details, workspace details, product support content, knowledge-base imports, FAQs, changelog entries, tickets, widget configuration, hosted-help domain settings, and safe page context that a customer chooses to send through the widget.',
             'Page context should describe the product surface, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
         ],
     },
     {
         title: 'How Information Is Used',
         body: [
-            'Canonica uses workspace and support content to power help centers, approved answers, widget responses, ticket fallback, changelog relevance, readiness summaries, and support-gap review queues.',
+            'Canonica uses workspace and support content to power help centers, hosted docs, approved answers, widget responses, ticket fallback, changelog relevance, readiness summaries, and support-gap review queues.',
             'Operational logs are used to keep the service reliable, investigate failures, protect the service from abuse, and understand whether support knowledge is stale or incomplete.',
         ],
     },
@@ -72,7 +72,7 @@ export default function CanonicaPrivacyPolicyPage() {
                     <div className="mx-auto max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Privacy Policy</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Privacy Policy</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 21, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: May 22, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             This policy explains how Canonica handles information for its public website, product dashboard,
                             help widget, and support knowledge features.

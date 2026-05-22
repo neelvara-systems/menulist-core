@@ -6,20 +6,20 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
             {/* Badge */}
             <div className="relative mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span className="text-xs font-medium text-[#a0a0c0]">Support Knowledge Infrastructure for small SaaS teams</span>
+                <span className="text-xs font-medium text-[#a0a0c0]">Self-service beta for small SaaS teams</span>
             </div>
 
             {/* Headline */}
             <h1 className="relative w-full max-w-[22rem] text-center text-4xl font-bold leading-[1.1] tracking-tight sm:max-w-3xl sm:text-5xl lg:text-6xl">
-                Your product changes.{' '}
+                The support knowledge control plane{' '}
                 <span className="text-indigo-300">
-                    Your support answers should not drift.
+                    for SaaS products.
                 </span>
             </h1>
 
             {/* Subheadline */}
-            <p className="relative mt-6 w-full max-w-[21rem] text-center text-lg leading-relaxed text-[#a0a0c0] sm:max-w-xl">
-                Canonica turns docs, changelogs, tickets, and page context into approved support answers for SaaS teams before they hire support.
+            <p className="relative mt-6 w-full max-w-[21rem] text-center text-lg leading-relaxed text-[#a0a0c0] sm:max-w-2xl">
+                Canonica turns docs, FAQs, release notes, tickets, and product-page context into human-approved canonical answers your widget and hosted help center can serve confidently.
             </p>
 
             {/* CTAs */}
@@ -29,7 +29,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     href="/get-started"
                     className="rounded-xl bg-indigo-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600 hover:shadow-indigo-500/40"
                 >
-                    Launch Support in 10 Minutes
+                    Start Setup
                 </CanonicaLink>
                 <CanonicaLink
                     basePath={basePath}
@@ -43,9 +43,9 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
             <div className="relative mt-10 w-full max-w-[22rem] border-y border-white/[0.06] py-4 sm:max-w-3xl">
                 <div className="grid gap-3 text-left sm:grid-cols-3">
                     {[
-                        ['Page-aware support', 'Billing pages show billing help'],
-                        ['Canonical answers', 'Approved answers before fallback'],
-                        ['Release-aware support', 'Changes flag stale answers'],
+                        ['Launch Setup', 'Workspace, knowledge import, surfaces, widget key'],
+                        ['Support Control', 'Help center, hosted docs, tickets, release notes'],
+                        ['Knowledge Governance', 'Canonical answers, drift, signal queue, trust metrics'],
                     ].map(([title, detail]) => (
                         <div key={title} className="px-2">
                             <div className="text-sm font-semibold text-white">{title}</div>

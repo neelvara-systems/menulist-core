@@ -1,8 +1,8 @@
 # Canonica Website (canonica.app)
 
 > **Feature:** Public marketing website for Canonica product
-> **Status:** ✅ IMPLEMENTED (Step 1 of Phase 2: DISTRIBUTE)
-> **Date:** 2026-03-07
+> **Status:** ✅ IMPLEMENTED — refreshed for self-service Canonica
+> **Date:** 2026-05-22
 > **Domain:** canonica.app (production) | localhost:3000/__canonica (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/canonica/`
@@ -29,16 +29,16 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Hero + product preview + widget install + pillars + system coverage + HowItWorks + Comparison + CTA |
-| `/product` | Product | Self-serve product overview for launch setup, page-aware support, canonical answers, releases, and support gaps |
+| `/` | Homepage | Hero + product preview + widget/hosted-help install + pillars + system coverage + HowItWorks + Comparison + CTA |
+| `/product` | Product | Self-serve product overview for launch setup, support control, hosted help, page-aware widget, canonical answers, releases, and support gaps |
 | `/use-cases` | Use Cases | Founder/operator scenarios by support problem |
 | `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
-| `/install` | Widget Install | Widget script, allowed origins, blocked routes, safe page context, and runtime verification |
-| `/pricing` | Pricing | INR Starter/Growth/Studio packaging plus beta launch note |
+| `/install` | Widget Install | Widget script, allowed origins, blocked routes, hosted help domains, safe page context, and runtime verification |
+| `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
 | `/resources` | Resources | Canonica learning hub for launch setup, widget install, governance, and cost controls |
 | `/updates` | Updates | Public product update timeline without using dashboard-owned changelog routes |
-| `/security` | Security | Trust controls for widget context, tenant separation, owner-approved answers, runtime limits, and responsible disclosure |
-| `/faq` | FAQ | Founder questions about setup, widget context, pricing, tickets, and data handling |
+| `/security` | Security | Trust controls for widget context, hosted help domains, tenant separation, owner-approved answers, runtime limits, and responsible disclosure |
+| `/faq` | FAQ | Founder questions about setup, widget context, hosted help, FAQ generation, pricing, tickets, and data handling |
 | `/about` | About | Company beliefs + team origin |
 | `/contact` | Contact | Email contacts for questions, setup help, and partnerships |
 | `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace |
@@ -119,3 +119,4 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-21 | Added static product preview and market-standard public pages for use cases, integrations, resources, and updates |
 | 2026-05-21 | Replaced public integrations positioning with widget-first install positioning; API/adapters stay rollout-gated and out of buyer-facing package copy |
 | 2026-05-21 | Expanded the security page using the reusable MenuList trust-page structure while keeping Canonica-specific product boundaries, widget controls, owner-reviewed answers, rate limits, and responsible disclosure |
+| 2026-05-22 | Refreshed public website for current Canonica runtime: support knowledge control plane hero, hosted help domains, FAQ management/generation, product-scoped billing/support credits, source-version cache freshness, and separate Firebase/product boundaries |

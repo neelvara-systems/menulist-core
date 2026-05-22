@@ -16,7 +16,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                         href="/get-started"
                         className="rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600 hover:shadow-indigo-500/40"
                     >
-                        Start Free
+                        Start Setup
                     </CanonicaLink>
                     <CanonicaLink
                         basePath={basePath}
