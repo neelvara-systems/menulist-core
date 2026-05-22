@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** May 2026
+**Last Updated:** May 22, 2026
 
 ---
 
@@ -30,6 +30,9 @@
   --bg-primary: #ffffff; /* Main page background */
   --bg-subtle: #f8fafc; /* Alternating sections, card backgrounds (slate-50) */
   --bg-accent: #eff6ff; /* Subtle blue tint for emphasis sections (blue-50) */
+  --bg-surface: #ffffff; /* Cards, controls, raised surfaces */
+  --bg-elevated: #ffffff; /* Menus, dropdowns, overlays */
+  --bg-input: #ffffff; /* Form fields */
 
   /* Text */
   --text-primary: #0f172a; /* Headlines, body text (slate-900) */
@@ -41,7 +44,7 @@
   --brand-primary: #1e40af; /* Primary brand color (blue-800) */
   --brand-secondary: #2563eb; /* Interactive elements (blue-600) */
   --brand-light: #dbeafe; /* Subtle brand backgrounds (blue-100) */
-  --brand-gradient: linear-gradient(90deg, #2fd0c5 0%, #28ade8 48%, #2478ff 100%); /* Brand mark/accent only */
+  --brand-gradient: linear-gradient(90deg, #0f766e 0%, #0284c7 52%, #2563eb 100%); /* Brand mark/accent only */
 
   /* CTA */
   --cta-default: #2563eb; /* Button default (blue-600) */
@@ -61,6 +64,34 @@
 }
 ```
 
+### 2.1.1 Dark Theme Tokens
+
+The public website supports system dark mode through the same website tokens. The dark theme uses dark gray surfaces, not pure black:
+
+```css
+:root.dark {
+  --bg-primary: #121212;
+  --bg-subtle: #181b20;
+  --bg-accent: #102033;
+  --bg-surface: #1b1f27;
+  --bg-elevated: #222833;
+  --bg-input: #171b22;
+  --bg-sticky: rgba(18, 18, 18, 0.9);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --brand-primary: #7dd3fc;
+  --brand-secondary: #60a5fa;
+  --brand-gradient: linear-gradient(90deg, #2dd4bf 0%, #38bdf8 48%, #60a5fa 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    /* Same token values as :root.dark. */
+  }
+}
+```
+
 ### 2.2 Color Usage Rules
 
 | Do                                                            | Don't                                 |
@@ -75,6 +106,12 @@ Brand gradient rule:
 
 - Use `--brand-gradient` only for the MenuList mark, auth-page product title, and deliberate headline highlight spans.
 - Do not apply the gradient to website wordmark text, body copy, full headings, CTA buttons, cards, icons, or page backgrounds.
+- Keep light mode as the default for light system preferences. Dark mode is a complete system-preference theme, not a browser-only inversion.
+- The deeper teal-to-blue gradient is the approved light-mode accent because it keeps the MenuList identity while reading more clearly on white.
+- Use the brighter teal-to-blue gradient only in dark mode where it has enough contrast and does not make the page feel like a flashy tech dashboard.
+- Dark surfaces must use dark gray (`#121212` family), not pure black, so cards, headers, pricing, forms, and generated assets keep readable depth.
+- Fixed utility overlays, sticky CTAs, footer legal text, and dark product-flow panels must use theme tokens or verified high-contrast dark-panel colors, not hardcoded light surfaces.
+- Pricing controls that render before hydration, especially currency and billing controls, should use website CSS variables directly, not only Tailwind `dark:` variants.
 - Brand display surfaces should render through `src/components/website/shared/BrandWordmark.tsx`; the canonical public website display name is `MenuList`.
 - Website header/footer wordmark text is solid and inherits the surface text color; the logo mark carries the gradient.
 - Keep body copy as `MenuList` unless the context explicitly names an internal AI/product platform setting or legal/account context.
@@ -92,6 +129,9 @@ All combinations must pass WCAG AA:
 | `#FFFFFF` on `#2563EB` | —          | 4.6:1  | ✅ AA                   |
 | `#FFFFFF` on `#1E40AF` | —          | 7.2:1  | ✅ AAA                  |
 | `#94A3B8` on `#FFFFFF` | —          | 3.5:1  | ✅ AA (large text only) |
+| `#0F766E` on `#FFFFFF` | —          | 5.47:1 | ✅ AA                   |
+| `#0284C7` on `#FFFFFF` | —          | 4.10:1 | ✅ AA (large text only) |
+| `#2563EB` on `#FFFFFF` | —          | 5.17:1 | ✅ AA                   |
 
 ---
 
@@ -333,7 +373,7 @@ Rules:
 
 The Pricing page may use Tailwind/shadcn utilities, but its CSS variables must remain visually aligned with the main website tokens:
 
-- Background stays white/subtle, not a separate dark or campaign theme.
+- Background follows the same website light/dark theme tokens, not a separate campaign theme.
 - Primary action color maps to the MenuList website blue family.
 - Muted text must remain readable (`#475569` equivalent), not pale disabled-looking copy.
 - Card and control radius stays at 8px unless a payment/runtime component requires its own internal style.
@@ -488,17 +528,20 @@ transition: border-color 200ms ease;
 
 ## 9. Dark Mode
 
-**Decision: No dark mode for the public website.**
+**Decision: Support system dark mode across the public website without making dark the default brand mode.**
 
-Rationale:
+Rules:
 
-- Our ICP (non-tech SMBs) predominantly uses light mode
-- Light backgrounds signal professionalism and trustworthiness for this audience
-- Reduces development complexity and testing surface
-- Infrastructure products (Shopify, most of Stripe) use light mode for public pages
-- The dashboard/app already supports dark mode — public site doesn't need it
+- Light mode remains the default for light system preferences and for the main sales screenshots/asset direction.
+- Dark mode follows the user's system preference or existing saved theme preference through the website `ThemeProvider`.
+- Do not use pure black (`#000000`) as the website background. Use the `#121212` dark-gray family for the main page, then slightly lighter gray surfaces for cards, dropdowns, pricing tables, forms, and drawers.
+- Do not introduce a dark-mode toggle into the public website unless it is intentionally designed, localized, and tested. The current implementation is system-preference dark mode.
+- Product screenshots and generated website assets may remain light because customer public pages can follow each business brand; do not force screenshots into dark mode unless the asset itself is intentionally dark.
+- Dark mode must preserve MenuList's calm, owner-readable positioning. Avoid neon dashboard styling, heavy glow effects, and campaign-like black backgrounds.
 
-**Note:** The app dashboard retains its existing dark/light toggle. This decision applies only to the public marketing website.
+Protected runtime note:
+
+- Adding public website dark mode must not change pricing/payment, Razorpay, subscription, checkout, upload/extraction, or owner-dashboard behavior.
 
 ---
 

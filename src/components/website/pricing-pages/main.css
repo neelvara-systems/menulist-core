@@ -22,20 +22,38 @@
     --radius: 0.5rem;
   }
 
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --background: 0 0% 7%;
+      --foreground: 210 40% 98%;
+      --card: 225 13% 13%;
+      --card-foreground: 210 40% 98%;
+      --popover: 225 13% 13%;
+      --popover-foreground: 210 40% 98%;
+      --primary: 217 91% 60%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 217 20% 18%;
+      --secondary-foreground: 210 40% 98%;
+      --muted: 217 20% 18%;
+      --muted-foreground: 215 20% 75%;
+      --border: 217 20% 24%;
+    }
+  }
+
   .dark {
-    --background: 222 47% 11%;
+    --background: 0 0% 7%;
     --foreground: 210 40% 98%;
-    --card: 222 47% 13%;
+    --card: 225 13% 13%;
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 13%;
+    --popover: 225 13% 13%;
     --popover-foreground: 210 40% 98%;
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 18%;
+    --secondary: 217 20% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 18%;
+    --muted: 217 20% 18%;
     --muted-foreground: 215 20% 75%;
-    --border: 217 33% 22%;
+    --border: 217 20% 24%;
   }
 }
 

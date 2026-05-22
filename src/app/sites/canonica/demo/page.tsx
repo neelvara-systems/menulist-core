@@ -51,13 +51,17 @@ export default function CanonicaDemoPage() {
                         <CanonicaLink
                             basePath={basePath}
                             href="/get-started"
+                            data-canonica-event="demo_cta_clicked"
+                            data-canonica-label="start_free_setup"
                             className="rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
                         >
-                            Start Setup
+                            Start free setup
                         </CanonicaLink>
                         <CanonicaLink
                             basePath={basePath}
                             href="/product"
+                            data-canonica-event="demo_cta_clicked"
+                            data-canonica-label="view_product"
                             className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-8 py-3.5 text-sm font-medium text-[#a0a0c0] transition-all hover:border-white/[0.2] hover:text-white"
                         >
                             View Product

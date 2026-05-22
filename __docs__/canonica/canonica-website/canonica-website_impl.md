@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.1.7
+> **Version:** 1.2.4
 > **Last Updated:** 2026-05-22
 > **Audience:** Developers
 
@@ -27,8 +27,20 @@ src/app/sites/canonica/
 ├── styles.css                     # Tailwind directives + CSS variables
 ├── page.tsx                       # Homepage (server component)
 ├── not-found.tsx                  # 404 page
+├── productAreas.ts                # Shared product-area navigation and descriptions
 ├── product/page.tsx               # Product deep-dive
+├── product/launch-setup/page.tsx  # Landing page for Launch Setup
+├── product/page-aware-widget/page.tsx # Landing page for Page-Aware Widget
+├── product/support-control/page.tsx # Landing page for Support Control
+├── product/knowledge-governance/page.tsx # Landing page for Knowledge Governance
 ├── use-cases/page.tsx             # Small-SaaS use-case page
+├── use-cases/founders/page.tsx    # Founder use-case page
+├── use-cases/support-teams/page.tsx # Support team use-case page
+├── use-cases/product-teams/page.tsx # Product team use-case page
+├── use-cases/engineering/page.tsx # Engineering use-case page
+├── page-aware-support-widget/page.tsx      # SEO page for page-aware widget search intent
+├── hosted-help-center-for-saas/page.tsx    # SEO page for hosted help-center search intent
+├── support-widget-for-solo-founders/page.tsx # SEO page for solo-founder support intent
 ├── demo/page.tsx                  # Static interactive demo page
 ├── demo/CanonicaPublicDemo.tsx    # Account-free page-aware support demo
 ├── install/page.tsx               # Widget install and page context page
@@ -52,13 +64,25 @@ src/app/sites/canonica/
     ├── Header.tsx                 # Shared header with native mobile navigation
     ├── Footer.tsx                 # Shared footer
     ├── CanonicaLink.tsx           # Dev/production-aware Link wrapper
+    ├── CanonicaAnalytics.tsx      # Optional GA/measurement event tracker, no Firestore writes
     ├── HeroSection.tsx            # Homepage hero
-    ├── ProductPreviewSection.tsx  # Static dashboard/widget/governance visual preview
+    ├── HomePageAwareDemoSection.tsx # Embedded generic-vs-Canonica demo
+    ├── ClosedLoopSection.tsx      # Page question to reviewed canonical answer loop
+    ├── BestFitSection.tsx         # Buyer qualification section
+    ├── ProductPreviewSection.tsx  # Responsive dashboard/widget/governance product scene
+    ├── ProductAreasSection.tsx    # Homepage product-suite cross-link section
+    ├── SetupFunnelSection.tsx     # 10-minute setup visual sequence
     ├── WidgetSection.tsx          # Homepage widget install and page-aware support section
+    ├── HomeTrustSection.tsx       # Short homepage trust controls
     ├── PillarsSection.tsx         # Homepage Canonica engine pillar cards
     ├── SystemCoverageSection.tsx  # Homepage Launch/Support/Governance/Runtime system map
     ├── HowItWorksSection.tsx      # Homepage 5-step timeline
     ├── ComparisonSection.tsx      # Homepage comparison table
+    ├── PricingPreviewSection.tsx  # Homepage pricing preview and credit explanation
+    ├── ObjectionsSection.tsx      # Top buyer objections before final CTA
+    ├── SeoLandingPage.tsx         # Shared static SEO landing page component
+    ├── UseCaseLandingPage.tsx     # Shared wrapper for role-specific use-case pages
+    ├── ProductCapabilityLandingPage.tsx # Shared template for product-area landing pages
     ├── StructuredData.tsx         # Organization/WebSite/SoftwareApplication JSON-LD
     └── CTASection.tsx             # Homepage bottom CTA
 ```
@@ -70,7 +94,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - homepage leads with small-SaaS support correctness instead of enterprise control-plane language
 - homepage and product page expose the implemented Canonica engine pillars: Product Ontology, Canonical Answer Engine, Drift Governance, and Signal Mutation
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
-- homepage includes a static product preview showing activation, widget context, and governance queue states
+- homepage includes a screenshot-led responsive product scene showing activation, widget context, product surfaces, and governance queue states
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
 - header links include `/demo`
 - `/demo` is static and account-free; it does not call Firebase or an AI provider
@@ -89,6 +113,26 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Ticket debugging context is now presented as capped, sanitized support context in product, security, FAQ, and privacy copy; public copy avoids raw "console log" wording except where implementation docs need it.
 - `/pricing` now explains that public setup starts on beta while paid plan changes and support-credit top-ups happen from Canonica Billing using product-scoped Razorpay requests.
 - `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
+- May 22 conversion pass changed the homepage hero to outcome-first buyer language while keeping "support knowledge control plane" as secondary category language.
+- Homepage now embeds the static demo directly in the buying path and shows generic answer vs Canonica answer for each demo surface.
+- Homepage adds best-fit/not-fit qualification, 10-minute setup sequence, security-at-a-glance controls, pricing preview, and top buyer objections.
+- `/pricing` now defines support credits in plain language and gives plan-fit guidance for Starter, Growth, and Studio.
+- `/install` now includes developer handoff examples and a runtime verification mock so technical founders can see the implementation path.
+- `/use-cases` now includes concrete sample questions, generic answers, and Canonica answers for each scenario.
+- Three static SEO landing pages were added: `/page-aware-support-widget`, `/hosted-help-center-for-saas`, and `/support-widget-for-solo-founders`.
+- Optional conversion tracking uses GA/measurement events only when a public measurement ID exists; it does not call Firestore or Canonica APIs.
+- The homepage now borrows the modern product-scene pattern from high-performing SaaS sites: the first proof after the hero is a large desktop-style Canonica workflow view rather than another text grid.
+- The product scene is implemented as responsive HTML/CSS instead of a static raster screenshot so it does not expose private workspace data, does not become stale after dashboard UI changes, and keeps public browsing at zero Firebase cost.
+- The `/product` page reuses the same product scene before the architecture deep dive so buyers see the working owner flow before reading implementation concepts.
+- May 22 positioning pass made the demo the hero primary CTA and reframed the homepage around page-aware support truth rather than generic AI support.
+- May 22 founder-relief pass changed the hero to "You build revenue. Canonica keeps support accurate." while keeping the product promise scoped to approved page-aware answers, fallback signals, and human-reviewed knowledge updates.
+- May 22 presentation pass replaced the dense demo layout with a tabbed product-surface row and large browser-style product canvas, moved product proof closer to modern SaaS screenshot sections, and rebuilt the widget section as a bento grid without adding runtime data calls.
+- May 22 product-area pass added landing-style pages for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance so each major capability can be evaluated independently while reusing static, zero-Firebase-cost product proof components.
+- May 22 final polish pass made those product areas first-class in the header Product dropdown, homepage product-area section, resources hub, and SEO/use-case cross-link blocks so visitors can evaluate Canonica like a product suite instead of a single long page.
+- `ClosedLoopSection.tsx` now explains the loop: user asks from product page, Canonica uses safe context, approved answer is served first, fallback becomes a signal, owner approves the fix, and future users receive canonical support truth.
+- Comparison now explicitly separates AI chatbot, helpdesk, knowledge base, and Canonica so buyers do not misclassify Canonica as a helpdesk replacement.
+- FAQ now defines "not a chatbot", canonical answers, missing-answer behavior, and human approval before authoritative answers.
+- Role-specific use-case pages were added for founders, support teams, product teams, and engineering using static content only.
 
 ---
 
@@ -187,9 +231,10 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 ### Client Components (`'use client'`)
 - `demo/CanonicaPublicDemo.tsx` — Account-free demo state
 - `get-started/OnboardingForm.tsx` — Self-service onboarding form state
+- `components/CanonicaAnalytics.tsx` — Optional GA script plus delegated click tracking for `data-canonica-event` elements
 
 ### Native Interaction
-- `Header.tsx` — Mobile navigation uses native `<details>/<summary>` so it still works if hydration is delayed and does not add a client bundle.
+- `Header.tsx` — Desktop Product dropdown and mobile navigation use native `<details>/<summary>` so they still work if hydration is delayed and do not add a client bundle.
 
 ---
 
@@ -219,6 +264,13 @@ The public demo is static interaction state only. Security, FAQ, privacy, and te
 
 Use-cases, install, resources, updates, and the homepage product/widget preview sections are static server-rendered website content. They do not read Firestore and do not call Canonica APIs.
 
+Conversion analytics is client-side only:
+
+- `CanonicaAnalytics.tsx` loads Google Analytics only when `NEXT_PUBLIC_CANONICA_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists.
+- CTA/demo/pricing/onboarding events are emitted through `window.gtag`.
+- No event is written to Firestore, no API route is called, and no Canonica Firebase cost is introduced by normal tracking.
+- `src/config/csp-allowlist.ts` allows Google Analytics connect destinations so the optional script can report when enabled.
+
 ---
 
 ## Adding a New Page
@@ -230,6 +282,8 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 5. Add to `FOOTER_LINKS` in `Footer.tsx` if needed
 6. Add the route to `CANONICA_PUBLIC_PAGES` in `siteConfig.ts` so Canonica sitemap output stays complete
 7. Avoid public website route names reserved by Canonica dashboard rewrites, including `/docs`, `/help`, `/changelog`, and `/release-notes`
+8. For SEO landing pages, reuse `SeoLandingPage.tsx` unless the page needs materially different layout or behavior
+9. Prefer optional client-side analytics markers (`data-canonica-event`) over Firestore-backed tracking on public website pages
 
 ---
 
@@ -245,3 +299,11 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 | 2026-05-21 | 1.1.4 | Added widget-first `/install`, made `/integrations` a redirect alias, and removed rollout-only API/adapters from buyer-facing website claims |
 | 2026-05-21 | 1.1.5 | Expanded `/security` with MenuList-inspired trust-page structure adapted to Canonica's implemented widget runtime, tenant isolation, governed answers, rate limits, summaries, and product separation |
 | 2026-05-22 | 1.1.6 | Refreshed website to match current Canonica implementation: support knowledge control plane hero, hosted help, FAQ generation/management, product-scoped billing/support credits, cache freshness, and separate Firebase/product boundaries |
+| 2026-05-22 | 1.1.7 | Added buyer-facing custom help domain positioning and safe ticket debugging context across homepage, product, install, security, FAQ, privacy, and updates copy |
+| 2026-05-22 | 1.1.8 | Applied self-sell website feedback: outcome-led hero, homepage demo, buyer qualification, setup funnel, trust strip, pricing credit clarity, objection handling, optional no-Firestore conversion events, and three SEO landing pages |
+| 2026-05-22 | 1.1.9 | Added screenshot-led product proof after the hero and on `/product`: activation, product surfaces, widget support, and signal-to-knowledge queue are shown as responsive product scenes with no Firebase reads |
+| 2026-05-22 | 1.2.0 | Applied positioning review: demo-first hero, page-aware support truth copy, closed-loop support truth visual, sharper chatbot/helpdesk/KB comparison, category-defining FAQ entries, and four static role-specific use-case pages |
+| 2026-05-22 | 1.2.1 | Applied founder-relief copy safely: homepage now leads with support accuracy and revenue focus without promising helpdesk replacement, outsourcing, or AI autopilot behavior |
+| 2026-05-22 | 1.2.2 | Improved visual presentation: tabbed demo canvas, clearer product-proof tabs, and bento-style widget/install/governance grid while keeping the website static and zero-Firebase-cost for normal browsing |
+| 2026-05-22 | 1.2.3 | Added standalone landing-style product area routes for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance; wired them into product page cards, footer, sitemap registry, and docs |
+| 2026-05-22 | 1.2.4 | Final product-suite polish: added first-class Product dropdown navigation, homepage product-area cross-link section, resources product-area hub, and SEO/use-case product-area cross-links with no new runtime dependencies or Firebase reads |

@@ -56,7 +56,7 @@ export default function Header() {
           position: "sticky",
           top: 0,
           zIndex: 50,
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--ws-bg-primary)",
           borderBottom: "1px solid var(--ws-border-default)",
         }}
       >
@@ -256,11 +256,11 @@ export default function Header() {
                   borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
-                  color: "#94a3b8",
+                  color: "var(--ws-text-muted)",
                   transition: "background-color 0.15s",
                 }}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#f1f5f9")
+                  (e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)")
                 }
                 onMouseLeave={(e) =>
                   (e.currentTarget.style.backgroundColor = "transparent")
@@ -290,23 +290,32 @@ export default function Header() {
                       padding: "14px 12px",
                       fontSize: "0.9375rem",
                       fontWeight: isActive ? 600 : 500,
-                      color: isActive ? "#2563eb" : "#0f172a",
+                      color: isActive
+                        ? "var(--ws-brand-secondary)"
+                        : "var(--ws-text-primary)",
                       textDecoration: "none",
                       borderRadius: "10px",
-                      backgroundColor: isActive ? "#eff6ff" : "transparent",
+                      backgroundColor: isActive ? "var(--ws-bg-accent)" : "transparent",
                       transition: "background-color 0.15s",
                       marginBottom: "2px",
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive)
-                        e.currentTarget.style.backgroundColor = "#f8fafc";
+                        e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)";
                     }}
                     onMouseLeave={(e) => {
                       if (!isActive)
                         e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
-                    <Icon size={18} color={isActive ? "#2563eb" : "#94a3b8"} />
+                    <Icon
+                      size={18}
+                      color={
+                        isActive
+                          ? "var(--ws-brand-secondary)"
+                          : "var(--ws-text-muted)"
+                      }
+                    />
                     {t(`Header.${item.key}`)}
                   </Link>
                 );
@@ -315,7 +324,7 @@ export default function Header() {
               <div
                 style={{
                   height: "1px",
-                  backgroundColor: "#f1f5f9",
+                  backgroundColor: "var(--ws-border-subtle)",
                   margin: "8px 12px",
                 }}
               />
@@ -332,14 +341,14 @@ export default function Header() {
                       padding: "14px 12px",
                       fontSize: "0.9375rem",
                       fontWeight: 500,
-                      color: "#2563eb",
+                      color: "var(--ws-brand-secondary)",
                       textDecoration: "none",
                       borderRadius: "10px",
-                      backgroundColor: "#eff6ff",
+                      backgroundColor: "var(--ws-bg-accent)",
                       transition: "background-color 0.15s",
                     }}
                   >
-                    <LuUser size={18} color="#2563eb" />
+                    <LuUser size={18} color="var(--ws-brand-secondary)" />
                     {session.user.name ||
                       session.user.email ||
                       t("Header.dashboard")}
@@ -356,7 +365,7 @@ export default function Header() {
                       padding: "14px 12px",
                       fontSize: "0.9375rem",
                       fontWeight: 500,
-                      color: "#dc2626",
+                      color: "var(--ws-error)",
                       textDecoration: "none",
                       borderRadius: "10px",
                       backgroundColor: "transparent",
@@ -367,13 +376,13 @@ export default function Header() {
                       transition: "background-color 0.15s",
                     }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#fef2f2")
+                      (e.currentTarget.style.backgroundColor = "var(--ws-bg-danger-soft)")
                     }
                     onMouseLeave={(e) =>
                       (e.currentTarget.style.backgroundColor = "transparent")
                     }
                   >
-                    <LuLogOut size={18} color="#dc2626" />
+                    <LuLogOut size={18} color="var(--ws-error)" />
                     {t("Header.logout")}
                   </button>
                 </>
@@ -391,7 +400,7 @@ export default function Header() {
                     padding: "14px 12px",
                     fontSize: "0.9375rem",
                     fontWeight: 500,
-                    color: "#64748b",
+                    color: "var(--ws-text-secondary)",
                     textDecoration: "none",
                     borderRadius: "10px",
                     background: "transparent",
@@ -402,13 +411,13 @@ export default function Header() {
                     transition: "background-color 0.15s",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#f8fafc")
+                    (e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.backgroundColor = "transparent")
                   }
                 >
-                  <LuArrowRight size={18} color="#94a3b8" />
+                  <LuArrowRight size={18} color="var(--ws-text-muted)" />
                   {t("Header.login")}
                 </button>
               )}

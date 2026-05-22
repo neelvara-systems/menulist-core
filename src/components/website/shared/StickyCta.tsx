@@ -55,8 +55,9 @@ export default function StickyCta() {
       <div
         className="ws-sticky-cta__inner"
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: 'var(--ws-bg-sticky)',
           backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           borderTop: '1px solid var(--ws-border-default)',
           padding: '12px 16px',
           display: 'flex',

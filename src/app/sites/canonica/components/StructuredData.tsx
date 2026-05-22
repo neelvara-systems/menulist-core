@@ -25,7 +25,7 @@ export default function CanonicaStructuredData() {
                 applicationCategory: 'CustomerSupportApplication',
                 operatingSystem: 'Web',
                 url: CANONICA_SITE_URL,
-                description: 'Support knowledge control plane for SaaS products with launch setup, page-aware widget, hosted help domains, safe ticket context, canonical answers, and drift governance.',
+                description: 'Accurate page-aware support for SaaS founders: approved answers before fallback, hosted help, and reviewable fixes for missed questions.',
                 offers: {
                     '@type': 'Offer',
                     price: '999',

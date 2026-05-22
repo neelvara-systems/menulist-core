@@ -52,7 +52,7 @@ export default function MultiLocationPage() {
           <p style={{ fontSize: '1.125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.5rem', letterSpacing: 0 }}>
             {t('MultiLocation.flowTitle')}
           </p>
-          <p style={{ fontSize: '0.9375rem', color: '#64748b', marginBottom: '2.5rem' }}>
+          <p style={{ fontSize: '0.9375rem', color: '#94a3b8', marginBottom: '2.5rem' }}>
             {t('MultiLocation.flowSubtitle')}
           </p>
           <svg viewBox="0 0 860 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
@@ -91,7 +91,7 @@ export default function MultiLocationPage() {
               <g key={x}>
                 <rect x={x - 56} y="190" width="112" height="62" rx="10" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
                 <text x={x} y="218" textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{t('MultiLocation.flowOutlet')} {i + 1}</text>
-                <text x={x} y="238" textAnchor="middle" fill="#475569" fontSize="10" fontFamily="Inter, sans-serif">{t('MultiLocation.flowInherits')}</text>
+                <text x={x} y="238" textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="Inter, sans-serif">{t('MultiLocation.flowInherits')}</text>
               </g>
             ))}
           </svg>
@@ -177,15 +177,15 @@ export default function MultiLocationPage() {
                     <p style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginBottom: '4px' }}>{t('MultiLocation.step2MockupMasterPrice')}</p>
                     <p style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--ws-text-secondary)', textDecoration: 'line-through' }}>₹320</p>
                   </div>
-                  <div style={{ padding: 'var(--ws-space-3)', backgroundColor: '#eff6ff', borderRadius: 'var(--ws-radius-md)', border: '1px solid #bfdbfe' }}>
-                    <p style={{ fontSize: '0.75rem', color: '#2563eb', marginBottom: '4px' }}>{t('MultiLocation.step2MockupThisOutlet')}</p>
-                    <p style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1d4ed8' }}>₹360</p>
+                  <div style={{ padding: 'var(--ws-space-3)', backgroundColor: 'var(--ws-bg-accent)', borderRadius: 'var(--ws-radius-md)', border: '1px solid var(--ws-brand-light)' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--ws-brand-secondary)', marginBottom: '4px' }}>{t('MultiLocation.step2MockupThisOutlet')}</p>
+                    <p style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--ws-brand-secondary)' }}>₹360</p>
                   </div>
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginTop: 'var(--ws-space-3)' }}>{t('MultiLocation.step2MockupNote')}</p>
               </div>
               <div style={{ padding: 'var(--ws-space-3) var(--ws-space-4)', borderTop: '1px solid var(--ws-border-subtle)', backgroundColor: 'var(--ws-bg-subtle)' }}>
-                <p style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>{t('MultiLocation.step2MockupLocked')}</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--ws-success)', fontWeight: 600 }}>{t('MultiLocation.step2MockupLocked')}</p>
               </div>
             </div>
           </AnimateOnScroll>

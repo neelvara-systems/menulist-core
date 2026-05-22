@@ -3,11 +3,13 @@ import { headers } from 'next/headers';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import ProductPreviewSection from '../components/ProductPreviewSection';
 import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
+import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica brings launch setup, support control, page-aware widget, hosted help domains, safe ticket context, canonical answers, and knowledge governance into one SaaS support control plane.',
+    description: 'Canonica brings page-aware support truth, launch setup, hosted help domains, canonical answers, drift review, and support-gap governance into one SaaS support control plane.',
     alternates: { canonical: '/product' },
 };
 
@@ -89,6 +91,12 @@ const FEATURES = [
     },
 ];
 
+const OUTCOMES = [
+    ['For the founder', 'Answer repeated billing, onboarding, settings, and release questions before they become manual support work.'],
+    ['For the user', 'Get help from the exact product page where they are stuck instead of searching a generic docs site.'],
+    ['For support truth', 'Keep approved answers, FAQs, changelogs, tickets, and product surfaces connected as the product changes.'],
+];
+
 export default function CanonicaProductPage() {
     const basePath = getBasePath();
 
@@ -100,12 +108,59 @@ export default function CanonicaProductPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Launch setup, support control, and knowledge governance in one product.
+                        The support knowledge loop behind accurate SaaS answers.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica gives small SaaS teams a governed support layer: product surfaces, page-aware widget, branded help domains, safe ticket context, canonical answers, release-aware review, and a signal queue for recurring gaps.
+                        Canonica connects page-aware widget context, hosted help, approved canonical answers, release-aware review, and recurring-gap signals into one governed support-truth loop.
                     </p>
                 </section>
+
+                <section className="border-t border-white/[0.06] px-6 py-16">
+                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-3">
+                        {OUTCOMES.map(([title, detail]) => (
+                            <article key={title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+                                <h2 className="text-lg font-semibold text-white">{title}</h2>
+                                <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{detail}</p>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+
+                <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
+                    <div className="mx-auto max-w-6xl">
+                        <div className="mx-auto mb-10 max-w-3xl text-center">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product areas</p>
+                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
+                                Each part of Canonica has its own job.
+                            </h2>
+                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
+                                Canonica is easier to evaluate when each capability can stand on its own: setup, widget, support control, and governance.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {CANONICA_PRODUCT_AREAS.map((area) => (
+                                <CanonicaLink
+                                    key={area.href}
+                                    basePath={basePath}
+                                    href={area.href}
+                                    className="group rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6 transition hover:border-white/[0.16] hover:bg-white/[0.04]"
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-white">{area.label}</h3>
+                                            <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{area.description}</p>
+                                        </div>
+                                        <span className="rounded-full border border-white/[0.08] px-3 py-1 text-xs font-semibold text-[#a0a0c0] transition group-hover:text-white">
+                                            View
+                                        </span>
+                                    </div>
+                                </CanonicaLink>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <ProductPreviewSection />
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
@@ -177,17 +232,21 @@ export default function CanonicaProductPage() {
                         <CanonicaLink
                             basePath={basePath}
                             href="/demo"
+                            data-canonica-event="product_cta_clicked"
+                            data-canonica-label="try_demo"
                             className="inline-block rounded-xl border border-white/[0.1] bg-white/[0.03] px-8 py-3.5 text-sm font-semibold text-[#d6d6ef] transition-all hover:border-white/[0.2] hover:text-white"
                         >
-                            Try Demo
+                            Try page-aware demo
                         </CanonicaLink>
                     </div>
                     <CanonicaLink
                         basePath={basePath}
                         href="/get-started"
+                        data-canonica-event="product_cta_clicked"
+                        data-canonica-label="start_free_setup"
                         className="inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
                     >
-                        Start Setup
+                        Start free setup
                     </CanonicaLink>
                 </section>
             </main>

@@ -35,3 +35,12 @@
     color: inherit;
     text-decoration: none;
 }
+
+.canonica-hero-gradient {
+    background: linear-gradient(90deg, #c2e0de 0%, #1eceff 42%, #2563eb 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    font-weight: inherit;
+}

@@ -238,15 +238,30 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap' }}>
                             <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
                             <div className="flex justify-center items-center gap-3">
-                                <span className={`text-sm font-medium ${billingInterval === 'MONTH' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{t('Pricing.monthly')}</span>
+                                <span
+                                    className="text-sm font-medium"
+                                    style={{ color: billingInterval === 'MONTH' ? 'var(--ws-text-primary)' : 'var(--ws-text-muted)' }}
+                                >
+                                    {t('Pricing.monthly')}
+                                </span>
                                 <Switch
                                     checked={billingInterval === 'YEAR'}
                                     onCheckedChange={(checked) => setBillingInterval(checked ? 'YEAR' : 'MONTH')}
                                     aria-label={t('Pricing.billingToggleLabel')}
                                 />
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-sm font-medium ${billingInterval === 'YEAR' ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>{t('Pricing.yearly')}</span>
-                                    <span className="text-xs font-semibold text-green-600 bg-green-100 dark:bg-green-900/50 dark:text-green-400 px-2 py-0.5 rounded-full">{t('Pricing.saveYearly')}</span>
+                                    <span
+                                        className="text-sm font-medium"
+                                        style={{ color: billingInterval === 'YEAR' ? 'var(--ws-text-primary)' : 'var(--ws-text-muted)' }}
+                                    >
+                                        {t('Pricing.yearly')}
+                                    </span>
+                                    <span
+                                        className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                        style={{ backgroundColor: 'var(--ws-bg-success-soft)', color: 'var(--ws-success-text)' }}
+                                    >
+                                        {t('Pricing.saveYearly')}
+                                    </span>
                                 </div>
                             </div>
                         </div>

@@ -8,14 +8,17 @@ type DemoResultType = 'canonical' | 'fallback' | 'gap';
 type DemoSurface = {
     key: DemoSurfaceKey;
     label: string;
+    shortLabel: string;
     route: string;
     contextKey: string;
     question: string;
+    pageSummary: string;
 };
 
 type DemoAnswer = {
     type: DemoResultType;
     title: string;
+    genericAnswer: string;
     answer: string;
     status: string;
     related: string[];
@@ -27,30 +30,38 @@ const SURFACES: DemoSurface[] = [
     {
         key: 'billing',
         label: 'Billing page',
+        shortLabel: 'Billing',
         route: '/settings/billing/invoices',
         contextKey: 'billing_invoices',
         question: 'Why did my invoice fail?',
+        pageSummary: 'The user is looking at invoice retries, payment method status, and billing ownership.',
     },
     {
         key: 'onboarding',
         label: 'Onboarding',
+        shortLabel: 'Onboarding',
         route: '/setup/import',
         contextKey: 'onboarding_import',
         question: 'What should I upload first?',
+        pageSummary: 'The user is starting setup and needs the right first knowledge sources.',
     },
     {
         key: 'settings',
         label: 'Team settings',
+        shortLabel: 'Team',
         route: '/settings/team',
         contextKey: 'team_settings',
         question: 'Can a teammate manage billing?',
+        pageSummary: 'The user is reviewing roles, permissions, and account access.',
     },
     {
         key: 'release',
         label: 'New release',
+        shortLabel: 'Release',
         route: '/releases/usage-limits',
         contextKey: 'release_usage_limits',
         question: 'Did usage limits change?',
+        pageSummary: 'The user is reading a release note that may change existing support answers.',
     },
 ];
 
@@ -58,6 +69,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
     billing: {
         type: 'canonical',
         title: 'Verified billing answer',
+        genericAnswer: 'Please check your billing settings or contact support if your card was declined.',
         answer: 'Invoice retries happen automatically for 3 days. If the card still fails, update the payment method from Billing, then retry the invoice from the invoice details page.',
         status: 'Canonical answer served first',
         related: ['Update payment method', 'Invoice retry policy', 'Billing permissions'],
@@ -67,6 +79,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
     onboarding: {
         type: 'canonical',
         title: 'Page-aware onboarding answer',
+        genericAnswer: 'Upload any document you have and review your setup checklist.',
         answer: 'Start with your public docs, setup guide, and top 10 recurring support questions. Canonica will create entity candidates and draft answers for review.',
         status: 'Matched by product surface context',
         related: ['Import knowledge', 'Entity candidates', 'Canonical answer drafts'],
@@ -75,6 +88,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
     settings: {
         type: 'fallback',
         title: 'Fallback answer with review signal',
+        genericAnswer: 'Check your team settings to see which permissions are available.',
         answer: 'Team members can be given support-management access, but billing owner permissions are not fully covered by approved knowledge yet.',
         status: 'Fallback used because canonical coverage is incomplete',
         related: ['Team roles', 'Workspace permissions'],
@@ -83,6 +97,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
     release: {
         type: 'gap',
         title: 'Release impact gap found',
+        genericAnswer: 'Review the latest release notes for information about usage limits.',
         answer: 'A release note changed usage limits, but the related support answer has not been reviewed after that release.',
         status: 'Stale answer risk detected',
         related: ['Usage limits', 'Plan quotas', 'Release impact checks'],
@@ -106,6 +121,12 @@ const TYPE_META: Record<DemoResultType, { label: string; className: string }> = 
     },
 };
 
+const FLOW_BADGES: Record<DemoResultType, string[]> = {
+    canonical: ['Page context detected', 'Canonical answer served', 'Related FAQ/release shown'],
+    fallback: ['Page context detected', 'Fallback used', 'Gap captured'],
+    gap: ['Release context detected', 'Stale answer risk', 'Awaiting human review'],
+};
+
 export default function CanonicaPublicDemo() {
     const [surfaceKey, setSurfaceKey] = useState<DemoSurfaceKey>('billing');
     const surface = useMemo(() => SURFACES.find((item) => item.key === surfaceKey) || SURFACES[0], [surfaceKey]);
@@ -113,77 +134,114 @@ export default function CanonicaPublicDemo() {
     const meta = TYPE_META[answer.type];
 
     return (
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 sm:p-6">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Choose product page</p>
-                <div className="grid gap-3">
-                    {SURFACES.map((item) => {
-                        const active = item.key === surfaceKey;
-                        return (
-                            <button
-                                key={item.key}
-                                type="button"
-                                onClick={() => setSurfaceKey(item.key)}
-                                className={`rounded-xl border p-4 text-left transition ${
-                                    active
-                                        ? 'border-indigo-400/50 bg-indigo-500/10'
-                                        : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.16]'
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-sm font-semibold text-white">{item.label}</span>
-                                    <span className="rounded-full bg-white/[0.06] px-2 py-1 text-[10px] text-[#a0a0c0]">{item.contextKey}</span>
-                                </div>
-                                <div className="mt-2 text-xs text-[#70708f]">{item.route}</div>
-                                <div className="mt-3 text-sm text-[#a0a0c0]">{item.question}</div>
-                            </button>
-                        );
-                    })}
-                </div>
+        <div className="rounded-[1.75rem] border border-white/[0.08] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.10),transparent_36%),rgba(255,255,255,0.025)] p-3 shadow-2xl shadow-black/30 sm:p-4">
+            <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2 sm:justify-center">
+                {SURFACES.map((item) => {
+                    const active = item.key === surfaceKey;
+                    return (
+                        <button
+                            key={item.key}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setSurfaceKey(item.key)}
+                            data-canonica-event="demo_surface_changed"
+                            data-canonica-label={item.key}
+                            className={`min-w-[8.75rem] rounded-full border px-4 py-2.5 text-left text-sm font-semibold transition sm:min-w-0 sm:text-center ${
+                                active
+                                    ? 'border-white/25 bg-white/[0.13] text-white shadow-lg shadow-indigo-500/10'
+                                    : 'border-transparent bg-white/[0.03] text-[#8f8faa] hover:border-white/[0.14] hover:text-white'
+                            }`}
+                        >
+                            {item.shortLabel}
+                        </button>
+                    );
+                })}
             </div>
 
-            <div className="rounded-2xl border border-white/[0.06] bg-[#111124] p-4 shadow-2xl shadow-black/20 sm:p-6">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-indigo-400">Canonica widget result</p>
-                        <h2 className="mt-1 text-2xl font-bold text-white">{surface.label}</h2>
+            <div className="overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#f7f8ff] text-[#111827]">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8dcea] bg-white px-4 py-3">
+                    <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#ffd166]" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#06d6a0]" />
+                    </div>
+                    <div className="min-w-0 rounded-full bg-[#f0f2fa] px-4 py-1.5 text-xs text-[#5b6275]">
+                        {surface.route}
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}>
                         {meta.label}
                     </span>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4">
-                    <div className="mb-3 rounded-lg bg-indigo-500 px-4 py-3 text-sm font-medium text-white">
-                        {surface.question}
-                    </div>
-                    <div className="rounded-lg bg-white px-4 py-4 text-[#1a1a2e]">
-                        <div className="mb-2 text-sm font-semibold">{answer.title}</div>
-                        <p className="m-0 text-sm leading-relaxed text-[#374151]">{answer.answer}</p>
-                    </div>
-                </div>
+                <div className="grid lg:grid-cols-[1fr_25rem]">
+                    <div className="bg-white p-5 sm:p-7">
+                        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Product screen</p>
+                                <h3 className="mt-2 text-3xl font-bold text-[#151729]">{surface.label}</h3>
+                                <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#626a7e]">{surface.pageSummary}</p>
+                            </div>
+                            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{surface.contextKey}</span>
+                        </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#70708f]">Status</div>
-                        <p className="m-0 text-sm leading-relaxed text-[#d6d6ef]">{answer.status}</p>
-                    </div>
-                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#70708f]">Next action</div>
-                        <p className="m-0 text-sm leading-relaxed text-[#d6d6ef]">{answer.nextAction}</p>
-                    </div>
-                </div>
+                        <div className="rounded-2xl border border-[#e2e5f0] bg-[#fbfcff] p-4">
+                            <div className="grid gap-3 md:grid-cols-3">
+                                {answer.related.slice(0, 3).map((item) => (
+                                    <div key={item} className="rounded-xl border border-[#e6e8f2] bg-white p-4 shadow-sm">
+                                        <div className="text-xs font-semibold uppercase tracking-widest text-[#8a91a6]">Related</div>
+                                        <div className="mt-2 text-sm font-semibold text-[#23263a]">{item}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-4 rounded-2xl bg-[#151729] p-4 text-white">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-[#9298b8]">User asks from this page</div>
+                                <div className="mt-2 text-xl font-semibold">{surface.question}</div>
+                            </div>
+                        </div>
 
-                <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
-                    <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#70708f]">Related support truth</div>
-                    <div className="flex flex-wrap gap-2">
-                        {answer.related.map((item) => (
-                            <span key={item} className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-[#d6d6ef]">{item}</span>
-                        ))}
+                        <div className="mt-5 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-[#e2e5f0] bg-[#fbfcff] p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-[#8a91a6]">Generic chatbot</div>
+                                <p className="mt-3 text-sm leading-relaxed text-[#626a7e]">{answer.genericAnswer}</p>
+                            </div>
+                            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Why Canonica is different</div>
+                                <p className="mt-3 text-sm leading-relaxed text-[#374151]">{answer.status}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <aside className="border-t border-[#d8dcea] bg-[#0b0b1e] p-5 text-white lg:border-l lg:border-t-0">
+                        <div className="mb-5">
+                            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Canonica widget result</p>
+                            <h3 className="mt-2 text-2xl font-bold">{answer.title}</h3>
+                        </div>
+
+                        <div className="mb-5 flex flex-wrap gap-2">
+                            {FLOW_BADGES[answer.type].map((badge) => (
+                                <span key={badge} className="rounded-full border border-white/[0.08] bg-white/[0.06] px-3 py-1 text-xs text-[#d6d6ef]">
+                                    {badge}
+                                </span>
+                            ))}
+                        </div>
+
+                        <div className="rounded-2xl bg-white p-5 text-[#1f2437]">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Approved answer path</div>
+                            <p className="mt-3 text-sm leading-relaxed">{answer.answer}</p>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-[#8f8faa]">Next action</div>
+                            <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">{answer.nextAction}</p>
+                        </div>
+
                         {answer.changelog && (
-                            <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs text-indigo-200">{answer.changelog}</span>
+                            <div className="mt-4 rounded-2xl border border-indigo-400/20 bg-indigo-500/10 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200">Release link</div>
+                                <p className="mt-2 text-sm text-indigo-100">{answer.changelog}</p>
+                            </div>
                         )}
-                    </div>
+                    </aside>
                 </div>
             </div>
         </div>

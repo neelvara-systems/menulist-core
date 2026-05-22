@@ -1,18 +1,18 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.5.0 Homepage Compression + Conversion Proof Pass
-**Last Updated:** May 21, 2026
+**Status:** IMPLEMENTED — v3.5.2 Dark Mode Final UI Polish
+**Last Updated:** May 22, 2026
 **Audience:** Developers
 
 ---
 
 ## 1. Architecture Overview
 
-The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with light theme, localization, and analytics.
+The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
 ```
 Route Group: src/app/(website)/
-Layout:      LocalisationProvider → WebsiteAuthProvider → ThemeProvider (forcedTheme="light")
+Layout:      LocalisationProvider → WebsiteAuthProvider → ThemeProvider (system preference)
 Analytics:   GoogleAnalytics + ClarityAnalytics (injected in layout)
 Styles:      @styles/app.scss (layout) + @/styles/website.css (per-page)
 Build:       Minimal src/pages defaults satisfy generated Pages Router manifest entries
@@ -222,7 +222,7 @@ src/pages/
 - **Pages:** `@/styles/website.css` (imported per-page via page.tsx files)
 - **Approach:** CSS variables for colors, responsive breakpoints, mobile-first spacing, and 44px-class touch targets
 - **Components:** Mix of Tailwind CSS + custom CSS + shadcn/ui
-- **Theme:** Force light mode via `ThemeProvider` (website is always light)
+- **Theme:** System-preference light/dark mode via `ThemeProvider`; `website.css` provides the public website token set and `pricing-pages/main.css` bridges the shadcn/Tailwind pricing variables
 - **Service worker boundary:** `ServiceWorkerRegister.tsx` registers owner Workbox `/sw.js` only on owner/app platform routes and unregisters it on public marketing routes. If a stale worker controlled the current public page, the page reloads once after unregistering so Safari moves to the network-controlled website. Customer tenant origins still use `sw-customer.js`.
 - **Pages Router defaults:** `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are intentionally minimal. They satisfy Next's generated Pages Router manifest entries during production page-data collection and do not change the App Router website layout or route behavior.
 
@@ -238,6 +238,6 @@ src/pages/
 | Pricing | Reuses existing `pricing-pages/` components | Full Razorpay integration already built |
 | Analytics | GA + Clarity in layout | Covers all pages automatically |
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |
-| Theming | shadcn ThemeProvider forced light | Website is always light mode |
+| Theming | System-aware shadcn ThemeProvider plus website CSS tokens | Light remains default for light system preferences; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
 | Localization | next-intl via layout provider | Consistent i18n across all pages |
 | Pages Router defaults | Minimal `_app`, `_document`, `_error` | Keeps production builds stable while website routes remain App Router |

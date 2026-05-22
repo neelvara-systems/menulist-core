@@ -80,7 +80,7 @@ export default function ProductPage() {
           <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem', letterSpacing: 0 }}>
             {t('HowItWorks.flowTitle')}
           </p>
-          <p style={{ fontSize: '0.9375rem', color: '#64748b', marginBottom: '2.5rem' }}>
+          <p style={{ fontSize: '0.9375rem', color: '#94a3b8', marginBottom: '2.5rem' }}>
             {t('HowItWorks.flowSubtitle')}
           </p>
           <svg viewBox="0 0 860 300" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
@@ -167,7 +167,7 @@ export default function ProductPage() {
             <div style={{ backgroundColor: 'var(--ws-bg-subtle)', border: '1px solid var(--ws-border-default)', borderRadius: 'var(--ws-radius-lg)', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.06)' }}>
               <div style={{ padding: 'var(--ws-space-3) var(--ws-space-4)', borderBottom: '1px solid var(--ws-border-default)', backgroundColor: 'var(--ws-bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{t('HowItWorks.step1MockupTitle')}</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a', backgroundColor: '#f0fdf4', padding: '2px 10px', borderRadius: '20px', border: '1px solid #bbf7d0' }}>{t('HowItWorks.step1MockupDone')}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ws-success)', backgroundColor: 'var(--ws-bg-success-soft)', padding: '2px 10px', borderRadius: '20px', border: '1px solid var(--ws-success)' }}>{t('HowItWorks.step1MockupDone')}</span>
               </div>
               <div style={{ padding: 'var(--ws-space-2) 0' }}>
                 {sampleItems.map((item) => (
@@ -210,7 +210,7 @@ export default function ProductPage() {
                       <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--ws-text-primary)' }}>{label}</p>
                       <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-muted)', marginTop: '1px' }}>{sub}</p>
                     </div>
-                    <LuCheck size={16} color="#16a34a" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+                <LuCheck size={16} color="var(--ws-success)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
                   </div>
                 </AnimateStaggerChild>
               ))}
@@ -266,8 +266,8 @@ export default function ProductPage() {
             {/* Published confirmation visual */}
             <div style={{ backgroundColor: 'var(--ws-bg-subtle)', border: '1px solid var(--ws-border-default)', borderRadius: 'var(--ws-radius-lg)', padding: 'var(--ws-space-6)', boxShadow: '0 8px 32px rgba(0,0,0,0.06)' }}>
               <div style={{ textAlign: 'center', marginBottom: 'var(--ws-space-5)' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: '#f0fdf4', border: '2px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)' }}>
-                  <LuCheck size={24} color="#16a34a" />
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'var(--ws-bg-success-soft)', border: '2px solid var(--ws-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto var(--ws-space-3)' }}>
+                  <LuCheck size={24} color="var(--ws-success)" />
                 </div>
                 <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ws-text-primary)' }}>{t('HowItWorks.step3Published')}</p>
               </div>
@@ -275,7 +275,7 @@ export default function ProductPage() {
                 {publishedSurfaces.map((s) => (
                   <div key={s} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--ws-space-2) var(--ws-space-3)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-md)', border: '1px solid var(--ws-border-subtle)' }}>
                     <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{s}</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>{t('HowItWorks.step3Live')}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ws-success)' }}>{t('HowItWorks.step3Live')}</span>
                   </div>
                 ))}
               </div>

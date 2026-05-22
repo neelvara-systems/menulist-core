@@ -55,8 +55,8 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
 
     const Statistic = ({ title, value }: { title: string, value: any }) => {
         return <div className="flex flex-col gap-1">
-            <span className="text-sm" style={{ color: '#64748b' }}>{title}</span>
-            <span className="font-medium text-sm" style={{ color: '#0f172a' }}>{value}</span>
+            <span className="text-sm" style={{ color: 'var(--ws-text-secondary)' }}>{title}</span>
+            <span className="font-medium text-sm" style={{ color: 'var(--ws-text-primary)' }}>{value}</span>
         </div>
     }
 
@@ -91,8 +91,8 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
 
     const renderGracePeriodInfo = () => {
         const { remainingDays } = getGracePeriodInfo(activeSubscription.pastDueSinceAt);
-        return <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '14px' }}>
-            <strong>⚠️ Payment failed.</strong> Your subscription is in a grace period. Please update your payment method within {remainingDays} day{remainingDays > 1 ? 's' : ''} to avoid service interruption. <a href="/billing" style={{ color: '#dc2626', textDecoration: 'underline' }}>Go to Billing</a>.
+        return <div style={{ padding: '12px 16px', backgroundColor: 'var(--ws-bg-danger-soft)', border: '1px solid var(--ws-error)', borderRadius: '6px', color: 'var(--ws-error-text)', fontSize: '14px' }}>
+            <strong>⚠️ Payment failed.</strong> Your subscription is in a grace period. Please update your payment method within {remainingDays} day{remainingDays > 1 ? 's' : ''} to avoid service interruption. <a href="/billing" style={{ color: 'var(--ws-error-text)', textDecoration: 'underline' }}>Go to Billing</a>.
         </div>
     }
 
@@ -106,22 +106,22 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
 
             <div className="grid grid-cols-1 gap-6 mt-8 max-w-3xl mx-auto mb-12">
                 {/* Subscription Details Card */}
-                <Card style={{ borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff' }}>
+                <Card style={{ borderRadius: '8px', border: '1px solid var(--ws-border-default)', backgroundColor: 'var(--ws-bg-surface)' }}>
                     <CardHeader className="flex flex-row justify-between items-start" style={{ padding: '24px 24px 0' }}>
                         <div>
-                            <CardTitle style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>Current Plan</CardTitle>
-                            <CardDescription style={{ fontSize: '14px', color: '#64748b' }}>Your active subscription details.</CardDescription>
+                            <CardTitle style={{ fontSize: '18px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>Current Plan</CardTitle>
+                            <CardDescription style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>Your active subscription details.</CardDescription>
                         </div>
                         {renderTag()}
                     </CardHeader>
                     <CardContent className="space-y-6" style={{ padding: '24px' }}>
                         <div className="flex justify-between items-baseline">
-                            <p className="text-lg font-semibold" style={{ color: '#0f172a' }}>{activeSubscription.planName}</p>
-                            <p className="text-xl font-bold" style={{ color: '#1e40af' }}>
+                            <p className="text-lg font-semibold" style={{ color: 'var(--ws-text-primary)' }}>{activeSubscription.planName}</p>
+                            <p className="text-xl font-bold" style={{ color: 'var(--ws-brand-secondary)' }}>
                                 {formatCurrencyOnPricingPage(activeSubscription.amount, activeSubscription.currency)} / {activeSubscription.planType === 'YEAR' ? 'Year' : 'Month'}
                             </p>
                         </div>
-                        <Separator style={{ backgroundColor: '#e2e8f0', margin: '16px 0' }} />
+                        <Separator style={{ backgroundColor: 'var(--ws-border-default)', margin: '16px 0' }} />
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
                             <Statistic
                                 title="Current Billing Cycle"
@@ -132,25 +132,25 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                                 title="Payment Method"
                                 value={<div className="flex items-center gap-2">
                                     <PaymentMethodIcon brand={activeSubscription.paymentMethod?.brand} />
-                                    <span className="font-medium capitalize" style={{ color: '#0f172a' }}>{activeSubscription.paymentMethod?.brand ?? "Card"} **** {activeSubscription.paymentMethod?.last4 ?? "****"}</span>
+                                    <span className="font-medium capitalize" style={{ color: 'var(--ws-text-primary)' }}>{activeSubscription.paymentMethod?.brand ?? "Card"} **** {activeSubscription.paymentMethod?.last4 ?? "****"}</span>
                                 </div>}
                             />
                         </div>
-                        <Separator style={{ backgroundColor: '#e2e8f0', margin: '16px 0' }} />
+                        <Separator style={{ backgroundColor: 'var(--ws-border-default)', margin: '16px 0' }} />
                         {activeSubscription.status === 'past_due' && <>
                             {renderGracePeriodInfo()}
                         </>}
                         {activeSubscription.status === 'paused' && !hasValidSubscriptionAccess(activeSubscription) && <>
-                            <div style={{ padding: '12px 16px', backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', color: '#c2410c', fontSize: '14px' }}>
+                            <div style={{ padding: '12px 16px', backgroundColor: 'var(--ws-bg-warning-soft)', border: '1px solid var(--ws-warning)', borderRadius: '6px', color: 'var(--ws-warning-text)', fontSize: '14px' }}>
                                 Your subscription is paused and the billing cycle has ended. Contact support to update it.
                             </div>
                         </>}
                     </CardContent>
-                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-3" style={{ padding: '16px 24px 24px', borderTop: '1px solid #e2e8f0' }}>
-                        <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")} style={{ borderColor: '#e2e8f0', color: '#0f172a' }}>
+                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-3" style={{ padding: '16px 24px 24px', borderTop: '1px solid var(--ws-border-default)' }}>
+                        <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
                             <LuLayoutDashboard size={16} style={{ marginRight: '8px' }} /> Dashboard
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => router.push("/billing")} style={{ borderColor: '#e2e8f0', color: '#0f172a' }}>
+                        <Button variant="outline" size="sm" onClick={() => router.push("/billing")} style={{ borderColor: 'var(--ws-border-default)', color: 'var(--ws-text-primary)' }}>
                             <LuTimer size={16} style={{ marginRight: '8px' }} /> Billing History
                         </Button>
                     </CardFooter>
@@ -171,7 +171,7 @@ interface SubscriptionManagementPageProps {
 const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({ activeSubscription, refetchActiveSubscription }) => {
 
     return (
-        <div className="ws-page" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+        <div className="ws-page" style={{ backgroundColor: 'var(--ws-bg-subtle)', minHeight: '100vh' }}>
             <main className="relative" style={{ padding: 'var(--ws-section-py) 0' }}>
                 <SubscriptionManagementRenderer activeSubscription={activeSubscription} refetchActiveSubscription={refetchActiveSubscription} />
                 <PricingFaq />

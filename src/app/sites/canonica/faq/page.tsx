@@ -25,8 +25,16 @@ function getBasePath(): string {
 
 const FAQS = [
     {
+        question: 'Is Canonica a chatbot?',
+        answer: 'No. Canonica includes AI-assisted support surfaces, but the core product is a support knowledge control plane: page context, canonical answers, drift checks, and owner-reviewed governance.',
+    },
+    {
         question: 'Is Canonica a helpdesk?',
         answer: 'No. Canonica is the support knowledge layer behind your help center, widget, tickets, and changelog. Tickets are fallback and signal sources, not the center of the product.',
+    },
+    {
+        question: 'What is a canonical answer?',
+        answer: 'A canonical answer is an approved, scoped support answer tied to product truth such as a feature, workflow, plan, role, release, state, or product surface.',
     },
     {
         question: 'How quickly can a small SaaS team start?',
@@ -39,6 +47,10 @@ const FAQS = [
     {
         question: 'Does Canonica answer every question automatically?',
         answer: 'No. Approved canonical answers are served first. If coverage is missing, fallback can help, but repeated fallback becomes a support gap for owner review.',
+    },
+    {
+        question: 'What happens when Canonica does not know the answer?',
+        answer: 'Canonica can use fallback, capture the miss as a signal, and route repeated gaps into reviewable proposals or draft answers. Those drafts require human approval before becoming authoritative.',
     },
     {
         question: 'Can I hide the widget on specific routes?',
@@ -59,6 +71,10 @@ const FAQS = [
     {
         question: 'How are FAQs created?',
         answer: 'Product owners can manage FAQs directly. Canonica can also generate article-backed FAQ suggestions during the knowledge workflow, but they stay reviewable instead of publishing automatically.',
+    },
+    {
+        question: 'Can Canonica work with an existing helpdesk?',
+        answer: 'Yes. Canonica can complement ticket tools as the governed support-knowledge layer, but public website copy does not promise broad helpdesk integrations while those paths are rollout-gated.',
     },
     {
         question: 'What happens when a product release changes an answer?',

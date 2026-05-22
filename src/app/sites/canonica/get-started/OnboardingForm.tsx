@@ -14,6 +14,10 @@ interface OnboardResult {
     plan: { id: string; name: string; isBeta: boolean };
 }
 
+type CanonicaAnalyticsWindow = Window & {
+    gtag?: (...args: unknown[]) => void;
+};
+
 const SURFACE_OPTIONS = [
     { key: 'billing', label: 'Billing' },
     { key: 'onboarding', label: 'Onboarding' },
@@ -48,6 +52,22 @@ function OnboardingFormInner() {
             setStep('details');
         }
     }, [status, step]);
+
+    useEffect(() => {
+        if (step !== 'done' || !result) return;
+
+        const win = window as CanonicaAnalyticsWindow;
+        if (typeof win.gtag !== 'function') return;
+
+        win.gtag('event', 'onboarding_completed', {
+            event_category: 'canonica_website',
+            event_label: result.plan.id,
+        });
+        win.gtag('event', 'widget_key_generated', {
+            event_category: 'canonica_website',
+            event_label: result.apiKey.slice(0, 8),
+        });
+    }, [result, step]);
 
     const handleGoogleSignIn = () => {
         signIn('google', { callbackUrl: window.location.href });
@@ -115,7 +135,12 @@ function OnboardingFormInner() {
                 <div style={styles.card}>
                     <h2 style={styles.cardTitle}>Create your Canonica account</h2>
                     <p style={styles.cardSubtext}>Sign in with Google to get started. Free during beta.</p>
-                    <button onClick={handleGoogleSignIn} style={styles.googleBtn}>
+                    <button
+                        onClick={handleGoogleSignIn}
+                        style={styles.googleBtn}
+                        data-canonica-event="google_signin_clicked"
+                        data-canonica-label="get_started_form"
+                    >
                         <svg width="18" height="18" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -223,7 +248,12 @@ function OnboardingFormInner() {
 
                     {error && <p style={styles.error}>{error}</p>}
 
-                    <button onClick={handleCreateAccount} style={styles.primaryBtn}>
+                    <button
+                        onClick={handleCreateAccount}
+                        style={styles.primaryBtn}
+                        data-canonica-event="onboarding_create_clicked"
+                        data-canonica-label="beta_workspace"
+                    >
                         Create Account
                     </button>
                 </div>
@@ -266,7 +296,12 @@ function OnboardingFormInner() {
                         </ol>
                     </div>
 
-                    <a href="/canonica/activation" style={styles.primaryBtn}>
+                    <a
+                        href="/canonica/activation"
+                        style={styles.primaryBtn}
+                        data-canonica-event="onboarding_activation_clicked"
+                        data-canonica-label="open_activation"
+                    >
                         Open Activation
                     </a>
                 </div>

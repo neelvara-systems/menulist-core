@@ -13,14 +13,14 @@ const CurrencySwitcher: React.FC<CurrencySwitcherProps> = ({ currency, onCurrenc
     return (
         <div className="flex justify-center items-center mb-10">
             <Tabs value={currency} onValueChange={(value) => onCurrencyChange(value as Currency)} className="w-full max-w-xs mx-auto">
-                <TabsList className="grid w-full grid-cols-2 p-1 h-auto rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                    <TabsTrigger value="USD" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+                <TabsList className="grid w-full grid-cols-2 p-1 h-auto rounded-lg bg-[var(--ws-bg-subtle)] border border-[var(--ws-border-default)]">
+                    <TabsTrigger value="USD" className="rounded-md text-[var(--ws-text-secondary)] data-[state=active]:bg-[var(--ws-bg-surface)] data-[state=active]:text-[var(--ws-text-primary)] data-[state=active]:shadow-sm">
                         <div className="flex items-center justify-center gap-2">
                             <span>🇺🇸</span>
                             <span>USD</span>
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="INR" className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm">
+                    <TabsTrigger value="INR" className="rounded-md text-[var(--ws-text-secondary)] data-[state=active]:bg-[var(--ws-bg-surface)] data-[state=active]:text-[var(--ws-text-primary)] data-[state=active]:shadow-sm">
                         <div className="flex items-center justify-center gap-2">
                             <span>🇮🇳</span>
                             <span>INR</span>

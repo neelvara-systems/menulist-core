@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import CanonicaAnalytics from './components/CanonicaAnalytics';
 import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_URL } from './siteConfig';
 import './styles.css';
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
     publisher: 'Canonica',
     category: 'customer support software',
     title: {
-        default: 'Canonica — Support Knowledge Control Plane for SaaS',
+        default: 'Canonica — Accurate Page-Aware Support for SaaS',
         template: '%s | Canonica',
     },
     description: CANONICA_SITE_DESCRIPTION,
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
         'support knowledge infrastructure',
         'SaaS support widget',
         'page-aware support',
+        'page-aware support widget',
+        'support widget for solo founders',
+        'hosted help center for SaaS',
+        'AI help center with approved answers',
         'SaaS help widget',
         'hosted help center',
         'custom help domain',
@@ -49,7 +54,7 @@ export const metadata: Metadata = {
         telephone: false,
     },
     openGraph: {
-        title: 'Canonica — Support Knowledge Control Plane for SaaS',
+        title: 'Canonica — Accurate Page-Aware Support for SaaS',
         description: CANONICA_SITE_DESCRIPTION,
         url: CANONICA_SITE_URL,
         siteName: 'Canonica',
@@ -58,7 +63,7 @@ export const metadata: Metadata = {
                 url: buildCanonicaUrl('/canonica-og-image.png'),
                 width: 1200,
                 height: 630,
-                alt: 'Canonica — Support Knowledge Control Plane for SaaS',
+                alt: 'Canonica — Accurate Page-Aware Support for SaaS',
             },
         ],
         locale: 'en_US',
@@ -66,7 +71,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Canonica — Support Knowledge Control Plane for SaaS',
+        title: 'Canonica — Accurate Page-Aware Support for SaaS',
         description: CANONICA_SITE_DESCRIPTION,
         images: [buildCanonicaUrl('/canonica-og-image.png')],
     },
@@ -97,6 +102,7 @@ interface CanonicaLayoutProps {
 export default function CanonicaWebsiteLayout({ children }: CanonicaLayoutProps) {
     return (
         <div className="canonica-site antialiased">
+            <CanonicaAnalytics />
             {/* CanonicaClientLayout is imported dynamically to avoid making the entire layout a client component */}
             {children}
         </div>

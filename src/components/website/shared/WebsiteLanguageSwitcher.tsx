@@ -91,12 +91,10 @@ export default function WebsiteLanguageSwitcher() {
                         minWidth: '180px',
                         maxHeight: '300px',
                         overflowY: 'auto',
-                        backgroundColor: '#fff',
+                        backgroundColor: 'var(--ws-bg-elevated)',
                         border: '1px solid var(--ws-border-default)',
                         borderRadius: 'var(--ws-radius-lg)',
-                        boxShadow: openUp
-                            ? '0 -8px 30px rgba(0,0,0,0.08)'
-                            : '0 8px 30px rgba(0,0,0,0.08)',
+                        boxShadow: 'var(--ws-shadow-lg)',
                         zIndex: 100,
                         padding: '4px 0',
                     }}

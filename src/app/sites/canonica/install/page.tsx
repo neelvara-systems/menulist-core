@@ -60,6 +60,20 @@ const CONTEXT_SNIPPET = `window.CanonicaWidget?.page({
   workflow: 'invoice_review'
 });`;
 
+const FRAMEWORK_EXAMPLES = [
+    ['Plain HTML', 'Paste the script before </body> and add optional page context after route changes.'],
+    ['Next.js / React', 'Load the script once in the app shell, then call page context from route-aware components.'],
+    ['SPA routers', 'Update CanonicaWidget.page() when route, workflow, plan, or role changes.'],
+];
+
+const VERIFICATION_ITEMS = [
+    ['Widget key', 'Valid cn_* key prefix and active hashed credential'],
+    ['Allowed origin', 'Current product origin matched dashboard config'],
+    ['Blocked route', 'Current route allowed or hidden as configured'],
+    ['Context marker', 'Last received context key such as billing_invoices'],
+    ['Hosted help', 'Domain registry and public route status checked'],
+];
+
 export default function CanonicaInstallPage() {
     const basePath = getBasePath();
 
@@ -129,6 +143,48 @@ export default function CanonicaInstallPage() {
                     </div>
                 </section>
 
+                <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
+                    <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+                        <div>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Developer handoff</p>
+                            <h2 className="text-3xl font-bold">Framework setup stays intentionally small.</h2>
+                            <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
+                                The dashboard owns keys, allowed origins, blocked routes, hosted help domains, and runtime checks. The client app only needs the script plus safe page context.
+                            </p>
+                            <div className="mt-6 grid gap-3">
+                                {FRAMEWORK_EXAMPLES.map(([title, detail]) => (
+                                    <article key={title} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                                        <h3 className="text-sm font-semibold text-white">{title}</h3>
+                                        <p className="mt-2 text-sm leading-relaxed text-[#808099]">{detail}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5 shadow-2xl shadow-black/20">
+                            <div className="mb-5 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-4">
+                                <div>
+                                    <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Runtime verification</div>
+                                    <h3 className="mt-1 text-xl font-semibold text-white">Widget install status</h3>
+                                </div>
+                                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                                    Ready
+                                </span>
+                            </div>
+                            <div className="space-y-3">
+                                {VERIFICATION_ITEMS.map(([label, detail]) => (
+                                    <div key={label} className="rounded-xl border border-white/[0.06] bg-[#070714] p-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-sm font-semibold text-white">{label}</span>
+                                            <span className="text-xs text-emerald-300">Passed</span>
+                                        </div>
+                                        <p className="mt-2 text-sm leading-relaxed text-[#808099]">{detail}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
                         <div>
@@ -159,9 +215,11 @@ export default function CanonicaInstallPage() {
                     <CanonicaLink
                         basePath={basePath}
                         href="/get-started"
+                        data-canonica-event="install_cta_clicked"
+                        data-canonica-label="start_free_setup"
                         className="mt-8 inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
                     >
-                        Create Workspace
+                        Start free setup
                     </CanonicaLink>
                 </section>
             </main>

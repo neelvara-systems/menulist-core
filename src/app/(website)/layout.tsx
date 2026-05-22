@@ -74,7 +74,7 @@ export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
     return (
         <LocalisationProvider locale={locale}>
             <WebsiteAuthProvider>
-                <ThemeProvider forcedTheme="light">
+                <ThemeProvider>
                     <GoogleAnalytics />
                     <ClarityAnalytics />
                     <>{children}</>

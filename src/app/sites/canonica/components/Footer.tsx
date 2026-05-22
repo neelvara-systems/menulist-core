@@ -3,14 +3,20 @@ import CanonicaLink from './CanonicaLink';
 const FOOTER_LINKS = {
     Product: [
         { label: 'Product', href: '/product' },
+        { label: 'Launch Setup', href: '/product/launch-setup' },
+        { label: 'Page-Aware Widget', href: '/product/page-aware-widget' },
+        { label: 'Support Control', href: '/product/support-control' },
+        { label: 'Knowledge Governance', href: '/product/knowledge-governance' },
         { label: 'Use Cases', href: '/use-cases' },
         { label: 'Demo', href: '/demo' },
         { label: 'Pricing', href: '/pricing' },
-        { label: 'Start Setup', href: '/get-started' },
+        { label: 'Start Free Setup', href: '/get-started' },
     ],
     Resources: [
         { label: 'Resources', href: '/resources' },
         { label: 'Widget Install', href: '/install' },
+        { label: 'Page-Aware Widget', href: '/page-aware-support-widget' },
+        { label: 'Hosted Help Center', href: '/hosted-help-center-for-saas' },
         { label: 'Updates', href: '/updates' },
         { label: 'FAQ', href: '/faq' },
         { label: 'Security', href: '/security' },

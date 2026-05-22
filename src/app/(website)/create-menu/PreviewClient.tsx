@@ -291,7 +291,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
-                    backgroundColor: '#f0fdf4',
+                    backgroundColor: 'var(--ws-bg-success-soft)',
                     color: 'var(--ws-success)',
                     padding: '8px 16px',
                     borderRadius: '20px',

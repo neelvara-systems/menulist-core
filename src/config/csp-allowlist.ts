@@ -71,6 +71,8 @@ export const CSP_ALLOWLIST = {
         'https://*.firebaseio.com',
         'https://*.googleapis.com',
         'https://*.google.com',
+        'https://*.google-analytics.com',
+        'https://*.analytics.google.com',
         'https://vercel.live',
         'wss://*.firebaseio.com', // Firebase Realtime Database WebSocket
         'https://*.upstash.io', // Upstash Redis for rate limiting

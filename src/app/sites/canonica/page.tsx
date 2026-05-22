@@ -1,20 +1,28 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
+import BestFitSection from './components/BestFitSection';
 import CTASection from './components/CTASection';
+import ClosedLoopSection from './components/ClosedLoopSection';
 import ComparisonSection from './components/ComparisonSection';
 import CanonicaFooter from './components/Footer';
 import CanonicaHeader from './components/Header';
 import HeroSection from './components/HeroSection';
+import HomePageAwareDemoSection from './components/HomePageAwareDemoSection';
+import HomeTrustSection from './components/HomeTrustSection';
 import HowItWorksSection from './components/HowItWorksSection';
+import ObjectionsSection from './components/ObjectionsSection';
 import PillarsSection from './components/PillarsSection';
+import PricingPreviewSection from './components/PricingPreviewSection';
+import ProductAreasSection from './components/ProductAreasSection';
 import ProductPreviewSection from './components/ProductPreviewSection';
+import SetupFunnelSection from './components/SetupFunnelSection';
 import CanonicaStructuredData from './components/StructuredData';
 import SystemCoverageSection from './components/SystemCoverageSection';
 import WidgetSection from './components/WidgetSection';
 import { CANONICA_SITE_DESCRIPTION } from './siteConfig';
 
 export const metadata: Metadata = {
-    title: 'Canonica — Support Knowledge Control Plane for SaaS',
+    title: 'Canonica — Accurate Page-Aware Support for SaaS',
     description: CANONICA_SITE_DESCRIPTION,
     alternates: { canonical: '/' },
 };
@@ -48,12 +56,20 @@ export default function CanonicaHomePage() {
             <CanonicaStructuredData />
             <main>
                 <HeroSection basePath={basePath} />
+                <HomePageAwareDemoSection basePath={basePath} />
+                <ClosedLoopSection />
                 <ProductPreviewSection />
+                <ProductAreasSection basePath={basePath} />
+                <BestFitSection />
+                <SetupFunnelSection />
                 <WidgetSection basePath={basePath} />
+                <HomeTrustSection />
                 <PillarsSection />
                 <SystemCoverageSection />
                 <HowItWorksSection />
                 <ComparisonSection />
+                <PricingPreviewSection basePath={basePath} />
+                <ObjectionsSection />
                 <CTASection basePath={basePath} />
             </main>
             <CanonicaFooter basePath={basePath} />

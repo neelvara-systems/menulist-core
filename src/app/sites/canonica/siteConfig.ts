@@ -1,7 +1,7 @@
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica is the support knowledge control plane for SaaS products: launch setup, page-aware widget, hosted help on your own domain, canonical answers, drift review, and support-gap governance.';
+    'Canonica helps SaaS founders ship fast without support chaos: approved page-aware answers before fallback, hosted help on their own domain, and reviewable fixes for missed questions.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -12,7 +12,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
 }> = [
     {
         path: '/',
-        title: 'Canonica — Support Knowledge Control Plane for SaaS',
+        title: 'Canonica — Accurate Page-Aware Support for SaaS',
         description: CANONICA_SITE_DESCRIPTION,
         priority: 1,
         changeFrequency: 'weekly',
@@ -23,6 +23,34 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         description: 'Launch setup, support control, knowledge governance, page-aware widget, hosted help domains, safe ticket context, canonical answers, and support-gap review for SaaS teams.',
         priority: 0.9,
         changeFrequency: 'weekly',
+    },
+    {
+        path: '/product/launch-setup',
+        title: 'Launch Setup | Canonica',
+        description: 'Create a Canonica workspace, add product details, import starter knowledge, map product surfaces, and verify the widget before launch.',
+        priority: 0.84,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/product/page-aware-widget',
+        title: 'Page-Aware Widget | Canonica',
+        description: 'Install Canonica as a page-aware widget with safe context, allowed origins, blocked routes, hosted help, and approved answers before fallback.',
+        priority: 0.84,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/product/support-control',
+        title: 'Support Control | Canonica',
+        description: 'Operate Canonica help center, docs, FAQ, changelog, tickets, conversations, and weekly support review from one support control layer.',
+        priority: 0.82,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/product/knowledge-governance',
+        title: 'Knowledge Governance | Canonica',
+        description: 'Govern Canonica product ontology, canonical answers, drift, signal mutation, coverage KPI, and trust/readiness metrics.',
+        priority: 0.82,
+        changeFrequency: 'monthly',
     },
     {
         path: '/demo',
@@ -37,6 +65,55 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         description: 'Page-aware support use cases for billing, onboarding, settings, releases, support fallback, and product errors.',
         priority: 0.86,
         changeFrequency: 'weekly',
+    },
+    {
+        path: '/use-cases/founders',
+        title: 'Support for SaaS Founders | Canonica',
+        description: 'Page-aware support, approved answers, and support-gap review for solo SaaS founders.',
+        priority: 0.78,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/use-cases/support-teams',
+        title: 'Support Teams | Canonica',
+        description: 'Reduce repeated tickets with approved answers, ticket fallback, and a signal-to-knowledge queue.',
+        priority: 0.76,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/use-cases/product-teams',
+        title: 'Product Teams | Canonica',
+        description: 'See which product surfaces create support friction, stale answers, and review work after releases.',
+        priority: 0.76,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/use-cases/engineering',
+        title: 'Engineering Teams | Canonica',
+        description: 'A support layer with safe page context, widget controls, and governed retrieval.',
+        priority: 0.74,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/page-aware-support-widget',
+        title: 'Page-Aware Support Widget | Canonica',
+        description: 'A page-aware support widget for SaaS products that uses safe product context and owner-approved answers before fallback.',
+        priority: 0.82,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/hosted-help-center-for-saas',
+        title: 'Hosted Help Center for SaaS | Canonica',
+        description: 'Hosted SaaS help center for docs, FAQ, and changelog content connected to Canonica product surfaces and approved answers.',
+        priority: 0.8,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/support-widget-for-solo-founders',
+        title: 'Support Widget for Solo Founders | Canonica',
+        description: 'A support widget for solo SaaS founders who need approved answers, page-aware help, and support-gap review before hiring support.',
+        priority: 0.8,
+        changeFrequency: 'monthly',
     },
     {
         path: '/install',

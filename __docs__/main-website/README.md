@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.5.0 (Homepage Compression + Conversion Proof Pass)
+**Version:** 3.5.2 (Dark Mode Final UI Polish)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 21, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.5.0** | **Homepage Compression + Conversion Proof Pass** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.5.2** | **Dark Mode Final UI Polish** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
 Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Solution -> How it works -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.5.1 adds system dark mode to the public website without changing the default light-mode positioning. Dark mode uses dark gray `#121212`-family surfaces instead of pure black, and the shared website tokens now cover headers, sections, cards, pricing, forms, drawers, and supporting create-menu pages. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.5.2 is a final theme polish pass after dark-mode QA. It keeps the same website structure and copy, but tightens sticky CTA theming, dark panel microcopy contrast, footer utility-link contrast, and the How It Works / Multi-location flow-diagram supporting text so dark mode reads as a finished design instead of a token-only inversion.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -497,12 +501,43 @@ Protected scope:
 
 - App Router website layout, owner app layout, pricing/payment runtime, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
+## Stage 7.18 System Dark Mode Theme Pass
+
+Stage 7.18 adds a complete system-preference dark theme for the public website while keeping light mode as the default brand experience for light system preferences:
+
+- `ThemeProvider` is no longer forced to light inside the website layout, so Tailwind/shadcn pricing `dark:` styles and website token dark mode can activate.
+- `src/styles/website.css` now defines dark-mode token values for page backgrounds, subtle sections, cards, elevated menus, inputs, semantic states, borders, shadows, and the brighter dark-mode headline gradient.
+- Dark mode uses dark gray surfaces (`#121212` family) instead of pure black, preserving depth and readability.
+- Shared surfaces were tokenized so headers, cards, proof strips, dropdowns, mobile drawers, create-menu upload/preview/success states, How It Works mockups, Multi-location mockups, and subscription management do not stay hardcoded light.
+- Pricing-page shadcn variables now support both `.dark` and system dark preference.
+
+Protected scope:
+
+- Pricing, payment, Razorpay, subscription, billing, checkout, auth, owner dashboard, upload/extraction, claim/publish APIs, and `/create-menu` runtime logic were not changed.
+
+## Stage 7.19 Dark Mode Final UI Polish
+
+Stage 7.19 completes the final UI/UX theme audit after the system dark-mode pass:
+
+- The desktop sticky CTA now uses a theme token for its translucent blurred surface instead of staying white in dark mode.
+- Footer legal/utility microcopy was raised to the same readable muted tone used by other dark footer links.
+- Dark flow-diagram subtitles on How It Works and Multi-location now use readable muted text instead of the older low-contrast slate tone.
+- The Multi-location flow secondary SVG labels were raised for dark-panel readability.
+- The pricing currency switcher and billing labels now use website tokens instead of Tailwind-only dark classes, so key pricing controls stay readable before hydration and under system dark preference.
+
+Protected scope:
+
+- No homepage structure, website copy, pricing/payment logic, subscription behavior, upload/extraction flow, auth flow, owner-dashboard behavior, or public customer runtime was changed.
+
 ---
 
 ## Canonical Change Log
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.5.2 | May 22, 2026 | Final dark-mode UI polish: theme-safe sticky CTA surface, stronger dark footer utility contrast, clearer dark flow-diagram supporting text, and tokenized pricing controls. |
+| 3.5.1 | May 22, 2026 | Added system dark mode across the public website using dark gray surfaces instead of pure black, with shared token coverage for headers, sections, cards, pricing, forms, drawers, and create-menu support pages. |
+| 3.4.16 | May 22, 2026 | Kept the public website light by default and deepened the light-mode headline gradient to a calmer teal-to-blue accent with stronger contrast on white. |
 | 3.4.15 | May 20, 2026 | Added minimal Pages Router defaults so production builds resolve generated `/_app`, `/_document`, and `/_error` page-manifest entries without changing App Router website behavior. |
 | 3.4.14 | May 20, 2026 | Required a free owner account before `/create-menu` upload/extraction, preserving free preview before payment while removing anonymous AI-processing cost leakage. |
 | 3.4.13 | May 20, 2026 | Hardened mobile Safari public-website scrolling by unregistering the owner Workbox service worker on marketing routes and removing mobile fixed/blur repaint triggers. |

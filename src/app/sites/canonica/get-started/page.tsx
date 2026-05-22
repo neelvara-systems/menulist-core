@@ -28,6 +28,16 @@ const CRITERIA = [
     { label: 'Widget and help domain access', description: 'You can add a script, pass safe page context, and connect a support domain such as help.yourapp.com.' },
 ];
 
+const FIRST_SESSION = [
+    'Sign in with Google',
+    'Add company and product name',
+    'Choose 2-5 support-heavy product pages',
+    'Import docs, FAQs, release notes, or common answers',
+    'Copy the one-time widget key',
+    'Verify the install and hosted help domain',
+    'Review first approved answer drafts',
+];
+
 export default function CanonicaGetStartedPage() {
     const basePath = getBasePath();
 
@@ -72,21 +82,22 @@ export default function CanonicaGetStartedPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto max-w-3xl">
-                        <h2 className="mb-6 text-xl font-semibold">What happens after you start?</h2>
-                        <div className="grid gap-4 sm:grid-cols-3">
-                            {[
-                                { step: '1', title: 'Create workspace', description: 'Canonica creates the product workspace, product account bridge, beta subscription, and widget key.' },
-                                { step: '2', title: 'Import knowledge', description: 'Upload docs, FAQs, or starter answers so drafts, entities, and surface coverage can be prepared.' },
-                                { step: '3', title: 'Verify install', description: 'Install the widget, publish hosted help on your own domain if needed, pass page context, and review the first support gaps.' },
-                            ].map((s) => (
-                                <div key={s.step} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-                                    <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/10 text-sm font-bold text-indigo-400">
-                                        {s.step}
+                        <h2 className="mb-3 text-xl font-semibold">What you need before signup</h2>
+                        <p className="mb-6 text-sm leading-relaxed text-[#a0a0c0]">
+                            A live or near-live product, a few high-friction pages, and any starter support knowledge you already have. A full docs site is not required.
+                        </p>
+                        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+                            <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-400">First session checklist</div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {FIRST_SESSION.map((item, index) => (
+                                    <div key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-[#101028] p-3">
+                                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-[11px] font-bold text-indigo-300">
+                                            {index + 1}
+                                        </span>
+                                        <span className="text-sm leading-relaxed text-[#d6d6ef]">{item}</span>
                                     </div>
-                                    <h3 className="mb-1 text-sm font-semibold text-white">{s.title}</h3>
-                                    <p className="text-xs leading-relaxed text-[#808099]">{s.description}</p>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </section>

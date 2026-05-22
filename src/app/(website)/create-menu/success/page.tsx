@@ -90,7 +90,7 @@ export default function SuccessPage() {
                     width: '64px',
                     height: '64px',
                     borderRadius: '50%',
-                    backgroundColor: '#f0fdf4',
+                    backgroundColor: 'var(--ws-bg-success-soft)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -200,7 +200,7 @@ export default function SuccessPage() {
 
                 {/* QR Code hint */}
                 <div style={{
-                    backgroundColor: '#fefce8',
+                    backgroundColor: 'var(--ws-bg-warning-soft)',
                     borderRadius: 'var(--ws-radius-xl)',
                     padding: '16px 20px',
                     marginBottom: '20px',
@@ -209,12 +209,12 @@ export default function SuccessPage() {
                     gap: '12px',
                     alignItems: 'center',
                 }}>
-                    <LuQrCode size={20} color="#ca8a04" style={{ flexShrink: 0 }} />
+                    <LuQrCode size={20} color="var(--ws-warning)" style={{ flexShrink: 0 }} />
                     <div>
-                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#854d0e', marginBottom: '4px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-warning-text)', marginBottom: '4px' }}>
                             {t('CreateMenuSuccess.qrTitle')}
                         </p>
-                        <p style={{ fontSize: '13px', color: '#a16207', lineHeight: 1.4 }}>
+                        <p style={{ fontSize: '13px', color: 'var(--ws-warning-text)', lineHeight: 1.4 }}>
                             {t('CreateMenuSuccess.qrBody')}
                         </p>
                     </div>
@@ -231,12 +231,12 @@ export default function SuccessPage() {
                     gap: '12px',
                     alignItems: 'center',
                 }}>
-                    <LuMapPin size={20} color="#2563eb" style={{ flexShrink: 0 }} />
+                    <LuMapPin size={20} color="var(--ws-brand-secondary)" style={{ flexShrink: 0 }} />
                     <div>
-                        <p style={{ fontSize: '14px', fontWeight: 600, color: '#1e40af', marginBottom: '4px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-brand-secondary)', marginBottom: '4px' }}>
                             {t('CreateMenuSuccess.mapsTitle')}
                         </p>
-                        <p style={{ fontSize: '13px', color: '#3b82f6', lineHeight: 1.4 }}>
+                        <p style={{ fontSize: '13px', color: 'var(--ws-brand-secondary)', lineHeight: 1.4 }}>
                             {t('CreateMenuSuccess.mapsBody')}
                         </p>
                     </div>
