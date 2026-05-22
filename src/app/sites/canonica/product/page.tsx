@@ -7,7 +7,7 @@ import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica brings launch setup, support control, page-aware widget, hosted help, canonical answers, and knowledge governance into one SaaS support control plane.',
+    description: 'Canonica brings launch setup, support control, page-aware widget, hosted help domains, safe ticket context, canonical answers, and knowledge governance into one SaaS support control plane.',
     alternates: { canonical: '/product' },
 };
 
@@ -28,7 +28,7 @@ const FEATURES = [
         capabilities: [
             'Product profile, support email, billing model, workspace subscription, and main product pages',
             'Knowledge import for docs, FAQs, starter answers, and existing files',
-            'Activation checklist for widget install, hosted help domains, allowed origins, and first answer readiness',
+            'Activation checklist for widget install, custom help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
             'Human review before generated drafts become approved answers',
         ],
@@ -40,10 +40,10 @@ const FEATURES = [
         description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help.',
         capabilities: [
             'Widget install script with allowed-origin and blocked-route controls',
-            'Hosted help center for docs, FAQ, and changelog on help/docs/support domains',
+            'Hosted help center for docs, FAQ, and changelog on help/docs/support domains like help.yourapp.com',
             'Safe context payloads for page, feature, workflow, plan, and role hints',
             'Related articles, FAQs, and changelog entries filtered by product surface',
-            'Tickets as fallback when approved content is missing',
+            'Tickets as fallback when approved content is missing, with safe debugging context to reduce back-and-forth',
             'Mobile-first widget UI for end users inside client products',
         ],
     },
@@ -83,7 +83,7 @@ const FEATURES = [
             'Fire-and-forget signal writes with bounded payloads',
             'Signal-to-knowledge queue for recurring gaps',
             'Draft canonical answers for owner review',
-            'Ticket resolution extraction when a support case teaches the product',
+            'Ticket resolution extraction and safe ticket context when a support case teaches the product',
             'Cost-conscious summaries for dashboards, scheduler discovery, and product friction review',
         ],
     },
@@ -103,7 +103,7 @@ export default function CanonicaProductPage() {
                         Launch setup, support control, and knowledge governance in one product.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica gives small SaaS teams a governed support layer: product surfaces, page-aware widget, hosted help, canonical answers, release-aware review, and a signal queue for recurring gaps.
+                        Canonica gives small SaaS teams a governed support layer: product surfaces, page-aware widget, branded help domains, safe ticket context, canonical answers, release-aware review, and a signal queue for recurring gaps.
                     </p>
                 </section>
 

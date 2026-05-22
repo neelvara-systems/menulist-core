@@ -46,7 +46,15 @@ const FAQS = [
     },
     {
         question: 'Can Canonica publish a public help center?',
-        answer: 'Yes. Hosted Help can publish reviewed docs, FAQs, and changelog content on support domains such as help.myapp.com. It does not expose authenticated tickets, chat history, or workspace internals.',
+        answer: 'Yes. Hosted Help can publish reviewed docs, FAQs, and changelog content on support domains such as help.yourapp.com. It does not expose authenticated tickets, chat history, or workspace internals.',
+    },
+    {
+        question: 'Can I use my own support domain?',
+        answer: 'Yes. Canonica is designed for branded help domains such as help.yourapp.com, docs.yourapp.com, or support.yourapp.com so customer-facing support feels native to your product.',
+    },
+    {
+        question: 'Do tickets include debugging details?',
+        answer: 'Tickets can include capped and sanitized recent browser context when the user creates the ticket. This helps owners understand broken screens faster while keeping the context tied to the reported issue.',
     },
     {
         question: 'How are FAQs created?',

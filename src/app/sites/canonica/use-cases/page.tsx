@@ -41,7 +41,7 @@ const USE_CASES = [
     },
     {
         title: 'Hosted help for public support',
-        context: 'help.myapp.com, docs.myapp.com, FAQ, changelog, public article pages',
+        context: 'help.yourapp.com, docs.yourapp.com, FAQ, changelog, public article pages',
         outcome: 'Publish reviewed docs, FAQs, and release notes without exposing tickets, chat history, or workspace internals.',
     },
     {

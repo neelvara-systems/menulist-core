@@ -6,7 +6,7 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'How Canonica protects support knowledge, widget context, and customer workspaces.',
+    description: 'How Canonica protects support knowledge, widget context, safe ticket debugging context, hosted help domains, and customer workspaces.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | Canonica',
@@ -41,6 +41,10 @@ const CONTROLS = [
         body: 'Hosted help domains resolve through Canonica-owned registry documents so anonymous docs, FAQ, changelog, robots, and sitemap pages never depend on client-supplied tenant IDs.',
     },
     {
+        title: 'Ticket debugging context',
+        body: 'Tickets can include a capped, sanitized snapshot of recent browser context at creation time so owners can debug broken screens without asking customers for technical details.',
+    },
+    {
         title: 'Owner-approved authority',
         body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active canonical answers.',
     },
@@ -60,6 +64,7 @@ const SECURITY_FACTS = [
     { label: 'Widget key storage', value: 'Hashed key, shown once' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
     { label: 'Hosted help', value: 'Registry-scoped domains' },
+    { label: 'Ticket context', value: 'Capped and sanitized' },
     { label: 'Answer authority', value: 'Owner-reviewed canonical answers' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Compact summary docs' },
@@ -93,6 +98,15 @@ const TRUST_AREAS = [
             'Domain registry docs resolve workspace scope server-side.',
             'Anonymous pages render published docs, FAQ, changelog, robots, and sitemap only.',
             'Tickets, chat history, feedback writes, and account data stay out of hosted help.',
+        ],
+    },
+    {
+        title: 'Ticket debugging context',
+        body: 'Canonica keeps ticket debugging context useful by tying it to the reported issue instead of broad background collection.',
+        points: [
+            'Recent browser context is captured only when a ticket is created.',
+            'The payload is capped and intended for debugging the reported issue.',
+            'Support teams see context in the ticket instead of asking users to describe browser-level details.',
         ],
     },
     {

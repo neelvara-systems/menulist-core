@@ -22,7 +22,7 @@ const SECTIONS = [
         title: 'Using Canonica',
         body: [
             'Canonica helps SaaS teams manage product support knowledge, approved answers, help widgets, hosted help centers, FAQs, changelogs, tickets, and support-gap review flows.',
-            'You are responsible for the content you upload, the workspace users you invite, and the page context your product sends to Canonica.',
+            'You are responsible for the content you upload, the workspace users you invite, the help domains you configure, and the page context your product sends to Canonica.',
         ],
     },
     {
@@ -42,7 +42,7 @@ const SECTIONS = [
     {
         title: 'Acceptable Use',
         body: [
-            'Do not use Canonica to store secrets, passwords, payment card data, unlawful content, malware, spam, or content that infringes another party\'s rights.',
+            'Do not use Canonica to store secrets, passwords, payment card data, unlawful content, malware, spam, or content that infringes another party\'s rights. Do not intentionally send sensitive data through widget context or ticket debugging context.',
             'Do not attempt to bypass security controls, scrape private service data, overload service infrastructure, or misuse widget keys.',
         ],
     },

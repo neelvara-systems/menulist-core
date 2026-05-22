@@ -66,6 +66,10 @@
     message: string;
     level: 'info' | 'warn' | 'error';
   }>;
+  clientDebugContext?: {          // Captured once on ticket creation
+    userAgent?: string;           // capped raw user-agent string
+    capturedAt?: number;          // epoch ms
+  };
   // Auto-injected by requestBodyComposer:
   createdOn: Timestamp;
   modifiedOn: Timestamp;

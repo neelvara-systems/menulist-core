@@ -37,7 +37,12 @@ const COMPARISON_ROWS = [
     {
         feature: 'Public support home',
         traditional: 'Separate docs site or generic help center',
-        canonica: 'Hosted help domains reuse the same governed KB, FAQ, and changelog content',
+        canonica: 'Hosted help domains like help.yourapp.com reuse the same governed KB, FAQ, and changelog content',
+    },
+    {
+        feature: 'Ticket context',
+        traditional: 'Support asks users what happened and waits for screenshots',
+        canonica: 'Tickets can include safe debugging context so owners understand the broken screen faster',
     },
     {
         feature: 'Scope creep',

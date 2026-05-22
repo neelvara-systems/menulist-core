@@ -69,6 +69,10 @@ export interface SupportTicketType {
     tId?: number;//tenant id
     uId?: string;//created by user id,
     logs?: LogEntry[];
+    clientDebugContext?: {
+        userAgent?: string | null;
+        capturedAt?: number | null;
+    };
 }
 
 export const SUPPORT_TICKET_STATUS = {

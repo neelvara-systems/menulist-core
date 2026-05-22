@@ -3,7 +3,7 @@ const LAUNCH_ITEMS = [
     ['Knowledge import', 'In review'],
     ['Product surfaces', 'Live'],
     ['Widget install', 'Verified'],
-    ['Hosted help domain', 'Ready'],
+    ['help.yourapp.com', 'Ready'],
 ];
 
 const GOVERNANCE_ROWS = [
@@ -30,7 +30,11 @@ export default function ProductPreviewSection() {
                     <div className="mt-6 grid gap-3 text-sm text-[#808099] sm:grid-cols-2">
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
                             <div className="font-semibold text-white">Support surfaces stay connected</div>
-                            <p className="mt-1">Widget, hosted help, FAQs, changelogs, and tickets share the same product-surface map.</p>
+                            <p className="mt-1">Widget, hosted help domains, FAQs, changelogs, and tickets share the same product-surface map.</p>
+                        </div>
+                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                            <div className="font-semibold text-white">Tickets carry useful context</div>
+                            <p className="mt-1">Safe debugging context helps owners understand what happened without asking customers for technical details.</p>
                         </div>
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
                             <div className="font-semibold text-white">Owner approval stays central</div>

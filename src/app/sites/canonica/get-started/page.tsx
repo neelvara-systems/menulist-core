@@ -7,7 +7,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your Canonica workspace and launch page-aware support for your SaaS product.',
+    description: 'Create your Canonica workspace, configure a widget, publish a branded help domain, and launch page-aware support for your SaaS product.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -25,7 +25,7 @@ const CRITERIA = [
     { label: 'Existing help content', description: 'Docs, FAQs, tickets, changelogs, or starter answers Canonica can learn from.' },
     { label: 'Known product pages', description: 'Billing, onboarding, settings, account, team, connected app, or release pages where users ask questions.' },
     { label: 'Owner-reviewed answers', description: 'You want approved answers before fallback automation becomes authoritative.' },
-    { label: 'Widget install access', description: 'You can add a script and safe page context to your product or ask your developer to do it.' },
+    { label: 'Widget and help domain access', description: 'You can add a script, pass safe page context, and connect a support domain such as help.yourapp.com.' },
 ];
 
 export default function CanonicaGetStartedPage() {
@@ -42,7 +42,7 @@ export default function CanonicaGetStartedPage() {
                             Launch your Canonica workspace in 10 minutes
                         </h1>
                         <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                            Sign in with Google, add your product details, choose the pages users ask about, and create the beta workspace with a one-time widget key.
+                            Sign in with Google, add your product details, choose the pages users ask about, and create the beta workspace with a one-time widget key and branded help-domain setup.
                         </p>
 
                         <div className="grid w-full gap-8 md:grid-cols-2">
@@ -77,7 +77,7 @@ export default function CanonicaGetStartedPage() {
                             {[
                                 { step: '1', title: 'Create workspace', description: 'Canonica creates the product workspace, product account bridge, beta subscription, and widget key.' },
                                 { step: '2', title: 'Import knowledge', description: 'Upload docs, FAQs, or starter answers so drafts, entities, and surface coverage can be prepared.' },
-                                { step: '3', title: 'Verify install', description: 'Install the widget, publish hosted help if needed, pass page context, and review the first support gaps.' },
+                                { step: '3', title: 'Verify install', description: 'Install the widget, publish hosted help on your own domain if needed, pass page context, and review the first support gaps.' },
                             ].map((s) => (
                                 <div key={s.step} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
                                     <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/10 text-sm font-bold text-indigo-400">

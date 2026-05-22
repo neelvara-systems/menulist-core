@@ -2,6 +2,7 @@ import { LogEntry, LogLevel } from "@type/common";
 
 const MAX_LOGS = 5;
 const MAX_MESSAGE_LENGTH = 1000;
+const MAX_USER_AGENT_LENGTH = 500;
 const INSTALLED_KEY = '__menulistTicketLogCaptureInstalled';
 
 const sensitiveAssignmentPattern = /(password|passwd|token|secret|authorization|api[_-]?key|session|cookie)=([^&\s]+)/gi;
@@ -46,6 +47,14 @@ function serializeLogArg(value: unknown): string {
     } catch {
         return sanitizeLogText(String(value));
     }
+}
+
+function sanitizeUserAgent(value: string): string {
+    return value
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, MAX_USER_AGENT_LENGTH);
 }
 
 export function startLogCapture() {
@@ -97,6 +106,18 @@ export function startLogCapture() {
 
 export function getCapturedLogs() {
     return logs.slice(-MAX_LOGS);
+}
+
+export function getClientDebugContext() {
+    if (typeof window === 'undefined') return undefined;
+    const userAgent = sanitizeUserAgent(window.navigator?.userAgent || '');
+
+    if (!userAgent) return undefined;
+
+    return {
+        userAgent,
+        capturedAt: Date.now(),
+    };
 }
 
 export function clearCapturedLogs() {

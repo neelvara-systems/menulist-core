@@ -32,7 +32,7 @@ Raw logs, cache strategy, scheduler internals, and cost controls remain platform
 | Ticket/email notification verification | `/canonica/activation` has a Send Test Email action backed by `POST /api/canonica/notifications/test`. | One explicit store read + one rate-limit check + one notification log write per attempted test. No log scan. |
 | Widget install verification | Existing runtime status and widget config remain the source. Activation and Widget Management show install status. | Runtime marker remains throttled and config uses short cache; no listeners. |
 | Signal-to-Knowledge Queue QA | Manual Generate/Regenerate is exposed in governance and production clustering remains server-side. | No client signal scans; nightly caps draft work. |
-| Ticket browser logs | Tickets capture sanitized recent browser logs on creation and expose them in details. | Logs are captured once at ticket creation, not streamed. |
+| Ticket browser logs | Tickets capture sanitized recent browser logs plus capped user-agent debugging context on creation and expose raw + parsed context in details. | Logs/context are captured once at ticket creation, not streamed. |
 | White-label / branding | Widget supports header title, accent color, greeting, launcher controls, and powered-by visibility. | Rides existing widget runtime config; no new collection/read/listener. |
 | Ticket to knowledge | `ENABLE_CANONICA_TICKET_KNOWLEDGE` is enabled. Resolution signals use separate dedupe keys from ticket creation. | Requires 3+ resolved tickets/entity and max 5 drafts/night. |
 | Product friction intelligence | `ENABLE_CANONICA_FRICTION_INTELLIGENCE` is enabled. Summaries are written by `canonicaNightly`. | UI reads compact `platformSummary` docs only. |

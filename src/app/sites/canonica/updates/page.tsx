@@ -21,9 +21,18 @@ function getBasePath(): string {
 const UPDATES = [
     {
         date: 'May 22, 2026',
+        title: 'Main website content sharpened for buyer-facing trust',
+        items: [
+            'Custom help domains such as help.yourapp.com are now presented as a first-class hosted-help benefit.',
+            'Ticket debugging context is now described as capped, sanitized support context instead of raw technical logging.',
+            'Security, FAQ, privacy, product, install, and homepage copy now explain those benefits without exposing internal tenant or store details.',
+        ],
+    },
+    {
+        date: 'May 22, 2026',
         title: 'Hosted help, FAQ, billing, and public-site refresh',
         items: [
-            'Hosted Help added for docs, FAQ, changelog, robots, and sitemap on support domains such as help.example.com.',
+            'Hosted Help added for docs, FAQ, changelog, robots, and sitemap on support domains such as help.yourapp.com.',
             'Article-backed FAQ generation and FAQ management are now part of the public product story.',
             'Canonica billing now uses product-scoped plans, support credits, transactions, and Razorpay flows from the Canonica dashboard.',
             'Website copy refreshed around Launch Setup, Support Control, Knowledge Governance, and the cost-conscious runtime layer.',

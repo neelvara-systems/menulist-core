@@ -8,7 +8,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitCanonicaSignal } from "@lib/canonica/signalEmitter";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
-import { clearCapturedLogs, getCapturedLogs } from "@lib/localLogs/localLogsTracker";
+import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
 import { triggerNotification } from "@lib/notifications/client";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { CANONICA_SIGNAL_TYPE } from "@type/canonica";
@@ -67,8 +67,14 @@ export const addTicket = async (data: SupportTicketType) => {
     return await apiCallComposer(
         async () => {
             const capturedLogs = getCapturedLogs();
+            const clientDebugContext = getClientDebugContext();
 
-            const submitData = await canonicaRequestBodyComposer({ ...data, deleted: false, logs: capturedLogs });
+            const submitData = await canonicaRequestBodyComposer({
+                ...data,
+                deleted: false,
+                logs: capturedLogs,
+                ...(clientDebugContext ? { clientDebugContext } : {}),
+            });
             delete submitData.documents;
             const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
             if (files.length) {

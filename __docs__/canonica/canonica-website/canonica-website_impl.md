@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.1.6
+> **Version:** 1.1.7
 > **Last Updated:** 2026-05-22
 > **Audience:** Developers
 
@@ -85,6 +85,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - copy differentiates Canonica from helpdesks, chatbots, and documentation CMS products without claiming to replace them
 - May 22 refresh changed the hero from page-aware support copy to the implemented support knowledge control plane category.
 - Website copy now includes hosted help domains, FAQ management/article-backed FAQ generation, product-scoped Canonica billing/support credits, source-version cache freshness, and separate Firebase/product boundaries.
+- Custom help domains are now buyer-facing website content because they make Canonica feel native to the client's product instead of a third-party bolt-on.
+- Ticket debugging context is now presented as capped, sanitized support context in product, security, FAQ, and privacy copy; public copy avoids raw "console log" wording except where implementation docs need it.
 - `/pricing` now explains that public setup starts on beta while paid plan changes and support-credit top-ups happen from Canonica Billing using product-scoped Razorpay requests.
 - `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
 

@@ -6,7 +6,7 @@ import CanonicaLink from '../components/CanonicaLink';
 
 export const metadata: Metadata = {
     title: 'Widget Install',
-    description: 'Install Canonica with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context.',
+    description: 'Install Canonica with one widget script, allowed origins, blocked routes, help.yourapp.com hosted help domains, runtime verification, and safe page context.',
     alternates: { canonical: '/install' },
 };
 
@@ -33,7 +33,7 @@ const INSTALL_STEPS = [
     },
     {
         title: 'Publish hosted help',
-        detail: 'Add help, docs, support, or kb domains so published articles, FAQs, and changelog entries have a public home.',
+        detail: 'Add a support domain such as help.yourapp.com so published articles, FAQs, and changelog entries feel native to your product.',
     },
     {
         title: 'Pass safe page context',
@@ -73,7 +73,7 @@ export default function CanonicaInstallPage() {
                         Add Canonica to the product pages where users ask for help.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        The first integration is the page-aware widget. The same setup also gives you hosted help domains for docs, FAQ, and changelog when your product needs a public support home.
+                        The first integration is the page-aware widget. The same setup also gives you hosted help domains such as help.yourapp.com for docs, FAQ, and changelog when your product needs a public support home.
                     </p>
                 </section>
 
@@ -116,7 +116,7 @@ export default function CanonicaInstallPage() {
                         <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
                             <h2 className="text-xl font-semibold text-white">Hosted help domains</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">
-                                The Hosted Help tab maps a domain such as help.example.com to published articles, FAQ, changelog, robots, and sitemap output.
+                                The Hosted Help tab maps a domain such as help.yourapp.com to published articles, FAQ, changelog, robots, and sitemap output.
                             </p>
                             <div className="mt-5 space-y-2 text-sm text-[#d6d6ef]">
                                 {['/docs', '/articles/{slug}', '/faq', '/changelog', '/sitemap.xml'].map((route) => (
@@ -135,7 +135,7 @@ export default function CanonicaInstallPage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Owner controls</p>
                             <h2 className="text-3xl font-bold">The product owner controls where support appears.</h2>
                             <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                                Canonica is not a generic floating button forced onto every page. Owners configure appearance, launcher behavior, mobile visibility, allowed origins, blocked routes, and verification from the dashboard.
+                                Canonica is not a generic floating button forced onto every page. Owners configure appearance, launcher behavior, mobile visibility, allowed origins, blocked routes, branded help domains, and verification from the dashboard.
                             </p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">

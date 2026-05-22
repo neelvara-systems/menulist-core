@@ -47,7 +47,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 | `src/components/templates/platform/supportTickets/TicketFiltersBar.tsx`     | 255   | Filter bar — Search input + filter drawer (8 filter types). Badge shows active filter count. Long-running tag shown inline. "Create Ticket" button (not in trash view). Clear All button in drawer.                                                                                                                                                                                                                                                |
 | `src/components/templates/platform/supportTickets/TicketStatsCards.tsx`     | 109   | Summary stats — 4 cards: Total, Open (Open+InProgress), Resolved, Unresolved. Client-side calculation from ticket array. Responsive grid (4-col on md, 2-col on xs).                                                                                                                                                                                                                                                                               |
 | `src/components/templates/platform/supportTickets/TicketTableColumns.tsx`   | 242   | Table column definitions — 8 columns: ID (monospace, sortable), Subject (ellipsis, sortable), Category (pill tag), Status (badge), Priority (colored dot), Created (datetime, default sort desc), Updated (datetime), Action (dropdown menu). High-priority row styling. Actions: View as Client / Edit / Delete (active) or View / Restore (trash). Delete has confirmation modal.                                                                |
-| `src/components/templates/platform/supportTickets/TicketLogsView.tsx`       | 58    | Browser logs modal — Renders captured client logs with level-colored tags (info=blue, warn=orange, error=red) and timestamps.                                                                                                                                                                                                                                                                                                                      |
+| `src/components/templates/platform/supportTickets/TicketLogsView.tsx`       | 58    | Browser logs modal — Renders captured client logs with level-colored tags (info=blue, warn=orange, error=red), timestamps, raw user-agent string, and parsed browser/OS/device details when ticket debugging context exists.                                                                                                                                                                                                                         |
 | `src/components/templates/platform/supportTickets/ConversationTimeline.tsx` | 297   | Chat-style messaging — Renders `user` messages as chat bubbles (blue=current user, white=other), `system` messages as centered italic with dashed border. Backwards compatible (converts old `statuses[].remark` to messages if `messages[]` empty). Reply form with sanitization (1000 char max). Auto-scroll on new messages. Ctrl+Enter keyboard shortcut.                                                                                      |
 
 ### 2.4 Shared Atoms
@@ -64,7 +64,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 
 | Function                                                                      | Signature                               |  Reads   |        Writes         | Notes                                                                             |
 | ----------------------------------------------------------------------------- | --------------------------------------- | :------: | :-------------------: | --------------------------------------------------------------------------------- |
-| `addTicket(data)`                                                             | `SupportTicketType → SupportTicketType` |    0     |     1 + N storage     | Captures browser logs, uploads attachments, uses `requestBodyComposer`            |
+| `addTicket(data)`                                                             | `SupportTicketType → SupportTicketType` |    0     |     1 + N storage     | Captures browser logs + compact client debugging context, uploads attachments, uses `requestBodyComposer` |
 | `updateTicket(data)`                                                          | `any → any`                             |    0     |     1 + N storage     | Merge update, handles file uploads                                                |
 | `addTicketMessage(ticketId, currentMessages, message, attachments)`           | → `TicketMessage`                       |    0     |     1 + N storage     | Appends to messages array. **No DB read** — takes current messages as param       |
 | `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy)` | → `{status, statusEntry}`               |    0     |           1           | Appends to statuses audit trail. **No DB read** — takes current statuses as param |
@@ -81,6 +81,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 - `getDisplayId(id)`: `id.slice(0, 6).toUpperCase()` — first 6 chars of Firestore auto-ID
 - `uploadImage()`: Uses `generateStoragePath()` for tenant-scoped paths
 - `startLogCapture()`: Started for authenticated app sessions by `src/providers/sessionProvider.tsx`; keeps the last 5 sanitized browser logs for ticket submission.
+- `getClientDebugContext()`: Captures a capped user-agent string and timestamp once during ticket creation so support can inspect the raw string and parsed browser/OS/device details without additional reads.
 - Ticket queries use the active NextAuth session values for `tId` and `sId`; Canonica documents keep the standard `pId`/`tId`/`sId` shape.
 
 ### 2.6 Types
@@ -90,7 +91,7 @@ The Ticket System is a **client-side DAL feature** with no API routes. All opera
 **Interfaces:**
 
 - `TicketMessage` — id, text, type ('user'|'system'), sender ({id, name, email}), timestamp, attachments[]
-- `SupportTicketType` — Full ticket with messages[], statuses[], clientDetails, documents[], platformNotes, platformTags[], deleted flag, logs[]
+- `SupportTicketType` — Full ticket with messages[], statuses[], clientDetails, documents[], platformNotes, platformTags[], deleted flag, logs[], clientDebugContext
 
 **Constants:**
 
@@ -127,7 +128,7 @@ AddSupportTicket form submit
   → Validate form fields
   → Convert attachments to base64
   → Build payload with clientDetails from storeContext
-  → Capture browser logs (getCapturedLogs + clearCapturedLogs)
+  → Capture browser logs and client debugging context (getCapturedLogs + getClientDebugContext + clearCapturedLogs)
   → addTicket(payload) [DAL]
     → requestBodyComposer (injects tId, sId, uId, timestamps)
     → Upload attachments via uploadImage (tenant-scoped paths)

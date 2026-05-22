@@ -1,6 +1,6 @@
 # Canonica Website — Spec
 
-> **Version:** 1.1.6
+> **Version:** 1.1.7
 > **Last Updated:** 2026-05-22
 > **Audience:** CEO / PM / Marketing
 
@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Public-facing marketing website for Canonica at `canonica.app`. Serves as the primary discovery, demo, pricing, and onboarding surface for small SaaS founders considering Canonica as a support knowledge control plane with launch setup, support control, page-aware widget, hosted help, and knowledge governance.
+Public-facing marketing website for Canonica at `canonica.app`. Serves as the primary discovery, demo, pricing, and onboarding surface for small SaaS founders considering Canonica as a support knowledge control plane with launch setup, support control, page-aware widget, branded hosted help domains, safe ticket context, and knowledge governance.
 
 ---
 
@@ -32,8 +32,8 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 
 **Sections:**
 1. **Hero** — Support knowledge control plane category promise with Launch Setup, Support Control, and Knowledge Governance proof
-2. **Product Preview** — Static dashboard/widget/hosted-help/governance mock that shows the actual product shape without relying on external screenshots
-3. **Widget Install** — Page-aware widget, hosted help domains, allowed domains, blocked routes, and safe context
+2. **Product Preview** — Static dashboard/widget/hosted-help/governance mock that shows the actual product shape, including branded help domains and safe ticket context, without relying on external screenshots
+3. **Widget Install** — Page-aware widget, hosted help domains such as help.yourapp.com, allowed domains, blocked routes, and safe context
 4. **Canonica Engine** — Product Ontology, Canonical Answer Engine, Drift Governance, Signal Mutation
 5. **Product System** — Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
 6. **How It Works** — Create workspace, import knowledge, map surfaces, install widget, govern gaps
@@ -54,6 +54,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
   - Badge (Launch Setup / Support Control / Knowledge Governance / Release Awareness / Support Gap Loop)
   - Title + description
   - 5 capability bullet points
+- Product page should frame custom help domains as buyer-visible value and ticket debugging context as support reliability, not as raw console logging.
 - Bottom CTA
 
 ### 3. Use Cases (`/use-cases`)
@@ -75,6 +76,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 - Allowed origins
 - Blocked routes
 - Hosted help domains for docs, articles, FAQ, changelog, robots, and sitemap
+- Custom help domain examples such as help.yourapp.com
 - Safe page context
 - Runtime verification
 - Owner dashboard controls
@@ -126,6 +128,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 - Safe widget context that is bounded to support relevance and never treated as trusted identity
 - Origin and blocked-route controls for widget placement
 - Hosted help domain registry for anonymous public docs/FAQ/changelog without exposing tickets or workspace internals
+- Safe ticket debugging context that is capped, sanitized, ticket-scoped, and captured only when a ticket is created
 - Owner-approved authority through canonical answers, drafts, proposals, and drift checks
 - Cost and abuse controls through rate-limited widget endpoints, cache freshness checks, and summary-backed dashboards
 - Separate Canonica product infrastructure with MenuList as a client/use case, not a hardcoded dependency
@@ -141,6 +144,8 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 - Fallback behavior
 - Widget visibility controls
 - Hosted help domains
+- Custom help domains
+- Safe ticket debugging context
 - Article-backed FAQ generation and review
 - Release-aware answer review
 - Pricing model
@@ -205,15 +210,15 @@ Route naming must avoid conflicts with Canonica dashboard roots. Public website 
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | Canonica — Support Knowledge Control Plane for SaaS | Canonica is the support knowledge control plane for SaaS products: launch setup, page-aware widget, hosted help, canonical answers, drift review, and support-gap governance. |
-| `/product` | Product \| Canonica | Canonica brings launch setup, support control, page-aware widget, hosted help, canonical answers, and knowledge governance into one SaaS support control plane. |
+| `/` | Canonica — Support Knowledge Control Plane for SaaS | Canonica is the support knowledge control plane for SaaS products: launch setup, page-aware widget, hosted help on your own domain, canonical answers, drift review, and support-gap governance. |
+| `/product` | Product \| Canonica | Canonica brings launch setup, support control, page-aware widget, hosted help domains, safe ticket context, canonical answers, and knowledge governance into one SaaS support control plane. |
 | `/use-cases` | Use Cases \| Canonica | See how Canonica helps small SaaS teams launch support, reduce repeated tickets, and govern product knowledge. |
 | `/demo` | Demo \| Canonica | Try a static page-aware support demo with canonical answers, fallback, and support gap states. |
-| `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context. |
+| `/install` | Widget Install \| Canonica | Install Canonica with one widget script, allowed origins, blocked routes, help.yourapp.com hosted help domains, runtime verification, and safe page context. |
 | `/pricing` | Pricing \| Canonica | Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for small SaaS teams. |
 | `/resources` | Resources \| Canonica | Guides for setting up Canonica, installing the widget, mapping product surfaces, and governing support knowledge. |
 | `/updates` | Updates \| Canonica | Product updates for Canonica website, launch setup, widget management, and knowledge governance. |
-| `/security` | Security \| Canonica | How Canonica protects support knowledge, widget context, and customer workspaces. |
+| `/security` | Security \| Canonica | How Canonica protects support knowledge, widget context, ticket debugging context, hosted help domains, and customer workspaces. |
 | `/faq` | FAQ \| Canonica | Answers to common questions about Canonica setup, widget context, pricing, tickets, and data handling. |
 | `/about` | About \| Canonica | Canonica helps small SaaS teams keep support answers correct as products change. |
 | `/contact` | Contact \| Canonica | Contact Canonica for product questions, onboarding help, and partnerships. |

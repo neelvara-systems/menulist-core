@@ -11,7 +11,7 @@ const WIDGET_STEPS = [
     },
     {
         title: 'Publish hosted help',
-        detail: 'Map help, docs, support, or kb domains to the same published articles, FAQs, and release notes.',
+        detail: 'Map help, docs, support, or kb domains like help.yourapp.com to the same published articles, FAQs, and release notes.',
     },
     {
         title: 'Pass page context',
@@ -19,7 +19,7 @@ const WIDGET_STEPS = [
     },
     {
         title: 'Review support gaps',
-        detail: 'Fallbacks, tickets, and negative feedback become review work for improving approved answers.',
+        detail: 'Fallbacks, tickets, safe debugging context, and negative feedback become review work for improving approved answers.',
     },
 ];
 
@@ -42,7 +42,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         Put support inside the product screen where the question happens.
                     </h2>
                     <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                        Canonica is built for new SaaS teams that need support before they need a full support stack. Start with a governed widget, publish a hosted help center, and let tickets exist as fallback and learning signals.
+                        Canonica is built for new SaaS teams that need support before they need a full support stack. Start with a governed widget, publish help on your own domain, and let tickets exist as fallback and learning signals.
                     </p>
                     <div className="mt-8 grid gap-3 sm:grid-cols-2">
                         {WIDGET_STEPS.map((item) => (

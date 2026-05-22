@@ -17,7 +17,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Widget install',
-                detail: 'The owner configures appearance, allowed origins, blocked routes, install snippets, and runtime verification.',
+                detail: 'The owner configures appearance, allowed origins, blocked routes, install snippets, custom help domains, and runtime verification.',
             },
             {
                 title: 'Billing and credits',
@@ -31,7 +31,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
         items: [
             {
                 title: 'Help center and hosted docs',
-                detail: 'Articles, categories, FAQ, search, contact flows, and release notes can run in the app or on a hosted help domain.',
+                detail: 'Articles, categories, FAQ, search, contact flows, and release notes can run in the app or on a branded support domain such as help.yourapp.com.',
             },
             {
                 title: 'Page-aware widget',
@@ -39,7 +39,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Tickets as fallback',
-                detail: 'When approved content is missing, users can raise a ticket and the resolved case can feed the knowledge queue.',
+                detail: 'When approved content is missing, users can raise a ticket with safe debugging context and the resolved case can feed the knowledge queue.',
             },
             {
                 title: 'Changelog awareness',

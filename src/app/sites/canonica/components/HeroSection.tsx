@@ -19,7 +19,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
 
             {/* Subheadline */}
             <p className="relative mt-6 w-full max-w-[21rem] text-center text-lg leading-relaxed text-[#a0a0c0] sm:max-w-2xl">
-                Canonica turns docs, FAQs, release notes, tickets, and product-page context into human-approved canonical answers your widget and hosted help center can serve confidently.
+                Canonica turns docs, FAQs, release notes, tickets, and product-page context into human-approved canonical answers your widget and hosted help domain can serve confidently.
             </p>
 
             {/* CTAs */}
@@ -44,7 +44,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                 <div className="grid gap-3 text-left sm:grid-cols-3">
                     {[
                         ['Launch Setup', 'Workspace, knowledge import, surfaces, widget key'],
-                        ['Support Control', 'Help center, hosted docs, tickets, release notes'],
+                        ['Support Control', 'Help domain, widget, tickets, safe debug context'],
                         ['Knowledge Governance', 'Canonical answers, drift, signal queue, trust metrics'],
                     ].map(([title, detail]) => (
                         <div key={title} className="px-2">

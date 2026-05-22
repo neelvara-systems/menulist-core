@@ -126,7 +126,11 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     if (!Boolean(activeTicket) || !ticket) return null;
 
     const ticketLogCount = ticket.logs?.length || 0;
-    const canViewTicketLogs = !isClientView && ticketLogCount > 0;
+    const hasTicketDebugContext = Boolean(ticket.clientDebugContext?.userAgent);
+    const canViewTicketLogs = !isClientView && (ticketLogCount > 0 || hasTicketDebugContext);
+    const ticketLogsTooltip = canViewTicketLogs
+        ? `View captured browser context${ticketLogCount > 0 ? ` and ${ticketLogCount} log${ticketLogCount === 1 ? '' : 's'}` : ''}`
+        : 'No captured browser context';
     const resolvedForKnowledge = ticket.status === SUPPORT_TICKET_STATUS.RESOLVED || ticket.status === SUPPORT_TICKET_STATUS.CLOSED;
     const resolutionContextLength = (ticket.messages || [])
         .filter(item => item.type !== 'system')
@@ -162,9 +166,9 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                     text={ticket.status}
                 />
                 {!isClientView && (
-                    <Tooltip title={canViewTicketLogs ? `View ${ticketLogCount} captured browser log${ticketLogCount === 1 ? '' : 's'}` : 'No captured browser logs'}>
+                    <Tooltip title={ticketLogsTooltip}>
                         <Button
-                            aria-label="View captured browser logs"
+                            aria-label="View captured browser context"
                             disabled={!canViewTicketLogs}
                             icon={<LuBug size={14} />}
                             onClick={() => setIsLogsModalVisible(true)}
@@ -198,7 +202,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 </Tag>
             )}
             {!isClientView && (
-                <Tooltip title={canViewTicketLogs ? `View ${ticketLogCount} captured browser log${ticketLogCount === 1 ? '' : 's'}` : 'No captured browser logs'}>
+                <Tooltip title={ticketLogsTooltip}>
                     <Button
                         disabled={!canViewTicketLogs}
                         icon={<LuBug size={14} />}
@@ -551,6 +555,7 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 open={isLogsModalVisible}
                 onClose={() => setIsLogsModalVisible(false)}
                 logs={ticket.logs || []}
+                clientDebugContext={ticket.clientDebugContext}
             />
         </Drawer>
     );
