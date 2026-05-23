@@ -1,25 +1,208 @@
-const ACTIVATION_ITEMS = [
-    ['Product profile', 'Complete', 'Company, product, support email'],
-    ['Knowledge import', 'In review', 'Docs, FAQ, release notes'],
-    ['Product surfaces', 'Live', 'Billing, onboarding, team settings'],
-    ['Widget install', 'Verified', 'Origin, route, context check'],
-];
+'use client';
 
-const SURFACE_ROWS = [
-    ['billing_invoices', '3 answers', '2 FAQs', '1 release'],
-    ['team_settings', '2 answers', '1 FAQ', '0 releases'],
-    ['onboarding_checklist', '4 answers', '3 FAQs', '2 releases'],
-];
+import { useMemo, useState } from 'react';
 
-const QUEUE_ROWS = [
-    ['Billing downgrade question', 'Signal cluster', 'Draft answer'],
-    ['Invoice retry confusion', 'Ticket fallback', 'Needs review'],
-    ['Webhook setup guide', 'Article drift', 'Review copy'],
-];
+type PreviewTab = 'Activation' | 'Surfaces' | 'Widget' | 'Governance';
 
-const SCREEN_TABS = ['Activation', 'Surfaces', 'Widget', 'Governance'];
+type CardItem = {
+    title: string;
+    state: string;
+    detail: string;
+};
+
+type RowItem = {
+    title: string;
+    meta: string;
+    result: string;
+};
+
+type PreviewConfig = {
+    tab: PreviewTab;
+    route: string;
+    sidebarActive: string;
+    badge: string;
+    badgeTone: 'emerald' | 'sky' | 'indigo' | 'amber';
+    leftEyebrow: string;
+    leftTitle: string;
+    leftStatus: string;
+    leftItems: CardItem[];
+    rightEyebrow: string;
+    rightTitle: string;
+    context: string;
+    question: string;
+    answer: string;
+    answerTags: string[];
+    queueEyebrow: string;
+    queueTitle: string;
+    queueRows: RowItem[];
+};
+
+const TABS: PreviewTab[] = ['Activation', 'Surfaces', 'Widget', 'Governance'];
+
+const BADGE_CLASS: Record<PreviewConfig['badgeTone'], string> = {
+    emerald: 'bg-emerald-500/10 text-emerald-300',
+    sky: 'bg-sky-500/10 text-sky-300',
+    indigo: 'bg-indigo-500/10 text-indigo-300',
+    amber: 'bg-amber-500/10 text-amber-300',
+};
+
+const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
+    Activation: {
+        tab: 'Activation',
+        route: 'app.canonica.app/workspace/activation',
+        sidebarActive: 'Activation',
+        badge: 'Live preview',
+        badgeTone: 'emerald',
+        leftEyebrow: 'Activation Command Center',
+        leftTitle: '78% launch ready',
+        leftStatus: 'Runtime verified',
+        leftItems: [
+            { title: 'Product profile', state: 'Complete', detail: 'Company, product, support email' },
+            { title: 'Knowledge import', state: 'In review', detail: 'Docs, FAQ, release notes' },
+            { title: 'Product surfaces', state: 'Live', detail: 'Billing, onboarding, team settings' },
+            { title: 'Widget install', state: 'Verified', detail: 'Origin, route, context check' },
+        ],
+        rightEyebrow: 'End-user widget',
+        rightTitle: 'Billing page support',
+        context: 'billing_invoices',
+        question: 'Why was I charged today?',
+        answer: 'Canonica found an approved billing answer for this page, then linked the invoice FAQ and latest pricing release note.',
+        answerTags: ['Owner-approved', 'FAQ linked', 'Release aware'],
+        queueEyebrow: 'Signal-to-knowledge queue',
+        queueTitle: 'Review what support exposed',
+        queueRows: [
+            { title: 'Billing downgrade question', meta: 'Signal cluster', result: 'Draft answer' },
+            { title: 'Invoice retry confusion', meta: 'Ticket fallback', result: 'Needs review' },
+            { title: 'Webhook setup guide', meta: 'Article drift', result: 'Review copy' },
+        ],
+    },
+    Surfaces: {
+        tab: 'Surfaces',
+        route: 'app.canonica.app/workspace/product-surfaces',
+        sidebarActive: 'Product surfaces',
+        badge: '3 routes live',
+        badgeTone: 'sky',
+        leftEyebrow: 'Product surfaces',
+        leftTitle: 'Support mapped by route',
+        leftStatus: 'Coverage visible',
+        leftItems: [
+            { title: 'billing_invoices', state: '3 answers', detail: '2 FAQs, 1 release note, 4 tickets linked' },
+            { title: 'team_settings', state: '2 answers', detail: '1 FAQ, role and permission scope' },
+            { title: 'onboarding_checklist', state: '4 answers', detail: '3 FAQs, setup import workflow' },
+            { title: 'usage_limits_release', state: 'Drift watch', detail: 'Release changed plan limit guidance' },
+        ],
+        rightEyebrow: 'Related support truth',
+        rightTitle: 'Billing route context',
+        context: '/settings/billing/invoices',
+        question: 'What help appears on this screen?',
+        answer: 'Articles, FAQs, changelogs, tickets, and canonical answers are grouped by the route where users ask the question.',
+        answerTags: ['Route aware', 'Article linked', 'Ticket fallback'],
+        queueEyebrow: 'Surface gaps',
+        queueTitle: 'Pages that need better coverage',
+        queueRows: [
+            { title: 'Usage limits page', meta: 'Release touched', result: 'Review answer' },
+            { title: 'Team invite page', meta: 'Low coverage', result: 'Add FAQ' },
+            { title: 'Import failed state', meta: 'Error entity', result: 'Draft guide' },
+        ],
+    },
+    Widget: {
+        tab: 'Widget',
+        route: 'app.canonica.app/workspace/widget',
+        sidebarActive: 'Widget',
+        badge: 'Install ready',
+        badgeTone: 'indigo',
+        leftEyebrow: 'Widget controls',
+        leftTitle: 'One script, governed runtime',
+        leftStatus: 'Origin locked',
+        leftItems: [
+            { title: 'Allowed origins', state: '2 domains', detail: 'Only approved product domains can render support' },
+            { title: 'Blocked routes', state: '5 rules', detail: 'Hide widget on auth, checkout, or sensitive pages' },
+            { title: 'Appearance', state: 'Configured', detail: 'Launcher copy, color, placement, and mobile behavior' },
+            { title: 'Safe context', state: 'Bounded', detail: 'Route, feature, workflow, role, and plan hints only' },
+        ],
+        rightEyebrow: 'Widget result',
+        rightTitle: 'Page-aware answer',
+        context: 'safe page context',
+        question: 'Can a teammate manage billing?',
+        answer: 'The widget uses the current Team Settings route to prefer permission-specific support, then falls back to ticket capture only when approved knowledge is missing.',
+        answerTags: ['Allowed origin', 'Blocked routes', 'Safe context'],
+        queueEyebrow: 'Runtime checks',
+        queueTitle: 'Install confidence',
+        queueRows: [
+            { title: 'Script loaded', meta: 'Widget key prefix', result: 'Verified' },
+            { title: 'Origin matched', meta: 'help.yourapp.com', result: 'Allowed' },
+            { title: 'Context accepted', meta: 'Route payload', result: 'Sanitized' },
+        ],
+    },
+    Governance: {
+        tab: 'Governance',
+        route: 'app.canonica.app/workspace/governance',
+        sidebarActive: 'Governance',
+        badge: 'Human review',
+        badgeTone: 'amber',
+        leftEyebrow: 'Knowledge Governance',
+        leftTitle: 'Coverage and trust stay visible',
+        leftStatus: 'Nightly checked',
+        leftItems: [
+            { title: 'Canonical coverage', state: '82%', detail: 'Known questions resolved by approved answers' },
+            { title: 'Drift pressure', state: 'Medium', detail: 'Release touched billing and usage-limit answers' },
+            { title: 'Trust readiness', state: 'Ready', detail: 'Critical surfaces have reviewed fallback paths' },
+            { title: 'Mutation proposals', state: '6 open', detail: 'Draft improvements waiting for owner review' },
+        ],
+        rightEyebrow: 'Canonical answer review',
+        rightTitle: 'Draft before publish',
+        context: 'billing_retry_policy',
+        question: 'Should this fallback become official?',
+        answer: 'Canonica can draft the better answer, but it does not become authoritative until a human approves the canonical answer.',
+        answerTags: ['Draft only', 'Drift flagged', 'Owner approval'],
+        queueEyebrow: 'Governance queue',
+        queueTitle: 'What needs owner attention',
+        queueRows: [
+            { title: 'Invoice retry wording', meta: 'Signal cluster', result: 'Approve draft' },
+            { title: 'Usage limit release', meta: 'Version mismatch', result: 'Review drift' },
+            { title: 'Team role billing scope', meta: 'Scope conflict', result: 'Adjust answer' },
+        ],
+    },
+};
+
+const SIDEBAR_ITEMS = ['Activation', 'Product surfaces', 'Knowledge Base', 'Widget', 'Tickets', 'Governance', 'Metrics'];
+
+function PreviewCards({ items }: { items: CardItem[] }) {
+    return (
+        <div className="grid gap-3 sm:grid-cols-2">
+            {items.map((item) => (
+                <div key={item.title} className="rounded-xl border border-white/[0.06] bg-[#070714] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-white">{item.title}</span>
+                        <span className="text-xs text-emerald-300">{item.state}</span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-[#808099]">{item.detail}</p>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function QueueRows({ rows }: { rows: RowItem[] }) {
+    return (
+        <div className="space-y-2">
+            {rows.map((row) => (
+                <div key={row.title} className="rounded-xl border border-white/[0.06] bg-[#070714] p-3">
+                    <div className="text-sm font-semibold text-white">{row.title}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-white/[0.04] px-2 py-1 text-[#808099]">{row.meta}</span>
+                        <span className="rounded-full bg-indigo-500/10 px-2 py-1 text-indigo-300">{row.result}</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 export default function ProductPreviewSection() {
+    const [activeTab, setActiveTab] = useState<PreviewTab>('Activation');
+    const preview = useMemo(() => PREVIEWS[activeTab], [activeTab]);
+
     return (
         <section className="relative overflow-hidden border-y border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.11),transparent_34%),rgba(255,255,255,0.01)] px-4 py-16 sm:px-6 lg:py-20">
             <div className="mx-auto max-w-7xl">
@@ -35,22 +218,30 @@ export default function ProductPreviewSection() {
                     </p>
                 </div>
 
-                <div className="mb-8 flex gap-2 overflow-x-auto pb-2 sm:justify-center">
-                    {SCREEN_TABS.map((tab, index) => (
-                        <span
-                            key={tab}
-                            className={`whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-semibold ${
-                                index === 0
-                                    ? 'border-white/20 bg-white/[0.13] text-white shadow-lg shadow-indigo-500/10'
-                                    : 'border-transparent bg-white/[0.03] text-[#8f8faa]'
-                            }`}
-                        >
-                            {tab}
-                        </span>
-                    ))}
+                <div className="mb-8 flex gap-2 overflow-x-auto pb-2 sm:justify-center" role="tablist" aria-label="Canonica product preview">
+                    {TABS.map((tab) => {
+                        const active = tab === activeTab;
+                        return (
+                            <button
+                                key={tab}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                aria-controls="canonica-product-preview"
+                                onClick={() => setActiveTab(tab)}
+                                className={`whitespace-nowrap rounded-full border px-5 py-2.5 text-sm font-semibold transition ${
+                                    active
+                                        ? 'border-white/20 bg-white/[0.13] text-white shadow-lg shadow-indigo-500/10'
+                                        : 'border-transparent bg-white/[0.03] text-[#8f8faa] hover:border-white/[0.12] hover:text-white'
+                                }`}
+                            >
+                                {tab}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
+                <div id="canonica-product-preview" className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
                     <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[#0d0d22]">
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] bg-white/[0.025] px-4 py-3">
                             <div className="flex items-center gap-2">
@@ -59,10 +250,10 @@ export default function ProductPreviewSection() {
                                 <span className="h-2.5 w-2.5 rounded-full bg-[#06d6a0]" />
                             </div>
                             <div className="hidden rounded-full border border-white/[0.08] bg-[#070714] px-4 py-1.5 text-xs text-[#808099] sm:block">
-                                app.canonica.app/workspace/activation
+                                {preview.route}
                             </div>
-                            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                Live preview
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${BADGE_CLASS[preview.badgeTone]}`}>
+                                {preview.badge}
                             </span>
                         </div>
 
@@ -76,10 +267,10 @@ export default function ProductPreviewSection() {
                                     </div>
                                 </div>
                                 <nav className="space-y-2 text-sm">
-                                    {['Activation', 'Product surfaces', 'Knowledge Base', 'Widget', 'Tickets', 'Governance', 'Metrics'].map((label, index) => (
+                                    {SIDEBAR_ITEMS.map((label) => (
                                         <div
                                             key={label}
-                                            className={`rounded-xl px-3 py-2 ${index === 0 ? 'bg-indigo-500/15 text-white' : 'text-[#808099]'}`}
+                                            className={`rounded-xl px-3 py-2 ${label === preview.sidebarActive ? 'bg-indigo-500/15 text-white' : 'text-[#808099]'}`}
                                         >
                                             {label}
                                         </div>
@@ -92,44 +283,25 @@ export default function ProductPreviewSection() {
                                     <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
                                         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                                             <div>
-                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Activation Command Center</div>
-                                                <h3 className="mt-1 text-2xl font-semibold text-white">78% launch ready</h3>
+                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">{preview.leftEyebrow}</div>
+                                                <h3 className="mt-1 text-2xl font-semibold text-white">{preview.leftTitle}</h3>
                                             </div>
-                                            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                                                Runtime verified
+                                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${BADGE_CLASS[preview.badgeTone]}`}>
+                                                {preview.leftStatus}
                                             </span>
                                         </div>
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            {ACTIVATION_ITEMS.map(([title, state, detail]) => (
-                                                <div key={title} className="rounded-xl border border-white/[0.06] bg-[#070714] p-4">
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <span className="text-sm font-semibold text-white">{title}</span>
-                                                        <span className="text-xs text-emerald-300">{state}</span>
-                                                    </div>
-                                                    <p className="mt-2 text-xs leading-relaxed text-[#808099]">{detail}</p>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <PreviewCards items={preview.leftItems} />
                                     </div>
 
                                     <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
                                         <div className="mb-4 flex items-center justify-between gap-3">
                                             <div>
-                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Product surfaces</div>
-                                                <h3 className="mt-1 text-lg font-semibold text-white">Support mapped by route</h3>
+                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">{preview.queueEyebrow}</div>
+                                                <h3 className="mt-1 text-lg font-semibold text-white">{preview.queueTitle}</h3>
                                             </div>
-                                            <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">3 live</span>
+                                            <span className="text-xs text-[#808099]">{preview.queueRows.length} items</span>
                                         </div>
-                                        <div className="overflow-hidden rounded-xl border border-white/[0.06]">
-                                            {SURFACE_ROWS.map(([surface, answers, faqs, releases]) => (
-                                                <div key={surface} className="grid gap-2 border-b border-white/[0.06] bg-[#070714] px-4 py-3 text-sm last:border-b-0 sm:grid-cols-[1fr_auto_auto_auto]">
-                                                    <span className="font-medium text-white">{surface}</span>
-                                                    <span className="text-[#808099]">{answers}</span>
-                                                    <span className="text-[#808099]">{faqs}</span>
-                                                    <span className="text-[#808099]">{releases}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <QueueRows rows={preview.queueRows} />
                                     </div>
                                 </div>
 
@@ -137,19 +309,17 @@ export default function ProductPreviewSection() {
                                     <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
                                         <div className="mb-4 flex items-center justify-between gap-3">
                                             <div>
-                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">End-user widget</div>
-                                                <h3 className="mt-1 text-lg font-semibold text-white">Billing page support</h3>
+                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">{preview.rightEyebrow}</div>
+                                                <h3 className="mt-1 text-lg font-semibold text-white">{preview.rightTitle}</h3>
                                             </div>
-                                            <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">billing_invoices</span>
+                                            <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-300">{preview.context}</span>
                                         </div>
                                         <div className="rounded-2xl border border-white/[0.06] bg-[#070714] p-4">
                                             <div className="rounded-xl bg-white/[0.04] p-4">
-                                                <div className="text-sm font-semibold text-white">Why was I charged today?</div>
-                                                <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                                    Canonica found an approved billing answer for this page, then linked the invoice FAQ and latest pricing release note.
-                                                </p>
+                                                <div className="text-sm font-semibold text-white">{preview.question}</div>
+                                                <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">{preview.answer}</p>
                                                 <div className="mt-4 flex flex-wrap gap-2">
-                                                    {['Owner-approved', 'FAQ linked', 'Release aware'].map((label) => (
+                                                    {preview.answerTags.map((label) => (
                                                         <span key={label} className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-[#d6d6ef]">
                                                             {label}
                                                         </span>
@@ -163,23 +333,12 @@ export default function ProductPreviewSection() {
                                     </div>
 
                                     <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
-                                        <div className="mb-4 flex items-center justify-between gap-3">
-                                            <div>
-                                                <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Signal-to-knowledge queue</div>
-                                                <h3 className="mt-1 text-lg font-semibold text-white">Review what support exposed</h3>
-                                            </div>
-                                            <span className="text-xs text-[#808099]">{QUEUE_ROWS.length} items</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {QUEUE_ROWS.map(([issue, source, status]) => (
-                                                <div key={issue} className="rounded-xl border border-white/[0.06] bg-[#070714] p-3">
-                                                    <div className="text-sm font-semibold text-white">{issue}</div>
-                                                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                                        <span className="rounded-full bg-white/[0.04] px-2 py-1 text-[#808099]">{source}</span>
-                                                        <span className="rounded-full bg-indigo-500/10 px-2 py-1 text-indigo-300">{status}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                        <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Selected mode</div>
+                                        <div className="rounded-2xl border border-white/[0.06] bg-[#070714] p-4">
+                                            <h3 className="text-lg font-semibold text-white">{preview.tab}</h3>
+                                            <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
+                                                This tab changes the route, sidebar highlight, readiness panel, widget result, and review queue so the product proof behaves like a real Canonica workspace.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -199,7 +358,7 @@ export default function ProductPreviewSection() {
                     </div>
                     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                         <div className="font-semibold text-white">Static website, no Firebase browse cost</div>
-                        <p className="mt-2">These public product scenes are server-rendered content and do not read Canonica data.</p>
+                        <p className="mt-2">These public product scenes use local tab state and do not read Canonica data.</p>
                     </div>
                 </div>
             </div>

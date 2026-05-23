@@ -18,7 +18,6 @@ import {
   LuZap,
 } from "react-icons/lu";
 import BrandWordmark from "./shared/BrandWordmark";
-import WebsiteLanguageSwitcher from "./shared/WebsiteLanguageSwitcher";
 
 const navItemKeys = [
   { href: "/how-it-works", key: "howItWorks", icon: LuZap },
@@ -131,7 +130,6 @@ export default function Header() {
             }}
             className="ws-desktop-nav"
           >
-            <WebsiteLanguageSwitcher />
             {status === "authenticated" && session?.user ? (
               <>
                 <Link
@@ -425,15 +423,6 @@ export default function Header() {
 
             {/* CTA */}
             <div style={{ padding: "1rem 1.25rem 1.5rem", flexShrink: 0 }}>
-              <div
-                style={{
-                  marginBottom: "12px",
-                  display: "flex",
-                  justifyContent: "center",
-                }}
-              >
-                <WebsiteLanguageSwitcher />
-              </div>
               {status !== "authenticated" && (
                 <Link
                   href="/create-menu"

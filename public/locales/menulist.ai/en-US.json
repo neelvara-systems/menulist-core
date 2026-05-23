@@ -2571,7 +2571,10 @@
             "trustSecurity": "Trust & Security",
             "contact": "Contact",
             "copyright": "© {year} MenuList. Built in India.",
-            "bottomTagline": "One public source. Built to be found."
+            "bottomTagline": "One public source. Built to be found.",
+            "preferencesLabel": "Website preferences",
+            "languagePreference": "Language",
+            "themePreference": "Theme"
         },
         "Hero": {
             "eyebrow": "No technical setup",
@@ -3489,6 +3492,15 @@
         },
         "LanguageSwitcher": {
             "label": "Language"
+        },
+        "ThemeSwitcher": {
+            "label": "Theme",
+            "light": "Light",
+            "system": "System",
+            "dark": "Dark",
+            "lightAria": "Use light theme",
+            "systemAria": "Use system theme",
+            "darkAria": "Use dark theme"
         }
     },
     "UseMenuList": {

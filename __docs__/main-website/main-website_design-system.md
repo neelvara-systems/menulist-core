@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** May 22, 2026
+**Last Updated:** May 23, 2026
 
 ---
 
@@ -110,7 +110,7 @@ Brand gradient rule:
 - The deeper teal-to-blue gradient is the approved light-mode accent because it keeps the MenuList identity while reading more clearly on white.
 - Use the brighter teal-to-blue gradient only in dark mode where it has enough contrast and does not make the page feel like a flashy tech dashboard.
 - Dark surfaces must use dark gray (`#121212` family), not pure black, so cards, headers, pricing, forms, and generated assets keep readable depth.
-- Fixed utility overlays, sticky CTAs, footer legal text, and dark product-flow panels must use theme tokens or verified high-contrast dark-panel colors, not hardcoded light surfaces.
+- Fixed utility overlays, sticky CTAs, footer preference controls, footer legal text, and dark product-flow panels must use theme tokens or verified high-contrast dark-panel colors, not hardcoded light surfaces.
 - Pricing controls that render before hydration, especially currency and billing controls, should use website CSS variables directly, not only Tailwind `dark:` variants.
 - Brand display surfaces should render through `src/components/website/shared/BrandWordmark.tsx`; the canonical public website display name is `MenuList`.
 - Website header/footer wordmark text is solid and inherits the surface text color; the logo mark carries the gradient.
@@ -207,6 +207,14 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 | Nav item gap                | 32px    | `gap-8`            |
 | Footer column gap           | 48px    | `gap-12`           |
 | Icon + text gap             | 8-12px  | `gap-2` to `gap-3` |
+
+### 4.3.1 Footer Preference Controls
+
+- Language and theme controls live in the footer, not the header, so the header stays focused on navigation, demo evaluation, upload, and account actions.
+- Footer preference controls must be grouped under the footer brand column and remain secondary to the footer CTA/proof/navigation system.
+- Theme controls use a three-option segmented control: Light, System, Dark.
+- Footer controls must use footer-safe dark surfaces, visible borders, 44px-class tap targets where space allows, and localized labels.
+- Do not add another theme switcher in the hero, header, or sticky CTA unless the website strategy changes.
 
 ### 4.5 Mobile Polish Rules
 
@@ -535,7 +543,7 @@ Rules:
 - Light mode remains the default for light system preferences and for the main sales screenshots/asset direction.
 - Dark mode follows the user's system preference or existing saved theme preference through the website `ThemeProvider`.
 - Do not use pure black (`#000000`) as the website background. Use the `#121212` dark-gray family for the main page, then slightly lighter gray surfaces for cards, dropdowns, pricing tables, forms, and drawers.
-- Do not introduce a dark-mode toggle into the public website unless it is intentionally designed, localized, and tested. The current implementation is system-preference dark mode.
+- The public theme control lives in the footer and must remain localized, keyboard accessible, and visually secondary. Do not duplicate it in the header, hero, or sticky CTA.
 - Product screenshots and generated website assets may remain light because customer public pages can follow each business brand; do not force screenshots into dark mode unless the asset itself is intentionally dark.
 - Dark mode must preserve MenuList's calm, owner-readable positioning. Avoid neon dashboard styling, heavy glow effects, and campaign-like black backgrounds.
 

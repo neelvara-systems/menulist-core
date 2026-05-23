@@ -2306,7 +2306,10 @@
             "trustSecurity": "विश्वास और सुरक्षा",
             "contact": "संपर्क",
             "copyright": "© {year} MenuList. भारत में बनाया गया।",
-            "bottomTagline": "एक public source. खोजे जाने के लिए बना."
+            "bottomTagline": "एक public source. खोजे जाने के लिए बना.",
+            "preferencesLabel": "वेबसाइट पसंद",
+            "languagePreference": "भाषा",
+            "themePreference": "थीम"
         },
         "Hero": {
             "eyebrow": "टेक्निकल सेटअप नहीं",
@@ -3224,6 +3227,15 @@
         },
         "LanguageSwitcher": {
             "label": "भाषा"
+        },
+        "ThemeSwitcher": {
+            "label": "थीम",
+            "light": "लाइट",
+            "system": "सिस्टम",
+            "dark": "डार्क",
+            "lightAria": "लाइट थीम इस्तेमाल करें",
+            "systemAria": "सिस्टम थीम इस्तेमाल करें",
+            "darkAria": "डार्क थीम इस्तेमाल करें"
         }
     },
     "MobileProjectSelector": {

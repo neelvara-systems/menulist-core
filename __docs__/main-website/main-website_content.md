@@ -1152,6 +1152,11 @@ Secondary CTA:
 
 > MenuList is not a QR menu maker. It is the source behind your menu, page, QR assets, screens, PDFs, and links.
 
+**Footer preferences:**
+
+- Language selector lives in the footer, not the header, so the top navigation stays focused on product evaluation and upload/login actions.
+- Theme control lives in the footer with three choices: Light, System, Dark.
+
 **Column 1: Product**
 
 - How It Works

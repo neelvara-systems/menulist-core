@@ -28,35 +28,41 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                 </L>
 
                 <nav className="hidden items-center gap-5 lg:gap-8 md:flex">
-                    <details className="group relative">
-                        <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white [&::-webkit-details-marker]:hidden">
+                    <div className="group/product relative flex h-16 items-center">
+                        <L
+                            href="/product"
+                            className="inline-flex h-16 items-center gap-1 text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white focus:outline-none focus-visible:text-white"
+                        >
                             Product
-                            <LuChevronDown size={14} className="transition group-open:rotate-180" aria-hidden />
-                        </summary>
-                        <div className="absolute left-1/2 top-8 z-[80] hidden w-[28rem] -translate-x-1/2 rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50 group-open:block">
-                            <L
-                                href="/product"
-                                className="mb-2 block rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 transition hover:border-white/[0.14] hover:bg-white/[0.05]"
-                            >
-                                <div className="text-sm font-semibold text-white">Product overview</div>
-                                <p className="mt-1 text-xs leading-relaxed text-[#8f8faa]">
-                                    The full support knowledge loop: setup, widget, support control, and governance.
-                                </p>
-                            </L>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                                {CANONICA_PRODUCT_AREAS.map((area) => (
-                                    <L
-                                        key={area.href}
-                                        href={area.href}
-                                        className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/25 hover:bg-indigo-500/[0.06]"
-                                    >
-                                        <div className="text-xs font-semibold text-[#d6d6ef]">{area.label}</div>
-                                        <p className="mt-1 text-[11px] leading-relaxed text-[#808099]">{area.description}</p>
-                                    </L>
-                                ))}
+                            <LuChevronDown size={14} className="transition group-hover/product:rotate-180 group-focus-within/product:rotate-180" aria-hidden />
+                        </L>
+
+                        <div className="absolute left-1/2 top-full z-[80] hidden w-[28rem] -translate-x-1/2 pt-3 group-hover/product:block group-focus-within/product:block">
+                            <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
+                                <L
+                                    href="/product"
+                                    className="mb-2 block rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 transition hover:border-white/[0.14] hover:bg-white/[0.05]"
+                                >
+                                    <div className="text-sm font-semibold text-white">Product overview</div>
+                                    <p className="mt-1 text-xs leading-relaxed text-[#8f8faa]">
+                                        The full support knowledge loop: setup, widget, support control, and governance.
+                                    </p>
+                                </L>
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                    {CANONICA_PRODUCT_AREAS.map((area) => (
+                                        <L
+                                            key={area.href}
+                                            href={area.href}
+                                            className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/25 hover:bg-indigo-500/[0.06]"
+                                        >
+                                            <div className="text-xs font-semibold text-[#d6d6ef]">{area.label}</div>
+                                            <p className="mt-1 text-[11px] leading-relaxed text-[#808099]">{area.description}</p>
+                                        </L>
+                                    ))}
+                                </div>
                             </div>
                         </div>
-                    </details>
+                    </div>
                     {NAV_LINKS.filter((link) => link.href !== '/product').map((link) => (
                         <L key={link.href} href={link.href} className="text-sm font-medium text-[#a0a0c0] transition-colors hover:text-white">
                             {link.label}

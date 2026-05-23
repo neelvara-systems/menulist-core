@@ -8,7 +8,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { LuChevronDown, LuGlobe } from 'react-icons/lu';
 
-export default function WebsiteLanguageSwitcher() {
+interface WebsiteLanguageSwitcherProps {
+    surface?: 'default' | 'footer';
+}
+
+export default function WebsiteLanguageSwitcher({ surface = 'default' }: WebsiteLanguageSwitcherProps) {
     const locale = useLocale();
     const router = useRouter();
     const t = useTranslations('Website');
@@ -18,6 +22,7 @@ export default function WebsiteLanguageSwitcher() {
     const btnRef = useRef<HTMLButtonElement>(null);
 
     const currentLang = WEBSITE_LANGUAGES.find(l => l.code === locale) || WEBSITE_LANGUAGES[0];
+    const isFooter = surface === 'footer';
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
@@ -45,7 +50,7 @@ export default function WebsiteLanguageSwitcher() {
     };
 
     return (
-        <div ref={ref} style={{ position: 'relative' }}>
+        <div ref={ref} style={{ position: 'relative' }} className={isFooter ? 'ws-language-switcher--footer' : undefined}>
             <button
                 ref={btnRef}
                 onClick={handleToggle}
@@ -53,24 +58,25 @@ export default function WebsiteLanguageSwitcher() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    padding: '6px 10px',
-                    background: 'none',
-                    border: '1px solid var(--ws-border-default)',
+                    padding: isFooter ? '0 0.75rem' : '6px 10px',
+                    minHeight: isFooter ? '2.5rem' : undefined,
+                    background: isFooter ? 'rgba(15, 23, 42, 0.62)' : 'none',
+                    border: isFooter ? '1px solid rgba(148, 163, 184, 0.28)' : '1px solid var(--ws-border-default)',
                     borderRadius: 'var(--ws-radius-md)',
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
-                    fontWeight: 500,
-                    color: 'var(--ws-text-secondary)',
+                    fontWeight: isFooter ? 700 : 500,
+                    color: isFooter ? '#cbd5e1' : 'var(--ws-text-secondary)',
                     transition: 'all 0.15s ease',
                     whiteSpace: 'nowrap',
                 }}
                 onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = 'var(--ws-brand-secondary)';
-                    e.currentTarget.style.color = 'var(--ws-text-primary)';
+                    e.currentTarget.style.borderColor = isFooter ? '#60a5fa' : 'var(--ws-brand-secondary)';
+                    e.currentTarget.style.color = isFooter ? '#ffffff' : 'var(--ws-text-primary)';
                 }}
                 onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = 'var(--ws-border-default)';
-                    e.currentTarget.style.color = 'var(--ws-text-secondary)';
+                    e.currentTarget.style.borderColor = isFooter ? 'rgba(148, 163, 184, 0.28)' : 'var(--ws-border-default)';
+                    e.currentTarget.style.color = isFooter ? '#cbd5e1' : 'var(--ws-text-secondary)';
                 }}
                 aria-label={t('LanguageSwitcher.label')}
             >
@@ -91,8 +97,8 @@ export default function WebsiteLanguageSwitcher() {
                         minWidth: '180px',
                         maxHeight: '300px',
                         overflowY: 'auto',
-                        backgroundColor: 'var(--ws-bg-elevated)',
-                        border: '1px solid var(--ws-border-default)',
+                        backgroundColor: isFooter ? '#111827' : 'var(--ws-bg-elevated)',
+                        border: isFooter ? '1px solid rgba(148, 163, 184, 0.28)' : '1px solid var(--ws-border-default)',
                         borderRadius: 'var(--ws-radius-lg)',
                         boxShadow: 'var(--ws-shadow-lg)',
                         zIndex: 100,
@@ -111,24 +117,24 @@ export default function WebsiteLanguageSwitcher() {
                                     justifyContent: 'space-between',
                                     width: '100%',
                                     padding: '8px 14px',
-                                    background: isActive ? 'var(--ws-bg-accent)' : 'none',
+                                    background: isActive ? (isFooter ? 'rgba(96, 165, 250, 0.16)' : 'var(--ws-bg-accent)') : 'none',
                                     border: 'none',
                                     cursor: 'pointer',
                                     fontSize: '0.875rem',
                                     fontWeight: isActive ? 600 : 400,
-                                    color: isActive ? 'var(--ws-brand-secondary)' : 'var(--ws-text-primary)',
+                                    color: isActive ? (isFooter ? '#bfdbfe' : 'var(--ws-brand-secondary)') : (isFooter ? '#e2e8f0' : 'var(--ws-text-primary)'),
                                     textAlign: 'left',
                                     transition: 'background 0.15s',
                                 }}
                                 onMouseEnter={e => {
-                                    if (!isActive) e.currentTarget.style.background = 'var(--ws-bg-subtle)';
+                                    if (!isActive) e.currentTarget.style.background = isFooter ? 'rgba(148, 163, 184, 0.14)' : 'var(--ws-bg-subtle)';
                                 }}
                                 onMouseLeave={e => {
                                     if (!isActive) e.currentTarget.style.background = 'none';
                                 }}
                             >
                                 <span>{lang.nativeName}</span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--ws-text-muted)', fontWeight: 400 }}>
+                                <span style={{ fontSize: '0.75rem', color: isFooter ? '#94a3b8' : 'var(--ws-text-muted)', fontWeight: 400 }}>
                                     {lang.label}
                                 </span>
                             </button>

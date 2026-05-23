@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { LuArrowRight, LuBadgeCheck, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin, LuShieldCheck } from 'react-icons/lu';
 import BrandWordmark from './shared/BrandWordmark';
 import WebsiteButton from './shared/WebsiteButton';
+import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
+import WebsiteThemeSwitcher from './shared/WebsiteThemeSwitcher';
 
 const productLinks = [
   { href: '/how-it-works', key: 'howItWorks' },
@@ -95,6 +97,16 @@ export default function Footer() {
             <a href="mailto:hello@menulist.ai" className="ws-footer-email">
               hello@menulist.ai
             </a>
+            <div className="ws-footer-preferences" role="group" aria-label={t('Footer.preferencesLabel')}>
+              <div className="ws-footer-preference">
+                <span className="ws-footer-control-label">{t('Footer.languagePreference')}</span>
+                <WebsiteLanguageSwitcher surface="footer" />
+              </div>
+              <div className="ws-footer-preference">
+                <span className="ws-footer-control-label">{t('Footer.themePreference')}</span>
+                <WebsiteThemeSwitcher />
+              </div>
+            </div>
           </div>
 
           <nav className="ws-footer-link-grid" aria-label={t('Footer.navigationLabel')}>
