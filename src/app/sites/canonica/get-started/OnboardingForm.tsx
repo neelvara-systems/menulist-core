@@ -1,8 +1,10 @@
 'use client';
 
+import { CANONICA_ROUTES, toCanonicaDashboardRoute } from '@constant/canonica/routes';
+import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import type { CSSProperties } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
 type BillingModel = 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
@@ -46,6 +48,15 @@ function OnboardingFormInner() {
     const [primarySurfaces, setPrimarySurfaces] = useState<string[]>(['billing', 'onboarding', 'settings']);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<OnboardResult | null>(null);
+    const existingCanonicaScope = useMemo(() => resolveCanonicaSessionScope(session), [session]);
+    const dashboardHref = useMemo(() => {
+        const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+        return toCanonicaDashboardRoute(CANONICA_ROUTES.ACTIVATION, hostname);
+    }, []);
+    const billingHref = useMemo(() => {
+        const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+        return toCanonicaDashboardRoute(CANONICA_ROUTES.BILLING, hostname);
+    }, []);
 
     useEffect(() => {
         if (status === 'authenticated' && step === 'auth') {
@@ -159,8 +170,53 @@ function OnboardingFormInner() {
                 </div>
             )}
 
+            {status === 'authenticated' && existingCanonicaScope && step !== 'creating' && step !== 'done' && (
+                <div style={styles.card}>
+                    <div style={styles.successIcon}>✓</div>
+                    <h2 style={styles.cardTitle}>Your Canonica workspace is ready</h2>
+                    <p style={styles.cardSubtext}>
+                        This Google account already has Canonica access. Continue to your activation dashboard, or switch accounts if you meant to set up a different workspace.
+                    </p>
+
+                    {session?.user?.email && (
+                        <div style={styles.signedInBox}>
+                            <div style={styles.signedInText}>
+                                <span style={styles.signedInLabel}>Signed in with Google</span>
+                                <span style={styles.signedInEmail}>{session.user.email}</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleUseAnotherAccount}
+                                style={styles.switchAccountBtn}
+                            >
+                                Use another account
+                            </button>
+                        </div>
+                    )}
+
+                    <div style={styles.existingActions}>
+                        <a
+                            href={dashboardHref}
+                            style={styles.primaryBtn}
+                            data-canonica-event="onboarding_existing_dashboard_clicked"
+                            data-canonica-label="open_activation"
+                        >
+                            Open Activation
+                        </a>
+                        <a
+                            href={billingHref}
+                            style={styles.secondaryBtn}
+                            data-canonica-event="onboarding_existing_billing_clicked"
+                            data-canonica-label="open_billing"
+                        >
+                            View Billing
+                        </a>
+                    </div>
+                </div>
+            )}
+
             {/* Step 2: Company Details */}
-            {step === 'details' && (
+            {step === 'details' && (!existingCanonicaScope || status !== 'authenticated') && (
                 <div style={styles.card}>
                     <h2 style={styles.cardTitle}>Set up your account</h2>
                     <p style={styles.cardSubtext}>
@@ -407,11 +463,17 @@ const styles: Record<string, CSSProperties> = {
     planPrice: { fontSize: 13, fontWeight: 700, color: '#fff' },
     planDesc: { fontSize: 11, color: '#6b6b8a', width: '100%' },
     error: { fontSize: 13, color: '#f87171', margin: '0 0 12px 0', textAlign: 'center' },
+    existingActions: { width: '100%', display: 'flex', flexDirection: 'column', gap: 10 },
     primaryBtn: {
         display: 'block', width: '100%', minHeight: 44, padding: '12px 24px', borderRadius: 10,
         background: '#6366f1', color: '#fff', fontSize: 14, fontWeight: 600,
         border: 'none', cursor: 'pointer', textAlign: 'center', textDecoration: 'none',
         marginTop: 8,
+    },
+    secondaryBtn: {
+        display: 'block', width: '100%', minHeight: 44, padding: '12px 24px', borderRadius: 10,
+        background: 'rgba(255,255,255,0.04)', color: '#d6d6ef', fontSize: 14, fontWeight: 600,
+        border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', textAlign: 'center', textDecoration: 'none',
     },
     spinner: {
         width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)',

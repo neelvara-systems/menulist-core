@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { LuCheck, LuMapPin } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
+import LogoMark from '../shared/LogoMark';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
@@ -46,55 +47,47 @@ export default function MultiLocationPage() {
         </div>
       </SectionWrapper>
 
-      {/* ── Dark animated flow diagram ──────── */}
-      <section style={{ background: '#0f172a', padding: '5rem var(--ws-space-6)', overflow: 'hidden' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.125rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.5rem', letterSpacing: 0 }}>
-            {t('MultiLocation.flowTitle')}
-          </p>
-          <p style={{ fontSize: '0.9375rem', color: '#94a3b8', marginBottom: '2.5rem' }}>
-            {t('MultiLocation.flowSubtitle')}
-          </p>
-          <svg viewBox="0 0 860 280" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
-            <defs>
-              <style>{`
-                @keyframes ml-flow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-                .ml-l0 { animation: ml-flow 1.5s linear infinite 0s; }
-                .ml-l1 { animation: ml-flow 1.5s linear infinite 0.22s; }
-                .ml-l2 { animation: ml-flow 1.5s linear infinite 0.44s; }
-                .ml-l3 { animation: ml-flow 1.5s linear infinite 0.66s; }
-                .ml-l4 { animation: ml-flow 1.5s linear infinite 0.88s; }
-              `}</style>
-            </defs>
+      {/* ── Master-to-outlets map ───────────── */}
+      <section className="ws-support-flow-section">
+        <div className="ws-support-flow-section__inner">
+          <AnimateOnScroll>
+            <p className="ws-support-flow-section__title">{t('MultiLocation.flowTitle')}</p>
+            <p className="ws-support-flow-section__subtitle">{t('MultiLocation.flowSubtitle')}</p>
+          </AnimateOnScroll>
 
-            {/* Master Menu (HQ) — top central */}
-            <rect x="295" y="14" width="270" height="58" rx="14" fill="#1d4ed8" />
-            <text x="430" y="43" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" fontFamily="Inter, sans-serif">{t('MultiLocation.flowMaster')}</text>
-            <text x="430" y="62" textAnchor="middle" fill="#93c5fd" fontSize="11" fontFamily="Inter, sans-serif">{t('MultiLocation.flowSsot')}</text>
+          <AnimateOnScroll delay={0.08}>
+            <div className="ws-location-source-map">
+              <svg className="ws-location-source-map__paths" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
+                <path className="ws-location-source-map__path" d="M490 112 C348 154 234 198 140 270" />
+                <path className="ws-location-source-map__path" d="M490 112 C398 160 338 204 300 270" />
+                <path className="ws-location-source-map__path" d="M490 112 C490 172 490 218 490 270" />
+                <path className="ws-location-source-map__path" d="M490 112 C582 160 642 204 680 270" />
+                <path className="ws-location-source-map__path" d="M490 112 C632 154 746 198 840 270" />
+              </svg>
 
-            {/* Master → outlet lines (animated electricity) */}
-            {[76, 206, 430, 654, 784].map((x, i) => (
-              <line
-                key={x}
-                className={`ml-l${i}`}
-                x1="430" y1="72"
-                x2={x} y2="190"
-                stroke="#60a5fa"
-                strokeWidth="1.5"
-                strokeDasharray="6 6"
-                strokeOpacity="0.55"
-              />
-            ))}
+              <div className="ws-location-source-map__master">
+                <div className="ws-location-source-map__logo">
+                  <LogoMark height={30} />
+                </div>
+                <div>
+                  <p>{t('MultiLocation.flowMaster')}</p>
+                  <span>{t('MultiLocation.flowSsot')}</span>
+                </div>
+              </div>
 
-            {/* Outlet nodes */}
-            {[76, 206, 430, 654, 784].map((x, i) => (
-              <g key={x}>
-                <rect x={x - 56} y="190" width="112" height="62" rx="10" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
-                <text x={x} y="218" textAnchor="middle" fill="#94a3b8" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{t('MultiLocation.flowOutlet')} {i + 1}</text>
-                <text x={x} y="238" textAnchor="middle" fill="#94a3b8" fontSize="10" fontFamily="Inter, sans-serif">{t('MultiLocation.flowInherits')}</text>
-              </g>
-            ))}
-          </svg>
+              <div className="ws-location-source-map__outlets">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div className="ws-location-source-map__outlet" key={i}>
+                    <span className="ws-location-source-map__outlet-icon">
+                      <LuMapPin size={16} />
+                    </span>
+                    <p>{t('MultiLocation.flowOutlet')} {i + 1}</p>
+                    <span>{t('MultiLocation.flowInherits')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AnimateOnScroll>
         </div>
       </section>
 

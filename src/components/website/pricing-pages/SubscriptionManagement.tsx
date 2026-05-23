@@ -36,19 +36,19 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
         const baseStyles = { fontSize: '14px', padding: '6px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px' }
 
         if (activeSubscription.status === 'active') {
-            return <Badge style={{ ...baseStyles, backgroundColor: '#059669', color: '#fff' }}><LuHeartPulse size={14} /> Active</Badge>;
+            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-success)', color: 'var(--ws-text-on-accent)' }}><LuHeartPulse size={14} /> Active</Badge>;
         }
         if (activeSubscription.status === 'cancelled') {
-            return <Badge style={{ ...baseStyles, backgroundColor: '#dc2626', color: '#fff' }}><LuHeartOff size={14} /> Cancelled</Badge>;
+            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-error)', color: 'var(--ws-text-on-accent)' }}><LuHeartOff size={14} /> Cancelled</Badge>;
         }
         if (activeSubscription.status === 'paused') {
-            return <Badge style={{ ...baseStyles, backgroundColor: '#d97706', color: '#fff' }}><LuPause size={14} /> Paused</Badge>;
+            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-warning)', color: 'var(--ws-text-on-accent)' }}><LuPause size={14} /> Paused</Badge>;
         }
         if (activeSubscription.status === 'past_due') {
-            return <Badge style={{ ...baseStyles, backgroundColor: '#dc2626', color: '#fff' }}><LuHeartCrack size={14} /> Payment Failed</Badge>;
+            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-error)', color: 'var(--ws-text-on-accent)' }}><LuHeartCrack size={14} /> Payment Failed</Badge>;
         }
         if (activeSubscription.status === 'expired') {
-            return <Badge style={{ ...baseStyles, backgroundColor: '#94a3b8', color: '#fff' }}><LuHeartOff size={14} /> Expired</Badge>;
+            return <Badge style={{ ...baseStyles, backgroundColor: 'var(--ws-text-muted)', color: 'var(--ws-text-on-accent)' }}><LuHeartOff size={14} /> Expired</Badge>;
         }
         return null;
     };

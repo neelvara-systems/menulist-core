@@ -17,6 +17,7 @@ import ProductAreasSection from './components/ProductAreasSection';
 import ProductPreviewSection from './components/ProductPreviewSection';
 import SetupFunnelSection from './components/SetupFunnelSection';
 import CanonicaStructuredData from './components/StructuredData';
+import SupportKnowledgeMapSection from './components/SupportKnowledgeMapSection';
 import SystemCoverageSection from './components/SystemCoverageSection';
 import WidgetSection from './components/WidgetSection';
 import { CANONICA_SITE_DESCRIPTION } from './siteConfig';
@@ -54,8 +55,9 @@ export default function CanonicaHomePage() {
         <>
             <CanonicaHeader basePath={basePath} />
             <CanonicaStructuredData />
-            <main>
+            <main className="cn-home-flow">
                 <HeroSection basePath={basePath} />
+                <SupportKnowledgeMapSection />
                 <HomePageAwareDemoSection basePath={basePath} />
                 <ClosedLoopSection />
                 <ProductPreviewSection />

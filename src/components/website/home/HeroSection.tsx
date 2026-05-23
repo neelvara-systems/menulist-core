@@ -24,7 +24,7 @@ export default function HeroSection() {
       <section
         className="ws-hero-official"
         style={{
-          padding: 'var(--ws-space-24) var(--ws-space-6) var(--ws-space-20)',
+          padding: 'var(--ws-space-20) var(--ws-space-6) var(--ws-space-16)',
           backgroundColor: 'var(--ws-bg-primary)',
         }}
       >

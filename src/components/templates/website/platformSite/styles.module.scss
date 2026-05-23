@@ -1,39 +1,43 @@
 .featureCard {
-    &:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .heroSection {
-    position: relative;
-    overflow: hidden;
-    
-    &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-        pointer-events: none;
-    }
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      circle at 50% 0%,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 50%
+    );
+    pointer-events: none;
+  }
 }
 
 .iconWrapper {
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    margin-bottom: 24px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-    
-    svg {
-        font-size: 32px;
-        color: #fff;
-    }
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  margin-bottom: 24px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0051d1 0%, #7c3aed 100%);
+
+  svg {
+    font-size: 32px;
+    color: #fff;
+  }
 }

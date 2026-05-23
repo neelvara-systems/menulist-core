@@ -137,7 +137,7 @@ export const MENU_DESIGN_PRESETS: MenuDesignPreset[] = [
         recommendedFor: 'Clinics, agencies, repairs, local services',
         mood: MenuMood.CLEAN,
         layout: MenuLayout.LIST,
-        accentColor: '#2563eb',
+        accentColor: '#0051d1',
         showItemPrices: true,
         showImages: false,
         showCategoryIcons: true,

@@ -6,15 +6,15 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useCallback, useContext, useEffect, useState } from 'react';
 import { LuCopy, LuExternalLink, LuQrCode, LuShare2, LuStar } from 'react-icons/lu';
-import { Button, Card, DotLoading, Empty, Flex, List, NavBar, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
-import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
+import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
+import { Button, Card, DotLoading, Empty, Flex, List, PullToRefresh, Tabs, Tag, Text, Toast } from '../antd';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
+import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
@@ -267,7 +267,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                                     style={{
                                                         background: feedback.needsAttention ? '#fff7ed' : '#eff6ff',
                                                         borderRadius: 14,
-                                                        color: feedback.needsAttention ? '#ea580c' : '#2563eb',
+                                                        color: feedback.needsAttention ? '#ea580c' : '#0051d1',
                                                         fontSize: 13,
                                                         fontWeight: 700,
                                                         height: 40,

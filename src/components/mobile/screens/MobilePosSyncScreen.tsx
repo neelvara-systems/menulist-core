@@ -10,7 +10,7 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCopy, LuEye, LuEyeOff, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
-import { Button, Card, Collapse, Flex, Input, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import { Button, Card, Collapse, Flex, Input, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobilePosSyncScreenProps {
@@ -309,7 +309,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             }}
                         >
                             <Text strong style={{ flex: 1 }}>{t('diagramSource')}</Text>
-                            <LuArrowRight color="#2563eb" size={18} />
+                            <LuArrowRight color="#0051d1" size={18} />
                             <Text strong style={{ flex: 1, textAlign: 'right' }}>{t('diagramDestination')}</Text>
                         </Flex>
 
@@ -345,7 +345,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={10}>
                             <Flex align="center" justify="center" style={{ background: '#eff6ff', borderRadius: 12, height: 40, width: 40 }}>
-                                {currentPosSync.status === 'healthy' ? <LuWifi color="#2563eb" size={20} /> : <LuWifiOff color="#f59e0b" size={20} />}
+                                {currentPosSync.status === 'healthy' ? <LuWifi color="#0051d1" size={20} /> : <LuWifiOff color="#f59e0b" size={20} />}
                             </Flex>
                             <Flex gap={2} vertical>
                                 <Text strong>{statusLabel}</Text>

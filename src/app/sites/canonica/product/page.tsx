@@ -4,6 +4,7 @@ import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import ProductPreviewSection from '../components/ProductPreviewSection';
+import SupportKnowledgeMapSection from '../components/SupportKnowledgeMapSection';
 import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
@@ -126,6 +127,8 @@ export default function CanonicaProductPage() {
                         ))}
                     </div>
                 </section>
+
+                <SupportKnowledgeMapSection context="product" />
 
                 <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
                     <div className="mx-auto max-w-6xl">

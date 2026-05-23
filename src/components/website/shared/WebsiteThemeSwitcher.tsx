@@ -14,10 +14,16 @@ const themeOptions = [
 export default function WebsiteThemeSwitcher() {
   const t = useTranslations('Website');
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const currentOption = themeOptions.find((option) => option.value === theme) || themeOptions[1];
+  const displayTheme = mounted ? theme : 'system';
+  const currentOption = themeOptions.find((option) => option.value === displayTheme) || themeOptions[1];
   const CurrentIcon = currentOption.Icon;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -48,7 +54,7 @@ export default function WebsiteThemeSwitcher() {
       {open && (
         <div className="ws-theme-switcher__menu" role="menu" aria-label={t('ThemeSwitcher.label')}>
           {themeOptions.map(({ value, key, Icon }) => {
-            const isActive = theme === value;
+            const isActive = displayTheme === value;
 
             return (
               <button

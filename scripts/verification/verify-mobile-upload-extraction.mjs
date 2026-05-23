@@ -8,6 +8,10 @@
  * and the mobile UI to leave the queued/processing state.
  */
 
+import dotenv from 'dotenv';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { encode } from 'next-auth/jwt';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -15,10 +19,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
-import dotenv from 'dotenv';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { encode } from 'next-auth/jwt';
 import WebSocket from 'ws';
 
 const envFile = process.env.MOBILE_QA_ENV_FILE || '.env';
@@ -379,7 +379,7 @@ async function createAdminQaProject(db) {
     active: true,
     config: {
       design: {
-        brand: { accentColor: '#2563eb' },
+        brand: { accentColor: '#0051d1' },
         home: { style: 'bold' },
         menu: {
           layout: 'list',

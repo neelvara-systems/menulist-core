@@ -393,7 +393,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                             <Text type="secondary">{t('totalStores')}</Text>
                         </Flex>
                         <Flex gap={2} vertical>
-                            <Title level={4} style={{ margin: 0, color: '#2563eb' }}>
+                            <Title level={4} style={{ margin: 0, color: '#0051d1' }}>
                                 {outletCount}
                             </Title>
                             <Text type="secondary">{t('outlets')}</Text>

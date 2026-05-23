@@ -1,29 +1,29 @@
-/* Canonica website scroll-reveal effects (copied from website shared pattern). */
+/* Canonica website viewport-reveal effects. */
 
-.ws-animate-on-scroll {
+.cn-scroll-reveal {
     opacity: 1;
     transform: translate3d(0, 0, 0);
     transition-property: opacity, transform;
-    transition-duration: var(--ws-appear-duration, 560ms), var(--ws-appear-duration, 560ms);
+    transition-duration: var(--cn-reveal-duration, 560ms), var(--cn-reveal-duration, 560ms);
     transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-    transition-delay: var(--ws-appear-delay, 0s);
+    transition-delay: var(--cn-reveal-delay, 0s);
     will-change: opacity, transform;
 }
 
-.ws-animate-on-scroll--pending {
-    opacity: 0.88;
-    transform: translate3d(0, var(--ws-appear-distance, 12px), 0);
+.cn-scroll-reveal--pending {
+    opacity: 0;
+    transform: translate3d(0, var(--cn-reveal-distance, 14px), 0) scale(0.992);
 }
 
-.ws-animate-on-scroll--visible {
+.cn-scroll-reveal--visible {
     opacity: 1;
     transform: translate3d(0, 0, 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .ws-animate-on-scroll,
-    .ws-animate-on-scroll--pending,
-    .ws-animate-on-scroll--visible {
+    .cn-scroll-reveal,
+    .cn-scroll-reveal--pending,
+    .cn-scroll-reveal--visible {
         opacity: 1;
         transform: none;
         transition: none;

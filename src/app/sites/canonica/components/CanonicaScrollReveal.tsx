@@ -5,8 +5,19 @@ import { useEffect } from "react";
 
 const REVEAL_DELAY_STEP = 0.09;
 const REVEAL_MAX_DELAY = 0.9;
-const REVEAL_TARGET_SELECTOR =
-    "[data-canonica-reveal], [data-canonica-reveal-item], main section, main article, main aside, footer section, footer article, footer aside";
+const EXPLICIT_REVEAL_SELECTOR = "[data-canonica-reveal], [data-canonica-reveal-item]";
+const STRUCTURAL_REVEAL_SELECTOR = "main section, main article, main aside, footer section, footer article, footer aside";
+const CARD_REVEAL_SELECTOR = [
+    "main .grid > a[class*='rounded-']",
+    "main .grid > article[class*='rounded-']",
+    "main .grid > div[class*='rounded-']",
+    "main [class*='space-y-'] > article[class*='rounded-']",
+    "main [class*='space-y-'] > div[class*='rounded-']",
+    "main .flex > a[class*='rounded-']",
+    "main .flex > button[class*='rounded-']",
+    "main ol > li[class*='rounded-']",
+    "main ul > li[class*='rounded-']",
+].join(", ");
 const REVEAL_DISTANCE = "14px";
 const REVEAL_DURATION = "560ms";
 const FALLBACK_VP_CHECK_DELAY_MS = 120;
@@ -14,8 +25,8 @@ const ROOT_MARGIN = "0px 0px -6% 0px";
 const INTERSECTION_THRESHOLD = 0.1;
 
 function markVisible(element: HTMLElement) {
-    element.classList.remove("ws-animate-on-scroll--pending");
-    element.classList.add("ws-animate-on-scroll--visible");
+    element.classList.remove("cn-scroll-reveal--pending");
+    element.classList.add("cn-scroll-reveal--visible");
 }
 
 function isInViewport(element: HTMLElement) {
@@ -24,33 +35,69 @@ function isInViewport(element: HTMLElement) {
     return bounds.top < viewportHeight + 24 && bounds.bottom > -24;
 }
 
-function isArticleRevealCandidate(element: HTMLElement) {
+function getElementClassName(element: HTMLElement) {
+    const className = element.className;
+    return typeof className === "string" ? className : "";
+}
+
+function hasReadableContent(element: HTMLElement) {
+    return (element.textContent || "").trim().length > 0 || element.children.length > 0;
+}
+
+function isCardLikeElement(element: HTMLElement) {
+    const className = getElementClassName(element);
+    if (!className || !className.includes("rounded-") || className.includes("rounded-full")) {
+        return false;
+    }
+
+    const hasPanelTreatment =
+        className.includes("border") ||
+        className.includes("bg-") ||
+        className.includes("shadow") ||
+        className.includes("ring-");
+    if (!hasPanelTreatment || !hasReadableContent(element)) {
+        return false;
+    }
+
+    const bounds = element.getBoundingClientRect();
+    return bounds.width >= 88 && bounds.height >= 40;
+}
+
+function isStructuralRevealCandidate(element: HTMLElement) {
     const tagName = element.tagName.toLowerCase();
+    if (tagName === "section" || tagName === "aside" || tagName === "footer") {
+        return hasReadableContent(element);
+    }
+
     if (tagName !== "article") {
         return true;
     }
 
-    const className = element.className;
-    if (typeof className !== "string") {
-        return false;
-    }
-
+    const className = getElementClassName(element);
     const hasRoundedClass = /rounded-(?:xl|2xl|3xl|lg|md|sm|\[1\.75rem\])/;
     if (!hasRoundedClass.test(className) && !className.includes("rounded-full")) {
         return false;
     }
 
-    const hasText = (element.textContent || "").trim().length > 0;
-    if (!hasText) {
-        return false;
+    return hasReadableContent(element);
+}
+
+function shouldRevealElement(element: HTMLElement) {
+    if (element.matches(EXPLICIT_REVEAL_SELECTOR)) {
+        return hasReadableContent(element);
     }
 
-    const hasChildren = element.children.length > 0;
-    if (!hasChildren) {
-        return false;
+    if (element.matches(STRUCTURAL_REVEAL_SELECTOR)) {
+        return isStructuralRevealCandidate(element);
     }
 
-    return true;
+    return isCardLikeElement(element);
+}
+
+function getSiblingRevealIndex(element: HTMLElement, targets: HTMLElement[]) {
+    const siblings = targets.filter((target) => target.parentElement === element.parentElement);
+    const index = siblings.indexOf(element);
+    return Math.max(index, 0);
 }
 
 export default function CanonicaScrollReveal() {
@@ -71,20 +118,25 @@ export default function CanonicaScrollReveal() {
         }
 
         const declaredTargets = targetRegions.flatMap((region) =>
-            Array.from(region.querySelectorAll<HTMLElement>(REVEAL_TARGET_SELECTOR)),
+            [
+                ...Array.from(region.querySelectorAll<HTMLElement>(EXPLICIT_REVEAL_SELECTOR)),
+                ...Array.from(region.querySelectorAll<HTMLElement>(STRUCTURAL_REVEAL_SELECTOR)),
+                ...Array.from(region.querySelectorAll<HTMLElement>(CARD_REVEAL_SELECTOR)),
+            ],
         );
-        const targets = Array.from(new Set(declaredTargets.filter((target) => isArticleRevealCandidate(target))));
+        const targets = Array.from(new Set(declaredTargets.filter(shouldRevealElement)));
 
         if (!targets.length) {
             return;
         }
 
-        targets.forEach((target, index) => {
-            target.classList.add("ws-animate-on-scroll");
-            target.classList.remove("ws-animate-on-scroll--visible");
-            target.style.setProperty("--ws-appear-delay", `${Math.min(index * REVEAL_DELAY_STEP, REVEAL_MAX_DELAY)}s`);
-            target.style.setProperty("--ws-appear-distance", REVEAL_DISTANCE);
-            target.style.setProperty("--ws-appear-duration", REVEAL_DURATION);
+        targets.forEach((target) => {
+            target.classList.add("cn-scroll-reveal");
+            target.classList.remove("cn-scroll-reveal--visible");
+            const siblingIndex = getSiblingRevealIndex(target, targets);
+            target.style.setProperty("--cn-reveal-delay", `${Math.min(siblingIndex * REVEAL_DELAY_STEP, REVEAL_MAX_DELAY)}s`);
+            target.style.setProperty("--cn-reveal-distance", REVEAL_DISTANCE);
+            target.style.setProperty("--cn-reveal-duration", REVEAL_DURATION);
             target.style.transitionDuration = REVEAL_DURATION;
         });
 
@@ -93,11 +145,14 @@ export default function CanonicaScrollReveal() {
             return undefined;
         }
 
+        const initiallyVisibleTargets = targets.filter(isInViewport);
+
         targets.forEach((target) => {
-            target.classList.add("ws-animate-on-scroll--pending");
-            if (isInViewport(target)) {
-                markVisible(target);
-            }
+            target.classList.add("cn-scroll-reveal--pending");
+        });
+
+        const initialRevealFrame = window.requestAnimationFrame(() => {
+            initiallyVisibleTargets.forEach(markVisible);
         });
 
         const observer = new IntersectionObserver(
@@ -114,16 +169,16 @@ export default function CanonicaScrollReveal() {
             { threshold: INTERSECTION_THRESHOLD, rootMargin: ROOT_MARGIN },
         );
 
-        const visibleTargets = targets.filter((target) => target.classList.contains("ws-animate-on-scroll--visible"));
+        const visibleTargets = new Set(initiallyVisibleTargets);
         targets.forEach((target) => {
-            if (!visibleTargets.includes(target)) {
+            if (!visibleTargets.has(target)) {
                 observer.observe(target);
             }
         });
 
         const fallbackTimer = window.setTimeout(() => {
             targets.forEach((target) => {
-                if (!target.classList.contains("ws-animate-on-scroll--visible") && isInViewport(target)) {
+                if (!target.classList.contains("cn-scroll-reveal--visible") && isInViewport(target)) {
                     markVisible(target);
                     observer.unobserve(target);
                 }
@@ -132,6 +187,7 @@ export default function CanonicaScrollReveal() {
 
         return () => {
             observer.disconnect();
+            cancelAnimationFrame(initialRevealFrame);
             clearTimeout(fallbackTimer);
         };
     }, [pathname]);

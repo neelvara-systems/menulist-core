@@ -1,6 +1,6 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.5.3 Footer Preferences Controls
+**Status:** IMPLEMENTED — v3.5.7 Supporting Page Source Maps
 **Last Updated:** May 23, 2026
 **Audience:** Developers
 
@@ -100,6 +100,14 @@ LocalisationProvider (locale from next-intl/server)
 
 **Footer preferences controls:** v3.5.3 moved preference controls out of the header and into the footer. Social links now sit under the company email, the public-source line is centered in the footer bottom row, and compact Language / Theme dropdowns sit on the bottom-right. This keeps the top navigation focused on product evaluation and upload/login actions while still making preferences discoverable.
 
+**Card rhythm polish:** v3.5.4 adds `WebsiteFeatureCard.tsx` as the shared public website proof/feature card pattern. It uses spacious card padding, stable min-height, calm border/background treatment, and a consistent top-right icon so homepage and supporting-page card grids do not feel compressed or visually inconsistent.
+
+**Dark theme color cohesion:** v3.5.5 keeps light mode intact while tightening dark mode around one dark-gray surface family, one blue action family, muted semantic states, and shared contrast-panel tokens. Footer, proof bands, discovery panels, product phone frames, and supporting card surfaces now reuse the same dark contrast variables instead of carrying separate hardcoded navy/cyan treatments. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+**Workflow source map:** v3.5.6 replaces the compact homepage workflow pipeline in `InteractiveWorkflowSection.tsx` with a clearer input -> MenuList -> output source map. It uses the official `LogoMark`, existing workflow copy, locale-backed output labels, and website CSS tokens so the section explains photo/PDF/text input, owner review, and official public outputs without becoming the hero visual.
+
+**Supporting page source maps:** v3.5.7 replaces the older animated SVG diagrams in `ProductPage.tsx` and `MultiLocationPage.tsx`. The How It Works page now uses a static source-to-surfaces map, and Multi-location uses a static approved-master-to-outlets map. Both reuse official logo treatment, shared dark-panel tokens, locale-backed labels, and non-animated path styling so they feel like MenuList product proof instead of generic SaaS architecture art.
+
 **Whole-page reference pass:** Stage 7.3 corrected the footer-only scope by adding `RevenuePathSection.tsx`, reshaping `ProblemSection.tsx`, and upgrading `StatsSection.tsx` into a stronger proof band. The page now moves from official source -> revenue path -> public drift pain -> one-source proof -> workflow and visual evidence.
 
 **Copy, motion, and heading polish:** Stage 7.4 normalized homepage wording, casing, and grammar in the `Website` locale namespace, removed viewport-scaled website typography, added subtle hover polish to proof/path/problem elements, updated shared scroll animations to respect reduced-motion preferences, and routed static website hero/section headings through `WebsiteHeadline` for consistent highlight treatment.
@@ -170,6 +178,7 @@ src/pages/
 | `SectionHeading.tsx` | Section heading wrapper backed by `WebsiteHeadline` |
 | `SectionWrapper.tsx` | Section layout wrapper with consistent spacing |
 | `WebsiteButton.tsx` | Styled CTA button |
+| `WebsiteFeatureCard.tsx` | Shared spacious proof/feature card with consistent top-right icon placement |
 | `WebsiteHeadline.tsx` | Shared hero/section headline renderer with consistent highlight styling |
 | `WebsiteMobileSupportHint.tsx` | Reusable owner reassurance line for phone-browser/PWA operation |
 | `WebsiteOwnerApprovalHint.tsx` | Reusable owner reassurance line for review-before-publish control |

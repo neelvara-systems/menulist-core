@@ -17,8 +17,8 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    LuAlertTriangle,
     LuActivity,
+    LuAlertTriangle,
     LuBarChart3,
     LuBookOpen,
     LuBuilding2,
@@ -34,8 +34,8 @@ import {
     LuMapPin,
     LuMessageCircle,
     LuPalette,
-    LuPhone,
     LuPencil,
+    LuPhone,
     LuReceipt,
     LuRefreshCw,
     LuSearch,
@@ -277,9 +277,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const userLoginLabel = sessionUser.staffAuthMode === 'owner_passcode'
         ? `Staff ID: ${sessionUser.staffLoginId || sessionUser.loginUsername || ''}`
         : profileEmail
-            || sessionUser.phone
-            || sessionUser.phoneUsername
-            || userEmail;
+        || sessionUser.phone
+        || sessionUser.phoneUsername
+        || userEmail;
 
     useEffect(() => {
         onRootStateChange?.(subScreen === 'main');
@@ -404,12 +404,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const searchDiscoveryHubItems: MoreListItem[] = [
         ...(canManagePublicPresence ? [
-            { key: 'domainSettings', icon: <LuGlobe color="#0f766e" size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
-            ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color="#2563eb" size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('businessCopySetup') }] : []),
+            { key: 'domainSettings', icon: <LuGlobe color="#27a8e3" size={20} />, keywords: ['domain', 'subdomain', 'custom domain', 'dns', 'website link'], label: tBusiness('domain'), description: tBusiness('customDomainDesc'), statusTag: domainTag, onClick: () => openSubScreen('domainSettings') },
+            ...(FEATURE_FLAGS.ENABLE_BUSINESS_COPY_GENERATION ? [{ key: 'businessCopySetup', icon: <LuSparkles color="#0051d1" size={20} />, keywords: ['copy setup', 'generate business copy', 'seo copy', 'official page copy', 'customer app copy'], label: tBusiness('businessCopySetup'), description: tBusiness('businessCopySetupDesc'), statusTag: businessCopyCoverage.missingFieldCount > 0 ? { color: 'warning' as const, label: tBusiness('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount }) } : undefined, onClick: () => openSubScreen('businessCopySetup') }] : []),
             { key: 'seoSettings', icon: <LuGlobe color="#0ea5e9" size={20} />, keywords: ['seo', 'meta title', 'meta description', 'keywords', 'canonical', 'tagline'], label: t('seoSettings'), description: t('seoSettingsDesc'), onClick: () => openSubScreen('seoSettings') },
-            ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color="#0f766e" size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
+            ...(FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? [{ key: 'presenceMonitor', icon: <LuSearch color="#27a8e3" size={20} />, keywords: ['google business', 'instagram bio', 'whatsapp profile', 'discovery', 'easy to find', 'presence'], label: 'Discovery Setup', description: 'Set up Google, Instagram, and WhatsApp with your official page link.', onClick: () => openSubScreen('presenceMonitor') }] : []),
         ] : []),
-        ...(FEATURE_FLAGS.ENABLE_GBP_SYNC && canManageIntegrations ? [{ key: 'integrations', icon: <LuGlobe color="#2563eb" size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_GBP_SYNC && canManageIntegrations ? [{ key: 'integrations', icon: <LuGlobe color="#0051d1" size={20} />, keywords: ['google business', 'gbp', 'integration', 'google listing'], label: tBusiness('integrations'), description: 'Google Business profile connection status', onClick: () => openSubScreen('integrations') }] : []),
     ];
 
     const platformMonitoringItems: MoreListItem[] = isPlatformAdmin ? [
@@ -427,17 +427,17 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color="#dc2626" size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
         { key: 'platformTenants', icon: <LuBuilding2 color="#475569" size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
-        { key: 'platformStores', icon: <LuMapPin color="#0f766e" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
-        { key: 'platformUsers', icon: <LuUsers color="#2563eb" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
+        { key: 'platformStores', icon: <LuMapPin color="#27a8e3" size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
+        { key: 'platformUsers', icon: <LuUsers color="#0051d1" size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
         { key: 'testSentry', icon: <LuAlertTriangle color="#ef4444" size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
     ] : [];
 
     const resellerManagementItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
-        { key: 'resellerHub', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'clients', 'onboarding'], label: 'Reseller', description: isPlatformAdmin ? 'Partner onboarding, client activation, and reseller profile management.' : 'Client onboarding and license management.', onClick: () => openSubScreen('resellerHub') },
+        { key: 'resellerHub', icon: <LuBuilding2 color="#27a8e3" size={20} />, keywords: ['reseller', 'partner', 'clients', 'onboarding'], label: 'Reseller', description: isPlatformAdmin ? 'Partner onboarding, client activation, and reseller profile management.' : 'Client onboarding and license management.', onClick: () => openSubScreen('resellerHub') },
     ] : [];
 
     const resellerHubItems: MoreListItem[] = FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD && canUseResellerScreens ? [
-        { key: 'resellerDashboard', icon: <LuBuilding2 color="#0f766e" size={20} />, keywords: ['reseller', 'partner', 'dashboard', 'clients'], label: 'Reseller Dashboard', description: isPlatformAdmin ? 'View reseller clients across the platform.' : 'View your clients and license status.', onClick: () => openSubScreen('resellerDashboard') },
+        { key: 'resellerDashboard', icon: <LuBuilding2 color="#27a8e3" size={20} />, keywords: ['reseller', 'partner', 'dashboard', 'clients'], label: 'Reseller Dashboard', description: isPlatformAdmin ? 'View reseller clients across the platform.' : 'View your clients and license status.', onClick: () => openSubScreen('resellerDashboard') },
         { key: 'resellerOnboard', icon: <LuSparkles color="#f97316" size={20} />, keywords: ['reseller onboard', 'partner onboarding', 'new client'], label: 'Onboard Client', description: 'Create a client account, select a plan, and activate payment.', onClick: () => openSubScreen('resellerOnboarding') },
         ...(isPlatformAdmin ? [{ key: 'resellerManage', icon: <LuUsers color="#7c3aed" size={20} />, keywords: ['reseller manage', 'partner manage'], label: 'Reseller Management', description: 'Create and manage reseller profiles.', onClick: () => openSubScreen('resellerManagement') }] : []),
     ] : [];

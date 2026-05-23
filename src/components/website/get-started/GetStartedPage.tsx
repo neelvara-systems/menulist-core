@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { LuCheckCircle, LuCreditCard, LuFileCheck, LuShieldCheck } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
 import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
@@ -110,15 +111,12 @@ export default function GetStartedPage() {
           <div style={{ display: 'grid', gap: 'var(--ws-space-4)' }}>
             {steps.map(({ icon: Icon, title, desc }, index) => (
               <AnimateStaggerChild key={title} index={index}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 'var(--ws-radius-md)', background: 'var(--ws-bg-accent)', color: 'var(--ws-brand-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={21} />
-                  </div>
-                  <div style={{ minWidth: 0, textAlign: 'left' }}>
-                    <h3 className="ws-h3" style={{ margin: 0 }}>{title}</h3>
-                    <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{desc}</p>
-                  </div>
-                </div>
+                <WebsiteFeatureCard
+                  icon={Icon}
+                  title={title}
+                  description={desc}
+                  compact
+                />
               </AnimateStaggerChild>
             ))}
             <AnimateOnScroll delay={0.2}>

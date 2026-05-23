@@ -1,7 +1,9 @@
 import { useTranslations } from 'next-intl';
-import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, LuQrCode, LuShare2, LuSmartphone, LuStar } from 'react-icons/lu';
+import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, LuQrCode, LuShare2, LuSmartphone, LuStar, LuType, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
+import LogoMark from '../shared/LogoMark';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
@@ -31,17 +33,17 @@ export default function ProductPage() {
   const step3Points = Array.from({ length: 3 }, (_, i) => t(`HowItWorks.step3P${i}`));
   const step4Points = Array.from({ length: 4 }, (_, i) => t(`HowItWorks.step4P${i}`));
   const flowInputs = [
-    { label: t('HowItWorks.flowPhoto'), x: 150 },
-    { label: t('HowItWorks.flowPdf'), x: 430 },
-    { label: t('HowItWorks.flowTypedText'), x: 710 },
+    { key: 'flowPhoto', Icon: LuImage },
+    { key: 'flowPdf', Icon: LuFileText },
+    { key: 'flowTypedText', Icon: LuType },
   ];
   const flowOutputs = [
-    { label: t('HowItWorks.flowQr'), x: 70 },
-    { label: t('HowItWorks.flowWebPage'), x: 214 },
-    { label: t('HowItWorks.flowScreens'), x: 358 },
-    { label: t('HowItWorks.flowPdfOut'), x: 502 },
-    { label: t('HowItWorks.flowOfficial'), x: 646 },
-    { label: t('HowItWorks.flowApp'), x: 790 },
+    { key: 'flowQr', Icon: LuQrCode },
+    { key: 'flowWebPage', Icon: LuLink },
+    { key: 'flowScreens', Icon: LuMonitor },
+    { key: 'flowPdfOut', Icon: LuFileText },
+    { key: 'flowOfficial', Icon: LuGlobe },
+    { key: 'flowApp', Icon: LuSmartphone },
   ];
   const publishedSurfaces = Array.from({ length: 6 }, (_, i) => t(`HowItWorks.step3Surface${i}`));
   const aiFeatures = aiIcons.map((icon, i) => ({
@@ -74,61 +76,62 @@ export default function ProductPage() {
           </div>
       </SectionWrapper>
 
-      {/* ── Animated System Flow Diagram ────── */}
-      <section style={{ background: '#0f172a', padding: '5rem var(--ws-space-6)', overflow: 'hidden' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.75rem', letterSpacing: 0 }}>
-            {t('HowItWorks.flowTitle')}
-          </p>
-          <p style={{ fontSize: '0.9375rem', color: '#94a3b8', marginBottom: '2.5rem' }}>
-            {t('HowItWorks.flowSubtitle')}
-          </p>
-          <svg viewBox="0 0 860 300" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
-            <defs>
-              <style>{`
-                @keyframes hiw-flow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-                .hiw-line { animation: hiw-flow 1.6s linear infinite; }
-                .hiw-l0 { animation: hiw-flow 1.6s linear infinite 0s; }
-                .hiw-l1 { animation: hiw-flow 1.6s linear infinite 0.18s; }
-                .hiw-l2 { animation: hiw-flow 1.6s linear infinite 0.36s; }
-                .hiw-l3 { animation: hiw-flow 1.6s linear infinite 0.54s; }
-                .hiw-l4 { animation: hiw-flow 1.6s linear infinite 0.72s; }
-                .hiw-l5 { animation: hiw-flow 1.6s linear infinite 0.9s; }
-                .hiw-l6 { animation: hiw-flow 1.6s linear infinite 1.08s; }
-                .hiw-l7 { animation: hiw-flow 1.6s linear infinite 1.26s; }
-              `}</style>
-            </defs>
+      {/* ── Source-to-surfaces map ───────────── */}
+      <section className="ws-support-flow-section">
+        <div className="ws-support-flow-section__inner">
+          <AnimateOnScroll>
+            <p className="ws-support-flow-section__title">{t('HowItWorks.flowTitle')}</p>
+            <p className="ws-support-flow-section__subtitle">{t('HowItWorks.flowSubtitle')}</p>
+          </AnimateOnScroll>
 
-            {/* Input nodes */}
-            {flowInputs.map(({ label, x }) => (
-              <g key={label}>
-                <rect x={x - 52} y="10" width="104" height="38" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
-                <text x={x} y="33" textAnchor="middle" fill="#94a3b8" fontSize="13" fontWeight="500" fontFamily="Inter, sans-serif">{label}</text>
-              </g>
-            ))}
+          <AnimateOnScroll delay={0.08}>
+            <div className="ws-page-source-map ws-page-source-map--surfaces">
+              <svg className="ws-page-source-map__paths" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
+                <path className="ws-page-source-map__path" d="M190 84 C312 84 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M190 176 C312 176 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M190 268 C312 268 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M528 176 C650 176 680 82 790 82" />
+                <path className="ws-page-source-map__path" d="M528 176 C660 176 690 134 810 134" />
+                <path className="ws-page-source-map__path" d="M528 176 C668 176 690 186 810 186" />
+                <path className="ws-page-source-map__path" d="M528 176 C668 176 690 238 810 238" />
+                <path className="ws-page-source-map__path" d="M528 176 C650 176 680 290 790 290" />
+              </svg>
 
-            {/* Input → centre lines */}
-            {[{ x: 150, delay: 'hiw-l0' }, { x: 430, delay: 'hiw-l1' }, { x: 710, delay: 'hiw-l2' }].map(({ x, delay }) => (
-              <line key={x} className={delay} x1={x} y1="48" x2="430" y2="118" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="6 6" strokeOpacity="0.5" />
-            ))}
+              <div className="ws-page-source-map__stack">
+                {flowInputs.map(({ key, Icon }) => (
+                  <div className="ws-page-source-map__item" key={key}>
+                    <span className="ws-page-source-map__icon">
+                      <Icon size={18} />
+                    </span>
+                    <span>{t(`HowItWorks.${key}`)}</span>
+                  </div>
+                ))}
+              </div>
 
-            {/* Central MenuList node */}
-            <rect x="290" y="118" width="280" height="58" rx="14" fill="#1d4ed8" />
-            <text x="430" y="151" textAnchor="middle" fill="white" fontSize="16" fontWeight="700" fontFamily="Inter, sans-serif">MenuList</text>
+              <div className="ws-page-source-map__core" aria-label="MenuList">
+                <span className="ws-page-source-map__ring ws-page-source-map__ring--outer" />
+                <span className="ws-page-source-map__ring ws-page-source-map__ring--inner" />
+                <div className="ws-page-source-map__logo">
+                  <LogoMark height={42} />
+                </div>
+                <div className="ws-page-source-map__gate">
+                  <LuZap size={14} />
+                  <span>{t('Workflow.pipelinePrepares')}</span>
+                </div>
+              </div>
 
-            {/* Centre → output lines */}
-            {[{ x: 70, delay: 'hiw-l3' }, { x: 214, delay: 'hiw-l4' }, { x: 358, delay: 'hiw-l5' }, { x: 502, delay: 'hiw-l6' }, { x: 646, delay: 'hiw-l7' }, { x: 790, delay: 'hiw-l7' }].map(({ x, delay }) => (
-              <line key={x} className={delay} x1="430" y1="176" x2={x} y2="240" stroke="#60a5fa" strokeWidth="1.5" strokeDasharray="6 6" strokeOpacity="0.5" />
-            ))}
-
-            {/* Output nodes */}
-            {flowOutputs.map(({ label, x }) => (
-              <g key={label}>
-                <rect x={x - 52} y="240" width="104" height="42" rx="8" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
-                <text x={x} y="266" textAnchor="middle" fill="#94a3b8" fontSize="13" fontWeight="500" fontFamily="Inter, sans-serif">{label}</text>
-              </g>
-            ))}
-          </svg>
+              <div className="ws-page-source-map__stack ws-page-source-map__stack--outputs">
+                {flowOutputs.map(({ key, Icon }) => (
+                  <div className="ws-page-source-map__item" key={key}>
+                    <span className="ws-page-source-map__icon">
+                      <Icon size={18} />
+                    </span>
+                    <span>{t(`HowItWorks.${key}`)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AnimateOnScroll>
         </div>
       </section>
 
@@ -295,30 +298,17 @@ export default function ProductPage() {
           </div>
         </AnimateOnScroll>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: 'var(--ws-space-4)',
-            marginTop: 'var(--ws-space-12)',
-            maxWidth: '960px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-          }}
-        >
+        <div className="ws-feature-card-grid">
           {surfaces.map((surface, index) => {
             const Icon = surface.icon;
             return (
               <AnimateStaggerChild key={surface.title} index={index} style={{ height: '100%' }}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={20} color="var(--ws-brand-secondary)" />
-                  </div>
-                  <div style={{ minWidth: 0, textAlign: 'left' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{surface.title}</h3>
-                    <p className="ws-caption" style={{ marginTop: '4px' }}>{surface.desc}</p>
-                  </div>
-                </div>
+                <WebsiteFeatureCard
+                  icon={Icon}
+                  title={surface.title}
+                  description={surface.desc}
+                  compact
+                />
               </AnimateStaggerChild>
             );
           })}
@@ -368,17 +358,7 @@ export default function ProductPage() {
           </div>
         </AnimateOnScroll>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 'var(--ws-space-4)',
-            marginTop: 'var(--ws-space-10)',
-            maxWidth: '960px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-          }}
-        >
+        <div className="ws-feature-card-grid" style={{ marginTop: 'var(--ws-space-10)' }}>
           {[LuStar, LuImage, LuQrCode, LuShare2, LuGlobe, LuCheck].map((Icon, index) => {
             const item = {
               icon: Icon,
@@ -387,15 +367,12 @@ export default function ProductPage() {
             };
             return (
               <AnimateStaggerChild key={index} index={index} style={{ height: '100%' }}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={20} color="var(--ws-brand-secondary)" />
-                  </div>
-                  <div style={{ minWidth: 0, textAlign: 'left' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
-                    <p className="ws-caption" style={{ marginTop: '4px' }}>{item.desc}</p>
-                  </div>
-                </div>
+                <WebsiteFeatureCard
+                  icon={item.icon}
+                  title={item.title}
+                  description={item.desc}
+                  compact
+                />
               </AnimateStaggerChild>
             );
           })}

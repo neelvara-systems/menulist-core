@@ -28,7 +28,7 @@ const C = {
   borderStrong: '#cbd5e1',
   page: '#f8fafc',
   white: '#ffffff',
-  blue: '#2563eb',
+  blue: '#0051d1',
   blueDark: '#1d4ed8',
   blueSoft: '#dbeafe',
   green: '#16a34a',

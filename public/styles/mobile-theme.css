@@ -5,7 +5,7 @@
 
 :root {
   /* Primary Colors - Sophisticated blue instead of bright cyan */
-  --adm-color-primary: #2563eb;
+  --adm-color-primary: #0051d1;
   --adm-color-primary-light: #3b82f6;
   --adm-color-primary-dark: #1d4ed8;
   --adm-color-primary-bg: #eff6ff;
@@ -331,7 +331,7 @@
 
 /* Modern Button Variants */
 .mobile-btn-primary {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #0051d1 0%, #1d4ed8 100%);
   color: white;
   border-radius: 12px;
   font-weight: 600;

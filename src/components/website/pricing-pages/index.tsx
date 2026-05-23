@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
 import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
@@ -359,31 +360,12 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                                         const Icon = step.icon;
                                         return (
                                             <AnimateStaggerChild key={step.title} index={index}>
-                                                <div className="ws-card" style={{ height: '100%', display: 'flex', alignItems: 'center', gap: 'var(--ws-space-4)' }}>
-                                                    <div
-                                                        style={{
-                                                            width: 34,
-                                                            height: 34,
-                                                            borderRadius: '999px',
-                                                            background: 'var(--ws-bg-accent)',
-                                                            color: 'var(--ws-brand-secondary)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            flexShrink: 0,
-                                                        }}
-                                                    >
-                                                        <Icon size={16} />
-                                                    </div>
-                                                    <div style={{ minWidth: 0 }}>
-                                                        <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--ws-text-primary)' }}>
-                                                            {step.title}
-                                                        </h3>
-                                                        <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>
-                                                            {step.desc}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                                <WebsiteFeatureCard
+                                                    icon={Icon}
+                                                    title={step.title}
+                                                    description={step.desc}
+                                                    compact
+                                                />
                                             </AnimateStaggerChild>
                                         );
                                     })}

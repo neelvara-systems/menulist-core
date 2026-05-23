@@ -42,12 +42,17 @@
 
   /* Brand */
   --brand-primary: #1e40af; /* Primary brand color (blue-800) */
-  --brand-secondary: #2563eb; /* Interactive elements (blue-600) */
+  --brand-secondary: #0051d1; /* Interactive elements (blue-600) */
   --brand-light: #dbeafe; /* Subtle brand backgrounds (blue-100) */
-  --brand-gradient: linear-gradient(90deg, #0f766e 0%, #0284c7 52%, #2563eb 100%); /* Brand mark/accent only */
+  --brand-gradient: linear-gradient(
+    90deg,
+    #27a8e3 0%,
+    #0284c7 52%,
+    #0051d1 100%
+  ); /* Brand mark/accent only */
 
   /* CTA */
-  --cta-default: #2563eb; /* Button default (blue-600) */
+  --cta-default: #0051d1; /* Button default (blue-600) */
   --cta-hover: #1d4ed8; /* Button hover (blue-700) */
   --cta-active: #1e40af; /* Button active (blue-800) */
   --cta-disabled: #93c5fd; /* Button disabled (blue-300) */
@@ -55,7 +60,7 @@
   /* Borders & Dividers */
   --border-default: #e2e8f0; /* Standard borders (slate-200) */
   --border-subtle: #f1f5f9; /* Very subtle separators (slate-100) */
-  --border-focus: #2563eb; /* Focus ring color (blue-600) */
+  --border-focus: #0051d1; /* Focus ring color (blue-600) */
 
   /* Semantic */
   --success: #059669; /* Success states (emerald-600) */
@@ -70,19 +75,35 @@ The public website supports system dark mode through the same website tokens. Th
 
 ```css
 :root.dark {
-  --bg-primary: #121212;
-  --bg-subtle: #181b20;
-  --bg-accent: #102033;
-  --bg-surface: #1b1f27;
-  --bg-elevated: #222833;
-  --bg-input: #171b22;
-  --bg-sticky: rgba(18, 18, 18, 0.9);
+  --bg-primary: #121417;
+  --bg-subtle: #171a1f;
+  --bg-accent: #18212b;
+  --bg-surface: #15181d;
+  --bg-elevated: #1b2027;
+  --bg-input: #171b21;
+  --bg-sticky: rgba(18, 20, 23, 0.94);
   --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --brand-primary: #7dd3fc;
-  --brand-secondary: #60a5fa;
-  --brand-gradient: linear-gradient(90deg, #2dd4bf 0%, #38bdf8 48%, #60a5fa 100%);
+  --text-secondary: #d5dde7;
+  --text-muted: #9aa7b8;
+  --brand-primary: #8bc8ff;
+  --brand-secondary: #6daefa;
+  --brand-gradient: linear-gradient(
+    90deg,
+    #5eead4 0%,
+    #38bdf8 48%,
+    #7aa7ff 100%
+  );
+
+  /* Shared contrast panels for footer/proof/editorial dark surfaces */
+  --panel-contrast: #15181d;
+  --panel-contrast-raised: #1a1f27;
+  --panel-contrast-soft: rgba(148, 163, 184, 0.08);
+  --panel-contrast-border: rgba(148, 163, 184, 0.22);
+  --panel-contrast-text: #f8fafc;
+  --panel-contrast-secondary: #d5dde7;
+  --panel-contrast-muted: #9aa7b8;
+  --panel-contrast-accent: #a9cdfc;
+  --panel-contrast-icon: #6daefa;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -111,6 +132,7 @@ Brand gradient rule:
 - Use the brighter teal-to-blue gradient only in dark mode where it has enough contrast and does not make the page feel like a flashy tech dashboard.
 - Dark surfaces must use dark gray (`#121212` family), not pure black, so cards, headers, pricing, forms, and generated assets keep readable depth.
 - Fixed utility overlays, sticky CTAs, footer preference controls, footer legal text, and dark product-flow panels must use theme tokens or verified high-contrast dark-panel colors, not hardcoded light surfaces.
+- Footer, proof bands, discovery panels, phone frames, and other dark editorial panels must use the shared contrast-panel variables instead of one-off navy, cyan, white, or green treatments.
 - Pricing controls that render before hydration, especially currency and billing controls, should use website CSS variables directly, not only Tailwind `dark:` variants.
 - Brand display surfaces should render through `src/components/website/shared/BrandWordmark.tsx`; the canonical public website display name is `MenuList`.
 - Website header/footer wordmark text is solid and inherits the surface text color; the logo mark carries the gradient.
@@ -153,19 +175,19 @@ font-family:
 
 ### 3.2 Type Scale
 
-| Token     | Element        | Weight | Desktop | Mobile | Line Height | Letter Spacing | Tailwind                                              |
-| --------- | -------------- | ------ | ------- | ------ | ----------- | -------------- | ----------------------------------------------------- |
-| `display` | Hero headline  | 700    | 56px    | 36px   | 1.1         | 0              | `text-[56px] md:text-[36px] font-bold`                |
-| `h1`      | Page titles    | 700    | 48px    | 32px   | 1.15        | 0              | `text-5xl md:text-3xl font-bold`                      |
-| `h2`      | Section titles | 600    | 36px    | 26px   | 1.2         | 0              | `text-4xl md:text-2xl font-semibold`                  |
-| `h3`      | Subsections    | 600    | 24px    | 20px   | 1.3         | 0              | `text-2xl md:text-xl font-semibold`                   |
-| `h4`      | Card titles    | 600    | 20px    | 18px   | 1.3         | 0              | `text-xl md:text-lg font-semibold`                    |
-| `body-lg` | Hero subtext   | 400    | 20px    | 17px   | 1.6         | 0              | `text-xl md:text-[17px]`                              |
-| `body`    | General text   | 400    | 16px    | 15px   | 1.6         | 0              | `text-base md:text-[15px]`                            |
-| `body-sm` | Small text     | 400    | 14px    | 13px   | 1.5         | 0              | `text-sm`                                             |
-| `caption` | Meta/labels    | 500    | 12px    | 12px   | 1.4         | 0              | `text-xs font-medium`                                 |
-| `button`  | CTA text       | 600    | 16px    | 16px   | 1           | 0              | `text-base font-semibold`                             |
-| `nav`     | Nav links      | 500    | 15px    | 15px   | 1           | 0              | `text-[15px] font-medium`                             |
+| Token     | Element        | Weight | Desktop | Mobile | Line Height | Letter Spacing | Tailwind                               |
+| --------- | -------------- | ------ | ------- | ------ | ----------- | -------------- | -------------------------------------- |
+| `display` | Hero headline  | 700    | 56px    | 36px   | 1.1         | 0              | `text-[56px] md:text-[36px] font-bold` |
+| `h1`      | Page titles    | 700    | 48px    | 32px   | 1.15        | 0              | `text-5xl md:text-3xl font-bold`       |
+| `h2`      | Section titles | 600    | 36px    | 26px   | 1.2         | 0              | `text-4xl md:text-2xl font-semibold`   |
+| `h3`      | Subsections    | 600    | 24px    | 20px   | 1.3         | 0              | `text-2xl md:text-xl font-semibold`    |
+| `h4`      | Card titles    | 600    | 20px    | 18px   | 1.3         | 0              | `text-xl md:text-lg font-semibold`     |
+| `body-lg` | Hero subtext   | 400    | 20px    | 17px   | 1.6         | 0              | `text-xl md:text-[17px]`               |
+| `body`    | General text   | 400    | 16px    | 15px   | 1.6         | 0              | `text-base md:text-[15px]`             |
+| `body-sm` | Small text     | 400    | 14px    | 13px   | 1.5         | 0              | `text-sm`                              |
+| `caption` | Meta/labels    | 500    | 12px    | 12px   | 1.4         | 0              | `text-xs font-medium`                  |
+| `button`  | CTA text       | 600    | 16px    | 16px   | 1           | 0              | `text-base font-semibold`              |
+| `nav`     | Nav links      | 500    | 15px    | 15px   | 1           | 0              | `text-[15px] font-medium`              |
 
 ### 3.3 Typography Rules
 
@@ -189,7 +211,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 
 | Context                         | Desktop                         | Mobile | Tailwind          |
 | ------------------------------- | ------------------------------- | ------ | ----------------- |
-| Hero top/bottom padding         | 96px                            | 48px   | `py-24 md:py-12`  |
+| Hero top/bottom padding         | 80px top / 64px bottom on main homepage hero, 96px/56px on supporting page heroes | 48px | `py-20 pb-16` / `py-24 pb-14` |
 | Standard section padding        | 80px                            | 48px   | `py-20 md:py-12`  |
 | Between section groups          | 0 (background change separates) | —      | —                 |
 | Between elements within section | 48px                            | 32px   | `gap-12 md:gap-8` |
@@ -301,6 +323,21 @@ NO hover transform
 NO hover shadow change
 ```
 
+### 5.2.1 Website Feature Cards
+
+Use `src/components/website/shared/WebsiteFeatureCard.tsx` for public website proof cards, feature cards, setup/rollout cards, and supporting-page card grids.
+
+Rules:
+
+- Icon placement is top-right, not sometimes left and sometimes inline.
+- Grid defaults to `ws-feature-card-grid`: `repeat(auto-fit, minmax(320px, 1fr))`, `gap: var(--ws-space-6)`, `max-width: 1120px`.
+- Card body uses `ws-feature-card`: spacious padding, stable min-height, calm border/background, no hover movement.
+- Titles use 18px / 800 weight in normal cards and 16px in compact cards.
+- Subtitles can use brand blue only when they clarify the card role; body copy stays `--ws-text-secondary`.
+- Footer/proof lines sit behind a top border and should express the outcome, not repeat the description.
+- Use the compact variant for dense supporting pages such as Features, Pricing decision cards, About principles, and Trust/Security pillars.
+- Do not copy Canonica colors or product framing. MenuList can reuse disciplined spacing/card rhythm while preserving MenuList's official-source positioning.
+
 ### 5.3 Owner Reassurance Helpers
 
 Use short inline helper lines below primary CTA/caption areas when they reduce non-technical SMB owner doubt.
@@ -395,6 +432,34 @@ The Pricing page may use Tailwind/shadcn utilities, but its CSS variables must r
 - Active/emphasis: `--brand-secondary`
 - Style: Outline only (no filled variants)
 - Stroke width: default (2px)
+
+### 5.9 Workflow Source Map
+
+Use the homepage workflow source map when explaining how a current menu becomes public customer outputs.
+
+Rules:
+
+- Place it in `InteractiveWorkflowSection`, not the hero. The hero stays product/customer-output led.
+- Use the official `LogoMark` at the center.
+- Left stack shows source inputs: photo, PDF, typed text.
+- Center keeps the owner-review gate visible.
+- Right stack shows public outputs: official page, menu link, QR code, print/PDF.
+- Curved paths may be static and subtle; do not animate the diagram or make it feel like a developer integration graphic.
+- Use website tokens for all backgrounds, borders, lines, text, and icons so light and dark mode stay consistent.
+
+### 5.10 Supporting Page Source Maps
+
+Use supporting-page source maps for `/how-it-works` and `/multi-location` when a page needs a product-system explanation after the hero.
+
+Rules:
+
+- Do not use animated dashed SVG lines. Supporting page diagrams should be static and calm.
+- `/how-it-works` uses source inputs -> MenuList owner review -> customer surfaces.
+- `/multi-location` uses approved master source -> linked outlet cards.
+- Use the official `LogoMark` only where the diagram represents MenuList as the operating system, not as decoration.
+- Use `--ws-panel-contrast*` tokens for dark map sections so dark mode stays cohesive.
+- Labels must be owner-readable: `Menu link`, `Official page`, `Saved shortcut`, `approved updates`.
+- Avoid generic words such as `App`, `Web Page`, `node`, `sync engine`, or integration-style labels.
 
 ---
 

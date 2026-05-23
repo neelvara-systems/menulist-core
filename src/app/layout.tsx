@@ -221,7 +221,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                                     'background: #dc2626; color: white; padding: 8px 16px; font-size: 14px; font-weight: bold; border-radius: 4px;'
                                 );
                                 
-                                console.log('%c📍 Directive:', 'font-weight: bold; color: #2563eb;', violatedDirective);
+                                console.log('%c📍 Directive:', 'font-weight: bold; color: #0051d1;', violatedDirective);
                                 console.log('%c🔗 Blocked URL:', 'font-weight: bold; color: #dc2626;', blockedURI);
                                 
                                 if (blockedURI && blockedURI !== 'inline' && blockedURI !== 'eval') {

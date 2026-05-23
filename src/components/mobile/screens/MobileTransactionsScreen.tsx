@@ -352,7 +352,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 right={(
                     <Flex align="center" gap={4}>
                         <Button fill="none" onClick={openFilterSheet}>
-                            <LuFilter color={hasActiveFilters ? '#2563eb' : '#64748b'} size={18} />
+                            <LuFilter color={hasActiveFilters ? '#0051d1' : '#64748b'} size={18} />
                         </Button>
                         <Button fill="none" loading={loading && transactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }}>
                             <LuRefreshCw color="#64748b" size={18} />

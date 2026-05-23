@@ -66,6 +66,7 @@
 |------|---------|
 | `src/app/sites/canonica/layout.tsx` | Layout with metadata, OG tags, SEO |
 | `src/app/sites/canonica/styles.css` | Tailwind directives + CSS variables |
+| `src/app/sites/canonica/scroll-reveal.css` | Canonica-specific viewport reveal motion for public website sections, cards, CTAs, and footer groups |
 | `src/app/sites/canonica/page.tsx` | Homepage (server component) |
 | `src/app/sites/canonica/productAreas.ts` | Shared product-area navigation and descriptions |
 | `src/app/sites/canonica/product/launch-setup/page.tsx` | Product-area landing page for Launch Setup |
@@ -114,7 +115,10 @@
 | `src/app/sites/canonica/components/Footer.tsx` | Shared footer with link columns |
 | `src/app/sites/canonica/components/CanonicaLink.tsx` | Dev/production-aware Link component |
 | `src/app/sites/canonica/components/CanonicaAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
+| `src/app/sites/canonica/components/CanonicaScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across Canonica public pages |
+| `src/constants/canonica/routes.ts` | Lightweight Canonica dashboard route constants used by public client islands without importing sidebar icon metadata |
 | `src/app/sites/canonica/components/HeroSection.tsx` | Hero with gradient text + CTAs |
+| `src/app/sites/canonica/components/SupportKnowledgeMapSection.tsx` | Homepage and product-page visual map showing support knowledge inputs, Canonica control plane, and output surfaces |
 | `src/app/sites/canonica/components/HomePageAwareDemoSection.tsx` | Homepage tabbed static page-aware demo section |
 | `src/app/sites/canonica/components/ClosedLoopSection.tsx` | Homepage support truth loop from page question to reviewed canonical answer |
 | `src/app/sites/canonica/components/BestFitSection.tsx` | Homepage best-fit/not-fit buyer qualification |
@@ -157,6 +161,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 4. **basePath pattern** — `getBasePath()` reads `x-product-id` header + `host` to determine if dev mode. Passed as prop to components that contain links.
 5. **CanonicaLink** — Wraps `next/link` with basePath prefix for dev mode compatibility.
 6. **No external dependencies** — Zero new npm packages. Uses Tailwind + inline SVGs.
+7. **Viewport reveal motion** — A single Canonica-specific client island adds restrained section/card/CTA reveal effects across public pages with reduced-motion support. Motion stays product-site polish, not decorative animation.
 
 ---
 
@@ -190,3 +195,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Updated shared product capability bento sections so five-card layouts render as two wide cards on row one and three balanced cards on row two |
 | 2026-05-23 | Replaced the public website header/footer raster logo image with an inline true SVG mark so the Canonica brand stays crisp on high-density displays |
 | 2026-05-23 | Added signed-in Google account visibility and an account-switch action to the get-started form so founders can change email before creating a workspace |
+| 2026-05-23 | Added an existing Canonica workspace state to the get-started form so valid signed-in accounts are sent to Activation/Billing instead of seeing the setup form again |
+| 2026-05-23 | Added homepage section-band background rhythm and larger vertical spacing so public sections have clearer visual separation without extra runtime cost |
+| 2026-05-23 | Added Canonica-specific viewport reveal effects across public pages and card/link panels through the shared website layout, preserving reduced-motion behavior and product separation from MenuList website styling |
+| 2026-05-23 | Added a support knowledge map to the homepage and Product page so buyers can understand docs, releases, tickets, feedback, and page context flowing into Canonica, then out to widget, hosted help, approved answers, and review queues |

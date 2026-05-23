@@ -60,23 +60,23 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                     gap: '4px',
                     padding: isFooter ? '0 0.75rem' : '6px 10px',
                     minHeight: isFooter ? '2.5rem' : undefined,
-                    background: isFooter ? 'rgba(15, 23, 42, 0.62)' : 'none',
-                    border: isFooter ? '1px solid rgba(148, 163, 184, 0.28)' : '1px solid var(--ws-border-default)',
+                    background: isFooter ? 'var(--ws-panel-contrast-raised)' : 'none',
+                    border: isFooter ? '1px solid var(--ws-panel-contrast-border)' : '1px solid var(--ws-border-default)',
                     borderRadius: 'var(--ws-radius-md)',
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
                     fontWeight: isFooter ? 700 : 500,
-                    color: isFooter ? '#cbd5e1' : 'var(--ws-text-secondary)',
+                    color: isFooter ? 'var(--ws-panel-contrast-secondary)' : 'var(--ws-text-secondary)',
                     transition: 'all 0.15s ease',
                     whiteSpace: 'nowrap',
                 }}
                 onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = isFooter ? '#60a5fa' : 'var(--ws-brand-secondary)';
-                    e.currentTarget.style.color = isFooter ? '#ffffff' : 'var(--ws-text-primary)';
+                    e.currentTarget.style.borderColor = isFooter ? 'var(--ws-panel-contrast-icon)' : 'var(--ws-brand-secondary)';
+                    e.currentTarget.style.color = isFooter ? 'var(--ws-panel-contrast-text)' : 'var(--ws-text-primary)';
                 }}
                 onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = isFooter ? 'rgba(148, 163, 184, 0.28)' : 'var(--ws-border-default)';
-                    e.currentTarget.style.color = isFooter ? '#cbd5e1' : 'var(--ws-text-secondary)';
+                    e.currentTarget.style.borderColor = isFooter ? 'var(--ws-panel-contrast-border)' : 'var(--ws-border-default)';
+                    e.currentTarget.style.color = isFooter ? 'var(--ws-panel-contrast-secondary)' : 'var(--ws-text-secondary)';
                 }}
                 aria-label={t('LanguageSwitcher.label')}
             >
@@ -97,8 +97,8 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                         minWidth: '180px',
                         maxHeight: '300px',
                         overflowY: 'auto',
-                        backgroundColor: isFooter ? '#111827' : 'var(--ws-bg-elevated)',
-                        border: isFooter ? '1px solid rgba(148, 163, 184, 0.28)' : '1px solid var(--ws-border-default)',
+                        backgroundColor: isFooter ? 'var(--ws-panel-contrast-raised)' : 'var(--ws-bg-elevated)',
+                        border: isFooter ? '1px solid var(--ws-panel-contrast-border)' : '1px solid var(--ws-border-default)',
                         borderRadius: 'var(--ws-radius-lg)',
                         boxShadow: 'var(--ws-shadow-lg)',
                         zIndex: 100,
@@ -117,24 +117,24 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                                     justifyContent: 'space-between',
                                     width: '100%',
                                     padding: '8px 14px',
-                                    background: isActive ? (isFooter ? 'rgba(96, 165, 250, 0.16)' : 'var(--ws-bg-accent)') : 'none',
+                                    background: isActive ? (isFooter ? 'var(--ws-brand-light)' : 'var(--ws-bg-accent)') : 'none',
                                     border: 'none',
                                     cursor: 'pointer',
                                     fontSize: '0.875rem',
                                     fontWeight: isActive ? 600 : 400,
-                                    color: isActive ? (isFooter ? '#bfdbfe' : 'var(--ws-brand-secondary)') : (isFooter ? '#e2e8f0' : 'var(--ws-text-primary)'),
+                                    color: isActive ? (isFooter ? 'var(--ws-panel-contrast-accent)' : 'var(--ws-brand-secondary)') : (isFooter ? 'var(--ws-panel-contrast-secondary)' : 'var(--ws-text-primary)'),
                                     textAlign: 'left',
                                     transition: 'background 0.15s',
                                 }}
                                 onMouseEnter={e => {
-                                    if (!isActive) e.currentTarget.style.background = isFooter ? 'rgba(148, 163, 184, 0.14)' : 'var(--ws-bg-subtle)';
+                                    if (!isActive) e.currentTarget.style.background = isFooter ? 'var(--ws-panel-contrast-soft)' : 'var(--ws-bg-subtle)';
                                 }}
                                 onMouseLeave={e => {
                                     if (!isActive) e.currentTarget.style.background = 'none';
                                 }}
                             >
                                 <span>{lang.nativeName}</span>
-                                <span style={{ fontSize: '0.75rem', color: isFooter ? '#94a3b8' : 'var(--ws-text-muted)', fontWeight: 400 }}>
+                                <span style={{ fontSize: '0.75rem', color: isFooter ? 'var(--ws-panel-contrast-muted)' : 'var(--ws-text-muted)', fontWeight: 400 }}>
                                     {lang.label}
                                 </span>
                             </button>

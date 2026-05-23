@@ -3,8 +3,8 @@
 import { FEATURE_FLAGS } from '@config/features';
 import type {
     OBPActionBreakdown,
-    OBPLinkBreakdown,
     OBPLanguageUsage,
+    OBPLinkBreakdown,
     OBPPeriodMetrics,
     OBPShareBreakdown,
     OBPSourceBreakdown,
@@ -87,8 +87,8 @@ function renderLinkRows(links: OBPLinkBreakdown) {
     const rows = [
         { key: 'google_review', label: 'Google reviews', value: links.google_review, icon: <LuGlobe color="#1d4ed8" size={14} /> },
         { key: 'instagram', label: 'Instagram', value: links.instagram, icon: <LuExternalLink color="#ec4899" size={14} /> },
-        { key: 'facebook', label: 'Facebook', value: links.facebook, icon: <LuExternalLink color="#2563eb" size={14} /> },
-        { key: 'website', label: 'Website', value: links.website, icon: <LuExternalLink color="#0f766e" size={14} /> },
+        { key: 'facebook', label: 'Facebook', value: links.facebook, icon: <LuExternalLink color="#0051d1" size={14} /> },
+        { key: 'website', label: 'Website', value: links.website, icon: <LuExternalLink color="#27a8e3" size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
@@ -198,7 +198,7 @@ function renderMetricCards(metrics: OBPPeriodMetrics) {
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
-                        <LuExternalLink color="#0f766e" size={14} />
+                        <LuExternalLink color="#27a8e3" size={14} />
                         <Text type="secondary">Link Taps</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.linkClicks.toLocaleString()}</Title>
@@ -293,12 +293,12 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
         mode === 'overall'
             ? 'Official Business Page · Overall'
             : mode === 'daily'
-            ? 'Official Business Page · Yesterday'
-            : mode === 'weekly'
-                ? 'Official Business Page · Last 7 Days'
-                : mode === 'monthly'
-                    ? 'Official Business Page · This Month'
-                    : 'Official Business Page';
+                ? 'Official Business Page · Yesterday'
+                : mode === 'weekly'
+                    ? 'Official Business Page · Last 7 Days'
+                    : mode === 'monthly'
+                        ? 'Official Business Page · This Month'
+                        : 'Official Business Page';
 
     if (loading && !data) {
         return (

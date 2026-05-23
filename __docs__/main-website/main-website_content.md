@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 21, 2026
+**Last Updated:** May 23, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -197,7 +197,14 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 **Section heading:**
 
-> From current menu to public truth.
+> Upload, review, publish.
+
+**Workflow visual:**
+
+- Left side: current menu inputs (`Photo`, `PDF`, `Text`).
+- Center: official MenuList logo plus `Owner review`.
+- Right side: public customer outputs (`Official page`, `Menu link`, `QR code`, `Print/PDF`).
+- This visual belongs in the workflow section, not the hero, because the hero should keep showing believable product/customer proof while the workflow section explains the operating model.
 
 **Steps (4):**
 
@@ -210,7 +217,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 **Micro-copy below steps:**
 
-> Simple on the surface. Serious underneath.
+> No technical setup. You approve before publishing.
 
 ---
 
@@ -532,6 +539,13 @@ Key FAQ topics:
 
 **CTA:** Upload your menu →
 
+**Source map visual:**
+
+- Left side: menu inputs (`Photo`, `PDF`, `Typed text`).
+- Center: official MenuList mark plus owner-review gate.
+- Right side: customer surfaces (`QR`, `Menu link`, `Screens`, `Print/PDF`, `Official page`, `Saved shortcut`).
+- The visual must stay static, restrained, and product-specific. Do not use animated integration-style lines or generic SaaS node graphics.
+
 ---
 
 ### Section: Upload & Create
@@ -794,7 +808,14 @@ Description:
 
 > Build your core menu once at HQ. When you update the master and publish the approved version, linked outlets can reflect the change from the same source.
 
-**Visual:** Master menu → approved-source flow → 5 outlet menus using the same source
+**Visual:** approved master menu -> linked outlets using the same approved update source.
+
+**Source map notes:**
+
+- Top card: approved master menu.
+- Outlet cards: five linked outlets receiving approved updates.
+- Use outlet-governance language, not developer sync or instant-propagation language.
+- Keep the diagram static and calm; it should explain control and consistency, not look like infrastructure animation.
 
 ---
 

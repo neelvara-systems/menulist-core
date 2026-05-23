@@ -13,6 +13,7 @@ import {
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 
 const surfaceMeta = [
   { icon: LuQrCode },
@@ -58,58 +59,17 @@ export default function SurfacesSection() {
         </div>
       </AnimateOnScroll>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: 'var(--ws-space-4)',
-          marginTop: 'var(--ws-space-12)',
-          maxWidth: '960px',
-          marginLeft: 'auto',
-          marginRight: 'auto',
-        }}
-      >
+      <div className="ws-feature-card-grid">
         {surfaces.map((surface, index) => {
           const Icon = surface.icon;
           return (
             <AnimateStaggerChild key={surface.title} index={index} style={{ height: '100%' }}>
-              <div
-                className="ws-card"
-                style={{
-                  display: 'flex',
-                  gap: 'var(--ws-space-4)',
-                  alignItems: 'flex-start',
-                  height: '100%',
-                }}
-              >
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: 'var(--ws-radius-md)',
-                    backgroundColor: 'var(--ws-bg-accent)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon size={20} color="var(--ws-brand-secondary)" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--ws-space-2)' }}>
-                    <h3 className="ws-h3" style={{ fontSize: '1rem', margin: 0 }}>
-                      {surface.title}
-                    </h3>
-                  </div>
-                  <p className="ws-body-sm" style={{ marginTop: '2px' }}>
-                    {surface.subtitle}
-                  </p>
-                  <p className="ws-caption" style={{ marginTop: '4px' }}>
-                    {surface.desc}
-                  </p>
-                </div>
-              </div>
+              <WebsiteFeatureCard
+                icon={Icon}
+                title={surface.title}
+                subtitle={surface.subtitle}
+                description={surface.desc}
+              />
             </AnimateStaggerChild>
           );
         })}

@@ -6,6 +6,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
@@ -121,16 +122,12 @@ export default function TrustSecurityPage() {
             const points = Array.from({ length: pillar.points }, (_, pointIndex) => t(`TrustSecurity.${pillar.key}Point${pointIndex}`));
             return (
               <AnimateStaggerChild key={pillar.key} index={i}>
-                <div className="ws-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-4)' }}>
-                  <div style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon size={22} color="var(--ws-brand-secondary)" />
-                    </div>
-                    <div style={{ minWidth: 0, textAlign: 'left' }}>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{title}</h3>
-                      <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{desc}</p>
-                    </div>
-                  </div>
+                <WebsiteFeatureCard
+                  icon={Icon}
+                  title={title}
+                  description={desc}
+                  compact
+                >
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
                     {points.map((point) => (
                       <li key={point} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
@@ -139,7 +136,7 @@ export default function TrustSecurityPage() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </WebsiteFeatureCard>
               </AnimateStaggerChild>
             );
           })}

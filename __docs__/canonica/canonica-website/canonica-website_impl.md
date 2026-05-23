@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.14
+> **Version:** 1.2.18
 > **Last Updated:** 2026-05-23
 > **Audience:** Developers
 
@@ -14,7 +14,7 @@
 | Styling | Tailwind CSS (same pipeline as MenuList) |
 | Routing | Middleware hostname-based rewrite (multi-product) |
 | Components | React Server Components by default; client islands only where interaction needs state |
-| Links | `CanonicaLink` wrapper for dev/production path resolution |
+| Links | `CanonicaLink` wrapper for public-site links; `src/constants/canonica/routes.ts` for dashboard route constants without sidebar icon bundle cost |
 | Dependencies | Zero new npm packages |
 
 ---
@@ -24,7 +24,8 @@
 ```
 src/app/sites/canonica/
 ├── layout.tsx                     # Root layout (metadata, OG, viewport)
-├── styles.css                     # Tailwind directives + CSS variables
+├── styles.css                     # Tailwind directives, CSS variables, and homepage section-band rhythm
+├── scroll-reveal.css              # Canonica-specific viewport reveal motion with reduced-motion support
 ├── page.tsx                       # Homepage (server component)
 ├── not-found.tsx                  # 404 page
 ├── productAreas.ts                # Shared product-area navigation and descriptions
@@ -72,7 +73,9 @@ src/app/sites/canonica/
     ├── CanonicaLogoMark.tsx       # Inline vector infinity mark for crisp website header/footer branding
     ├── CanonicaLink.tsx           # Dev/production-aware Link wrapper
     ├── CanonicaAnalytics.tsx      # Optional GA/measurement event tracker, no Firestore writes
+    ├── CanonicaScrollReveal.tsx   # Layout-level reveal observer for public sections, cards, CTA controls, and footer groups
     ├── HeroSection.tsx            # Homepage hero
+    ├── SupportKnowledgeMapSection.tsx # Visual source map for support inputs, Canonica control plane, and output surfaces
     ├── HomePageAwareDemoSection.tsx # Embedded generic-vs-Canonica demo
     ├── ClosedLoopSection.tsx      # Page question to reviewed canonical answer loop
     ├── BestFitSection.tsx         # Buyer qualification section
@@ -94,6 +97,8 @@ src/app/sites/canonica/
     ├── StructuredData.tsx         # Organization/WebSite/SoftwareApplication JSON-LD
     └── CTASection.tsx             # Homepage bottom CTA
 ```
+
+Related Canonica route constants live in `src/constants/canonica/routes.ts`. `src/constants/canonica/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
 ## Self-Sellable Positioning Pass
 
@@ -144,6 +149,8 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 23 resources layout pass changed grouped resources from four tall category columns to stacked horizontal decision rows so each group title and its three linked subcards read together on desktop while remaining stacked on mobile.
 - May 23 resources polish removed the outer row cards from the decision-path rows so the resources hub reads as clean rows of links instead of nested boxes.
 - May 23 product capability bento pass changed five-card capability sections to a 2-card first row and 3-card second row, improving visual balance and moving the third card, such as Support Control's Changelog support, into the second row.
+- May 23 viewport motion pass added a Canonica-specific layout-level reveal observer that applies restrained appearance effects to sections, semantic article cards, rounded grid/link cards, CTA controls, and footer groups across public pages without adding a dependency or mixing MenuList website classes.
+- May 23 support knowledge map pass added `SupportKnowledgeMapSection.tsx` to the homepage and `/product` page. It is a static visual explanation of docs/FAQs, releases/product pages, tickets/feedback, and page context flowing into Canonica, then out to the page-aware widget, hosted help, approved answers, and governance queue. The map intentionally avoids helpdesk-replacement and autopilot claims.
 - `ClosedLoopSection.tsx` now explains the loop: user asks from product page, Canonica uses safe context, approved answer is served first, fallback becomes a signal, owner approves the fix, and future users receive canonical support truth.
 - Comparison now explicitly separates AI chatbot, helpdesk, knowledge base, and Canonica so buyers do not misclassify Canonica as a helpdesk replacement.
 - FAQ now defines "not a chatbot", canonical answers, missing-answer behavior, and human approval before authoritative answers.
@@ -245,8 +252,9 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 
 ### Client Components (`'use client'`)
 - `demo/CanonicaPublicDemo.tsx` — Account-free demo state
-- `get-started/OnboardingForm.tsx` — Self-service onboarding form state
+- `get-started/OnboardingForm.tsx` — Self-service onboarding form state, signed-in account switching, and existing-workspace dashboard handoff
 - `components/CanonicaAnalytics.tsx` — Optional GA script plus delegated click tracking for `data-canonica-event` elements
+- `components/CanonicaScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
 - `Header.tsx` — Desktop Product dropdown and mobile navigation use native `<details>/<summary>` so they still work if hydration is delayed and do not add a client bundle.
@@ -276,6 +284,8 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 **$0.00/month for normal browsing** — The website pages are static. No database reads, no API calls, no Cloud Functions.
 
 The public demo is static interaction state only. Security, FAQ, privacy, and terms pages are static content. The self-service onboarding form is the only public website surface that calls Canonica APIs, and it runs only after explicit user submission.
+
+Existing Canonica workspace detection on `/get-started` uses the already-loaded NextAuth session/product account. It does not add a Firestore read to normal page rendering; owners with a valid Canonica scope get Activation/Billing links plus a switch-account action.
 
 Use-cases, install, resources, updates, and the homepage product/widget preview sections are static server-rendered website content. They do not read Firestore and do not call Canonica APIs.
 
@@ -332,3 +342,7 @@ Conversion analytics is client-side only:
 | 2026-05-23 | 1.2.12 | Removed remaining light-mode mockup panels from the public demo, product capability template, and homepage widget section so newly added Canonica website pages match the dark visual system |
 | 2026-05-23 | 1.2.13 | Replaced the simplified path-redrawn Canonica website mark with the approved dimensional mark SVG wrapper in public header and footer branding while keeping raster assets for metadata, favicon, and dashboard compatibility |
 | 2026-05-23 | 1.2.14 | Added signed-in account visibility and an account-switch logout action to the self-service get-started form; Google sign-in now prompts account selection so founders can change email before workspace creation |
+| 2026-05-23 | 1.2.15 | Added an existing-workspace state to `/get-started`: signed-in users with a valid Canonica product account now see Activation/Billing handoff actions instead of the workspace creation form, with no extra Firebase read; pure route constants were split from icon-heavy navigation metadata for public client-bundle discipline |
+| 2026-05-23 | 1.2.16 | Added homepage-only section-band styling in `styles.css` so sections alternate through subtle dark shades with more vertical breathing space while keeping normal website browsing static and zero-Firebase-cost |
+| 2026-05-23 | 1.2.17 | Added Canonica-specific viewport reveal motion through `CanonicaScrollReveal` and `scroll-reveal.css`, covering public page sections, semantic cards, rounded grid/link panels, CTA controls, and footer groups with reduced-motion support |
+| 2026-05-23 | 1.2.18 | Added `SupportKnowledgeMapSection` on the homepage and Product page to make Canonica's source-map model self-explanatory without positioning it as a chatbot, helpdesk replacement, docs CMS, or autopilot |

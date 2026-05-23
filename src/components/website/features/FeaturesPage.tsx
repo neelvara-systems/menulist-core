@@ -6,6 +6,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
 import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
@@ -118,29 +119,17 @@ export default function FeaturesPage() {
               />
             </AnimateOnScroll>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: 'var(--ws-space-4)',
-                marginTop: 'var(--ws-space-10)',
-                maxWidth: '960px',
-                gridAutoRows: '1fr',
-              }}
-            >
+            <div className="ws-feature-card-grid" style={{ marginTop: 'var(--ws-space-10)' }}>
               {group.features.map((feature, fi) => {
                 const Icon = feature.icon;
                 return (
                   <AnimateStaggerChild key={feature.title} index={fi}>
-                    <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={20} color="var(--ws-brand-secondary)" />
-                      </div>
-                      <div style={{ minWidth: 0, textAlign: 'left' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{feature.title}</h3>
-                        <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{feature.desc}</p>
-                      </div>
-                    </div>
+                    <WebsiteFeatureCard
+                      icon={Icon}
+                      title={feature.title}
+                      description={feature.desc}
+                      compact
+                    />
                   </AnimateStaggerChild>
                 );
               })}
@@ -164,26 +153,15 @@ export default function FeaturesPage() {
             />
           </AnimateOnScroll>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: 'var(--ws-space-4)',
-              marginTop: 'var(--ws-space-10)',
-              gridAutoRows: '1fr',
-            }}
-          >
+          <div className="ws-feature-card-grid" style={{ marginTop: 'var(--ws-space-10)' }}>
             {analyticsCards.map((item, index) => (
               <AnimateStaggerChild key={item.title} index={index}>
-                <div className="ws-card" style={{ display: 'flex', gap: 'var(--ws-space-4)', alignItems: 'center', height: '100%' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: 'var(--ws-radius-md)', backgroundColor: 'var(--ws-bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <item.icon size={20} color="var(--ws-brand-secondary)" />
-                  </div>
-                  <div style={{ minWidth: 0, textAlign: 'left' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>{item.title}</h3>
-                    <p className="ws-caption" style={{ marginTop: 'var(--ws-space-2)' }}>{item.desc}</p>
-                  </div>
-                </div>
+                <WebsiteFeatureCard
+                  icon={item.icon}
+                  title={item.title}
+                  description={item.desc}
+                  compact
+                />
               </AnimateStaggerChild>
             ))}
           </div>
