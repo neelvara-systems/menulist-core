@@ -1,7 +1,7 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.4
-> **Last Updated:** 2026-05-22
+> **Version:** 1.2.11
+> **Last Updated:** 2026-05-23
 > **Audience:** Developers
 
 ---
@@ -33,6 +33,12 @@ src/app/sites/canonica/
 ├── product/page-aware-widget/page.tsx # Landing page for Page-Aware Widget
 ├── product/support-control/page.tsx # Landing page for Support Control
 ├── product/knowledge-governance/page.tsx # Landing page for Knowledge Governance
+├── product/ProductFeatureRoutePage.tsx # Shared server wrapper for feature pages
+├── product/knowledge-base/page.tsx # Knowledge Base feature page
+├── product/faq-management/page.tsx # FAQ Management feature page
+├── product/changelog/page.tsx     # Changelog feature page
+├── product/tickets/page.tsx       # Tickets feature page
+├── productFeatures.ts             # Shared product-feature route data and sitemap source
 ├── use-cases/page.tsx             # Small-SaaS use-case page
 ├── use-cases/founders/page.tsx    # Founder use-case page
 ├── use-cases/support-teams/page.tsx # Support team use-case page
@@ -83,6 +89,7 @@ src/app/sites/canonica/
     ├── SeoLandingPage.tsx         # Shared static SEO landing page component
     ├── UseCaseLandingPage.tsx     # Shared wrapper for role-specific use-case pages
     ├── ProductCapabilityLandingPage.tsx # Shared template for product-area landing pages
+    ├── ProductFeatureLandingPage.tsx # Shared template for KB/FAQ/changelog/ticket feature pages
     ├── StructuredData.tsx         # Organization/WebSite/SoftwareApplication JSON-LD
     └── CTASection.tsx             # Homepage bottom CTA
 ```
@@ -129,6 +136,12 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 22 presentation pass replaced the dense demo layout with a tabbed product-surface row and large browser-style product canvas, moved product proof closer to modern SaaS screenshot sections, and rebuilt the widget section as a bento grid without adding runtime data calls.
 - May 22 product-area pass added landing-style pages for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance so each major capability can be evaluated independently while reusing static, zero-Firebase-cost product proof components.
 - May 22 final polish pass made those product areas first-class in the header Product dropdown, homepage product-area section, resources hub, and SEO/use-case cross-link blocks so visitors can evaluate Canonica like a product suite instead of a single long page.
+- May 23 product-feature pass added standalone `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, and `/product/tickets` pages using a reusable outcome-hero, visual proof grid, workflow, connected-surfaces, FAQ, and CTA pattern inspired by modern feature-specific SaaS pages.
+- May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with Canonica's dark surface, indigo, and cyan theme, and set the Canonica route stylesheet background so white body bleed does not appear around dark pages.
+- May 23 product-feature route hardening replaced the dynamic `[feature]` route with four explicit product-feature page files backed by `ProductFeatureRoutePage`, avoiding fragile Next dev static-path worker failures while keeping shared feature data and sitemap registry coverage.
+- May 23 resources layout pass changed grouped resources from four tall category columns to stacked horizontal decision rows so each group title and its three linked subcards read together on desktop while remaining stacked on mobile.
+- May 23 resources polish removed the outer row cards from the decision-path rows so the resources hub reads as clean rows of links instead of nested boxes.
+- May 23 product capability bento pass changed five-card capability sections to a 2-card first row and 3-card second row, improving visual balance and moving the third card, such as Support Control's Changelog support, into the second row.
 - `ClosedLoopSection.tsx` now explains the loop: user asks from product page, Canonica uses safe context, approved answer is served first, fallback becomes a signal, owner approves the fix, and future users receive canonical support truth.
 - Comparison now explicitly separates AI chatbot, helpdesk, knowledge base, and Canonica so buyers do not misclassify Canonica as a helpdesk replacement.
 - FAQ now defines "not a chatbot", canonical answers, missing-answer behavior, and human approval before authoritative answers.
@@ -243,7 +256,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 ### Prerequisites
 1. Add `canonica.app` domain to Vercel project dashboard
 2. Configure DNS for canonica.app pointing to Vercel
-3. Keep `public/canonica-og-image.png`, `public/canonica.webmanifest`, and Canonica icon PNGs available for OpenGraph, app metadata, and favicon previews
+3. Keep `public/canonica-og-image.png`, `public/canonica.webmanifest`, `public/canonica-logo.svg`, `public/canonica-logo-mark-wide.*`, `public/canonica-favicon.*`, and Canonica icon PNGs available for OpenGraph, app metadata, header/footer branding, dashboard branding, and favicon previews
 
 ### Security
 - `/sites/*` direct access blocked in production (middleware redirects to `/`)
@@ -307,3 +320,10 @@ Conversion analytics is client-side only:
 | 2026-05-22 | 1.2.2 | Improved visual presentation: tabbed demo canvas, clearer product-proof tabs, and bento-style widget/install/governance grid while keeping the website static and zero-Firebase-cost for normal browsing |
 | 2026-05-22 | 1.2.3 | Added standalone landing-style product area routes for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance; wired them into product page cards, footer, sitemap registry, and docs |
 | 2026-05-22 | 1.2.4 | Final product-suite polish: added first-class Product dropdown navigation, homepage product-area cross-link section, resources product-area hub, and SEO/use-case product-area cross-links with no new runtime dependencies or Firebase reads |
+| 2026-05-23 | 1.2.5 | Added reusable product-feature landing pages for Knowledge Base, FAQ Management, Changelog, and Tickets; wired them into Product dropdown, homepage product-area section, product page, resources, footer, and sitemap registry |
+| 2026-05-23 | 1.2.6 | Reworked `/resources` grouped links into row-wise decision paths: group summary on the left and same-row subcards on the right for clearer scanning |
+| 2026-05-23 | 1.2.7 | Updated shared product capability bento sections so five-card layouts render as two wide cards on row one and three balanced cards on row two |
+| 2026-05-23 | 1.2.8 | Removed the outer card treatment from `/resources` decision rows so the section keeps row structure without nested-box visual noise |
+| 2026-05-23 | 1.2.9 | Replaced placeholder Canonica `C` assets with a Canonica-colored dimensional infinity logo family: SVG/PNG logo assets, favicon bundle, PWA icons, maskable icons, Apple touch icon, OpenGraph image, website header/footer, and dashboard sidebar |
+| 2026-05-23 | 1.2.10 | Re-themed the shared product-feature page template so Knowledge Base, FAQ Management, Changelog, and Tickets no longer render a light-mode proof section, and set the Canonica route background to prevent white body bleed |
+| 2026-05-23 | 1.2.11 | Replaced the dynamic product-feature route with explicit Knowledge Base, FAQ Management, Changelog, and Tickets pages backed by a shared route wrapper to avoid Next dev static-path worker failures |

@@ -6,6 +6,7 @@ import CanonicaHeader from '../components/Header';
 import ProductPreviewSection from '../components/ProductPreviewSection';
 import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
+import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
@@ -154,6 +155,41 @@ export default function CanonicaProductPage() {
                                             View
                                         </span>
                                     </div>
+                                </CanonicaLink>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="border-t border-white/[0.06] px-6 py-20">
+                    <div className="mx-auto max-w-6xl">
+                        <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+                            <div>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Support features</p>
+                                <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
+                                    Core support surfaces get their own product pages.
+                                </h2>
+                            </div>
+                            <p className="text-base leading-relaxed text-[#a0a0c0]">
+                                Each Canonica support surface now explains its outcome, workflow, and how it connects back to approved support truth.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            {CANONICA_SUPPORT_FEATURES.map((feature) => (
+                                <CanonicaLink
+                                    key={feature.href}
+                                    basePath={basePath}
+                                    href={feature.href}
+                                    className="group rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                                >
+                                    <span className="mb-5 inline-flex rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[#8f8faa]">
+                                        Feature
+                                    </span>
+                                    <h3 className="text-lg font-semibold text-white">{feature.label}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{feature.description}</p>
+                                    <span className="mt-5 inline-flex text-xs font-semibold text-indigo-300 transition group-hover:text-white">
+                                        View feature page
+                                    </span>
                                 </CanonicaLink>
                             ))}
                         </div>

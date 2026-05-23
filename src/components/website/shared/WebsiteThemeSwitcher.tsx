@@ -1,7 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { LuMonitor, LuMoon, LuSun } from 'react-icons/lu';
+import { useEffect, useRef, useState } from 'react';
+import { LuChevronDown, LuMonitor, LuMoon, LuSun } from 'react-icons/lu';
 import { useTheme } from '../shadcn/theme-provider';
 
 const themeOptions = [
@@ -13,26 +14,62 @@ const themeOptions = [
 export default function WebsiteThemeSwitcher() {
   const t = useTranslations('Website');
   const { theme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const currentOption = themeOptions.find((option) => option.value === theme) || themeOptions[1];
+  const CurrentIcon = currentOption.Icon;
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <div className="ws-theme-switcher" role="group" aria-label={t('ThemeSwitcher.label')}>
-      {themeOptions.map(({ value, key, Icon }) => {
-        const isActive = theme === value;
+    <div ref={ref} className="ws-theme-switcher">
+      <button
+        type="button"
+        className="ws-theme-switcher__trigger"
+        aria-label={t('ThemeSwitcher.label')}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen(!open)}
+      >
+        <CurrentIcon size={14} />
+        <span>{t(`ThemeSwitcher.${currentOption.key}`)}</span>
+        <LuChevronDown size={12} className={open ? 'ws-theme-switcher__chevron is-open' : 'ws-theme-switcher__chevron'} />
+      </button>
 
-        return (
-          <button
-            key={value}
-            type="button"
-            className="ws-theme-switcher__button"
-            aria-pressed={isActive}
-            aria-label={t(`ThemeSwitcher.${key}Aria`)}
-            onClick={() => setTheme(value)}
-          >
-            <Icon size={14} />
-            <span>{t(`ThemeSwitcher.${key}`)}</span>
-          </button>
-        );
-      })}
+      {open && (
+        <div className="ws-theme-switcher__menu" role="menu" aria-label={t('ThemeSwitcher.label')}>
+          {themeOptions.map(({ value, key, Icon }) => {
+            const isActive = theme === value;
+
+            return (
+              <button
+                key={value}
+                type="button"
+                className={isActive ? 'ws-theme-switcher__option is-active' : 'ws-theme-switcher__option'}
+                aria-label={t(`ThemeSwitcher.${key}Aria`)}
+                role="menuitemradio"
+                aria-checked={isActive}
+                onClick={() => {
+                  setTheme(value);
+                  setOpen(false);
+                }}
+              >
+                <Icon size={14} />
+                <span>{t(`ThemeSwitcher.${key}`)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
+import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 
 interface ExtractedCategory {
     id: string;
@@ -197,79 +198,87 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     // Loading state
     if (loading) {
         return (
-            <div style={containerStyle}>
-                <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
-                <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>Loading your menu...</p>
-                <style>{spinCSS}</style>
-            </div>
+            <AnimateOnScroll>
+                <div style={containerStyle}>
+                    <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                    <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>Loading your menu...</p>
+                    <style>{spinCSS}</style>
+                </div>
+            </AnimateOnScroll>
         );
     }
 
     // Processing state
     if (draft?.status === 'pending' || draft?.status === 'processing') {
         return (
-            <div style={containerStyle}>
-                <LuLoader size={48} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '20px' }}>
-                    Reading your menu...
-                </h2>
-                <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)', marginTop: '8px' }}>
-                    This can take a short moment.
-                </p>
-                <div style={{
-                    width: '200px',
-                    height: '4px',
-                    backgroundColor: 'var(--ws-border-default)',
-                    borderRadius: '2px',
-                    marginTop: '20px',
-                    overflow: 'hidden',
-                }}>
+            <AnimateOnScroll>
+                <div style={containerStyle}>
+                    <LuLoader size={48} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
+                    <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '20px' }}>
+                        Reading your menu...
+                    </h2>
+                    <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)', marginTop: '8px' }}>
+                        This can take a short moment.
+                    </p>
                     <div style={{
-                        width: `${Math.min(pollCount * 7, 90)}%`,
-                        height: '100%',
-                        backgroundColor: 'var(--ws-brand-secondary)',
+                        width: '200px',
+                        height: '4px',
+                        backgroundColor: 'var(--ws-border-default)',
                         borderRadius: '2px',
-                        transition: 'width 0.5s ease',
-                    }} />
+                        marginTop: '20px',
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            width: `${Math.min(pollCount * 7, 90)}%`,
+                            height: '100%',
+                            backgroundColor: 'var(--ws-brand-secondary)',
+                            borderRadius: '2px',
+                            transition: 'width 0.5s ease',
+                        }} />
+                    </div>
+                    <style>{spinCSS}</style>
                 </div>
-                <style>{spinCSS}</style>
-            </div>
+            </AnimateOnScroll>
         );
     }
 
     // Expired state
     if (draft?.status === 'expired') {
         return (
-            <div style={containerStyle}>
-                <LuAlertCircle size={48} color="var(--ws-warning)" />
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
-                    Draft expired
-                </h2>
-                <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
-                    This draft has expired. Upload your current menu again to create a fresh review.
-                </p>
-                <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
-                    <LuUpload size={16} /> Upload menu
-                </button>
-            </div>
+            <AnimateOnScroll>
+                <div style={containerStyle}>
+                    <LuAlertCircle size={48} color="var(--ws-warning)" />
+                    <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
+                        Draft expired
+                    </h2>
+                    <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
+                        This draft has expired. Upload your current menu again to create a fresh review.
+                    </p>
+                    <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
+                        <LuUpload size={16} /> Upload menu
+                    </button>
+                </div>
+            </AnimateOnScroll>
         );
     }
 
     // Failed state
     if (draft?.status === 'failed') {
         return (
-            <div style={containerStyle}>
-                <LuAlertCircle size={48} color="var(--ws-error)" />
-                <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
-                    Could not read your menu
-                </h2>
-                <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
-                    {draft.error || 'Please try again with a clearer photo.'}
-                </p>
-                <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
-                    <LuUpload size={16} /> Try Again
-                </button>
-            </div>
+            <AnimateOnScroll>
+                <div style={containerStyle}>
+                    <LuAlertCircle size={48} color="var(--ws-error)" />
+                    <h2 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--ws-text-primary)', marginTop: '16px' }}>
+                        Could not read your menu
+                    </h2>
+                    <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
+                        {draft.error || 'Please try again with a clearer photo.'}
+                    </p>
+                    <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
+                        <LuUpload size={16} /> Try Again
+                    </button>
+                </div>
+            </AnimateOnScroll>
         );
     }
 
@@ -286,254 +295,273 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             padding: '24px 20px 100px',
         }}>
             {/* Success header */}
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    backgroundColor: 'var(--ws-bg-success-soft)',
-                    color: 'var(--ws-success)',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    marginBottom: '16px',
-                }}>
-                    <LuCheck size={16} /> Ready for review
+            <AnimateOnScroll>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        backgroundColor: 'var(--ws-bg-success-soft)',
+                        color: 'var(--ws-success)',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        marginBottom: '16px',
+                    }}>
+                        <LuCheck size={16} /> Ready for review
+                    </div>
+                    <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
+                        {detectedBusinessName || 'Your menu source'}
+                    </h1>
+                    {detectedBusinessType && (
+                        <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
+                    )}
                 </div>
-                <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--ws-text-primary)', marginBottom: '4px' }}>
-                    {detectedBusinessName || 'Your menu source'}
-                </h1>
-                {detectedBusinessType && (
-                    <p style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>{detectedBusinessType}</p>
-                )}
-            </div>
+            </AnimateOnScroll>
 
             {/* Menu preview */}
-            <div style={{
-                backgroundColor: 'var(--ws-bg-primary)',
-                borderRadius: 'var(--ws-radius-xl)',
-                border: '1px solid var(--ws-border-default)',
-                overflow: 'hidden',
-                marginBottom: '24px',
-            }}>
-                {categories.map((cat) => {
-                    const catItems = items.filter(item => item.category === cat.id);
-                    if (catItems.length === 0) return null;
+            <AnimateOnScroll delay={0.1}>
+                <div style={{
+                    backgroundColor: 'var(--ws-bg-primary)',
+                    borderRadius: 'var(--ws-radius-xl)',
+                    border: '1px solid var(--ws-border-default)',
+                    overflow: 'hidden',
+                    marginBottom: '24px',
+                }}>
+                    {categories.map((cat, categoryIndex) => {
+                        const catItems = items.filter(item => item.category === cat.id);
+                        if (catItems.length === 0) return null;
 
-                    return (
-                        <div key={cat.id}>
-                            {/* Category header */}
-                            <div style={{
-                                backgroundColor: 'var(--ws-bg-subtle)',
-                                padding: '12px 16px',
-                                borderBottom: '1px solid var(--ws-border-default)',
-                            }}>
-                                <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>
-                                    {cat.name?.[lang] || cat.name?.en || cat.id}
-                                </h3>
-                            </div>
-
-                            {/* Items */}
-                            {catItems.map((item, idx) => (
-                                <div
-                                    key={item.id}
-                                    style={{
+                        return (
+                            <AnimateStaggerChild key={cat.id} index={categoryIndex}>
+                                <div>
+                                    {/* Category header */}
+                                    <div style={{
+                                        backgroundColor: 'var(--ws-bg-subtle)',
                                         padding: '12px 16px',
-                                        borderBottom: idx < catItems.length - 1 ? '1px solid var(--ws-border-subtle)' : undefined,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'flex-start',
-                                        gap: '12px',
-                                    }}
-                                >
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
-                                            {item.name?.[lang] || item.name?.en || item.id}
-                                        </p>
-                                        {item.description?.[lang] && (
-                                            <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
-                                                {item.description[lang]}
-                                            </p>
-                                        )}
-                                        {/* Attributes/variants */}
-                                        {item.attributes && item.attributes.length > 0 && (
-                                            <div style={{ marginTop: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                {item.attributes.map((attr) => (
-                                                    <span key={attr.id} style={{
-                                                        fontSize: '11px',
-                                                        color: 'var(--ws-text-secondary)',
-                                                        backgroundColor: 'var(--ws-border-subtle)',
-                                                        padding: '2px 8px',
-                                                        borderRadius: '4px',
-                                                    }}>
-                                                        {attr.name?.[lang] || attr.name?.en || attr.id}
-                                                        {attr.price ? ` — ${attr.price}` : ''}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                        borderBottom: '1px solid var(--ws-border-default)',
+                                    }}>
+                                        <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ws-text-primary)', margin: 0 }}>
+                                            {cat.name?.[lang] || cat.name?.en || cat.id}
+                                        </h3>
                                     </div>
+
+                                    {/* Items */}
+                                    {catItems.map((item, idx) => (
+                                        <div
+                                            key={item.id}
+                                            style={{
+                                                padding: '12px 16px',
+                                                borderBottom: idx < catItems.length - 1 ? '1px solid var(--ws-border-subtle)' : undefined,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'flex-start',
+                                                gap: '12px',
+                                            }}
+                                        >
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ws-text-primary)', margin: 0 }}>
+                                                    {item.name?.[lang] || item.name?.en || item.id}
+                                                </p>
+                                                {item.description?.[lang] && (
+                                                    <p style={{ fontSize: '12px', color: 'var(--ws-text-muted)', margin: '2px 0 0', lineHeight: 1.4 }}>
+                                                        {item.description[lang]}
+                                                    </p>
+                                                )}
+                                                {/* Attributes/variants */}
+                                                {item.attributes && item.attributes.length > 0 && (
+                                                    <div style={{ marginTop: '4px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                        {item.attributes.map((attr) => (
+                                                            <span key={attr.id} style={{
+                                                                fontSize: '11px',
+                                                                color: 'var(--ws-text-secondary)',
+                                                                backgroundColor: 'var(--ws-border-subtle)',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '4px',
+                                                            }}>
+                                                                {attr.name?.[lang] || attr.name?.en || attr.id}
+                                                                {attr.price ? ` — ${attr.price}` : ''}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {item.price && (
+                                                <span style={{
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
+                                                    color: 'var(--ws-text-primary)',
+                                                    whiteSpace: 'nowrap',
+                                                }}>
+                                                    {item.price}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </AnimateStaggerChild>
+                        );
+                    })}
+
+                    {/* Empty state */}
+                    {categories.length === 0 && items.length > 0 && (
+                        <div style={{ padding: '16px' }}>
+                            {items.map((item) => (
+                                <div key={item.id} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    padding: '8px 0',
+                                    borderBottom: '1px solid var(--ws-border-subtle)',
+                                }}>
+                                    <span style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
+                                        {item.name?.[lang] || item.name?.en || item.id}
+                                    </span>
                                     {item.price && (
-                                        <span style={{
-                                            fontSize: '14px',
-                                            fontWeight: 600,
-                                            color: 'var(--ws-text-primary)',
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            {item.price}
-                                        </span>
+                                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.price}</span>
                                     )}
                                 </div>
                             ))}
                         </div>
-                    );
-                })}
+                    )}
 
-                {/* Empty state */}
-                {categories.length === 0 && items.length > 0 && (
-                    <div style={{ padding: '16px' }}>
-                        {items.map((item) => (
-                            <div key={item.id} style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                padding: '8px 0',
-                                borderBottom: '1px solid var(--ws-border-subtle)',
-                            }}>
-                                <span style={{ fontSize: '14px', color: 'var(--ws-text-primary)' }}>
-                                    {item.name?.[lang] || item.name?.en || item.id}
-                                </span>
-                                {item.price && (
-                                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)' }}>{item.price}</span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {categories.length === 0 && items.length === 0 && (
-                    <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                        <p style={{ color: 'var(--ws-text-muted)', fontSize: '14px' }}>No items extracted. Try uploading a clearer photo.</p>
-                    </div>
-                )}
-            </div>
+                    {categories.length === 0 && items.length === 0 && (
+                        <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                            <p style={{ color: 'var(--ws-text-muted)', fontSize: '14px' }}>No items extracted. Try uploading a clearer photo.</p>
+                        </div>
+                    )}
+                </div>
+            </AnimateOnScroll>
 
             {/* Stats */}
-            <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginBottom: '24px',
-            }}>
-                <div style={statBoxStyle}>
-                    <span style={statNumberStyle}>{categories.length}</span>
-                    <span style={statLabelStyle}>Categories</span>
+            <AnimateOnScroll delay={0.15}>
+                <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    marginBottom: '24px',
+                }}>
+                    <div style={statBoxStyle}>
+                        <span style={statNumberStyle}>{categories.length}</span>
+                        <span style={statLabelStyle}>Categories</span>
+                    </div>
+                    <div style={statBoxStyle}>
+                        <span style={statNumberStyle}>{items.length}</span>
+                        <span style={statLabelStyle}>Items</span>
+                    </div>
                 </div>
-                <div style={statBoxStyle}>
-                    <span style={statNumberStyle}>{items.length}</span>
-                    <span style={statLabelStyle}>Items</span>
-                </div>
-            </div>
+            </AnimateOnScroll>
 
             {/* Sticky CTA — switches between sign-up and claim form */}
-            <div style={{
-                position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                backgroundColor: 'var(--ws-bg-primary)',
-                borderTop: '1px solid var(--ws-border-default)',
-                padding: '16px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                zIndex: 100,
-            }}>
+            <AnimateOnScroll delay={0.2}>
+                <div style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'var(--ws-bg-primary)',
+                    borderTop: '1px solid var(--ws-border-default)',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px',
+                    zIndex: 100,
+                }}>
                 {isClaimMode ? (
                     /* Claim mode — user is authenticated, show publish form */
                     <div style={{ width: '100%', maxWidth: '520px' }}>
-                        <input
-                            type="text"
-                            value={businessName}
-                            onChange={(e) => { setBusinessName(e.target.value); setClaimError(null); }}
-                            placeholder="Your business name"
-                            style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                fontSize: '15px',
-                                border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
-                                borderRadius: 'var(--ws-radius-xl)',
-                                marginBottom: '8px',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                            }}
-                        />
-                        <input
-                            type="text"
-                            value={city}
-                            onChange={(e) => { setCity(e.target.value); setClaimError(null); }}
-                            placeholder="City or area"
-                            style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                fontSize: '15px',
-                                border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
-                                borderRadius: 'var(--ws-radius-xl)',
-                                marginBottom: '8px',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                            }}
-                        />
-                        <input
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => { setPhone(e.target.value); setClaimError(null); }}
-                            placeholder="Public phone or WhatsApp number"
-                            style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                fontSize: '15px',
-                                border: '1px solid var(--ws-border-default)',
-                                borderRadius: 'var(--ws-radius-xl)',
-                                marginBottom: '8px',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                            }}
-                        />
-                        <input
-                            type="text"
-                            value={addressLine}
-                            onChange={(e) => { setAddressLine(e.target.value); setClaimError(null); }}
-                            placeholder="Address (optional)"
-                            style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                fontSize: '15px',
-                                border: '1px solid var(--ws-border-default)',
-                                borderRadius: 'var(--ws-radius-xl)',
-                                marginBottom: '8px',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                            }}
-                        />
+                        <AnimateStaggerChild index={0}>
+                            <input
+                                type="text"
+                                value={businessName}
+                                onChange={(e) => { setBusinessName(e.target.value); setClaimError(null); }}
+                                placeholder="Your business name"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    fontSize: '15px',
+                                    border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
+                                    borderRadius: 'var(--ws-radius-xl)',
+                                    marginBottom: '8px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                        </AnimateStaggerChild>
+                        <AnimateStaggerChild index={1}>
+                            <input
+                                type="text"
+                                value={city}
+                                onChange={(e) => { setCity(e.target.value); setClaimError(null); }}
+                                placeholder="City or area"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    fontSize: '15px',
+                                    border: `1px solid ${claimError ? 'var(--ws-error)' : 'var(--ws-border-default)'}`,
+                                    borderRadius: 'var(--ws-radius-xl)',
+                                    marginBottom: '8px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                        </AnimateStaggerChild>
+                        <AnimateStaggerChild index={2}>
+                            <input
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => { setPhone(e.target.value); setClaimError(null); }}
+                                placeholder="Public phone or WhatsApp number"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    fontSize: '15px',
+                                    border: '1px solid var(--ws-border-default)',
+                                    borderRadius: 'var(--ws-radius-xl)',
+                                    marginBottom: '8px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                        </AnimateStaggerChild>
+                        <AnimateStaggerChild index={3}>
+                            <input
+                                type="text"
+                                value={addressLine}
+                                onChange={(e) => { setAddressLine(e.target.value); setClaimError(null); }}
+                                placeholder="Address (optional)"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    fontSize: '15px',
+                                    border: '1px solid var(--ws-border-default)',
+                                    borderRadius: 'var(--ws-radius-xl)',
+                                    marginBottom: '8px',
+                                    outline: 'none',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                        </AnimateStaggerChild>
                         {claimError && (
                             <p style={{ fontSize: '13px', color: 'var(--ws-error)', margin: '0 0 8px', textAlign: 'center' }}>{claimError}</p>
                         )}
-                        <button
-                            onClick={handleClaim}
-                            disabled={claiming}
-                            style={{
-                                ...primaryBtnStyle,
-                                width: '100%',
-                                marginTop: 0,
-                                opacity: claiming ? 0.7 : 1,
-                                cursor: claiming ? 'default' : 'pointer',
-                            }}
-                        >
-                            {claiming
-                                ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> {t('CreateMenu.previewClaiming')}</>
-                                : <><LuSend size={18} /> {t('CreateMenu.previewClaimCta')}</>}
-                        </button>
+                        <AnimateStaggerChild index={4}>
+                            <button
+                                onClick={handleClaim}
+                                disabled={claiming}
+                                style={{
+                                    ...primaryBtnStyle,
+                                    width: '100%',
+                                    marginTop: 0,
+                                    opacity: claiming ? 0.7 : 1,
+                                    cursor: claiming ? 'default' : 'pointer',
+                                }}
+                            >
+                                {claiming
+                                    ? <><LuLoader size={18} style={{ animation: 'spin 1s linear infinite' }} /> {t('CreateMenu.previewClaiming')}</>
+                                    : <><LuSend size={18} /> {t('CreateMenu.previewClaimCta')}</>}
+                            </button>
+                        </AnimateStaggerChild>
                     </div>
                 ) : (
                     /* Pre-auth mode — show sign-up CTA */
@@ -551,7 +579,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                         </p>
                     </>
                 )}
-            </div>
+                </div>
+            </AnimateOnScroll>
 
             <style>{spinCSS}</style>
         </div>

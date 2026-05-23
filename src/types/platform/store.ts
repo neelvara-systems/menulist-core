@@ -443,6 +443,9 @@ export type StoreDataType = {
         menuVersion: number;
         instructionsSentCount: number;
         instructionsSentDate: string;
+        secretRotatedAt?: string;
+        secretRotatedByEmail?: string;
+        secretRotatedByUserId?: string;
     };
 
     // ─────────────────────────────────────────────────────────────

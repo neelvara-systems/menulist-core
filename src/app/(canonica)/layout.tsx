@@ -17,8 +17,19 @@ import SessionExpiryMonitor from '../../components/auth/SessionExpiryMonitor'
 import ServerSidePageLoader from '../loading'
 
 export const metadata: Metadata = {
+    applicationName: 'Canonica',
     title: 'Canonica — Knowledge Control Plane',
     description: 'The Support Knowledge Control Plane for SaaS',
+    manifest: '/canonica.webmanifest',
+    icons: {
+        icon: [
+            { url: '/canonica-favicon.ico', sizes: 'any' },
+            { url: '/canonica-favicon-16.png', sizes: '16x16', type: 'image/png' },
+            { url: '/canonica-favicon-32.png', sizes: '32x32', type: 'image/png' },
+            { url: '/canonica-icon-192.png', sizes: '192x192', type: 'image/png' },
+        ],
+        apple: [{ url: '/canonica-apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    },
 }
 
 export default async function CanonicaLayout({ children }: { children: React.ReactNode }) {

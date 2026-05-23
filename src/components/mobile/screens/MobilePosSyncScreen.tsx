@@ -2,12 +2,15 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
+import { logPosSyncSecretRotationAudit } from '@lib/posSync/secretAudit';
+import { formatWebhookSecretPreview } from '@lib/posSync/secretDisplay';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Modal, theme } from 'antd';
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { LuCopy, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
-import { Button, Card, Flex, Input, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import { LuArrowRight, LuCheck, LuCopy, LuEye, LuEyeOff, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
+import { Button, Card, Collapse, Flex, Input, NavBar, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobilePosSyncScreenProps {
@@ -16,16 +19,25 @@ interface MobilePosSyncScreenProps {
 
 const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
 
+interface SecretRotationAuditDraft {
+    secretRotatedAt: string;
+    secretRotatedByEmail: string;
+    secretRotatedByUserId: string;
+}
+
 export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps) {
     const t = useTranslations('PosSync');
     const tMobile = useTranslations('MobileSettings');
+    const { data: session } = useSession();
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+    const [secretVisible, setSecretVisible] = useState(false);
     const [regenerateSecretModalOpen, setRegenerateSecretModalOpen] = useState(false);
     const [regenerateSecretConfirmationText, setRegenerateSecretConfirmationText] = useState('');
+    const [pendingSecretRotationAudit, setPendingSecretRotationAudit] = useState<SecretRotationAuditDraft | null>(null);
 
     const currentPosSync = useMemo(() => ({
         enabled: storeDetails?.posSync?.enabled ?? false,
@@ -35,6 +47,9 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         lastSentAt: storeDetails?.posSync?.lastSentAt ?? null,
         lastStatus: storeDetails?.posSync?.lastStatus ?? 'never_sent',
         menuVersion: storeDetails?.posSync?.menuVersion ?? 0,
+        secretRotatedAt: storeDetails?.posSync?.secretRotatedAt ?? '',
+        secretRotatedByEmail: storeDetails?.posSync?.secretRotatedByEmail ?? '',
+        secretRotatedByUserId: storeDetails?.posSync?.secretRotatedByUserId ?? '',
         status: storeDetails?.posSync?.status ?? 'disabled',
         webhookSecret: storeDetails?.posSync?.webhookSecret ?? '',
         webhookUrl: storeDetails?.posSync?.webhookUrl ?? '',
@@ -59,6 +74,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         setWebhookUrl(nextDraft.webhookUrl);
         setWebhookSecret(nextDraft.webhookSecret);
         setOriginalDraft(nextDraft);
+        setPendingSecretRotationAudit(null);
+        setSecretVisible(false);
     }, [currentPosSync.enabled, currentPosSync.webhookSecret, currentPosSync.webhookUrl]);
 
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
@@ -81,7 +98,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             });
             return true;
         } catch {
-            Toast.show({ content: 'Failed to save POS sync settings.', duration: 1500 });
+            Toast.show({ content: 'Failed to save external sync settings.', duration: 1500 });
             return false;
         } finally {
             setIsSaving(false);
@@ -99,6 +116,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
         setEnabled(checked);
         setWebhookSecret(nextSecret);
+        setSecretVisible(false);
     };
 
     const isDirty = JSON.stringify({
@@ -117,7 +135,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             try {
                 new URL(trimmedWebhookUrl);
             } catch {
-                Toast.show({ content: 'Enter a valid webhook URL.', duration: 1500 });
+                Toast.show({ content: 'Enter a valid provider connection URL.', duration: 1500 });
                 return;
             }
         }
@@ -128,6 +146,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             webhookSecret,
             lastError: enabled ? currentPosSync.lastError : '',
             menuVersion: enabled ? currentPosSync.menuVersion : 0,
+            ...(pendingSecretRotationAudit ?? {}),
             status: enabled ? (currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
             webhookUrl: trimmedWebhookUrl,
         };
@@ -140,13 +159,33 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 webhookSecret,
                 webhookUrl: trimmedWebhookUrl,
             });
-            Toast.show({ content: 'POS sync settings saved.', duration: 1000 });
+            if (pendingSecretRotationAudit) {
+                logPosSyncSecretRotationAudit({
+                    actorEmail: pendingSecretRotationAudit.secretRotatedByEmail,
+                    actorUserId: pendingSecretRotationAudit.secretRotatedByUserId,
+                    rotatedAt: pendingSecretRotationAudit.secretRotatedAt,
+                    storeId: storeDetails?.storeId,
+                    tenantId: storeDetails?.tenantId,
+                });
+            }
+            setPendingSecretRotationAudit(null);
+            Toast.show({ content: 'External sync settings saved.', duration: 1000 });
         }
     };
 
     const handleRegenerateSecret = () => {
         setRegenerateSecretConfirmationText('');
         setRegenerateSecretModalOpen(true);
+    };
+
+    const buildSecretRotationAudit = () => {
+        const sessionUser = (session?.user || {}) as any;
+
+        return {
+            secretRotatedAt: new Date().toISOString(),
+            secretRotatedByEmail: sessionUser.email || '',
+            secretRotatedByUserId: String((session as any)?.uId || sessionUser.uId || sessionUser.id || sessionUser.email || 'unknown'),
+        };
     };
 
     const confirmSecretRegeneration = () => {
@@ -157,9 +196,11 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
         const nextSecret = generateSecret();
         setWebhookSecret(nextSecret);
+        setSecretVisible(false);
+        setPendingSecretRotationAudit(buildSecretRotationAudit());
         setRegenerateSecretModalOpen(false);
         setRegenerateSecretConfirmationText('');
-        Toast.show({ content: 'New secret generated. Share it with your POS provider.', duration: 1500 });
+        Toast.show({ content: 'New secret generated. Use Copy to share it with your provider.', duration: 1500 });
     };
 
     const handleReset = () => {
@@ -167,6 +208,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         setWebhookUrl(originalDraft.webhookUrl);
         setWebhookSecret(originalDraft.webhookSecret);
         setTestResult(null);
+        setPendingSecretRotationAudit(null);
+        setSecretVisible(false);
     };
 
     const handleCopySecret = async () => {
@@ -197,12 +240,12 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             if (data.success) {
                 setTestResult({
                     success: true,
-                    message: `Webhook reachable (${data.responseTime}ms, HTTP ${data.statusCode})`,
+                    message: `Connection reachable (${data.responseTime}ms, HTTP ${data.statusCode})`,
                 });
             } else {
                 setTestResult({
                     success: false,
-                    message: data.error || 'Could not reach webhook',
+                    message: data.error || 'Could not reach connected system',
                 });
             }
         } catch {
@@ -216,11 +259,26 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     };
 
     const statusColor = currentPosSync.status === 'healthy' ? 'success' : currentPosSync.status === 'disabled' ? 'default' : 'warning';
+    const syncDisabled = currentPosSync.status === 'disabled';
     const statusLabel = currentPosSync.status === 'healthy'
         ? t('connectedStatus')
-        : currentPosSync.status === 'disabled'
-            ? 'POS sync is off.'
+        : syncDisabled
+            ? t('disabledStatus')
             : t('connectionIssue');
+    const statusDescription = syncDisabled
+        ? t('disabledStatusDesc')
+        : t('version', { version: currentPosSync.menuVersion });
+    const trustBullets = [
+        t('trustBullet1'),
+        t('trustBullet2'),
+        t('trustBullet3'),
+        t('trustBullet4'),
+    ];
+    const useCases = [
+        t('whoUse1'),
+        t('whoUse2'),
+        t('whoUse3'),
+    ];
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
@@ -232,6 +290,58 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <Card>
+                    <Flex gap={12} vertical>
+                        <Flex gap={8} vertical>
+                            <Tag color="blue" style={{ alignSelf: 'flex-start' }}>{t('truthProtected')}</Tag>
+                            <Text strong style={{ fontSize: 16 }}>{t('connectIntroTitle')}</Text>
+                            <Text type="secondary">{t('connectIntroDesc')}</Text>
+                        </Flex>
+
+                        <Flex
+                            align="center"
+                            gap={8}
+                            justify="space-between"
+                            style={{
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 8,
+                                padding: 12,
+                            }}
+                        >
+                            <Text strong style={{ flex: 1 }}>{t('diagramSource')}</Text>
+                            <LuArrowRight color="#2563eb" size={18} />
+                            <Text strong style={{ flex: 1, textAlign: 'right' }}>{t('diagramDestination')}</Text>
+                        </Flex>
+
+                        <Flex gap={8} vertical>
+                            {trustBullets.map((bullet) => (
+                                <Flex align="flex-start" gap={8} key={bullet}>
+                                    <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                    <Text>{bullet}</Text>
+                                </Flex>
+                            ))}
+                        </Flex>
+
+                        <Collapse defaultActiveKey={['who']}>
+                            <Collapse.Panel key="who" title={<Text strong>{t('whoUseTitle')}</Text>}>
+                                <Flex gap={8} vertical>
+                                    <Text>{t('whoUseIntro')}</Text>
+                                    {useCases.map((useCase) => (
+                                        <Flex align="flex-start" gap={8} key={useCase}>
+                                            <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                            <Text>{useCase}</Text>
+                                        </Flex>
+                                    ))}
+                                    <Text type="secondary">{t('whoIgnore')}</Text>
+                                </Flex>
+                            </Collapse.Panel>
+                        </Collapse>
+
+                        <Text type="secondary">{t('truthProtectedDesc')}</Text>
+                    </Flex>
+                </Card>
+
+                <Card>
                     <Flex align="center" justify="space-between">
                         <Flex align="center" gap={10}>
                             <Flex align="center" justify="center" style={{ background: '#eff6ff', borderRadius: 12, height: 40, width: 40 }}>
@@ -239,7 +349,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             </Flex>
                             <Flex gap={2} vertical>
                                 <Text strong>{statusLabel}</Text>
-                                <Text type="secondary">{t('version', { version: currentPosSync.menuVersion })}</Text>
+                                <Text type="secondary">{statusDescription}</Text>
                             </Flex>
                         </Flex>
                         <Tag color={statusColor}>{currentPosSync.status}</Tag>
@@ -278,16 +388,22 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             </Flex>
                             <Tag>{webhookSecret ? 'Ready' : 'Missing'}</Tag>
                         </Flex>
-                        <Text style={{ wordBreak: 'break-all' }}>{webhookSecret || 'Generate a secret after enabling POS sync.'}</Text>
+                        <Text style={{ wordBreak: 'break-all' }}>{webhookSecret ? (secretVisible ? webhookSecret : formatWebhookSecretPreview(webhookSecret)) : 'Generate a secret after enabling external sync.'}</Text>
                         <Text type="secondary">{t('signingSecretHelp')}</Text>
-                        <Flex gap={8}>
-                            <Button block disabled={!webhookSecret} fill="outline" onClick={() => void handleCopySecret()}>
+                        <Flex gap={8} wrap="wrap">
+                            <Button disabled={!webhookSecret} fill="outline" onClick={() => setSecretVisible((current) => !current)} style={{ flex: '1 1 112px' }}>
+                                <Flex align="center" gap={6} justify="center">
+                                    {secretVisible ? <LuEyeOff size={16} /> : <LuEye size={16} />}
+                                    <Text>{secretVisible ? 'Hide' : 'Reveal'}</Text>
+                                </Flex>
+                            </Button>
+                            <Button disabled={!webhookSecret} fill="outline" onClick={() => void handleCopySecret()} style={{ flex: '1 1 112px' }}>
                                 <Flex align="center" gap={6}>
                                     <LuCopy size={16} />
                                     <Text>{t('copySecret')}</Text>
                                 </Flex>
                             </Button>
-                            <Button block fill="outline" onClick={() => void handleRegenerateSecret()}>
+                            <Button fill="outline" onClick={() => void handleRegenerateSecret()} style={{ flex: '1 1 112px' }}>
                                 <Flex align="center" gap={6}>
                                     <LuRefreshCw size={16} />
                                     <Text>{t('regenerateSecret')}</Text>
@@ -338,7 +454,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 </Flex>
             </Flex>
             <Modal
-                title="Regenerate signing secret"
+                title="Regenerate verification secret"
                 open={regenerateSecretModalOpen}
                 onOk={confirmSecretRegeneration}
                 onCancel={() => {
@@ -354,7 +470,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             >
                 <Flex gap={12} vertical>
                     <Text>
-                        Your current secret will stop working immediately. Share the new secret with your POS provider or their existing webhook configuration will fail.
+                        Your current secret will stop working immediately. Share the new secret with your provider or their existing connection will fail.
                     </Text>
                     <Text type="secondary">
                         Type {REGENERATE_SECRET_CONFIRMATION} to confirm.

@@ -57,3 +57,19 @@ This aligns with existing Out-of-Scope in spec.md. No action needed — already 
 
 **Audit Author:** Cascade
 **Date:** February 14, 2026
+
+---
+
+## May 23, 2026 — Owner-Language Feedback Audit
+
+**Source:** ChatGPT feedback on the mobile More-tab External Menu Sync screen and desktop parity.
+
+| ChatGPT Point | Status | Ground Truth | Action |
+| --- | --- | --- | --- |
+| Screen starts with infrastructure terms instead of owner meaning | VALID | Desktop and mobile rendered status/toggle/URL/secret before explaining the feature | Added an explanation layer first on both surfaces |
+| Add "What is External Sync?" explanation, value bullets, and simple diagram | VALID | No owner-facing translation layer existed | Added plain-language title, description, trust bullets, and MenuList -> connected systems diagram |
+| Add "Who should use this?" and explicit ignore path | VALID | Most SMB owners should not configure this unless a provider/developer asks | Added expanded guidance with provider/developer/agency use cases and "ignore if no external integrations" copy |
+| Rename owner-facing "POS Sync" language | VALID | Internal `posSync` stays for compatibility, owner UI should be broader | Owner copy uses External Menu Sync / External Sync / connected systems |
+| Add "Trusted Connections", permissions, pause sync, health scoring, timelines, templates, and multi-destination | STRATEGIC, NOT CURRENT CODE SCOPE | Current implementation is one outbound provider URL with delivery logs | Logged as future architecture direction only; no new data model or marketplace behavior added in this pass |
+| Allow inbound sync carefully | REJECT FOR CURRENT FEATURE | MenuList must remain the source of truth | Connected systems may receive updates but cannot overwrite official MenuList business data |
+| Avoid iPaaS/Zapier-style sprawl | VALID BOUNDARY | Existing spec already rejects connector/adapters | Reinforced out-of-scope boundary against marketplace/catalog complexity |

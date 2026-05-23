@@ -2,8 +2,8 @@
 
 > **Feature:** POS Webhook Sync (Menu Snapshot Broadcast)
 > **Status:** Implemented — Feature flag: `ENABLE_POS_SYNC: true`
-> **Last Updated:** May 18, 2026
-> **Version:** 2.2
+> **Last Updated:** May 23, 2026
+> **Version:** 2.4
 
 ---
 
@@ -22,11 +22,11 @@
 
 ## What Is This Feature?
 
-**One-liner:** Approved MenuList menu changes can be delivered to a connected store POS webhook as a signed full-menu snapshot.
+**One-liner:** External Menu Sync lets MenuList safely share official business/menu updates with a trusted connected system.
 
 **Problem Solved:** When a business uses both MenuList (for digital menu) and a POS system, menu changes must be manually replicated in both places. This leads to price mismatches, missing items, and daily operational friction — especially for chains with multiple outlets.
 
-**Solution:** When POS Sync is connected for a store, MenuList sends a signed full menu snapshot to that store's configured POS webhook endpoint after approved menu-affecting changes. MenuList stays upstream; the POS endpoint consumes the current menu truth.
+**Solution:** When External Menu Sync is connected for a store, MenuList sends a signed full menu snapshot to the configured provider/developer URL after approved menu-affecting changes. MenuList stays upstream; the connected system consumes the current menu truth.
 
 ---
 
@@ -71,7 +71,7 @@ Log delivery result to stores/{storeId}/posDeliveryLogs
 | Signature utility        | `src/lib/posSync/signature.ts`                                           |
 | Payload formatter        | `src/lib/posSync/payloadFormatter.ts`                                    |
 | Event builder (debounce) | `src/lib/posSync/eventBuilder.ts`                                        |
-| POS Sync settings tab    | `src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx` |
+| External Menu Sync settings tab | `src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx` |
 | Editor integration       | `src/components/.../editorView/Editor.tsx` (syncChanges)                 |
 | API: test webhook        | `src/app/api/pos-sync/test/route.ts`                                     |
 | API: deliver snapshot    | `src/app/api/pos-sync/deliver/route.ts`                                  |
@@ -91,6 +91,8 @@ ENABLE_POS_SYNC: true, // POS webhook sync is enabled in the current runtime
 
 | Version | Date              | Changes                                                                                                                                                                                           |
 | ------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.4     | May 23, 2026      | Added owner-native explanation layer, value bullets, "Who should use this?" guidance, clearer connected-system labels, and protected source-of-truth copy on desktop and mobile. |
+| 2.3     | May 23, 2026      | Renamed owner-facing copy to External Menu Sync, masked signing secrets by default, added reveal/copy/regenerate safety, and logged secret rotations without storing secret values. |
 | 2.2     | May 18, 2026      | Status corrected to match current runtime flag. Public website positioning constrained to connected store POS webhook, signed full-menu snapshot language; no universal POS or real-time-sync claims. |
 | 1.0     | February 13, 2026 | Initial documentation (no code yet)                                                                                                                                                               |
 | 2.0     | February 14, 2026 | Full implementation complete. 5→2 server routes. ADR section added.                                                                                                                               |

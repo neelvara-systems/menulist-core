@@ -1,6 +1,6 @@
 # POS Webhook Sync — Mobile Support
 
-**Last Updated:** April 5, 2026
+**Last Updated:** May 23, 2026
 **Decision:** ⚠️ LIMITED MOBILE SUPPORT — Status and light configuration supported
 
 ---
@@ -15,10 +15,12 @@
 | **Value** | ✅ PASS | Owners may need to verify sync health away from desk |
 
 **Decision:** Mobile supports operational visibility and light-touch edits:
+- understand what External Menu Sync does before seeing technical fields
+- view a simple MenuList -> connected systems explanation and "Who should use this?" guidance
 - enable/disable sync
 - view status
-- edit webhook URL
-- regenerate/copy signing secret
-- send test ping
+- edit provider connection URL
+- view masked verification secret preview, reveal deliberately, copy secret, and regenerate with typed confirmation
+- test the connection
 
-Heavy integration setup and provider coordination are still desktop-preferred.
+Heavy integration setup and provider coordination are still desktop-preferred. Mobile must not expose the full signing secret by default.

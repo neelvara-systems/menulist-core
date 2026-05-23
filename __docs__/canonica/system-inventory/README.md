@@ -101,10 +101,10 @@ Management routes are gated by Canonica product scope or platform access. Client
 ### Public Canonica Website
 
 - `/` on Canonica product hosts and `/__canonica` in local/dev rewrite mode.
-- `/product`, `/use-cases`, `/demo`, `/install`, `/pricing`, `/resources`, `/updates`, `/get-started`, `/security`, `/faq`, `/about`, `/contact`.
+- `/product`, `/product/launch-setup`, `/product/page-aware-widget`, `/product/support-control`, `/product/knowledge-governance`, `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, `/product/tickets`, `/use-cases`, `/demo`, `/install`, `/pricing`, `/resources`, `/updates`, `/get-started`, `/security`, `/faq`, `/about`, `/contact`.
 - `/integrations` remains only as a redirect alias to `/install` for older links.
 - `/privacy-policy`, `/terms-of-service`, `/robots.txt`, `/sitemap.xml`.
-- Public website routes intentionally avoid `/docs`, `/help`, `/changelog`, and `/release-notes` because those roots are dashboard/client-support routes on Canonica product hosts.
+- Public website routes intentionally avoid root-level `/docs`, `/help`, `/changelog`, and `/release-notes` because those roots are dashboard/client-support routes on Canonica product hosts. Buyer-facing feature pages live under `/product/*`.
 
 ### Canonica Dashboard
 

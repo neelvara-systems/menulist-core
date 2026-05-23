@@ -97,15 +97,12 @@ export default function Footer() {
             <a href="mailto:hello@menulist.ai" className="ws-footer-email">
               hello@menulist.ai
             </a>
-            <div className="ws-footer-preferences" role="group" aria-label={t('Footer.preferencesLabel')}>
-              <div className="ws-footer-preference">
-                <span className="ws-footer-control-label">{t('Footer.languagePreference')}</span>
-                <WebsiteLanguageSwitcher surface="footer" />
-              </div>
-              <div className="ws-footer-preference">
-                <span className="ws-footer-control-label">{t('Footer.themePreference')}</span>
-                <WebsiteThemeSwitcher />
-              </div>
+            <div className="ws-footer-social-links" aria-label={t('Footer.socialLabel')}>
+              {socialLinks.map((social) => (
+                <a key={social.href} href={social.href} target="_blank" rel="noopener noreferrer">
+                  {social.label}
+                </a>
+              ))}
             </div>
           </div>
 
@@ -158,13 +155,10 @@ export default function Footer() {
 
         <div className="ws-footer-bottom">
           <p>{t('Footer.copyright', { year: currentYear })}</p>
-          <div className="ws-footer-bottom__links">
-            <span><LuMapPin size={14} /> {t('Footer.bottomTagline')}</span>
-            {socialLinks.map((social) => (
-              <a key={social.href} href={social.href} target="_blank" rel="noopener noreferrer">
-                {social.label}
-              </a>
-            ))}
+          <span className="ws-footer-bottom__tagline"><LuMapPin size={14} /> {t('Footer.bottomTagline')}</span>
+          <div className="ws-footer-bottom__controls" role="group" aria-label={t('Footer.preferencesLabel')}>
+            <WebsiteLanguageSwitcher surface="footer" />
+            <WebsiteThemeSwitcher />
           </div>
         </div>
       </div>

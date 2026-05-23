@@ -4,6 +4,7 @@ import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
+import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
@@ -22,6 +23,7 @@ function getBasePath(): string {
 const RESOURCE_GROUPS = [
     {
         title: 'Evaluate Canonica',
+        description: 'Start with proof, pricing, and common buying questions.',
         items: [
             ['Static product demo', '/demo', 'Try page-aware support without creating an account.'],
             ['Pricing', '/pricing', 'See the current Starter, Growth, and Studio packaging.'],
@@ -30,6 +32,7 @@ const RESOURCE_GROUPS = [
     },
     {
         title: 'Understand the fit',
+        description: 'Match Canonica to the support problem your product has today.',
         items: [
             ['Use cases', '/use-cases', 'Map Canonica to billing, onboarding, settings, releases, and tickets.'],
             ['Page-aware support widget', '/page-aware-support-widget', 'See how product-page context changes the answer.'],
@@ -38,6 +41,7 @@ const RESOURCE_GROUPS = [
     },
     {
         title: 'Plan the rollout',
+        description: 'Check install, hosted help, and security before implementation.',
         items: [
             ['Widget and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
             ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],
@@ -46,6 +50,7 @@ const RESOURCE_GROUPS = [
     },
     {
         title: 'Track product movement',
+        description: 'Follow updates or move into setup when the product is ready.',
         items: [
             ['Updates', '/updates', 'Read recent Canonica product and website changes.'],
             ['Get started', '/get-started', 'Create a workspace and land in the Activation Command Center.'],
@@ -97,20 +102,61 @@ export default function CanonicaResourcesPage() {
                         </div>
                     </div>
 
-                    <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-4">
-                        {RESOURCE_GROUPS.map((group) => (
-                            <article key={group.title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                                <h2 className="mb-5 text-xl font-semibold text-white">{group.title}</h2>
-                                <div className="space-y-4">
+                    <div className="mx-auto mb-12 max-w-6xl">
+                        <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Feature pages</p>
+                                <h2 className="text-2xl font-bold text-white">Evaluate the individual support surfaces.</h2>
+                            </div>
+                            <p className="text-sm leading-relaxed text-[#a0a0c0]">
+                                Knowledge Base, FAQ, Changelog, and Tickets each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context.
+                            </p>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                            {CANONICA_SUPPORT_FEATURES.map((feature) => (
+                                <CanonicaLink
+                                    key={feature.href}
+                                    basePath={basePath}
+                                    href={feature.href}
+                                    className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                                >
+                                    <div className="text-sm font-semibold text-white">{feature.label}</div>
+                                    <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">{feature.heroBullets[0]}</p>
+                                </CanonicaLink>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mx-auto max-w-6xl space-y-4">
+                        {RESOURCE_GROUPS.map((group, index) => (
+                            <article
+                                key={group.title}
+                                className="grid gap-5 border-t border-white/[0.06] py-6 first:border-t-0 first:pt-0 lg:grid-cols-[16rem_1fr] lg:items-stretch"
+                            >
+                                <div className="flex flex-col justify-between gap-4 rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                                    <div>
+                                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                            Step {String(index + 1).padStart(2, '0')}
+                                        </p>
+                                        <h2 className="text-xl font-semibold leading-tight text-white">{group.title}</h2>
+                                    </div>
+                                    <p className="text-xs leading-relaxed text-[#808099]">
+                                        {group.description}
+                                    </p>
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-3">
                                     {group.items.map(([label, href, description]) => (
                                         <CanonicaLink
                                             key={href}
                                             basePath={basePath}
                                             href={href}
-                                            className="block rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition hover:border-indigo-500/30 hover:bg-white/[0.04]"
+                                            className="flex min-h-[8.75rem] flex-col justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition hover:border-indigo-500/30 hover:bg-white/[0.04]"
                                         >
-                                            <div className="text-sm font-semibold text-[#d6d6ef]">{label}</div>
-                                            <p className="mt-1 text-sm leading-relaxed text-[#808099]">{description}</p>
+                                            <div>
+                                                <div className="text-sm font-semibold text-[#d6d6ef]">{label}</div>
+                                                <p className="mt-2 text-sm leading-relaxed text-[#808099]">{description}</p>
+                                            </div>
+                                            <span className="mt-4 text-xs font-semibold text-indigo-300">Open</span>
                                         </CanonicaLink>
                                     ))}
                                 </div>

@@ -24,6 +24,7 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
 import type { MenuProps } from 'antd';
 import { Layout, Menu, theme, Typography } from 'antd';
+import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
@@ -112,9 +113,12 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
                     marginBottom: 8,
                 }}
             >
-                <Text strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>
-                    Canonica
-                </Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Image src="/canonica-logo-mark-wide.png" alt="" width={50} height={31} priority />
+                    <Text strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>
+                        Canonica
+                    </Text>
+                </div>
                 <br />
                 <Text type="secondary" style={{ fontSize: 11 }}>
                     Knowledge Control Plane

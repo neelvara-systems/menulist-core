@@ -1,9 +1,9 @@
 # POS Webhook Sync — Implementation Plan
 
 > **Document Type:** Technical Blueprint (Developers)
-> **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: false`)
-> **Last Updated:** March 14, 2026
-> **Version:** 2.1
+> **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
+> **Last Updated:** May 23, 2026
+> **Version:** 2.3
 
 ---
 
@@ -226,6 +226,9 @@ posSync: {
   menuVersion: number; // Current menu version (incremented on change)
   instructionsSentCount: number; // Daily counter for email abuse protection
   instructionsSentDate: string; // YYYY-MM-DD for daily reset
+  secretRotatedAt?: string; // ISO timestamp of latest owner-triggered secret rotation
+  secretRotatedByEmail?: string; // Actor email for latest secret rotation audit metadata
+  secretRotatedByUserId?: string; // Actor user id for latest secret rotation audit metadata
 }
 ```
 
@@ -648,10 +651,11 @@ async def menulist_webhook(request: Request):
 
 | Test Case                               | Expected Result                          |
 | --------------------------------------- | ---------------------------------------- |
-| Enable POS sync toggle                  | Secret auto-generated, fields enabled    |
-| Enter webhook URL                       | URL saved on form submit                 |
-| Click "Send Test" with valid URL        | Success message, log entry created       |
-| Click "Send Test" with invalid URL      | Failure message shown                    |
+| Explanation layer renders first         | Owner sees value copy, diagram, trust bullets, and "Who should use this?" before technical fields |
+| Enable External Sync toggle             | Secret auto-generated, fields enabled    |
+| Enter provider connection URL           | URL saved on form submit                 |
+| Click "Test connection" with valid URL  | Success message, log entry created       |
+| Click "Test connection" with invalid URL | Failure message shown                   |
 | Edit menu item price                    | Delivery job created after debounce      |
 | Edit 5 items in 10 seconds              | Only 1 delivery job created (debounce)   |
 | Webhook returns 200                     | Status: success, log entry: 200          |
@@ -659,7 +663,7 @@ async def menulist_webhook(request: Request):
 | Webhook times out (>5s)                 | Timeout logged, retry initiated          |
 | 5 consecutive failures                  | Status changes to "connection_issue"     |
 | Fix URL, click "Send Test" successfully | Status recovers to "healthy"             |
-| Regenerate secret                       | New secret shown, old one invalidated    |
+| Regenerate secret                       | New secret generated, masked by default, old one invalidated, rotation metadata and MOL audit event stored |
 | Send instructions (first time)          | Email sent, counter = 1                  |
 | Send instructions (4th time same day)   | Blocked: "Maximum 3 sends per day"       |
 | Disable POS sync toggle                 | All delivery stops, status = disabled    |
@@ -758,6 +762,7 @@ async def menulist_webhook(request: Request):
 - The client already has the secret from the store document (client-side Firestore read)
 - API responses could be logged by proxies, CDNs, or browser extensions
 - Follows the principle: "secrets are write-only, never read back through APIs"
+- Owner-facing settings must also avoid showing the full secret by default. Desktop and mobile show a truncated preview, provide a deliberate reveal action, preserve latest rotation metadata (`secretRotatedAt`, `secretRotatedByUserId`, `secretRotatedByEmail`) on the same store write, and append a `POS_SYNC_SECRET_REGENERATED` MOL event without logging the secret value.
 
 ### ADR-7: Why .gitignore Blocked "logs" Route Name
 

@@ -1,3 +1,5 @@
+import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
+
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
@@ -52,6 +54,13 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         priority: 0.82,
         changeFrequency: 'monthly',
     },
+    ...CANONICA_SUPPORT_FEATURES.map((feature) => ({
+        path: feature.href,
+        title: `${feature.label} | Canonica`,
+        description: feature.description,
+        priority: 0.8,
+        changeFrequency: 'monthly' as const,
+    })),
     {
         path: '/demo',
         title: 'Demo | Canonica',

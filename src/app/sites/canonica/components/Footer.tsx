@@ -1,4 +1,6 @@
+import Image from 'next/image';
 import CanonicaLink from './CanonicaLink';
+import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 const FOOTER_LINKS = {
     Product: [
@@ -7,6 +9,7 @@ const FOOTER_LINKS = {
         { label: 'Page-Aware Widget', href: '/product/page-aware-widget' },
         { label: 'Support Control', href: '/product/support-control' },
         { label: 'Knowledge Governance', href: '/product/knowledge-governance' },
+        ...CANONICA_SUPPORT_FEATURES.map((feature) => ({ label: feature.label, href: feature.href })),
         { label: 'Use Cases', href: '/use-cases' },
         { label: 'Demo', href: '/demo' },
         { label: 'Pricing', href: '/pricing' },
@@ -37,9 +40,7 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                     {/* Brand */}
                     <div>
                         <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20">
-                                <span className="text-sm font-bold text-indigo-400">C</span>
-                            </div>
+                            <Image src="/canonica-logo-mark-wide.png" alt="" width={56} height={34} className="h-8 w-14 object-contain" />
                             <span className="text-lg font-semibold text-white">Canonica</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
@@ -48,9 +49,9 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                         </p>
                     </div>
 
-                    {/* Link Columns */}
+                {/* Link Columns */}
                     {Object.entries(FOOTER_LINKS).map(([title, links]) => (
-                        <div key={title}>
+                        <div key={title} data-canonica-reveal-item>
                             <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#6b6b8a]">
                                 {title}
                             </h4>

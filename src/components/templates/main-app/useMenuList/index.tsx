@@ -959,22 +959,22 @@ export default function UseMenuList() {
                 </Col>
             </Row>
 
-            {/* ─── POS Sync Info (when enabled) ───────────────────── */}
+            {/* ─── External Menu Sync Info (when enabled) ───────────────────── */}
             {data.hasPosSync && (
                 <>
                     <Divider />
-                    <Title level={5} style={{ marginBottom: 12 }}>POS Sync</Title>
+                    <Title level={5} style={{ marginBottom: 12 }}>External Menu Sync</Title>
                     <Card size="small" style={{ marginBottom: 24 }} styles={{ body: { padding: 16 } }}>
                         <Flex vertical gap={10}>
                             <Flex gap={8} align="center">
                                 <LuShield size={18} style={{ color: themeToken.colorPrimary }} />
-                                <Text strong>POS Integration</Text>
+                                <Text strong>Connected system</Text>
                                 <Tag color={data.posSyncStatus === 'healthy' ? 'green' : data.posSyncStatus === 'connection_issue' ? 'red' : 'default'}>
                                     {data.posSyncStatus === 'healthy' ? 'Connected' : data.posSyncStatus === 'connection_issue' ? 'Issue' : 'Active'}
                                 </Tag>
                             </Flex>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Your {labels.offeringLower} automatically syncs to your POS system when you publish changes.
+                                Your {labels.offeringLower} can send approved updates to a connected system after publish.
                             </Text>
                             <Flex gap={8} wrap="wrap">
                                 <Button
@@ -982,7 +982,7 @@ export default function UseMenuList() {
                                     icon={<LuCopy size={14} />}
                                     onClick={() => {
                                         const summary = [
-                                            'MenuList POS Sync — Setup Info',
+                                            'MenuList External Menu Sync — Setup Info',
                                             '',
                                             'Payload: Full menu snapshot (JSON)',
                                             'Security: HMAC-SHA256 signed (header: X-MenuList-Signature)',
@@ -991,13 +991,13 @@ export default function UseMenuList() {
                                             '',
                                             'Documentation: https://menulist.ai/pos-sync',
                                         ].join('\n');
-                                        handleCopy(summary, 'POS sync details');
+                                        handleCopy(summary, 'External sync details');
                                     }}
                                 >
-                                    Copy Setup Info for POS Provider
+                                    Copy Setup Info for Provider
                                 </Button>
                                 <Button size="small" href="/business-settings">
-                                    POS Settings
+                                    External Sync Settings
                                 </Button>
                             </Flex>
                         </Flex>

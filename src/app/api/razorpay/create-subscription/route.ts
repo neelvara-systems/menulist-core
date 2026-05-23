@@ -173,30 +173,29 @@ export const POST = withAuth(async (request, session) => {
         let totalCount: number = 3; // Yearly: 3 cycles (auto-renewal for up to 3 years)
         if (interval === 'MONTH') totalCount = 36; // Monthly: 36 cycles (3 years)
 
+        // Razorpay subscription notes allow max 15 keys; keep provider notes canonical and compact.
+        const subscriptionNotes = {
+            productId,
+            tenantId,
+            storeId,
+            userId,
+            userType,
+            planId,
+            quantity,
+            priceKey,
+            interval,
+            name,
+            email,
+            price: unitAmount,
+            remainingCredits,//Credits Carry Forward from previous subscription
+        };
+
         // Step B: Create Provider Subscription
         const RazorpayCreateObj: any = {
             plan_id: razorpayPlanId,
             total_count: totalCount, // 36 cycles for monthly (3 years), 3 cycles for yearly (3 years)
             quantity,
-            notes: {
-                productId,
-                pId: productId,
-                tenantId,
-                storeId,
-                tId: tenantId,
-                sId: storeId,
-                userId,
-                uId: userId,
-                userType,
-                planId,
-                quantity,
-                priceKey,
-                interval,
-                name,
-                email,
-                price: unitAmount,
-                remainingCredits,//Credits Carry Forward from previous subscription
-            },
+            notes: subscriptionNotes,
         }
         await writeLogEntry({
             logFileName: LOG_FILE,

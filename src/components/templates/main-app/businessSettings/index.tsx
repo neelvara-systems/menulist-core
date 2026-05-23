@@ -696,7 +696,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     storeDetails={storeDetails}
                     onStoreUpdate={(updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
-                        updateStore(storeUpdate).then(() => {
+                        return updateStore(storeUpdate).then(() => {
                             setStoreDetails({ ...storeDetails, ...updates });
                         });
                     }}

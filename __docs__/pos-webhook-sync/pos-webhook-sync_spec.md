@@ -2,8 +2,8 @@
 
 > **Document Type:** Business Requirements (CEO/PM readable)
 > **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
-> **Last Updated:** May 18, 2026
-> **Version:** 2.2
+> **Last Updated:** May 23, 2026
+> **Version:** 2.4
 
 ---
 
@@ -11,21 +11,21 @@
 
 ### What
 
-When POS Sync is connected for a store, MenuList can send the full, authoritative menu to the store's POS webhook after approved menu-affecting changes. MenuList remains the upstream menu authority; the POS endpoint consumes a signed full-menu snapshot.
+When External Menu Sync is connected for a store, MenuList can share official business/menu updates with a trusted connected system after approved menu-affecting changes. MenuList remains the upstream authority; the receiving endpoint consumes a signed full-menu snapshot. Internally this feature remains `posSync` / POS Webhook Sync because the original technical contract is an outbound webhook.
 
 ### Why
 
-Businesses using both MenuList and a POS system currently must update menus in two places. This causes price mismatches, missing items, and daily operational friction. For chains with multiple outlets, the problem multiplies. POS Webhook Sync eliminates this entirely.
+Businesses using MenuList plus external systems often update menus, hours, availability, and business information in multiple places. This causes mismatches, missing items, and daily operational friction. External Menu Sync reduces that manual work by making MenuList the official source that sends updates downstream.
 
 ### For Whom
 
-- **Primary:** Restaurants, cafes, QSRs using any POS system alongside MenuList
-- **Secondary:** Multi-outlet chains where each store may use a different POS vendor
-- **Long-term:** Any business where MenuList manages menu and POS executes orders
+- **Primary:** Restaurants, cafes, and QSRs whose POS provider, developer, agency, or website partner asked for a webhook/provider URL
+- **Secondary:** Multi-outlet chains where each store may use a different connected system
+- **Ignore path:** Owners without external integrations should ignore this settings screen
 
 ### Strategic Position
 
-MenuList is NOT building POS integrations. MenuList is becoming the **upstream menu authority**. POS systems consume MenuList's authoritative menu feed. This is a one-way broadcast of truth — not a bidirectional sync, not middleware, not a connector.
+MenuList is NOT building POS integrations, workflow automation, or an integration marketplace. MenuList is the **upstream business truth source**. Connected systems consume MenuList's authoritative updates. This is a one-way distribution of truth — not a bidirectional sync, not middleware, not a connector.
 
 ---
 
@@ -72,6 +72,8 @@ MenuList is NOT building POS integrations. MenuList is becoming the **upstream m
 12. **Public documentation page** — `menulist.ai/pos-sync` developer reference
 13. **Sample payload download** — JSON file for POS vendors to test against
 14. **Copy technical summary** — one-click copy for WhatsApp/email sharing
+15. **Secret safety** — signing secret is masked by default, can be revealed deliberately, and secret rotation stores who/when metadata plus an append-only MOL audit event
+16. **Owner translation layer** — desktop and mobile start with plain-language explanation, value bullets, a simple MenuList → connected systems diagram, and "Who should use this?" guidance before technical fields
 
 ### Out-of-Scope (Never Build)
 
@@ -86,6 +88,8 @@ MenuList is NOT building POS integrations. MenuList is becoming the **upstream m
 | Delta/event-based updates | Full snapshot is permanent architecture decision    |
 | POS debugging tools       | Not our responsibility                              |
 | Master-level webhook push | Store-level only. Each outlet controls its own POS. |
+| Integration marketplace   | Avoids iPaaS/catalog complexity and support burden  |
+| Inbound automatic overwrite | Connected systems cannot overwrite MenuList truth |
 
 ---
 
@@ -99,8 +103,8 @@ MenuList is NOT building POS integrations. MenuList is becoming the **upstream m
 
 **Flow:**
 
-1. Owner goes to Business Settings → POS Sync tab
-2. Toggles "Enable POS Sync" ON
+1. Owner goes to Business Settings → External Menu Sync tab
+2. Toggles "Enable External Menu Sync" ON
 3. System auto-generates signing secret
 4. Owner enters webhook URL (provided by POS vendor)
 5. Owner clicks "Send Test" → sees success/failure
@@ -367,41 +371,55 @@ Content-Type: application/json
 
 ### Location
 
-Business Settings → "POS Sync" tab (new tab, sits after "Integrations")
+Business Settings → "External Menu Sync" tab (internal key: `posSync`; sits after "Integrations")
 
-### Page Structure (5 sections)
+### Page Structure (6 sections)
 
-**Section 1 — Status Header**
+**Section 1 — Explanation Layer**
 
-- Disabled: "POS Sync is not enabled"
+- Title: "Connect MenuList with other systems"
+- Description: "Automatically share menu, hours, availability, and business updates from MenuList with your POS provider, developer, agency, website, or other trusted systems."
+- Trust line: "Business truth protected"
+- Diagram: "MenuList updates → POS / ordering / website"
+- Bullets:
+  - Keep external systems updated automatically
+  - Reduce manual menu changes across platforms
+  - Share official business updates from MenuList
+  - Built for POS providers, developers, and advanced integrations
+- Collapsible guidance: "Who should use this?" with provider/developer/agency use cases and an explicit ignore path for owners without external integrations
+- Source-of-truth copy: "MenuList remains the source of truth. Connected systems receive updates but cannot overwrite your official business data."
+
+**Section 2 — Status Header**
+
+- Disabled: "External sync is off" with "MenuList is not currently sending business/menu updates to connected systems."
 - Connected: "● Connected — Menu updates are being sent automatically — Last sent: 2 min ago"
-- Failing: "⚠ Connection issue — Menu updates are not reaching your POS"
+- Failing: "⚠ Connection issue — Menu updates are not reaching the connected system"
 
-**Section 2 — Enable & Config**
+**Section 3 — Enable & Config**
 
-- Toggle: Enable POS Sync (ON/OFF)
-- Webhook URL input with helper text
-- Signing Secret (auto-generated, copy button, regenerate button)
+- Toggle: Enable External Sync (ON/OFF)
+- Provider connection URL input with helper text
+- Verification secret (auto-generated, masked preview by default, reveal button, copy button, regenerate button)
 
-**Section 3 — Test Connection**
+**Section 4 — Test Connection**
 
-- "Send Test" button
+- "Test connection" button
 - Inline result: success or failure message
 
-**Section 4 — Delivery Status**
+**Section 5 — Delivery Status**
 
 - Last delivery time, status, menu version
 
-**Section 5 — Recent Deliveries**
+**Section 6 — Recent Deliveries**
 
 - Table: Time | Status | Response Code (last 20, no pagination)
 
 ### Activation Helpers (below config)
 
-- "Send setup instructions to POS provider" button
-- POS provider email field
-- "Download Sample Payload" button
-- "Copy Technical Summary" button
+- "Share setup instructions with your provider or developer" button
+- Provider email field
+- "Download sample update file" button
+- "Copy setup details" button
 
 ### UX Philosophy
 

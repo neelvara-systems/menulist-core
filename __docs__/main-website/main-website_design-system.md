@@ -211,9 +211,10 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 ### 4.3.1 Footer Preference Controls
 
 - Language and theme controls live in the footer, not the header, so the header stays focused on navigation, demo evaluation, upload, and account actions.
-- Footer preference controls must be grouped under the footer brand column and remain secondary to the footer CTA/proof/navigation system.
-- Theme controls use a three-option segmented control: Light, System, Dark.
-- Footer controls must use footer-safe dark surfaces, visible borders, 44px-class tap targets where space allows, and localized labels.
+- Social links live under the company email in the footer brand column.
+- The footer bottom row keeps copyright on the left, the public-source line centered, and compact Language / Theme controls on the right.
+- Theme controls use a dropdown with three options: Light, System, Dark.
+- Footer controls must use footer-safe dark surfaces, visible borders, 40px-class tap targets where space allows, and localized labels.
 - Do not add another theme switcher in the hero, header, or sticky CTA unless the website strategy changes.
 
 ### 4.5 Mobile Polish Rules
@@ -543,7 +544,7 @@ Rules:
 - Light mode remains the default for light system preferences and for the main sales screenshots/asset direction.
 - Dark mode follows the user's system preference or existing saved theme preference through the website `ThemeProvider`.
 - Do not use pure black (`#000000`) as the website background. Use the `#121212` dark-gray family for the main page, then slightly lighter gray surfaces for cards, dropdowns, pricing tables, forms, and drawers.
-- The public theme control lives in the footer and must remain localized, keyboard accessible, and visually secondary. Do not duplicate it in the header, hero, or sticky CTA.
+- The public theme control lives in the footer bottom row and must remain localized, keyboard accessible, and visually secondary. Do not duplicate it in the header, hero, or sticky CTA.
 - Product screenshots and generated website assets may remain light because customer public pages can follow each business brand; do not force screenshots into dark mode unless the asset itself is intentionally dark.
 - Dark mode must preserve MenuList's calm, owner-readable positioning. Avoid neon dashboard styling, heavy glow effects, and campaign-like black backgrounds.
 

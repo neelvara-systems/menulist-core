@@ -3,14 +3,14 @@
 > **Document Type:** Firebase cost tracking (CRITICAL — directly impacts revenue)
 > **Audience:** Founder, developers, cost auditors
 > **Status:** Implemented
-> **Last Updated:** February 14, 2026
-> **Version:** 2.0
+> **Last Updated:** May 23, 2026
+> **Version:** 2.1
 
 ---
 
 ## Summary
 
-- **Collections Used:** `stores`, `stores/{storeId}/posDeliveryLogs` (subcollection)
+- **Collections Used:** `stores`, `stores/{storeId}/posDeliveryLogs` (subcollection), `menuChangeLog/{tId}/{sId}` for secret-rotation audit events
 - **Storage Buckets:** None (no file uploads)
 - **Cloud Functions:** None (deferred — delivery handled by API routes)
 - **External Services:** Outbound HTTP (webhook delivery)
@@ -41,7 +41,8 @@
 | Update store sync status       | `stores`                       | After delivery (server) | Per delivery         | 1            | merge update  | lastSentAt, lastStatus, status               |
 | Increment menuVersion (server) | `stores`                       | Menu change             | Per menu change      | 1            | merge update  | posSync.menuVersion++                        |
 | Update instructions count      | `stores`                       | Send instructions       | Max 3/day/store      | 1            | merge update  | instructionsSentCount, sentDate (client)     |
-| Regenerate secret (client)     | `stores`                       | Owner action            | Very rare            | 1            | merge update  | webhookSecret field via updateStore() DAL    |
+| Regenerate secret (client)     | `stores`                       | Owner action            | Very rare            | 1            | merge update  | webhookSecret + latest rotation metadata via updateStore() DAL |
+| Log secret rotation audit      | `menuChangeLog/{tId}/{sId}`    | Secret regeneration     | Very rare            | 1            | append-only event | Logs who/when only; never logs secret value |
 | Cleanup old delivery logs      | `stores/{sId}/posDeliveryLogs` | On new log write        | Per delivery         | 0-N delete   | batch delete  | Keep max 20, delete oldest if >20            |
 
 ### Deletes
@@ -166,6 +167,7 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 | Toggle POS sync on/off         | PosSyncTab | `stores/{sId}`                 | Write (merge)  |
 | Save webhook URL               | PosSyncTab | `stores/{sId}`                 | Write (merge)  |
 | Regenerate webhook secret      | PosSyncTab | `stores/{sId}`                 | Write (merge)  |
+| Log secret rotation audit      | PosSyncTab / MobilePosSyncScreen | `menuChangeLog/{tId}/{sId}` | Write (append) |
 | Read delivery logs (last 20)   | PosSyncTab | `stores/{sId}/posDeliveryLogs` | Read (20 docs) |
 | Update instructions sent count | PosSyncTab | `stores/{sId}`                 | Write (merge)  |
 
@@ -182,4 +184,4 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 
 **Document Signature:** Firebase Cost Tracking
 **Author:** Cascade + Founder
-**Last Updated:** February 14, 2026
+**Last Updated:** May 23, 2026

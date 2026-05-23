@@ -4,6 +4,12 @@
 
 /* Canonica Website — Global Styles */
 
+html,
+body {
+    background: #0a0a1a !important;
+    color-scheme: dark;
+}
+
 .canonica-site {
     --cn-bg: #0a0a1a;
     --cn-bg-subtle: #0f0f23;
@@ -37,7 +43,7 @@
 }
 
 .canonica-hero-gradient {
-    background: linear-gradient(90deg, #c2e0de 0%, #1eceff 42%, #2563eb 100%);
+    background: linear-gradient(90deg, #dbe4ff 0%, #a5b4fc 30%, #6366f1 72%, #4f46e5 100%);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

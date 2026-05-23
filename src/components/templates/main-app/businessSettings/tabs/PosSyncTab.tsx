@@ -1,8 +1,8 @@
 /**
  * POS Sync Tab — Business Settings
  *
- * Store-level POS webhook configuration.
- * Sections: Status Header, Config, Test Connection, Delivery Status, Recent Deliveries.
+ * Store-level external sync configuration.
+ * Sections: Owner explanation, Status Header, Config, Test Connection, Delivery Status, Updates sent.
  * Silent when healthy. Visible only when broken.
  *
  * @see __docs__/pos-webhook-sync/pos-webhook-sync_spec.md (UI Design)
@@ -12,11 +12,14 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { logPosSyncSecretRotationAudit } from "@lib/posSync/secretAudit";
+import { formatWebhookSecretPreview } from "@lib/posSync/secretDisplay";
 import {
     Alert,
     Badge,
     Button,
     Card,
+    Collapse,
     Divider,
     Flex,
     Input,
@@ -30,12 +33,16 @@ import {
     message,
 } from "antd";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { useSession } from "next-auth/react";
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from "react";
 import {
+    LuArrowRight,
     LuCheck,
     LuCopy,
     LuDownload,
+    LuEye,
+    LuEyeOff,
     LuRefreshCw,
     LuSend,
     LuShield,
@@ -50,7 +57,7 @@ const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
 interface PosSyncTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
-    onStoreUpdate?: (updates: Record<string, any>) => void;
+    onStoreUpdate?: (updates: Record<string, any>) => void | Promise<void>;
 }
 
 interface DeliveryLogEntry {
@@ -70,6 +77,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     onStoreUpdate,
 }) => {
     const t = useTranslations('PosSync');
+    const { data: session } = useSession();
     const posSync = storeDetails?.posSync;
     const storeId = storeDetails?.storeId;
     const tenantId = storeDetails?.tenantId;
@@ -90,6 +98,17 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const status = posSync?.status || 'disabled';
     const lastSentAt = posSync?.lastSentAt;
     const menuVersion = posSync?.menuVersion || 0;
+    const trustBullets = [
+        t('trustBullet1'),
+        t('trustBullet2'),
+        t('trustBullet3'),
+        t('trustBullet4'),
+    ];
+    const useCases = [
+        t('whoUse1'),
+        t('whoUse2'),
+        t('whoUse3'),
+    ];
 
     const fetchDeliveryHistory = useCallback(async () => {
         if (!storeId) return;
@@ -163,7 +182,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             return;
         }
         onStoreUpdate?.({ 'posSync.webhookUrl': webhookUrl.trim() });
-        message.success('Webhook URL saved');
+        message.success('Provider connection URL saved');
     }, [webhookUrl, onStoreUpdate]);
 
     const handleTest = useCallback(async () => {
@@ -180,13 +199,13 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             if (data.success) {
                 setTestResult({
                     success: true,
-                    message: `Webhook reachable (${data.responseTime}ms, HTTP ${data.statusCode})`,
+                    message: `Connection reachable (${data.responseTime}ms, HTTP ${data.statusCode})`,
                 });
                 fetchDeliveryHistory();
             } else {
                 setTestResult({
                     success: false,
-                    message: data.error || 'Could not reach webhook',
+                    message: data.error || 'Could not reach connected system',
                 });
             }
         } catch {
@@ -201,6 +220,24 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         setRegenerateSecretModalOpen(true);
     }, []);
 
+    const buildSecretRotationAudit = useCallback(() => {
+        const sessionUser = (session?.user || {}) as any;
+        const rotatedAt = new Date().toISOString();
+        const actorEmail = sessionUser.email || '';
+        const actorUserId = String((session as any)?.uId || sessionUser.uId || sessionUser.id || sessionUser.email || 'unknown');
+
+        return {
+            actorEmail,
+            actorUserId,
+            rotatedAt,
+            storeUpdates: {
+                'posSync.secretRotatedAt': rotatedAt,
+                'posSync.secretRotatedByEmail': actorEmail,
+                'posSync.secretRotatedByUserId': actorUserId,
+            },
+        };
+    }, [session]);
+
     const confirmSecretRegeneration = useCallback(() => {
         if (regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION) {
             message.error(`Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`);
@@ -210,13 +247,26 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         const bytes = new Uint8Array(32);
         crypto.getRandomValues(bytes);
         const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        const secretRotationAudit = buildSecretRotationAudit();
         setWebhookSecret(newSecret);
-        setSecretVisible(true);
-        onStoreUpdate?.({ 'posSync.webhookSecret': newSecret });
+        setSecretVisible(false);
+        const updateResult = onStoreUpdate?.({
+            'posSync.webhookSecret': newSecret,
+            ...secretRotationAudit.storeUpdates,
+        });
+        void Promise.resolve(updateResult).then(() => {
+            logPosSyncSecretRotationAudit({
+                actorEmail: secretRotationAudit.actorEmail,
+                actorUserId: secretRotationAudit.actorUserId,
+                rotatedAt: secretRotationAudit.rotatedAt,
+                storeId,
+                tenantId,
+            });
+        }).catch(() => undefined);
         setRegenerateSecretModalOpen(false);
         setRegenerateSecretConfirmationText('');
-        message.success('New secret generated. Share it with your POS provider.');
-    }, [onStoreUpdate, regenerateSecretConfirmationText]);
+        message.success('New secret generated. Use Copy to share it with your provider.');
+    }, [buildSecretRotationAudit, onStoreUpdate, regenerateSecretConfirmationText, storeId, tenantId]);
 
     const handleCopySecret = useCallback(() => {
         navigator.clipboard.writeText(webhookSecret);
@@ -253,9 +303,9 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
 
     const handleCopyTechnicalSummary = useCallback(() => {
         const summary = [
-            'MenuList POS Sync — Setup Info',
+            'MenuList External Menu Sync — Setup Info',
             '',
-            'Webhook URL: Your POS endpoint that accepts POST requests',
+            'Webhook URL: Your connected system endpoint that accepts POST requests',
             'Payload: Full menu snapshot (JSON)',
             'Security: HMAC-SHA256 signed (header: X-MenuList-Signature)',
             'Documentation: https://menulist.ai/pos-sync',
@@ -267,7 +317,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             '- X-MenuList-Timestamp: Unix timestamp',
             '- X-MenuList-Delivery-Id: Unique delivery ID',
             '',
-            'Your POS must respond with HTTP 200 within 5 seconds.',
+            'The connected system must respond with HTTP 200 within 5 seconds.',
         ].join('\n');
         navigator.clipboard.writeText(summary);
         message.success('Technical summary copied');
@@ -313,7 +363,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'menulist-pos-sync-sample.json';
+        a.download = 'menulist-external-menu-sync-sample.json';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -387,7 +437,84 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             </Flex>
             <Divider />
 
-            {/* Section 1: Status Header */}
+            {/* Section 1: Owner explanation */}
+            <Flex
+                vertical
+                gap={12}
+                style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    marginBottom: 16,
+                    padding: 16,
+                }}
+            >
+                <Flex vertical gap={6}>
+                    <Tag color="blue" style={{ alignSelf: 'flex-start' }}>{t('truthProtected')}</Tag>
+                    <Title level={5} style={{ margin: 0 }}>{t('connectIntroTitle')}</Title>
+                    <Text type="secondary">{t('connectIntroDesc')}</Text>
+                </Flex>
+
+                <Flex
+                    align="center"
+                    gap={12}
+                    justify="space-between"
+                    style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        padding: 12,
+                    }}
+                >
+                    <Text strong>{t('diagramSource')}</Text>
+                    <LuArrowRight color="#1677ff" size={18} />
+                    <Text strong>{t('diagramDestination')}</Text>
+                </Flex>
+
+                <Flex gap={12} wrap="wrap">
+                    {trustBullets.map((bullet) => (
+                        <Flex align="flex-start" gap={8} key={bullet} style={{ flex: '1 1 240px' }}>
+                            <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 3 }} />
+                            <Text>{bullet}</Text>
+                        </Flex>
+                    ))}
+                </Flex>
+
+                <Collapse
+                    defaultActiveKey={['who']}
+                    ghost
+                    items={[{
+                        key: 'who',
+                        label: <Text strong>{t('whoUseTitle')}</Text>,
+                        children: (
+                            <Flex vertical gap={8}>
+                                <Text>{t('whoUseIntro')}</Text>
+                                {useCases.map((useCase) => (
+                                    <Flex align="flex-start" gap={8} key={useCase}>
+                                        <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 3 }} />
+                                        <Text>{useCase}</Text>
+                                    </Flex>
+                                ))}
+                                <Text type="secondary">{t('whoIgnore')}</Text>
+                            </Flex>
+                        ),
+                    }]}
+                />
+
+                <Text type="secondary">{t('truthProtectedDesc')}</Text>
+            </Flex>
+
+            {/* Section 2: Status Header */}
+            {!enabled && (
+                <Alert
+                    type="info"
+                    showIcon
+                    message={t('disabledStatus')}
+                    description={t('disabledStatusDesc')}
+                    style={{ marginBottom: 16 }}
+                />
+            )}
+
             {enabled && (
                 <Flex vertical gap={8} style={{ marginBottom: 16 }}>
                     {status === 'connection_issue' && (
@@ -411,7 +538,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 </Flex>
             )}
 
-            {/* Section 2: Enable & Config */}
+            {/* Section 3: Enable & Config */}
             <Flex vertical gap={16}>
                 <Flex justify="space-between" align="center">
                     <Flex vertical>
@@ -462,13 +589,20 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     </Tooltip>
                                 </Space>
                             </Flex>
-                            <Input.Password
-                                value={webhookSecret}
+                            <Input
+                                value={secretVisible ? webhookSecret : formatWebhookSecretPreview(webhookSecret)}
                                 readOnly
-                                visibilityToggle={{
-                                    visible: secretVisible,
-                                    onVisibleChange: setSecretVisible,
-                                }}
+                                suffix={(
+                                    <Tooltip title={secretVisible ? 'Hide secret' : 'Reveal secret'}>
+                                        <Button
+                                            disabled={!webhookSecret}
+                                            icon={secretVisible ? <LuEyeOff size={14} /> : <LuEye size={14} />}
+                                            onClick={() => setSecretVisible((current) => !current)}
+                                            size="small"
+                                            type="text"
+                                        />
+                                    </Tooltip>
+                                )}
                             />
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 {t('signingSecretHelp')}
@@ -518,7 +652,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                             </Flex>
                         )}
 
-                        {/* Section 5: Recent Deliveries */}
+                        {/* Section 6: Updates sent */}
                         <Flex vertical gap={8}>
                             <Flex justify="space-between" align="center">
                                 <Text strong>{t('recentDeliveries')}</Text>
@@ -557,7 +691,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     <Input
                                         value={providerEmail}
                                         onChange={e => setProviderEmail(e.target.value)}
-                                        placeholder="pos-provider@example.com"
+                                    placeholder="provider@example.com"
                                         type="email"
                                     />
                                     <Button
@@ -593,7 +727,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             </Flex>
 
             <Modal
-                title="Regenerate Signing Secret"
+                title="Regenerate verification secret"
                 open={regenerateSecretModalOpen}
                 onOk={confirmSecretRegeneration}
                 onCancel={() => {
@@ -608,7 +742,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             >
                 <Flex vertical gap={12}>
                     <Text>
-                        The current secret will stop working immediately. Share the new secret with your POS provider or their existing webhook configuration will fail.
+                        The current secret will stop working immediately. Share the new secret with your provider or their existing connection will fail.
                     </Text>
                     <Text type="secondary">
                         Type {REGENERATE_SECRET_CONFIRMATION} to confirm.

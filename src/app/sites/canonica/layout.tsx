@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
 import CanonicaAnalytics from './components/CanonicaAnalytics';
+import CanonicaScrollReveal from './components/CanonicaScrollReveal';
 import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_URL } from './siteConfig';
 import './styles.css';
+import './scroll-reveal.css';
 
 export const metadata: Metadata = {
     applicationName: 'Canonica',
@@ -40,10 +42,12 @@ export const metadata: Metadata = {
     manifest: '/canonica.webmanifest',
     icons: {
         icon: [
+            { url: '/canonica-favicon.ico', sizes: 'any' },
+            { url: '/canonica-favicon-16.png', sizes: '16x16', type: 'image/png' },
             { url: '/canonica-favicon-32.png', sizes: '32x32', type: 'image/png' },
             { url: '/canonica-icon-192.png', sizes: '192x192', type: 'image/png' },
         ],
-        apple: [{ url: '/canonica-icon-192.png', sizes: '192x192', type: 'image/png' }],
+        apple: [{ url: '/canonica-apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     },
     appleWebApp: {
         capable: true,
@@ -103,6 +107,7 @@ export default function CanonicaWebsiteLayout({ children }: CanonicaLayoutProps)
     return (
         <div className="canonica-site antialiased">
             <CanonicaAnalytics />
+            <CanonicaScrollReveal />
             {/* CanonicaClientLayout is imported dynamically to avoid making the entire layout a client component */}
             {children}
         </div>

@@ -30,6 +30,26 @@ export type ProductCapabilityLandingPageProps = {
     basePath?: string;
 };
 
+function getBentoCardClass(index: number, totalCards: number) {
+    if (totalCards === 5) {
+        const fiveCardLayout = [
+            'md:col-span-2 lg:col-span-3',
+            'md:col-span-2 lg:col-span-3',
+            'lg:col-span-2',
+            'lg:col-span-2',
+            'lg:col-span-2',
+        ];
+
+        return fiveCardLayout[index] || '';
+    }
+
+    if (index === 0) {
+        return 'md:col-span-2 lg:col-span-2';
+    }
+
+    return '';
+}
+
 export default function ProductCapabilityLandingPage({
     eyebrow,
     title,
@@ -164,13 +184,11 @@ export default function ProductCapabilityLandingPage({
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{bentoTitle}</h2>
                         <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">{bentoDescription}</p>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className={`grid gap-4 md:grid-cols-2 ${bentoCards.length === 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'}`}>
                         {bentoCards.map((card, index) => (
                             <article
                                 key={card.title}
-                                className={`rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6 ${
-                                    index === 0 ? 'md:col-span-2 lg:col-span-2' : ''
-                                }`}
+                                className={`rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6 ${getBentoCardClass(index, bentoCards.length)}`}
                             >
                                 <h3 className="text-lg font-semibold text-white">{card.title}</h3>
                                 <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{card.description}</p>

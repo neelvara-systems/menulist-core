@@ -25,7 +25,7 @@
 
 ## Quick Reference
 
-### Pages (26 total)
+### Pages (30 total)
 
 | Route | Page | Purpose |
 |-------|------|---------|
@@ -35,6 +35,10 @@
 | `/product/page-aware-widget` | Product Area | Landing-style page for widget runtime, safe context, allowed origins, blocked routes, and approved answers |
 | `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, changelog, ticket fallback, conversations, and weekly support review |
 | `/product/knowledge-governance` | Product Area | Landing-style page for ontology, canonical answers, drift, signal mutation, coverage, and trust metrics |
+| `/product/knowledge-base` | Product Feature | Standalone feature page for reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing |
+| `/product/faq-management` | Product Feature | Standalone feature page for article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
+| `/product/changelog` | Product Feature | Standalone feature page for release notes connected to product surfaces, affected support truth, and drift review |
+| `/product/tickets` | Product Feature | Standalone feature page for fallback tickets, safe debugging context, and ticket-to-knowledge signal loops |
 | `/use-cases` | Use Cases | Founder/operator scenarios by support problem |
 | `/use-cases/founders` | Use Case | Solo-founder support loop for launching before hiring support |
 | `/use-cases/support-teams` | Use Case | Reduce repeated tickets while keeping owner-approved answer control |
@@ -68,6 +72,12 @@
 | `src/app/sites/canonica/product/page-aware-widget/page.tsx` | Product-area landing page for Page-Aware Widget |
 | `src/app/sites/canonica/product/support-control/page.tsx` | Product-area landing page for Support Control |
 | `src/app/sites/canonica/product/knowledge-governance/page.tsx` | Product-area landing page for Knowledge Governance |
+| `src/app/sites/canonica/product/ProductFeatureRoutePage.tsx` | Shared server wrapper for product feature pages |
+| `src/app/sites/canonica/product/knowledge-base/page.tsx` | Product feature page for Knowledge Base |
+| `src/app/sites/canonica/product/faq-management/page.tsx` | Product feature page for FAQ Management |
+| `src/app/sites/canonica/product/changelog/page.tsx` | Product feature page for Changelog |
+| `src/app/sites/canonica/product/tickets/page.tsx` | Product feature page for Tickets |
+| `src/app/sites/canonica/productFeatures.ts` | Shared product-feature route data, copy, and sitemap source |
 | `src/app/sites/canonica/use-cases/page.tsx` | Use-case page for founder/operator support scenarios |
 | `src/app/sites/canonica/use-cases/founders/page.tsx` | Founder use-case landing page |
 | `src/app/sites/canonica/use-cases/support-teams/page.tsx` | Support-team use-case landing page |
@@ -93,6 +103,11 @@
 | `src/app/sites/canonica/systemCoverage.ts` | Shared implemented Canonica system coverage groups |
 | `src/app/sites/canonica/components/StructuredData.tsx` | Homepage Organization/WebSite/SoftwareApplication JSON-LD |
 | `public/canonica-og-image.png` | 1200x630 public social preview image |
+| `public/canonica-logo.svg` | Canonica wordmark SVG asset |
+| `public/canonica-logo-mark-wide.svg` | Cropped infinity-mark SVG for public website and dashboard brand surfaces |
+| `public/canonica-logo-mark-wide.png` | Cropped infinity-mark PNG for header, footer, and dashboard navigation |
+| `public/canonica-favicon.ico` | Canonica favicon bundle with 16, 32, and 48px PNG entries |
+| `public/canonica-icon-*.png` | Canonica square favicon/PWA icon family generated from the same recolored source mark |
 | `public/canonica.webmanifest` | Canonica web app manifest |
 | `src/app/sites/canonica/components/Header.tsx` | Shared header with nav + mobile menu |
 | `src/app/sites/canonica/components/Footer.tsx` | Shared footer with link columns |
@@ -116,6 +131,7 @@
 | `src/app/sites/canonica/components/SeoLandingPage.tsx` | Shared component for static SEO landing pages |
 | `src/app/sites/canonica/components/UseCaseLandingPage.tsx` | Shared wrapper for role-specific use-case pages |
 | `src/app/sites/canonica/components/ProductCapabilityLandingPage.tsx` | Shared landing-page template for major product capability pages |
+| `src/app/sites/canonica/components/ProductFeatureLandingPage.tsx` | Shared Bugasura-inspired feature-page template with outcome hero, visual proof grid, workflow, connected surfaces, FAQ, and CTA |
 | `src/app/sites/canonica/components/CTASection.tsx` | Bottom CTA section |
 
 ### Routing Architecture
@@ -163,3 +179,10 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-22 | Improved website presentation quality using product-site patterns from Circle/Upvoty references: the demo now uses a horizontal page-tab row and large product canvas, product proof has clearer dashboard tabs, and widget content is organized as a bento-style install/runtime/governance grid |
 | 2026-05-22 | Added standalone landing-style product area pages for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance, following the Swell/Abyssale/Circle pattern where each product part can sell and explain itself |
 | 2026-05-22 | Final product-suite polish: header Product dropdown now exposes the four product-area pages, homepage/resources/use-case/SEO pages cross-link those areas, and buyer navigation stays static with zero Firebase cost |
+| 2026-05-23 | Added standalone product-feature landing pages for Knowledge Base, FAQ Management, Changelog, and Tickets using a reusable feature-page pattern inspired by Bugasura's individual feature pages while keeping routes under `/product/*` and browsing at zero Firebase cost |
+| 2026-05-23 | Re-themed the shared product-feature page template so Knowledge Base, FAQ Management, Changelog, and Tickets follow the Canonica dark visual system instead of rendering a light-mode proof band; also set the Canonica route background to prevent white body bleed |
+| 2026-05-23 | Hardened product-feature routing by replacing the dynamic `[feature]` page with explicit Knowledge Base, FAQ Management, Changelog, and Tickets pages backed by a shared route wrapper |
+| 2026-05-23 | Reworked `/resources` grouped links from tall category cards into row-wise decision paths so each category and its subcards scan together on desktop and stack cleanly on mobile |
+| 2026-05-23 | Replaced the temporary Canonica `C` mark with the recolored MenuList-style dimensional infinity mark across website metadata, favicon/PWA icons, OpenGraph preview, header, footer, and dashboard navigation |
+| 2026-05-23 | Removed the outer card treatment from `/resources` decision rows so the resources hub keeps row grouping without nested-card visual noise |
+| 2026-05-23 | Updated shared product capability bento sections so five-card layouts render as two wide cards on row one and three balanced cards on row two |

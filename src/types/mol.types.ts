@@ -33,6 +33,7 @@ export type MOLEventType =
     | "GBP_HOURS_MISMATCH_DETECTED"
     | "GBP_HOURS_APPLIED_MANUAL"
     | "GBP_AUTH_REVOKED"
+    | "POS_SYNC_SECRET_REGENERATED"
     // AI Extraction
     | "EXTRACTION_APPLIED";
 
@@ -47,6 +48,7 @@ export type MOLEntityType =
     | "SYSTEM"
     | "STORE_HOURS" // Feature #2A: Hours Status Display
     | "GBP_INTEGRATION" // Feature #3: GBP Sync
+    | "POS_SYNC"
     | "EXTRACTION"; // AI Data Extraction apply
 
 /**

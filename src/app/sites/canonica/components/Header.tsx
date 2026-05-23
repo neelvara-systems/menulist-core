@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 import { LuChevronDown, LuMenu } from 'react-icons/lu';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
+import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
 
 const NAV_LINKS = [
@@ -21,9 +23,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
         <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a1a]/80 backdrop-blur-xl">
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
                 <L href="/" className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20">
-                        <span className="text-sm font-bold text-indigo-400">C</span>
-                    </div>
+                    <Image src="/canonica-logo-mark-wide.png" alt="" width={56} height={34} priority className="h-8 w-14 object-contain" />
                     <span className="text-lg font-semibold tracking-tight text-white">Canonica</span>
                 </L>
 
@@ -37,7 +37,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                             <LuChevronDown size={14} className="transition group-hover/product:rotate-180 group-focus-within/product:rotate-180" aria-hidden />
                         </L>
 
-                        <div className="absolute left-1/2 top-full z-[80] hidden w-[28rem] -translate-x-1/2 pt-3 group-hover/product:block group-focus-within/product:block">
+                        <div className="absolute left-1/2 top-full z-[80] hidden w-[40rem] -translate-x-1/2 pt-3 group-hover/product:block group-focus-within/product:block">
                             <div className="rounded-2xl border border-white/[0.08] bg-[#09091a] p-3 shadow-2xl shadow-black/50">
                                 <L
                                     href="/product"
@@ -48,17 +48,41 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                         The full support knowledge loop: setup, widget, support control, and governance.
                                     </p>
                                 </L>
-                                <div className="grid gap-2 sm:grid-cols-2">
-                                    {CANONICA_PRODUCT_AREAS.map((area) => (
-                                        <L
-                                            key={area.href}
-                                            href={area.href}
-                                            className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/25 hover:bg-indigo-500/[0.06]"
-                                        >
-                                            <div className="text-xs font-semibold text-[#d6d6ef]">{area.label}</div>
-                                            <p className="mt-1 text-[11px] leading-relaxed text-[#808099]">{area.description}</p>
-                                        </L>
-                                    ))}
+                                <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
+                                    <div>
+                                        <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                            Product areas
+                                        </div>
+                                        <div className="grid gap-2">
+                                            {CANONICA_PRODUCT_AREAS.map((area) => (
+                                                <L
+                                                    key={area.href}
+                                                    href={area.href}
+                                                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-indigo-400/25 hover:bg-indigo-500/[0.06]"
+                                                >
+                                                    <div className="text-xs font-semibold text-[#d6d6ef]">{area.label}</div>
+                                                    <p className="mt-1 text-[11px] leading-relaxed text-[#808099]">{area.description}</p>
+                                                </L>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                            Support features
+                                        </div>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            {CANONICA_SUPPORT_FEATURES.map((feature) => (
+                                                <L
+                                                    key={feature.href}
+                                                    href={feature.href}
+                                                    className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                                                >
+                                                    <div className="text-xs font-semibold text-[#d6d6ef]">{feature.label}</div>
+                                                    <p className="mt-1 text-[11px] leading-relaxed text-[#808099]">{feature.heroBullets[0]}</p>
+                                                </L>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -89,7 +113,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                     >
                         <LuMenu size={22} aria-hidden />
                     </summary>
-                    <div className="fixed left-0 right-0 top-16 border-t border-white/[0.06] bg-[#0a0a1a] px-6 py-4 shadow-2xl shadow-black/30">
+                    <div className="fixed left-0 right-0 top-16 max-h-[calc(100svh-4rem)] overflow-y-auto border-t border-white/[0.06] bg-[#0a0a1a] px-6 py-4 shadow-2xl shadow-black/30">
                         <nav className="flex flex-col gap-3">
                             <L
                                 href="/product"
@@ -108,6 +132,20 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                         className="rounded-lg px-3 py-2 text-xs font-medium text-[#a0a0c0] transition-colors hover:bg-white/[0.03] hover:text-white"
                                     >
                                         {area.label}
+                                    </L>
+                                ))}
+                            </div>
+                            <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                                <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                    Support features
+                                </div>
+                                {CANONICA_SUPPORT_FEATURES.map((feature) => (
+                                    <L
+                                        key={feature.href}
+                                        href={feature.href}
+                                        className="rounded-lg px-3 py-2 text-xs font-medium text-[#a0a0c0] transition-colors hover:bg-white/[0.03] hover:text-white"
+                                    >
+                                        {feature.label}
                                     </L>
                                 ))}
                             </div>

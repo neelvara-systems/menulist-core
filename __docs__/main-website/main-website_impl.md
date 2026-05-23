@@ -98,7 +98,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Footer revenue pass:** Stage 7.2 reviewed Paper, Kestra, Stripe, Lenis, Upscayl, Linear, Vercel, and Notion reference patterns, then upgraded `Footer.tsx` into a conversion/resource layer. It deliberately borrows structure, not unsupported claims or trend-heavy visuals.
 
-**Footer preferences controls:** v3.5.3 moved preference controls out of the header and into the footer. Language selection now lives in the footer brand column, and the footer also exposes the existing website theme system with Light, System, and Dark choices. This keeps the top navigation focused on product evaluation and upload/login actions while still making preferences discoverable.
+**Footer preferences controls:** v3.5.3 moved preference controls out of the header and into the footer. Social links now sit under the company email, the public-source line is centered in the footer bottom row, and compact Language / Theme dropdowns sit on the bottom-right. This keeps the top navigation focused on product evaluation and upload/login actions while still making preferences discoverable.
 
 **Whole-page reference pass:** Stage 7.3 corrected the footer-only scope by adding `RevenuePathSection.tsx`, reshaping `ProblemSection.tsx`, and upgrading `StatsSection.tsx` into a stronger proof band. The page now moves from official source -> revenue path -> public drift pain -> one-source proof -> workflow and visual evidence.
 
@@ -129,7 +129,7 @@ LocalisationProvider (locale from next-intl/server)
 ```
 src/components/website/
 ├── Header.tsx                  — Shared header (all pages)
-├── Footer.tsx                  — Shared revenue footer with CTA, proof cards, product/source/resource/legal navigation, language, and theme controls
+├── Footer.tsx                  — Shared revenue footer with CTA, proof cards, product/source/resource/legal navigation, social links, bottom-row language, and theme controls
 ├── SchemaMarkup.tsx            — Homepage JSON-LD schema
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
@@ -176,14 +176,14 @@ src/pages/
 | `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |
 | `WebsiteProofStrip.tsx` | Shared proof strip used by supporting pages |
 | `WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages), mounted in the footer |
-| `WebsiteThemeSwitcher.tsx` | Footer theme selector backed by the website `ThemeProvider` |
+| `WebsiteThemeSwitcher.tsx` | Compact footer theme dropdown backed by the website `ThemeProvider` |
 
 ---
 
 ## 6. Localization (i18n)
 
 - Config: `src/config/websiteLanguages.ts` (8 languages)
-- Switcher: `WebsiteLanguageSwitcher.tsx` — mounted in the footer preferences area and auto-detects position (opens upward near bottom)
+- Switcher: `WebsiteLanguageSwitcher.tsx` — mounted in the footer bottom control row and auto-detects position (opens upward near bottom)
 - Locale files (website namespace):
   `public/locales/menulist.ai/en-US.json`, `public/locales/menulist.ai/hi-IN.json`,
   `public/locales/menulist.ai/ta-IN.json`, `public/locales/menulist.ai/te-IN.json`,
@@ -194,7 +194,7 @@ src/pages/
 - **Core sections translated:** ar-SA, es-ES, ta-IN, te-IN, mr-IN, bn-IN (Header/Footer/Hero; rest falls back to English via deepMerge)
 - **Website language switcher:** `WEBSITE_LANGUAGES` drives 8 selectable locales
   (`en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES`) from `src/config/websiteLanguages.ts`.
-- **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices in the footer and persists through the existing `ThemeProvider` localStorage contract.
+- **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices as a compact footer dropdown and persists through the existing `ThemeProvider` localStorage contract.
 - Additional locale files (`en-GB`, `gu-IN`, `zh-CN`) exist in `public/locales/menulist.ai/` for broader app usage and fallback-only coverage.
 
 ---
@@ -242,6 +242,6 @@ src/pages/
 | Pricing | Reuses existing `pricing-pages/` components | Full Razorpay integration already built |
 | Analytics | GA + Clarity in layout | Covers all pages automatically |
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |
-| Theming | System-aware shadcn ThemeProvider plus footer theme selector and website CSS tokens | Light remains default for light system preferences; users can choose Light, System, or Dark from the footer; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
+| Theming | System-aware shadcn ThemeProvider plus footer theme dropdown and website CSS tokens | Light remains default for light system preferences; users can choose Light, System, or Dark from the footer; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
 | Localization | next-intl via layout provider | Consistent i18n across all pages |
 | Pages Router defaults | Minimal `_app`, `_document`, `_error` | Keeps production builds stable while website routes remain App Router |

@@ -6,6 +6,16 @@
 
 ---
 
+## May 23, 2026 — External Menu Sync Owner Clarity
+
+### Changed
+
+- **External Menu Sync now starts with owner-facing context** — Desktop Business Settings and mobile More now explain what the connection does, who should use it, when owners can ignore it, and how MenuList remains the source of truth before showing provider URL and verification-secret fields.
+- **External sync labels are less technical** — Owner UI now uses External Sync, Provider connection URL, Verification secret, Test connection, Updates sent, and Provider setup while preserving the internal `posSync` contract.
+- **Canonica brand assets now use the dimensional infinity mark** — Canonica website metadata, favicon/PWA icons, OpenGraph preview, public header/footer, and dashboard sidebar now use the Canonica-colored version of the MenuList-style infinity logo instead of the temporary `C` mark.
+
+---
+
 ## May 22, 2026 — Mobile Transactions Parity
 
 ### Changed

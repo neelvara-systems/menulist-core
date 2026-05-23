@@ -21,7 +21,7 @@ Version 3.5.1 adds system dark mode to the public website without changing the d
 
 Version 3.5.2 is a final theme polish pass after dark-mode QA. It keeps the same website structure and copy, but tightens sticky CTA theming, dark panel microcopy contrast, footer utility-link contrast, and the How It Works / Multi-location flow-diagram supporting text so dark mode reads as a finished design instead of a token-only inversion.
 
-Version 3.5.3 moves non-primary preferences out of the header and into the revenue footer. The header no longer carries the language selector; the footer now contains both the website language selector and a Light/System/Dark theme control backed by the existing `ThemeProvider`.
+Version 3.5.3 moves non-primary preferences out of the header and into the revenue footer. The header no longer carries the language selector; social links sit under the company email, the footer source line is centered in the bottom row, and compact Language / Theme dropdowns sit on the bottom-right. The theme dropdown is backed by the existing `ThemeProvider`.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -536,8 +536,10 @@ Protected scope:
 Stage 7.20 moves site preferences into the footer so the header stays focused on navigation, demo, login, and upload:
 
 - Removed `WebsiteLanguageSwitcher` from the desktop header and mobile drawer footer.
-- Added a footer preferences area with language selection and theme selection.
-- Added `WebsiteThemeSwitcher.tsx`, a localized Light/System/Dark segmented control wired to the existing website `ThemeProvider`.
+- Moved social links under the company email in the left footer brand column.
+- Moved the public-source footer line to the center of the bottom row.
+- Added compact Language and Theme dropdown controls to the bottom-right of the footer.
+- Added `WebsiteThemeSwitcher.tsx`, a localized Light/System/Dark dropdown wired to the existing website `ThemeProvider`.
 - Kept the theme control in the footer rather than the hero/header so dark mode is available without making theme choice part of the first conversion decision.
 
 Protected scope:
@@ -550,7 +552,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
-| 3.5.3 | May 23, 2026 | Moved website language selection from header to footer and added a localized Light/System/Dark footer theme control backed by the existing ThemeProvider. |
+| 3.5.3 | May 23, 2026 | Moved website language selection from header to footer, placed social links under the company email, centered the public-source line, and added a localized Light/System/Dark footer theme dropdown backed by the existing ThemeProvider. |
 | 3.5.2 | May 22, 2026 | Final dark-mode UI polish: theme-safe sticky CTA surface, stronger dark footer utility contrast, clearer dark flow-diagram supporting text, and tokenized pricing controls. |
 | 3.5.1 | May 22, 2026 | Added system dark mode across the public website using dark gray surfaces instead of pure black, with shared token coverage for headers, sections, cards, pricing, forms, drawers, and create-menu support pages. |
 | 3.4.16 | May 22, 2026 | Kept the public website light by default and deepened the light-mode headline gradient to a calmer teal-to-blue accent with stronger contrast on white. |

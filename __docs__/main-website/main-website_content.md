@@ -1154,8 +1154,9 @@ Secondary CTA:
 
 **Footer preferences:**
 
-- Language selector lives in the footer, not the header, so the top navigation stays focused on product evaluation and upload/login actions.
-- Theme control lives in the footer with three choices: Light, System, Dark.
+- Social links live under the company email in the left brand column.
+- The bottom row keeps the copyright on the left, the public-source line centered, and compact Language / Theme dropdowns on the right.
+- Theme control uses one dropdown with three choices: Light, System, Dark.
 
 **Column 1: Product**
 

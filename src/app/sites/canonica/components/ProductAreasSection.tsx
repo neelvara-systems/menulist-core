@@ -1,4 +1,5 @@
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
+import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
 
 const AREA_PROOF: Record<string, string> = {
@@ -51,6 +52,37 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
                             </p>
                         </CanonicaLink>
                     ))}
+                </div>
+
+                <div className="mt-12 rounded-[1.75rem] border border-white/[0.08] bg-[#09091a]/55 p-5 sm:p-6">
+                    <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                                Support surfaces
+                            </p>
+                            <h3 className="text-2xl font-bold text-white">Feature pages for the daily support layer.</h3>
+                        </div>
+                        <CanonicaLink
+                            basePath={basePath}
+                            href="/product"
+                            className="text-sm font-semibold text-indigo-300 transition hover:text-white"
+                        >
+                            View product overview
+                        </CanonicaLink>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                        {CANONICA_SUPPORT_FEATURES.map((feature) => (
+                            <CanonicaLink
+                                key={feature.href}
+                                basePath={basePath}
+                                href={feature.href}
+                                className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 transition hover:border-sky-300/25 hover:bg-sky-400/[0.055]"
+                            >
+                                <h4 className="text-sm font-semibold text-white">{feature.label}</h4>
+                                <p className="mt-2 text-xs leading-relaxed text-[#8f8faa]">{feature.heroBullets[0]}</p>
+                            </CanonicaLink>
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

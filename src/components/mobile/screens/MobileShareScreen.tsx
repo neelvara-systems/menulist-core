@@ -563,7 +563,7 @@ export default function MobileShareScreen({ onOpenDigitalScreens, onOpenDesignEd
 
     const handleCopyPosSetupInfo = () => {
         const summary = [
-            'MenuList POS Sync - Setup Info',
+            'MenuList External Menu Sync - Setup Info',
             '',
             'Payload: Full menu snapshot (JSON)',
             'Security: HMAC-SHA256 signed (header: X-MenuList-Signature)',
