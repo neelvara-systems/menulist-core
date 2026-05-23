@@ -54,26 +54,26 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-12">
-                    <article className="overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#f7f8ff] text-[#111827] shadow-2xl shadow-black/25 lg:col-span-8 lg:row-span-2">
-                        <div className="flex items-center justify-between border-b border-[#dfe3ee] bg-white px-5 py-4">
+                    <article className="overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[#101028] text-white shadow-2xl shadow-black/25 lg:col-span-8 lg:row-span-2">
+                        <div className="flex items-center justify-between border-b border-white/[0.08] bg-white/[0.035] px-5 py-4">
                             <div>
-                                <div className="text-xs font-semibold uppercase tracking-widest text-[#7a8195]">Customer screen</div>
-                                <div className="mt-1 text-lg font-bold text-[#151729]">Billing / Invoices</div>
+                                <div className="text-xs font-semibold uppercase tracking-widest text-[#8f8faa]">Customer screen</div>
+                                <div className="mt-1 text-lg font-bold text-white">Billing / Invoices</div>
                             </div>
-                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
                                 Widget allowed
                             </span>
                         </div>
                         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_19rem]">
                             <div>
-                                <div className="rounded-2xl border border-[#e3e6ef] bg-white p-5">
+                                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-5">
                                     <h3 className="text-2xl font-bold">Need help with this invoice?</h3>
-                                    <p className="mt-3 text-sm leading-relaxed text-[#626a7e]">
+                                    <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
                                         The widget opens inside the client product, detects safe billing context, and prefers approved invoice answers before fallback.
                                     </p>
                                     <div className="mt-5 grid gap-3 sm:grid-cols-2">
                                         {['Canonical answer', 'Related FAQ', 'Release note', 'Ticket fallback'].map((label) => (
-                                            <span key={label} className="rounded-xl border border-[#e5e7f0] bg-[#fbfcff] px-4 py-3 text-sm font-semibold text-[#2f3448]">
+                                            <span key={label} className="rounded-xl border border-white/[0.08] bg-[#0f0f23] px-4 py-3 text-sm font-semibold text-[#d6d6ef]">
                                                 {label}
                                             </span>
                                         ))}
@@ -86,8 +86,8 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                                     </p>
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-[#e3e6ef] bg-white p-4 shadow-sm">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-[#7a8195]">Widget controls</div>
+                            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-[#8f8faa]">Widget controls</div>
                                 <div className="mt-4 space-y-3">
                                     {[
                                         ['Allowed origin', 'app.yourapp.com'],
@@ -95,9 +95,9 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                                         ['Hosted help', 'help.yourapp.com'],
                                         ['Context key', 'billing_invoices'],
                                     ].map(([label, value]) => (
-                                        <div key={label} className="rounded-xl bg-[#f4f6fb] p-3">
-                                            <div className="text-[11px] font-semibold uppercase tracking-widest text-[#7a8195]">{label}</div>
-                                            <div className="mt-1 text-sm font-semibold text-[#25293c]">{value}</div>
+                                        <div key={label} className="rounded-xl border border-white/[0.08] bg-[#0f0f23] p-3">
+                                            <div className="text-[11px] font-semibold uppercase tracking-widest text-[#8f8faa]">{label}</div>
+                                            <div className="mt-1 text-sm font-semibold text-[#d6d6ef]">{value}</div>
                                         </div>
                                     ))}
                                 </div>

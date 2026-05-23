@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.11
+> **Version:** 1.2.12
 > **Last Updated:** 2026-05-23
 > **Audience:** Developers
 
@@ -139,6 +139,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 23 product-feature pass added standalone `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, and `/product/tickets` pages using a reusable outcome-hero, visual proof grid, workflow, connected-surfaces, FAQ, and CTA pattern inspired by modern feature-specific SaaS pages.
 - May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with Canonica's dark surface, indigo, and cyan theme, and set the Canonica route stylesheet background so white body bleed does not appear around dark pages.
 - May 23 product-feature route hardening replaced the dynamic `[feature]` route with four explicit product-feature page files backed by `ProductFeatureRoutePage`, avoiding fragile Next dev static-path worker failures while keeping shared feature data and sitemap registry coverage.
+- May 23 dark-theme consistency pass removed remaining light-mode product mockups from the account-free demo, product capability landing template, and homepage widget section so newly added public pages stay visually consistent with Canonica's dark infrastructure theme.
 - May 23 resources layout pass changed grouped resources from four tall category columns to stacked horizontal decision rows so each group title and its three linked subcards read together on desktop while remaining stacked on mobile.
 - May 23 resources polish removed the outer row cards from the decision-path rows so the resources hub reads as clean rows of links instead of nested boxes.
 - May 23 product capability bento pass changed five-card capability sections to a 2-card first row and 3-card second row, improving visual balance and moving the third card, such as Support Control's Changelog support, into the second row.
@@ -327,3 +328,4 @@ Conversion analytics is client-side only:
 | 2026-05-23 | 1.2.9 | Replaced placeholder Canonica `C` assets with a Canonica-colored dimensional infinity logo family: SVG/PNG logo assets, favicon bundle, PWA icons, maskable icons, Apple touch icon, OpenGraph image, website header/footer, and dashboard sidebar |
 | 2026-05-23 | 1.2.10 | Re-themed the shared product-feature page template so Knowledge Base, FAQ Management, Changelog, and Tickets no longer render a light-mode proof section, and set the Canonica route background to prevent white body bleed |
 | 2026-05-23 | 1.2.11 | Replaced the dynamic product-feature route with explicit Knowledge Base, FAQ Management, Changelog, and Tickets pages backed by a shared route wrapper to avoid Next dev static-path worker failures |
+| 2026-05-23 | 1.2.12 | Removed remaining light-mode mockup panels from the public demo, product capability template, and homepage widget section so newly added Canonica website pages match the dark visual system |

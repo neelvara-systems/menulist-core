@@ -158,14 +158,14 @@ export default function CanonicaPublicDemo() {
                 })}
             </div>
 
-            <div className="overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#f7f8ff] text-[#111827]">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8dcea] bg-white px-4 py-3">
+            <div className="overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-[#101028] text-white">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.035] px-4 py-3">
                     <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
                         <span className="h-2.5 w-2.5 rounded-full bg-[#ffd166]" />
                         <span className="h-2.5 w-2.5 rounded-full bg-[#06d6a0]" />
                     </div>
-                    <div className="min-w-0 rounded-full bg-[#f0f2fa] px-4 py-1.5 text-xs text-[#5b6275]">
+                    <div className="min-w-0 rounded-full border border-white/[0.08] bg-white/[0.05] px-4 py-1.5 text-xs text-[#d6d6ef]">
                         {surface.route}
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}>
@@ -174,22 +174,22 @@ export default function CanonicaPublicDemo() {
                 </div>
 
                 <div className="grid lg:grid-cols-[1fr_25rem]">
-                    <div className="bg-white p-5 sm:p-7">
+                    <div className="bg-[#0f0f23] p-5 sm:p-7">
                         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Product screen</p>
-                                <h3 className="mt-2 text-3xl font-bold text-[#151729]">{surface.label}</h3>
-                                <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#626a7e]">{surface.pageSummary}</p>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Product screen</p>
+                                <h3 className="mt-2 text-3xl font-bold text-white">{surface.label}</h3>
+                                <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#a0a0c0]">{surface.pageSummary}</p>
                             </div>
-                            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{surface.contextKey}</span>
+                            <span className="rounded-full border border-indigo-300/20 bg-indigo-400/10 px-3 py-1 text-xs font-semibold text-indigo-200">{surface.contextKey}</span>
                         </div>
 
-                        <div className="rounded-2xl border border-[#e2e5f0] bg-[#fbfcff] p-4">
+                        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4">
                             <div className="grid gap-3 md:grid-cols-3">
                                 {answer.related.slice(0, 3).map((item) => (
-                                    <div key={item} className="rounded-xl border border-[#e6e8f2] bg-white p-4 shadow-sm">
-                                        <div className="text-xs font-semibold uppercase tracking-widest text-[#8a91a6]">Related</div>
-                                        <div className="mt-2 text-sm font-semibold text-[#23263a]">{item}</div>
+                                    <div key={item} className="rounded-xl border border-white/[0.08] bg-[#101028] p-4">
+                                        <div className="text-xs font-semibold uppercase tracking-widest text-[#8f8faa]">Related</div>
+                                        <div className="mt-2 text-sm font-semibold text-[#d6d6ef]">{item}</div>
                                     </div>
                                 ))}
                             </div>
@@ -200,18 +200,18 @@ export default function CanonicaPublicDemo() {
                         </div>
 
                         <div className="mt-5 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-2xl border border-[#e2e5f0] bg-[#fbfcff] p-4">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-[#8a91a6]">Generic chatbot</div>
-                                <p className="mt-3 text-sm leading-relaxed text-[#626a7e]">{answer.genericAnswer}</p>
+                            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-[#8f8faa]">Generic chatbot</div>
+                                <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">{answer.genericAnswer}</p>
                             </div>
-                            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Why Canonica is different</div>
-                                <p className="mt-3 text-sm leading-relaxed text-[#374151]">{answer.status}</p>
+                            <div className="rounded-2xl border border-indigo-300/20 bg-indigo-400/10 p-4">
+                                <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200">Why Canonica is different</div>
+                                <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">{answer.status}</p>
                             </div>
                         </div>
                     </div>
 
-                    <aside className="border-t border-[#d8dcea] bg-[#0b0b1e] p-5 text-white lg:border-l lg:border-t-0">
+                    <aside className="border-t border-white/[0.08] bg-[#0b0b1e] p-5 text-white lg:border-l lg:border-t-0">
                         <div className="mb-5">
                             <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Canonica widget result</p>
                             <h3 className="mt-2 text-2xl font-bold">{answer.title}</h3>
@@ -225,8 +225,8 @@ export default function CanonicaPublicDemo() {
                             ))}
                         </div>
 
-                        <div className="rounded-2xl bg-white p-5 text-[#1f2437]">
-                            <div className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Approved answer path</div>
+                        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.06] p-5 text-[#d6d6ef]">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-indigo-200">Approved answer path</div>
                             <p className="mt-3 text-sm leading-relaxed">{answer.answer}</p>
                         </div>
 

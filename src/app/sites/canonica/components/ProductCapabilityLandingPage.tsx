@@ -100,31 +100,31 @@ export default function ProductCapabilityLandingPage({
                     </div>
 
                     <div className="mx-auto mt-10 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
-                        <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[#f7f8ff] text-[#151729]">
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dfe3ee] bg-white px-5 py-4">
+                        <div className="overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-[#101028] text-white">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-white/[0.035] px-5 py-4">
                                 <div className="flex items-center gap-2">
                                     <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
                                     <span className="h-2.5 w-2.5 rounded-full bg-[#ffd166]" />
                                     <span className="h-2.5 w-2.5 rounded-full bg-[#06d6a0]" />
                                 </div>
-                                <div className="rounded-full bg-[#f0f2fa] px-4 py-1.5 text-xs text-[#5b6275]">app.canonica.app</div>
-                                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{canvasBadge}</span>
+                                <div className="rounded-full border border-white/[0.08] bg-white/[0.05] px-4 py-1.5 text-xs text-[#d6d6ef]">app.canonica.app</div>
+                                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">{canvasBadge}</span>
                             </div>
 
                             <div className="grid lg:grid-cols-[15rem_1fr]">
-                                <aside className="hidden border-r border-[#e2e5ef] bg-[#fbfcff] p-5 lg:block">
+                                <aside className="hidden border-r border-white/[0.08] bg-[#0d0d22] p-5 lg:block">
                                     <div className="mb-6 flex items-center gap-3">
                                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white">C</div>
                                         <div>
-                                            <div className="text-sm font-bold text-[#151729]">Canonica</div>
-                                            <div className="text-xs text-[#7a8195]">Workspace</div>
+                                            <div className="text-sm font-bold text-white">Canonica</div>
+                                            <div className="text-xs text-[#8f8faa]">Workspace</div>
                                         </div>
                                     </div>
                                     <div className="space-y-2 text-sm">
                                         {tabs.map((tab) => (
                                             <div
                                                 key={tab.label}
-                                                className={`rounded-xl px-3 py-2 ${tab.label === activeTab ? 'bg-indigo-50 font-semibold text-indigo-700' : 'text-[#6b7280]'}`}
+                                                className={`rounded-xl px-3 py-2 ${tab.label === activeTab ? 'border border-indigo-300/20 bg-indigo-400/10 font-semibold text-indigo-200' : 'text-[#8f8faa]'}`}
                                             >
                                                 {tab.label}
                                             </div>
@@ -135,9 +135,9 @@ export default function ProductCapabilityLandingPage({
                                 <div className="p-5 sm:p-7">
                                     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                                         <div>
-                                            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">{activeTab}</p>
-                                            <h2 className="mt-2 text-3xl font-bold text-[#151729]">{canvasTitle}</h2>
-                                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#626a7e]">{canvasSubtitle}</p>
+                                            <p className="text-xs font-semibold uppercase tracking-widest text-indigo-300">{activeTab}</p>
+                                            <h2 className="mt-2 text-3xl font-bold text-white">{canvasTitle}</h2>
+                                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#a0a0c0]">{canvasSubtitle}</p>
                                         </div>
                                     </div>
 
@@ -148,12 +148,12 @@ export default function ProductCapabilityLandingPage({
                                                     key={item.title}
                                                     className={`rounded-2xl border p-4 ${
                                                         index === 0
-                                                            ? 'border-indigo-100 bg-indigo-50'
-                                                            : 'border-[#e3e6ef] bg-white'
+                                                            ? 'border-indigo-300/20 bg-indigo-400/10'
+                                                            : 'border-white/[0.08] bg-white/[0.035]'
                                                     }`}
                                                 >
-                                                    <div className="text-sm font-bold text-[#22263a]">{item.title}</div>
-                                                    <p className="mt-2 text-sm leading-relaxed text-[#626a7e]">{item.description}</p>
+                                                    <div className="text-sm font-bold text-[#d6d6ef]">{item.title}</div>
+                                                    <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">{item.description}</p>
                                                 </article>
                                             ))}
                                         </div>

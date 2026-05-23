@@ -10,6 +10,12 @@ body {
     color-scheme: dark;
 }
 
+html:has(.canonica-site),
+body:has(.canonica-site) {
+    background: #0a0a1a !important;
+    color-scheme: dark;
+}
+
 .canonica-site {
     --cn-bg: #0a0a1a;
     --cn-bg-subtle: #0f0f23;
