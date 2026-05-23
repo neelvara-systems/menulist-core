@@ -111,7 +111,15 @@ export default function AntdLayoutWrapper(props: any) {
                 {/* "Return to Mobile" banner — shown when mobile user forced desktop mode */}
                 {hasMounted && isHandheld && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (
                     <div
-                        style={{ background: '#1677ff', color: '#fff', textAlign: 'center', padding: '8px 16px', fontSize: '13px', cursor: 'pointer', zIndex: 9999 }}
+                        style={{
+                            backgroundColor: token.colorPrimary,
+                            color: token.colorTextLightSolid,
+                            textAlign: 'center',
+                            padding: '8px 16px',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            zIndex: 9999
+                        }}
                         onClick={() => {
                             clearForceDesktopMode();
                             setForceDesktopRefreshKey((current) => current + 1);
@@ -120,14 +128,23 @@ export default function AntdLayoutWrapper(props: any) {
                         You&apos;re viewing the desktop version. <strong>Tap here to return to mobile.</strong>
                     </div>
                 )}
+                <style jsx global>{`
+                  .${styles.mainContentWraper} {
+                    background-image: radial-gradient(
+                      ${isDarkMode
+                        ? `color-mix(in srgb, ${token.colorBorderSecondary} 28%, transparent 72%)`
+                        : `color-mix(in srgb, ${token.colorBorder} 70%, transparent)`}
+                      1px,
+                      transparent 0
+                    );
+                  }
+                `}</style>
                 <Layout style={isVerticalSidebar && !isHandheldDesktopRoute ? { paddingLeft: isCollapsed ? "62px" : "200px" } : {}}>
                     {!isHandheldDesktopRoute ? <HeaderComponent /> : null}
                     {!isHandheldDesktopRoute ? (isVerticalSidebar ? <SidebarComponent /> : <HorizontalSidebar />) : null}
                     {!isHandheldDesktopRoute ? <AppSettingsPanel /> : null}
                     <Content className={styles.mainContentWraper}
                         style={{
-                            backgroundImage: isDarkMode ? `radial-gradient(#dee1ec57 0.8px, transparent 0)` : `radial-gradient(#cbcbcb 1px, transparent 0)`,
-                            // background: isDarkMode ? token.colorFillContent : token.colorBgBase,
                             minHeight: isHandheldDesktopRoute ? '100dvh' : isVerticalSidebar ? 'calc(100vh - 52px)' : 'calc(100vh - 98px)',
                             overflowX: isHandheldDesktopRoute ? 'hidden' : undefined,
                             width: "100%"

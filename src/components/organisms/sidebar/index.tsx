@@ -240,7 +240,7 @@ const SidebarComponent = () => {
 
                     <div className={styles.itemWrap} style={{ borderBottom: `1px solid ${token.colorBorder}`, padding: showExpandedSidebar ? "20px" : "2px" }}>
                         <div className={styles.logo}>
-                            {isHover || !isCollapsed ? <EcomsHorizontalLogo color="#dee1ec" /> : <EcomsIconLogo />}
+                            {isHover || !isCollapsed ? <EcomsHorizontalLogo color={token.colorText} /> : <EcomsIconLogo />}
                         </div>
                     </div>
 

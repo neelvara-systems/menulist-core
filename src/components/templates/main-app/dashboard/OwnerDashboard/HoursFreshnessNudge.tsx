@@ -3,11 +3,12 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, Flex, Typography } from 'antd';
+import { Button, Card, Flex, Typography, theme } from 'antd';
 import { useContext, useEffect, useState } from 'react';
 import { LuClock, LuX } from 'react-icons/lu';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 /**
  * HoursFreshnessNudge — Minimal correction trigger for stale hours.
@@ -25,6 +26,7 @@ const { Text } = Typography;
  * @see __docs__/constitution/18-silent-correction-doctrine.md
  */
 export default function HoursFreshnessNudge() {
+    const { token } = useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [dismissed, setDismissed] = useState(false);
     const [initialized, setInitialized] = useState(false);
@@ -73,8 +75,8 @@ export default function HoursFreshnessNudge() {
         <Card
             size="small"
             style={{
-                background: '#fffbe6',
-                borderColor: '#ffe58f',
+                background: `color-mix(in srgb, ${token.colorWarningBg} 82%, ${token.colorBgContainer})`,
+                borderColor: token.colorWarningBorder,
             }}
         >
             <Flex justify="space-between" align="flex-start">
@@ -86,12 +88,12 @@ export default function HoursFreshnessNudge() {
                             width: 36,
                             height: 36,
                             borderRadius: 8,
-                            background: '#fff7e6',
+                            background: `color-mix(in srgb, ${token.colorWarningBg} 64%, ${token.colorBgContainer})`,
                             flexShrink: 0,
                             marginTop: 2,
                         }}
                     >
-                        <LuClock size={18} style={{ color: '#d48806' }} />
+                        <LuClock size={18} style={{ color: token.colorWarning }} />
                     </Flex>
                     <Flex vertical gap={4} style={{ flex: 1 }}>
                         <Text strong style={{ fontSize: 14 }}>

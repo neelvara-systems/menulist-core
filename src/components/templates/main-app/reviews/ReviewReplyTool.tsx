@@ -12,7 +12,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
-import { Alert, Button, Card, Input, Rate, Space, Tag, Typography, notification } from 'antd';
+import { Alert, Button, Card, Input, Rate, Space, Tag, Typography, theme, notification } from 'antd';
 import axios from 'axios';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuMessageSquare, LuRefreshCw, LuSparkles } from 'react-icons/lu';
@@ -24,6 +24,7 @@ interface ReviewReplyToolProps {
 }
 
 export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) {
+    const { token } = theme.useToken();
     const [reviewText, setReviewText] = useState('');
     const [rating, setRating] = useState<number>(3);
     const [reply, setReply] = useState<string | null>(null);
@@ -155,7 +156,7 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
                 <div style={{ marginTop: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                         <Text strong style={{ fontSize: 13 }}>Suggested Reply</Text>
-                        <Tag color={replySource === 'ai' ? 'blue' : 'default'} style={{ fontSize: 11 }}>
+                        <Tag color={replySource === 'ai' ? 'success' : 'default'} style={{ fontSize: 11 }}>
                             {replySource === 'ai' ? 'Generated' : 'Template'}
                         </Tag>
                     </div>
@@ -163,8 +164,8 @@ export default function ReviewReplyTool({ businessType }: ReviewReplyToolProps) 
                     <Card
                         size="small"
                         style={{
-                            background: '#f6ffed',
-                            border: '1px solid #b7eb8f',
+                            background: token.colorSuccessBg,
+                            border: `1px solid ${token.colorSuccessBorder}`,
                             marginBottom: 12,
                         }}
                     >

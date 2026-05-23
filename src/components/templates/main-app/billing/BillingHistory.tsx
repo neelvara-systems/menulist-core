@@ -1,7 +1,7 @@
 'use client'
 
 import { BillingHistoryItem } from '@type/razorpay';
-import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import { useFormatter } from 'next-intl';
 import { FaBolt } from 'react-icons/fa';
 import { LuExternalLink, LuPackage, LuReceipt } from 'react-icons/lu';
@@ -14,6 +14,7 @@ interface BillingHistoryProps {
 }
 
 const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryProps) => {
+    const { token } = theme.useToken();
     const formatter = useFormatter();
     // A simple currency formatter (replace with your existing useFormatCurrency hook if preferred)
     const formatCurrency = (amount: number, currency: string) => {
@@ -46,12 +47,14 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory }: BillingHistoryP
             key: 'description',
             render: (text: string, record: BillingHistoryItem) => (
                 <Space>
-                    {record.type === 'Subscription Payment' ?
-                        <FaBolt className="text-blue-500" /> :
-                        <LuPackage className="text-purple-500" />}
-                    <Text strong>{text}</Text>
-                </Space>
-            )
+                        {record.type === 'Subscription Payment' ? (
+                            <FaBolt color={token.colorInfo} />
+                        ) : (
+                            <LuPackage color={token.colorWarning} />
+                        )}
+                        <Text strong>{text}</Text>
+                    </Space>
+                )
         },
         {
             title: 'Amount',

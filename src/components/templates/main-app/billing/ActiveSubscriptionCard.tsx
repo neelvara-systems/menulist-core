@@ -378,7 +378,7 @@ function ActiveSubscriptionCard({
                                 <Col>
                                     <Space align="center" style={{ display: 'flex' }}>
                                         Payment Method:
-                                        {isManualBilling && <Tag color="purple">Offline one-time prepaid</Tag>}
+                                        {isManualBilling && <Tag color="processing">Offline one-time prepaid</Tag>}
                                         {isPaymentPending && <Tag color="processing">Razorpay checkout pending</Tag>}
                                         {!isManualBilling && !isPaymentPending && activeSubscription.paymentMethod?.type == 'card' && <>
                                             <PaymentMethodIcon brand={activeSubscription.paymentMethod?.brand} />

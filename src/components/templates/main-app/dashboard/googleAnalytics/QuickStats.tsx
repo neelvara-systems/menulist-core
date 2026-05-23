@@ -2,10 +2,11 @@
 
 import { DollarOutlined, EyeOutlined, ShoppingCartOutlined, UserOutlined } from '@ant-design/icons';
 import { fetchDateRangeStats, fetchRealTimeStats } from '@services/analytics';
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 interface QuickStatsProps {
     propertyId: string;
@@ -16,6 +17,8 @@ interface QuickStatsProps {
 }
 
 const QuickStats: React.FC<QuickStatsProps> = ({ propertyId, dateRange }) => {
+    const { token } = useToken();
+
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         activeUsers: 0,
@@ -63,34 +66,34 @@ const QuickStats: React.FC<QuickStatsProps> = ({ propertyId, dateRange }) => {
     }, [propertyId, dateRange]);
 
     const statCards = [
-        {
-            title: 'Active Now',
-            value: stats.activeUsers,
-            icon: <UserOutlined style={{ color: '#1890ff' }} />,
-            suffix: 'users',
-            precision: 0
-        },
-        {
-            title: 'Total Visitors',
-            value: stats.totalVisitors,
-            icon: <EyeOutlined style={{ color: '#52c41a' }} />,
-            suffix: 'views',
-            precision: 0
-        },
-        {
-            title: 'Total Orders',
-            value: stats.totalOrders,
-            icon: <ShoppingCartOutlined style={{ color: '#722ed1' }} />,
-            suffix: 'orders',
-            precision: 0
-        },
-        {
-            title: 'Total Revenue',
-            value: stats.totalRevenue,
-            icon: <DollarOutlined style={{ color: '#faad14' }} />,
-            prefix: '$',
-            precision: 2
-        }
+            {
+                title: 'Active Now',
+                value: stats.activeUsers,
+            icon: <UserOutlined style={{ color: token.colorPrimary }} />,
+                suffix: 'users',
+                precision: 0
+            },
+            {
+                title: 'Total Visitors',
+                value: stats.totalVisitors,
+            icon: <EyeOutlined style={{ color: token.colorSuccess }} />,
+                suffix: 'views',
+                precision: 0
+            },
+            {
+                title: 'Total Orders',
+                value: stats.totalOrders,
+            icon: <ShoppingCartOutlined style={{ color: token.colorInfo }} />,
+                suffix: 'orders',
+                precision: 0
+            },
+            {
+                title: 'Total Revenue',
+                value: stats.totalRevenue,
+            icon: <DollarOutlined style={{ color: token.colorWarning }} />,
+                prefix: '$',
+                precision: 2
+            }
     ];
 
     return (
@@ -98,9 +101,9 @@ const QuickStats: React.FC<QuickStatsProps> = ({ propertyId, dateRange }) => {
             {statCards.map((stat, index) => (
                 <Col key={index} xs={24} sm={12} md={6}>
                     <Card>
-                        <Statistic
-                            title={
-                                <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>
+                            <Statistic
+                                title={
+                                <Text style={{ fontSize: '14px', color: token.colorTextSecondary }}>
                                     <span style={{ marginRight: '8px' }}>{stat.icon}</span>
                                     {stat.title}
                                 </Text>

@@ -7,7 +7,7 @@
  */
 
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { Card, Space, Statistic, Tooltip } from 'antd';
+import { Card, Space, Statistic, Tooltip, theme } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
 
@@ -32,6 +32,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
     prefix,
     suffix,
 }) => {
+    const { token } = theme.useToken();
     const formatValue = (val: number | string): string | number => {
         if (typeof val === 'number') {
             if (val >= 1000000) {
@@ -71,7 +72,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
                 valueStyle={{
                     fontSize: size === 'small' ? 24 : 28,
                     fontWeight: 700,
-                    color: '#262626',
+                    color: token.colorText,
                     lineHeight: 1.2,
                 }}
             />

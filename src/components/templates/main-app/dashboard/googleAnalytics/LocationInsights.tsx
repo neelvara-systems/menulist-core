@@ -2,10 +2,11 @@
 
 import { GlobalOutlined } from '@ant-design/icons';
 import { fetchLocationStats } from '@services/analytics';
-import { Card, Progress, Space, Table, Typography } from 'antd';
+import { Card, Progress, Space, Table, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 
 const { Title, Text } = Typography;
+const { useToken } = theme;
 
 interface LocationInsightsProps {
     propertyId: string;
@@ -25,6 +26,8 @@ interface LocationData {
 }
 
 const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRange }) => {
+    const { token } = useToken();
+
     const [loading, setLoading] = useState(true);
     const [locations, setLocations] = useState<LocationData[]>([]);
     const [totalVisitors, setTotalVisitors] = useState(0);
@@ -94,7 +97,7 @@ const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRan
                         percent={record.percentage}
                         showInfo={false}
                         size="small"
-                        strokeColor="#1890ff"
+                        strokeColor={token.colorPrimary}
                     />
                 </Space>
             )

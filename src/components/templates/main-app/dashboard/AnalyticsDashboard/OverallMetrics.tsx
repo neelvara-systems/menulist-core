@@ -1,17 +1,19 @@
 import { CalendarOutlined, EyeOutlined, FireOutlined, GlobalOutlined, LineChartOutlined, MobileOutlined, RiseOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { AnalyticsData } from '@lib/analytics/types';
-import { Card, Col, Row, Statistic, Tooltip, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Tooltip, Typography, theme } from 'antd';
 import React from 'react';
 
 const { Title } = Typography;
+const { useToken } = theme;
 
 interface OverallMetricsProps {
   data: AnalyticsData | null;
 }
 
 const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
-  const labels = useOfferingLabels();
+    const { token } = useToken();
+    const labels = useOfferingLabels();
 
   // Calculate totals from daily data if summary is not available
   const calculateTotals = () => {
@@ -130,12 +132,12 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
           />
         </Col>
         <Col xs={12} sm={6}>
-          <Statistic
-            title="Overall CTR"
-            value={`${ctr}%`}
-            prefix={<RiseOutlined />}
-            valueStyle={{ color: Number(ctr) > 5 ? '#3f8600' : '#cf1322' }}
-          />
+            <Statistic
+                title="Overall CTR"
+                value={`${ctr}%`}
+                prefix={<RiseOutlined />}
+                valueStyle={{ color: Number(ctr) > 5 ? token.colorSuccess : token.colorError }}
+            />
         </Col>
         <Col xs={12} sm={6}>
           <Statistic
@@ -201,10 +203,10 @@ const OverallMetrics: React.FC<OverallMetricsProps> = ({ data }) => {
         <Col xs={12} sm={6}>
           <Tooltip title="Click-through rate in the last 7 days">
             <Statistic
-              title="Recent CTR (7d)"
-              value={`${ctr7Days}%`}
-              prefix={<RiseOutlined />}
-              valueStyle={{ color: Number(ctr7Days) > 5 ? '#3f8600' : '#cf1322' }}
+                title="Recent CTR (7d)"
+                value={`${ctr7Days}%`}
+                prefix={<RiseOutlined />}
+                valueStyle={{ color: Number(ctr7Days) > 5 ? token.colorSuccess : token.colorError }}
             />
           </Tooltip>
         </Col>

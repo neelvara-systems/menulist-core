@@ -17,20 +17,21 @@ import useSWR from 'swr';
 const { Text } = Typography;
 const { useToken } = theme;
 
-const AVATAR_COLORS = [
-    { bg: '#E91E63', text: '#fff' },
-    { bg: '#9C27B0', text: '#fff' },
-    { bg: '#2196F3', text: '#fff' },
-    { bg: '#4CAF50', text: '#fff' },
-    { bg: '#FF9800', text: '#fff' },
+const AVATAR_COLOR_FACTORY: Array<(token: any) => { bg: string; text: string }> = [
+    (token) => ({ bg: token.colorPrimaryBg, text: token.colorPrimary }),
+    (token) => ({ bg: token.colorSuccessBg, text: token.colorSuccess }),
+    (token) => ({ bg: token.colorWarningBg, text: token.colorWarning }),
+    (token) => ({ bg: token.colorInfoBg, text: token.colorInfo }),
+    (token) => ({ bg: token.colorErrorBg, text: token.colorError }),
 ];
 
-const getAvatarColor = (name: string) => {
+const getAvatarColor = (name: string, token: any) => {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    const factory = AVATAR_COLOR_FACTORY[Math.abs(hash) % AVATAR_COLOR_FACTORY.length];
+    return factory(token);
 };
 
 const getInitials = (name: string) => {
@@ -177,7 +178,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     <Avatar
                         size={24}
                         src={resolveProjectImageUrl(p.projectImage) || undefined}
-                        style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name)).bg, fontSize: 10 }}
+                        style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name), token).bg, fontSize: 10 }}
                     >
                         {getInitials(resolveProjectName(p.name))}
                     </Avatar>
@@ -197,12 +198,28 @@ export const DashboardProjectSelector: React.FC<Props> = ({
             ),
             onClick: () => p.projectId && onProjectChange(p.projectId, resolveProjectName(p.name)),
         }));
-    }, [baseProjectNameById, projects, selectedProjectId, token.colorPrimary, onProjectChange]);
+    }, [
+        baseProjectNameById,
+        projects,
+        selectedProjectId,
+        onProjectChange,
+        token.colorPrimary,
+        token.colorPrimaryBg,
+        token.colorSuccessBg,
+        token.colorWarningBg,
+        token.colorInfoBg,
+        token.colorErrorBg,
+        token.colorFillTertiary,
+        token.colorTextSecondary,
+        token.colorBorder,
+    ]);
 
     if (isLoading) return <Skeleton.Input active size="small" style={{ width: 150 }} />;
     if (!projects.length) return <Text type="secondary">No catalogs</Text>;
 
-    const color = selectedProject ? getAvatarColor(resolveProjectName(selectedProject.name)) : { bg: '#ccc', text: '#fff' };
+    const color = selectedProject
+        ? getAvatarColor(resolveProjectName(selectedProject.name), token)
+        : { bg: token.colorFillTertiary, text: token.colorTextSecondary };
 
     return (
         <Dropdown menu={{ items: menuItems }} trigger={['click']} placement="bottomLeft">

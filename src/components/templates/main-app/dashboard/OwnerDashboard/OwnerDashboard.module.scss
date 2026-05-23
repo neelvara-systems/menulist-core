@@ -12,18 +12,19 @@
  */
 
 // Design tokens
-$primary-color: #1890ff;
-$success-color: #52c41a;
-$warning-color: #faad14;
-$text-primary: #262626;
-$text-secondary: #595959;
-$text-tertiary: #8c8c8c;
-$border-color: #f0f0f0;
-$background-light: #fafafa;
-$background-card: #ffffff;
-$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
-$shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
-$shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+$primary-color: var(--ant-color-primary);
+$success-color: var(--ant-color-success);
+$warning-color: var(--ant-color-warning);
+$text-primary: var(--ant-color-text);
+$text-secondary: var(--ant-color-text-secondary);
+$text-tertiary: var(--ant-color-text-tertiary);
+$border-color: var(--ant-color-border);
+$background-light: var(--ant-color-fill-tertiary);
+$background-card: var(--ant-color-bg-container);
+$shadow-sm: 0 1px 2px color-mix(in srgb, var(--ant-color-text) 12%, transparent);
+$shadow-md: 0 2px 8px color-mix(in srgb, var(--ant-color-text) 14%, transparent);
+$shadow-lg: 0 4px 16px color-mix(in srgb, var(--ant-color-text) 16%, transparent);
+$text-on-primary: var(--ant-color-text-light-solid);
 $radius-sm: 8px;
 $radius-md: 12px;
 $radius-lg: 16px;
@@ -74,7 +75,7 @@ $spacing-xl: 32px;
     .primaryTab,
     .secondaryTab,
     .activeTab {
-      color: #fff !important;
+      color: $text-on-primary !important;
     }
   }
 
@@ -103,7 +104,7 @@ $spacing-xl: 32px;
 
 .activeTab {
   font-weight: 600;
-  color: #fff;
+  color: $text-on-primary;
   display: flex;
   align-items: center;
   gap: $spacing-sm;
@@ -200,7 +201,7 @@ $spacing-xl: 32px;
 
 // AI Summary Card - Hero section
 .aiSummaryCard {
-  background: linear-gradient(135deg, #f8fafc 0%, $background-card 100%);
+  background: linear-gradient(135deg, $background-light 0%, $background-card 100%);
   border-radius: $radius-md;
   border: 1px solid $border-color;
   border-left: 4px solid $primary-color;
@@ -228,7 +229,7 @@ $spacing-xl: 32px;
 .aiIcon {
   font-size: 24px;
   color: $warning-color;
-  background: rgba(250, 173, 20, 0.1);
+  background: color-mix(in srgb, var(--ant-color-warning) 12%, transparent);
   padding: $spacing-sm;
   border-radius: $radius-sm;
 }
@@ -268,9 +269,9 @@ $spacing-xl: 32px;
 
 .todayCard {
   border-radius: $radius-md;
-  border: 1px solid rgba(24, 144, 255, 0.18);
+  border: 1px solid color-mix(in srgb, var(--ant-color-primary) 18%, transparent);
   box-shadow: $shadow-sm;
-  background: linear-gradient(180deg, rgba(24, 144, 255, 0.03) 0%, $background-card 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ant-color-primary) 10%, transparent) 0%, $background-card 100%);
 
   :global(.ant-card-body) {
     padding: $spacing-lg;
@@ -431,7 +432,7 @@ $spacing-xl: 32px;
 }
 
 .topItemIcon {
-  color: #fa8c16;
+  color: $warning-color;
   font-size: 16px;
 }
 
@@ -467,7 +468,7 @@ $spacing-xl: 32px;
   margin-bottom: $spacing-md;
   border-radius: $radius-sm;
   border: none;
-  background: rgba(24, 144, 255, 0.06);
+  background: color-mix(in srgb, var(--ant-color-primary) 6%, transparent);
 
   :global(.ant-alert-message) {
     font-weight: 600;
@@ -481,9 +482,9 @@ $spacing-xl: 32px;
 
 // Monthly View
 .monthHeader {
-  background: linear-gradient(135deg, #f0fdf4 0%, $background-card 100%);
+  background: linear-gradient(135deg, var(--ant-color-success-bg) 0%, $background-card 100%);
   border-radius: $radius-md;
-  border: 1px solid #d9f7be;
+  border: 1px solid var(--ant-color-success-border);
   box-shadow: $shadow-sm;
   margin-bottom: $spacing-md;
 
@@ -560,7 +561,7 @@ $spacing-xl: 32px;
   background: $background-card;
   border-radius: $radius-md;
   border: 1px solid $border-color;
-  border-top: 3px solid #722ed1;
+  border-top: 3px solid var(--ant-color-primary);
   box-shadow: $shadow-sm;
   margin-top: $spacing-lg;
 
@@ -582,8 +583,8 @@ $spacing-xl: 32px;
 
 .overallIcon {
   font-size: 28px;
-  color: #722ed1;
-  background: rgba(114, 46, 209, 0.08);
+  color: var(--ant-color-primary);
+  background: color-mix(in srgb, var(--ant-color-primary) 8%, transparent);
   padding: $spacing-sm;
   border-radius: $radius-sm;
 
@@ -659,7 +660,7 @@ $spacing-xl: 32px;
 
 .emptyIcon {
   font-size: 56px !important;
-  color: #d9d9d9;
+  color: var(--ant-color-text-quaternary, var(--ant-color-text-tertiary));
   opacity: 0.6;
 }
 
@@ -683,8 +684,8 @@ $spacing-xl: 32px;
 // Error Card
 .errorCard {
   border-radius: $radius-md;
-  border: 1px solid #ffccc7;
-  background: #fff2f0;
+  border: 1px solid var(--ant-color-error-border);
+  background: var(--ant-color-error-bg);
 }
 
 // Loading State
@@ -793,7 +794,7 @@ $spacing-xl: 32px;
 .quickStats {
   margin-top: $spacing-md;
   padding-top: $spacing-md;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid $border-color;
 }
 
 .quickStat {
@@ -880,7 +881,7 @@ $spacing-xl: 32px;
   }
 
   .ownerDashboard {
-    background: white;
+    background: var(--ant-color-bg-base, var(--ant-color-bg-container));
     padding: 0;
   }
 
@@ -890,6 +891,6 @@ $spacing-xl: 32px;
   .blockPerformanceCard,
   .overallFooter {
     box-shadow: none;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ant-color-border-secondary, var(--ant-color-border));
   }
 }

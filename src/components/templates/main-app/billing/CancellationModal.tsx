@@ -1,5 +1,5 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { Button, Checkbox, Flex, Form, Input, Modal, Radio, Space, Typography } from 'antd';
+import { Button, Checkbox, Flex, Form, Input, Modal, Radio, Space, Typography, theme } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
@@ -42,6 +42,7 @@ const stepVariants = {
 };
 
 const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: CancellationModalProps) => {
+    const { token } = theme.useToken();
     const [step, setStep] = useState(1);
     const [reason, setReason] = useState<string | null>(null);
     const [otherReason, setOtherReason] = useState('');
@@ -151,7 +152,14 @@ const CancellationModal = ({ isOpen, onClose, onConfirm, subscriptionEndDate }: 
                                 </Checkbox>
                                 <Flex gap="small" justify="center" style={{ width: '100%', position: 'absolute', bottom: 0, left: 0, right: 0 }}>
                                     <Button block icon={<LuArrowLeft />} onClick={handleBack}>Back</Button>
-                                    <Button block type="primary" danger icon={<FaCircleStop color={isConfirmed ? 'white' : 'gray'} />} onClick={handleConfirm} disabled={!isConfirmed}>
+                                    <Button
+                                        block
+                                        type="primary"
+                                        danger
+                                        icon={<FaCircleStop color={isConfirmed ? token.colorTextLightSolid : token.colorTextSecondary} />}
+                                        onClick={handleConfirm}
+                                        disabled={!isConfirmed}
+                                    >
                                         Confirm Cancellation
                                     </Button>
                                 </Flex>

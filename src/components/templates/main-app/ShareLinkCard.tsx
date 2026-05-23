@@ -98,7 +98,7 @@ export default function ShareLinkCard({
                         size="small"
                         icon={<FaWhatsapp size={14} />}
                         onClick={handleWhatsApp}
-                        style={{ color: '#25D366', borderColor: '#25D366' }}
+                        style={{ color: token.colorTextLightSolid, background: token.colorSuccess, borderColor: token.colorSuccess }}
                     >
                         WhatsApp
                     </Button>

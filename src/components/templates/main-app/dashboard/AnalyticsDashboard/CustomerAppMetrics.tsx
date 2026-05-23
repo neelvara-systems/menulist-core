@@ -14,10 +14,11 @@
 
 import { AppstoreOutlined, DownloadOutlined, EyeOutlined, RocketOutlined, StarOutlined } from '@ant-design/icons';
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
-import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography } from 'antd';
+import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography, theme } from 'antd';
 import React from 'react';
 
 const { Title, Text } = Typography;
+const { useToken } = theme;
 
 // Local extension of AnalyticsSummary — the core type in src/lib/analytics/types.ts
 // targets menu analytics. Customer App fields live in the same summary doc under
@@ -93,6 +94,7 @@ interface Props {
 }
 
 const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
+    const { token } = useToken();
     const { data, loading, error } = useCustomerAppDashboard();
     void dateRange;
 
@@ -208,7 +210,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                         value={`${conversionPct}%`}
                         prefix={<RocketOutlined />}
                         valueStyle={{
-                            color: conversionPct >= 20 ? '#3f8600' : conversionPct >= 5 ? '#d48806' : '#cf1322',
+                            color: conversionPct >= 20 ? token.colorSuccess : conversionPct >= 5 ? token.colorWarning : token.colorError,
                         }}
                     />
                 </Col>

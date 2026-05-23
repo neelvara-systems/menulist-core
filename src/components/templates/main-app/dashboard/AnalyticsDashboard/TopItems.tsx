@@ -1,17 +1,20 @@
 import { FireOutlined } from '@ant-design/icons';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { AnalyticsData } from '@lib/analytics/types';
-import { Card, Empty, List, Tag, Typography } from 'antd';
+import { Card, Empty, List, Tag, Typography, theme } from 'antd';
 import React from 'react';
 
 const { Title, Text } = Typography;
+const { useToken } = theme;
 
 interface TopItemsProps {
   data: AnalyticsData | null;
 }
 
 const TopItems: React.FC<TopItemsProps> = ({ data }) => {
-  // Get top items from summary or calculate from daily data
+    const { token } = useToken();
+
+    // Get top items from summary or calculate from daily data
   const getTopItems = () => {
     if (!data) return [];
 
@@ -77,9 +80,13 @@ const TopItems: React.FC<TopItemsProps> = ({ data }) => {
           <List.Item>
             <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
               <div style={{ marginRight: 16, minWidth: 24, textAlign: 'center' }}>
-                {index < 3 ? (
-                  <FireOutlined style={{
-                    color: index === 0 ? '#f5222d' : index === 1 ? '#fa8c16' : '#faad14',
+                    {index < 3 ? (
+                    <FireOutlined style={{
+                    color: index === 0
+                        ? token.colorError
+                        : index === 1
+                            ? token.colorWarning
+                            : token.colorSuccess,
                     fontSize: 18
                   }} />
                 ) : (

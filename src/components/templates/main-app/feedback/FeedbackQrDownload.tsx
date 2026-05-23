@@ -130,7 +130,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                             size="small"
                             icon={<FaWhatsapp size={14} />}
                             onClick={handleWhatsApp}
-                            style={{ color: '#25D366', borderColor: '#25D366' }}
+                            style={{ color: token.colorSuccess, borderColor: token.colorSuccess }}
                         >
                             WhatsApp
                         </Button>
@@ -172,12 +172,12 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                     {isGenerating ? (
                         <div className="py-8">
                             <Spin size="large" />
-                            <p className="mt-4 text-gray-500">Generating QR code...</p>
+                            <p className="mt-4" style={{ color: token.colorTextSecondary }}>Generating QR code...</p>
                         </div>
                     ) : qrDataUrl ? (
                         <>
                             {/* QR Code Preview */}
-                            <div className="bg-white p-4 rounded-lg inline-block shadow-sm border">
+                            <div className="p-4 rounded-lg inline-block shadow-sm border" style={{ backgroundColor: token.colorBgContainer }}>
                                 <img
                                     src={qrDataUrl}
                                     alt="Feedback QR Code"
@@ -187,11 +187,11 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                             </div>
 
                             {/* Instructions */}
-                            <div className="mt-6 text-left bg-gray-50 rounded-lg p-4">
-                                <h4 className="font-medium text-gray-900 mb-2">
+                            <div className="mt-6 text-left rounded-lg p-4" style={{ backgroundColor: token.colorFillSecondary }}>
+                                <h4 className="font-medium mb-2" style={{ color: token.colorText }}>
                                     How to use
                                 </h4>
-                                <ul className="text-sm text-gray-600 space-y-1">
+                                <ul className="text-sm space-y-1" style={{ color: token.colorTextSecondary }}>
                                     <li>• Print and place on tables</li>
                                     <li>• Add to receipts</li>
                                     <li>• Display at reception</li>
@@ -199,7 +199,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                             </div>
 
                             {/* URL Preview */}
-                            <div className="mt-4 text-xs text-gray-400 break-all">
+                            <div className="mt-4 text-xs break-all" style={{ color: token.colorTextTertiary }}>
                                 {feedbackUrl}
                             </div>
                         </>

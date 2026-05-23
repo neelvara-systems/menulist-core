@@ -11,7 +11,7 @@ import {
     OwnerConfidence,
     SourceQuality,
 } from '@template/main-app/projects/types';
-import { Card, Col, Empty, Row, Space, Tag, Typography } from 'antd';
+import { Card, Col, Empty, Row, Space, Tag, Typography, theme } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
 
@@ -43,6 +43,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
     const isPlanLocked = analyticsAiEntitlement
         && !analyticsAiEntitlement.enabled
         && analyticsAiEntitlement.reason !== 'feature_flag_disabled';
+    const { token } = theme.useToken();
 
     if (analyticsAiEntitlement?.reason === 'feature_flag_disabled' && actions.length === 0) {
         return null;
@@ -62,7 +63,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
             <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {isPlanLocked ? (
                     <Empty
-                        image={<LockOutlined style={{ color: '#1d3f8f', fontSize: 32 }} />}
+                        image={<LockOutlined style={{ color: token.colorPrimary, fontSize: 32 }} />}
                         description={(
                             <Space direction="vertical" size={4}>
                                 <Text strong>Available on Pro</Text>
@@ -123,7 +124,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                     </Row>
                 ) : !isPlanLocked ? (
                     <Empty
-                        image={<CheckCircleOutlined style={{ color: '#52c41a', fontSize: 32 }} />}
+                        image={<CheckCircleOutlined style={{ color: token.colorSuccess, fontSize: 32 }} />}
                         description="No action needed. Menu state is stable."
                     />
                 ) : null}

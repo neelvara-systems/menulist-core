@@ -9,7 +9,7 @@ import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
-import { Button, Card, Flex, Segmented, Typography, message } from 'antd';
+import { Button, Card, Flex, Segmented, Typography, message, theme } from 'antd';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuMessageCircle, LuQrCode } from 'react-icons/lu';
@@ -21,6 +21,7 @@ interface OBPLinkCardProps {
 }
 
 export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
+    const { token } = theme.useToken();
     const [copied, setCopied] = useState(false);
     const [showQr, setShowQr] = useState(false);
     const [qrType, setQrType] = useState<'share' | 'menu'>('share');
@@ -127,11 +128,11 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                             width: 42,
                             height: 42,
                             borderRadius: 10,
-                            background: '#e6f4ff',
+                            background: token.colorInfoBg,
                             flexShrink: 0,
                         }}
                     >
-                        <LuGlobe size={20} style={{ color: '#1677ff' }} />
+                        <LuGlobe size={20} style={{ color: token.colorInfoText }} />
                     </Flex>
                     <Flex vertical style={{ flex: 1, minWidth: 0 }}>
                         <Text strong style={{ fontSize: 15 }}>Your Official Business Link</Text>
@@ -155,7 +156,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                         icon={<LuMessageCircle size={15} />}
                         onClick={handleWhatsAppShare}
                         type="primary"
-                        style={{ background: '#25D366', borderColor: '#25D366' }}
+                        style={{ background: token.colorSuccess, borderColor: token.colorSuccess }}
                     >
                         Send via WhatsApp
                     </Button>
@@ -179,7 +180,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
             </Flex>
 
             {showQr && (
-                <Flex vertical align="center" gap={12} style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
+                <Flex vertical align="center" gap={12} style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${token.colorBorder}` }}>
                     <Segmented
                         size="small"
                         value={qrType}

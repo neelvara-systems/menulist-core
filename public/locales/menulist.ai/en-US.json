@@ -2826,7 +2826,7 @@
         "CustomerBrowse": {
             "title": "Customers find what they want faster.",
             "highlight": "faster",
-            "subtitle": "A MenuList page is built for real browsing. Customers can search, jump sections, switch language, check details, and decide without asking staff.",
+            "subtitle": "A MenuList page is built for real browsing. Customers can search, jump sections, switch language, and get guided recommendations from decision blocks before they choose.",
             "proof0Title": "Search is always within reach",
             "proof0Desc": "Customers can search large menus without losing their place. The search bar expands when needed and stays quiet when it is not in use.",
             "proof1Title": "Sections keep big menus easy",
@@ -2835,6 +2835,8 @@
             "proof2Desc": "If you publish more than one language, customers can choose the one they read best on the same public menu.",
             "proof3Title": "Trust signals stay visible",
             "proof3Desc": "Business identity, open status, recent update, prices, item details, and actions all sit inside the customer-facing menu experience.",
+            "proof4Title": "Decision blocks guide choices",
+            "proof4Desc": "Top picks, quick options, and value suggestions appear at the top with owner controls. They improve speed while keeping customers on the official menu source.",
             "previewLabel": "Customer-facing menu preview",
             "previewBusiness": "Habibis Restaurant",
             "previewMeta": "Food menu · Baner Road",

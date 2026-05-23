@@ -30,12 +30,13 @@ import {
     OVERVIEW_GUARDRAILS,
     OverviewData,
 } from '@template/main-app/projects/types';
-import { Card, Col, Collapse, Empty, Progress, Row, Statistic, Tag, Typography } from 'antd';
+import { Card, Col, Collapse, Empty, Progress, Row, Statistic, Tag, Typography, theme } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
 import OwnerActionPlanCard from './OwnerActionPlanCard';
 
 const { Text, Title, Paragraph } = Typography;
+const { useToken } = theme;
 
 interface OverviewViewProps {
     data: OverviewData | null;
@@ -43,6 +44,7 @@ interface OverviewViewProps {
 
 const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
+    const { token } = useToken();
 
     if (!data) {
         return (
@@ -63,24 +65,24 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
     const getStatusIcon = () => {
         switch (status) {
             case 'working':
-                return <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a' }} />;
+                return <CheckCircleOutlined style={{ fontSize: 48, color: token.colorSuccess }} />;
             case 'low_activity':
-                return <WarningOutlined style={{ fontSize: 48, color: '#faad14' }} />;
+                return <WarningOutlined style={{ fontSize: 48, color: token.colorWarning }} />;
             case 'no_data':
             default:
-                return <ClockCircleOutlined style={{ fontSize: 48, color: '#8c8c8c' }} />;
+                return <ClockCircleOutlined style={{ fontSize: 48, color: token.colorTextTertiary }} />;
         }
     };
 
     const getStatusColor = () => {
         switch (status) {
             case 'working':
-                return '#f6ffed';
+                return token.colorSuccessBg;
             case 'low_activity':
-                return '#fffbe6';
+                return token.colorWarningBg;
             case 'no_data':
             default:
-                return '#fafafa';
+                return token.colorFillSecondary;
         }
     };
 
@@ -104,8 +106,8 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data }) => {
                                 <Progress
                                     percent={percentage}
                                     showInfo={false}
-                                    strokeColor={week.isCurrentWeek ? '#1890ff' : '#91d5ff'}
-                                    trailColor="#f0f0f0"
+                                    strokeColor={week.isCurrentWeek ? token.colorPrimary : token.colorPrimaryBg}
+                                    trailColor={token.colorBorderSecondary}
                                     size="small"
                                 />
                             </div>

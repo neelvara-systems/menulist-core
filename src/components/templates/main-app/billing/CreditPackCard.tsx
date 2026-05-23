@@ -28,34 +28,34 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, handleC
     } = {
         enhancement: {
             icon: GiTwoCoins,
-            color: '#1677FF',
+            color: token.colorPrimary,
             buttonStyles: {
-                borderColor: 'rgb(22, 119, 255, 0.3)',
-                backgroundImage: 'linear-gradient(to bottom, rgba(22, 119, 255, 0.1), transparent)',
+                borderColor: `${token.colorPrimary}4d`,
+                backgroundImage: `linear-gradient(to bottom, ${token.colorPrimary}1a, transparent)`,
             },
         },
         starter: {
             icon: RiCoinFill,
-            color: '#722ED1',
+            color: token.colorInfo,
             buttonStyles: {
-                borderColor: 'rgb(126, 34, 206, 0.3)',
-                backgroundImage: 'linear-gradient(to bottom, rgba(168, 85, 247, 0.1), transparent)',
+                borderColor: `${token.colorInfo}4d`,
+                backgroundImage: `linear-gradient(to bottom, ${token.colorInfo}1a, transparent)`,
             }
         },
         value: {
             icon: GiTwoCoins,
-            color: '#52C41A',
+            color: token.colorSuccess,
             buttonStyles: {
-                borderColor: 'rgb(82, 196, 26, 0.3)',
-                backgroundImage: 'linear-gradient(to bottom, rgba(82, 196, 26, 0.1), transparent)',
+                borderColor: `${token.colorSuccess}4d`,
+                backgroundImage: `linear-gradient(to bottom, ${token.colorSuccess}1a, transparent)`,
             },
         },
         pro: {
             icon: FaCoins,
-            color: '#FAAD14',
+            color: token.colorWarning,
             buttonStyles: {
-                borderColor: 'rgb(250, 173, 20, 0.3)',
-                backgroundImage: 'linear-gradient(to bottom, rgba(250, 173, 20, 0.1), transparent)',
+                borderColor: `${token.colorWarning}4d`,
+                backgroundImage: `linear-gradient(to bottom, ${token.colorWarning}1a, transparent)`,
             },
         },
     };

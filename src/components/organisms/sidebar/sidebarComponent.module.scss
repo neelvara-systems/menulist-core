@@ -90,10 +90,10 @@
 
       // Focus styles for keyboard navigation (accessibility)
       &:focus-visible {
-        outline: 2px solid var(--ant-primary-color, #1677ff);
+        outline: 2px solid var(--ant-color-primary);
         outline-offset: 2px;
         z-index: 10;
-        box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.1);
+        box-shadow: 0 0 0 4px var(--ant-color-primary-bg);
       }
       .navWrap {
         display: flex;
@@ -132,7 +132,7 @@
       &:hover {
         color: white;
         transform: scale(1.02);
-        background-color: var(--lightest-slate);
+        background-color: var(--ant-color-fill-tertiary);
         @include transition;
       }
       &.active {
@@ -171,10 +171,10 @@
       }
     }
     &.actionNavItem {
-      position: sticky;
+    position: sticky;
       bottom: 0;
       z-index: 2;
-      border-top: 1px solid #dee1ec9c;
+      border-top: 1px solid var(--ant-color-border-secondary);
       width: 100%;
       margin-top: auto;
       .menuItemWrap {

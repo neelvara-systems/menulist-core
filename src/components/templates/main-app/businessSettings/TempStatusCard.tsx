@@ -9,7 +9,7 @@
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
-import { Button, Card, DatePicker, Flex, Input, Tag, Typography } from 'antd';
+import { Button, Card, DatePicker, Flex, Input, Tag, Typography, theme } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
@@ -31,6 +31,7 @@ interface TempStatusCardProps {
 }
 
 export default function TempStatusCard({ storeDetails, setStoreDetails }: TempStatusCardProps) {
+    const { token } = theme.useToken();
     const currentStatus = storeDetails?.tempStatus;
     const isActive = currentStatus && new Date(currentStatus.expiresAt).getTime() > Date.now();
 
@@ -127,12 +128,12 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
         <Card style={{ marginBottom: 16 }}>
             {/* Header */}
             <Flex align="center" gap={10} style={{ marginBottom: 16 }}>
-                <Flex
-                    align="center" justify="center"
-                    style={{ width: 38, height: 38, borderRadius: 10, background: '#fffbe6', flexShrink: 0 }}
-                >
-                    <LuAlertTriangle size={18} style={{ color: '#d48806' }} />
-                </Flex>
+                    <Flex
+                        align="center" justify="center"
+                        style={{ width: 38, height: 38, borderRadius: 10, background: token.colorWarningBg, flexShrink: 0 }}
+                    >
+                        <LuAlertTriangle size={18} style={{ color: token.colorWarningText }} />
+                    </Flex>
                 <Flex vertical style={{ flex: 1, minWidth: 0 }}>
                     <Flex align="center" gap={8}>
                         <Text strong style={{ fontSize: 15 }}>Temporary Status</Text>
@@ -147,17 +148,17 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             {isActive ? (
                 <Flex vertical gap={12}>
                     <div style={{
-                        background: '#fffbe6',
-                        border: '1px solid #ffe58f',
+                        background: token.colorWarningBg,
+                        border: `1px solid ${token.colorWarningBorder}`,
                         borderRadius: 10,
                         padding: '14px 16px',
                     }}>
-                        <Text strong style={{ fontSize: 15, color: '#614700' }}>
+                        <Text strong style={{ fontSize: 15, color: token.colorWarningText }}>
                             {STATUS_OPTIONS.find(o => o.value === currentStatus.type)?.icon || 'ℹ️'}{' '}
                             {currentStatus.message}
                         </Text>
                         <Flex align="center" gap={6} style={{ marginTop: 6 }}>
-                            <LuClock size={12} style={{ color: '#8c6900', flexShrink: 0 }} />
+                            <LuClock size={12} style={{ color: token.colorWarningText, flexShrink: 0 }} />
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 Expires {dayjs(currentStatus.expiresAt).format('MMM D, YYYY [at] h:mm A')}
                             </Text>
@@ -188,7 +189,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                                     padding: '6px 14px',
                                     fontSize: 13,
                                     borderRadius: 20,
-                                    border: statusType === opt.value ? '1.5px solid #d48806' : '1.5px solid #d9d9d9',
+                                    border: statusType === opt.value ? `1.5px solid ${token.colorWarningText}` : `1.5px solid ${token.colorBorderSecondary}`,
                                     fontWeight: statusType === opt.value ? 600 : 400,
                                     userSelect: 'none',
                                 }}
@@ -233,7 +234,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         loading={isLoading}
                         size="large"
                         block
-                        style={{ background: '#d48806', borderColor: '#d48806' }}
+                        style={{ background: token.colorWarning, borderColor: token.colorWarning, color: token.colorTextLightSolid }}
                     >
                         Set Status
                     </Button>

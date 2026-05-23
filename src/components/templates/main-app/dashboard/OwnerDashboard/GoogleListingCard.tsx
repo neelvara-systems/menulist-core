@@ -17,7 +17,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { StoreDataType } from '@type/platform/store';
 import { updateStore } from '@database/stores';
-import { Button, Card, Flex, Typography, message } from 'antd';
+import { Button, Card, Flex, Typography, message, theme } from 'antd';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink } from 'react-icons/lu';
 import { SiGooglemybusiness } from 'react-icons/si';
@@ -32,6 +32,7 @@ interface GoogleListingCardProps {
 export default function GoogleListingCard({ storeDetails, onStoreUpdate }: GoogleListingCardProps) {
     const [copied, setCopied] = useState(false);
     const [saving, setSaving] = useState(false);
+    const { token } = theme.useToken();
 
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
     if (FEATURE_FLAGS.ENABLE_GBP_SYNC) return null;
@@ -91,11 +92,11 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                             width: 32,
                             height: 32,
                             borderRadius: 8,
-                            background: '#f6ffed',
+                            background: token.colorSuccessBg,
                             flexShrink: 0,
                         }}
                     >
-                        <LuCheck size={16} style={{ color: '#52c41a' }} />
+                        <LuCheck size={16} style={{ color: token.colorSuccess }} />
                     </Flex>
                     <Flex vertical style={{ flex: 1 }}>
                         <Text strong style={{ fontSize: 13 }}>Google listing</Text>
@@ -117,7 +118,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         width: 32,
                         height: 32,
                         borderRadius: 8,
-                        background: '#e6f4ff',
+                        background: token.colorPrimaryBg,
                         flexShrink: 0,
                     }}
                 >

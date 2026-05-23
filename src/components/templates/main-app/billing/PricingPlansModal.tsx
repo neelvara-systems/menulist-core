@@ -39,41 +39,6 @@ const getPlanfeaturesLable = (plan: Plan) => {
     return label;
 }
 
-const planStyles: any = {
-    starter: {
-        icon: <LuStore style={{ fontSize: 32, color: '#722ED1' }} />,
-        color: '#722ED1',
-        buttonStyles: {
-            borderColor: 'rgb(126, 34, 206, 0.3)',
-            backgroundImage: 'linear-gradient(to bottom, rgba(168, 85, 247, 0.1), transparent)',
-        },
-    },
-    pro: {
-        icon: <HiOutlineOfficeBuilding style={{ fontSize: 32, color: '#52C41A' }} />,
-        color: '#52C41A',
-        buttonStyles: {
-            borderColor: 'rgb(82, 196, 26, 0.3)',
-            backgroundImage: 'linear-gradient(to bottom, rgba(82, 196, 26, 0.1), transparent)',
-        },
-    },
-    premium: {
-        icon: <LuZap style={{ fontSize: 32, color: '#FAAD14' }} />,
-        color: '#FAAD14',
-        buttonStyles: {
-            borderColor: 'rgb(250, 173, 20, 0.3)',
-            backgroundImage: 'linear-gradient(to bottom, rgba(250, 173, 20, 0.1), transparent)',
-        },
-    },
-    custom: {
-        icon: <LuZap style={{ fontSize: 32, color: '#1890FF' }} />,
-        color: '#1890FF',
-        buttonStyles: {
-            borderColor: 'rgb(24, 144, 255, 0.3)',
-            backgroundImage: 'linear-gradient(to bottom, rgba(24, 144, 255, 0.1), transparent)',
-        },
-    },
-};
-
 const PLAN_TIER_ORDER: Record<string, number> = { starter: 1, pro: 2, premium: 3, custom: 4 };
 
 const PlanCardComponent = ({
@@ -94,7 +59,49 @@ const PlanCardComponent = ({
     renderFeatureItems?: (plan: Plan, currency: Currency) => any,
 }) => {
     const { token } = theme.useToken();
-    const style = planStyles[plan.planId as keyof typeof planStyles] || planStyles.pro;
+    const style = plan.planId === 'starter'
+        ? {
+            color: token.colorSuccess,
+            badgeColor: token.colorSuccess,
+            buttonStyles: {
+                background: token.colorSuccess,
+                borderColor: token.colorSuccess,
+                color: token.colorTextLightSolid,
+            },
+            icon: <FaBolt size={20} color={token.colorSuccessText} />,
+        }
+        : plan.planId === 'pro'
+            ? {
+                color: token.colorWarning,
+                badgeColor: token.colorWarning,
+                buttonStyles: {
+                    background: token.colorWarning,
+                    borderColor: token.colorWarning,
+                    color: token.colorTextLightSolid,
+                },
+                icon: <HiOutlineOfficeBuilding size={20} color={token.colorWarningText} />,
+            }
+            : plan.planId === 'premium'
+                ? {
+                    color: token.colorInfo,
+                    badgeColor: token.colorInfo,
+                    buttonStyles: {
+                        background: token.colorInfo,
+                        borderColor: token.colorInfo,
+                        color: token.colorTextLightSolid,
+                    },
+                    icon: <LuStore size={20} color={token.colorInfoText} />,
+                }
+                : {
+                    color: token.colorText,
+                    badgeColor: token.colorTextSecondary,
+                    buttonStyles: {
+                        background: 'transparent',
+                        borderColor: token.colorBorder,
+                        color: token.colorText,
+                    },
+                    icon: <LuZap size={20} color={token.colorText} />,
+                };
     const price = plan[`price${currency}`].price;
     const monthlyCreditAllowance = plan[`price${currency}`].monthlyCredits || "Custom";
     const allPlatformFeatures = PlatformFeaturesList.B2C;
@@ -144,7 +151,7 @@ const PlanCardComponent = ({
 
                     {renderFeatureItems ? renderFeatureItems(plan, currency) : plan.planId !== 'custom' && (
                         <List.Item style={ListItemStyle}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>Unlimited Core Content Tools</Text>
                             <Tooltip title="Includes unlimited data extraction, description generation, and language translation.">
                                 <LuInfo style={{ marginLeft: 8, color: token.colorInfoActive, cursor: 'pointer' }} />
@@ -153,7 +160,7 @@ const PlanCardComponent = ({
                     )}
                     {!renderFeatureItems && plan.planId !== 'custom' && (
                         <List.Item style={ListItemStyle}>
-                            <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                            <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                             <Text>{monthlyCreditAllowance} Monthly Credits</Text>
                             <Tooltip title={`Includes ${monthlyCreditAllowance} monthly credits.`}>
                                 <LuInfo style={{ marginLeft: 8, color: token.colorInfoActive, cursor: 'pointer' }} />
@@ -177,7 +184,7 @@ const PlanCardComponent = ({
 
                         return (
                             <List.Item key={feature.id} style={ListItemStyle}>
-                                <LuCheck style={{ color: '#52C41A', marginRight: 8 }} />
+                                <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
                                 <Text>{featureText}</Text>
                             </List.Item>
                         );
@@ -299,9 +306,9 @@ function PricingPlansModal({
                             <Flex align='center' gap={8}>
                                 <Text>Yearly</Text>
                                 <Badge style={{
-                                    color: billingInterval === 'YEAR' ? 'green' : 'gray',
-                                    backgroundColor: billingInterval === 'YEAR' ? 'rgba(0, 128, 0, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                                    borderColor: billingInterval === 'YEAR' ? 'green' : 'gray',
+                                    color: billingInterval === 'YEAR' ? token.colorSuccess : token.colorTextSecondary,
+                                    backgroundColor: billingInterval === 'YEAR' ? `${token.colorSuccess}20` : token.colorFillSecondary,
+                                    borderColor: billingInterval === 'YEAR' ? token.colorSuccess : token.colorBorder,
                                 }} count={yearlyBadgeText} />
                             </Flex>
                         </Flex>

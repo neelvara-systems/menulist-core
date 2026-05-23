@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { Radio, Badge } from 'antd';
+import { Radio, Badge, theme } from 'antd';
 import { GuestFeedbackFilter } from '@type/guestFeedback';
 
 interface FeedbackFiltersProps {
@@ -29,6 +29,8 @@ export const FeedbackFilters: React.FC<FeedbackFiltersProps> = ({
     needsAttentionCount = 0,
     disabled = false,
 }) => {
+    const { token } = theme.useToken();
+
     return (
         <Radio.Group
             value={value}
@@ -46,7 +48,7 @@ export const FeedbackFilters: React.FC<FeedbackFiltersProps> = ({
                             count={needsAttentionCount} 
                             size="small"
                             style={{ 
-                                backgroundColor: '#ff4d4f',
+                                backgroundColor: token.colorError,
                                 boxShadow: 'none',
                             }}
                         />

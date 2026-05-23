@@ -3,11 +3,12 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, Flex, Typography, message } from 'antd';
+import { Button, Card, Flex, Typography, message, theme } from 'antd';
 import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuLink, LuX } from 'react-icons/lu';
 
 const { Text } = Typography;
+const { useToken } = theme;
 
 /**
  * BehaviorNudgeCard — Dashboard reinforcement card for official link adoption.
@@ -18,6 +19,7 @@ const { Text } = Typography;
  * @see __docs__/behavior-engineering/behavior-engineering_impl.md (Screen 4)
  */
 export default function BehaviorNudgeCard() {
+    const { token } = useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [dismissed, setDismissed] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -64,8 +66,8 @@ export default function BehaviorNudgeCard() {
         <Card
             size="small"
             style={{
-                background: '#f0f5ff',
-                borderColor: '#d6e4ff',
+                background: `color-mix(in srgb, ${token.colorInfoBg} 80%, ${token.colorBgContainer})`,
+                borderColor: token.colorInfoBorder,
                 marginBottom: 16,
             }}
         >
@@ -78,12 +80,12 @@ export default function BehaviorNudgeCard() {
                             width: 36,
                             height: 36,
                             borderRadius: 8,
-                            background: '#e6f4ff',
+                            background: `color-mix(in srgb, ${token.colorInfoBg} 65%, ${token.colorBgContainer})`,
                             flexShrink: 0,
                             marginTop: 2,
                         }}
                     >
-                        <LuLink size={18} style={{ color: '#1677ff' }} />
+                        <LuLink size={18} style={{ color: token.colorInfo }} />
                     </Flex>
                     <Flex vertical gap={4} style={{ flex: 1 }}>
                         <Text strong style={{ fontSize: 14 }}>
@@ -96,7 +98,7 @@ export default function BehaviorNudgeCard() {
                             <Text
                                 style={{
                                     fontSize: 12,
-                                    color: '#1677ff',
+                                    color: token.colorInfo,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap',

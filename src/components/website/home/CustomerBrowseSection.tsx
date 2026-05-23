@@ -1,19 +1,19 @@
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuBadgeCheck, LuLanguages, LuList, LuSearch } from 'react-icons/lu';
+import { LuBadgeCheck, LuBrain, LuLanguages, LuList, LuSearch } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 
-const proofIcons = [LuSearch, LuList, LuLanguages, LuBadgeCheck];
-
 export default function CustomerBrowseSection() {
   const t = useTranslations('Website');
-  const proofItems = proofIcons.map((icon, i) => ({
-    icon,
-    title: t(`CustomerBrowse.proof${i}Title`),
-    desc: t(`CustomerBrowse.proof${i}Desc`),
-  }));
+  const proofItems = [
+    { icon: LuBrain, title: t('CustomerBrowse.proof4Title'), desc: t('CustomerBrowse.proof4Desc') },
+    { icon: LuSearch, title: t('CustomerBrowse.proof0Title'), desc: t('CustomerBrowse.proof0Desc') },
+    { icon: LuList, title: t('CustomerBrowse.proof1Title'), desc: t('CustomerBrowse.proof1Desc') },
+    { icon: LuLanguages, title: t('CustomerBrowse.proof2Title'), desc: t('CustomerBrowse.proof2Desc') },
+    { icon: LuBadgeCheck, title: t('CustomerBrowse.proof3Title'), desc: t('CustomerBrowse.proof3Desc') },
+  ];
 
   return (
     <SectionWrapper id="customer-demo">

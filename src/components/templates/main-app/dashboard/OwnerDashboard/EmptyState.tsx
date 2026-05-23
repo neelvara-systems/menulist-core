@@ -6,11 +6,12 @@
  */
 
 import { LineChartOutlined } from '@ant-design/icons';
-import { Card, Empty, Typography } from 'antd';
+import { Card, Empty, Typography, theme } from 'antd';
 import React from 'react';
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
+const { useToken } = theme;
 
 interface EmptyStateProps {
     title: string;
@@ -23,11 +24,13 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     description,
     icon,
 }) => {
+    const { token } = useToken();
+
     return (
         <Card className={styles.emptyStateCard}>
             <Empty
                 image={icon || <LineChartOutlined className={styles.emptyIcon} />}
-                imageStyle={{ height: 60, fontSize: 48, color: '#d9d9d9' }}
+                imageStyle={{ height: 60, fontSize: 48, color: token.colorTextQuaternary }}
                 description={
                     <div className={styles.emptyContent}>
                         <Title level={5} className={styles.emptyTitle}>

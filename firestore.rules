@@ -953,7 +953,9 @@ service cloud.firestore {
         || request.auth.token.platformRole == 'PLATFORM'
         || request.auth.token.role == 'PLATFORM'
         || request.auth.token.role == 'OWNER'
-        || request.auth.token.role == 'owner';
+        || request.auth.token.role == 'owner'
+        || request.auth.token.role == 'MANAGER'
+        || request.auth.token.role == 'manager';
     }
 
     function legacyProjectBelongsToTenant(data) {

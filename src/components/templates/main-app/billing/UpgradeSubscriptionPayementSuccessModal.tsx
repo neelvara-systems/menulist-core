@@ -1,7 +1,6 @@
 import Confetti from '@atoms/Confetti';
-import { useAppDispatch } from '@hook/useAppDispatch';
 import SectionHeading from '@shadcncomponents/SectionHeading';
-import { Card, Modal, theme } from 'antd';
+import { Button, Card, Modal, theme } from 'antd';
 import { motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
@@ -15,7 +14,6 @@ interface UpgradeSubscriptionPayementSuccessModalProps {
 const UpgradeSubscriptionPayementSuccessModal: React.FC<UpgradeSubscriptionPayementSuccessModalProps> = ({ isOpen, onClose, paymentDetails }) => {
     const { token } = theme.useToken();
     const [showConfetti, setShowConfetti] = useState(false);
-    const dispatch = useAppDispatch();
 
     useEffect(() => {
         if (isOpen) {
@@ -62,12 +60,17 @@ const UpgradeSubscriptionPayementSuccessModal: React.FC<UpgradeSubscriptionPayem
                 }
             }}
         >
-            <Card style={{ background: `linear-gradient(135deg, ${token.colorInfoBg} 0%, ${token.colorBgContainer} 100%)`, borderRadius: '16px', }}>
+            <Card
+                style={{
+                    background: `linear-gradient(135deg, ${token.colorInfoBg} 0%, ${token.colorBgContainer} 100%)`,
+                    borderRadius: '16px',
+                }}
+            >
                 <motion.div variants={pathVariants} initial="hidden" animate="visible">
                     <LuCheckCircle style={{
                         height: '5rem',
                         width: '5rem',
-                        color: '#22c55e',
+                        color: token.colorSuccess,
                         marginBottom: '1rem',
                     }} />
                 </motion.div>
@@ -89,6 +92,7 @@ const UpgradeSubscriptionPayementSuccessModal: React.FC<UpgradeSubscriptionPayem
                         → You will receive an email confirmation with your invoice details
                         shortly.
                     </p>
+                    <Button type="primary" onClick={onClose} block>{'Continue'}</Button>
                 </motion.div>
             </Card>
 

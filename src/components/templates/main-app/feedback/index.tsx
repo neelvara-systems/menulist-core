@@ -13,7 +13,7 @@ import { getFeedbackCount, getFeedbackList, updateFeedbackStatus } from '@databa
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
-import { Empty, Spin, notification } from 'antd';
+import { Empty, Spin, theme, notification } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackFilters } from './FeedbackFilters';
@@ -31,6 +31,7 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
     storeName,
 }) => {
     const dispatch = useAppDispatch();
+    const { token } = theme.useToken();
 
     const [feedbackItems, setFeedbackItems] = useState<GuestFeedback[]>([]);
     const [filter, setFilter] = useState<GuestFeedbackFilter>('all');
@@ -134,10 +135,10 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">
+                    <h1 className="text-2xl font-semibold" style={{ color: token.colorText }}>
                         Guest Feedback
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-sm mt-1" style={{ color: token.colorTextSecondary }}>
                         Private feedback from your guests
                     </p>
                 </div>
@@ -191,9 +192,12 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                     {hasMore && (
                         <div className="text-center py-4">
                             <button
-                                className="text-blue-600 hover:underline text-sm disabled:opacity-50"
+                                className="text-sm disabled:opacity-50"
                                 onClick={() => fetchFeedback(true, lastDocId)}
                                 disabled={isLoadingMore}
+                                style={{
+                                    color: token.colorLink,
+                                }}
                             >
                                 {isLoadingMore ? 'Loading...' : 'Load more'}
                             </button>

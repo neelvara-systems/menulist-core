@@ -65,22 +65,27 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                             {statusTag}
                         </Flex>
 
-                        <Flex
-                            align="center"
-                            gap={10}
-                            style={{
-                                background: token.colorWarningBg,
+                            <Flex
+                                align="center"
+                                gap={10}
+                                style={{
+                                    background: token.colorWarningBg,
                                 border: `1px solid ${token.colorWarningBorder}`,
                                 borderRadius: 16,
                                 padding: '10px 12px',
                             }}
                         >
-                            <Flex align="center" gap={4}>
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <LuStar color={star <= feedback.rating ? '#fbbf24' : '#d1d5db'} fill={star <= feedback.rating ? '#fbbf24' : 'none'} key={star} size={18} />
+                                <Flex align="center" gap={4}>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                    <LuStar
+                                        color={star <= feedback.rating ? token.colorWarning : token.colorTextDisabled}
+                                        fill={star <= feedback.rating ? token.colorWarning : 'none'}
+                                        key={star}
+                                        size={18}
+                                    />
                                 ))}
-                            </Flex>
-                            <Text strong>{feedback.rating}/5</Text>
+                                </Flex>
+                                <Text strong>{feedback.rating}/5</Text>
                         </Flex>
 
                         <Flex gap={8} vertical>
@@ -146,10 +151,10 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                                 <Button block disabled={!replyText.trim()} loading={isSending} onClick={() => void handleSendReply()}>
                                     {t('sendReply')}
                                 </Button>
-                                <Button block fill="outline" onClick={() => void handleResolve()} style={{ borderColor: '#16a34a', color: '#16a34a' }}>
+                                <Button block fill="outline" onClick={() => void handleResolve()} style={{ borderColor: token.colorSuccess, color: token.colorSuccess }}>
                                     <Flex align="center" gap={6} justify="center">
                                         <LuCheck size={16} />
-                                        <Text style={{ color: '#16a34a' }}>{t('resolve')}</Text>
+                                        <Text style={{ color: token.colorSuccess }}>{t('resolve')}</Text>
                                     </Flex>
                                 </Button>
                             </Flex>

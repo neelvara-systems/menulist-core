@@ -138,7 +138,12 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const stars = (rating: number) => (
         <Flex align="center" gap={2}>
             {[1, 2, 3, 4, 5].map((star) => (
-                <LuStar color={star <= rating ? '#fbbf24' : '#d1d5db'} fill={star <= rating ? '#fbbf24' : 'none'} key={star} size={14} />
+                <LuStar
+                    color={star <= rating ? token.colorWarning : token.colorTextDisabled}
+                    fill={star <= rating ? token.colorWarning : 'none'}
+                    key={star}
+                    size={14}
+                />
             ))}
         </Flex>
     );
@@ -265,9 +270,9 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                                     align="center"
                                                     justify="center"
                                                     style={{
-                                                        background: feedback.needsAttention ? '#fff7ed' : '#eff6ff',
+                                                        background: feedback.needsAttention ? token.colorWarningBg : token.colorInfoBg,
                                                         borderRadius: 14,
-                                                        color: feedback.needsAttention ? '#ea580c' : '#0051d1',
+                                                        color: feedback.needsAttention ? token.colorWarningText : token.colorInfoText,
                                                         fontSize: 13,
                                                         fontWeight: 700,
                                                         height: 40,
@@ -351,7 +356,7 @@ function FeedbackLinkCard({
                 <Flex align="center" justify="space-between">
                     <Flex align="center" gap={12} style={{ flex: 1, minWidth: 0 }}>
                         <FeedbackIconBadge>
-                            <LuQrCode color="#0891b2" size={18} />
+                            <LuQrCode color={token.colorInfoText} size={18} />
                         </FeedbackIconBadge>
                         <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
                             <Flex align="center" gap={8} wrap="wrap">
@@ -421,12 +426,14 @@ function FeedbackActionTile({ icon, onClick }: { icon: React.ReactNode; onClick:
 }
 
 function FeedbackIconBadge({ children }: { children: React.ReactNode }) {
+    const { token } = theme.useToken();
+
     return (
         <Flex
             align="center"
             justify="center"
             style={{
-                backgroundColor: '#ecfeff',
+                backgroundColor: token.colorInfoBg,
                 borderRadius: 16,
                 height: 44,
                 minWidth: 44,

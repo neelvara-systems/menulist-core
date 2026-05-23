@@ -3,17 +3,20 @@
 import { Line } from '@ant-design/plots';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyAnalytics } from '@lib/analytics/types';
-import { Card, Empty, Radio, Typography } from 'antd';
+import { Card, Empty, Radio, Typography, theme } from 'antd';
 import React, { useState } from 'react';
 
 const { Title } = Typography;
+const { useToken } = theme;
 
 interface TrendAnalysisProps {
   dailyData: DailyAnalytics[];
 }
 
 const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
-  const labels = useOfferingLabels();
+    const { token } = useToken();
+
+    const labels = useOfferingLabels();
   const [metric, setMetric] = useState<'views' | 'clicks' | 'searches' | 'actions'>('views');
 
   if (!dailyData || dailyData.length === 0) {
@@ -47,8 +50,8 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
   // Sort data by date
   chartData.sort((a, b) => a.date.localeCompare(b.date));
 
-  const config = {
-    data: chartData,
+    const config = {
+        data: chartData,
     xField: 'date',
     yField: 'value',
     seriesField: 'type',
@@ -59,7 +62,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ dailyData }) => {
         duration: 1000,
       },
     },
-    color: metric === 'views' ? '#1890ff' : metric === 'clicks' ? '#52c41a' : metric === 'searches' ? '#fa8c16' : '#722ed1',
+    color: metric === 'views' ? token.colorPrimary : metric === 'clicks' ? token.colorSuccess : metric === 'searches' ? token.colorWarning : token.colorInfo,
     point: {
       size: 5,
       shape: 'diamond',

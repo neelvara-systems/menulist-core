@@ -9,7 +9,7 @@ import {
     OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
-import { Card, Col, Divider, Empty, Flex, Row, Statistic, Tag, Typography } from 'antd';
+import { Card, Col, Divider, Empty, Flex, Row, Statistic, Tag, Typography, theme } from 'antd';
 import React from 'react';
 import {
     LuArrowDownRight,
@@ -143,6 +143,8 @@ function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
 }
 
 function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
+    const { token } = theme.useToken();
+
     if (weeks.length === 0) return null;
     const maxViews = Math.max(...weeks.map((week) => week.views), 1);
 
@@ -158,18 +160,18 @@ function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
                             style={{
                                 width: '100%',
                                 height: Math.max(4, (week.views / maxViews) * 40),
-                                backgroundColor: week.isCurrentWeek ? '#1677ff' : '#e6f4ff',
+                                backgroundColor: week.isCurrentWeek ? token.colorPrimary : token.colorPrimaryBg,
                                 borderRadius: 3,
                                 transition: 'height 0.3s',
                             }}
                         />
-                        <Text style={{ fontSize: 10, color: '#999' }}>{week.views}</Text>
+                        <Text style={{ fontSize: 10, color: token.colorTextSecondary }}>{week.views}</Text>
                     </Flex>
                 ))}
             </Flex>
             <Flex justify="space-between" style={{ marginTop: 2 }}>
                 {weeks.map((week, index) => (
-                    <Text key={index} style={{ fontSize: 9, color: '#bbb', flex: 1, textAlign: 'center' }}>
+                    <Text key={index} style={{ fontSize: 9, color: token.colorTextTertiary, flex: 1, textAlign: 'center' }}>
                         {week.weekLabel}
                     </Text>
                 ))}
