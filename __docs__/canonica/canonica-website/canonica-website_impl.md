@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.12
+> **Version:** 1.2.14
 > **Last Updated:** 2026-05-23
 > **Audience:** Developers
 
@@ -69,6 +69,7 @@ src/app/sites/canonica/
 └── components/
     ├── Header.tsx                 # Shared header with native mobile navigation
     ├── Footer.tsx                 # Shared footer
+    ├── CanonicaLogoMark.tsx       # Inline vector infinity mark for crisp website header/footer branding
     ├── CanonicaLink.tsx           # Dev/production-aware Link wrapper
     ├── CanonicaAnalytics.tsx      # Optional GA/measurement event tracker, no Firestore writes
     ├── HeroSection.tsx            # Homepage hero
@@ -257,7 +258,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 ### Prerequisites
 1. Add `canonica.app` domain to Vercel project dashboard
 2. Configure DNS for canonica.app pointing to Vercel
-3. Keep `public/canonica-og-image.png`, `public/canonica.webmanifest`, `public/canonica-logo.svg`, `public/canonica-logo-mark-wide.*`, `public/canonica-favicon.*`, and Canonica icon PNGs available for OpenGraph, app metadata, header/footer branding, dashboard branding, and favicon previews
+3. Keep `public/canonica-og-image.png`, `public/canonica.webmanifest`, `public/canonica-logo.svg`, `public/canonica-logo-mark-wide.*`, `public/canonica-favicon.*`, and Canonica icon PNGs available for OpenGraph, app metadata, dashboard branding, and favicon previews. The public website header/footer use `CanonicaLogoMark.tsx` as a true inline SVG so the mark does not blur.
 
 ### Security
 - `/sites/*` direct access blocked in production (middleware redirects to `/`)
@@ -329,3 +330,5 @@ Conversion analytics is client-side only:
 | 2026-05-23 | 1.2.10 | Re-themed the shared product-feature page template so Knowledge Base, FAQ Management, Changelog, and Tickets no longer render a light-mode proof section, and set the Canonica route background to prevent white body bleed |
 | 2026-05-23 | 1.2.11 | Replaced the dynamic product-feature route with explicit Knowledge Base, FAQ Management, Changelog, and Tickets pages backed by a shared route wrapper to avoid Next dev static-path worker failures |
 | 2026-05-23 | 1.2.12 | Removed remaining light-mode mockup panels from the public demo, product capability template, and homepage widget section so newly added Canonica website pages match the dark visual system |
+| 2026-05-23 | 1.2.13 | Replaced the simplified path-redrawn Canonica website mark with the approved dimensional mark SVG wrapper in public header and footer branding while keeping raster assets for metadata, favicon, and dashboard compatibility |
+| 2026-05-23 | 1.2.14 | Added signed-in account visibility and an account-switch logout action to the self-service get-started form; Google sign-in now prompts account selection so founders can change email before workspace creation |

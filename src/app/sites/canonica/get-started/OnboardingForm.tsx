@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { SessionProvider, signIn, useSession } from 'next-auth/react';
+import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
@@ -70,7 +70,11 @@ function OnboardingFormInner() {
     }, [result, step]);
 
     const handleGoogleSignIn = () => {
-        signIn('google', { callbackUrl: window.location.href });
+        signIn('google', { callbackUrl: window.location.href }, { prompt: 'select_account' });
+    };
+
+    const handleUseAnotherAccount = () => {
+        signOut({ callbackUrl: window.location.href });
     };
 
     const handleCreateAccount = async () => {
@@ -162,6 +166,22 @@ function OnboardingFormInner() {
                     <p style={styles.cardSubtext}>
                         Welcome{session?.user?.name ? `, ${session.user.name}` : ''}! Tell us about your product.
                     </p>
+
+                    {session?.user?.email && (
+                        <div style={styles.signedInBox}>
+                            <div style={styles.signedInText}>
+                                <span style={styles.signedInLabel}>Signed in with Google</span>
+                                <span style={styles.signedInEmail}>{session.user.email}</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleUseAnotherAccount}
+                                style={styles.switchAccountBtn}
+                            >
+                                Use another account
+                            </button>
+                        </div>
+                    )}
 
                     <div style={styles.fieldGroup}>
                         <label style={styles.label}>Company name *</label>
@@ -330,6 +350,35 @@ const styles: Record<string, CSSProperties> = {
         color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%', justifyContent: 'center',
     },
     terms: { fontSize: 11, color: '#6b6b8a', marginTop: 16, textAlign: 'center' },
+    signedInBox: {
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        padding: '12px 14px',
+        borderRadius: 10,
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(255,255,255,0.035)',
+        marginBottom: 18,
+        boxSizing: 'border-box',
+    },
+    signedInText: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+    signedInLabel: { fontSize: 11, fontWeight: 600, color: '#6b6b8a', textTransform: 'uppercase', letterSpacing: '0.08em' },
+    signedInEmail: { fontSize: 13, fontWeight: 600, color: '#fff', overflowWrap: 'anywhere' },
+    switchAccountBtn: {
+        flexShrink: 0,
+        minHeight: 36,
+        padding: '8px 10px',
+        borderRadius: 8,
+        border: '1px solid rgba(139,139,255,0.35)',
+        background: 'rgba(99,102,241,0.1)',
+        color: '#c7d2fe',
+        fontSize: 12,
+        fontWeight: 600,
+        cursor: 'pointer',
+    },
     fieldGroup: { width: '100%', marginBottom: 16 },
     label: { display: 'block', fontSize: 13, fontWeight: 500, color: '#a0a0c0', marginBottom: 6 },
     input: {

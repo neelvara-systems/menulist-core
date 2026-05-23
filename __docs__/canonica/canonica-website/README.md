@@ -104,8 +104,9 @@
 | `src/app/sites/canonica/components/StructuredData.tsx` | Homepage Organization/WebSite/SoftwareApplication JSON-LD |
 | `public/canonica-og-image.png` | 1200x630 public social preview image |
 | `public/canonica-logo.svg` | Canonica wordmark SVG asset |
-| `public/canonica-logo-mark-wide.svg` | Cropped infinity-mark SVG for public website and dashboard brand surfaces |
-| `public/canonica-logo-mark-wide.png` | Cropped infinity-mark PNG for header, footer, and dashboard navigation |
+| `public/canonica-logo-mark-wide.svg` | Legacy cropped infinity-mark SVG wrapper retained for asset compatibility |
+| `public/canonica-logo-mark-wide.png` | Cropped infinity-mark PNG for dashboard navigation and metadata-adjacent surfaces |
+| `src/app/sites/canonica/components/CanonicaLogoMark.tsx` | True vector infinity mark rendered inline in the public website header and footer to avoid raster blur |
 | `public/canonica-favicon.ico` | Canonica favicon bundle with 16, 32, and 48px PNG entries |
 | `public/canonica-icon-*.png` | Canonica square favicon/PWA icon family generated from the same recolored source mark |
 | `public/canonica.webmanifest` | Canonica web app manifest |
@@ -187,3 +188,5 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Replaced the temporary Canonica `C` mark with the recolored MenuList-style dimensional infinity mark across website metadata, favicon/PWA icons, OpenGraph preview, header, footer, and dashboard navigation |
 | 2026-05-23 | Removed the outer card treatment from `/resources` decision rows so the resources hub keeps row grouping without nested-card visual noise |
 | 2026-05-23 | Updated shared product capability bento sections so five-card layouts render as two wide cards on row one and three balanced cards on row two |
+| 2026-05-23 | Replaced the public website header/footer raster logo image with an inline true SVG mark so the Canonica brand stays crisp on high-density displays |
+| 2026-05-23 | Added signed-in Google account visibility and an account-switch action to the get-started form so founders can change email before creating a workspace |

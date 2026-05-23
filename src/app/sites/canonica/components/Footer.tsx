@@ -1,6 +1,6 @@
-import Image from 'next/image';
 import CanonicaLink from './CanonicaLink';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
+import CanonicaLogoMark from './CanonicaLogoMark';
 
 const FOOTER_LINKS = {
     Product: [
@@ -40,7 +40,7 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                     {/* Brand */}
                     <div>
                         <div className="flex items-center gap-2">
-                            <Image src="/canonica-logo-mark-wide.png" alt="" width={56} height={34} className="h-8 w-14 object-contain" />
+                            <CanonicaLogoMark idPrefix="canonica-footer" height={32} />
                             <span className="text-lg font-semibold text-white">Canonica</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">

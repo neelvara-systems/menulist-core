@@ -13,6 +13,7 @@
 - **External Menu Sync now starts with owner-facing context** — Desktop Business Settings and mobile More now explain what the connection does, who should use it, when owners can ignore it, and how MenuList remains the source of truth before showing provider URL and verification-secret fields.
 - **External sync labels are less technical** — Owner UI now uses External Sync, Provider connection URL, Verification secret, Test connection, Updates sent, and Provider setup while preserving the internal `posSync` contract.
 - **Canonica brand assets now use the dimensional infinity mark** — Canonica website metadata, favicon/PWA icons, OpenGraph preview, public header/footer, and dashboard sidebar now use the Canonica-colored version of the MenuList-style infinity logo instead of the temporary `C` mark.
+- **Canonica website header/footer keep the approved mark shape** — Public header and footer branding now render the approved dimensional mark SVG wrapper instead of the simplified path-redrawn mark.
 
 ---
 

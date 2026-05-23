@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import Image from 'next/image';
 import { LuChevronDown, LuMenu } from 'react-icons/lu';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
+import CanonicaLogoMark from './CanonicaLogoMark';
 import CanonicaLink from './CanonicaLink';
 
 const NAV_LINKS = [
@@ -23,7 +23,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
         <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#0a0a1a]/80 backdrop-blur-xl">
             <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
                 <L href="/" className="flex items-center gap-2">
-                    <Image src="/canonica-logo-mark-wide.png" alt="" width={56} height={34} priority className="h-8 w-14 object-contain" />
+                    <CanonicaLogoMark idPrefix="canonica-header" height={32} />
                     <span className="text-lg font-semibold tracking-tight text-white">Canonica</span>
                 </L>
 
