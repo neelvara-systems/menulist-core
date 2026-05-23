@@ -7,7 +7,6 @@ import InteractiveWorkflowSection from './InteractiveWorkflowSection';
 import PreparedForYouSection from './PreparedForYouSection';
 import ProblemSection from './ProblemSection';
 import SetupReliefSection from './SetupReliefSection';
-import SolutionSection from './SolutionSection';
 import SurfacesSection from './SurfacesSection';
 
 export default function HomePage() {
@@ -15,7 +14,6 @@ export default function HomePage() {
     <main>
       <HeroSection />
       <ProblemSection />
-      <SolutionSection />
       <InteractiveWorkflowSection />
       <SetupReliefSection />
       <SurfacesSection />

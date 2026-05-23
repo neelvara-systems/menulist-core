@@ -1,12 +1,16 @@
 # Main Website Strategy Spec
 
-**Version:** 3.5.0 — Homepage Compression + Conversion Proof Pass
+**Version:** 3.6.0 — Agent-Readable SEO/AEO Hardening
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
 > This file keeps useful strategy context and validation notes. It is not a separate website version and must not be used to restore old website source code.
 
 > May 21, 2026 update: the canonical homepage is now intentionally shorter than earlier strategy drafts. Advanced proof should remain available in supporting pages and future expansion content, but the first homepage scroll should not try to explain the entire product.
+
+> May 23, 2026 update: Chrome's agentic web / WebMCP guidance validates MenuList's discovery strategy, but WebMCP is not the strategy itself. MenuList's current PAL contract is public pages, server-rendered JSON-LD, sitemap/robots, `llms.txt`, `llms-full.txt`, and gated API/POS surfaces where enabled. WebMCP and MCP are future gated surfaces, not current website claims.
+
+> May 23, 2026 agent-readable hardening update: active platform pages now emit page-level WebPage/Breadcrumb JSON-LD, homepage structured data is server-rendered, `https://menulist.ai` is the canonical discovery host, and the legacy `/product` redirect is removed from sitemap/LLM inventories.
 
 ---
 
@@ -83,22 +87,35 @@ ChatGPT had zero awareness of these built features:
 
 ## Current Homepage Section Order
 
-**Changed from V2** — the homepage is compressed so first-time SMB owners see the problem, solution, workflow, customer preview, and CTA before advanced feature density.
+**Changed from V2** — the homepage is compressed so first-time SMB owners see the problem, workflow, setup proof, customer preview, and CTA before advanced feature density.
 
 ```
 1. HeroSection              — Upload current menu -> one official version
 2. ProblemSection           — Internet menus are broken
-3. SolutionSection          — One menu, public places stay aligned
-4. InteractiveWorkflow      — Upload, review, publish, share
-5. SetupReliefSection       — Setup work prepared before publishing
-6. SurfacesSection          — Public output proof
-7. CustomerBrowseSection    — Customer-facing menu preview
-8. PreparedForYouSection    — Real-world rollout proof
-9. FaqSection               — Questions answered
-10. FinalCtaSection         — Close with owner-approved menu CTA
+3. InteractiveWorkflow      — Upload, review, publish, share
+4. SetupReliefSection       — Setup work prepared before publishing
+5. SurfacesSection          — Public output proof
+6. CustomerBrowseSection    — Customer-facing menu preview
+7. PreparedForYouSection    — Real-world rollout proof
+8. FaqSection               — Questions answered
+9. FinalCtaSection          — Close with owner-approved menu CTA
 ```
 
-**Rationale:** After showing the transformation (Hero -> Problem -> Solution), immediately prove the workflow and public customer result. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
+**Rationale:** After showing the transformation and public-menu pain, immediately prove the workflow and public customer result. The older `SolutionSection` was removed because its one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof without adding new buyer evidence. Dense proof areas such as Search/AEO, Analytics, SmartFeatures, Stats, Business, and Industry stay as supporting components/pages so the homepage does not become a feature checklist.
+
+---
+
+## Agent-Readable Public Boundary
+
+PAL means **Public Agentic Layer** for MenuList: public business truth stays readable to humans, crawlers, search engines, and browser/AI agents without moving MenuList into POS, payment, CRM, or fulfillment operations.
+
+Current PAL contract:
+
+- Public pages, server-rendered JSON-LD, sitemap, robots, `llms.txt`, and `llms-full.txt` are the production agent-readable layer.
+- Public agents may read owner-published facts and route users to official handoff links.
+- Public agents must not mutate business truth, POS state, billing, prices, hours, item availability, owner settings, or sensitive food claims.
+- WebMCP and MCP remain future gated implementation surfaces, not public website claims.
+- Redirected legacy URLs may preserve user traffic, but they must not be advertised as active sitemap or agent-context destinations.
 
 ---
 
@@ -112,7 +129,7 @@ ChatGPT had zero awareness of these built features:
 - titlePart1: "Upload your current menu."
 - titleHighlight: "Publish one official version customers can trust."
 - titlePart2: ""
-- subtitle: Transformation-focused, but grounded in owner approval and actual public outputs
+- subtitle: Transformation-focused, grounded in owner approval, but no longer re-lists every public output
 - CTA: "Upload your menu →" (action-oriented)
 - Secondary CTA: "See customer preview" (`#customer-demo`)
 - Caption: "Start with a 7-day setup. Review the public menu before choosing a paid plan."
@@ -125,14 +142,14 @@ ChatGPT had zero awareness of these built features:
 - Tiles reframed as internet-broken problems (not internal problems)
 - Conclusion: "Businesses update menus. The internet doesn't."
 
-### Solution (REFRAMED)
+### Solution (REMOVED FROM HOMEPAGE)
 
 **Old:** "Create one official version. Everything else stays aligned."
-**Current:** "One menu. Public places stay aligned."
+**Previous current:** "One menu. Public places stay aligned."
 
-- Focus on transformation: upload -> owner review -> official page/live menu/QR/share link
-- SVG diagram stays (already shows the transformation perfectly)
-- Relief anchor: "The customer sees one clear version. The owner manages one menu."
+- Removed from the homepage in v3.5.8.
+- Reason: the SVG and bullets repeated the newer workflow source map and public-surface proof.
+- The official-source claim remains active in the hero, workflow, surfaces, and FAQ copy.
 
 ### FinalCta (CHANGED)
 
@@ -141,6 +158,7 @@ ChatGPT had zero awareness of these built features:
 
 - Mirrors hero for consistent messaging
 - CTA: "Upload your menu →"
+- No repeated proof stack below the button; the final CTA should close the page cleanly after the proof sections have already done their job.
 
 ### SmartFeatures (EXPANDED — v2.2 March 2026)
 

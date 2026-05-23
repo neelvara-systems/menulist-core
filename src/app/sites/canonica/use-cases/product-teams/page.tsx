@@ -20,6 +20,7 @@ export default function ProductTeamsUseCasePage() {
     return (
         <UseCaseLandingPage
             basePath={getBasePath()}
+            canonicalPath="/use-cases/product-teams"
             eyebrow="For product teams"
             title="Know where product knowledge is breaking."
             description="Canonica connects product surfaces, releases, support gaps, and canonical answers so teams can see where support truth needs review."

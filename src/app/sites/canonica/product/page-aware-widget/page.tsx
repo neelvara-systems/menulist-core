@@ -27,6 +27,7 @@ export default function PageAwareWidgetProductPage() {
             <CanonicaHeader basePath={basePath} />
             <ProductCapabilityLandingPage
                 basePath={basePath}
+                canonicalPath="/product/page-aware-widget"
                 eyebrow="Page-Aware Widget"
                 title="Support that knows where the user is stuck."
                 description="The Canonica widget uses safe product-page context so billing, onboarding, team settings, and release questions can resolve to different approved support truth."

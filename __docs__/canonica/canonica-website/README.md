@@ -1,8 +1,8 @@
 # Canonica Website (canonica.app)
 
 > **Feature:** Public marketing website for Canonica product
-> **Status:** ✅ IMPLEMENTED — refreshed for self-service Canonica and buyer-facing conversion flow
-> **Date:** 2026-05-22
+> **Status:** ✅ IMPLEMENTED — refreshed for self-service Canonica and agent-readable public discovery
+> **Date:** 2026-05-23
 > **Domain:** canonica.app (production) | localhost:3000/__canonica (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/canonica/`
@@ -25,7 +25,7 @@
 
 ## Quick Reference
 
-### Pages (30 total)
+### Pages and Public Agent Files (32 total)
 
 | Route | Page | Purpose |
 |-------|------|---------|
@@ -59,6 +59,8 @@
 | `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace |
 | `/privacy-policy` | Privacy Policy | Public privacy summary for account, workspace, support, and widget data |
 | `/terms-of-service` | Terms of Service | Public terms summary for account, content, widget, and service usage |
+| `/llms.txt` | Agent Context | Short agent-readable Canonica product, route, and non-goal context |
+| `/llms-full.txt` | Extended Agent Context | Detailed agent-readable product boundaries, public routes, runtime limits, and structured-data guidance |
 
 ### Key Files
 
@@ -99,6 +101,8 @@
 | `src/app/sites/canonica/terms-of-service/page.tsx` | Public terms of service page |
 | `src/app/sites/canonica/sitemap.xml/route.ts` | Canonica product-domain sitemap |
 | `src/app/sites/canonica/robots.txt/route.ts` | Canonica product-domain robots policy |
+| `src/app/sites/canonica/llms.txt/route.ts` | Short Canonica-specific agent-readable context for product-domain crawlers and browser agents |
+| `src/app/sites/canonica/llms-full.txt/route.ts` | Extended Canonica-specific agent-readable context, product boundaries, and action limits |
 | `src/app/sites/canonica/siteConfig.ts` | Public site URL, sitemap page list, and shared metadata constants |
 | `src/app/sites/canonica/enginePillars.ts` | Shared implemented Canonica engine pillar content |
 | `src/app/sites/canonica/systemCoverage.ts` | Shared implemented Canonica system coverage groups |
@@ -110,7 +114,9 @@
 | `src/app/sites/canonica/components/CanonicaLogoMark.tsx` | True vector infinity mark rendered inline in the public website header and footer to avoid raster blur |
 | `public/canonica-favicon.ico` | Canonica favicon bundle with 16, 32, and 48px PNG entries |
 | `public/canonica-icon-*.png` | Canonica square favicon/PWA icon family generated from the same recolored source mark |
+| `public/canonica-splash/apple-splash-*.png` | Canonica iOS startup image family used by Canonica website and dashboard PWA metadata |
 | `public/canonica.webmanifest` | Canonica web app manifest |
+| `src/lib/canonica/pwaAssets.ts` | Canonica PWA startup image helper that keeps splash metadata out of MenuList's root defaults |
 | `src/app/sites/canonica/components/Header.tsx` | Shared header with nav + mobile menu |
 | `src/app/sites/canonica/components/Footer.tsx` | Shared footer with link columns |
 | `src/app/sites/canonica/components/CanonicaLink.tsx` | Dev/production-aware Link component |
@@ -137,7 +143,10 @@
 | `src/app/sites/canonica/components/UseCaseLandingPage.tsx` | Shared wrapper for role-specific use-case pages |
 | `src/app/sites/canonica/components/ProductCapabilityLandingPage.tsx` | Shared landing-page template for major product capability pages |
 | `src/app/sites/canonica/components/ProductFeatureLandingPage.tsx` | Shared Bugasura-inspired feature-page template with outcome hero, visual proof grid, workflow, connected surfaces, FAQ, and CTA |
+| `src/app/sites/canonica/components/PageStructuredData.tsx` | Per-route WebPage and BreadcrumbList JSON-LD for public Canonica pages |
 | `src/app/sites/canonica/components/CTASection.tsx` | Bottom CTA section |
+| `src/components/seo/JsonLdScript.tsx` | Shared server-rendered JSON-LD script helper used by MenuList and Canonica |
+| `scripts/verification/verify-agent-readiness.js` | MenuList + Canonica route/discovery/structured-data verifier |
 
 ### Routing Architecture
 
@@ -199,3 +208,6 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Added homepage section-band background rhythm and larger vertical spacing so public sections have clearer visual separation without extra runtime cost |
 | 2026-05-23 | Added Canonica-specific viewport reveal effects across public pages and card/link panels through the shared website layout, preserving reduced-motion behavior and product separation from MenuList website styling |
 | 2026-05-23 | Added a support knowledge map to the homepage and Product page so buyers can understand docs, releases, tickets, feedback, and page context flowing into Canonica, then out to widget, hosted help, approved answers, and review queues |
+| 2026-05-23 | Added Canonica-specific PWA startup images and loader branding so Canonica website/dashboard installs no longer inherit MenuList splash screens or loader identity |
+| 2026-05-23 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as MenuList business truth, a helpdesk replacement, or an AI autopilot |
+| 2026-05-23 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, route-registry Website graph references, explicit AI/search crawler robots rules, and `verify:agent-readiness` checks |

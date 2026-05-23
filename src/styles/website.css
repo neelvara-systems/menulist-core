@@ -369,34 +369,6 @@
   color: var(--ws-success);
 }
 
-.ws-support-hint {
-  display: inline-grid;
-  grid-template-columns: auto minmax(0, auto);
-  align-items: start;
-  justify-content: center;
-  gap: var(--ws-space-2);
-  max-width: min(100%, 680px);
-  margin: var(--ws-space-3) auto 0;
-  color: var(--ws-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.45;
-  font-weight: 600;
-}
-
-.ws-support-hint__icon {
-  display: inline-flex;
-  padding-top: 0.125rem;
-  color: var(--ws-brand-secondary);
-}
-
-.ws-support-hint--approval .ws-support-hint__icon {
-  color: var(--ws-success);
-}
-
-.ws-support-hint__text {
-  min-width: 0;
-}
-
 /* ============================================
    Utility Classes
    ============================================ */
@@ -1783,13 +1755,6 @@
 
   .ws-proof-strip {
     grid-template-columns: 1fr;
-  }
-
-  .ws-support-hint {
-    display: grid;
-    justify-content: start;
-    width: 100%;
-    text-align: left;
   }
 
   .ws-h1 {

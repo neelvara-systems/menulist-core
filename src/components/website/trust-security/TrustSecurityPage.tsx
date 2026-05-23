@@ -10,8 +10,6 @@ import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
-import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
-import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const trustPillars = [
   {
@@ -80,8 +78,6 @@ export default function TrustSecurityPage() {
         subtitle={t('TrustSecurity.heroSubtitle')}
       >
         <WebsiteProofStrip items={proofItems} />
-        <WebsiteMobileSupportHint />
-        <WebsiteOwnerApprovalHint />
       </WebsitePageHero>
 
       {/* At-a-glance facts */}

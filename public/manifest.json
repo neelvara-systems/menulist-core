@@ -7,7 +7,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
-  "start_url": "/dashboard",
+  "start_url": "/today",
   "dir": "auto",
   "lang": "en-US",
   "id": "/dashboard",
@@ -21,25 +21,25 @@
       "name": "Today",
       "short_name": "Today",
       "description": "Update today's hours and status",
-      "url": "/today#mobile/today"
+      "url": "/today"
     },
     {
       "name": "Menu",
       "short_name": "Menu",
       "description": "Update menu items and availability",
-      "url": "/projects#mobile/menu"
+      "url": "/projects"
     },
     {
       "name": "Share & QR",
       "short_name": "Share",
       "description": "Open menu links and QR codes",
-      "url": "/use-menulist#mobile/share"
+      "url": "/use-menulist"
     },
     {
       "name": "Feedback",
       "short_name": "Feedback",
       "description": "Open customer feedback",
-      "url": "/feedback#mobile/more/feedback"
+      "url": "/feedback"
     }
   ],
   "icons": [

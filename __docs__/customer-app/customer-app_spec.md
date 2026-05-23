@@ -436,7 +436,7 @@ If any of these reset on refresh, the hook must be revised (lift state out of co
 - [ ] Verify the page links `/manifest.json`
 - [ ] Add to home screen / install from the sign-in page
 - [ ] Verify the installed app identity is the MenuList owner app, not a browser-only shortcut
-- [ ] Launch the installed app while logged out and verify it opens the sign-in gate, then reaches `/dashboard` after login
+- [ ] Launch the installed app while logged out and verify it opens the sign-in gate, then reaches the Today tab after login
 - [ ] Install owner dashboard as PWA on platform origin (e.g. `app.menulist.ai`)
 - [ ] Verify `navigator.serviceWorker.getRegistrations()` returns exactly one registration with `scriptURL` ending in `/sw.js`
 - [ ] Verify it is NOT `sw-customer.js`

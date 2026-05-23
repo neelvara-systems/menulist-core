@@ -338,18 +338,20 @@ Rules:
 - Use the compact variant for dense supporting pages such as Features, Pricing decision cards, About principles, and Trust/Security pillars.
 - Do not copy Canonica colors or product framing. MenuList can reuse disciplined spacing/card rhythm while preserving MenuList's official-source positioning.
 
-### 5.3 Owner Reassurance Helpers
+### 5.3 Owner Reassurance Placement
 
-Use short inline helper lines below primary CTA/caption areas when they reduce non-technical SMB owner doubt.
+Use short reassurance copy only when it reduces a specific non-technical SMB owner doubt in context.
 
-Approved helper patterns:
+Approved reassurance ideas:
 
 - Phone-first operation: owner can manage and publish from a phone browser or PWA.
 - Owner approval boundary: nothing publishes until the owner reviews and approves it.
 
 Design rules:
 
-- Use caption-scale text with `--text-secondary` contrast and 600 weight.
+- Prefer chips, proof-strip items, FAQ answers, or page-specific card copy over repeated standalone helper lines.
+- Do not repeat the same phone/PWA and review-before-publish lines under every supporting-page hero.
+- Do not re-list public page, live menu, QR, shortcut, screens, PDF, and links in pricing/final CTA copy after the homepage has already explained the surfaces.
 - Keep the icon small and calm; phone support uses brand blue, approval uses success green.
 - Use `ws-support-hint`, `ws-support-hint__icon`, and `ws-support-hint__text` so icon and text wrap together on mobile.
 - Do not stack more than two helper lines in one hero area.

@@ -926,27 +926,25 @@ export const getLinkedOutletStoreIds = async (
                 throw new Error("Cross-tenant query not allowed");
             }
 
-            // Query all stores in tenant for projects linked to this master
-            // This requires iterating stores - expensive but necessary for delete protection
+            // Query all stores in tenant for projects linked to this master.
+            // This uses the tenant-scoped storesList instead of the global
+            // storesSummary document, which is intentionally not readable by
+            // tenant users.
             const { collection, getDocs, query, where } =
                 await import("firebase/firestore");
 
             const linkedStoreIds: number[] = [];
 
-            // Get stores from platformSummary/storesSummary (single doc for all stores)
-            // Then filter by tId to get only this tenant's stores
-            const storesSummaryRef = doc(firebaseClient, `${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`,);
-            const storesSummarySnap = await getDoc(storesSummaryRef);
+            const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tId));
+            const tenantSnap = await getDoc(tenantRef);
 
-            if (!storesSummarySnap.exists()) {
+            if (!tenantSnap.exists()) {
                 return [];
             }
 
-            const allStores = storesSummarySnap.data()?.stores || {};
-            // Filter stores by tenant ID (storesSummary contains ALL stores across tenants)
-            const storeIds = Object.entries(allStores)
-                .filter(([_, storeData]: [string, any]) => storeData.tId === tId)
-                .map(([sId]) => Number(sId));
+            const storeIds = (tenantSnap.data()?.storesList || [])
+                .map((store: any) => Number(store?.storeId))
+                .filter((storeId: number) => Number.isFinite(storeId) && storeId > 0);
 
             // Check each store for projects linked to this master
             for (const sId of storeIds) {

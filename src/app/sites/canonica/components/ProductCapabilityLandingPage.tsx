@@ -1,4 +1,5 @@
 import CanonicaLink from './CanonicaLink';
+import CanonicaPageStructuredData from './PageStructuredData';
 
 export type ProductCapabilityCard = {
     title: string;
@@ -28,6 +29,7 @@ export type ProductCapabilityLandingPageProps = {
     workflowDescription: string;
     workflowSteps: ProductCapabilityCard[];
     basePath?: string;
+    canonicalPath?: string;
 };
 
 function getBentoCardClass(index: number, totalCards: number) {
@@ -68,9 +70,11 @@ export default function ProductCapabilityLandingPage({
     workflowDescription,
     workflowSteps,
     basePath = '',
+    canonicalPath,
 }: ProductCapabilityLandingPageProps) {
     return (
         <main className="pt-16">
+            {canonicalPath ? <CanonicaPageStructuredData path={canonicalPath} /> : null}
             <section className="relative overflow-hidden border-b border-white/[0.06] bg-[radial-gradient(circle_at_50%_0%,rgba(30,206,255,0.12),transparent_38%),rgba(255,255,255,0.01)] px-4 py-20 sm:px-6 lg:py-24">
                 <div className="mx-auto max-w-7xl">
                     <div className="mx-auto max-w-3xl text-center">

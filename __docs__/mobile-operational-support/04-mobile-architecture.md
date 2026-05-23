@@ -190,7 +190,7 @@ export default function AntdLayoutWrapper(props: any) {
 
 Mobile and desktop share the same Next.js routes. The layout wrapper decides which shell to render. On handheld devices, `MobileShell` maps canonical desktop owner URLs to the matching phone surface so owners can open shared/bookmarked desktop links without needing a laptop:
 
-- `/dashboard` on mobile → MobileShell → Today tab → Dashboard
+- `/dashboard` on mobile → MobileShell → Today tab
 - `/today` and `/today/history` on mobile → MobileShell → Today tab
 - `/projects` on mobile → MobileShell → Menu tab
 - `/use-menulist`, `/qr-code`, and legacy `/qrCode` on mobile → MobileShell → Share tab
@@ -540,25 +540,25 @@ After mobile UI is complete:
 {
   "display": "standalone",
   "orientation": "portrait",
-  "start_url": "/dashboard",
+  "start_url": "/today",
   "theme_color": "#1677ff",
   "background_color": "#ffffff",
   "shortcuts": [
     {
       "name": "Today",
-      "url": "/today#mobile/today"
+      "url": "/today"
     },
     {
       "name": "Menu",
-      "url": "/projects#mobile/menu"
+      "url": "/projects"
     },
     {
       "name": "Share & QR",
-      "url": "/use-menulist#mobile/share"
+      "url": "/use-menulist"
     },
     {
       "name": "Feedback",
-      "url": "/feedback#mobile/more/feedback"
+      "url": "/feedback"
     }
   ]
 }

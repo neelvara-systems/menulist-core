@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 import ProductPreviewSection from '../components/ProductPreviewSection';
 import SupportKnowledgeMapSection from '../components/SupportKnowledgeMapSection';
 import { CANONICA_ENGINE_PILLARS } from '../enginePillars';
@@ -104,6 +105,7 @@ export default function CanonicaProductPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/product" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 {/* Hero */}

@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { getStaticCanonicaAppleStartupImages } from '@lib/canonica/pwaAssets';
 import CanonicaAnalytics from './components/CanonicaAnalytics';
 import CanonicaScrollReveal from './components/CanonicaScrollReveal';
 import { buildCanonicaUrl, CANONICA_SITE_DESCRIPTION, CANONICA_SITE_URL } from './siteConfig';
@@ -53,6 +54,7 @@ export const metadata: Metadata = {
         capable: true,
         title: 'Canonica',
         statusBarStyle: 'black-translucent',
+        startupImage: getStaticCanonicaAppleStartupImages(),
     },
     formatDetection: {
         telephone: false,

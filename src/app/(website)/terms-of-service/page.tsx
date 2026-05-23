@@ -1,5 +1,6 @@
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
+import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
 import TermsOfServicePage from '@/components/website/legal/TermsOfServicePage';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
@@ -21,6 +22,11 @@ export const metadata: Metadata = {
 export default function Page() {
     return (
         <div className="ws-page">
+            <WebsitePageStructuredData
+                path="/terms-of-service"
+                title="Terms of Service - MenuList"
+                description="Read MenuList's terms of service. Understand the terms and conditions for using our platform."
+            />
             <Header />
             <TermsOfServicePage />
             <Footer />

@@ -268,16 +268,16 @@ When `prefers-reduced-motion` is set:
 ```json
 {
     "shortcuts": [
-        { "name": "Today", "url": "/today#mobile/today" },
-        { "name": "Menu", "url": "/projects#mobile/menu" },
-        { "name": "Share & QR", "url": "/use-menulist#mobile/share" },
-        { "name": "Feedback", "url": "/feedback#mobile/more/feedback" }
+        { "name": "Today", "url": "/today" },
+        { "name": "Menu", "url": "/projects" },
+        { "name": "Share & QR", "url": "/use-menulist" },
+        { "name": "Feedback", "url": "/feedback" }
     ]
 }
 ```
 
-Owner PWA shortcuts stay on real owner routes first, then use the mobile hash
-router. This keeps route-level permission checks intact while opening the
+Owner PWA shortcuts stay on real owner routes. This keeps route-level
+permission checks intact while `MobileShell` maps each owner route into the
 intended mobile screen when the app launches from a shortcut.
 
 ---

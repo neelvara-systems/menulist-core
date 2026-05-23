@@ -1,6 +1,6 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.5.7 Supporting Page Source Maps
+**Status:** IMPLEMENTED — v3.6.0 Agent-Readable SEO/AEO Hardening
 **Last Updated:** May 23, 2026
 **Audience:** Developers
 
@@ -24,7 +24,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 
 | Route | File | Component | Type | Metadata |
 |-------|------|-----------|------|----------|
-| `/` | `(website)/page.tsx` | `HomePage` | Client (`'use client'`) | Default from layout |
+| `/` | `(website)/page.tsx` | `HomePage` | Server shell with client homepage sections | Default from layout + server JSON-LD |
 | `/features` | `(website)/features/page.tsx` | `FeaturesPage` | Server | Per-page `export const metadata` |
 | `/how-it-works` | `(website)/how-it-works/page.tsx` | `ProductPage` | Server | Per-page |
 | `/pricing` | `(website)/pricing/page.tsx` | `PricingWrapper` | Server | Per-page |
@@ -36,7 +36,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/create-menu` | `(website)/create-menu/page.tsx` | `CreateMenuClient` | Server (gate) | Per-page |
 | `/create-menu/preview/[draftId]` | `(website)/create-menu/preview/[draftId]/page.tsx` | `PreviewClient` | — | — |
 | `/create-menu/success` | `(website)/create-menu/success/page.tsx` | — | — | — |
-| `/product` | `(website)/product/page.tsx` | **Redirect → `/how-it-works`** | Server | — |
+| `/product` | `(website)/product/page.tsx` | **Permanent redirect → `/how-it-works`** | Server | — |
 | `/privacy-policy` | `(website)/privacy-policy/page.tsx` | `PrivacyPolicyPage` | Server | Per-page |
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
@@ -44,8 +44,8 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 **Total: 16 routes (8 core + 3 create-menu + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
-- Homepage (`/`) is `'use client'` — includes `SchemaMarkup` (JSON-LD), all other pages are server components with `export const metadata`.
-- `/product` is a permanent redirect to `/how-it-works` (legacy URL preservation).
+- Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
+- `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows "Coming Soon" when OFF.
 - Public website CTAs route to `/create-menu` for free-account-first menu intake. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
 - `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes.
@@ -75,7 +75,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (10 sections plus sticky CTA, in order)
+## 4. Homepage Sections (9 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -83,16 +83,15 @@ LocalisationProvider (locale from next-intl/server)
 |---|---------|---------------|
 | 1 | Hero | `HeroSection.tsx` |
 | 2 | Problem | `ProblemSection.tsx` |
-| 3 | Solution | `SolutionSection.tsx` |
-| 4 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
-| 5 | Setup Relief | `SetupReliefSection.tsx` |
-| 6 | Surfaces | `SurfacesSection.tsx` |
-| 7 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 8 | Prepared For You | `PreparedForYouSection.tsx` |
-| 9 | FAQ | `FaqSection.tsx` |
-| 10 | Final CTA | `FinalCtaSection.tsx` |
+| 3 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
+| 4 | Setup Relief | `SetupReliefSection.tsx` |
+| 5 | Surfaces | `SurfacesSection.tsx` |
+| 6 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 7 | Prepared For You | `PreparedForYouSection.tsx` |
+| 8 | FAQ | `FaqSection.tsx` |
+| 9 | Final CTA | `FinalCtaSection.tsx` |
 
-`RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage.
+`RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
 
 **Asset-production support:** Stage 6.1 public placeholders live in `public/images/website/` and are mounted as draft homepage visuals in `HeroSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, and `CustomerBrowseSection.tsx`. Stage 6.2 private screenshot references live in `__docs__/main-website/asset-production/stage-06-2/` and are not imported by the app. Stage 7 visual QA screenshots live in `__docs__/main-website/asset-production/stage-07/`.
 
@@ -108,6 +107,8 @@ LocalisationProvider (locale from next-intl/server)
 
 **Supporting page source maps:** v3.5.7 replaces the older animated SVG diagrams in `ProductPage.tsx` and `MultiLocationPage.tsx`. The How It Works page now uses a static source-to-surfaces map, and Multi-location uses a static approved-master-to-outlets map. Both reuse official logo treatment, shared dark-panel tokens, locale-backed labels, and non-animated path styling so they feel like MenuList product proof instead of generic SaaS architecture art.
 
+**Reassurance copy cleanup:** v3.6.1 removes the old `WebsiteMobileSupportHint` and `WebsiteOwnerApprovalHint` helpers from supporting-page heroes and the homepage final CTA. Phone/PWA operation and review-before-publish remain as contextual proof in the homepage hero/get-started/upload flow and FAQ copy, but pricing, footer, and final CTA no longer repeat the full customer-surface list. Pricing/payment/subscription/Razorpay/auth/onboarding and `/create-menu` runtime logic were not changed.
+
 **Whole-page reference pass:** Stage 7.3 corrected the footer-only scope by adding `RevenuePathSection.tsx`, reshaping `ProblemSection.tsx`, and upgrading `StatsSection.tsx` into a stronger proof band. The page now moves from official source -> revenue path -> public drift pain -> one-source proof -> workflow and visual evidence.
 
 **Copy, motion, and heading polish:** Stage 7.4 normalized homepage wording, casing, and grammar in the `Website` locale namespace, removed viewport-scaled website typography, added subtle hover polish to proof/path/problem elements, updated shared scroll animations to respect reduced-motion preferences, and routed static website hero/section headings through `WebsiteHeadline` for consistent highlight treatment.
@@ -117,6 +118,12 @@ LocalisationProvider (locale from next-intl/server)
 **Mobile website polish:** Stage 7.7 tightened `website.css` mobile behavior across the homepage and supporting pages. Mobile controls now use 44px-class touch targets, the revenue path and proof sections use denser mobile grids, the footer navigation keeps tappable links, and stale `/multi-location` locale overrides were normalized away from instant/always-consistent claims. Pricing/payment/auth/create-menu runtime logic was not changed.
 
 **Search/AI discovery proof:** Stage 7.8 added `SearchDiscoverySection.tsx` after `SurfacesSection.tsx`. It exposes shipped SEO/AEO and discovery infrastructure in calm owner language: owner SEO/AEO settings, Business Copy Setup, structured public business/menu facts, sitemap/robots rules, and LLM discovery files. The copy explicitly avoids ranking, citation, or placement guarantees. SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing/payment/auth, and create-menu runtime logic were not changed.
+
+**Agent context hardening:** v3.5.9 updates `public/llms.txt` and `public/llms-full.txt` after reviewing Chrome's agentic web / WebMCP guidance. The files now define the MenuList PAL boundary: public agents may read owner-published facts and route users to official handoff links, but may not mutate owner-approved truth, POS state, billing, prices, hours, item availability, or sensitive food claims. No homepage layout, SEO runtime, pricing/payment/auth, onboarding, or create-menu runtime behavior changed.
+
+**Agent-readable SEO/AEO hardening:** v3.6.0 moves homepage JSON-LD to server-rendered HTML, adds reusable `WebsitePageStructuredData` coverage for active platform pages, normalizes public discovery URLs to `https://menulist.ai`, and removes the legacy `/product` redirect from sitemap and LLM inventories. The new `npm run verify:agent-readiness` check verifies MenuList and Canonica route registries, structured-data wrappers, robots/LLM links, and redirected-route omissions. WebMCP, MCP, pricing/payment/auth, onboarding, and `/create-menu` runtime behavior were not changed.
+The legacy redirect is also registered in `next.config.js` so crawlers receive an HTTP 308 before page streaming begins.
+The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai`; `menulist.online` remains an alias, not the canonical discovery host.
 
 **POS Sync operations proof:** Stage 7.10 added one POS Sync proof point to `SmartFeaturesSection.tsx` and one Operations card to `FeaturesPage.tsx`. This is intentionally low prominence because POS Sync is an advanced operations capability, not the first-screen buying promise for a non-technical SMB owner. Copy uses signed full-menu snapshot and connected store POS webhook language and does not claim universal POS support, real-time sync, or a POS integration suite. POS Sync runtime, APIs, settings behavior, pricing/payment/auth, and create-menu runtime logic were not changed.
 
@@ -138,7 +145,8 @@ LocalisationProvider (locale from next-intl/server)
 src/components/website/
 ├── Header.tsx                  — Shared header (all pages)
 ├── Footer.tsx                  — Shared revenue footer with CTA, proof cards, product/source/resource/legal navigation, social links, bottom-row language, and theme controls
-├── SchemaMarkup.tsx            — Homepage JSON-LD schema
+├── SchemaMarkup.tsx            — Server-rendered homepage JSON-LD schema
+├── WebsitePageStructuredData.tsx — Server-rendered WebPage + BreadcrumbList JSON-LD for active platform pages
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
 ├── home/                       — compressed homepage sections + supporting section components + StickyCta
@@ -180,8 +188,6 @@ src/pages/
 | `WebsiteButton.tsx` | Styled CTA button |
 | `WebsiteFeatureCard.tsx` | Shared spacious proof/feature card with consistent top-right icon placement |
 | `WebsiteHeadline.tsx` | Shared hero/section headline renderer with consistent highlight styling |
-| `WebsiteMobileSupportHint.tsx` | Reusable owner reassurance line for phone-browser/PWA operation |
-| `WebsiteOwnerApprovalHint.tsx` | Reusable owner reassurance line for review-before-publish control |
 | `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |
 | `WebsiteProofStrip.tsx` | Shared proof strip used by supporting pages |
 | `WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages), mounted in the footer |
@@ -221,11 +227,14 @@ src/pages/
 ## 8. SEO Infrastructure
 
 - All non-homepage pages are **server components** with `export const metadata` (unique title, description, canonical, OG)
-- Homepage is `'use client'` — uses default metadata from layout + `SchemaMarkup` component for JSON-LD
-- `SchemaMarkup.tsx` injects Organization + WebSite schema on homepage
-- Sitemap: `public/sitemap.xml` (all public pages)
-- Robots: Full crawling enabled (index, follow, max-image-preview: large)
+- Homepage is a server shell that uses default metadata from layout + server-rendered `SchemaMarkup` JSON-LD before rendering the client homepage sections
+- `SchemaMarkup.tsx` injects Organization, WebSite, SoftwareApplication, WebPage, and BreadcrumbList schema on homepage through `JsonLdScript`
+- `WebsitePageStructuredData.tsx` injects WebPage and BreadcrumbList schema on active platform pages
+- Sitemap: `src/app/sitemap.ts` and `public/sitemap.xml` use the shared active route inventory and omit the legacy `/product` redirect
+- Robots: Full crawling enabled (index, follow, max-image-preview: large) with non-www canonical discovery links
+- Agent context: `public/llms.txt` and `public/llms-full.txt` define public business fact access, official handoff boundaries, unknown handling, and WebMCP/MCP deferral
 - Per-page canonical URLs via `alternates.canonical`
+- Verification: `npm run verify:agent-readiness` checks platform/Canonica discovery registries, structured-data coverage, robots, sitemap, and LLM files
 
 ---
 
@@ -247,7 +256,7 @@ src/pages/
 |----------|--------|--------|
 | Route group | `(website)` | Separates website from dashboard routes |
 | SSR vs CSR | Server components (except homepage) | SEO benefit for all pages |
-| Homepage CSR | `'use client'` | Website translations, interactive sections, and desktop-only sticky CTA |
+| Homepage rendering | Server shell + client composition | Keeps homepage JSON-LD in first-response HTML while preserving translated interactive homepage sections and sticky CTA |
 | Pricing | Reuses existing `pricing-pages/` components | Full Razorpay integration already built |
 | Analytics | GA + Clarity in layout | Covers all pages automatically |
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |

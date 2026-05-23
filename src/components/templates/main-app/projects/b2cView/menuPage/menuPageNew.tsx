@@ -1553,12 +1553,22 @@ function MenuPageNew({
         ? (isDesktop ? '100dvh' : '100svh')
         : 'calc(100dvh - 76px)';
     const mobileStickySafeOverflowX: React.CSSProperties['overflowX'] = isPublicSurface && !isDesktop ? 'visible' : 'clip';
+    const menuBackgroundImageStyle: React.CSSProperties | null = backgroundImage
+        ? {
+            backgroundImage: `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url("${backgroundImage}")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundAttachment: previewMode ? 'scroll' : 'fixed',
+            backgroundColor: moodConfig.background,
+        }
+        : null;
     const containerStyle: React.CSSProperties = {
         minHeight: previewMode ? '100%' : publicViewportMinHeight,
         height: previewMode ? '100%' : undefined,
-        background: backgroundImage
-            ? `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url(${backgroundImage}) center/cover no-repeat fixed`
-            : moodConfig.background,
+        ...(menuBackgroundImageStyle ?? {
+            background: moodConfig.background,
+        }),
         display: 'flex',
         flexDirection: 'column',
         overflowX: mobileStickySafeOverflowX,

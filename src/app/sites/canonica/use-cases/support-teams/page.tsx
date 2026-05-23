@@ -20,6 +20,7 @@ export default function SupportTeamsUseCasePage() {
     return (
         <UseCaseLandingPage
             basePath={getBasePath()}
+            canonicalPath="/use-cases/support-teams"
             eyebrow="For support teams"
             title="Reduce repeated tickets without losing answer control."
             description="Canonica keeps approved answers in front of fallback and turns ticket patterns into reviewable support-knowledge updates."

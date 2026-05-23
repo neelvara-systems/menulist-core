@@ -6,8 +6,6 @@ import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
-import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
-import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const surfaceIcons = [LuQrCode, LuLink, LuMonitor, LuFileText, LuGlobe, LuSmartphone];
 const aiIcons = [LuImage, LuFileText, LuLanguages];
@@ -67,8 +65,6 @@ export default function ProductPage() {
               <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', color: 'var(--ws-text-secondary)' }}>
                 {t('HowItWorks.heroSubtitle')}
               </p>
-              <WebsiteMobileSupportHint />
-              <WebsiteOwnerApprovalHint />
               <div style={{ marginTop: 'var(--ws-space-8)' }}>
                 <WebsiteButton href="/create-menu">{t('HowItWorks.heroCta')}</WebsiteButton>
               </div>

@@ -2,6 +2,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry'
 import CanonicaDashboardLayout from '@/components/canonica/CanonicaDashboardLayout'
 import { authOptions } from '@lib/auth'
 import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope'
+import { getStaticCanonicaAppleStartupImages } from '@lib/canonica/pwaAssets'
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
@@ -30,6 +31,12 @@ export const metadata: Metadata = {
         ],
         apple: [{ url: '/canonica-apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     },
+    appleWebApp: {
+        capable: true,
+        title: 'Canonica',
+        statusBarStyle: 'black-translucent',
+        startupImage: getStaticCanonicaAppleStartupImages(),
+    },
 }
 
 export default async function CanonicaLayout({ children }: { children: React.ReactNode }) {
@@ -54,7 +61,7 @@ export default async function CanonicaLayout({ children }: { children: React.Rea
                         <SessionExpiryMonitor />
                         <NoSSRProvider>
                             <CanonicaDashboardLayout>
-                                <Suspense fallback={<ServerSidePageLoader page="Canonica Dashboard" />}>
+                                <Suspense fallback={<ServerSidePageLoader page="Canonica Dashboard" brand="canonica" />}>
                                     {children}
                                 </Suspense>
                             </CanonicaDashboardLayout>

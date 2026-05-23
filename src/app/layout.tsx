@@ -2,52 +2,53 @@ import '@styles/app.scss';
 import '@styles/mobile-theme.css';
 import 'antd/dist/reset.css';
 import { Metadata } from 'next';
+import { PLATFORM_URL } from '@constant/urls';
 import { APP_THEME_COLOR } from 'src/constants/common';
 import { interFont } from 'src/fonts/inter';
 import DeploymentBuildBadge from '../components/common/DeploymentBuildBadge';
 import ServiceWorkerRegister from '../components/ServiceWorkerRegister';
 import AntdRegistry from '../lib/AntdRegistry';
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://menulist.ai';
+const siteUrl = PLATFORM_URL;
 
 const defaultTitle = 'MenuList - Upload Your Menu Online';
 const defaultDescription = 'Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.';
 const defaultImage = '/images/website/menulist-og-official-source.png';
 const appleStartupImages = [
     {
-        href: '/splash/apple-splash-1290x2796.png',
+        url: '/splash/apple-splash-1290x2796.png',
         media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)',
     },
     {
-        href: '/splash/apple-splash-1179x2556.png',
+        url: '/splash/apple-splash-1179x2556.png',
         media: '(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)',
     },
     {
-        href: '/splash/apple-splash-1170x2532.png',
+        url: '/splash/apple-splash-1170x2532.png',
         media: '(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)',
     },
     {
-        href: '/splash/apple-splash-1125x2436.png',
+        url: '/splash/apple-splash-1125x2436.png',
         media: '(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)',
     },
     {
-        href: '/splash/apple-splash-1242x2688.png',
+        url: '/splash/apple-splash-1242x2688.png',
         media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)',
     },
     {
-        href: '/splash/apple-splash-828x1792.png',
+        url: '/splash/apple-splash-828x1792.png',
         media: '(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)',
     },
     {
-        href: '/splash/apple-splash-1242x2208.png',
+        url: '/splash/apple-splash-1242x2208.png',
         media: '(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)',
     },
     {
-        href: '/splash/apple-splash-750x1334.png',
+        url: '/splash/apple-splash-750x1334.png',
         media: '(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)',
     },
     {
-        href: '/splash/apple-splash-640x1136.png',
+        url: '/splash/apple-splash-640x1136.png',
         media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
     },
 ];
@@ -89,6 +90,7 @@ export const metadata: Metadata = {
         capable: true,
         title: 'MenuList',
         statusBarStyle: 'default',
+        startupImage: appleStartupImages,
     },
     formatDetection: {
         telephone: false,
@@ -126,8 +128,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <head>
                 <meta name="color-scheme" content="light" />
                 <meta name="mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-status-bar-style" content="default" />
                 <style
                     dangerouslySetInnerHTML={{
                         __html: `
@@ -139,14 +139,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                         `,
                     }}
                 />
-                {appleStartupImages.map((image) => (
-                    <link
-                        key={image.href}
-                        rel="apple-touch-startup-image"
-                        href={image.href}
-                        media={image.media}
-                    />
-                ))}
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
                 {/* CSP Violation Monitor (Development Only) */}
                 {isDev && (

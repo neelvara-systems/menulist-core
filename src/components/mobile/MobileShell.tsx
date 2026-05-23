@@ -36,7 +36,7 @@ const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
 type MobileRouteState = { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen };
 const MOBILE_ROUTE_DEFAULT: MobileRouteState = { tab: 'today', todayScreen: 'main', moreScreen: 'main' };
 const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
-    '/dashboard': { tab: 'today', todayScreen: 'dashboard', moreScreen: 'main' },
+    '/dashboard': MOBILE_ROUTE_DEFAULT,
     '/today': MOBILE_ROUTE_DEFAULT,
     '/today/history': { tab: 'today', todayScreen: 'history', moreScreen: 'main' },
     '/projects': { tab: 'menu', todayScreen: 'main', moreScreen: 'main' },

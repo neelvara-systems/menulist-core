@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Privacy Policy',
@@ -66,6 +67,7 @@ export default function CanonicaPrivacyPolicyPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/privacy-policy" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24">

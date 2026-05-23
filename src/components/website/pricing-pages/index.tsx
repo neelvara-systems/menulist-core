@@ -16,8 +16,6 @@ import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
-import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
-import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import CurrencySwitcher from './CurrencySwitcher';
 import './main.css';
@@ -182,14 +180,11 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                             highlightedText={t('Pricing.heroHighlight')}
                         />
                         <p style={{ fontSize: '1rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)', lineHeight: 1.6 }}>
-                            {t('Pricing.heroSubtitle')}<br />
-                            <strong style={{ color: 'var(--ws-text-primary)' }}>{t('Pricing.heroSubline')}</strong>
+                            {t('Pricing.heroSubtitle')}
                         </p>
                         <p style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-4)', lineHeight: 1.5 }}>
                             {t('Pricing.heroSourceLine')}
                         </p>
-                        <WebsiteMobileSupportHint />
-                        <WebsiteOwnerApprovalHint />
                     </div>
                 </AnimateOnScroll>
 
@@ -439,23 +434,6 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                         </div>
                     </div>
                 </AnimateOnScroll>
-            </SectionWrapper>
-
-            {/* Infrastructure layer */}
-            <SectionWrapper variant="subtle">
-                <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-                    <AnimateOnScroll>
-                        <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: 'var(--ws-space-6)' }}>{t('Pricing.surfaceTitle')}</p>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-8)', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--ws-text-secondary)' }}>
-                                <span>{t('Pricing.surface0')}</span>
-                                <span>{t('Pricing.surface1')}</span>
-                                <span>{t('Pricing.surface2')}</span>
-                                <span>{t('Pricing.surface3')}</span>
-                            </div>
-                        </div>
-                    </AnimateOnScroll>
-                </div>
             </SectionWrapper>
 
             {/* Collapsible comparison table */}

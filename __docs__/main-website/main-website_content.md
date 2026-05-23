@@ -29,15 +29,14 @@ Supporting pages now share the same official-source discipline through shared he
 
 1. `HeroSection`
 2. `ProblemSection`
-3. `SolutionSection`
-4. `InteractiveWorkflowSection`
-5. `SetupReliefSection`
-6. `SurfacesSection`
-7. `CustomerBrowseSection`
-8. `PreparedForYouSection`
-9. `FaqSection`
-10. `FinalCtaSection`
-11. `StickyCta`
+3. `InteractiveWorkflowSection`
+4. `SetupReliefSection`
+5. `SurfacesSection`
+6. `CustomerBrowseSection`
+7. `PreparedForYouSection`
+8. `FaqSection`
+9. `FinalCtaSection`
+10. `StickyCta`
 
 **Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
@@ -53,7 +52,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Subline:**
 
-> Start with a photo, PDF, link, or typed menu. MenuList prepares your live menu, official page, QR menu, web link, customer view, and PDF from one owner-approved source.
+> Start with a photo, PDF, link, or typed menu. MenuList prepares the official customer-facing version from one owner-approved source.
 
 **Primary CTA:** Upload your menu →
 **Secondary CTA:** See customer preview (`#customer-demo`)
@@ -88,7 +87,7 @@ This section shows the practical path from the menu a business already has to th
 
 **Supporting text:**
 
-> MenuList turns the menu you already use into a live menu, official page, QR, link, screen, and PDF that customers can trust before they call, visit, order, or share.
+> MenuList turns the menu you already use into the customer-facing version customers can trust before they call, visit, order, or share.
 
 **Path steps:**
 
@@ -145,29 +144,9 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 ---
 
-### Section 3 — The Solution
+### Removed — Redundant Solution Section
 
-**Section heading:**
-
-> One source. Public surfaces stay aligned.
-
-**Supporting text:**
-
-> MenuList gives your menu and business information one official home. From there, the public menu, official page, QR assets, saved menu shortcut, screens, and share links all reflect the same owner-approved truth.
-
-**Bullet points (6):**
-
-- Start from what you already have.
-- Owner approval stays in the loop.
-- Public output comes first.
-- Updates have one place to begin.
-- Real-world placement is included.
-- Infrastructure stays quiet.
-
-**Notes:**
-
-- This is the category bridge from "menu" to "public business truth infrastructure".
-- Public output and owner approval must remain explicit.
+The old `SolutionSection` with "One menu. Public places stay aligned.", a central SVG, and six explanatory bullets is no longer mounted. The same category bridge is now covered more clearly by the hero promise, broken-menu problem section, `InteractiveWorkflowSection` source map, setup proof, and public-surface proof. Keeping both made the homepage longer and repeated the same one-source claim before the visitor reached stronger product proof.
 
 ---
 
@@ -182,7 +161,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | # | Metric | Meaning |
 | --- | --- | --- |
 | 1 | 1 owner-approved source | Menu, prices, hours, and public business details begin from one controlled source. |
-| 2 | 6 customer places | Live menu, official page, QR assets, saved menu shortcut, screens, and PDF outputs can show the same current menu. |
+| 2 | Customer-facing outputs | Customer-facing outputs can point back to the same current menu. |
 | 3 | 3 clear steps | Start with the current menu, review the prepared version, then publish what customers see. |
 | 4 | 0 technical setup | No website build, design tool, or separate QR-menu system is needed before publishing. |
 
@@ -213,7 +192,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | 1 | Start with the menu you already use | Photo, PDF, or typed menu. The setup starts from the current source your business already trusts. |
 | 2 | Review the prepared source | Items, categories, prices, language, images, and business details become structured before they go public. |
 | 3 | Publish the official version | The official page and live menu become the customer-facing source for your menu and business information. |
-| 4 | Deploy it where customers look | QR assets, saved menu shortcut, screens, print, and share links point back to the same current source. |
+| 4 | Deploy it where customers look | QR, links, screens, and print send customers to the same current menu. |
 
 **Micro-copy below steps:**
 
@@ -290,7 +269,7 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 
 > One official source for people and machines.
 
-MenuList turns approved menu and business details into visible public pages, structured data, sitemap signals, and owner-controlled search copy.
+MenuList turns approved menu and business details into visible public pages, server-rendered structured data, sitemap signals, and owner-controlled search copy.
 
 **Flow:**
 
@@ -305,7 +284,8 @@ MenuList turns approved menu and business details into visible public pages, str
 | Business facts stay clear | Hours, address, phone, actions, cuisine, service modes, photos, and social links can sit on the official page. |
 | Menu facts are structured | Items, sections, prices, availability, update signals, and business context are published in machine-readable formats. |
 | Search copy can follow each language | Owner settings include SEO and AEO fields, preview, and business-copy setup for enabled languages. |
-| Crawlers get a stable source | Public pages, sitemap, robots rules, and LLM discovery files point systems back to the current MenuList source. |
+| Crawlers get a stable source | Public pages, server-rendered JSON-LD, sitemap, robots rules, and LLM discovery files point systems back to the current MenuList source. |
+| Agents get safe boundaries | Public agent files say what can be read, which official handoffs can be opened, and what must stay owner-controlled. |
 
 **Proof chips:**
 
@@ -321,7 +301,8 @@ MenuList turns approved menu and business details into visible public pages, str
 **Notes:**
 
 - Added because AI search and answer-engine discovery are now an owner-relevant buying concern.
-- Grounded in existing owner SEO/AEO settings, Business Copy Setup, public schema/sitemap/robots infrastructure, and LLM discovery files.
+- Grounded in existing owner SEO/AEO settings, Business Copy Setup, public schema/sitemap/robots infrastructure, active route-level JSON-LD, and LLM discovery files.
+- Agentic web/WebMCP guidance supports the same direction, but public copy must keep WebMCP and MCP out of active claims until those surfaces are deliberately implemented, flagged, and tested.
 - The section must never promise Google ranking, Google Maps updates, ChatGPT citation, or automatic external-platform refresh.
 
 ---
@@ -511,21 +492,13 @@ Key FAQ topics:
 
 **Button:** Upload your menu →
 
-**Caption:**
-
-> No technical setup. Owner approval before publishing.
-
-**Phone workflow line:** No desktop required — manage and publish from a phone browser or the MenuList PWA.
-
-**Bottom text:**
-
-> Public page, live menu, QR assets, saved menu shortcut, and customer-facing materials from one menu.
+**Final CTA proof stack:** Removed in v3.6.1. The closing CTA should stay short after the homepage has already explained upload, review, publishing, customer surfaces, and FAQ.
 
 ---
 
-## Page 2: Product (/product)
+## Page 2: How It Works (/how-it-works)
 
-**Canonical note:** Supporting website pages must follow the current official-source strategy. Revalidate claims against the current codebase before promoting them. Do not use automatic Google/external-surface language unless the runtime path proves it.
+**Canonical note:** Supporting website pages must follow the current official-source strategy. Revalidate claims against the current codebase before promoting them. Do not use automatic Google/external-surface language unless the runtime path proves it. `/product` is a permanent legacy redirect to `/how-it-works` and must not be promoted as an active public destination.
 
 ### Hero
 
@@ -1225,14 +1198,15 @@ Secondary CTA:
 
 ## Meta Content (All Pages)
 
-## Owner Reassurance Helpers
+## Owner Reassurance Placement Rules
 
-Two reusable owner-facing helper lines are part of the website conversion system:
+Owner reassurance should reduce friction without turning into repeated wallpaper copy.
 
-- Phone-first operation: "No desktop required: manage and publish from a phone browser or the MenuList PWA."
-- Owner approval boundary: "Nothing is published until you review and approve it."
+- Keep phone/PWA operation as a compact proof idea only where it answers an immediate owner doubt.
+- Keep review-before-publish near upload/review workflows, setup copy, and FAQ answers.
+- Do not repeat the full public-surface list on pricing, final CTA, or supporting-page heroes.
 
-These lines are intentionally short. They answer two high-friction SMB owner doubts: "Can I run this without a laptop?" and "Will the system publish something wrong without me?" They should appear near primary CTAs and supporting-page heroes, not inside every feature card. They render through `ws-support-hint` so the copy stays readable and wraps cleanly on mobile.
+The removed global helper components were useful during early conversion hardening, but they made Product, Features, Pricing, Get Started, Multi-location, About, Contact, Trust/Security, and the homepage final CTA feel repetitive.
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1241,7 +1215,7 @@ These lines are intentionally short. They answer two high-friction SMB owner dou
 | Multi-Location | MenuList for Chains & Multi-Location Businesses        | Manage menus across all your locations from one place. Master menu, per-location control, instant sync.                                    |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |
 | About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for cafes, service businesses, and growing teams that publish customer-facing offers. |
-| Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, saved menu shortcut, and share links. |
+| Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for the customer-facing version of your business. |
 | Contact        | Contact MenuList                                       | Have a question about MenuList? Reach out to our team.                                                                                     |
 | Privacy        | Privacy Policy — MenuList                              | MenuList privacy policy. How we handle and protect your data.                                                                              |
 | Terms          | Terms of Service — MenuList                            | MenuList terms of service for all users and businesses.                                                                                    |

@@ -1,5 +1,6 @@
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import CanonicaLink from './CanonicaLink';
+import CanonicaPageStructuredData from './PageStructuredData';
 
 export type SeoLandingPageProps = {
     eyebrow: string;
@@ -14,6 +15,7 @@ export type SeoLandingPageProps = {
     primaryCta: string;
     secondaryCta?: string;
     basePath?: string;
+    canonicalPath?: string;
 };
 
 export default function SeoLandingPage({
@@ -29,9 +31,11 @@ export default function SeoLandingPage({
     primaryCta,
     secondaryCta,
     basePath = '',
+    canonicalPath,
 }: SeoLandingPageProps) {
     return (
         <main className="pt-16">
+            {canonicalPath ? <CanonicaPageStructuredData path={canonicalPath} /> : null}
             <section className="px-6 py-24 text-center">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">{eyebrow}</p>
                 <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">{title}</h1>

@@ -10,6 +10,7 @@
 
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
+import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
 import { FEATURE_FLAGS } from '@config/features';
@@ -33,6 +34,11 @@ export default function CreateMenuPage() {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return (
             <div className="ws-page">
+                <WebsitePageStructuredData
+                    path="/create-menu"
+                    title="Upload Your Current Menu - MenuList"
+                    description="Start with your current menu and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
+                />
                 <Header />
                 <div style={{
                     display: 'flex',
@@ -61,6 +67,11 @@ export default function CreateMenuPage() {
 
     return (
         <div className="ws-page">
+            <WebsitePageStructuredData
+                path="/create-menu"
+                title="Upload Your Current Menu - MenuList"
+                description="Start with your current menu and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
+            />
             <Header />
             <CreateMenuClient />
             <Footer />

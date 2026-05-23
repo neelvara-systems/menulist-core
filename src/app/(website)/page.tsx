@@ -1,5 +1,3 @@
-'use client';
-
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import SchemaMarkup from '@/components/website/SchemaMarkup';

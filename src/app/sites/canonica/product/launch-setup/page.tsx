@@ -27,6 +27,7 @@ export default function LaunchSetupProductPage() {
             <CanonicaHeader basePath={basePath} />
             <ProductCapabilityLandingPage
                 basePath={basePath}
+                canonicalPath="/product/launch-setup"
                 eyebrow="Launch Setup"
                 title="Go from no support system to a verified support layer."
                 description="Canonica gives founders an activation path: company details, product profile, starter knowledge, important product pages, widget key, and readiness checks before users rely on it."

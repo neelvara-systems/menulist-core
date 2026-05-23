@@ -82,6 +82,7 @@ function verifyNextPwaScoping() {
 function verifyOwnerAuthManifest() {
   const authLayout = read('src/app/(global-pages)/layout.tsx');
   const mainLayout = read('src/app/(main)/layout.tsx');
+  const mobileShell = read('src/components/mobile/MobileShell.tsx');
   const ownerManifest = JSON.parse(read('public/manifest.json'));
   const ownerIconFiles = [
     'public/apple-touch-icon.png',
@@ -99,14 +100,15 @@ function verifyOwnerAuthManifest() {
 
   assertIncludes(authLayout, "manifest: '/manifest.json'", 'owner auth layout metadata');
   assertIncludes(mainLayout, 'manifest: "/manifest.json"', 'owner dashboard layout metadata');
-  assert(ownerManifest.start_url === '/dashboard', 'owner manifest start_url must be /dashboard');
+  assert(ownerManifest.start_url === '/today', 'owner manifest start_url must be /today');
+  assertIncludes(mobileShell, "'/dashboard': MOBILE_ROUTE_DEFAULT", 'owner mobile launch mapping');
   assert(ownerManifest.display === 'standalone', 'owner manifest display must be standalone');
   assert(Array.isArray(ownerManifest.icons), 'owner manifest icons must be an array');
   const expectedOwnerShortcuts = [
-    ['Today', '/today#mobile/today'],
-    ['Menu', '/projects#mobile/menu'],
-    ['Share & QR', '/use-menulist#mobile/share'],
-    ['Feedback', '/feedback#mobile/more/feedback'],
+    ['Today', '/today'],
+    ['Menu', '/projects'],
+    ['Share & QR', '/use-menulist'],
+    ['Feedback', '/feedback'],
   ];
   assert(Array.isArray(ownerManifest.shortcuts), 'owner manifest shortcuts must be an array');
   assert(ownerManifest.shortcuts.length === expectedOwnerShortcuts.length, 'owner manifest shortcuts count changed');

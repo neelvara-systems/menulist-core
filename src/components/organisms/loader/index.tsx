@@ -1,7 +1,10 @@
 import AnimatedVerticalLogo from '@atoms/animatedVerticalLogo';
+import CanonicaAnimatedLogo from '@atoms/canonicaAnimatedLogo';
 import { useAppSelector } from '@hook/useAppSelector';
+import { isCanonicaRuntimeRoute } from '@lib/canonica/sessionScope';
 import { getLoaderState } from '@reduxSlices/loader';
 import { theme } from 'antd';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import Style from './loader.module.scss';
 
@@ -10,10 +13,13 @@ const HIDE_GRACE_MS = 180;
 
 function Loader() {
     const { token } = theme.useToken();
+    const pathname = usePathname();
     const loading = useAppSelector(getLoaderState);
     const [isVisible, setIsVisible] = useState(false);
     const shownAtRef = useRef<number>(0);
     const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
+    const isCanonicaRoute = isCanonicaRuntimeRoute(pathname, currentHostname);
 
     useEffect(() => {
         if (loading) {
@@ -63,8 +69,15 @@ function Loader() {
 
     return (
         <>
-            {isVisible ? <div data-loader-source={loading} className={Style.loaderbody} style={{ background: token.colorBgMask }}>
-                <AnimatedVerticalLogo showLabel={false} />
+            {isVisible ? <div
+                data-loader-source={loading}
+                data-loader-brand={isCanonicaRoute ? 'canonica' : 'menulist'}
+                className={`${Style.loaderbody} ${isCanonicaRoute ? Style.canonicaLoaderbody : ''}`.trim()}
+                style={isCanonicaRoute ? undefined : { background: token.colorBgMask }}
+            >
+                {isCanonicaRoute
+                    ? <CanonicaAnimatedLogo idPrefix="canonica-global-loader" />
+                    : <AnimatedVerticalLogo showLabel={false} />}
             </div> : null}
         </>
     )

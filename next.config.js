@@ -187,6 +187,7 @@ const nextConfig = {
             { source: '/about-us', destination: '/about', permanent: true },
             { source: '/contact-us', destination: '/contact', permanent: true },
             { source: '/home', destination: '/', permanent: true },
+            { source: '/product', destination: '/how-it-works', permanent: true },
             { source: '/qrCode', destination: '/qr-code', permanent: true },
             { source: '/ops', destination: '/platform/ops-control-room', permanent: false },
             { source: '/ops/extraction', destination: '/platform/extraction-monitor', permanent: false },

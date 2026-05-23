@@ -24,6 +24,8 @@
 > **Note (May 20, 2026 — reseller payment QA):** Real Firebase/Razorpay test-mode QA covered offline reseller onboarding, prepaid location-capacity top-up, owner outlet creation after capacity, second-outlet 402 after capacity exhaustion, online reseller subscription creation with Razorpay `quantity: 2`, pending online outlet-create 402 before activation, and dashboard payment-link recovery for pending online subscriptions. Razorpay hosted checkout reached test card tokenization but the merchant returned "seller does not support recurring payments"; this is account capability/configuration, not an internal Firestore mutation failure.
 >
 > **Note (May 20, 2026 — storesSummary map hardening):** Production-audit parity found several `set(..., { merge: true })` paths writing literal dotted `stores.{storeId}` keys. Outlet create, policy promotion, rename, deactivate, messaging onboarding publish, platform block sync, and scheduler enrichment now write nested `stores: { [storeId]: ... }` maps so Cloud Functions can read `storesSummary.data().stores[storeId]` consistently.
+>
+> **Note (May 23, 2026 — mobile project delete permission fix):** The client-side master-delete guard now enumerates candidate outlet stores from `tenants/{tId}.storesList` instead of reading the global `platformSummary/storesSummary` document. Tenant users can read their own tenant document, while `storesSummary` remains platform/server-oriented and is not exposed to mobile PWA delete flows.
 
 ## May 19, 2026 Final Review + Production Audit
 

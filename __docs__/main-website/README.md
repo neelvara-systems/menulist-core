@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.5.7 (Supporting Page Source Maps)
+**Version:** 3.6.1 (Redundant Reassurance Copy Cleanup)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** May 23, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.5.7** | **Supporting Page Source Maps** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.1** | **Redundant Reassurance Copy Cleanup** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
-Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Solution -> How it works -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> How it works -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Version 3.5.1 adds system dark mode to the public website without changing the default light-mode positioning. Dark mode uses dark gray `#121212`-family surfaces instead of pure black, and the shared website tokens now cover headers, sections, cards, pricing, forms, drawers, and supporting create-menu pages. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -30,6 +30,14 @@ Version 3.5.5 tightens dark-mode color cohesion across the public website. Dark 
 Version 3.5.6 replaces the compact homepage workflow pipeline with a source map: current menu inputs on the left, the official MenuList logo plus owner-review gate in the center, and public customer outputs on the right. This improves first-visit comprehension while keeping the hero focused on product/customer proof. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Version 3.5.7 replaces the older animated dark SVG diagrams on `/how-it-works` and `/multi-location` with calmer supporting-page source maps. `/how-it-works` now shows current menu inputs -> MenuList owner review -> customer surfaces. `/multi-location` now shows an approved master menu -> outlet update governance. Labels were tightened away from generic "web page/app" wording. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.5.8 removes the old homepage `SolutionSection` because its one-source diagram and bullet grid repeated the hero, public-drift problem, new workflow source map, setup proof, and public-surface proof. The category bridge now flows directly from Problem into `InteractiveWorkflowSection`, reducing homepage length and visual repetition without removing the official-source claim from active copy. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.5.9 hardens the public agent-readable context files after reviewing Chrome's agentic web / WebMCP guidance. `public/llms.txt` and `public/llms-full.txt` now state what public agents may read, which official handoff links they may route to, and which actions remain owner/admin-only. Homepage layout, pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.6.0 completes the website-layer SEO/AEO hardening pass for the agentic web. Homepage JSON-LD is server-rendered, active marketing/legal pages emit page-level WebPage and BreadcrumbList JSON-LD, discovery URLs use `https://menulist.ai`, `/product` remains a framework-level permanent legacy redirect but is omitted from sitemap/LLM discovery, and `npm run verify:agent-readiness` validates MenuList and Canonica discovery surfaces. WebMCP, MCP, pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.6.1 removes repeated reassurance and surface-list copy from the public website. The homepage final CTA is now title/subtitle/CTA only, supporting-page heroes no longer repeat the phone/PWA and review-before-publish helper lines, the pricing page no longer repeats the full customer-surface promise, and the footer/FAQ/hero copy now use shorter official-source language. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -73,9 +81,11 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/components/website/home/HomePage.tsx`                  | Current compressed homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
+| `src/components/seo/JsonLdScript.tsx`                       | Shared server-rendered JSON-LD script helper   |
 | `src/components/website/shared/LogoMark.tsx`                | Official MenuList logo mark used by website header/footer |
 | `src/components/website/shared/WebsiteFeatureCard.tsx`      | Shared spacious top-right-icon card for website proof and feature grids |
-| `src/components/website/SchemaMarkup.tsx`                   | Homepage JSON-LD schema                        |
+| `src/components/website/SchemaMarkup.tsx`                   | Server-rendered homepage JSON-LD schema        |
+| `src/components/website/WebsitePageStructuredData.tsx`      | Page-level WebPage and BreadcrumbList JSON-LD  |
 | `src/components/website/GoogleAnalytics.tsx`                | GA tracking                                    |
 | `src/components/website/ClarityAnalytics.tsx`               | Microsoft Clarity tracking                     |
 | `src/components/website/shared/WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages)                |
@@ -83,6 +93,7 @@ These archived documents are not source-code backups and are not restoration tar
 | `public/locales/menulist.ai/en-US.json`                     | Website locale default + base file (Website namespace) |
 | `src/styles/website.css`                                    | Website-specific styles                        |
 | `src/config/features.ts`                                    | `ENABLE_PUBLIC_MENU_ENTRY` flag                |
+| `scripts/verification/verify-agent-readiness.js`            | MenuList + Canonica route/discovery/structured-data verifier |
 
 Supported website locale files:
 - `public/locales/menulist.ai/en-US.json`
@@ -393,14 +404,14 @@ Protected scope:
 
 - SEO/AEO runtime, `/api/seo`, Business Copy Setup, mobile owner screens, pricing, payment, Razorpay, auth, and create-menu runtime logic were not changed.
 
-## Stage 7.9 Owner Reassurance Helpers
+## Stage 7.9 Owner Reassurance Placement
 
-Stage 7.9 added small reusable website reassurance lines for non-technical SMB owners:
+Stage 7.9 added small reusable website reassurance lines for non-technical SMB owners. Stage 3.6.1 later removed the repeated helper components from supporting-page heroes because the same promise was appearing too often across the site.
 
-- `WebsiteMobileSupportHint` reinforces that MenuList can be managed and published from a phone browser or PWA.
-- `WebsiteOwnerApprovalHint` reinforces that nothing is published until the owner reviews and approves it.
-- The helpers are used on primary conversion and supporting-page heroes, including homepage hero/final CTA, Product, Features, Pricing, Get Started, Multi-Location, About, Contact, and Trust & Security.
-- Locale coverage was added for `en-US` and `hi-IN`; other website locales continue to use the configured fallback behavior.
+- Phone/PWA operation should stay as a compact proof idea only where it answers an immediate owner doubt, such as homepage hero chips or a dedicated Features owner-mobile card.
+- Review-before-publish should stay near upload/review flows and FAQ answers, not as a repeated line below every page hero or CTA.
+- Full surface lists should stay in the homepage hero visual, workflow map, and surfaces section; pricing and final CTA should not repeat them.
+- `WebsiteMobileSupportHint` and `WebsiteOwnerApprovalHint` were removed after the cleanup pass.
 
 Protected scope:
 
@@ -463,7 +474,7 @@ Protected scope:
 
 Stage 7.14 aligns the website's shared visual system after the mobile hero and brand pass:
 
-- `WebsiteMobileSupportHint` and `WebsiteOwnerApprovalHint` now use the shared `ws-support-hint` styling so reassurance lines remain readable on supporting-page heroes and wrap cleanly on mobile.
+- The old reusable reassurance helpers were removed in v3.6.1, so supporting-page heroes now rely on page-specific proof strips and body copy instead of repeated phone/PWA and review-before-publish lines.
 - The Pricing page Tailwind/shadcn variable bridge now uses the same MenuList website palette, muted text contrast, and 8px radius as the main website system.
 - The Features hero now keeps the owner-benefit framing direct: "Everything your menu needs. No extra work for you."
 - Locale-backed Features hero copy was updated across the website locale files.
@@ -575,6 +586,9 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.1 | May 23, 2026 | Removed repeated phone/PWA, review-before-publish, and full surface-list reassurance copy from final CTA, supporting-page heroes, pricing, footer, FAQ, and locale-backed copy. |
+| 3.5.9 | May 23, 2026 | Hardened `llms.txt` and `llms-full.txt` with PAL agent boundaries: read public facts, route to official handoffs, do not mutate owner truth, do not infer missing/sensitive claims, and treat WebMCP as future gated scope. |
+| 3.5.8 | May 23, 2026 | Removed the old homepage SolutionSection because the one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof. |
 | 3.5.7 | May 23, 2026 | Replaced generic animated SVG diagrams on How It Works and Multi-location with static supporting-page source maps using official-source labels and shared dark-panel tokens. |
 | 3.5.6 | May 23, 2026 | Replaced the compact homepage workflow pipeline with an input -> MenuList owner-review -> public outputs source map while keeping the hero product-proof led. |
 | 3.5.5 | May 23, 2026 | Tightened dark-mode color cohesion around one dark-gray surface family, one blue action family, muted semantic colors, and shared contrast-panel tokens. |

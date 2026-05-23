@@ -36,7 +36,7 @@ MenuList has two PWA audiences, not one PWA per public surface.
 
 Installing from OBP, `/menu`, or a project slug must produce the same store app identity. Public routes and project slugs are in-app navigation/source attribution only.
 
-Owner install behavior is intentionally auth-independent: installing from `/signin` or `/forgot-password` on the platform origin should still install the **MenuList owner app**, because `src/app/(global-pages)/layout.tsx` links the same `/manifest.json` as the authenticated dashboard. The manifest `start_url` remains `/dashboard`; unauthenticated launches redirect to `/signin`, then continue into the dashboard after login.
+Owner install behavior is intentionally auth-independent: installing from `/signin` or `/forgot-password` on the platform origin should still install the **MenuList owner app**, because `src/app/(global-pages)/layout.tsx` links the same `/manifest.json` as the authenticated owner app. The manifest `start_url` is `/today` so handheld PWA launches land on the Today tab. Unauthenticated launches still reach the sign-in gate before the owner app is shown.
 
 ---
 

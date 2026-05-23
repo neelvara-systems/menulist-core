@@ -1,9 +1,17 @@
+import { DISCOVERY_CRAWLERS } from '@lib/seo/discoveryPolicy';
 import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const dynamic = 'force-static';
 
 export function GET() {
-    return new Response(`User-agent: *
+    const crawlerRules = DISCOVERY_CRAWLERS.map((crawler) => `User-agent: ${crawler}
+Allow: /`).join('\n\n');
+
+    return new Response(`# Agent context: ${CANONICA_SITE_URL}/llms.txt
+# Extended agent context: ${CANONICA_SITE_URL}/llms-full.txt
+${crawlerRules}
+
+User-agent: *
 Allow: /
 Disallow: /canonica/
 Disallow: /api/

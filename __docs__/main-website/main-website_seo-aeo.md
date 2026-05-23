@@ -1,11 +1,15 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** May 21, 2026
+**Last Updated:** May 23, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
 > May 21, 2026 update: the homepage was compressed for conversion clarity. Search/AEO proof remains valid product proof, but it is no longer mounted as a full homepage section; it belongs in supporting feature/page content unless needed for a dedicated discovery page. Homepage metadata now avoids "instantly" and aligns with the owner-approved 7-day setup funnel.
+
+> May 23, 2026 update: after reviewing Chrome's agentic web / WebMCP guidance, MenuList treats agent-readiness as an extension of the existing public truth layer. The immediate production contract is semantic public pages, schema.org JSON-LD, robots/sitemaps, `llms.txt`, `llms-full.txt`, and gated public API/POS surfaces where enabled. WebMCP remains a future browser-agent enhancement that must be feature-flagged, visible, read-only or pending-suggestion scoped, and covered by evals before release.
+
+> May 23, 2026 end-to-end pass: platform discovery now uses non-www `https://menulist.ai`, homepage JSON-LD is server-rendered, active marketing/legal pages emit WebPage and BreadcrumbList JSON-LD, and the legacy `/product` URL is a framework-level permanent redirect that is no longer listed in sitemap or LLM discovery files. The public platform-domain env config also uses `menulist.ai` as canonical, with `menulist.online` retained as an alias. Use `npm run verify:agent-readiness` before closing future SEO/AEO changes.
 
 ---
 
@@ -35,13 +39,13 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
-| How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source for your public menu, official page, QR assets, saved menu shortcut, PDF, and web link.   |
+| How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
 | Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official menu link live, updated, and ready for customers.                  |
 | Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |
 | About          | MenuList turns your menu into your entire online presence. Built for businesses that care about how they present themselves to customers.                           |
 | Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
-| Get Started    | Start with your current menu and create the owner-approved source for your public menu, official business page, QR assets, saved menu shortcut, and share links.             |
-| Create Menu    | Start with your current menu and create the owner-approved source for your public menu, official page, QR assets, saved menu shortcut, and share links.                      |
+| Get Started    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.             |
+| Create Menu    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.                      |
 
 ### 1.3 Heading Hierarchy
 
@@ -54,7 +58,7 @@ Every page must follow:
 
 ### 1.4 Sitemap
 
-Auto-generated `/sitemap.xml` with all public pages:
+Auto-generated `/sitemap.xml` with active public pages only. Redirect-only legacy URLs such as `/product` must stay out of sitemap and LLM discovery inventories.
 
 ```xml
 <url>
@@ -63,7 +67,7 @@ Auto-generated `/sitemap.xml` with all public pages:
   <priority>1.0</priority>
 </url>
 <url>
-  <loc>https://menulist.ai/product</loc>
+  <loc>https://menulist.ai/how-it-works</loc>
   <changefreq>monthly</changefreq>
   <priority>0.8</priority>
 </url>
@@ -101,7 +105,7 @@ Every page includes self-referencing canonical:
   "@type": "Organization",
   "name": "MenuList",
   "url": "https://menulist.ai",
-  "logo": "https://menulist.ai/logo.png",
+  "logo": "https://menulist.ai/apple-touch-icon.png",
   "description": "MenuList is a system that manages official menus and public business information across all customer-facing surfaces.",
   "foundingDate": "2024",
   "address": {
@@ -239,6 +243,28 @@ Do not use:
 - "Automatic Google/Instagram/WhatsApp sync"
 - "AI-powered SEO"
 
+### 3.6 Agentic Web / PAL Boundaries
+
+PAL means **Public Agentic Layer** for MenuList: public business truth stays readable to humans, crawlers, search engines, and browser/AI agents without moving MenuList into POS, payment, CRM, or fulfillment operations.
+
+Current agent-readable surfaces:
+
+- SSR public menu and OBP pages
+- server-rendered JSON-LD on homepage and active platform pages
+- schema.org JSON-LD on public output
+- platform and per-store robots/sitemaps
+- `public/llms.txt` and `public/llms-full.txt`
+- gated public API v1 business/menu reads where enabled
+- official handoff links such as call, WhatsApp, directions, order, reservation, QR, PDF, and saved menu shortcut when the business has published them
+
+Agent boundaries:
+
+- Agents may read public facts and route users to official handoffs.
+- Agents must not directly edit menu prices, business hours, item availability, POS state, billing, payments, owner settings, or business identity.
+- Agents must say unknown when a fact is not shown or not verified.
+- Sensitive food claims such as allergens, gluten-free preparation, halal, vegan, and cross-contamination details must not be inferred.
+- WebMCP tools are not active production scope yet. The first allowed future tools should be read-only or pending-suggestion tools such as `searchMenuItems`, `getOpeningHours`, `getMenuItemDetails`, `getOrderingOptions`, and `submitCorrection` as a review queue item only.
+
 ---
 
 ## 4. Technical SEO Checklist
@@ -248,19 +274,22 @@ Do not use:
 | HTTPS                 | ✅         | Already on menulist.ai                                      |
 | Mobile responsive     | ✅         | Mobile-first design implemented                             |
 | Page speed < 2.5s LCP | ✅         | Static rendering for all marketing pages                    |
-| Sitemap.xml           | ✅         | 13 pages, updated March 2026                                |
-| Robots.txt            | ✅         | AI crawlers allowed, dashboard excluded                     |
-| Canonical URLs        | ✅         | Self-referencing on all 13 pages (March 2026)               |
-| Schema.org            | ✅         | Organization + SoftwareApplication + WebSite + FAQPage      |
-| OG tags               | ✅         | Per-page titles + descriptions on all 13 pages (March 2026) |
+| Sitemap.xml           | ✅         | Active platform pages only; redirected `/product` omitted   |
+| Robots.txt            | ✅         | AI/search crawlers allowed, protected app paths excluded, non-www sitemap/LLM links |
+| llms.txt              | ✅         | Platform agent context with public fact and action boundaries |
+| llms-full.txt         | ✅         | Extended agent-readable schema, URL, freshness, and boundary docs |
+| Canonical URLs        | ✅         | Self-referencing on active platform pages                   |
+| Schema.org            | ✅         | Homepage Organization/WebSite/SoftwareApplication/WebPage/BreadcrumbList plus page-level WebPage/BreadcrumbList |
+| OG tags               | ✅         | Per-page titles + descriptions on active platform pages     |
 | Twitter cards         | ✅         | Summary card with large image (layout-level)                |
-| Per-page metadata     | ✅         | Unique title, description, OG for all pages (March 2026)    |
+| Per-page metadata     | ✅         | Unique title, description, OG for active platform pages     |
 | Favicon               | ✅         | Implemented                                                 |
 | 404 page              | 🔵 Planned | Custom branded 404                                          |
 | Alt text on images    | 🔵 Planned | Descriptive, keyword-relevant                               |
 | Internal linking      | ✅         | Cross-page links in navigation                              |
 | hreflang              | 🔵 Future  | When multi-locale SEO needed                                |
 | i18n                  | ✅         | 8 languages supported via next-intl                         |
+| Agent-readiness verifier | ✅      | `npm run verify:agent-readiness` checks route registries, robots, sitemap, LLM files, and JSON-LD wrappers |
 
 ---
 

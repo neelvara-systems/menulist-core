@@ -27,6 +27,7 @@ export default function KnowledgeGovernanceProductPage() {
             <CanonicaHeader basePath={basePath} />
             <ProductCapabilityLandingPage
                 basePath={basePath}
+                canonicalPath="/product/knowledge-governance"
                 eyebrow="Knowledge Governance"
                 title="Keep support truth accurate as the product changes."
                 description="Canonica treats support knowledge as governed product truth: product ontology, canonical answers, drift, signal mutation, coverage, and trust metrics all point owners toward what to review."

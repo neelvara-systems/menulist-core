@@ -206,3 +206,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
 export function buildCanonicaUrl(path: string): string {
     return `${CANONICA_SITE_URL}${path === '/' ? '' : path}`;
 }
+
+export function getCanonicaPublicPage(path: string) {
+    return CANONICA_PUBLIC_PAGES.find((page) => page.path === path);
+}

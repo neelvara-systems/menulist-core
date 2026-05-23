@@ -1,7 +1,7 @@
 # Canonica Website — Spec
 
-> **Version:** 1.2.4
-> **Last Updated:** 2026-05-22
+> **Version:** 1.2.6
+> **Last Updated:** 2026-05-23
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -239,6 +239,28 @@ Rules:
 
 The website may emit optional GA/measurement events when `NEXT_PUBLIC_CANONICA_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured. Tracking is client-only and does not write to Firestore.
 
+## Agent-Readable Website Context
+
+Canonica product domains must serve Canonica-specific agent context instead of inheriting MenuList's public business-truth framing.
+
+Routes:
+
+- `/llms.txt` — short product definition, key public pages, product areas, and agent guidance
+- `/llms-full.txt` — extended route map, runtime boundaries, action boundaries, and machine-readable surfaces
+- `/sitemap.xml` — product-domain route inventory from `CANONICA_PUBLIC_PAGES` and product feature routes
+- `/robots.txt` — product-domain crawler policy with explicit AI/search crawler allow rules and LLM context links
+
+Rules:
+
+- Define Canonica as the Support Knowledge Control Plane for SaaS.
+- State that Canonica is not a helpdesk replacement, chatbot autopilot, documentation CMS, compliance platform, or autonomous publisher.
+- Route agents to public pages, demo, install, pricing, security, FAQ, resources, updates, sitemap, and robots.
+- Do not imply public agents can mutate customer workspaces, canonical answers, tickets, widget settings, billing, or private knowledge.
+- Every public route in `CANONICA_PUBLIC_PAGES` must emit page-level WebPage and BreadcrumbList JSON-LD, either directly or through the shared page wrapper.
+- Homepage structured data must reference the active public route registry so the WebSite graph, sitemap, and agent context do not drift.
+- Future route changes must update `CANONICA_PUBLIC_PAGES`, sitemap/robots/LLM context as needed, and pass `npm run verify:agent-readiness`.
+- WebMCP and MCP are future implementation surfaces unless a specific public page explicitly exposes them.
+
 Tracked events:
 - `hero_cta_clicked`
 - `homepage_demo_link_clicked`
@@ -324,6 +346,7 @@ Route naming must avoid conflicts with Canonica dashboard roots. Public website 
 
 OpenGraph and Twitter cards configured in layout.tsx with `public/canonica-og-image.png`.
 Canonica product domains must serve their own `/sitemap.xml` and `/robots.txt`; do not rely on the MenuList platform sitemap.
+Canonica public routes emit server-rendered Organization/WebSite/SoftwareApplication/WebPage/BreadcrumbList JSON-LD. The FAQ route also emits FAQPage JSON-LD. Route-level structured data must stay tied to `CANONICA_PUBLIC_PAGES`.
 
 ---
 
@@ -363,3 +386,5 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-22 | 1.2.2 | Redesigned presentation quality for the public site: demo now uses top product-surface tabs and a large product canvas, product proof uses clearer dashboard-style tabs, and widget content moved into a bento-style install/runtime/governance grid |
 | 2026-05-22 | 1.2.3 | Added landing-style product area pages for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance so each major product part can be understood and sold independently |
 | 2026-05-22 | 1.2.4 | Final product-suite polish: header Product dropdown, homepage product-area section, resources product-area hub, and SEO/use-case product-area cross-links make the current product easier to evaluate without adding Firebase cost |
+| 2026-05-23 | 1.2.5 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica product context, non-goals, and mutation boundaries |
+| 2026-05-23 | 1.2.6 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, explicit AI/search crawler robots rules, route-registry Website graph references, and `verify:agent-readiness` coverage |

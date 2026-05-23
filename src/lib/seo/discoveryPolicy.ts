@@ -40,13 +40,6 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 1,
     },
     {
-        label: 'Product',
-        path: '/product',
-        description: 'Product overview for MenuList public business presence',
-        changeFrequency: 'monthly',
-        priority: 0.9,
-    },
-    {
         label: 'Features',
         path: '/features',
         description: 'Core MenuList capabilities',
@@ -132,7 +125,7 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
     },
 ];
 
-export function getPlatformDiscoveryBaseUrl(baseUrl = process.env.NEXT_PUBLIC_APP_URL || PLATFORM_URL): string {
+export function getPlatformDiscoveryBaseUrl(baseUrl = PLATFORM_URL): string {
     return normalizeBaseUrl(baseUrl) || PLATFORM_URL;
 }
 

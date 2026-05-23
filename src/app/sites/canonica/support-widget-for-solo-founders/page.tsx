@@ -26,6 +26,7 @@ export default function SupportWidgetForSoloFoundersPage() {
             <CanonicaHeader basePath={basePath} />
             <SeoLandingPage
                 basePath={basePath}
+                canonicalPath="/support-widget-for-solo-founders"
                 eyebrow="Support widget for solo founders"
                 title="Give users help before support becomes a team."
                 description="Canonica helps founder-led SaaS products launch page-aware support from existing docs, FAQs, releases, and common answers."

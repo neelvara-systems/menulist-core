@@ -20,6 +20,7 @@ export default function EngineeringUseCasePage() {
     return (
         <UseCaseLandingPage
             basePath={getBasePath()}
+            canonicalPath="/use-cases/engineering"
             eyebrow="For engineering"
             title="A support layer that respects product structure."
             description="Canonica uses safe page context, allowed origins, blocked routes, and governed answer retrieval instead of treating support as loose document search."

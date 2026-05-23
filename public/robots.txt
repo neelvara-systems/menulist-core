@@ -1,5 +1,7 @@
 # Explicitly allow AI crawlers (GEO/AEO discovery infrastructure)
 # Keep crawler and disallow policy in sync with src/lib/seo/discoveryPolicy.ts.
+# Agent context: https://menulist.ai/llms.txt
+# Extended agent context: https://menulist.ai/llms-full.txt.
 User-agent: OAI-SearchBot
 Allow: /
 
@@ -38,4 +40,4 @@ Disallow: /editor/
 Disallow: /preview/
 
 # Path to the sitemap
-Sitemap: https://www.menulist.ai/sitemap.xml
+Sitemap: https://menulist.ai/sitemap.xml

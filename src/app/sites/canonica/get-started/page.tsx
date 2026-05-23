@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default function CanonicaGetStartedPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/get-started" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24">

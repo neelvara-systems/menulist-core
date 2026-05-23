@@ -26,6 +26,7 @@ export default function HostedHelpCenterForSaasPage() {
             <CanonicaHeader basePath={basePath} />
             <SeoLandingPage
                 basePath={basePath}
+                canonicalPath="/hosted-help-center-for-saas"
                 eyebrow="Hosted help center for SaaS"
                 title="A help center that stays connected to the widget."
                 description="Publish reviewed docs, FAQs, and changelog content on a branded support domain while Canonica keeps the same knowledge available to the page-aware widget."

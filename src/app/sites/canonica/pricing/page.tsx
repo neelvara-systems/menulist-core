@@ -5,6 +5,7 @@ import { CANONICA_CREDIT_PACKS_LIST } from '@lib/billing/productBillingPlans';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Pricing',
@@ -68,6 +69,7 @@ export default function CanonicaPricingPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/pricing" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">

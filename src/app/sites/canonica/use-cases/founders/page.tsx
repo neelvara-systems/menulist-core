@@ -20,6 +20,7 @@ export default function FoundersUseCasePage() {
     return (
         <UseCaseLandingPage
             basePath={getBasePath()}
+            canonicalPath="/use-cases/founders"
             eyebrow="For founders"
             title="Support that improves while you build."
             description="Canonica gives solo founders a page-aware widget, hosted help, approved answers, and a review queue for repeated misses."

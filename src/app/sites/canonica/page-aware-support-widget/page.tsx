@@ -26,6 +26,7 @@ export default function PageAwareSupportWidgetPage() {
             <CanonicaHeader basePath={basePath} />
             <SeoLandingPage
                 basePath={basePath}
+                canonicalPath="/page-aware-support-widget"
                 eyebrow="Page-aware support widget"
                 title="Support that changes with the product page."
                 description="Canonica lets SaaS teams install one widget that can use safe page context, approved answers, FAQs, changelog entries, and fallback signals."

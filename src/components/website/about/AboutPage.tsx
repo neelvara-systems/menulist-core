@@ -7,8 +7,6 @@ import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
-import WebsiteMobileSupportHint from '../shared/WebsiteMobileSupportHint';
-import WebsiteOwnerApprovalHint from '../shared/WebsiteOwnerApprovalHint';
 
 const principleIcons = [LuShieldCheck, LuGlobe2, LuBadgeCheck];
 
@@ -36,8 +34,6 @@ export default function AboutPage() {
         secondaryHref="/features"
       >
         <WebsiteProofStrip items={proofItems} />
-        <WebsiteMobileSupportHint />
-        <WebsiteOwnerApprovalHint />
       </WebsitePageHero>
 
       <SectionWrapper variant="subtle">

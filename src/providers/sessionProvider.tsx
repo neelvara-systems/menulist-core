@@ -596,9 +596,12 @@ export default function SessionProvider({ children, session }: Props) {
                 setPlatformStoreSummaryLoading
             }}>
                 {(effectiveSession && effectiveSession.user?.storeId && !firebaseAuthReady && !canRenderBeforeFirebaseAuth) ? (
-                    <ServerSidePageLoader page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"} />
+                    <ServerSidePageLoader
+                        page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"}
+                        brand={isCanonicaRoute ? 'canonica' : 'menulist'}
+                    />
                 ) : (session && !storeDetails && !canRenderBeforeStoreData) ? (
-                    <ServerSidePageLoader page="Loading Store Data" />
+                    <ServerSidePageLoader page="Loading Store Data" brand={isCanonicaRoute ? 'canonica' : 'menulist'} />
                 ) : children}
             </PlatformGlobalDataProvider>
         </Provider>

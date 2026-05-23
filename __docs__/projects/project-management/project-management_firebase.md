@@ -2,7 +2,7 @@
 
 **Feature:** Project CRUD (Create, Read, Update, Delete)  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Last Updated:** May 23, 2026
 **Priority:** HIGH — Every user creates/manages projects. Core CRUD operations.
 
 ---
@@ -25,6 +25,7 @@
 |-----------|-----------|---------|-----------|-----------|----------|-------|
 | List all projects | `platformSummary/projects_{sId}` | Dashboard/project list | Per dashboard visit | 1 | Direct doc | Summary document pattern — 1 read for all projects. File: `src/database/projects/index.ts:213` |
 | Load single project | `projects/{tId}/{sId}/{projectId}` | User opens project | Per project open | 1 | Direct doc | Full project data load. |
+| Multi-outlet delete guard | `tenants/{tId}` + `projects/{tId}/{sId}` | Delete project in multi-outlet tenant | Rare | 1 tenant doc + 1 query per tenant store | `masterProjectId` query | Uses tenant-scoped `storesList`; does not read global `platformSummary/storesSummary` from mobile/client flows. |
 
 ### Writes
 

@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
@@ -153,6 +154,7 @@ export default function CanonicaSecurityPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/security" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24">

@@ -168,6 +168,7 @@ All mobile screens write data in **identical format** to desktop:
 - **Offline banner:** Implemented in `MobileShell.tsx`
 - **Desktop switch:** "Switch to Desktop" in More screen (sets `localStorage.forceDesktopMode`)
 - **Return banner:** "Return to Mobile" shown when mobile user is in forced desktop mode
+- **Owner PWA launch:** `public/manifest.json` starts at `/today`, and cached `/dashboard` launches also map to the Today tab in `MobileShell`.
 - **Subscription gate:** MobileShell checks `hasValidSubscriptionAccess` — no-sub users see upgrade prompt
 - **Menu upload:** `MenuUploadSheet` enables camera/gallery → optimize → upload → AI extraction from mobile
 - **Add item persistence:** `AddItemSheet` saves to Firestore via optimistic update + background sync

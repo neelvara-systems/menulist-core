@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
@@ -64,6 +65,7 @@ export default function CanonicaResourcesPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/resources" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">

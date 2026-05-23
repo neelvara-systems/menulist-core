@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 import ProductFeatureLandingPage from '../components/ProductFeatureLandingPage';
 import type { CanonicaProductFeature } from '../productFeatures';
 
@@ -31,6 +32,7 @@ export default function ProductFeatureRoutePage({ feature }: { feature: Canonica
 
     return (
         <>
+            <CanonicaPageStructuredData path={feature.href} />
             <CanonicaHeader basePath={basePath} />
             <ProductFeatureLandingPage feature={feature} basePath={basePath} />
             <CanonicaFooter basePath={basePath} />

@@ -27,6 +27,7 @@ export default function SupportControlProductPage() {
             <CanonicaHeader basePath={basePath} />
             <ProductCapabilityLandingPage
                 basePath={basePath}
+                canonicalPath="/product/support-control"
                 eyebrow="Support Control"
                 title="Run docs, tickets, changelog, and widget truth together."
                 description="Canonica keeps customer-facing support surfaces connected so help articles, FAQs, release notes, tickets, and widget answers do not drift into separate systems."

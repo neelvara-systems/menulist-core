@@ -2230,7 +2230,7 @@
             "titlePart1": "Sube tu menú.",
             "titleHighlight": "Publica tu menú oficial en línea.",
             "titlePart2": "",
-            "subtitle": "Empieza con el menú que ya usas. MenuList lo convierte en menú en vivo, página oficial, menú QR, enlace web, vista para clientes y PDF desde un solo lugar que controlas.",
+            "subtitle": "Empieza con el menú que ya usas. MenuList prepara la versión oficial para clientes desde una sola fuente aprobada por el dueño.",
             "cta": "Sube tu menú →",
             "caption": "Empieza con una configuración de 7 días. Revisa el menú público antes de elegir un plan de pago.",
             "surfaceQrMenu": "Menú QR",
@@ -2263,29 +2263,6 @@
             "tile4Desc": "Los precios cambiaron pero el personal sigue citando los antiguos",
             "tile5Label": "Cada actualización es manual",
             "tile5Desc": "Cambiar un precio significa actualizar cinco lugares diferentes"
-        },
-        "Solution": {
-            "title": "Crea una versión oficial. Todo lo demás se mantiene alineado. No lo tocas de nuevo.",
-            "highlight": "se mantiene alineado",
-            "subtitle": "MenuList es el único lugar donde viven tu menú, horarios e información comercial. Actualiza una vez — cada superficie refleja el cambio.",
-            "svgYourMenu": "Tu Menú",
-            "svgQr": "QR",
-            "svgScreens": "Pantallas",
-            "svgWeb": "Web",
-            "svgPrint": "Impresión",
-            "bullet0Title": "Un solo lugar para gestionar",
-            "bullet0Desc": "Menú, horarios e información comercial — todo en un sistema",
-            "bullet1Title": "Las actualizaciones se reflejan en todas partes",
-            "bullet1Desc": "Cambia un precio una vez. Cada superficie lo muestra en segundos.",
-            "bullet2Title": "Sin subidas duplicadas",
-            "bullet2Desc": "QR, pantallas, web e impresión se mantienen alineados automáticamente",
-            "bullet3Title": "Siempre consistente",
-            "bullet3Desc": "Sin sincronización manual. Se gestiona por ti.",
-            "bullet4Title": "Sin confusión de versiones",
-            "bullet4Desc": "Existe una sola versión de tu menú. Sin QR desactualizado, sin PDF obsoleto.",
-            "bullet5Title": "Personal siempre actualizado",
-            "bullet5Desc": "No necesitas anunciar cambios. Todos ven la versión actualizada — automática e instantáneamente.",
-            "reliefAnchor": "Después de publicar, no lo tocas de nuevo."
         },
         "Prepared": {
             "title": "Todo está preparado para ti.",
@@ -2469,9 +2446,7 @@
             "highlight": "oficial",
             "titleEnd": ".",
             "subtitle": "Una versión. Donde sea que los clientes miren.",
-            "cta": "Crea tu MenuList →",
-            "caption": "Toma minutos. Sin configuración técnica.",
-            "bottomText": "Sin reescribir. Sin actualizaciones duplicadas. Sin perseguir PDFs antiguos."
+            "cta": "Crea tu MenuList →"
         },
         "Features": {
             "heroEyebrow": "Lo que obtienes",

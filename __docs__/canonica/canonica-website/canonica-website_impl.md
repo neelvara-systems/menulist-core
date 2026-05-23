@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.18
+> **Version:** 1.2.20
 > **Last Updated:** 2026-05-23
 > **Audience:** Developers
 
@@ -16,6 +16,14 @@
 | Components | React Server Components by default; client islands only where interaction needs state |
 | Links | `CanonicaLink` wrapper for public-site links; `src/constants/canonica/routes.ts` for dashboard route constants without sidebar icon bundle cost |
 | Dependencies | Zero new npm packages |
+
+## PWA Brand Assets
+
+Canonica website and dashboard metadata use `src/lib/canonica/pwaAssets.ts` for iOS startup image declarations. The generated startup PNGs live in `public/canonica-splash/apple-splash-*.png` and are produced by `npm run generate:canonica-splash` from the approved `public/canonica-logo-mark-wide.png` source mark.
+
+The root MenuList layout keeps MenuList startup images in `metadata.appleWebApp.startupImage`; Canonica child layouts override that metadata with `getStaticCanonicaAppleStartupImages()` so Canonica install/splash contexts do not inherit MenuList startup images.
+
+`src/app/loading.tsx` keeps MenuList as the default loader brand and exposes `brand="canonica"` for Canonica fallback loaders. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects Canonica runtime routes and swaps to the shared `CanonicaAnimatedLogo` atom.
 
 ---
 
@@ -64,6 +72,8 @@ src/app/sites/canonica/
 ├── terms-of-service/page.tsx      # Public terms of service
 ├── sitemap.xml/route.ts           # Canonica sitemap.xml route handler
 ├── robots.txt/route.ts            # Canonica robots.txt route handler
+├── llms.txt/route.ts              # Short product-domain agent-readable context
+├── llms-full.txt/route.ts         # Extended product-domain agent-readable context and boundaries
 ├── siteConfig.ts                  # Shared public site metadata and route registry
 ├── enginePillars.ts               # Implemented Canonica engine pillar copy
 ├── systemCoverage.ts              # Code-backed system coverage groups for homepage
@@ -94,7 +104,8 @@ src/app/sites/canonica/
     ├── UseCaseLandingPage.tsx     # Shared wrapper for role-specific use-case pages
     ├── ProductCapabilityLandingPage.tsx # Shared template for product-area landing pages
     ├── ProductFeatureLandingPage.tsx # Shared template for KB/FAQ/changelog/ticket feature pages
-    ├── StructuredData.tsx         # Organization/WebSite/SoftwareApplication JSON-LD
+    ├── StructuredData.tsx         # Homepage Organization/WebSite/SoftwareApplication/WebPage/Breadcrumb JSON-LD
+    ├── PageStructuredData.tsx     # Per-route WebPage + BreadcrumbList JSON-LD from CANONICA_PUBLIC_PAGES
     └── CTASection.tsx             # Homepage bottom CTA
 ```
 
@@ -137,6 +148,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - The homepage now borrows the modern product-scene pattern from high-performing SaaS sites: the first proof after the hero is a large desktop-style Canonica workflow view rather than another text grid.
 - The product scene is implemented as responsive HTML/CSS instead of a static raster screenshot so it does not expose private workspace data, does not become stale after dashboard UI changes, and keeps public browsing at zero Firebase cost.
 - The `/product` page reuses the same product scene before the architecture deep dive so buyers see the working owner flow before reading implementation concepts.
+- May 23 agent-context pass added product-domain `llms.txt` and `llms-full.txt` routes so agents reading `canonica.app` get Canonica-specific product context, route links, non-goals, mutation boundaries, and structured-data guidance instead of falling back to MenuList's business-truth context.
 - May 22 positioning pass made the demo the hero primary CTA and reframed the homepage around page-aware support truth rather than generic AI support.
 - May 22 founder-relief pass changed the hero to "You build revenue. Canonica keeps support accurate." while keeping the product promise scoped to approved page-aware answers, fallback signals, and human-reviewed knowledge updates.
 - May 22 presentation pass replaced the dense demo layout with a tabbed product-surface row and large browser-style product canvas, moved product proof closer to modern SaaS screenshot sections, and rebuilt the widget section as a bento grid without adding runtime data calls.
@@ -155,6 +167,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Comparison now explicitly separates AI chatbot, helpdesk, knowledge base, and Canonica so buyers do not misclassify Canonica as a helpdesk replacement.
 - FAQ now defines "not a chatbot", canonical answers, missing-answer behavior, and human approval before authoritative answers.
 - Role-specific use-case pages were added for founders, support teams, product teams, and engineering using static content only.
+- May 23 agent-readable SEO/AEO hardening added page-level WebPage and BreadcrumbList JSON-LD for every public Canonica route in `CANONICA_PUBLIC_PAGES`, switched homepage/FAQ JSON-LD to the shared server-rendered `JsonLdScript`, added `hasPart` route references to the WebSite graph, and made `robots.txt` explicitly enumerate the shared AI/search crawler allowlist. `npm run verify:agent-readiness` now checks Canonica route registry, structured-data wrappers, robots, sitemap, and LLM context coverage.
 
 ---
 
@@ -346,3 +359,5 @@ Conversion analytics is client-side only:
 | 2026-05-23 | 1.2.16 | Added homepage-only section-band styling in `styles.css` so sections alternate through subtle dark shades with more vertical breathing space while keeping normal website browsing static and zero-Firebase-cost |
 | 2026-05-23 | 1.2.17 | Added Canonica-specific viewport reveal motion through `CanonicaScrollReveal` and `scroll-reveal.css`, covering public page sections, semantic cards, rounded grid/link panels, CTA controls, and footer groups with reduced-motion support |
 | 2026-05-23 | 1.2.18 | Added `SupportKnowledgeMapSection` on the homepage and Product page to make Canonica's source-map model self-explanatory without positioning it as a chatbot, helpdesk replacement, docs CMS, or autopilot |
+| 2026-05-23 | 1.2.19 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as MenuList business truth, a helpdesk replacement, or an AI autopilot |
+| 2026-05-23 | 1.2.20 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, switched JSON-LD injection to the shared server helper, added WebSite route references, and verified robots/sitemap/LLM coverage with `verify:agent-readiness` |

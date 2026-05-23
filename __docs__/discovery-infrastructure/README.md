@@ -2,7 +2,7 @@
 
 > **Consolidated documentation** for AI discovery, machine readability, schema.org, GEO/AEO, and ecosystem interoperability.
 > Merged from: `seo-aeo-discovery-infrastructure/`, `infrastructure-gap-analysis/`, `discovery-infrastructure/`
-> Last Updated: May 9, 2026
+> Last Updated: May 23, 2026
 
 ---
 
@@ -11,6 +11,25 @@
 MenuList = **customer-facing business truth infrastructure** — the canonical structured source of menu truth, hours truth, public business identity, and structured restaurant data.
 
 MenuList is **NOT** a discovery platform, ranking system, marketplace, or food search engine. AI engines do the discovery; MenuList provides the structured data they consume.
+
+## Agentic Web / PAL Position
+
+**PAL = Public Agentic Layer.** In MenuList terms, this is not a new operational product and not a WebMCP-first strategy. It is the public readability layer on top of the existing business-truth system:
+
+1. humans read the public menu and Official Business Page
+2. search engines and crawlers read SSR HTML, robots, sitemap, and schema.org JSON-LD
+3. AI/browser agents read semantic HTML, accessibility tree, structured data, `llms.txt`, and `llms-full.txt`
+4. approved external systems use gated public API/POS surfaces where enabled
+
+Current production contract:
+
+- `public/llms.txt` and `public/llms-full.txt` describe MenuList's public business truth and agent action boundaries.
+- MenuList homepage and active platform pages emit server-rendered JSON-LD for page identity and breadcrumbs.
+- Platform sitemap and LLM inventories advertise active pages only; legacy redirect routes such as `/product` are not discovery destinations.
+- Public agents may read and summarize owner-published facts, then route users to official handoff links when those links exist.
+- Public agents must not directly mutate menu prices, hours, item availability, business identity, POS state, payments, billing, or owner settings.
+- Unknown or missing facts must remain unknown, especially allergens, gluten-free preparation, halal/vegan status, live stock, and availability details not explicitly published by the business.
+- WebMCP is treated as a future browser-agent enhancement, not the current production contract. Any WebMCP implementation must be feature-flagged, visible in the UI, scoped to read-only or pending-suggestion workflows, and covered by evals before release.
 
 ---
 
@@ -51,6 +70,7 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 | ----------------------------------------------------------------------------- | ------------------------------------ |
 | [\_archive/chatgpt-review.md](./_archive/chatgpt-review.md)                   | Original ChatGPT conversation review |
 | [\_archive/chatgpt-feedback-round2.md](./_archive/chatgpt-feedback-round2.md) | Post-implementation feedback         |
+| [\_archive/chatgpt-review-agentic-web-webmcp.md](./_archive/chatgpt-review-agentic-web-webmcp.md) | Agentic web / WebMCP video and PAL plan review |
 
 ---
 
@@ -85,10 +105,12 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 | ------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
 | Platform robots.txt (explicit AI bot rules) | `public/robots.txt:1-40`                   | ✅ OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
 | Per-store robots.txt                        | `src/app/client/robots.ts:12-61`           | ✅ Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules              |
-| Platform sitemap                            | `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts` | ✅ Shared platform route inventory; dynamic sitemap reads one source of truth |
+| Platform sitemap                            | `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts`, `public/sitemap.xml` | ✅ Shared active route inventory; dynamic/static sitemap omit redirect-only `/product` |
 | Per-store sitemap (real lastModified)       | `src/app/client/sitemap.ts:167-229`        | ✅ OBP + active canonical menu/outlet URLs; store/outlet `modifiedOn` drives freshness |
 | SSR (server-side rendering)                 | Next.js SSR                                | ✅ Full HTML on first request                                            |
 | LLM discovery docs                          | `public/llms.txt` + `public/llms-full.txt` | ✅ Current category/type-aware public business data description          |
+| Website page JSON-LD                        | `src/components/website/SchemaMarkup.tsx`, `src/components/website/WebsitePageStructuredData.tsx` | ✅ Server-rendered homepage graph plus WebPage/BreadcrumbList on active platform pages |
+| Agent-readiness verifier                    | `scripts/verification/verify-agent-readiness.js` | ✅ Checks MenuList and Canonica route registries, structured-data wrappers, robots, sitemap, and LLM files |
 
 ### Freshness & Truth Signals
 
@@ -111,6 +133,7 @@ MenuList is **NOT** a discovery platform, ranking system, marketplace, or food s
 | Public API v1 (business + menu)        | ✅     |
 | POS Webhook Sync (push-based)          | ✅     |
 | `llms.txt` + `llms-full.txt`           | ✅     |
+| Agent action boundary docs             | ✅     |
 | Per-store sitemap with freshness       | ✅     |
 
 ---
@@ -270,3 +293,4 @@ MenuList is infrastructure, not SaaS. The primary metric is **dataset coverage**
 | Mar 10, 2026 | **DOC CONSOLIDATION:** Merged `seo-aeo-discovery-infrastructure/` + `infrastructure-gap-analysis/` into this folder                                             |
 | Mar 10, 2026 | **DOC UPDATE:** Added Entity Identity Rules (invariants), Item Similarity Matching documentation, Dataset Coverage Metrics, strengthened Doctrine Rules         |
 | May 9, 2026  | **PARITY UPDATE:** Corrected discovery copy to avoid Google/Maps/AI overclaims, updated `/client` route evidence, robots/sitemap status, flag defaults, and current llms.txt line counts |
+| May 23, 2026 | **AGENT-READABLE WEBSITE HARDENING:** Added server-rendered website JSON-LD coverage, removed legacy `/product` from platform discovery inventories, documented PAL/WebMCP boundaries, and added `verify:agent-readiness` for MenuList and Canonica |

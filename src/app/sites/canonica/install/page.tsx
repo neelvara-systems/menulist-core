@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Widget Install',
@@ -79,6 +80,7 @@ export default function CanonicaInstallPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/install" />
             <CanonicaHeader basePath={basePath} />
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">

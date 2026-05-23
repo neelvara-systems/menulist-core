@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
+import JsonLdScript from '@/components/seo/JsonLdScript';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaPageStructuredData from '../components/PageStructuredData';
 import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
@@ -111,11 +113,9 @@ export default function CanonicaFaqPage() {
 
     return (
         <>
+            <CanonicaPageStructuredData path="/faq" />
             <CanonicaHeader basePath={basePath} />
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-            />
+            <JsonLdScript id="canonica-faq-jsonld" data={faqJsonLd} />
             <main className="pt-16">
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">

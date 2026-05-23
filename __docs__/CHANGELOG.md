@@ -6,6 +6,22 @@
 
 ---
 
+## May 23, 2026 — Agent-Readable SEO/AEO Hardening
+
+### Added
+
+- **MenuList agent context hardened** — `llms.txt` and `llms-full.txt` now explain what public agents may read, which official handoff links they may open, when unknown should stay unknown, and which owner-controlled actions remain out of public scope.
+- **Canonica agent context added** — Canonica product domains now serve dedicated `llms.txt` and `llms-full.txt` routes so agents read Canonica as a support knowledge control plane, not as MenuList business truth or a helpdesk replacement.
+- **MenuList structured data expanded** — The homepage JSON-LD now renders in server HTML, and active platform marketing/legal pages emit WebPage and BreadcrumbList JSON-LD for clearer machine-readable page identity.
+- **Canonica structured data expanded** — Public Canonica pages now emit page-level WebPage and BreadcrumbList JSON-LD from the shared route registry, while homepage WebSite structured data references the active public route set.
+- **Agent-readiness verifier added** — `npm run verify:agent-readiness` checks MenuList and Canonica route registries, robots, sitemap, LLM files, redirected-route exclusions, and structured-data wrappers.
+- **Agentic web plan documented** — The WebMCP video/ChatGPT plan is recorded under Discovery Infrastructure with the accepted PAL boundary and deferred WebMCP/MCP gates.
+
+### Changed
+
+- **MenuList platform discovery cleaned up** — Public discovery URLs now use `https://menulist.ai`, and the legacy `/product` redirect remains functional but is no longer listed in sitemap or LLM discovery files.
+- **Canonica robots policy made explicit** — Canonica `robots.txt` now enumerates the shared AI/search crawler allowlist and links product-domain LLM context files.
+
 ## May 23, 2026 — External Menu Sync Owner Clarity
 
 ### Changed
@@ -112,6 +128,8 @@
 ### Added
 
 - **Owner app shortcuts added** — Installed owner PWAs now expose Today, Menu, Share & QR, and Feedback shortcuts from the app icon, using existing owner routes and mobile navigation so role permissions still apply.
+- **Owner app shortcut launches hardened** — Shortcut URLs now use direct owner routes instead of hash-only mobile routes, so launchers that drop URL fragments still open the intended mobile screen.
+- **Owner app launch restored to Today** — Opening the installed owner PWA now starts on Today again, and older cached `/dashboard` launches map back to the Today tab on mobile.
 - **Mobile profile owns account access** — The More tab user card now opens the signed-in profile, profile edit supports name, email, and phone fields, and password/passcode change moved inside that profile flow instead of staying as a top-level More action.
 
 ## May 19, 2026 — Role Permission Set Hardening
