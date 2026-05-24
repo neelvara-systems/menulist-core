@@ -5,11 +5,15 @@ const OBJECTIONS = [
     },
     {
         question: 'Will answers publish automatically?',
-        answer: 'No. Canonica can generate drafts and proposals, but authoritative answers are owner-approved canonical answers.',
+        answer: 'No. Canonica can generate drafts and proposals, but official answers require owner approval.',
     },
     {
         question: 'Do I need a full docs site first?',
-        answer: 'No. Start with FAQs, release notes, product pages, setup guides, and common support answers. Canonica turns those into review work.',
+        answer: 'No. Start with FAQs, release notes, app pages, setup guides, and common support answers. Canonica turns those into review work.',
+    },
+    {
+        question: 'I built my app with AI. Is Canonica still useful?',
+        answer: 'Yes, if real users are asking repeated questions. Canonica helps support keep up when the product ships faster than docs and support processes.',
     },
     {
         question: 'How hard is install?',

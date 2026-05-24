@@ -136,6 +136,16 @@ export const SECRET_GROUPS = {
     ] as string[],
 };
 
+export const FUNCTION_MAX_INSTANCES = {
+    base: 10,
+    aiCallable: 5,
+    aiEventTrigger: 5,
+    aiParallel: 5,
+    messagingWebhook: 20,
+    scheduler: 1,
+    callableLight: 10,
+} as const;
+
 // ═══════════════════════════════════════════════════════════════
 // FUNCTION OPTIONS — Reusable base configs for function definitions
 // ═══════════════════════════════════════════════════════════════
@@ -146,6 +156,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         timeoutSeconds: 900,
         memory: '2GiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.base,
     },
 
     /** Callable functions that use Gemini AI */
@@ -153,6 +164,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         timeoutSeconds: 900,
         memory: '2GiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.aiCallable,
         secrets: SECRET_GROUPS.AI,
     },
 
@@ -161,6 +173,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         timeoutSeconds: 540,
         memory: '2GiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.aiEventTrigger,
         secrets: SECRET_GROUPS.AI,
     },
 
@@ -169,6 +182,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         timeoutSeconds: 540,
         memory: '2GiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.aiParallel,
         secrets: SECRET_GROUPS.AI_WITH_RATE_LIMIT,
     },
 
@@ -177,6 +191,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         timeoutSeconds: 30,
         memory: '512MiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.messagingWebhook,
         secrets: SECRET_GROUPS.WHATSAPP,
     },
 
@@ -184,6 +199,7 @@ export const FUNCTION_OPTIONS = {
     schedulerLight: {
         region: 'us-central1' as const,
         memory: '128MiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     },
 
     /** Medium scheduled tasks */
@@ -191,6 +207,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         memory: '512MiB' as const,
         timeoutSeconds: 300,
+        maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     },
 
     /** Lightweight callable (no secrets needed) */
@@ -198,6 +215,7 @@ export const FUNCTION_OPTIONS = {
         region: 'us-central1' as const,
         timeoutSeconds: 30,
         memory: '256MiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.callableLight,
     },
 };
 

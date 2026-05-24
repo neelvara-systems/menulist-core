@@ -3,10 +3,10 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
 
 const AREA_PROOF: Record<string, string> = {
-    'Launch Setup': 'Workspace, product profile, starter knowledge, surfaces, widget key, and activation readiness.',
-    'Page-Aware Widget': 'Safe page context, allowed origins, blocked routes, hosted help, and approved answers before fallback.',
-    'Support Control': 'Docs, FAQ, changelog, tickets, conversations, and weekly review output from one support layer.',
-    'Knowledge Governance': 'Ontology, canonical answers, drift, signal mutation, coverage, and trust/readiness metrics.',
+    'Set up support': 'Workspace, product profile, starter knowledge, key app pages, widget key, and activation readiness.',
+    'In-app help widget': 'Safe page context, allowed origins, blocked routes, hosted help, and approved answers before fallback.',
+    'Help center + tickets': 'Docs, FAQ, changelog, ticket fallback, conversations, and weekly review output from one support layer.',
+    'Review approved answers': 'Product structure, approved answers, stale-answer review, repeated questions, coverage, and readiness metrics.',
 };
 
 export default function ProductAreasSection({ basePath = '' }: { basePath?: string }) {
@@ -16,14 +16,14 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
                 <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
                     <div>
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
-                            Product areas
+                            What Canonica gives you
                         </p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                            Explore Canonica the way buyers evaluate it.
+                            Support for the parts founders actually need first.
                         </h2>
                     </div>
                     <p className="text-base leading-relaxed text-[#a0a0c0]">
-                        Like a real product suite, each Canonica capability has its own job and its own page. Start with setup, understand the widget, then evaluate support control and governance.
+                        Start with setup, add the widget, publish help, and review missing answers. The deeper control-plane language stays available after the value is clear.
                     </p>
                 </div>
 

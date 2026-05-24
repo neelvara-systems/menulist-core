@@ -31,6 +31,7 @@ import {
     Tabs,
     Tag,
     Typography,
+    theme,
 } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { LuCopy, LuRefreshCw } from 'react-icons/lu';
@@ -45,6 +46,7 @@ interface JobInspectorProps {
 }
 
 export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: JobInspectorProps) {
+    const { token } = theme.useToken();
     const [loading, setLoading] = useState(false);
     const [retrying, setRetrying] = useState(false);
     const [job, setJob] = useState<ExtractionJobDetails | null>(null);
@@ -159,7 +161,7 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
 
                 {/* Error details */}
                 {job.error && (
-                    <div style={{ background: '#fff2f0', padding: 12, borderRadius: 6, border: '1px solid #ffccc7' }}>
+                    <div style={{ background: token.colorErrorBg, padding: 12, borderRadius: 6, border: `1px solid ${token.colorErrorBorder}` }}>
                         <Text strong type="danger" style={{ display: 'block', marginBottom: 4 }}>Error Details</Text>
                         <Text type="danger">{job.error.message}</Text>
                         <div style={{ marginTop: 4, display: 'flex', gap: 8 }}>
@@ -208,7 +210,7 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     </Button>
                 </div>
                 <pre style={{
-                    background: '#f5f5f5',
+                    background: token.colorFillAlter,
                     padding: 12,
                     borderRadius: 6,
                     fontSize: 11,
@@ -225,9 +227,9 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     <div style={{ marginTop: 16 }}>
                         <Text strong style={{ display: 'block', marginBottom: 8 }}>Confidence Summary</Text>
                         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                            <Statistic title="High" value={job.result.confidenceSummary.highConfidenceCount} valueStyle={{ color: '#52c41a' }} />
-                            <Statistic title="Medium" value={job.result.confidenceSummary.mediumConfidenceCount} valueStyle={{ color: '#faad14' }} />
-                            <Statistic title="Low" value={job.result.confidenceSummary.lowConfidenceCount} valueStyle={{ color: '#ff4d4f' }} />
+                            <Statistic title="High" value={job.result.confidenceSummary.highConfidenceCount} valueStyle={{ color: token.colorSuccess }} />
+                            <Statistic title="Medium" value={job.result.confidenceSummary.mediumConfidenceCount} valueStyle={{ color: token.colorWarning }} />
+                            <Statistic title="Low" value={job.result.confidenceSummary.lowConfidenceCount} valueStyle={{ color: token.colorError }} />
                             <Statistic title="Avg Score" value={Math.round(job.result.confidenceSummary.averageConfidenceScore * 100) / 100} />
                         </div>
                     </div>

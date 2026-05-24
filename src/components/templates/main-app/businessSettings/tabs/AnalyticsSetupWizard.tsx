@@ -1,5 +1,5 @@
 import { CheckCircleOutlined, InfoCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Image, Modal, Space, Steps, Switch, Typography } from 'antd';
+import { Alert, Button, Card, Image, Modal, Space, Steps, Switch, Typography, theme } from 'antd';
 import React, { useState } from 'react';
 
 const { Text, Title, Paragraph } = Typography;
@@ -12,6 +12,7 @@ interface AnalyticsSetupWizardProps {
 }
 
 const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClose, form }) => {
+    const { token } = theme.useToken();
     const [currentStep, setCurrentStep] = useState(0);
     // Using parent form directly
 
@@ -251,7 +252,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
             content: (
                 <Card variant="borderless">
                     <Space direction="vertical" align="center" style={{ width: '100%', textAlign: 'center' }}>
-                        <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a' }} />
+                        <CheckCircleOutlined style={{ fontSize: '48px', color: token.colorSuccess }} />
                         <Title level={4}>Great Job! You&apos;re All Set!</Title>
                         <Paragraph>
                             Your analytics are now ready to go! You&apos;ll start seeing data in about 24 hours.

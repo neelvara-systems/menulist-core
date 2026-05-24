@@ -5,10 +5,10 @@ import CanonicaLogoMark from './CanonicaLogoMark';
 const FOOTER_LINKS = {
     Product: [
         { label: 'Product', href: '/product' },
-        { label: 'Launch Setup', href: '/product/launch-setup' },
-        { label: 'Page-Aware Widget', href: '/product/page-aware-widget' },
-        { label: 'Support Control', href: '/product/support-control' },
-        { label: 'Knowledge Governance', href: '/product/knowledge-governance' },
+        { label: 'Set up support', href: '/product/launch-setup' },
+        { label: 'In-app help widget', href: '/product/page-aware-widget' },
+        { label: 'Help center + tickets', href: '/product/support-control' },
+        { label: 'Review approved answers', href: '/product/knowledge-governance' },
         ...CANONICA_SUPPORT_FEATURES.map((feature) => ({ label: feature.label, href: feature.href })),
         { label: 'Use Cases', href: '/use-cases' },
         { label: 'Demo', href: '/demo' },
@@ -18,6 +18,7 @@ const FOOTER_LINKS = {
     Resources: [
         { label: 'Resources', href: '/resources' },
         { label: 'Widget Install', href: '/install' },
+        { label: 'AI-built SaaS', href: '/use-cases/ai-built-saas' },
         { label: 'Page-Aware Widget', href: '/page-aware-support-widget' },
         { label: 'Hosted Help Center', href: '/hosted-help-center-for-saas' },
         { label: 'Updates', href: '/updates' },
@@ -44,7 +45,7 @@ export default function CanonicaFooter({ basePath = '' }: { basePath?: string })
                             <span className="text-lg font-semibold text-white">Canonica</span>
                         </div>
                         <p className="mt-4 text-sm leading-relaxed text-[#6b6b8a]">
-                            Support knowledge control plane for small SaaS teams.
+                            Support layer for AI-built SaaS apps.
                             Page-aware help, hosted docs, and approved answers before fallback.
                         </p>
                     </div>

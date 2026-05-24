@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.1 (Redundant Reassurance Copy Cleanup)
+**Version:** 3.6.10 (Multi-location Homepage-Style Pulse)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 23, 2026
+**Last Updated:** May 24, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,9 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.1** | **Redundant Reassurance Copy Cleanup** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.10** | **Multi-location Homepage-Style Pulse** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
-Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> How it works -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Source-to-public bridge -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Version 3.5.1 adds system dark mode to the public website without changing the default light-mode positioning. Dark mode uses dark gray `#121212`-family surfaces instead of pure black, and the shared website tokens now cover headers, sections, cards, pricing, forms, drawers, and supporting create-menu pages. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -38,6 +38,24 @@ Version 3.5.9 hardens the public agent-readable context files after reviewing Ch
 Version 3.6.0 completes the website-layer SEO/AEO hardening pass for the agentic web. Homepage JSON-LD is server-rendered, active marketing/legal pages emit page-level WebPage and BreadcrumbList JSON-LD, discovery URLs use `https://menulist.ai`, `/product` remains a framework-level permanent legacy redirect but is omitted from sitemap/LLM discovery, and `npm run verify:agent-readiness` validates MenuList and Canonica discovery surfaces. WebMCP, MCP, pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
 Version 3.6.1 removes repeated reassurance and surface-list copy from the public website. The homepage final CTA is now title/subtitle/CTA only, supporting-page heroes no longer repeat the phone/PWA and review-before-publish helper lines, the pricing page no longer repeats the full customer-surface promise, and the footer/FAQ/hero copy now use shorter official-source language. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
+
+Version 3.6.2 keeps the homepage workflow source map as a three-part structure on mobile instead of collapsing it into a long vertical list. The compact phone layout preserves inputs -> MenuList owner review -> public outputs while reducing mobile scroll height. Copy, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.3 extends the same mobile source-map treatment to the supporting-page diagrams. `/how-it-works` now keeps source inputs -> MenuList owner review -> customer surfaces on phone screens, and `/multi-location` keeps approved master -> linked outlet cards instead of collapsing into a plain vertical stack. The active source-map audit found three mounted website diagrams: homepage workflow, How It Works, and Multi-location. Copy, locale strings, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.4 adjusts the mobile-only diagram rules after visual review. The homepage workflow and `/how-it-works` source map now read as three mobile rows: inputs spread horizontally, MenuList owner review centered, and outputs below, with subtle static dotted connectors aligned to that row layout and anchored to card edges. `/how-it-works` keeps outputs as two rows of three cards; `/multi-location` keeps a compact mobile master-to-outlet flow with three outlet cards while desktop still shows five. The homepage, How It Works, and Multi-location diagrams now share theme-aware light and dark treatment instead of mixing light homepage cards with dark supporting-page maps in light mode. Copy, locale strings, desktop layouts, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.5 adds a subtle live pulse layer to the three website source-map diagrams. The static dotted connector paths remain in place, and the pulse travels from source inputs into MenuList, pauses while the center rings keep a light always-on pulse around the logo, then moves from MenuList toward the output cards; the multi-location diagram pulses from the approved master toward outlet cards. Destination cards briefly highlight only their existing border when the pulse reaches them. The animation is CSS/SVG-only and disabled for reduced-motion users. Copy, locale strings, desktop layouts, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.6 renames the homepage workflow section from a literal "How it works" framing to a source-to-public value bridge: "One menu becomes every customer surface." The homepage keeps the simpler four-output diagram after the problem section, while `/how-it-works` remains the deeper explanation page with the fuller output set. Diagram structure, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.7 changes the multi-location diagram pulse from sequential outlet lines to simultaneous outlet propagation, matching the product promise that approved master updates can reach linked outlets together. The master card now uses the same card surface, border radius, and border treatment as outlet cards, and the MenuList logo no longer sits inside a separate filled icon tile. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.8 rebuilds the multi-location pulse layer away from sequential outlet timing so approved master updates read as simultaneous propagation to linked outlets. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.9 aligns the `/how-it-works` supporting source-map output connector origin with the homepage source-map pattern so output paths begin under the center logo/ring and visually emerge from the core boundary. It also strengthens the supporting source-map ring ripple in light mode while preserving the calmer dark-mode ring treatment. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.10 changes the multi-location diagram to use the same animated pulse-stroke pattern as the homepage source map instead of custom moving circle dots. The static dotted paths remain in place, the pulse path uses `ws-map-pulse-flow` with the same dash shape and duration as the homepage, and all outlet paths stay synchronized. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 
@@ -586,6 +604,12 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.7 | May 24, 2026 | Changed the multi-location diagram to pulse all outlet paths together and aligned the master card treatment with outlet cards. |
+| 3.6.6 | May 24, 2026 | Renamed the homepage workflow section to a source-to-public value bridge while keeping the simpler homepage diagram distinct from the fuller `/how-it-works` diagram. |
+| 3.6.5 | May 24, 2026 | Added a reduced-motion-aware pulse overlay, light always-on center-ring pulse, and synchronized destination-card border-only highlight to the homepage, How It Works, and Multi-location source-map diagrams while keeping the static dotted paths in place. |
+| 3.6.4 | May 24, 2026 | Switched homepage and How It Works diagrams to mobile rows with edge-anchored static dotted paths; grouped How It Works outputs into two mobile rows, reduced Multi-location mobile outlet cards to three, and aligned diagram light/dark theme treatment across pages while leaving desktop layouts unchanged. |
+| 3.6.3 | May 24, 2026 | Extended compact mobile source-map treatment to `/how-it-works` and `/multi-location`; verified the active website diagram set is homepage workflow, How It Works, and Multi-location. |
+| 3.6.2 | May 24, 2026 | Kept the homepage workflow source map as a compact three-column mobile layout instead of a long vertical stack, preserving the desktop structure on phone screens. |
 | 3.6.1 | May 23, 2026 | Removed repeated phone/PWA, review-before-publish, and full surface-list reassurance copy from final CTA, supporting-page heroes, pricing, footer, FAQ, and locale-backed copy. |
 | 3.5.9 | May 23, 2026 | Hardened `llms.txt` and `llms-full.txt` with PAL agent boundaries: read public facts, route to official handoffs, do not mutate owner truth, do not infer missing/sensitive claims, and treat WebMCP as future gated scope. |
 | 3.5.8 | May 23, 2026 | Removed the old homepage SolutionSection because the one-source diagram repeated the hero, workflow source map, setup proof, and public-surface proof. |

@@ -15,6 +15,8 @@ import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { uploadPreparedMediaImage } from '@database/storage/uploadPreparedMediaImage';
 import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
 
+const OBP_PUBLIC_IMAGE_CACHE_CONTROL = 'public,max-age=31536000,immutable';
+
 function getPhotoExtension(mimeType?: string): string {
     return getMediaFileExtension(mimeType || 'image/jpeg');
 }
@@ -54,7 +56,10 @@ export async function uploadOBPPhoto(
     });
 
     const storageRef = ref(firebaseStorage, storagePath);
-    const metadata = { contentType: file.type || 'image/jpeg' };
+    const metadata = {
+        cacheControl: OBP_PUBLIC_IMAGE_CACHE_CONTROL,
+        contentType: file.type || 'image/jpeg',
+    };
 
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
@@ -102,7 +107,10 @@ export async function uploadOBPCover(
     });
 
     const storageRef = ref(firebaseStorage, storagePath);
-    const metadata = { contentType: file.type || 'image/jpeg' };
+    const metadata = {
+        cacheControl: OBP_PUBLIC_IMAGE_CACHE_CONTROL,
+        contentType: file.type || 'image/jpeg',
+    };
 
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 

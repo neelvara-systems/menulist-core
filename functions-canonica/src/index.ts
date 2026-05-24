@@ -36,6 +36,7 @@ import { regenerateEmbeddingLogic } from './logic/regenerateEmbedding';
 import { EmbedArticleType, IngestionJobCategoriesMap } from './types';
 
 const CANONICA_AI_OPTIONS = {
+    region: 'us-central1' as const,
     timeoutSeconds: 540,
     memory: '1GiB' as const,
     maxInstances: 3,
@@ -49,6 +50,7 @@ const CANONICA_AI_OPTIONS = {
 
 export const canonicaNightly = onSchedule(
     {
+        region: 'us-central1',
         schedule: '0 3 * * *',
         timeZone: 'UTC',
         timeoutSeconds: 540,
@@ -83,6 +85,7 @@ function isManualTriggerAuthorized(req: any): boolean {
 
 export const triggerCanonicaNightly = onRequest(
     {
+        region: 'us-central1',
         timeoutSeconds: 540,
         memory: '512MiB',
         maxInstances: 1,
@@ -120,6 +123,7 @@ export const triggerCanonicaNightly = onRequest(
 
 export const processIntegrationEvent = onDocumentCreated(
     {
+        region: 'us-central1',
         document: `${DB_COLLECTIONS.CANONICA_INTEGRATION_EVENTS}/{eventId}`,
         timeoutSeconds: 60,
         memory: '256MiB',

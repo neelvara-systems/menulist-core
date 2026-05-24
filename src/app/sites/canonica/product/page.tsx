@@ -12,7 +12,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica brings page-aware support truth, launch setup, hosted help domains, canonical answers, drift review, and support-gap governance into one SaaS support control plane.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: page-aware widget, hosted help, ticket fallback, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -28,8 +28,8 @@ const FEATURES = [
     {
         id: 'launch-setup',
         badge: 'Launch Setup',
-        title: 'Go from blank support to a working support layer',
-        description: 'Create a workspace, add your product details, import the help content you already have, and verify the widget on your own product pages.',
+        title: 'Set up support before users start asking',
+        description: 'Create a workspace, add your app details, import starter knowledge, map important pages, and verify the widget before support goes live.',
         capabilities: [
             'Product profile, support email, billing model, workspace subscription, and main product pages',
             'Knowledge import for docs, FAQs, starter answers, and existing files',
@@ -55,10 +55,10 @@ const FEATURES = [
     {
         id: 'canonical-answers',
         badge: 'Knowledge Governance',
-        title: 'Serve approved answers before fallback',
-        description: 'Canonica treats approved support answers as durable product knowledge. Fallback can help while coverage grows, but repeated fallback becomes a visible gap.',
+        title: 'Approve answers before they become official',
+        description: 'Canonica treats approved answers as durable product knowledge. Fallback can help while coverage grows, but repeated fallback becomes a visible gap.',
         capabilities: [
-            'Canonical-first retrieval before RAG fallback',
+            'Approved-answer retrieval before fallback',
             'Owner-approved answer drafts and mutation proposals',
             'Article-backed FAQ generation and review for short support answers',
             'Coverage metrics by surface, entity, and answer readiness',
@@ -69,7 +69,7 @@ const FEATURES = [
     {
         id: 'release-awareness',
         badge: 'Release Awareness',
-        title: 'Keep support aligned when the product changes',
+        title: 'When the product changes, support gets reviewed',
         description: 'Changelogs, product surfaces, and affected answers stay connected, so a release can point owners to the support content that needs review.',
         capabilities: [
             'Changelog entries assigned to surfaces, tags, and affected answers',
@@ -82,12 +82,12 @@ const FEATURES = [
     {
         id: 'support-gap-loop',
         badge: 'Support Gap Loop',
-        title: 'Turn missed questions into better knowledge',
+        title: 'Use missed questions to create better answers',
         description: 'Tickets, low-confidence answers, and negative feedback become signals. Canonica clusters those signals and routes the useful ones into owner-reviewed improvements.',
         capabilities: [
             'Fire-and-forget signal writes with bounded payloads',
             'Signal-to-knowledge queue for recurring gaps',
-            'Draft canonical answers for owner review',
+            'Draft approved answers for owner review',
             'Ticket resolution extraction and safe ticket context when a support case teaches the product',
             'Cost-conscious summaries for dashboards, scheduler discovery, and product friction review',
         ],
@@ -95,9 +95,9 @@ const FEATURES = [
 ];
 
 const OUTCOMES = [
-    ['For the founder', 'Answer repeated billing, onboarding, settings, and release questions before they become manual support work.'],
-    ['For the user', 'Get help from the exact product page where they are stuck instead of searching a generic docs site.'],
-    ['For support truth', 'Keep approved answers, FAQs, changelogs, tickets, and product surfaces connected as the product changes.'],
+    ['For the founder', 'Launch support before repeated billing, onboarding, settings, and release questions become manual work.'],
+    ['For the user', 'Get help from the exact app page where they are stuck instead of searching a generic docs site.'],
+    ['For the product', 'Keep approved answers, FAQs, changelogs, tickets, and app pages connected as the product changes.'],
 ];
 
 export default function CanonicaProductPage() {
@@ -112,10 +112,10 @@ export default function CanonicaProductPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Product</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        The support knowledge loop behind accurate SaaS answers.
+                        The support layer for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-[#a0a0c0]">
-                        Canonica connects page-aware widget context, hosted help, approved canonical answers, release-aware review, and recurring-gap signals into one governed support-truth loop.
+                        Canonica connects your app pages, help content, widget, tickets, releases, and approved answers so users get correct support while your product keeps changing.
                     </p>
                 </section>
 
@@ -140,7 +140,7 @@ export default function CanonicaProductPage() {
                                 Each part of Canonica has its own job.
                             </h2>
                             <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
-                                Canonica is easier to evaluate when each capability can stand on its own: setup, widget, support control, and governance.
+                                Canonica is easier to evaluate when each capability can stand on its own: setup, widget, hosted help with tickets, and answer review.
                             </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
@@ -176,7 +176,7 @@ export default function CanonicaProductPage() {
                                 </h2>
                             </div>
                             <p className="text-base leading-relaxed text-[#a0a0c0]">
-                                Each Canonica support surface now explains its outcome, workflow, and how it connects back to approved support truth.
+                                Each Canonica support surface now explains its outcome, workflow, and how it connects back to approved answers.
                             </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -206,10 +206,10 @@ export default function CanonicaProductPage() {
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-6xl">
                         <div className="mb-12 max-w-3xl">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Canonica Engine</p>
-                            <h2 className="text-3xl font-bold sm:text-4xl">Built as a knowledge control plane, not a chatbot wrapper.</h2>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Behind the support layer</p>
+                            <h2 className="text-3xl font-bold sm:text-4xl">Not only a chatbot.</h2>
                             <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                                These are the implemented architecture layers behind the website, widget, help center, tickets, and governance screens.
+                                Canonica keeps your product structure, approved answers, support gaps, and stale content connected behind the widget and help center.
                             </p>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">

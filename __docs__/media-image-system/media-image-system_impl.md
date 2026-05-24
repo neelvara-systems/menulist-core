@@ -51,7 +51,7 @@ Modify:
 
 1. Add a feature flag: `ENABLE_MEDIA_IMAGE_SYSTEM`.
 2. Add media image profiles with purpose-specific ratios, transparency rules, named variants, source limits, output settings, and storage hints.
-3. Add a shared preparation function that validates source type/size safety, crops to the selected allowed ratio, resizes, compresses, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/local-preview data URL output, named variants, focal point, dominant color, and source metadata.
+3. Add a shared preparation function that validates source type/size safety, crops to the selected allowed ratio, resizes, compresses, strips original image metadata through canvas re-encoding, and returns a canonical prepared media object with `mediaId`, `checksum`, `version`, `status`, primary Blob/local-preview data URL output, named variants, focal point, dominant color, and source metadata.
 4. Add a shared media image card for placeholder, local file upload, drag/drop, paste, preview, replace, adjust, remove, and reset actions.
 5. Add optional manual adjust UI for approved non-item profiles. The owner can drag, use Fit to frame, use slider zoom, pinch with two fingers on touch screens, rotate, and reset framing, but the final resize, format, and compression still come from `prepareMediaImage`.
 6. Keep old optimizer exports (`MENU_IMAGE_CONFIG`, `MENU_BACKGROUND_IMAGE_CONFIG`) but derive them from media profiles.
@@ -95,6 +95,12 @@ The local preview must always be the prepared primary output. Screens that uploa
 
 If an immediate Firebase upload fails after preparation, the screen must keep showing the prepared preview and offer retry from the same prepared Blob. The failed prepared preview is still draft-only; it must not be written into the store field until Firebase Storage returns the public URL.
 
+### Upload privacy and metadata normalization
+
+Profile-aware MenuList public media does not preserve original file metadata. The shared preparation path decodes the accepted source image, renders only the pixels into a canvas, and uploads the resulting Blob variants. That means EXIF fields such as location, camera model, and source-device metadata are stripped by default for prepared public media.
+
+This is required behavior, not an owner-facing toggle. MenuList does not use owner-uploaded media for marketing by default, so no marketing consent checkbox is added to upload surfaces. If a future marketing reuse flow is added, it must use a separate opt-in consent record and an easy withdrawal path instead of being bundled into normal service uploads.
+
 ### Public context preview
 
 `MediaPublicContextPreview` renders customer-frame previews for `menuBackground` and `businessCover`. The component is intentionally limited to these profiles because they affect page-level readability and first impression. It does not add editing controls or a new save path.
@@ -122,6 +128,8 @@ All owner-facing image profile surfaces should use `MediaImageCard` for the visu
 ### Rollback behavior
 
 `ENABLE_MEDIA_IMAGE_SYSTEM` is a runtime kill switch for the media preparation layer. When disabled, upload surfaces keep their existing shell, manual adjust is hidden, and `prepareMediaImage` returns validated raw image data without profile crop/resize/compression.
+
+The kill switch is an emergency compatibility fallback, not a privacy mode. Production public-media upload paths should keep the media image system enabled so prepared outputs remain compressed, profile-safe, immutable, and metadata-normalized.
 
 ### Storage cleanup
 
@@ -166,3 +174,4 @@ Manual checks:
 - Review, adjust, then save digital screen slide in mobile settings.
 - Upload and adjust Official Business Page gallery photo in desktop and mobile settings.
 - Confirm AI image shape selector shows only valid menu item shapes.
+- Inspect a prepared public media upload and confirm Firebase Storage custom metadata records `exifNormalized: "true"` and `sourceMetadataPolicy: "source_metadata_stripped"`.

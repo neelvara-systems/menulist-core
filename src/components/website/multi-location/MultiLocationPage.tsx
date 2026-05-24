@@ -8,12 +8,48 @@ import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const outlets = ['Mumbai Central', 'Bandra', 'Andheri', 'Juhu', 'Pune'];
 
+const desktopOutletPaths = [
+  'M490 112 C348 154 234 198 140 270',
+  'M490 112 C398 160 338 204 300 270',
+  'M490 112 C490 172 490 218 490 270',
+  'M490 112 C582 160 642 204 680 270',
+  'M490 112 C632 154 746 198 840 270',
+];
+
+const mobileOutletPaths = [
+  'M175 78.5 C134 106 96 132 67.5 164.5',
+  'M175 78.5 C175 110 175 136 175 164.5',
+  'M175 78.5 C216 106 254 132 282.5 164.5',
+];
+
 const masterItems = [
   { name: 'Butter Chicken', price: '₹320' },
   { name: 'Biryani', price: '₹450' },
   { name: 'Paneer Tikka', price: '₹280' },
   { name: 'Dal Makhani', price: '₹220' },
 ];
+
+function OutletConnectorPaths({ paths }: { paths: string[] }) {
+  return (
+    <>
+      {paths.map((path, index) => (
+        <path
+          className="ws-location-source-map__path"
+          d={path}
+          key={`path-${index}`}
+        />
+      ))}
+      {paths.map((path, index) => (
+        <path
+          className="ws-map-pulse ws-location-map-pulse"
+          d={path}
+          key={`pulse-${index}`}
+          pathLength={1}
+        />
+      ))}
+    </>
+  );
+}
 
 export default function MultiLocationPage() {
   const t = useTranslations('Website');
@@ -53,12 +89,11 @@ export default function MultiLocationPage() {
 
           <AnimateOnScroll delay={0.08}>
             <div className="ws-location-source-map">
-              <svg className="ws-location-source-map__paths" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
-                <path className="ws-location-source-map__path" d="M490 112 C348 154 234 198 140 270" />
-                <path className="ws-location-source-map__path" d="M490 112 C398 160 338 204 300 270" />
-                <path className="ws-location-source-map__path" d="M490 112 C490 172 490 218 490 270" />
-                <path className="ws-location-source-map__path" d="M490 112 C582 160 642 204 680 270" />
-                <path className="ws-location-source-map__path" d="M490 112 C632 154 746 198 840 270" />
+              <svg className="ws-location-source-map__paths ws-location-source-map__paths--desktop" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
+                <OutletConnectorPaths paths={desktopOutletPaths} />
+              </svg>
+              <svg className="ws-location-source-map__paths ws-location-source-map__paths--mobile" viewBox="0 0 350 267" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <OutletConnectorPaths paths={mobileOutletPaths} />
               </svg>
 
               <div className="ws-location-source-map__master">
@@ -73,7 +108,7 @@ export default function MultiLocationPage() {
 
               <div className="ws-location-source-map__outlets">
                 {Array.from({ length: 5 }, (_, i) => (
-                  <div className="ws-location-source-map__outlet" key={i}>
+                  <div className="ws-location-source-map__outlet ws-map-destination-pulse ws-location-card-pulse" key={i}>
                     <span className="ws-location-source-map__outlet-icon">
                       <LuMapPin size={16} />
                     </span>

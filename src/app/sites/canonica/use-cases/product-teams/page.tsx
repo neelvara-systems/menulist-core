@@ -22,19 +22,19 @@ export default function ProductTeamsUseCasePage() {
             basePath={getBasePath()}
             canonicalPath="/use-cases/product-teams"
             eyebrow="For product teams"
-            title="Know where product knowledge is breaking."
-            description="Canonica connects product surfaces, releases, support gaps, and canonical answers so teams can see where support truth needs review."
+            title="See where product changes break support."
+            description="Canonica connects releases, app pages, support gaps, and approved answers so stale support becomes visible after changes."
             problem="Fast releases change workflows, limits, roles, and states. Without drift review, old docs and old answers keep misleading users after the product changes."
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
-            canonicaAnswer="The usage-limits release affected plan quota answers. Canonica flags stale-answer risk until the related canonical answer is reviewed."
+            canonicaAnswer="The usage-limits release affected plan quota answers. Canonica flags stale-answer risk until the related approved answer is reviewed."
             ownerReview="Product changes become support-review work through drift, coverage, and signal queues. Proposals still require human approval before they become authoritative answers."
             setupSteps={[
                 'Define surfaces for release-heavy areas such as billing, limits, and settings.',
                 'Connect changelog entries to affected surfaces and answers.',
                 'Review drift and coverage signals after releases.',
                 'Approve proposed answer updates.',
-                'Track which surfaces still need support truth.',
+                'Track which surfaces still need support.',
             ]}
             primaryCta="Start free beta"
             secondaryCta="Try page-aware demo"

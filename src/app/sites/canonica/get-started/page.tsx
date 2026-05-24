@@ -8,7 +8,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your Canonica workspace, configure a widget, publish a branded help domain, and launch page-aware support for your SaaS product.',
+    description: 'Create your Canonica workspace, add your app, pick pages where users get stuck, and get a widget key for page-aware support.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -21,22 +21,20 @@ function getBasePath(): string {
 }
 
 const CRITERIA = [
-    { label: 'One live or near-live SaaS product', description: 'A product with real users, billing, onboarding, settings, or release notes.' },
-    { label: 'Small team or solo founder', description: 'You need support to work before you build a full support team.' },
-    { label: 'Existing help content', description: 'Docs, FAQs, tickets, changelogs, or starter answers Canonica can learn from.' },
-    { label: 'Known product pages', description: 'Billing, onboarding, settings, account, team, connected app, or release pages where users ask questions.' },
-    { label: 'Owner-reviewed answers', description: 'You want approved answers before fallback automation becomes authoritative.' },
-    { label: 'Widget and help domain access', description: 'You can add a script, pass safe page context, and connect a support domain such as help.yourapp.com.' },
+    { label: 'Your SaaS app is live or close to launch', description: 'A product with real users, billing, onboarding, settings, or release notes.' },
+    { label: 'Users ask repeated questions', description: 'The same setup, billing, role, release, or error questions appear more than once.' },
+    { label: 'You have starter support material', description: 'Docs, FAQs, changelogs, support notes, or common answers Canonica can learn from.' },
+    { label: 'You can install one script', description: 'You can add the widget, allow domains, block routes, and pass safe page context.' },
+    { label: 'You want answer approval', description: 'You want to approve answers before they become official support guidance.' },
 ];
 
 const FIRST_SESSION = [
-    'Sign in with Google',
     'Add company and product name',
-    'Choose 2-5 support-heavy product pages',
-    'Import docs, FAQs, release notes, or common answers',
-    'Copy the one-time widget key',
-    'Verify the install and hosted help domain',
-    'Review first approved answer drafts',
+    'Create your Canonica workspace',
+    'Get your widget key',
+    'Add your first support content',
+    'Map the first pages where users need help',
+    'Review your launch checklist',
 ];
 
 export default function CanonicaGetStartedPage() {
@@ -51,16 +49,16 @@ export default function CanonicaGetStartedPage() {
                     <div className="mx-auto w-full max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Get Started</p>
                         <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                            Launch your Canonica workspace in 10 minutes
+                            Create your Canonica workspace.
                         </h1>
                         <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                            Sign in with Google, add your product details, choose the pages users ask about, and create the beta workspace with a one-time widget key and branded help-domain setup.
+                            Sign in with Google, add your app, pick the pages where users get stuck, and get a widget key for your first support layer.
                         </p>
 
                         <div className="grid w-full gap-8 md:grid-cols-2">
                             {/* Left: criteria */}
                             <div>
-                                <h2 className="mb-6 text-xl font-semibold">Best fit</h2>
+                                <h2 className="mb-6 text-xl font-semibold">Canonica is a good fit when</h2>
                                 <div className="space-y-4">
                                     {CRITERIA.map((item, i) => (
                                         <div key={i} className="flex items-start gap-3">
@@ -86,7 +84,7 @@ export default function CanonicaGetStartedPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-3 text-xl font-semibold">What you need before signup</h2>
                         <p className="mb-6 text-sm leading-relaxed text-[#a0a0c0]">
-                            A live or near-live product, a few high-friction pages, and any starter support knowledge you already have. A full docs site is not required.
+                            You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, and release updates.
                         </p>
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                             <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-indigo-400">First session checklist</div>

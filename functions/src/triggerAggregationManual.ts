@@ -1,5 +1,6 @@
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
@@ -29,7 +30,11 @@ interface TriggerData {
     daysToBackfill?: number; // Default: 1 (yesterday only)
 }
 
-const functionOptions = { region: "us-central1", timeoutSeconds: 540 };
+const functionOptions = {
+    region: "us-central1",
+    timeoutSeconds: 540,
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
+};
 
 export const triggerAggregationManual = onCall(functionOptions, async (request) => {
     const data = request.data as TriggerData;

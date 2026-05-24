@@ -3,13 +3,14 @@ import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
+import { CanonicaSequenceDiagram } from '../components/CanonicaFlowDiagram';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
 import { CANONICA_PRODUCT_AREAS } from '../productAreas';
 import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Canonica resources for launch setup, page-aware support, widget install, updates, security, and common buyer questions.',
+    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, pricing, safety, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -26,7 +27,7 @@ const RESOURCE_GROUPS = [
         title: 'Evaluate Canonica',
         description: 'Start with proof, pricing, and common buying questions.',
         items: [
-            ['Static product demo', '/demo', 'Try page-aware support without creating an account.'],
+            ['See the demo', '/demo', 'Watch how the answer changes by page.'],
             ['Pricing', '/pricing', 'See the current Starter, Growth, and Studio packaging.'],
             ['FAQ', '/faq', 'Answers for setup, widget context, fallback, pricing, and data handling.'],
         ],
@@ -36,8 +37,8 @@ const RESOURCE_GROUPS = [
         description: 'Match Canonica to the support problem your product has today.',
         items: [
             ['Use cases', '/use-cases', 'Map Canonica to billing, onboarding, settings, releases, and tickets.'],
+            ['AI-built SaaS', '/use-cases/ai-built-saas', 'See the launch support path for apps built quickly with AI.'],
             ['Page-aware support widget', '/page-aware-support-widget', 'See how product-page context changes the answer.'],
-            ['Support widget for solo founders', '/support-widget-for-solo-founders', 'Launch support before hiring a support team.'],
         ],
     },
     {
@@ -71,10 +72,10 @@ export default function CanonicaResourcesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Resources</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Everything needed to evaluate and launch Canonica.
+                        Start here if you are launching support for an AI-built app.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Start with the demo, review the launch model, then use the widget install and security pages to plan a clean rollout.
+                        Use the demo first, then check fit, install steps, pricing, and safety.
                     </p>
                 </section>
 
@@ -83,10 +84,10 @@ export default function CanonicaResourcesPage() {
                         <div className="mb-6 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
                             <div>
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Product pages</p>
-                                <h2 className="text-2xl font-bold text-white">Start with the part you need to evaluate.</h2>
+                                <h2 className="text-2xl font-bold text-white">Understand Canonica in order.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#d6d6ef]">
-                                Canonica is split into product-area pages so setup, widget, support operations, and governance can each stand on their own.
+                                Start with setup, then understand the widget, hosted help with ticket fallback, and answer review.
                             </p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -127,6 +128,27 @@ export default function CanonicaResourcesPage() {
                                 </CanonicaLink>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="mx-auto mb-12 max-w-7xl">
+                        <div className="mb-8 grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+                            <div>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-300">Resource path</p>
+                                <h2 className="text-2xl font-bold text-white">Move from evaluation to rollout in order.</h2>
+                            </div>
+                            <p className="text-sm leading-relaxed text-[#a0a0c0]">
+                                The links below stay available, but the diagram shows the recommended path first.
+                            </p>
+                        </div>
+                        <CanonicaSequenceDiagram
+                            idPrefix="cn-resources-path"
+                            splitAfter={2}
+                            items={RESOURCE_GROUPS.map((group) => ({
+                                title: group.title,
+                                detail: group.description,
+                                meta: `${group.items.length} links`,
+                            }))}
+                        />
                     </div>
 
                     <div className="mx-auto max-w-6xl space-y-4">

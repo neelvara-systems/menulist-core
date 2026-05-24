@@ -17,7 +17,7 @@ import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { generateWeeklyNarrativeForStore } from '../analytics/weeklyNarrative';
-import { SECRETS } from '../config/secrets';
+import { FUNCTION_MAX_INSTANCES, SECRETS } from '../config/secrets';
 import { DB_COLLECTIONS, SYSTEM_DOCS } from '../constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 
@@ -76,6 +76,10 @@ async function releaseLock(): Promise<void> {
  * Calls the same real worker functions used by the nightly scheduler.
  */
 export const triggerSchedulerManually = onCall({
+  region: 'us-central1',
+  timeoutSeconds: 540,
+  memory: '512MiB' as const,
+  maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
   secrets: [
     SECRETS.GEMINI_AI_KEY,
     SECRETS.GEMINI_AI_KEY_2,
@@ -148,6 +152,10 @@ export const triggerSchedulerManually = onCall({
  * Bypasses the Sunday-only restriction for manual regeneration.
  */
 export const triggerWeeklyNarrativeManually = onCall({
+  region: 'us-central1',
+  timeoutSeconds: 540,
+  memory: '512MiB' as const,
+  maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
   secrets: [
     SECRETS.GEMINI_AI_KEY,
     SECRETS.GEMINI_AI_KEY_2,

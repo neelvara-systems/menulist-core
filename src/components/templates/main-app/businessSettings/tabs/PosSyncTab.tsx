@@ -31,6 +31,7 @@ import {
     Tooltip,
     Typography,
     message,
+    theme,
 } from "antd";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useSession } from "next-auth/react";
@@ -77,6 +78,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     onStoreUpdate,
 }) => {
     const t = useTranslations('PosSync');
+    const { token } = theme.useToken();
     const { data: session } = useSession();
     const posSync = storeDetails?.posSync;
     const storeId = storeDetails?.storeId;
@@ -430,7 +432,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     return (
         <Card size="small" ref={scrollRef}>
             <Flex align="center" gap={8}>
-                <LuShield size={20} style={{ color: '#1677ff' }} />
+                <LuShield size={20} style={{ color: token.colorPrimary }} />
                 <Title level={5} style={{ margin: 'unset' }}>
                     {t('title')}
                 </Title>
@@ -442,8 +444,8 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 vertical
                 gap={12}
                 style={{
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
+                    background: token.colorFillAlter,
+                    border: `1px solid ${token.colorBorderSecondary}`,
                     borderRadius: 8,
                     marginBottom: 16,
                     padding: 16,
@@ -460,21 +462,21 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     gap={12}
                     justify="space-between"
                     style={{
-                        background: '#ffffff',
-                        border: '1px solid #e2e8f0',
+                        background: token.colorBgContainer,
+                        border: `1px solid ${token.colorBorderSecondary}`,
                         borderRadius: 8,
                         padding: 12,
                     }}
                 >
                     <Text strong>{t('diagramSource')}</Text>
-                    <LuArrowRight color="#1677ff" size={18} />
+                    <LuArrowRight color={token.colorPrimary} size={18} />
                     <Text strong>{t('diagramDestination')}</Text>
                 </Flex>
 
                 <Flex gap={12} wrap="wrap">
                     {trustBullets.map((bullet) => (
                         <Flex align="flex-start" gap={8} key={bullet} style={{ flex: '1 1 240px' }}>
-                            <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 3 }} />
+                            <LuCheck color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 3 }} />
                             <Text>{bullet}</Text>
                         </Flex>
                     ))}
@@ -491,7 +493,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 <Text>{t('whoUseIntro')}</Text>
                                 {useCases.map((useCase) => (
                                     <Flex align="flex-start" gap={8} key={useCase}>
-                                        <LuCheck color="#16a34a" size={16} style={{ flex: '0 0 auto', marginTop: 3 }} />
+                                        <LuCheck color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 3 }} />
                                         <Text>{useCase}</Text>
                                     </Flex>
                                 ))}

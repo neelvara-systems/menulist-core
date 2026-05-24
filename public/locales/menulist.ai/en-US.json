@@ -2931,9 +2931,9 @@
             "bottomCaption": "Restaurants are the wedge. MenuList is strongest anywhere customers need one current public menu for what a business offers."
         },
         "Workflow": {
-            "eyebrow": "How it works",
-            "title": "Upload, review, publish.",
-            "highlight": "publish.",
+            "eyebrow": "From source to public",
+            "title": "One menu becomes every customer surface.",
+            "highlight": "every customer surface.",
             "pipelinePhoto": "Photo",
             "pipelinePdf": "PDF",
             "pipelineText": "Text",

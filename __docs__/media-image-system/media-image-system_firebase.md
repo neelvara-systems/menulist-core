@@ -36,6 +36,16 @@ The prepared object includes named variants, Blob outputs, checksum, dominant co
 
 Local `dataUrl` values are preview/form-state only. Profile-aware saves convert to Blob before Firebase upload and do not call `uploadString(data_url)`.
 
+## Privacy Metadata
+
+Prepared public media uploads write Firebase Storage custom metadata for operational inspection:
+
+- `exifNormalized`: `"true"` when the source image was re-rendered through the media preparation canvas.
+- `sourceMetadataPolicy`: `"source_metadata_stripped"` for prepared outputs and `"source_metadata_not_normalized"` only for non-prepared fallbacks.
+- `retentionPolicy`: `"public_asset_until_replaced_or_deleted"`.
+
+These fields do not add Firestore writes and do not create a new owner setting. They document the existing privacy behavior of profile-aware MenuList uploads: original file metadata is not retained in prepared public media, and public media assets remain until replaced, removed, or deleted by the owning flow.
+
 ## Immutable Object Rule
 
 Prepared public media should not overwrite the same object path. New image content must produce a new path or media version so Firebase/CDN caches, PWAs, and Digital Screen devices do not serve stale images.

@@ -2,9 +2,9 @@ import { getCanonicaPlans } from '@data/canonica/plans';
 import CanonicaLink from './CanonicaLink';
 
 const PLAN_FIT: Record<string, string> = {
-    canonica_starter: 'Best for solo founders launching support for one product.',
-    canonica_growth: 'Best for active SaaS products with recurring support questions.',
-    canonica_studio: 'Best for studios or agencies running multiple small SaaS products.',
+    canonica_starter: 'Best for one AI-built SaaS app with early repeated questions.',
+    canonica_growth: 'Best for active SaaS products that need weekly review and higher capacity.',
+    canonica_studio: 'Best for studios or agencies launching multiple AI-built products.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
@@ -21,7 +21,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                     <div>
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Pricing clarity</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
-                            Start on beta, then move to predictable INR plans.
+                            Start free, then move to predictable INR plans.
                         </h2>
                     </div>
                     <p className="text-base leading-relaxed text-[#a0a0c0]">

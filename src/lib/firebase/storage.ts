@@ -1,4 +1,4 @@
-import { getDownloadURL, getStorage, ref, uploadBytesResumable, type FirebaseStorage } from 'firebase/storage';
+import { getDownloadURL, getStorage, ref, uploadBytesResumable, type FirebaseStorage, type UploadMetadata } from 'firebase/storage';
 
 interface UploadResult {
   downloadURL: string;
@@ -12,11 +12,12 @@ export const uploadFile = (
   storagePath: string,
   file: File,
   onProgress: (progress: number) => void,
-  storageOverride?: FirebaseStorage | null
+  storageOverride?: FirebaseStorage | null,
+  metadata?: UploadMetadata
 ): Promise<UploadResult> => {
   const storage = storageOverride || getStorage();
   const storageRef = ref(storage, storagePath);
-  const uploadTask = uploadBytesResumable(storageRef, file);
+  const uploadTask = uploadBytesResumable(storageRef, file, metadata);
   const bucketName = storageRef.bucket;
 
   return new Promise((resolve, reject) => {

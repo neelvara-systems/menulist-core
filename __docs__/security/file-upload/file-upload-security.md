@@ -1,6 +1,6 @@
 # 📁 File Upload Security Implementation
 
-**Last Updated**: November 14, 2025  
+**Last Updated**: May 24, 2026
 **Status**: ✅ Fully Implemented & Consolidated  
 **Priority**: P0 (Critical)
 
@@ -79,6 +79,18 @@ constants.ts (MASTER SOURCE)
 | Type    | Extensions | Max Size | Signatures     |
 | ------- | ---------- | -------- | -------------- |
 | **PDF** | .pdf       | 50MB     | %PDF- (5-byte) |
+
+---
+
+## 🧾 Metadata and Privacy Controls
+
+File validation prevents malicious uploads, but privacy handling depends on the upload purpose:
+
+- **MenuList public media profiles** use `prepareMediaImage()` before profile-aware Storage writes. The source image is decoded and re-rendered into prepared Blob variants, so original EXIF metadata such as location, camera model, and source-device fields are stripped from the stored public media output.
+- **MenuList legacy/raw upload fallbacks** may preserve source metadata when they bypass the media image system. New public image surfaces should route through media profiles instead of direct `uploadString(data_url)` or raw Blob uploads.
+- **Canonica knowledge-source uploads** preserve source-file fidelity for generation. Those files are tenant-scoped source inputs, not public assets, and are deleted when the generation job is deleted. Images or screenshots may still contain source metadata, so the upload UI warns users to remove private customer data before upload.
+- **Marketing reuse** is not part of normal upload processing. If MenuList or Canonica later reuses customer media for marketing, it must be a separate opt-in flow with consent logging, withdrawal, and policy text tied to that specific purpose.
+- **Retention selectors** should not be added until a backend retention scheduler and deletion policy exist. UI copy must describe the actual lifecycle enforced by code.
 
 ---
 

@@ -6,7 +6,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Contact',
-    description: 'Contact Canonica for product questions, onboarding help, and partnerships.',
+    description: 'Contact Canonica for setup help, partnership questions, or to check if Canonica fits your AI-built SaaS app.',
     alternates: { canonical: '/contact' },
 };
 
@@ -29,10 +29,12 @@ export default function CanonicaContactPage() {
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-2xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Contact</p>
-                        <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Get in touch</h1>
+                        <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Talk to Canonica.</h1>
                         <p className="mb-12 text-lg text-[#a0a0c0]">
-                            Have questions about Canonica, onboarding, widget install, hosted help, billing, or whether it fits your SaaS product?
-                            Reach the team here.
+                            Reach out for setup help, partnership questions, or to check if Canonica fits your AI-built SaaS app.
+                        </p>
+                        <p className="mb-6 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm leading-relaxed text-[#d6d6ef]">
+                            For faster review, include your product URL, what users ask most, and where support breaks today.
                         </p>
 
                         <div className="space-y-6">

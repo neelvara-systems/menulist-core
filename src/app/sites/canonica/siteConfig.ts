@@ -3,7 +3,7 @@ import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica helps SaaS founders ship fast without support chaos: approved page-aware answers before fallback, hosted help on their own domain, and reviewable fixes for missed questions.';
+    'Canonica helps AI-built SaaS apps launch support without chaos: page-aware widget, hosted help, ticket fallback, approved answers, and reviewable fixes for missed questions.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -14,7 +14,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
 }> = [
     {
         path: '/',
-        title: 'Canonica — Accurate Page-Aware Support for SaaS',
+        title: 'Canonica — Support for AI-Built SaaS Apps',
         description: CANONICA_SITE_DESCRIPTION,
         priority: 1,
         changeFrequency: 'weekly',
@@ -22,35 +22,35 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Launch setup, support control, knowledge governance, page-aware widget, hosted help domains, safe ticket context, canonical answers, and support-gap review for SaaS teams.',
+        description: 'Support layer for AI-built SaaS apps: setup, widget, hosted help, ticket fallback, approved answers, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
     {
         path: '/product/launch-setup',
-        title: 'Launch Setup | Canonica',
-        description: 'Create a Canonica workspace, add product details, import starter knowledge, map product surfaces, and verify the widget before launch.',
+        title: 'Set Up Support | Canonica',
+        description: 'Create a Canonica workspace, add product details, import starter knowledge, map important app pages, and verify the widget before launch.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/page-aware-widget',
-        title: 'Page-Aware Widget | Canonica',
+        title: 'In-App Help Widget | Canonica',
         description: 'Install Canonica as a page-aware widget with safe context, allowed origins, blocked routes, hosted help, and approved answers before fallback.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/support-control',
-        title: 'Support Control | Canonica',
+        title: 'Help Center and Tickets | Canonica',
         description: 'Operate Canonica help center, docs, FAQ, changelog, tickets, conversations, and weekly support review from one support control layer.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/knowledge-governance',
-        title: 'Knowledge Governance | Canonica',
-        description: 'Govern Canonica product ontology, canonical answers, drift, signal mutation, coverage KPI, and trust/readiness metrics.',
+        title: 'Review Approved Answers | Canonica',
+        description: 'Review approved answers, stale support, repeated misses, coverage KPI, and trust/readiness metrics.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -64,21 +64,28 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/demo',
         title: 'Demo | Canonica',
-        description: 'Try a static Canonica demo showing canonical answers, page-aware support, fallback, and support gaps.',
+        description: 'See page-aware support in 60 seconds with static examples for billing, onboarding, settings, fallback, and support gaps.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
     {
         path: '/use-cases',
         title: 'Use Cases | Canonica',
-        description: 'Page-aware support use cases for billing, onboarding, settings, releases, support fallback, and product errors.',
+        description: 'Support use cases for AI-built SaaS apps across billing, onboarding, settings, releases, support fallback, and product errors.',
         priority: 0.86,
         changeFrequency: 'weekly',
     },
     {
+        path: '/use-cases/ai-built-saas',
+        title: 'Support for AI-Built SaaS Apps | Canonica',
+        description: 'Launch page-aware support, hosted help, approved answers, ticket fallback, and reviewable support gaps for apps built quickly with AI.',
+        priority: 0.8,
+        changeFrequency: 'monthly',
+    },
+    {
         path: '/use-cases/founders',
-        title: 'Support for SaaS Founders | Canonica',
-        description: 'Page-aware support, approved answers, and support-gap review for solo SaaS founders.',
+        title: 'Support for AI-Built SaaS Founders | Canonica',
+        description: 'Page-aware support, approved answers, and support-gap review for solo founders launching AI-built SaaS apps.',
         priority: 0.78,
         changeFrequency: 'monthly',
     },
@@ -106,35 +113,35 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/page-aware-support-widget',
         title: 'Page-Aware Support Widget | Canonica',
-        description: 'A page-aware support widget for SaaS products that uses safe product context and owner-approved answers before fallback.',
+        description: 'A page-aware support widget for AI-built SaaS that uses safe product context and owner-approved answers before fallback.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     {
         path: '/hosted-help-center-for-saas',
         title: 'Hosted Help Center for SaaS | Canonica',
-        description: 'Hosted SaaS help center for docs, FAQ, and changelog content connected to Canonica product surfaces and approved answers.',
+        description: 'Hosted help center for AI-built SaaS with docs, FAQ, changelog content, and the same knowledge powering the app widget.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },
     {
         path: '/support-widget-for-solo-founders',
         title: 'Support Widget for Solo Founders | Canonica',
-        description: 'A support widget for solo SaaS founders who need approved answers, page-aware help, and support-gap review before hiring support.',
+        description: 'A support widget for solo founders shipping with AI who need page-aware help, hosted docs, ticket fallback, and approved answers.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },
     {
         path: '/install',
         title: 'Widget Install | Canonica',
-        description: 'Install Canonica with one widget script, allowed origins, blocked routes, help.yourapp.com hosted help domains, runtime verification, and safe page context.',
+        description: 'Install Canonica support with one widget script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     {
         path: '/resources',
         title: 'Resources | Canonica',
-        description: 'Canonica resources for evaluating, launching, installing, and operating page-aware support knowledge.',
+        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, pricing, safety, and setup.',
         priority: 0.78,
         changeFrequency: 'weekly',
     },
@@ -148,42 +155,42 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/pricing',
         title: 'Pricing | Canonica',
-        description: 'Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for small SaaS teams.',
+        description: 'Founder-friendly INR pricing, beta setup, support credits, and paid Canonica plans for AI-built SaaS teams.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
         path: '/get-started',
         title: 'Get Started | Canonica',
-        description: 'Create your Canonica workspace and launch page-aware support for your SaaS product.',
+        description: 'Create your Canonica workspace, add your app, pick pages where users get stuck, and get a widget key for page-aware support.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
     {
         path: '/security',
         title: 'Security | Canonica',
-        description: 'How Canonica protects support knowledge, widget context, ticket debugging context, hosted help domains, and customer workspaces.',
+        description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, scoped workspaces, and owner-approved answers.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/faq',
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, widget context, pricing, tickets, and data handling.',
+        description: 'Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },
     {
         path: '/about',
         title: 'About | Canonica',
-        description: 'Canonica helps small SaaS teams keep support answers correct as products change.',
+        description: 'Canonica helps AI-built SaaS teams keep support answers correct as products change.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },
     {
         path: '/contact',
         title: 'Contact | Canonica',
-        description: 'Contact Canonica for product questions, onboarding help, and partnerships.',
+        description: 'Contact Canonica for setup help, partnership questions, or to check if Canonica fits your AI-built SaaS app.',
         priority: 0.6,
         changeFrequency: 'monthly',
     },

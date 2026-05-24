@@ -1,7 +1,7 @@
 "use client";
 
 import { StaffPrompt } from "@type/campaigns";
-import { Card, Typography } from "antd";
+import { Card, Typography, theme } from "antd";
 import { LuMessageCircle } from "react-icons/lu";
 
 const { Text, Title } = Typography;
@@ -24,6 +24,8 @@ interface StaffPromptSectionProps {
 export default function StaffPromptSection({
     staffPrompt,
 }: StaffPromptSectionProps) {
+    const { token } = theme.useToken();
+
     // Don't render if not eligible
     if (!staffPrompt?.eligible) return null;
 
@@ -32,14 +34,14 @@ export default function StaffPromptSection({
             size="small"
             style={{
                 marginTop: 16,
-                background: "#fafafa",
-                borderLeft: "3px solid #1890ff",
+                background: token.colorFillAlter,
+                borderLeft: `3px solid ${token.colorPrimary}`,
             }}
         >
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                 <LuMessageCircle
                     size={20}
-                    style={{ color: "#1890ff", marginTop: 2 }}
+                    style={{ color: token.colorPrimary, marginTop: 2 }}
                 />
                 <div>
                     <Text type="secondary" style={{ fontSize: 12 }}>

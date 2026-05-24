@@ -14,10 +14,10 @@ const inputItems = [
   { key: 'pipelineText', Icon: LuType },
 ];
 const outputItems = [
-  { key: 'pipelineOfficialPage', Icon: LuGlobe },
-  { key: 'pipelineMenuLink', Icon: LuLink },
-  { key: 'pipelineQrCode', Icon: LuQrCode },
-  { key: 'pipelinePrintPdf', Icon: LuFileText },
+  { key: 'pipelineOfficialPage', Icon: LuGlobe, pulseClass: 'ws-map-card-output-arrival-0' },
+  { key: 'pipelineMenuLink', Icon: LuLink, pulseClass: 'ws-map-card-output-arrival-1' },
+  { key: 'pipelineQrCode', Icon: LuQrCode, pulseClass: 'ws-map-card-output-arrival-2' },
+  { key: 'pipelinePrintPdf', Icon: LuFileText, pulseClass: 'ws-map-card-output-arrival-3' },
 ];
 
 export default function InteractiveWorkflowSection() {
@@ -53,14 +53,37 @@ export default function InteractiveWorkflowSection() {
 
       <AnimateOnScroll delay={0.08}>
         <div className="ws-workflow-map">
-          <svg className="ws-workflow-map__paths" viewBox="0 0 920 360" aria-hidden="true" focusable="false">
+          <svg className="ws-workflow-map__paths ws-workflow-map__paths--desktop" viewBox="0 0 920 360" aria-hidden="true" focusable="false">
             <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 78 C260 78 260 176 420 176" />
             <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 176 C270 176 285 176 420 176" />
             <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 274 C260 274 260 176 420 176" />
-            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C650 176 655 78 770 78" />
-            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C635 176 650 144 770 144" />
-            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C635 176 650 208 770 208" />
-            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C650 176 655 274 770 274" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C620 176 618 63 713 63" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C612 176 624 141 713 141" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C612 176 624 219 713 219" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C620 176 618 297 713 297" />
+            <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M150 78 C260 78 260 176 420 176" />
+            <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M150 176 C270 176 285 176 420 176" />
+            <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M150 274 C260 274 260 176 420 176" />
+            <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M500 176 C620 176 618 63 713 63" />
+            <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M500 176 C612 176 624 141 713 141" />
+            <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M500 176 C612 176 624 219 713 219" />
+            <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M500 176 C620 176 618 297 713 297" />
+          </svg>
+          <svg className="ws-workflow-map__paths ws-workflow-map__paths--mobile" viewBox="0 0 350 383" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path className="ws-workflow-map__path" d="M67 102.5 C85 122 112 140 137 157" />
+            <path className="ws-workflow-map__path" d="M175 102.5 C175 116 175 128 175 138.5" />
+            <path className="ws-workflow-map__path" d="M283 102.5 C265 122 238 140 213 157" />
+            <path className="ws-workflow-map__path" d="M103 235 C86 246 70 258 55 270.5" />
+            <path className="ws-workflow-map__path" d="M145 246 C140 254 137 262 135 270.5" />
+            <path className="ws-workflow-map__path" d="M205 246 C210 254 213 262 215 270.5" />
+            <path className="ws-workflow-map__path" d="M247 235 C264 246 280 258 295 270.5" />
+            <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M67 102.5 C85 122 112 140 137 157" />
+            <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M175 102.5 C175 116 175 128 175 138.5" />
+            <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M283 102.5 C265 122 238 140 213 157" />
+            <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M103 235 C86 246 70 258 55 270.5" />
+            <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M145 246 C140 254 137 262 135 270.5" />
+            <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M205 246 C210 254 213 262 215 270.5" />
+            <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M247 235 C264 246 280 258 295 270.5" />
           </svg>
 
           <div className="ws-workflow-map__stack ws-workflow-map__stack--input">
@@ -87,8 +110,8 @@ export default function InteractiveWorkflowSection() {
           </div>
 
           <div className="ws-workflow-map__stack ws-workflow-map__stack--output">
-            {outputItems.map(({ key, Icon }) => (
-              <div className="ws-workflow-map__item" key={key}>
+            {outputItems.map(({ key, Icon, pulseClass }) => (
+              <div className={`ws-workflow-map__item ws-map-destination-pulse ${pulseClass}`} key={key}>
                 <span className="ws-workflow-map__item-icon">
                   <Icon size={18} />
                 </span>

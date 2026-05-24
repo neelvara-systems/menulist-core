@@ -36,7 +36,7 @@ const SECTIONS = [
     {
         title: 'Support Content and AI-Assisted Drafts',
         body: [
-            'Canonica may help draft answers, identify entities, summarize support gaps, or propose knowledge updates. Drafts are not final support truth until a workspace owner reviews and approves them.',
+            'Canonica may help draft answers, identify entities, summarize support gaps, or propose knowledge updates. Drafts are not final support guidance until a workspace owner reviews and approves them.',
             'You should review support content before publishing it, especially when it affects billing, account access, legal terms, security, or product-critical workflows.',
         ],
     },

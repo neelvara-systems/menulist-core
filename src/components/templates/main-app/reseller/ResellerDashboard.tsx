@@ -3,7 +3,7 @@
 import { calculateOfflineLocationTopup } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
 import { ResellerTransaction } from "@type/reseller";
-import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Spin, Statistic, Table, Tag, Typography } from "antd";
+import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -37,6 +37,7 @@ function formatDate(value: any) {
 }
 
 function ResellerDashboard() {
+    const { token } = theme.useToken();
     const { data: session } = useSession();
     const router = useRouter();
     const resellerId = (session as any)?.user?.id || '';
@@ -241,17 +242,17 @@ function ResellerDashboard() {
                     </Col>
                     <Col xs={12} sm={6}>
                         <Card>
-                            <Statistic title="Active" value={stats.active} valueStyle={{ color: '#52c41a' }} />
+                            <Statistic title="Active" value={stats.active} valueStyle={{ color: token.colorSuccess }} />
                         </Card>
                     </Col>
                     <Col xs={12} sm={6}>
                         <Card>
-                            <Statistic title="Expiring Soon" value={stats.expiringSoon} valueStyle={{ color: stats.expiringSoon > 0 ? '#faad14' : undefined }} />
+                            <Statistic title="Expiring Soon" value={stats.expiringSoon} valueStyle={{ color: stats.expiringSoon > 0 ? token.colorWarning : undefined }} />
                         </Card>
                     </Col>
                     <Col xs={12} sm={6}>
                         <Card>
-                            <Statistic title="Expired" value={stats.expired} valueStyle={{ color: stats.expired > 0 ? '#ff4d4f' : undefined }} />
+                            <Statistic title="Expired" value={stats.expired} valueStyle={{ color: stats.expired > 0 ? token.colorError : undefined }} />
                         </Card>
                     </Col>
                 </Row>

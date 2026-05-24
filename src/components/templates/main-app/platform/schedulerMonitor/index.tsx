@@ -3,7 +3,7 @@
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
-import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -64,11 +64,11 @@ const STATUS_COLORS: Record<string, string> = {
     unknown: 'default',
 };
 
-const HEALTH_CONFIG: Record<string, { color: string; label: string; description: string }> = {
-    healthy: { color: '#52c41a', label: 'Healthy', description: 'Last run completed successfully' },
-    warning: { color: '#faad14', label: 'Warning', description: 'Last run had errors or is overdue' },
-    critical: { color: '#ff4d4f', label: 'Critical', description: '3+ consecutive failures' },
-    unknown: { color: '#d9d9d9', label: 'No Data', description: 'No scheduler runs found' },
+const HEALTH_CONFIG: Record<string, { tone: 'success' | 'warning' | 'error' | 'default'; label: string; description: string }> = {
+    healthy: { tone: 'success', label: 'Healthy', description: 'Last run completed successfully' },
+    warning: { tone: 'warning', label: 'Warning', description: 'Last run had errors or is overdue' },
+    critical: { tone: 'error', label: 'Critical', description: '3+ consecutive failures' },
+    unknown: { tone: 'default', label: 'No Data', description: 'No scheduler runs found' },
 };
 
 // ================================================================
@@ -112,6 +112,7 @@ function flattenDetails(details: Record<string, any> | undefined): string {
 // ================================================================
 
 function SchedulerMonitor() {
+    const { token } = theme.useToken();
     const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<SchedulerHealthSummary | null>(null);
@@ -211,6 +212,32 @@ function SchedulerMonitor() {
     }
 
     const healthInfo = HEALTH_CONFIG[health?.healthStatus || 'unknown'];
+    const healthColor = healthInfo.tone === 'success'
+        ? token.colorSuccess
+        : healthInfo.tone === 'warning'
+            ? token.colorWarning
+            : healthInfo.tone === 'error'
+                ? token.colorError
+                : token.colorTextTertiary;
+    const healthBg = healthInfo.tone === 'success'
+        ? token.colorSuccessBg
+        : healthInfo.tone === 'warning'
+            ? token.colorWarningBg
+            : healthInfo.tone === 'error'
+                ? token.colorErrorBg
+                : token.colorFillSecondary;
+    const healthBorder = healthInfo.tone === 'success'
+        ? token.colorSuccessBorder
+        : healthInfo.tone === 'warning'
+            ? token.colorWarningBorder
+            : healthInfo.tone === 'error'
+                ? token.colorErrorBorder
+                : token.colorBorderSecondary;
+    const getTaskBackground = (status: string) => {
+        if (status === 'failed') return token.colorErrorBg;
+        if (status === 'skipped') return token.colorFillAlter;
+        return token.colorSuccessBg;
+    };
 
     return (
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 16px' }}>
@@ -258,14 +285,14 @@ function SchedulerMonitor() {
                         <div style={{
                             display: 'inline-flex', alignItems: 'center', gap: 8,
                             padding: '6px 16px', borderRadius: 8,
-                            backgroundColor: healthInfo.color + '15',
-                            border: `1px solid ${healthInfo.color}40`,
+                            backgroundColor: healthBg,
+                            border: `1px solid ${healthBorder}`,
                         }}>
                             <div style={{
                                 width: 10, height: 10, borderRadius: '50%',
-                                backgroundColor: healthInfo.color,
+                                backgroundColor: healthColor,
                             }} />
-                            <Text strong style={{ color: healthInfo.color, fontSize: 16 }}>
+                            <Text strong style={{ color: healthColor, fontSize: 16 }}>
                                 {healthInfo.label}
                             </Text>
                         </div>
@@ -305,7 +332,7 @@ function SchedulerMonitor() {
                             <div key={idx} style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
                                 padding: '6px 12px', borderRadius: 6,
-                                backgroundColor: task.status === 'failed' ? '#fff2f0' : task.status === 'skipped' ? '#fafafa' : '#f6ffed',
+                                backgroundColor: getTaskBackground(task.status),
                             }}>
                                 <Tag color={STATUS_COLORS[task.status]} style={{ margin: 0 }}>
                                     {task.status.toUpperCase()}
@@ -338,11 +365,11 @@ function SchedulerMonitor() {
                         </div>
                         <div>
                             <Text type="secondary">DI Success</Text><br />
-                            <Text strong style={{ color: '#52c41a' }}>{health.lastRun.successCount}</Text>
+                            <Text strong style={{ color: token.colorSuccess }}>{health.lastRun.successCount}</Text>
                         </div>
                         <div>
                             <Text type="secondary">DI Failed</Text><br />
-                            <Text strong style={{ color: health.lastRun.failedCount > 0 ? '#ff4d4f' : undefined }}>
+                            <Text strong style={{ color: health.lastRun.failedCount > 0 ? token.colorError : undefined }}>
                                 {health.lastRun.failedCount}
                             </Text>
                         </div>
@@ -352,11 +379,11 @@ function SchedulerMonitor() {
                         </div>
                         <div>
                             <Text type="secondary">CMI OK</Text><br />
-                            <Text strong style={{ color: '#52c41a' }}>{health.lastRun.intelligenceSuccess}</Text>
+                            <Text strong style={{ color: token.colorSuccess }}>{health.lastRun.intelligenceSuccess}</Text>
                         </div>
                         <div>
                             <Text type="secondary">CMI Fail</Text><br />
-                            <Text strong style={{ color: health.lastRun.intelligenceFailed > 0 ? '#ff4d4f' : undefined }}>
+                            <Text strong style={{ color: health.lastRun.intelligenceFailed > 0 ? token.colorError : undefined }}>
                                 {health.lastRun.intelligenceFailed}
                             </Text>
                         </div>
@@ -381,13 +408,13 @@ function SchedulerMonitor() {
                     </div>
                     <div>
                         <Text type="secondary">Failed</Text><br />
-                        <Text strong style={{ color: (settlement?.failedCount ?? 0) > 0 ? '#ff4d4f' : undefined }}>
+                        <Text strong style={{ color: (settlement?.failedCount ?? 0) > 0 ? token.colorError : undefined }}>
                             {settlement?.failedCount ?? 0}
                         </Text>
                     </div>
                     <div>
                         <Text type="secondary">Stale &gt;2d</Text><br />
-                        <Text strong style={{ color: (settlement?.staleCount ?? 0) > 0 ? '#faad14' : undefined }}>
+                        <Text strong style={{ color: (settlement?.staleCount ?? 0) > 0 ? token.colorWarning : undefined }}>
                             {settlement?.staleCount ?? 0}
                         </Text>
                     </div>
@@ -421,9 +448,9 @@ function SchedulerMonitor() {
             {/* Section 4: Last Run Errors (if any) */}
             {health?.lastRun?.errors && health.lastRun.errors.length > 0 && (
                 <Card
-                    title={<span style={{ color: '#ff4d4f' }}>Last Run Errors ({health.lastRun.errors.length})</span>}
+                    title={<span style={{ color: token.colorError }}>Last Run Errors ({health.lastRun.errors.length})</span>}
                     size="small"
-                    style={{ marginBottom: 16, borderColor: '#ffccc7' }}
+                    style={{ marginBottom: 16, borderColor: token.colorErrorBorder }}
                 >
                     <Collapse
                         size="small"
@@ -445,7 +472,7 @@ function SchedulerMonitor() {
                                     <div>Store ID: {err.sId}</div>
                                     {err.projectId && <div>Project ID: {err.projectId}</div>}
                                     {err.settlementDate && <div>Settlement Date: {err.settlementDate}</div>}
-                                    <div style={{ marginTop: 8, color: '#ff4d4f' }}>Error: {err.error}</div>
+                                    <div style={{ marginTop: 8, color: token.colorError }}>Error: {err.error}</div>
                                     {err.details && <div style={{ marginTop: 8 }}>Details: {JSON.stringify(err.details)}</div>}
                                 </div>
                             ),
@@ -518,7 +545,7 @@ function SchedulerMonitor() {
                             {/* Errors */}
                             {record.errors && record.errors.length > 0 && (
                                 <div>
-                                    <Text strong style={{ display: 'block', marginBottom: 4, color: '#ff4d4f' }}>
+                                    <Text strong style={{ display: 'block', marginBottom: 4, color: token.colorError }}>
                                         Errors ({record.errors.length}):
                                     </Text>
                                     {record.errors.slice(0, 10).map((err, idx) => (
@@ -586,9 +613,9 @@ function SchedulerMonitor() {
                         width: 90,
                         render: (_: any, record: SchedulerRunLog) => (
                             <span>
-                                <Text style={{ color: '#52c41a' }}>{record.successCount}</Text>
+                                <Text style={{ color: token.colorSuccess }}>{record.successCount}</Text>
                                 {' / '}
-                                <Text style={{ color: record.failedCount > 0 ? '#ff4d4f' : undefined }}>
+                                <Text style={{ color: record.failedCount > 0 ? token.colorError : undefined }}>
                                     {record.failedCount}
                                 </Text>
                             </span>

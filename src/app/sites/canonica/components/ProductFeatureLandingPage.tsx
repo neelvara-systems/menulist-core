@@ -2,7 +2,6 @@ import {
     LuArrowRight,
     LuBookOpen,
     LuCheck,
-    LuClock,
     LuDatabase,
     LuFileText,
     LuHelpCircle,
@@ -18,6 +17,7 @@ import {
 import type { IconType } from 'react-icons';
 import type { CanonicaProductFeature } from '../productFeatures';
 import CanonicaLink from './CanonicaLink';
+import { CanonicaHubDiagram, CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
 
 const CARD_ICONS: IconType[] = [
     LuBookOpen,
@@ -225,47 +225,55 @@ export default function ProductFeatureLandingPage({
             </section>
 
             <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
-                <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.workflowTitle}</h2>
-                        <p className="mt-4 text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{feature.workflowDescription}</p>
+                <div className="mx-auto max-w-7xl">
+                    <div className="mb-10 grid gap-6 lg:grid-cols-[0.88fr_1.12fr] lg:items-end">
+                        <div>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
+                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.workflowTitle}</h2>
+                        </div>
+                        <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{feature.workflowDescription}</p>
                     </div>
-                    <div className="grid gap-3">
-                        {feature.workflowSteps.map((step, index) => (
-                            <article key={step.title} className="flex gap-4 rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
-                                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-bold text-indigo-300">
-                                    {index + 1}
-                                </span>
-                                <div>
-                                    <h3 className="text-base font-semibold text-white">{step.title}</h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{step.description}</p>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
+                    <CanonicaSequenceDiagram
+                        idPrefix={`cn-feature-workflow-${feature.slug}`}
+                        splitAfter={Math.ceil(feature.workflowSteps.length / 2)}
+                        items={feature.workflowSteps.map((step) => ({
+                            title: step.title,
+                            detail: step.description,
+                        }))}
+                    />
                 </div>
             </section>
 
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
-                <div className="mx-auto max-w-6xl">
+                <div className="mx-auto max-w-7xl">
                     <div className="mb-10 max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Connected product truth</p>
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{feature.connectedTitle}</h2>
                         <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">{feature.connectedDescription}</p>
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {feature.connectedItems.map((item, index) => {
-                            const Icon = index % 2 === 0 ? LuLink : LuClock;
-                            return (
-                                <article key={item.title} className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5">
-                                    <Icon aria-hidden size={18} className="mb-4 text-indigo-300" />
-                                    <h3 className="text-base font-semibold text-white">{item.title}</h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{item.description}</p>
-                                </article>
-                            );
-                        })}
-                    </div>
+                    <CanonicaHubDiagram
+                        idPrefix={`cn-feature-connected-${feature.slug}`}
+                        inputLabel="Feature layer"
+                        outputLabel="Connected surfaces"
+                        inputs={[
+                            {
+                                title: feature.label,
+                                detail: feature.description,
+                            },
+                            {
+                                title: 'Reviewed source',
+                                detail: feature.connectedDescription,
+                            },
+                            {
+                                title: 'Page context',
+                                detail: feature.heroBullets[0],
+                            },
+                        ]}
+                        outputs={feature.connectedItems.map((item) => ({
+                            title: item.title,
+                            detail: item.description,
+                        }))}
+                    />
                 </div>
             </section>
 
@@ -288,10 +296,10 @@ export default function ProductFeatureLandingPage({
 
             <section className="border-t border-white/[0.06] px-4 py-20 text-center sm:px-6">
                 <h2 className="mx-auto max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">
-                    Launch {featureName} as part of the full support truth loop.
+                    Launch {featureName} as part of the full support loop.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                    Canonica works best when {featureName} stays connected to widget answers, hosted help, tickets, and governance.
+                    Canonica works best when {featureName} stays connected to widget answers, hosted help, tickets, and answer review.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <CanonicaLink
@@ -306,7 +314,7 @@ export default function ProductFeatureLandingPage({
                         href="/product/support-control"
                         className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                     >
-                        See Support Control
+                        See Help Center + Tickets
                     </CanonicaLink>
                 </div>
             </section>

@@ -10,10 +10,10 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
                         The aha moment
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                        Same product. Different page. Different support truth.
+                        Generic AI guesses. Canonica answers from the page the user is on.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Choose a product page, then see how Canonica changes the answer using safe page context, approved knowledge, and fallback signals.
+                        A billing question from Billing should not get the same answer as a setup question from Onboarding. Canonica uses safe page hints to serve the right approved answer.
                     </p>
                     <CanonicaLink
                         basePath={basePath}
@@ -26,6 +26,9 @@ export default function HomePageAwareDemoSection({ basePath = '' }: { basePath?:
                     </CanonicaLink>
                 </div>
                 <CanonicaPublicDemo />
+                <p className="mx-auto mt-6 max-w-2xl text-center text-sm leading-relaxed text-[#8f8faa]">
+                    When Canonica does not have an approved answer, it does not invent one. It records the gap for review.
+                </p>
             </div>
         </section>
     );

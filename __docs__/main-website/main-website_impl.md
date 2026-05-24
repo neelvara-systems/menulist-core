@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.0 Agent-Readable SEO/AEO Hardening
-**Last Updated:** May 23, 2026
+**Status:** IMPLEMENTED — v3.6.5 Live Diagram Pulse Polish
+**Last Updated:** May 24, 2026
 **Audience:** Developers
 
 ---
@@ -105,7 +105,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Workflow source map:** v3.5.6 replaces the compact homepage workflow pipeline in `InteractiveWorkflowSection.tsx` with a clearer input -> MenuList -> output source map. It uses the official `LogoMark`, existing workflow copy, locale-backed output labels, and website CSS tokens so the section explains photo/PDF/text input, owner review, and official public outputs without becoming the hero visual.
 
-**Supporting page source maps:** v3.5.7 replaces the older animated SVG diagrams in `ProductPage.tsx` and `MultiLocationPage.tsx`. The How It Works page now uses a static source-to-surfaces map, and Multi-location uses a static approved-master-to-outlets map. Both reuse official logo treatment, shared dark-panel tokens, locale-backed labels, and non-animated path styling so they feel like MenuList product proof instead of generic SaaS architecture art.
+**Supporting page source maps:** v3.5.7 replaces the older animated SVG diagrams in `ProductPage.tsx` and `MultiLocationPage.tsx`. The How It Works page now uses a static source-to-surfaces map, and Multi-location uses a static approved-master-to-outlets map. Both reuse official logo treatment, shared theme-aware flow tokens, locale-backed labels, and non-animated base path styling so they feel like MenuList product proof instead of generic SaaS architecture art. v3.6.4 uses mobile-only row flow for homepage and How It Works diagrams: horizontal input row, centered MenuList review row, output row/cards below, and separate edge-anchored static dotted path geometry for mobile. v3.6.5 adds a shared CSS/SVG pulse overlay on top of the static paths: homepage and How It Works pulse from inputs into MenuList, pause while the center rings keep a light always-on pulse, and then move from MenuList toward outputs; Multi-location pulses from approved master toward outlet cards. Destination cards also use a synchronized border-only highlight when the pulse reaches them. The path pulse, ring pulse, and border-highlight layers are disabled under `prefers-reduced-motion`.
 
 **Reassurance copy cleanup:** v3.6.1 removes the old `WebsiteMobileSupportHint` and `WebsiteOwnerApprovalHint` helpers from supporting-page heroes and the homepage final CTA. Phone/PWA operation and review-before-publish remain as contextual proof in the homepage hero/get-started/upload flow and FAQ copy, but pricing, footer, and final CTA no longer repeat the full customer-surface list. Pricing/payment/subscription/Razorpay/auth/onboarding and `/create-menu` runtime logic were not changed.
 

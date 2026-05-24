@@ -12,6 +12,7 @@ const NAV_LINKS = [
     { label: 'Install', href: '/install' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Resources', href: '/resources' },
+    { label: 'Updates', href: '/updates' },
 ];
 
 export default function CanonicaHeader({ basePath = '' }: { basePath?: string }) {
@@ -27,7 +28,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                     <span className="text-lg font-semibold tracking-tight text-white">Canonica</span>
                 </L>
 
-                <nav className="hidden items-center gap-5 lg:gap-8 md:flex">
+                <nav className="hidden items-center gap-5 lg:gap-6 md:flex">
                     <div className="group/product relative flex h-16 items-center">
                         <L
                             href="/product"
@@ -45,7 +46,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                                 >
                                     <div className="text-sm font-semibold text-white">Product overview</div>
                                     <p className="mt-1 text-xs leading-relaxed text-[#8f8faa]">
-                                        The full support knowledge loop: setup, widget, support control, and governance.
+                                        The full support layer: setup, widget, hosted help, ticket fallback, and answer review.
                                     </p>
                                 </L>
                                 <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
@@ -123,7 +124,7 @@ export default function CanonicaHeader({ basePath = '' }: { basePath?: string })
                             </L>
                             <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
                                 <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                    Product areas
+                            Product areas
                                 </div>
                                 {CANONICA_PRODUCT_AREAS.map((area) => (
                                     <L

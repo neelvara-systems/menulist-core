@@ -14,7 +14,7 @@
 
 import { getExtractionCostMetrics } from '@database/ops/extraction';
 import type { ExtractionCostMetrics } from '@lib/ops/extractionTypes';
-import { Card, Empty, Spin, Statistic, Typography } from 'antd';
+import { Card, Empty, Spin, Statistic, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 
 const { Text } = Typography;
@@ -25,6 +25,7 @@ interface CostMonitorProps {
 }
 
 export default function CostMonitor({ cost: externalCost, refreshTrigger }: CostMonitorProps) {
+    const { token } = theme.useToken();
     const [loading, setLoading] = useState(true);
     const [cost, setCost] = useState<ExtractionCostMetrics | null>(null);
 
@@ -72,7 +73,7 @@ export default function CostMonitor({ cost: externalCost, refreshTrigger }: Cost
                     title="Daily Spend"
                     value={cost.dailySpend}
                     suffix="paise"
-                    valueStyle={{ color: cost.dailySpend > 10000 ? '#ff4d4f' : undefined }}
+                    valueStyle={{ color: cost.dailySpend > 10000 ? token.colorError : undefined }}
                 />
                 <Statistic
                     title="Most Expensive"

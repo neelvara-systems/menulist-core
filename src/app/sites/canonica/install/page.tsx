@@ -3,11 +3,12 @@ import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
+import { CanonicaHubDiagram, CanonicaSequenceDiagram } from '../components/CanonicaFlowDiagram';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Widget Install',
-    description: 'Install Canonica with one widget script, allowed origins, blocked routes, help.yourapp.com hosted help domains, runtime verification, and safe page context.',
+    description: 'Install Canonica support with one script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context.',
     alternates: { canonical: '/install' },
 };
 
@@ -29,12 +30,12 @@ const INSTALL_STEPS = [
         detail: 'Add the script to the product shell where customer support should be available.',
     },
     {
-        title: 'Restrict where it runs',
+        title: 'Allow your production and staging domains',
         detail: 'Allowed origins and blocked routes decide which domains and product pages can show the launcher.',
     },
     {
-        title: 'Publish hosted help',
-        detail: 'Add a support domain such as help.yourapp.com so published articles, FAQs, and changelog entries feel native to your product.',
+        title: 'Block sensitive routes',
+        detail: 'Hide the widget from billing payment forms, auth screens, admin-only pages, and any route where support should not appear.',
     },
     {
         title: 'Pass safe page context',
@@ -86,24 +87,34 @@ export default function CanonicaInstallPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Widget Install</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Add Canonica to the product pages where users ask for help.
+                        Install support with one script.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        The first integration is the page-aware widget. The same setup also gives you hosted help domains such as help.yourapp.com for docs, FAQ, and changelog when your product needs a public support home.
+                        Add Canonica to your app shell, allow the domains where it can run, block sensitive routes, and send safe page hints such as feature, workflow, role, or plan.
                     </p>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {INSTALL_STEPS.map((item, index) => (
-                            <article key={item.title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-                                <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-xs font-bold text-indigo-300">
-                                    {String(index + 1).padStart(2, '0')}
-                                </div>
-                                <h2 className="text-base font-semibold text-white">{item.title}</h2>
-                                <p className="mt-3 text-sm leading-relaxed text-[#808099]">{item.detail}</p>
-                            </article>
-                        ))}
+                    <div className="mx-auto max-w-7xl">
+                        <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+                            <div>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Install flow</p>
+                                <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
+                                    From widget key to verified runtime.
+                                </h2>
+                            </div>
+                            <p className="text-base leading-relaxed text-[#a0a0c0]">
+                                The setup starts with one script, passes through the Canonica control layer, and ends with a verified support runtime.
+                            </p>
+                        </div>
+                        <CanonicaSequenceDiagram
+                            idPrefix="cn-install-flow"
+                            splitAfter={3}
+                            items={INSTALL_STEPS.map((item) => ({
+                                title: item.title,
+                                detail: item.detail,
+                            }))}
+                        />
                     </div>
                 </section>
 
@@ -149,9 +160,9 @@ export default function CanonicaInstallPage() {
                     <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
                         <div>
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Developer handoff</p>
-                            <h2 className="text-3xl font-bold">Framework setup stays intentionally small.</h2>
+                            <h2 className="text-3xl font-bold">What to hand your developer.</h2>
                             <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                                The dashboard owns keys, allowed origins, blocked routes, hosted help domains, and runtime checks. The client app only needs the script plus safe page context.
+                                Give your developer the widget key, allowed domains, blocked routes, and the list of important pages where users need help first.
                             </p>
                             <div className="mt-6 grid gap-3">
                                 {FRAMEWORK_EXAMPLES.map(([title, detail]) => (
@@ -188,29 +199,54 @@ export default function CanonicaInstallPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
-                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-                        <div>
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Owner controls</p>
-                            <h2 className="text-3xl font-bold">The product owner controls where support appears.</h2>
-                            <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
+                    <div className="mx-auto max-w-7xl">
+                        <div className="mb-10 grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+                            <div>
+                                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Owner controls</p>
+                                <h2 className="text-3xl font-bold">The product owner controls where support appears.</h2>
+                            </div>
+                            <p className="text-lg leading-relaxed text-[#a0a0c0]">
                                 Canonica is not a generic floating button forced onto every page. Owners configure appearance, launcher behavior, mobile visibility, allowed origins, blocked routes, branded help domains, and verification from the dashboard.
                             </p>
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {['Allowed origins', 'Blocked routes', 'Mobile visibility', 'Hosted help DNS', 'Runtime status', 'Appearance'].map((label) => (
-                                <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                                    <div className="text-sm font-semibold text-white">{label}</div>
-                                    <p className="mt-2 text-sm leading-relaxed text-[#808099]">
-                                        Configured from the Canonica widget dashboard before launch.
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                        <CanonicaHubDiagram
+                            idPrefix="cn-install-controls"
+                            inputLabel="Runtime rules"
+                            outputLabel="Owner surfaces"
+                            inputs={[
+                                {
+                                    title: 'Allowed origins',
+                                    detail: 'Only approved product and staging domains can load the widget configuration.',
+                                },
+                                {
+                                    title: 'Blocked routes',
+                                    detail: 'Billing, auth, admin, or sensitive screens can hide support by route.',
+                                },
+                                {
+                                    title: 'Safe page context',
+                                    detail: 'Feature, workflow, role, and plan hints guide answers without sending secrets.',
+                                },
+                            ]}
+                            outputs={[
+                                {
+                                    title: 'Runtime status',
+                                    detail: 'The dashboard confirms the widget reached Canonica with the expected context marker.',
+                                },
+                                {
+                                    title: 'Hosted help DNS',
+                                    detail: 'Published docs, FAQ, changelog, robots, and sitemap can live on a support domain.',
+                                },
+                                {
+                                    title: 'Appearance',
+                                    detail: 'Launcher behavior, placement, and mobile visibility stay in owner control.',
+                                },
+                            ]}
+                        />
                     </div>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-20 text-center">
-                    <h2 className="text-3xl font-bold">Start with a clean widget install.</h2>
+                    <h2 className="text-3xl font-bold">Install the widget, then review the first support gaps.</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
                         Create a workspace, map product surfaces, install the widget, publish hosted help if needed, then verify that page context reaches Canonica.
                     </p>

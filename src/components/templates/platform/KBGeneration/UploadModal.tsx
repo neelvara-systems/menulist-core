@@ -8,12 +8,41 @@ import { canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
 import { Button, Image, Input, List, message, Modal, Progress, Typography, Upload, UploadProps } from 'antd';
+import type { UploadMetadata } from 'firebase/storage';
 import React, { useMemo, useState } from 'react';
 import { LuTrash2, LuUploadCloud } from 'react-icons/lu';
 import { v4 as uuidv4 } from 'uuid';
 
 const { Dragger } = Upload;
 const { Text } = Typography;
+const KNOWLEDGE_SOURCE_RETENTION_POLICY = 'delete_on_job_delete';
+const KNOWLEDGE_SOURCE_USE = 'knowledge_generation_only';
+
+function sanitizeKnowledgeSourceFileName(fileName: string): string {
+  const lastSegment = fileName.split(/[\\/]/).pop() || 'source-file';
+  const safeName = lastSegment
+    .normalize('NFKD')
+    .replace(/[^\w.-]+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120);
+
+  return safeName || 'source-file';
+}
+
+function getKnowledgeSourceUploadMetadata(file: File): UploadMetadata {
+  return {
+    contentType: file.type || 'application/octet-stream',
+    customMetadata: {
+      retentionPolicy: KNOWLEDGE_SOURCE_RETENTION_POLICY,
+      sourceMetadataPolicy: file.type.startsWith('image/')
+        ? 'source_file_may_include_image_metadata'
+        : 'source_fidelity_preserved',
+      sourceUse: KNOWLEDGE_SOURCE_USE,
+      uploadedVia: 'canonica_kb_generation',
+    },
+  };
+}
 
 interface UploadModalProps {
   open: boolean;
@@ -89,10 +118,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
 
     const uploadSources = [...fileList, ...textSourceFiles];
     const uploadPromises = uploadSources.map((file) => {
-      const storagePath = `ingestion_source_files/${tId}/${sId}/${uuidv4()}-${file.name.replace(/\s/g, '_')}`;
+      const storagePath = `ingestion_source_files/${tId}/${sId}/${uuidv4()}-${sanitizeKnowledgeSourceFileName(file.name)}`;
       return uploadFile(storagePath, file.originFileObj, (progress) => {
         setUploadProgress((prev) => ({ ...prev, [file.uid]: progress }));
-      }, canonicaStorage);
+      }, canonicaStorage, getKnowledgeSourceUploadMetadata(file.originFileObj));
     });
 
     try {
@@ -166,6 +195,12 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
           <p className="ant-upload-text">Click or drag files to this area to upload</p>
           <p className="ant-upload-hint">
             Support for PDF, video, and other source file types for the knowledge base.
+          </p>
+          <p className="ant-upload-hint">
+            Source files stay with this generation job until the job is deleted.
+          </p>
+          <p className="ant-upload-hint">
+            Images and screenshots can include hidden location or device details. Remove private customer data before upload.
           </p>
         </Dragger>
       </PasteUpload>

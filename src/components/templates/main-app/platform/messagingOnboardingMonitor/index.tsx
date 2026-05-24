@@ -7,7 +7,7 @@ import type {
     MessagingOnboardingOpsSession,
     MessagingOnboardingOpsSnapshot,
 } from '@lib/ops/messagingOnboardingTypes';
-import { Alert, Button, Card, Divider, Spin, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Divider, Spin, Table, Tag, Typography, message, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
@@ -70,13 +70,15 @@ function formatBytes(value: number | undefined): string {
 }
 
 function Metric({ label, value, tone }: { label: string; value: string | number; tone?: 'danger' | 'warning' }) {
+    const { token } = theme.useToken();
+
     return (
         <div style={{ minWidth: 132 }}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>{label}</Text>
             <Text
                 strong
                 style={{
-                    color: tone === 'danger' ? '#ff4d4f' : tone === 'warning' ? '#fa8c16' : undefined,
+                    color: tone === 'danger' ? token.colorError : tone === 'warning' ? token.colorWarning : undefined,
                     fontSize: 20,
                 }}
             >

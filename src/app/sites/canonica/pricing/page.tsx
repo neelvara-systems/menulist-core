@@ -43,9 +43,9 @@ const PLAN_BULLETS: Record<string, string[]> = {
 };
 
 const PLAN_GUIDANCE: Record<string, string> = {
-    canonica_starter: 'Best for solo founders launching support for one SaaS product.',
-    canonica_growth: 'Best for active SaaS products with recurring support questions.',
-    canonica_studio: 'Best for studios and agencies running multiple small SaaS products.',
+    canonica_starter: 'For one AI-built SaaS app with early users and repeated setup, billing, or onboarding questions.',
+    canonica_growth: 'For active SaaS products that need weekly review, support-gap tracking, and higher answer capacity.',
+    canonica_studio: 'For builders, agencies, or studios launching multiple AI-built products.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
@@ -74,9 +74,9 @@ export default function CanonicaPricingPage() {
             <main className="pt-16">
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Pricing</p>
-                    <h1 className="text-4xl font-bold sm:text-5xl">Start beta first. Choose paid capacity when ready.</h1>
+                    <h1 className="text-4xl font-bold sm:text-5xl">Start free. Upgrade when support volume grows.</h1>
                     <p className="mx-auto mt-4 max-w-lg text-lg text-[#a0a0c0]">
-                        Create a workspace, install the widget, and prove the support loop. Paid plans and top-ups stay inside Canonica Billing after setup.
+                        Create the beta workspace, install the widget, and prove the support loop before choosing monthly capacity.
                     </p>
                 </section>
 
@@ -97,7 +97,7 @@ export default function CanonicaPricingPage() {
                                 data-canonica-label="beta_setup_banner"
                                 className="rounded-xl bg-indigo-500 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
                             >
-                                Start Beta Setup
+                                Start free setup
                             </CanonicaLink>
                         </div>
                     </div>
@@ -142,7 +142,7 @@ export default function CanonicaPricingPage() {
                                             : 'border border-white/[0.12] bg-white/[0.03] text-[#d6d6ef] hover:border-white/[0.24]'
                                     }`}
                                 >
-                                    Start Beta Setup
+                                    Start free setup
                                 </CanonicaLink>
 
                                 <ul className="space-y-3">
@@ -164,7 +164,7 @@ export default function CanonicaPricingPage() {
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Support credits</p>
                             <h2 className="text-2xl font-bold text-white">Credits keep support capacity predictable.</h2>
                             <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                Support credits are the monthly allowance Canonica Billing uses for governed answers, chat assistance, and knowledge governance work. Static hosted help pages, public docs/FAQ/changelog browsing, and widget loading do not consume credits.
+                                Support credits cover AI-assisted answers, fallback handling, and governance work. Public help pages and normal widget loading do not use credits.
                             </p>
                             <p className="mt-3 text-sm leading-relaxed text-[#808099]">
                                 Top-ups are for launch spikes, large imports, or heavy review periods without forcing a plan change.
@@ -187,6 +187,21 @@ export default function CanonicaPricingPage() {
                     <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-[#6b6b8a]">
                         Public packaging stays monthly and INR-first. Usage limits protect infrastructure, but Canonica is not priced as a punishment for successful support deflection.
                     </p>
+                </section>
+                <section className="border-b border-white/[0.06] px-6 py-16 text-center">
+                    <h2 className="text-3xl font-bold">Not sure which plan fits?</h2>
+                    <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
+                        Start with the free setup. Upgrade when your users, pages, and repeated questions grow.
+                    </p>
+                    <CanonicaLink
+                        basePath={basePath}
+                        href="/get-started"
+                        data-canonica-event="pricing_final_cta_clicked"
+                        data-canonica-label="start_free_setup"
+                        className="mt-8 inline-block rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-600"
+                    >
+                        Start free setup
+                    </CanonicaLink>
                 </section>
             </main>
             <CanonicaFooter basePath={basePath} />

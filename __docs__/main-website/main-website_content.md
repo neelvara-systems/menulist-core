@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 23, 2026
+**Last Updated:** May 24, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -172,17 +172,24 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 ---
 
-### Section 4 — Source-To-Public Workflow
+### Section 4 — Source-To-Public Bridge
 
 **Section heading:**
 
-> Upload, review, publish.
+> One menu becomes every customer surface.
+
+**Eyebrow:**
+
+> From source to public
 
 **Workflow visual:**
 
 - Left side: current menu inputs (`Photo`, `PDF`, `Text`).
 - Center: official MenuList logo plus `Owner review`.
 - Right side: public customer outputs (`Official page`, `Menu link`, `QR code`, `Print/PDF`).
+- Mobile uses three rows so inputs spread horizontally, owner review stays centered, outputs sit below, and the dotted connector paths stay edge-anchored without using the desktop geometry.
+- Diagram colors must stay theme-aware: light mode uses light surfaces, dark mode uses dark surfaces.
+- Static dotted paths remain visible. A subtle pulse layer travels from inputs into MenuList, pauses while the center rings keep a light always-on pulse, and then moves from MenuList toward outputs; each destination card briefly highlights only its existing border when the pulse arrives. Reduced-motion users only see the static paths.
 - This visual belongs in the workflow section, not the hero, because the hero should keep showing believable product/customer proof while the workflow section explains the operating model.
 
 **Steps (4):**
@@ -517,7 +524,9 @@ Key FAQ topics:
 - Left side: menu inputs (`Photo`, `PDF`, `Typed text`).
 - Center: official MenuList mark plus owner-review gate.
 - Right side: customer surfaces (`QR`, `Menu link`, `Screens`, `Print/PDF`, `Official page`, `Saved shortcut`).
-- The visual must stay static, restrained, and product-specific. Do not use animated integration-style lines or generic SaaS node graphics.
+- Desktop output connector paths start under the center logo/ring and visually emerge from the core boundary, matching the homepage source-map alignment.
+- The center ring ripple is intentionally visible in light mode so the MenuList core feels active without adding extra copy or decoration.
+- The visual must stay restrained and product-specific. Do not use generic SaaS node graphics.
 
 ---
 
@@ -787,8 +796,13 @@ Description:
 
 - Top card: approved master menu.
 - Outlet cards: five linked outlets receiving approved updates.
+- Mobile shows three outlet cards in the approved master -> outlet flow so the diagram stays readable on phone screens.
+- Static dotted paths remain visible. A reduced-motion-aware homepage-style pulse stroke travels through all outlet connector paths together and briefly highlights only destination card borders on arrival, matching the product story that approved master updates can reach linked outlets together. Do not use custom moving circle dots here; the pulse should match the homepage source-map animation language.
+- Mobile paths stay subtle and edge-anchored.
+- The master card uses the same card surface, border, and radius language as outlet cards; the MenuList mark sits directly without an extra filled icon tile.
+- Supporting-page source maps must follow the same theme behavior as the homepage workflow map: light surfaces in light mode and dark contrast surfaces in dark mode.
 - Use outlet-governance language, not developer sync or instant-propagation language.
-- Keep the diagram static and calm; it should explain control and consistency, not look like infrastructure animation.
+- Keep the diagram calm; it should explain control and consistency, not look like infrastructure animation.
 
 ---
 

@@ -1,48 +1,31 @@
 .logo {
   display: block;
   overflow: visible;
+  animation: canonicaLogoPulse 3.2s ease-in-out infinite;
 }
 
-.logoPath {
-  fill: none;
-  stroke-dasharray: var(--dash);
-  stroke-dashoffset: var(--dash);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  animation: canonicaLogoStroke 3.2s ease-in-out infinite;
-}
-
-.leftPath {
-  --dash: 1160px;
-}
-
-.rightPath {
-  --dash: 1175px;
-  animation-delay: 160ms;
-}
-
-@keyframes canonicaLogoStroke {
+@keyframes canonicaLogoPulse {
   0% {
-    opacity: 0.38;
-    stroke-dashoffset: var(--dash);
+    opacity: 0.74;
+    transform: scale(0.985);
   }
 
   38%,
   64% {
     opacity: 1;
-    stroke-dashoffset: 0;
+    transform: scale(1);
   }
 
   100% {
-    opacity: 0.42;
-    stroke-dashoffset: calc(var(--dash) * -1);
+    opacity: 0.76;
+    transform: scale(0.985);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .logoPath {
+  .logo {
     animation: none;
     opacity: 1;
-    stroke-dashoffset: 0;
+    transform: none;
   }
 }

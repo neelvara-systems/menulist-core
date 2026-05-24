@@ -1,7 +1,7 @@
 # Canonica — Self-Sellable Product Strategy and Task List
 
 > **Status:** Strategy Logged
-> **Last Updated:** 2026-05-21
+> **Last Updated:** 2026-05-24
 > **Owner:** Canonica Product
 > **Audience:** Product, Engineering, Website, Sales
 > **Doctrine:** Must follow `doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md`
@@ -14,7 +14,7 @@ Canonica should not compete as another helpdesk, chatbot, or documentation CMS.
 
 Canonica should position itself as:
 
-> **The support layer for fast-built SaaS products that keeps answers correct as the product changes.**
+> **The support layer for AI-built SaaS apps that keeps answers correct as the product changes.**
 
 The durable category is:
 
@@ -22,14 +22,17 @@ The durable category is:
 
 This keeps Canonica aligned with the locked doctrine: knowledge is the spine, canonical answers come before generation, and tickets/chat remain fallback signal sources rather than the product center.
 
+Website and campaign copy may refer to "vibe-coded" SaaS only as an SEO or campaign wedge. The core brand should use "AI-built SaaS", "AI-native SaaS founders", "solo founders", and "small SaaS teams" so the product stays credible for serious operators and does not sound like a prototype-only tool.
+
 ---
 
 ## Why This Matters Now
 
-More SaaS products are being launched by small teams and solo founders because development is faster. Those products still need support, but most founders do not want to buy or configure an enterprise support suite before they have a support team.
+More SaaS products are being launched by small teams and solo founders because AI coding tools make development faster. Those products still need support, but most founders do not want to buy or configure an enterprise support suite before they have a support team.
 
 Canonica should win this gap:
 
+- AI-built apps need support immediately after launch
 - small teams need support immediately after launch
 - support answers drift whenever product screens, billing, plans, or workflows change
 - generic chat answers become risky when docs are stale
@@ -43,6 +46,7 @@ Canonica should win this gap:
 Canonica should focus on non-enterprise customers:
 
 - solo SaaS founders
+- AI-native SaaS founders shipping quickly with AI-assisted development
 - fast-built SaaS products
 - micro-SaaS owners
 - small teams under 20 people
@@ -115,11 +119,15 @@ Use these messages as website and sales input. They must be checked against the 
 
 - Your product changes. Your support answers should not drift.
 - Turn docs, changelogs, and tickets into approved answers.
-- A support system for SaaS teams before they hire support.
+- A support system for AI-built SaaS teams before they hire support.
+- You shipped the app. Now users need correct answers.
+- AI helped you build the app. Canonica helps you support it correctly.
+- Support for apps built fast with AI.
 - Stop shipping support answers from stale docs.
 - Install support that understands the page your user is on.
 - Give users the right answer before they open a ticket.
 - Keep product support correct as features, plans, and workflows change.
+- Use "vibe-coded SaaS" only in SEO/campaign contexts, not as the main product category.
 
 Avoid overclaiming:
 
@@ -172,13 +180,14 @@ Build only when the work increases at least one of:
 
 ### A. Positioning and Website
 
-- [x] Update Canonica website homepage to lead with the small-SaaS support correctness promise.
+- [x] Update Canonica website homepage to lead with the AI-built SaaS support correctness promise.
 - [x] Add a clear category line: "Support Knowledge Infrastructure for small SaaS teams."
 - [x] Add comparison copy that separates Canonica from helpdesks, chatbots, and docs CMS products.
 - [x] Add founder-friendly examples for billing, onboarding, settings, changelog, and account pages.
 - [x] Add proof sections for canonical answers, page-aware support, release-aware support, and support gap queue.
 - [x] Keep claims conservative and backed by implemented product behavior.
 - [x] Avoid enterprise-heavy language and enterprise-first objections.
+- [x] Add an AI-built SaaS use-case page and keep "vibe-coded SaaS" as a canonicalized campaign/search alias rather than the primary buyer label.
 
 ### B. Public Interactive Demo
 

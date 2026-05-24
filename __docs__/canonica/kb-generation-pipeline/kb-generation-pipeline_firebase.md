@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Firebase Cost & Operations Tracking
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-24
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -38,6 +38,15 @@
 | Purpose | Path Pattern | Size | Lifecycle |
 |---------|-------------|------|-----------|
 | Source files | `ingestion_source_files/{tId}/{sId}/{uuid}-{filename}` | Variable (PDFs: 1-50MB, Images: 0.5-10MB) | Deleted on job delete only |
+
+Source file uploads attach Storage custom metadata for operational inspection:
+
+- `sourceUse`: `knowledge_generation_only`
+- `retentionPolicy`: `delete_on_job_delete`
+- `sourceMetadataPolicy`: `source_fidelity_preserved` for non-image files, or `source_file_may_include_image_metadata` for image files
+- `uploadedVia`: `canonica_kb_generation`
+
+This does not add Firestore writes. The pipeline preserves source-file fidelity for generation, so image files are not re-encoded or EXIF-stripped before upload. Admin-facing upload copy warns users to remove private customer data from images and screenshots before importing them.
 
 ---
 

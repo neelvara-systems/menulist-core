@@ -3,6 +3,9 @@ import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } f
 import { buildMediaStoragePath, getDataUrlBlob, getMediaDataFingerprint, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
 import type { PreparedMediaImage, PreparedMediaVariant } from "@lib/media/prepareMediaImage";
 
+const IMMUTABLE_PUBLIC_MEDIA_CACHE_CONTROL = 'public,max-age=31536000,immutable';
+const PUBLIC_MEDIA_RETENTION_POLICY = 'public_asset_until_replaced_or_deleted';
+
 interface UploadPreparedMediaImageData {
     blob?: Blob;
     contentType?: string | null;
@@ -79,6 +82,8 @@ export async function uploadPreparedMediaImage({
     const normalizedStoreId = normalizeId(storeId, 'store');
     const normalizedTenantId = normalizeId(tenantId, 'tenant');
     const version = String(prepared?.version ?? 1);
+    const exifNormalized = prepared?.exifNormalized === true;
+    const sourceMetadataPolicy = exifNormalized ? 'source_metadata_stripped' : 'source_metadata_not_normalized';
     const uploadVariant = (variantId: MediaImageVariantId, variantBlob: Blob, variantContentType: string) => {
         const extension = getMediaFileExtension(variantContentType);
         const path = buildMediaStoragePath({
@@ -93,11 +98,15 @@ export async function uploadPreparedMediaImage({
 
         return uploadBlobToStorage({
             blob: variantBlob,
+            cacheControl: IMMUTABLE_PUBLIC_MEDIA_CACHE_CONTROL,
             contentType: variantContentType,
             customMetadata: {
                 checksum,
+                exifNormalized: String(exifNormalized),
                 mediaId: uploadMediaId,
                 profile,
+                retentionPolicy: PUBLIC_MEDIA_RETENTION_POLICY,
+                sourceMetadataPolicy,
                 variant: variantId,
                 version,
             },

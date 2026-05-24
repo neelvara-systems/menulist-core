@@ -1,25 +1,56 @@
 import CanonicaLink from './CanonicaLink';
+import { CanonicaStatusBoard } from './CanonicaProofBlocks';
 
-const WIDGET_STEPS = [
+const WIDGET_STATES = [
     {
-        title: 'Install one script',
-        detail: 'Add the Canonica widget script to your app and keep the raw widget key out of public docs after setup.',
+        status: 'allowed',
+        title: 'Widget can appear',
+        detail: 'The current domain matches the workspace allowed-origin list.',
+        tone: 'good' as const,
+        rows: [
+            ['origin', 'app.yourapp.com'],
+            ['launcher', 'visible'],
+        ] as Array<[string, string]>,
     },
     {
+        status: 'blocked',
         title: 'Allow only your domains',
-        detail: 'Allowed origins and blocked routes decide where the launcher can appear.',
+        detail: 'Payment forms, auth pages, and private admin routes can hide the launcher.',
+        tone: 'neutral' as const,
+        rows: [
+            ['route', '/billing/cards/*'],
+            ['launcher', 'hidden'],
+        ] as Array<[string, string]>,
     },
     {
+        status: 'published',
         title: 'Publish hosted help',
-        detail: 'Map help, docs, support, or kb domains like help.yourapp.com to the same published articles, FAQs, and release notes.',
+        detail: 'Reviewed docs, FAQs, and release notes can live on a support domain.',
+        tone: 'good' as const,
+        rows: [
+            ['domain', 'help.yourapp.com'],
+            ['public pages', 'docs + FAQ'],
+        ] as Array<[string, string]>,
     },
     {
+        status: 'context',
         title: 'Pass page context',
-        detail: 'Send safe route, feature, workflow, role, and plan hints so help matches the current screen.',
+        detail: 'Safe route, feature, workflow, role, and plan hints make answers page-aware.',
+        tone: 'neutral' as const,
+        rows: [
+            ['feature', 'billing'],
+            ['workflow', 'invoice_review'],
+        ] as Array<[string, string]>,
     },
     {
+        status: 'review',
         title: 'Review support gaps',
-        detail: 'Fallbacks, tickets, safe debugging context, and negative feedback become review work for improving approved answers.',
+        detail: 'Fallbacks, tickets, safe debugging context, and negative feedback become review work.',
+        tone: 'caution' as const,
+        rows: [
+            ['gap', 'missing answer'],
+            ['next step', 'owner review'],
+        ] as Array<[string, string]>,
     },
 ];
 
@@ -39,17 +70,17 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         Page-Aware Widget
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                        Put support inside the product screen where the question happens.
+                        Put help inside the screen where users are stuck.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Canonica is built for new SaaS teams that need support before they need a full support stack. Start with a governed widget, publish help on your own domain, and let tickets exist as fallback and learning signals.
+                        Users ask from inside your app. Canonica reads safe page hints, finds approved answers and related docs, and opens ticket fallback only when coverage is missing.
                     </p>
                     <CanonicaLink
                         basePath={basePath}
                         href="/install"
                         className="mt-6 inline-block rounded-full border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition-all hover:border-white/[0.2] hover:text-white"
                     >
-                        View Widget Install
+                        View widget install
                     </CanonicaLink>
                 </div>
 
@@ -116,15 +147,9 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         </pre>
                     </article>
 
-                    {WIDGET_STEPS.slice(1).map((item) => (
-                        <article
-                            key={item.title}
-                            className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-5 lg:col-span-4"
-                        >
-                            <h3 className="text-base font-semibold text-white">{item.title}</h3>
-                            <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{item.detail}</p>
-                        </article>
-                    ))}
+                    <div className="lg:col-span-12">
+                        <CanonicaStatusBoard items={WIDGET_STATES} />
+                    </div>
                 </div>
             </div>
         </section>

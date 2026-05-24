@@ -22,9 +22,9 @@ import {
 } from '@constant/canonica/navigations';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
+import CanonicaLogoMark from '@atoms/canonicaLogoMark';
 import type { MenuProps } from 'antd';
 import { Layout, Menu, theme, Typography } from 'antd';
-import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
@@ -114,7 +114,7 @@ export default function CanonicaSidebar({ mobile = false, onNavigate }: Canonica
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Image src="/canonica-logo-mark-wide.png" alt="" width={50} height={31} priority />
+                    <CanonicaLogoMark idPrefix="canonica-sidebar" height={31} />
                     <Text strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>
                         Canonica
                     </Text>

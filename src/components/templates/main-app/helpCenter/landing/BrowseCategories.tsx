@@ -3,7 +3,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { KnowledgeBaseCategory } from '@type/knowledgeBase';
-import { Button, Card, Col, Empty, Flex, Row, Typography, message } from 'antd';
+import { Button, Card, Col, Empty, Flex, Row, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
@@ -13,6 +13,7 @@ const { Title, Text, Paragraph } = Typography;
 
 function BrowseCategories() {
     const t = useTranslations('HelpCenter');
+    const { token } = theme.useToken();
     const router = useRouter();
     const { categoriesMap, getCategoriesCached } = useKBCategoriesCache();
 
@@ -60,7 +61,7 @@ function BrowseCategories() {
                                         <Flex
                                             align="center"
                                             justify="center"
-                                            style={{ width: 48, height: 48, borderRadius: 16, background: 'rgba(82, 82, 255, 0.08)' }}
+                                            style={{ width: 48, height: 48, borderRadius: 16, background: token.colorPrimaryBg }}
                                         >
                                             <CategoryIcon icon={category.icon} style={{ fontSize: 24 }} />
                                         </Flex>

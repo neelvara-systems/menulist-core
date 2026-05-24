@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** May 23, 2026
+**Last Updated:** May 24, 2026
 
 ---
 
@@ -446,7 +446,9 @@ Rules:
 - Left stack shows source inputs: photo, PDF, typed text.
 - Center keeps the owner-review gate visible.
 - Right stack shows public outputs: official page, menu link, QR code, print/PDF.
-- Curved paths may be static and subtle; do not animate the diagram or make it feel like a developer integration graphic.
+- On mobile, use three rows: inputs spread horizontally, owner review centered, and outputs below. Keep separate mobile dotted paths aligned to those rows and anchored to card edges instead of reusing desktop path geometry.
+- Theme behavior: light mode uses light surface/card/path tokens; dark mode uses dark surface/card/path tokens.
+- Keep static dotted paths as the base layer. A subtle pulse overlay may travel from inputs into MenuList, pause while the existing center rings keep a light always-on pulse, and then move from MenuList toward outputs. Destination cards may briefly highlight only their existing border on pulse arrival. Motion must stay calm and must be disabled under `prefers-reduced-motion`.
 - Use website tokens for all backgrounds, borders, lines, text, and icons so light and dark mode stay consistent.
 
 ### 5.10 Supporting Page Source Maps
@@ -455,11 +457,16 @@ Use supporting-page source maps for `/how-it-works` and `/multi-location` when a
 
 Rules:
 
-- Do not use animated dashed SVG lines. Supporting page diagrams should be static and calm.
+- Do not animate the base dashed SVG lines. Supporting page diagrams should keep static dotted connectors and may use only the shared reduced-motion-aware pulse overlay.
 - `/how-it-works` uses source inputs -> MenuList owner review -> customer surfaces.
 - `/multi-location` uses approved master source -> linked outlet cards.
+- On mobile, `/how-it-works` uses three rows with horizontal inputs, centered owner review, customer outputs grouped into two rows of three cards, and separate static dotted paths aligned to the row flow and card edges; `/multi-location` shows three outlet cards in the master-to-outlet flow. Desktop keeps the full diagram layouts.
+- Supporting-page source maps must use the same theme behavior as the homepage workflow map. Light mode renders light diagram surfaces; dark mode renders the dark contrast treatment.
+- Pulse behavior: `/how-it-works` pulses from source inputs into MenuList, pauses while the center rings keep a light always-on pulse, then moves from MenuList toward customer outputs. `/multi-location` pulses from the approved master toward outlet cards using the same `ws-map-pulse-flow` animated pulse-stroke pattern as the homepage source map, with all outlet paths synchronized. Do not use custom moving circle dots for `/multi-location`. Destination cards may use the same pulse color for a brief border-only highlight when the moving pulse reaches them.
+- `/how-it-works` desktop output paths should follow the homepage source-map geometry: start inside the center core, roughly 40 viewBox pixels to the right of the core center, so the visible line appears to emerge from the logo/ring boundary instead of beginning outside the ring.
+- Supporting-page ring ripples should be visible in light mode; keep darker-mode overrides calmer so the contrast-panel diagrams do not look noisy.
 - Use the official `LogoMark` only where the diagram represents MenuList as the operating system, not as decoration.
-- Use `--ws-panel-contrast*` tokens for dark map sections so dark mode stays cohesive.
+- Use local flow tokens that resolve to light website tokens in light mode and `--ws-panel-contrast*` tokens in dark mode.
 - Labels must be owner-readable: `Menu link`, `Official page`, `Saved shortcut`, `approved updates`.
 - Avoid generic words such as `App`, `Web Page`, `node`, `sync engine`, or integration-style labels.
 

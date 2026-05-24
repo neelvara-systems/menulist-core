@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Technical Implementation Blueprint
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-24
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -107,7 +107,7 @@ UploadModal.handleStartGeneration()
   → Validate fileList.length > 0
   → Upload each file to Firebase Storage:
     → Path: ingestion_source_files/{tId}/{sId}/{uuid}-{filename}
-    → uploadFile() with progress callback
+    → uploadFile() with progress callback and Storage metadata for source use, retention, and image metadata policy
   → addIngestionJob({ sourceFiles: uploadedFiles, status: 'pending' })
     → requestBodyComposer injects tId, sId, uId, timestamps
     → addDoc to kb_generation_jobs

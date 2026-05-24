@@ -13,11 +13,13 @@ import { getFeedbackCount, getFeedbackList, updateFeedbackStatus } from '@databa
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
-import { Empty, Spin, theme, notification } from 'antd';
+import { Button, Card, Empty, Flex, Spin, Typography, theme, notification } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackFilters } from './FeedbackFilters';
 import { FeedbackQrDownload } from './FeedbackQrDownload';
+
+const { Title, Text, Paragraph } = Typography;
 
 interface FeedbackInboxProps {
     /** Project ID for QR code generation */
@@ -131,80 +133,110 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
     };
 
     return (
-        <div className="feedback-inbox p-4 md:p-6 max-w-4xl mx-auto">
+        <div className="feedback-inbox p-4 md:p-6 mx-auto" style={{ maxWidth: 1180, width: '100%' }}>
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-semibold" style={{ color: token.colorText }}>
+                    <Title level={3} style={{ color: token.colorText, margin: 0 }}>
                         Guest Feedback
-                    </h1>
-                    <p className="text-sm mt-1" style={{ color: token.colorTextSecondary }}>
-                        Private feedback from your guests
-                    </p>
+                    </Title>
+                    <Paragraph style={{ color: token.colorTextSecondary, margin: '4px 0 0' }}>
+                        Private customer reports that help you keep the public menu correct.
+                    </Paragraph>
                 </div>
-
-                {/* QR Code Download */}
-                {projectId && (
-                    <FeedbackQrDownload
-                        projectId={projectId}
-                        storeName={storeName}
-                    />
-                )}
             </div>
 
-            {/* Filters */}
-            <div className="mb-6">
-                <FeedbackFilters
-                    value={filter}
-                    onChange={handleFilterChange}
-                    needsAttentionCount={needsAttentionCount}
-                    disabled={isLoading}
-                />
-            </div>
-
-            {/* Content */}
-            {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Spin size="large" />
-                </div>
-            ) : feedbackItems.length === 0 ? (
-                <Empty
-                    description={
-                        filter === 'all'
-                            ? 'No feedback yet'
-                            : filter === 'needs_attention'
-                                ? 'No feedback needs attention'
-                                : 'No resolved feedback'
-                    }
-                    className="py-12"
-                />
-            ) : (
-                <div className="space-y-4">
-                    {feedbackItems.map((feedback) => (
-                        <FeedbackCard
-                            key={feedback.id}
-                            feedback={feedback}
-                            onStatusUpdate={handleStatusUpdate}
-                            storeName={storeName}
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+                <Card>
+                    <Flex align="center" justify="space-between" gap={16} wrap="wrap" style={{ marginBottom: 20 }}>
+                        <FeedbackFilters
+                            value={filter}
+                            onChange={handleFilterChange}
+                            needsAttentionCount={needsAttentionCount}
+                            disabled={isLoading}
                         />
-                    ))}
+                        <Text type="secondary">
+                            {isLoading ? 'Loading feedback...' : `${feedbackItems.length} visible`}
+                        </Text>
+                    </Flex>
 
-                    {hasMore && (
-                        <div className="text-center py-4">
-                            <button
-                                className="text-sm disabled:opacity-50"
-                                onClick={() => fetchFeedback(true, lastDocId)}
-                                disabled={isLoadingMore}
-                                style={{
-                                    color: token.colorLink,
-                                }}
-                            >
-                                {isLoadingMore ? 'Loading...' : 'Load more'}
-                            </button>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Spin size="large" />
+                        </div>
+                    ) : feedbackItems.length === 0 ? (
+                        <Empty
+                            description={
+                                filter === 'all'
+                                    ? 'No feedback yet'
+                                    : filter === 'needs_attention'
+                                        ? 'No feedback needs attention'
+                                        : 'No resolved feedback'
+                            }
+                            className="py-12"
+                        />
+                    ) : (
+                        <div>
+                            {feedbackItems.map((feedback) => (
+                                <FeedbackCard
+                                    key={feedback.id}
+                                    feedback={feedback}
+                                    onStatusUpdate={handleStatusUpdate}
+                                    storeName={storeName}
+                                />
+                            ))}
+
+                            {hasMore && (
+                                <Flex justify="center" style={{ paddingTop: 16 }}>
+                                    <Button
+                                        onClick={() => fetchFeedback(true, lastDocId)}
+                                        disabled={isLoadingMore}
+                                        loading={isLoadingMore}
+                                    >
+                                        Load more
+                                    </Button>
+                                </Flex>
+                            )}
                         </div>
                     )}
-                </div>
-            )}
+                </Card>
+
+                <Flex vertical gap={16}>
+                    <Card size="small">
+                        <Flex vertical gap={4}>
+                            <Text type="secondary">Needs attention</Text>
+                            <Title level={3} style={{ margin: 0, color: needsAttentionCount > 0 ? token.colorError : token.colorText }}>
+                                {needsAttentionCount}
+                            </Title>
+                            <Text type="secondary">
+                                Low-rating feedback remains here until the owner marks it resolved.
+                            </Text>
+                        </Flex>
+                    </Card>
+
+                    {projectId ? (
+                        <Card size="small" title="Feedback QR">
+                            <Flex vertical gap={12}>
+                                <Text type="secondary">
+                                    Place this near tables, counters, bills, or packaging so customers can report issues privately.
+                                </Text>
+                                <FeedbackQrDownload
+                                    projectId={projectId}
+                                    storeName={storeName}
+                                />
+                            </Flex>
+                        </Card>
+                    ) : null}
+
+                    <Card size="small" title="How to use this inbox">
+                        <Flex vertical gap={10}>
+                            <Text>Review low ratings first.</Text>
+                            <Text>Use phone or email only when the customer shared it.</Text>
+                            <Text>Correct the approved menu source when feedback points to wrong prices, missing items, or old details.</Text>
+                        </Flex>
+                    </Card>
+                </Flex>
+            </div>
         </div>
     );
 };

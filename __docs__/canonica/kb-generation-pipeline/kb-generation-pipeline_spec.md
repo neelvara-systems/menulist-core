@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Product Specification
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-24
 > **Audience:** CEO, PM, Clients
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -43,6 +43,7 @@ Enable platform administrators to generate structured knowledge base articles fr
 - Files uploaded to Firebase Storage: `ingestion_source_files/{tId}/{sId}/{uuid}-{filename}`
 - Upload progress tracked per file with visual indicators
 - No file count limit (multiple files per job)
+- Source uploads preserve file fidelity for generation and are tagged with Storage metadata for purpose and retention. Images and screenshots may contain hidden file metadata, so admins are warned at upload time to remove private customer data before adding them.
 
 ### Stage 2: Job Creation
 
@@ -156,7 +157,7 @@ This ensures no orphaned articles or categories remain.
 | 1   | `getIngestionJobs()` fetches ALL jobs with no tenant filter                                            | Dead code — never called. Harmless but should be removed or scoped.                 |
 | 2   | No retry mechanism for failed jobs                                                                     | ✅ RESOLVED — `retryJob()` DAL + UI button implemented                              |
 | 3   | No job timeout (stuck in processing forever)                                                           | ✅ RESOLVED — Watchdog in hourly scheduler auto-fails after 30 min                  |
-| 4   | Source files not cleaned up on job failure                                                             | By design — preserves files for retry. Cleaned on delete/cancel.                    |
+| 4   | Source files not cleaned up on job failure or cancellation                                             | By design — preserves files for retry, audit, and review. Cleaned on explicit job delete. |
 | 5   | No progress granularity during processing stage                                                        | Status is binary (processing or not)                                                |
 | 6   | Dev/prod behavior difference: dev manually triggers CF, prod uses Firestore trigger                    | By design — documented in code                                                      |
 | 7   | `embedArticleWorker` increments counter on error — failed embeddings count as "done"                   | Risk: job marked "published" with missing embeddings. Low frequency mitigates risk. |
@@ -186,4 +187,4 @@ This ensures no orphaned articles or categories remain.
 ### Remaining Future Items
 
 - **Canonica entity extraction:** Connect `extractEntitiesFromArticles` on publish when `ENABLE_CANONICA_ONTOLOGY` is ON
-- **Source file cleanup:** Not on failure (preserves retry). Only on explicit delete/cancel.
+- **Source file cleanup:** Not on failure or cancellation. Failed jobs preserve source files for retry, and cancelled jobs preserve source files for audit/review. Source files are removed on explicit job delete.

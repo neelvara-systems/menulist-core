@@ -19,6 +19,7 @@ import {
     OwnerDashboardMetrics
 } from './services/gemini/ownerDashboardSummary';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
+import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 
 /**
  * CUSTOMER-FACING ANALYTICS AGGREGATION
@@ -1467,6 +1468,7 @@ export const triggerCustomerAnalyticsManually = onCall({
     region: 'us-central1',
     timeoutSeconds: 540,
     memory: '512MiB',
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
 }, async (request) => {
     // Require authentication
     if (!request.auth) {

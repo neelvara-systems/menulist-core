@@ -32,7 +32,7 @@ export default function SupportTeamsUseCasePage() {
             setupSteps={[
                 'Map support-heavy pages such as billing, team settings, and onboarding.',
                 'Import existing macros, FAQs, and common ticket answers.',
-                'Review draft canonical answers before they become authoritative.',
+                'Review draft answers before they become authoritative.',
                 'Let tickets capture safe context when fallback is needed.',
                 'Use the signal queue to prioritize recurring gaps.',
             ]}

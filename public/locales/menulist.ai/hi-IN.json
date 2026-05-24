@@ -2666,9 +2666,9 @@
             "bottomCaption": "Restaurants wedge हैं। MenuList वहाँ सबसे मजबूत है जहाँ customers को business की current public offer list चाहिए।"
         },
         "Workflow": {
-            "eyebrow": "कैसे काम करता है",
-            "title": "Upload, review, publish.",
-            "highlight": "publish.",
+            "eyebrow": "Source से public तक",
+            "title": "एक menu हर customer surface तक पहुँचता है।",
+            "highlight": "customer surface",
             "pipelinePhoto": "फोटो",
             "pipelinePdf": "PDF",
             "pipelineText": "टेक्स्ट",

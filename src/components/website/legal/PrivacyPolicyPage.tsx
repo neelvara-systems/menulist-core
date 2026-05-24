@@ -16,6 +16,7 @@ const dataCollected = [
             'Account information: Name, email address, and business details when you register',
             'Staff account information: Staff name, email or phone number, Staff ID alias, role, store assignment, and account status when a business adds team access',
             'Business content: Menus, price lists, images, and documents you upload',
+            'Public media prepared by MenuList removes original image metadata before storage',
             'Payment information: Processed securely through Razorpay — we never store credit card details',
         ],
     },
@@ -93,7 +94,7 @@ const privacyRights = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'May 19, 2026';
+    const lastUpdated = 'May 24, 2026';
 
     return (
         <div className="ws-page">

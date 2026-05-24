@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions about Canonica setup, widget context, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, widget context, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, AI-built apps, widget context, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -27,8 +27,28 @@ function getBasePath(): string {
 
 const FAQS = [
     {
+        question: 'I built my app with AI. Do I still need Canonica?',
+        answer: 'Yes, if real users are asking repeated questions. AI can help you build faster, but users still need support that matches your product pages and stays approved.',
+    },
+    {
+        question: 'Can I use ChatGPT or a normal chatbot instead?',
+        answer: 'You can, but generic chat is not the same as approved page-aware support. Canonica serves reviewed answers first and turns missing answers into review work.',
+    },
+    {
+        question: 'What if I do not have documentation yet?',
+        answer: 'Start with FAQs, setup notes, release notes, and recurring support questions. Canonica helps turn that material into reviewed support knowledge.',
+    },
+    {
+        question: 'Will Canonica make up answers?',
+        answer: 'No. Approved answers are served first. If coverage is missing, fallback is marked and repeated misses go to review.',
+    },
+    {
+        question: 'Is this for prototypes?',
+        answer: 'No. Canonica is for live or near-live SaaS apps with real users and repeated support questions.',
+    },
+    {
         question: 'Is Canonica a chatbot?',
-        answer: 'No. Canonica includes AI-assisted support surfaces, but the core product is a support knowledge control plane: page context, canonical answers, drift checks, and owner-reviewed governance.',
+        answer: 'No. Canonica includes AI-assisted support surfaces, but the core product is approved page-aware support: page context, approved answers, stale-answer checks, and owner review.',
     },
     {
         question: 'Is Canonica a helpdesk?',
@@ -120,9 +140,9 @@ export default function CanonicaFaqPage() {
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">FAQ</p>
-                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before installing Canonica</h1>
+                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Canonica.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Practical answers about setup, widget behavior, pricing, support gaps, and product separation.
+                            Plain answers about setup, AI-built apps, page-aware support, pricing, data handling, and fallback tickets.
                         </p>
                     </div>
                 </section>

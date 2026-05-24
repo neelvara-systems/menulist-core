@@ -1,7 +1,7 @@
 'use client';
 import { FEATURE_FLAGS } from '@config/features';
 import { normalizeBaseUrl } from '@constant/urls';
-import { Alert, Button, Card, Col, Divider, Input, Row, Space, Steps, Tag, Typography, notification } from 'antd';
+import { Alert, Button, Card, Col, Divider, Input, Row, Space, Steps, Tag, Typography, notification, theme } from 'antd';
 import axios from 'axios';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuFileText, LuGlobe, LuLoader, LuRefreshCw, LuRotateCcw, LuTrash2 } from 'react-icons/lu';
@@ -31,6 +31,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
     const [dnsRecords, setDnsRecords] = useState<DnsRecord[]>([]);
     const [copied, setCopied] = useState<string | null>(null);
     const activeDomainUrl = storeDetails?.customDomain ? normalizeBaseUrl(storeDetails.customDomain) : '';
+    const { token } = theme.useToken();
 
     // Initialize from store data
     useEffect(() => {
@@ -206,14 +207,14 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                     />
 
                     {/* DNS Records Table */}
-                    <Card size="small" style={{ marginBottom: 16, background: '#fafafa' }}>
+                    <Card size="small" style={{ marginBottom: 16, background: token.colorFillSecondary }}>
                         <Title level={5} style={{ margin: '0 0 12px 0', fontSize: 14 }}>
                             DNS Records to Add
                         </Title>
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+                                    <tr style={{ borderBottom: `1px solid ${token.colorBorder}` }}>
                                         <th style={{ padding: '8px', textAlign: 'left' }}>Type</th>
                                         <th style={{ padding: '8px', textAlign: 'left' }}>Name</th>
                                         <th style={{ padding: '8px', textAlign: 'left' }}>Value</th>
@@ -226,7 +227,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                                         name: '@',
                                         value: 'cname.vercel-dns.com',
                                     }]).map((record, i) => (
-                                        <tr key={i} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                        <tr key={i} style={{ borderBottom: `1px solid ${token.colorBorder}` }}>
                                             <td style={{ padding: '8px' }}>
                                                 <Tag color="blue">{record.type}</Tag>
                                             </td>
@@ -357,6 +358,7 @@ type ComplianceTab = 'privacy' | 'terms' | 'refund';
 type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
 
 function CompliancePagesSection({ domain }: { domain?: string }) {
+    const { token } = theme.useToken();
     const [activeTab, setActiveTab] = useState<ComplianceTab>('privacy');
     const [privacyData, setPrivacyData] = useState<CompliancePageData>(null);
     const [termsData, setTermsData] = useState<CompliancePageData>(null);
@@ -517,7 +519,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                 <div>
                     <Card
                         size="small"
-                        style={{ background: '#fafafa', maxHeight: 200, overflow: 'auto', marginBottom: 12 }}
+                        style={{ background: token.colorFillSecondary, maxHeight: 200, overflow: 'auto', marginBottom: 12 }}
                     >
                         <Text style={{ fontSize: 12, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                             {currentData?.content

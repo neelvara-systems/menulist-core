@@ -29,22 +29,22 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         label: 'Knowledge Base',
         href: '/product/knowledge-base',
         eyebrow: 'Knowledge Base',
-        title: 'Support docs that stay connected to product truth.',
+        title: 'Docs that power page-aware support.',
         description:
-            'Canonica turns help articles into governed support knowledge. Articles can be imported, reviewed, attached to product surfaces, and used as source material for approved answers and FAQs.',
+            'Import or write help articles, connect them to app pages, and use them as source material for approved answers, FAQs, hosted help, and widget suggestions.',
         heroBullets: [
             'Import starter knowledge and files',
-            'Attach articles to product surfaces',
+            'Attach articles to app pages',
             'Keep Help Center, widget, and governance connected',
         ],
-        proofTitle: 'Everything needed to manage support knowledge',
+        proofTitle: 'Manage support knowledge without building a docs empire.',
         proofDescription:
-            'The knowledge base is not just a document shelf. It is the reviewed source material Canonica uses for page-aware support, canonical answers, FAQs, and coverage review.',
+            'The knowledge base is not just a document shelf. It is the reviewed source material Canonica uses for page-aware support, approved answers, FAQs, and coverage review.',
         cards: [
             {
                 title: 'Create reviewed articles',
                 description:
-                    'Write support docs with clear owner review before the content becomes customer-facing support truth.',
+                    'Write support docs with clear owner review before the content becomes customer-facing support.',
             },
             {
                 title: 'Import existing knowledge',
@@ -67,29 +67,29 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                     'Use the same reviewed article set across hosted help, widget answers, related content, and Help Center surfaces.',
             },
         ],
-        workflowTitle: 'From imported content to trusted support source',
+        workflowTitle: 'From rough notes to trusted support source.',
         workflowDescription:
-            'Canonica keeps the owner in control: source content becomes drafts, drafts are reviewed, and approved knowledge becomes reusable support truth.',
+            'Canonica keeps the owner in control: source content becomes drafts, drafts are reviewed, and approved knowledge becomes reusable support.',
         workflowSteps: [
             { title: 'Bring content in', description: 'Upload files or add starter support content from existing product material.' },
             { title: 'Review generated drafts', description: 'Check article drafts and related FAQs before publishing.' },
             { title: 'Attach product context', description: 'Map articles to pages, workflows, entities, and tags.' },
             { title: 'Serve where needed', description: 'Use approved content in hosted help, widget answers, and related suggestions.' },
         ],
-        connectedTitle: 'Connected to the rest of Canonica',
+        connectedTitle: 'Articles should feed the full support loop.',
         connectedDescription:
             'Articles feed the support loop instead of living alone. FAQ, changelog, tickets, and governance all refer back to reviewed product knowledge.',
         connectedItems: [
             { title: 'FAQ', description: 'Short answers stay linked to article source material.' },
             { title: 'Changelog', description: 'Release changes can point to support docs that need review.' },
-            { title: 'Tickets', description: 'Resolved tickets can become new article or canonical-answer proposals.' },
+            { title: 'Tickets', description: 'Resolved tickets can become new article or approved-answer proposals.' },
             { title: 'Governance', description: 'Coverage and drift checks use article relationships instead of raw document count.' },
         ],
         faq: [
             {
                 title: 'Is this a full documentation CMS?',
                 description:
-                    'No. Canonica keeps publishing simple because the product goal is governed support truth, not a general website builder.',
+                    'No. Canonica keeps publishing simple because the product goal is reviewed support knowledge, not a general website builder.',
             },
             {
                 title: 'Can articles power widget answers?',
@@ -108,7 +108,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         label: 'FAQ Management',
         href: '/product/faq-management',
         eyebrow: 'FAQ Management',
-        title: 'Short answers that remain tied to real source knowledge.',
+        title: 'Short answers backed by real source content.',
         description:
             'Canonica treats FAQs as customer-facing shortcuts, not loose snippets. FAQs can be generated with article context, linked back to source articles, and shown in the Help Center or widget.',
         heroBullets: [
@@ -116,7 +116,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             'Owner review before publishing',
             'Surface-aware FAQ display',
         ],
-        proofTitle: 'Everything needed to answer repeated questions quickly',
+        proofTitle: 'Answer repeated questions quickly.',
         proofDescription:
             'FAQs help users get direct answers without making owners maintain a second disconnected knowledge system.',
         cards: [
@@ -138,7 +138,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Review before authority',
                 description:
-                    'Owner-approved FAQ answers can become trusted shortcuts; drafts do not silently become product truth.',
+                    'Owner-approved FAQ answers can become trusted shortcuts; drafts do not silently become official guidance.',
             },
             {
                 title: 'Serve in Help Center and widget',
@@ -146,7 +146,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                     'Use short answers in public help, related content rows, and page-aware widget suggestions without duplicating content work.',
             },
         ],
-        workflowTitle: 'Generate once, keep the source attached',
+        workflowTitle: 'Generate FAQs from source content, then keep them attached.',
         workflowDescription:
             'The lowest-cost long-term path is to create FAQs with article generation, then refresh them only when the source article changes materially.',
         workflowSteps: [
@@ -155,7 +155,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             { title: 'Review and publish', description: 'Approve only the FAQ answers that are correct and useful.' },
             { title: 'Refresh when content changes', description: 'Regenerate or edit FAQs from the article modal when the source answer changes.' },
         ],
-        connectedTitle: 'Connected answers, not copied snippets',
+        connectedTitle: 'FAQs should not become loose snippets.',
         connectedDescription:
             'A good FAQ system reduces repeated questions only when it follows the same product context and source freshness rules as the rest of support.',
         connectedItems: [
@@ -187,7 +187,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         label: 'Changelog',
         href: '/product/changelog',
         eyebrow: 'Changelog',
-        title: 'Release notes that keep support from drifting.',
+        title: 'Release notes that keep support current.',
         description:
             'Canonica connects changelog entries to product surfaces, tags, affected entities, and support content so releases become review triggers instead of stale support risk.',
         heroBullets: [
@@ -195,7 +195,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             'Connect changes to product surfaces',
             'Review affected support answers after releases',
         ],
-        proofTitle: 'Everything needed to explain what changed',
+        proofTitle: 'Explain what changed and what support must review.',
         proofDescription:
             'A changelog should do more than announce features. In Canonica it also helps owners see which answers, articles, and FAQs may need review after a release.',
         cards: [
@@ -225,21 +225,21 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                     'Help Center and widget surfaces can show relevant product movement beside current support answers.',
             },
         ],
-        workflowTitle: 'From release to support readiness',
+        workflowTitle: 'From release note to support readiness.',
         workflowDescription:
-            'Canonica treats product changes as support events. When the product moves, support truth gets a review path.',
+            'Canonica treats product changes as support events. When the product moves, support content gets a review path.',
         workflowSteps: [
             { title: 'Write the release note', description: 'Describe what changed in customer-readable language.' },
             { title: 'Assign affected surfaces', description: 'Connect the update to pages, workflows, entities, tags, and related articles.' },
-            { title: 'Review stale support', description: 'Check canonical answers and FAQs that may now be outdated.' },
+            { title: 'Review stale support', description: 'Check approved answers and FAQs that may now be outdated.' },
             { title: 'Publish support context', description: 'Expose the update through hosted help and page-aware support where useful.' },
         ],
-        connectedTitle: 'Release notes become support context',
+        connectedTitle: 'Every product change can become support context.',
         connectedDescription:
             'Changelog entries help support stay accurate because they connect product movement to articles, answers, FAQs, tickets, and drift signals.',
         connectedItems: [
             { title: 'Knowledge Base', description: 'Release notes point to articles that explain the change.' },
-            { title: 'Canonical Answers', description: 'Affected answers can be reviewed after product changes.' },
+            { title: 'Approved answers', description: 'Affected answers can be reviewed after product changes.' },
             { title: 'FAQ', description: 'Short answers can be refreshed when release behavior changes.' },
             { title: 'Signals', description: 'Post-release tickets and feedback reveal where users remain confused.' },
         ],
@@ -247,7 +247,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             {
                 title: 'Is this only a public release log?',
                 description:
-                    'No. The public update is useful, but the support value comes from connecting each change to affected support truth.',
+                    'No. The public update is useful, but the support value comes from connecting each change to affected support content.',
             },
             {
                 title: 'Can changelog content appear in the widget?',
@@ -266,15 +266,15 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
         label: 'Tickets',
         href: '/product/tickets',
         eyebrow: 'Tickets',
-        title: 'Fallback tickets that teach the support system.',
+        title: 'Fallback tickets that improve future answers.',
         description:
-            'Canonica keeps tickets as a fallback and signal source. When approved knowledge is missing, tickets capture the issue, safe context, and resolution patterns that can become future support truth.',
+            'Canonica keeps tickets as a fallback and signal source. When approved knowledge is missing, tickets capture the issue, safe context, and resolution patterns that can become future support content.',
         heroBullets: [
             'Ticket fallback when coverage is missing',
             'Capped safe debugging context',
             'Resolved issues become knowledge signals',
         ],
-        proofTitle: 'Everything needed when the answer is not ready yet',
+        proofTitle: 'Handle unresolved questions without making tickets the center.',
         proofDescription:
             'Tickets should not become the center of the product. In Canonica they are the practical fallback path and the evidence trail for improving canonical coverage.',
         cards: [
@@ -304,7 +304,7 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
                     'The goal is not more ticket workflow. The goal is turning repeated tickets into approved support knowledge.',
             },
         ],
-        workflowTitle: 'From unresolved question to reviewed improvement',
+        workflowTitle: 'From unresolved question to reviewed answer.',
         workflowDescription:
             'Tickets close the support loop by capturing missing coverage and routing repeated issues into knowledge review.',
         workflowSteps: [
@@ -313,9 +313,9 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             { title: 'Owner resolves the issue', description: 'The support answer is handled through normal ticket response.' },
             { title: 'Repeated patterns become proposals', description: 'Resolved clusters can create draft knowledge changes for review.' },
         ],
-        connectedTitle: 'Tickets are fallback, not the center',
+        connectedTitle: 'Tickets are fallback, not the product.',
         connectedDescription:
-            'Canonica uses tickets to improve support truth. That keeps the product aligned with knowledge governance rather than becoming another helpdesk.',
+            'Canonica uses tickets to improve support knowledge. That keeps the product aligned with answer review rather than becoming another helpdesk.',
         connectedItems: [
             { title: 'Widget', description: 'Fallback can create a ticket from the same page context.' },
             { title: 'Knowledge Base', description: 'Resolved issues can become article improvements.' },

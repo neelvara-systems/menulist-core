@@ -4,7 +4,7 @@ import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState 
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { secureError } from '@lib/security/secureLogger';
-import { Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message } from 'antd';
+import { Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -23,6 +23,7 @@ const { Title, Text } = Typography;
  * @see __docs__/ops-control-room/ops-control-room_impl.md
  */
 function OpsControlRoom() {
+    const { token } = theme.useToken();
     const { data: session } = useSession();
     const [loading, setLoading] = useState(true);
     const [systemState, setSystemState] = useState<SystemState | null>(null);
@@ -230,7 +231,7 @@ function OpsControlRoom() {
                 <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
                     <div>
                         <Text type="secondary">No publish 60d</Text><br />
-                        <Text strong style={{ fontSize: 20, color: (integrity?.noPublish60d ?? 0) > 0 ? '#ff4d4f' : undefined }}>
+                        <Text strong style={{ fontSize: 20, color: (integrity?.noPublish60d ?? 0) > 0 ? token.colorError : undefined }}>
                             {integrity?.noPublish60d ?? '-'}
                         </Text>
                     </div>

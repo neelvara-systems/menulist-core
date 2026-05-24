@@ -2,7 +2,7 @@
 
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@constant/common";
-import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography } from "antd";
+import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,6 +26,7 @@ interface OnboardResult {
 }
 
 function OnboardingWizard() {
+    const { token } = theme.useToken();
     const { data: session } = useSession();
     const router = useRouter();
     const [form] = Form.useForm();
@@ -259,12 +260,12 @@ function OnboardingWizard() {
                 </Row>
                 <Divider />
                 {values.paymentMode === 'offline' && (
-                    <Paragraph type="warning" style={{ background: '#fffbe6', padding: 12, borderRadius: 8 }}>
+                    <Paragraph type="warning" style={{ background: token.colorWarningBg, padding: 12, borderRadius: 8 }}>
                         By confirming, you declare that you have collected {getDisplayAmount()} from the client. The store will be activated immediately until the selected prepaid end date.
                     </Paragraph>
                 )}
                 {values.paymentMode === 'online' && (
-                    <Paragraph type="secondary" style={{ background: '#f0f5ff', padding: 12, borderRadius: 8 }}>
+                    <Paragraph type="secondary" style={{ background: token.colorInfoBg, padding: 12, borderRadius: 8 }}>
                         A Razorpay recurring checkout link will be generated. Share it with the client to complete payment. The store activates after payment.
                     </Paragraph>
                 )}

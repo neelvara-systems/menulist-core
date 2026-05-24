@@ -4,7 +4,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { createDefaultRoles } from "@data/defaultRoles";
 import { syncStoreToSummary, updateStoresCountInPlatformSummary } from "@database/platformSummary";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
-import { collection, getDocs, query, where } from "@firebase/firestore";
+import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { TrackingEvent, trackEvent } from "@lib/analytics/unified";
 import { requestBodyComposer } from "@lib/apiHelper";
@@ -102,7 +102,8 @@ export const checkCustomDomainAvailability = async (
             const q = query(
                 storesRef,
                 where('customDomain', '==', normalizedDomain),
-                where('active', '==', true)
+                where('active', '==', true),
+                limit(1)
             );
             const snapshot = await getDocs(q);
 

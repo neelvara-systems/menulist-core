@@ -2,7 +2,7 @@ import TextElement from '@antdComponent/textElement';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { UserDataType } from '@type/platform/user';
-import { Button, Card, Divider, Empty, Flex, Tag } from 'antd';
+import { Button, Card, Divider, Empty, Flex, Tag, theme } from 'antd';
 import { Fragment, useContext } from 'react';
 import { LuBrain, LuBriefcase, LuCalendar, LuClipboard, LuFile, LuMail, LuPalette, LuPen, LuPhoneCall, LuUser, LuUser2 } from 'react-icons/lu';
 import AddressCard from './addressCard';
@@ -10,6 +10,7 @@ import AddressCard from './addressCard';
 function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, onClickEdit?: any }) {
 
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { token } = theme.useToken();
     const resolveStoreName = (store: any) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     };
@@ -145,7 +146,7 @@ function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, 
                                             maxHeight: 200,
                                             objectFit: 'contain',
                                             borderRadius: 8,
-                                            border: '1px solid #d9d9d9'
+                                            border: `1px solid ${token.colorBorder}`
                                         }}
                                     />
                                 </Fragment>
@@ -208,7 +209,7 @@ function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, 
                                     height: 16,
                                     backgroundColor: userDetails.color,
                                     borderRadius: 4,
-                                    border: '1px solid #d9d9d9'
+                                    border: `1px solid ${token.colorBorder}`
                                 }} />
                             </Flex>
                         )}

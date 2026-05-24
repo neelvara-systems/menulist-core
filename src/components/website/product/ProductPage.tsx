@@ -36,12 +36,12 @@ export default function ProductPage() {
     { key: 'flowTypedText', Icon: LuType },
   ];
   const flowOutputs = [
-    { key: 'flowQr', Icon: LuQrCode },
-    { key: 'flowWebPage', Icon: LuLink },
-    { key: 'flowScreens', Icon: LuMonitor },
-    { key: 'flowPdfOut', Icon: LuFileText },
-    { key: 'flowOfficial', Icon: LuGlobe },
-    { key: 'flowApp', Icon: LuSmartphone },
+    { key: 'flowQr', Icon: LuQrCode, pulseClass: 'ws-map-card-output-arrival-0' },
+    { key: 'flowWebPage', Icon: LuLink, pulseClass: 'ws-map-card-output-arrival-1' },
+    { key: 'flowScreens', Icon: LuMonitor, pulseClass: 'ws-map-card-output-arrival-2' },
+    { key: 'flowPdfOut', Icon: LuFileText, pulseClass: 'ws-map-card-output-arrival-3' },
+    { key: 'flowOfficial', Icon: LuGlobe, pulseClass: 'ws-map-card-output-arrival-4' },
+    { key: 'flowApp', Icon: LuSmartphone, pulseClass: 'ws-map-card-output-arrival-5' },
   ];
   const publishedSurfaces = Array.from({ length: 6 }, (_, i) => t(`HowItWorks.step3Surface${i}`));
   const aiFeatures = aiIcons.map((icon, i) => ({
@@ -82,15 +82,51 @@ export default function ProductPage() {
 
           <AnimateOnScroll delay={0.08}>
             <div className="ws-page-source-map ws-page-source-map--surfaces">
-              <svg className="ws-page-source-map__paths" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
+              <svg className="ws-page-source-map__paths ws-page-source-map__paths--desktop" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
                 <path className="ws-page-source-map__path" d="M190 84 C312 84 328 176 452 176" />
                 <path className="ws-page-source-map__path" d="M190 176 C312 176 328 176 452 176" />
                 <path className="ws-page-source-map__path" d="M190 268 C312 268 328 176 452 176" />
-                <path className="ws-page-source-map__path" d="M528 176 C650 176 680 82 790 82" />
-                <path className="ws-page-source-map__path" d="M528 176 C660 176 690 134 810 134" />
-                <path className="ws-page-source-map__path" d="M528 176 C668 176 690 186 810 186" />
-                <path className="ws-page-source-map__path" d="M528 176 C668 176 690 238 810 238" />
-                <path className="ws-page-source-map__path" d="M528 176 C650 176 680 290 790 290" />
+                <path className="ws-page-source-map__path" d="M476 176 C552 176 552 106 576 106" />
+                <path className="ws-page-source-map__path" d="M476 176 C640 176 660 106 770 106" />
+                <path className="ws-page-source-map__path" d="M476 176 C548 176 554 180 576 180" />
+                <path className="ws-page-source-map__path" d="M476 176 C640 176 660 180 770 180" />
+                <path className="ws-page-source-map__path" d="M476 176 C552 176 552 254 576 254" />
+                <path className="ws-page-source-map__path" d="M476 176 C640 176 660 254 770 254" />
+                <path className="ws-page-source-map__path" d="M756 106 H770" />
+                <path className="ws-page-source-map__path" d="M756 180 H770" />
+                <path className="ws-page-source-map__path" d="M756 254 H770" />
+                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M190 84 C312 84 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M190 176 C312 176 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M190 268 C312 268 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M476 176 C552 176 552 106 576 106" />
+                <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M476 176 C640 176 660 106 770 106" />
+                <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M476 176 C548 176 554 180 576 180" />
+                <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M476 176 C640 176 660 180 770 180" />
+                <path className="ws-map-pulse ws-map-pulse-output-4" pathLength={1} d="M476 176 C552 176 552 254 576 254" />
+                <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M476 176 C640 176 660 254 770 254" />
+                <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M756 106 H770" />
+                <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M756 180 H770" />
+                <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M756 254 H770" />
+              </svg>
+              <svg className="ws-page-source-map__paths ws-page-source-map__paths--mobile" viewBox="0 0 350 491" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <path className="ws-page-source-map__path" d="M67 107.5 C85 128 112 145 137 162" />
+                <path className="ws-page-source-map__path" d="M175 107.5 C175 122 175 135 175 143.5" />
+                <path className="ws-page-source-map__path" d="M283 107.5 C265 128 238 145 213 162" />
+                <path className="ws-page-source-map__path" d="M108 246 C96 258 82 266 68.5 275.5" />
+                <path className="ws-page-source-map__path" d="M175 251.5 C175 260 175 268 175 275.5" />
+                <path className="ws-page-source-map__path" d="M242 246 C254 258 268 266 281.5 275.5" />
+                <path className="ws-page-source-map__path" d="M125 251.5 C88 292 80 332 68.5 374" />
+                <path className="ws-page-source-map__path" d="M175 251.5 C175 300 175 335 175 374" />
+                <path className="ws-page-source-map__path" d="M225 251.5 C262 292 270 332 281.5 374" />
+                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M67 107.5 C85 128 112 145 137 162" />
+                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M175 107.5 C175 122 175 135 175 143.5" />
+                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M283 107.5 C265 128 238 145 213 162" />
+                <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M108 246 C96 258 82 266 68.5 275.5" />
+                <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M175 251.5 C175 260 175 268 175 275.5" />
+                <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M242 246 C254 258 268 266 281.5 275.5" />
+                <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M125 251.5 C88 292 80 332 68.5 374" />
+                <path className="ws-map-pulse ws-map-pulse-output-4" pathLength={1} d="M175 251.5 C175 300 175 335 175 374" />
+                <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M225 251.5 C262 292 270 332 281.5 374" />
               </svg>
 
               <div className="ws-page-source-map__stack">
@@ -117,8 +153,8 @@ export default function ProductPage() {
               </div>
 
               <div className="ws-page-source-map__stack ws-page-source-map__stack--outputs">
-                {flowOutputs.map(({ key, Icon }) => (
-                  <div className="ws-page-source-map__item" key={key}>
+                {flowOutputs.map(({ key, Icon, pulseClass }) => (
+                  <div className={`ws-page-source-map__item ws-map-destination-pulse ${pulseClass}`} key={key}>
                     <span className="ws-page-source-map__icon">
                       <Icon size={18} />
                     </span>

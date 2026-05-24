@@ -3,6 +3,7 @@ import { getDownloadURL, ref, uploadBytes, type UploadMetadata } from "firebase/
 
 interface UploadBlobToStorageData {
     blob: Blob;
+    cacheControl?: string;
     contentType?: string;
     customMetadata?: Record<string, string>;
     path: string;
@@ -10,11 +11,13 @@ interface UploadBlobToStorageData {
 
 export default async function uploadBlobToStorage({
     blob,
+    cacheControl,
     contentType,
     customMetadata,
     path,
 }: UploadBlobToStorageData): Promise<string> {
     const metadata: UploadMetadata = {
+        ...(cacheControl ? { cacheControl } : {}),
         contentType: contentType || blob.type || 'application/octet-stream',
         customMetadata: {
             uploadedAt: new Date().toISOString(),

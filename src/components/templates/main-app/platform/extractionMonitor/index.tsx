@@ -25,7 +25,7 @@ import type {
     ExtractionJobSummary,
     ExtractionQualityMetrics,
 } from '@lib/ops/extractionTypes';
-import { Button, Card, Empty, notification, Spin, Statistic, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, Empty, notification, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
@@ -72,6 +72,7 @@ function StatusTag({ status }: { status: string }) {
 // ================================================================
 
 export default function ExtractionMonitor() {
+    const { token } = theme.useToken();
     const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [health, setHealth] = useState<ExtractionHealthMetrics | null>(null);
@@ -292,7 +293,7 @@ export default function ExtractionMonitor() {
                             <Statistic
                                 title="Failed (24h)"
                                 value={health?.failedJobs24h ?? 0}
-                                valueStyle={{ color: (health?.failedJobs24h ?? 0) > 0 ? '#ff4d4f' : undefined }}
+                                valueStyle={{ color: (health?.failedJobs24h ?? 0) > 0 ? token.colorError : undefined }}
                                 suffix={health?.totalJobs24h ? `/ ${health.totalJobs24h}` : ''}
                             />
                         </Card>
@@ -301,7 +302,7 @@ export default function ExtractionMonitor() {
                                 title="Failure Rate"
                                 value={health?.failureRate ?? 0}
                                 suffix="%"
-                                valueStyle={{ color: (health?.failureRate ?? 0) > 5 ? '#ff4d4f' : (health?.failureRate ?? 0) > 2 ? '#faad14' : '#52c41a' }}
+                                valueStyle={{ color: (health?.failureRate ?? 0) > 5 ? token.colorError : (health?.failureRate ?? 0) > 2 ? token.colorWarning : token.colorSuccess }}
                             />
                         </Card>
                         <Card size="small">
@@ -316,7 +317,7 @@ export default function ExtractionMonitor() {
                                 title="Avg Quality"
                                 value={health?.avgQualityScore ?? 0}
                                 suffix="/ 100"
-                                valueStyle={{ color: (health?.avgQualityScore ?? 0) < 55 ? '#ff4d4f' : undefined }}
+                                valueStyle={{ color: (health?.avgQualityScore ?? 0) < 55 ? token.colorError : undefined }}
                             />
                         </Card>
                     </div>
@@ -326,9 +327,9 @@ export default function ExtractionMonitor() {
                         <Card size="small" title="Quality Distribution (last 50 jobs)" style={{ marginBottom: 24 }}>
                             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                                 <Statistic title="Avg Score" value={quality.avgScore} suffix="/ 100" />
-                                <Statistic title="High Confidence Items" value={quality.confidenceDistribution.high} valueStyle={{ color: '#52c41a' }} />
-                                <Statistic title="Medium" value={quality.confidenceDistribution.medium} valueStyle={{ color: '#faad14' }} />
-                                <Statistic title="Low" value={quality.confidenceDistribution.low} valueStyle={{ color: '#ff4d4f' }} />
+                                <Statistic title="High Confidence Items" value={quality.confidenceDistribution.high} valueStyle={{ color: token.colorSuccess }} />
+                                <Statistic title="Medium" value={quality.confidenceDistribution.medium} valueStyle={{ color: token.colorWarning }} />
+                                <Statistic title="Low" value={quality.confidenceDistribution.low} valueStyle={{ color: token.colorError }} />
                                 <Statistic title="Low Quality Rate" value={quality.lowQualityRate} suffix="%" />
                                 <Statistic title="Jobs Analyzed" value={quality.totalJobsAnalyzed} />
                             </div>

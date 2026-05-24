@@ -6,8 +6,8 @@ import ProductCapabilityLandingPage from '../../components/ProductCapabilityLand
 import { CANONICA_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
-    title: 'Launch Setup',
-    description: 'Create a Canonica workspace, add product details, import starter knowledge, map product surfaces, and verify the widget before launch.',
+    title: 'Set Up Support',
+    description: 'Create a Canonica workspace, add product details, import starter knowledge, map important app pages, and verify the widget before launch.',
     alternates: { canonical: '/product/launch-setup' },
 };
 
@@ -28,17 +28,17 @@ export default function LaunchSetupProductPage() {
             <ProductCapabilityLandingPage
                 basePath={basePath}
                 canonicalPath="/product/launch-setup"
-                eyebrow="Launch Setup"
-                title="Go from no support system to a verified support layer."
-                description="Canonica gives founders an activation path: company details, product profile, starter knowledge, important product pages, widget key, and readiness checks before users rely on it."
-                activeTab="Launch Setup"
+                eyebrow="Set up support"
+                title="Set up support before your first users flood you with questions."
+                description="Create a workspace, add your app, import starter knowledge, map the pages where users get stuck, and verify the widget before support goes live."
+                activeTab="Set up support"
                 tabs={CANONICA_PRODUCT_AREAS}
-                canvasTitle="Activation command center"
-                canvasSubtitle="The first workspace session is organized around what must be ready before support goes live, not a blank dashboard."
+                canvasTitle="Your support launch checklist"
+                canvasSubtitle="The first workspace session is organized around what must be ready before users rely on support, not a blank dashboard."
                 canvasBadge="Setup in progress"
                 canvasItems={[
                     { title: 'Product profile', description: 'Company name, product name, support email, product URL, and workspace identity are captured once.' },
-                    { title: 'Starter knowledge', description: 'Docs, FAQs, release notes, and common answers become the seed for reviewed support truth.' },
+                    { title: 'Starter knowledge', description: 'Docs, FAQs, release notes, and common answers become the seed for reviewed support content.' },
                     { title: 'Product surfaces', description: 'Billing, onboarding, settings, releases, and other support-heavy pages are mapped early.' },
                 ]}
                 metrics={[
@@ -46,7 +46,7 @@ export default function LaunchSetupProductPage() {
                     { label: 'Widget key', value: 'Ready once' },
                     { label: 'Activation', value: '78%' },
                 ]}
-                bentoTitle="The first success moment is visible."
+                bentoTitle="You always know what is ready and what is missing."
                 bentoDescription="A buyer should know exactly what remains before launch: content, context, widget install, and first approved answers."
                 bentoCards={[
                     { title: 'Activation checklist', description: 'Keep setup focused on the steps that make support usable: profile, import, surfaces, widget, and answer review.' },
@@ -55,14 +55,14 @@ export default function LaunchSetupProductPage() {
                     { title: 'Review before authority', description: 'Generated drafts and early support answers stay review work until the owner approves them.' },
                     { title: 'Safe key handling', description: 'The widget key is shown for setup and managed through widget settings without exposing tenant or store IDs.' },
                 ]}
-                workflowTitle="Launch support in the same order a founder thinks."
-                workflowDescription="Canonica makes setup concrete: add product identity, import what exists, map pages, verify install, then approve first support truth."
+                workflowTitle="Set up support in the order founders actually think."
+                workflowDescription="Canonica makes setup concrete: add product identity, import what exists, map pages, verify install, then approve the first answers."
                 workflowSteps={[
                     { title: 'Create workspace', description: 'Sign in, enter company and product details, and create the Canonica workspace.' },
                     { title: 'Import knowledge', description: 'Bring starter docs, FAQs, release notes, or common support answers.' },
                     { title: 'Map product surfaces', description: 'Choose the billing, onboarding, settings, release, and error pages that need contextual help.' },
                     { title: 'Verify widget install', description: 'Install one script, allow your domains, block sensitive routes, and verify page context.' },
-                    { title: 'Approve first answers', description: 'Review drafts and early canonical answers before relying on fallback.' },
+                    { title: 'Approve first answers', description: 'Review drafts and early approved answers before relying on fallback.' },
                 ]}
             />
             <CanonicaFooter basePath={basePath} />

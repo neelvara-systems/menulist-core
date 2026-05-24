@@ -243,7 +243,7 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                             value={reviewUrl}
                             onChange={(e) => setReviewUrl(e.target.value)}
                             disabled={!feedbackEnabled}
-                            prefix={showUrlSuccess ? <LuCheckCircle style={{ color: '#52c41a' }} /> : undefined}
+                            prefix={showUrlSuccess ? <LuCheckCircle style={{ color: token.colorSuccess }} /> : undefined}
                             suffix={
                                 reviewUrl ? (
                                     <a

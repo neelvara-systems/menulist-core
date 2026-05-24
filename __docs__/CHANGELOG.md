@@ -6,6 +6,27 @@
 
 ---
 
+## May 24, 2026 — Website Mobile Diagram Polish
+
+### Changed
+
+- **Website diagrams now use mobile-only row flow** — Homepage and How It Works show horizontal inputs, centered MenuList review, and outputs below on phone screens.
+- **Mobile diagram paths restored** — Homepage and How It Works now keep subtle static dotted connectors on phone screens, aligned to the mobile row layout and anchored to card edges.
+- **Diagram themes now match across pages** — Homepage, How It Works, and Multi-location diagrams now use light surfaces in light mode and dark contrast surfaces in dark mode.
+- **Diagram pulse added** — Homepage and How It Works keep the static dotted paths and add a subtle reduced-motion-aware pulse that travels from inputs into MenuList, pauses while the center rings keep a light always-on pulse, and then moves from MenuList toward outputs. Multi-location keeps the approved master-to-outlet pulse.
+- **Output cards now highlight on arrival** — Destination cards briefly highlight only their existing border when the moving pulse reaches them, using the same diagram color and reduced-motion safeguards.
+- **How It Works outputs are grouped on mobile** — Customer outputs now render as two rows of three cards instead of one long vertical stack.
+- **Multi-location mobile diagram is lighter** — The mobile master-to-outlet flow now shows three outlet cards while the desktop diagram still shows five. The active website diagram audit found no other mounted diagrams using this pattern.
+
+## May 24, 2026 — Upload Privacy and Source Retention Clarity
+
+### Changed
+
+- **MenuList media uploads now record privacy metadata** — Prepared public media uploads now tag Storage objects with EXIF-normalization status, source metadata policy, and the actual public-asset retention lifecycle.
+- **Canonica source uploads now show retention context** — Knowledge-source uploads now tell admins that source files stay with the generation job until deletion and warn that images or screenshots can include hidden location or device details.
+- **Privacy policy copy now matches upload behavior** — MenuList and Canonica privacy pages now describe image metadata handling and Canonica source-file retention without adding unsupported time-based retention promises.
+- **Upload security docs now separate service uploads from marketing use** — The docs now reject a bundled marketing consent toggle until a separate opt-in, withdrawal, and consent-log flow exists.
+
 ## May 23, 2026 — Agent-Readable SEO/AEO Hardening
 
 ### Added

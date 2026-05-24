@@ -11,7 +11,7 @@ import { timingSafeEqual } from 'crypto';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { DB_COLLECTIONS } from '../constants/database';
-import { FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
+import { FUNCTION_MAX_INSTANCES, FUNCTION_OPTIONS, SECRET_GROUPS } from '../config/secrets';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { updateStoreHealth, verifyPublish } from '../monitoring/publishVerification';
@@ -163,6 +163,7 @@ export const gcpBudgetAlertWebhook = onRequest(
         region: 'us-central1',
         timeoutSeconds: 10,
         memory: '256MiB' as const,
+        maxInstances: 2,
         secrets: SECRET_GROUPS.BUDGET_ALERT,
     },
     async (req, res) => {
@@ -251,7 +252,12 @@ export const gcpBudgetAlertWebhook = onRequest(
  * Superadmin only. Used during incident recovery.
  */
 export const forceRepublish = onCall(
-    { region: 'us-central1', timeoutSeconds: 60, memory: '256MiB' as const },
+    {
+        region: 'us-central1',
+        timeoutSeconds: 60,
+        memory: '256MiB' as const,
+        maxInstances: FUNCTION_MAX_INSTANCES.callableLight,
+    },
     async (request) => {
         const logger = functions.logger;
         const { storeId, tenantId } = request.data;
@@ -315,6 +321,7 @@ export const backfillStoresSummary = onCall({
     region: 'us-central1',
     timeoutSeconds: 300,
     memory: '512MiB',
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
 }, async (request) => {
     const logger = functions.logger;
 

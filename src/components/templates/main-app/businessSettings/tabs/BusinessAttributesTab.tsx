@@ -2,7 +2,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getBusinessAttributeGroupsForType } from '@lib/obp/businessAttributes';
-import { Button, Card, Col, Divider, Form, Input, Row, Space, Switch, Typography } from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Space, Switch, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef } from 'react';
 import { LuPlus, LuTrash2 } from 'react-icons/lu';
@@ -18,6 +18,7 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
         const t = useTranslations('BusinessSettings');
         const businessType = Form.useWatch('businessType');
         const businessCategory = Form.useWatch('businessCategory');
+        const { token } = theme.useToken();
 
         if (!FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES) return null;
 
@@ -46,7 +47,7 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                                         name={['businessAttributes', field.key]}
                                         label={(
                                             <Space size={6}>
-                                                <span style={{ color: '#999', fontSize: 11, minWidth: 18 }}>{field.icon}</span>
+                                                <span style={{ color: token.colorTextTertiary, fontSize: 11, minWidth: 18 }}>{field.icon}</span>
                                                 <span>{t(field.labelKey)}</span>
                                             </Space>
                                         )}

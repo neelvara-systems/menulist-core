@@ -7,7 +7,8 @@ import {
     Badge, Button, Card, Col, Descriptions, Drawer, Empty, Flex, Form, Input, InputNumber,
     message,
     Row, Space, Spin, Statistic, Switch, Table,
-    Typography
+    Typography,
+    theme,
 } from "antd";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
@@ -60,6 +61,7 @@ function formatMoney(paise?: number) {
  * - View reseller stats (stores onboarded, revenue, etc.)
  */
 function ResellerManagement() {
+    const { token } = theme.useToken();
     const { data: session } = useSession();
     const [authenticated, setAuthenticated] = useState(false);
     const [passwordInput, setPasswordInput] = useState('');
@@ -184,7 +186,7 @@ function ResellerManagement() {
             <Flex vertical align="center" justify="center" style={{ minHeight: '60vh', padding: 24 }}>
                 <Card style={{ maxWidth: 400, width: '100%' }}>
                     <Flex vertical align="center" gap={16}>
-                        <LuShield style={{ fontSize: 48, color: '#722ED1' }} />
+                        <LuShield style={{ fontSize: 48, color: token.colorPrimary }} />
                         <Title level={3} style={{ margin: 0 }}>Reseller Management</Title>
                         <Text type="secondary">Platform admin access required</Text>
                         <Form onFinish={handlePasswordSubmit} style={{ width: '100%' }}>
@@ -304,7 +306,7 @@ function ResellerManagement() {
                 </Col>
                 <Col xs={12} sm={6}>
                     <Card size="small">
-                        <Statistic title="Active" value={profiles.filter(p => p.active).length} valueStyle={{ color: '#52c41a' }} />
+                        <Statistic title="Active" value={profiles.filter(p => p.active).length} valueStyle={{ color: token.colorSuccess }} />
                     </Card>
                 </Col>
                 <Col xs={12} sm={6}>

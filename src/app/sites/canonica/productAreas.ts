@@ -1,22 +1,22 @@
 export const CANONICA_PRODUCT_AREAS = [
     {
-        label: 'Launch Setup',
+        label: 'Set up support',
         href: '/product/launch-setup',
-        description: 'Workspace setup, product profile, starter knowledge, surfaces, widget key, and activation readiness.',
+        description: 'Create your workspace, add product details, import help content, and map the pages where users get stuck.',
     },
     {
-        label: 'Page-Aware Widget',
+        label: 'In-app help widget',
         href: '/product/page-aware-widget',
-        description: 'One embeddable widget that uses safe page context, allowed origins, blocked routes, and approved answers.',
+        description: 'Install one widget, pass safe page hints, control allowed domains, and answer users inside your app.',
     },
     {
-        label: 'Support Control',
+        label: 'Help center + tickets',
         href: '/product/support-control',
-        description: 'Hosted help, docs, FAQ, changelog, ticket fallback, conversations, and weekly review output.',
+        description: 'Publish docs, FAQs, release notes, and fallback tickets from one connected support layer.',
     },
     {
-        label: 'Knowledge Governance',
+        label: 'Review approved answers',
         href: '/product/knowledge-governance',
-        description: 'Product ontology, canonical answers, drift, signal mutation, coverage, and trust/readiness metrics.',
+        description: 'Review drafts, repeated misses, stale answers, coverage, and readiness before support becomes official.',
     },
 ];

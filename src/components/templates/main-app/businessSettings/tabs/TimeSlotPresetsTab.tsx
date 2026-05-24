@@ -3,7 +3,7 @@ import { removePresetFromAllCategories } from '@database/projects';
 import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
-import { Button, Card, Divider, Empty, Flex, message, Modal, Popconfirm, Typography } from 'antd';
+import { Button, Card, Divider, Empty, Flex, message, Modal, Popconfirm, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { LuClock, LuPen, LuPlus, LuTrash2 } from 'react-icons/lu';
@@ -26,6 +26,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
     onPresetsChange
 }) => {
     const t = useTranslations('BusinessSettings');
+    const { token } = theme.useToken();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPreset, setEditingPreset] = useState<TimeSlotPreset | null>(null);
     const [formData, setFormData] = useState({
@@ -182,9 +183,9 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                             justify="space-between"
                             style={{
                                 padding: '12px 16px',
-                                background: 'rgba(0,0,0,0.02)',
+                                background: token.colorFillAlter,
                                 borderRadius: 8,
-                                border: '1px solid rgba(0,0,0,0.06)'
+                                border: `1px solid ${token.colorBorderSecondary}`,
                             }}
                         >
                             <Flex align="center" gap={12}>

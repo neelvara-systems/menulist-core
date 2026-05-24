@@ -102,7 +102,7 @@ const ANSWERS: Record<DemoSurfaceKey, DemoAnswer> = {
         status: 'Stale answer risk detected',
         related: ['Usage limits', 'Plan quotas', 'Release impact checks'],
         changelog: 'Usage limits release note',
-        nextAction: 'Review the affected canonical answer before users receive old quota guidance.',
+        nextAction: 'Review the affected approved answer before users receive old quota guidance.',
     },
 };
 

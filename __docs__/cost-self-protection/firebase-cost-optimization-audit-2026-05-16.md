@@ -147,3 +147,36 @@ Browser verification note: plugin-based browser proof was partially blocked by l
 **Firebase Cost Optimized with Minor Remaining Risks**
 
 The applied changes remove avoidable reads/writes without weakening public truth delivery, routing permanence, realtime job progress, screen freshness, chain governance, or owner analytics behavior.
+
+---
+
+## Follow-Up Optimization — May 24, 2026
+
+Scope: validated ChatGPT Firebase/GCP cost suggestions against the live MenuList and Canonica codebase, then applied only bounded changes that preserve current runtime contracts.
+
+### Changes Applied
+
+| Change | Files | Cost effect | Safety reason |
+| --- | --- | --- | --- |
+| Custom-domain availability query bound | `src/database/stores/index.tsx` | Adds `limit(1)` to a lookup that only consumes the first matching store. | Availability logic already branches only on `snapshot.docs[0]`; no list behavior changes. |
+| Prepared public media cache metadata | `src/database/storage/uploadBlobToStorage.ts`, `src/database/storage/uploadPreparedMediaImage.ts` | Adds long-lived immutable cache metadata to profile-aware generated public media variants. | Prepared media paths include checksum/fingerprint-based media IDs, so changed content receives a changed path. |
+| OBP fallback image cache metadata | `src/database/stores/uploadOBPPhoto.ts` | Adds long-lived immutable cache metadata to non-prepared OBP photo/cover fallback uploads. | Fallback OBP paths use timestamped file IDs and are stored as public image URLs. |
+| MenuList Function max-instance guards | `functions/src/config/secrets.ts`, `functions/src/decisionBlocksScoring.ts`, manual aggregation/scheduler/operations functions | Caps expensive AI, scheduler, webhook, and manual-recovery function scaling to prevent runaway concurrency while preserving existing memory/timeout choices. | No memory reductions were applied; AI functions keep their existing 2GiB and long timeout settings. |
+| Canonica Function region pinning | `functions-canonica/src/index.ts` | Pins Canonica Functions to `us-central1` explicitly instead of relying on defaults. | Existing max-instance limits remain unchanged; no Canonica data model or retrieval behavior changes. |
+
+### Rejected From This Pass
+
+- No blind composite-index deletion; index cleanup still requires query-to-index mapping and usage evidence.
+- No blanket `.limit()` changes on list screens; pagination/UX changes need per-surface decisions.
+- No published immutable snapshot rewrite; that remains a separate architecture decision touching routing, publish, OBP, multi-outlet, SEO, and cache invalidation.
+- No dependency upgrades despite Firebase CLI warnings about `firebase-functions`; dependency freeze remains in force.
+
+### Verification And Deployment
+
+- `npx tsc --noEmit --incremental false`
+- `cd functions && npm run build`
+- `cd functions-canonica && npm run build`
+- `node scripts/verification/firebase-cost-usage-map.mjs --json` now reports `medium-query-scope: 7` after the custom-domain availability query moved to `low`.
+- MenuList Functions deployed to `ecomsai` with affected function filters.
+- Canonica deploy to project `canonica` failed with Cloud Resource Manager `403`; accessible configured target is `canonica-qa`.
+- Canonica Functions codebase deployed to `canonica-qa` with `firebase deploy --only functions:canonica --project canonica-qa --config firebase-canonica.json`.

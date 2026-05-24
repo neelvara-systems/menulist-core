@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-type PreviewTab = 'Activation' | 'Surfaces' | 'Widget' | 'Governance';
+type PreviewTab = 'Product setup' | 'Key app pages' | 'Widget install' | 'Answer review';
 
 type CardItem = {
     title: string;
@@ -37,7 +37,7 @@ type PreviewConfig = {
     queueRows: RowItem[];
 };
 
-const TABS: PreviewTab[] = ['Activation', 'Surfaces', 'Widget', 'Governance'];
+const TABS: PreviewTab[] = ['Product setup', 'Key app pages', 'Widget install', 'Answer review'];
 
 const BADGE_CLASS: Record<PreviewConfig['badgeTone'], string> = {
     emerald: 'bg-emerald-500/10 text-emerald-300',
@@ -47,8 +47,8 @@ const BADGE_CLASS: Record<PreviewConfig['badgeTone'], string> = {
 };
 
 const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
-    Activation: {
-        tab: 'Activation',
+    'Product setup': {
+        tab: 'Product setup',
         route: 'app.canonica.app/workspace/activation',
         sidebarActive: 'Activation',
         badge: 'Live preview',
@@ -76,8 +76,8 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Webhook setup guide', meta: 'Article drift', result: 'Review copy' },
         ],
     },
-    Surfaces: {
-        tab: 'Surfaces',
+    'Key app pages': {
+        tab: 'Key app pages',
         route: 'app.canonica.app/workspace/product-surfaces',
         sidebarActive: 'Product surfaces',
         badge: '3 routes live',
@@ -91,11 +91,11 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'onboarding_checklist', state: '4 answers', detail: '3 FAQs, setup import workflow' },
             { title: 'usage_limits_release', state: 'Drift watch', detail: 'Release changed plan limit guidance' },
         ],
-        rightEyebrow: 'Related support truth',
+        rightEyebrow: 'Related support',
         rightTitle: 'Billing route context',
         context: '/settings/billing/invoices',
         question: 'What help appears on this screen?',
-        answer: 'Articles, FAQs, changelogs, tickets, and canonical answers are grouped by the route where users ask the question.',
+        answer: 'Articles, FAQs, changelogs, tickets, and approved answers are grouped by the route where users ask the question.',
         answerTags: ['Route aware', 'Article linked', 'Ticket fallback'],
         queueEyebrow: 'Surface gaps',
         queueTitle: 'Pages that need better coverage',
@@ -105,8 +105,8 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Import failed state', meta: 'Error entity', result: 'Draft guide' },
         ],
     },
-    Widget: {
-        tab: 'Widget',
+    'Widget install': {
+        tab: 'Widget install',
         route: 'app.canonica.app/workspace/widget',
         sidebarActive: 'Widget',
         badge: 'Install ready',
@@ -134,13 +134,13 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Context accepted', meta: 'Route payload', result: 'Sanitized' },
         ],
     },
-    Governance: {
-        tab: 'Governance',
+    'Answer review': {
+        tab: 'Answer review',
         route: 'app.canonica.app/workspace/governance',
         sidebarActive: 'Governance',
         badge: 'Human review',
         badgeTone: 'amber',
-        leftEyebrow: 'Knowledge Governance',
+        leftEyebrow: 'Answer review',
         leftTitle: 'Coverage and trust stay visible',
         leftStatus: 'Nightly checked',
         leftItems: [
@@ -153,7 +153,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
         rightTitle: 'Draft before publish',
         context: 'billing_retry_policy',
         question: 'Should this fallback become official?',
-        answer: 'Canonica can draft the better answer, but it does not become authoritative until a human approves the canonical answer.',
+        answer: 'Canonica can draft the better answer, but it does not become authoritative until a human approves it.',
         answerTags: ['Draft only', 'Drift flagged', 'Owner approval'],
         queueEyebrow: 'Governance queue',
         queueTitle: 'What needs owner attention',
@@ -200,7 +200,7 @@ function QueueRows({ rows }: { rows: RowItem[] }) {
 }
 
 export default function ProductPreviewSection() {
-    const [activeTab, setActiveTab] = useState<PreviewTab>('Activation');
+    const [activeTab, setActiveTab] = useState<PreviewTab>('Product setup');
     const preview = useMemo(() => PREVIEWS[activeTab], [activeTab]);
 
     return (
@@ -208,13 +208,13 @@ export default function ProductPreviewSection() {
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto mb-10 max-w-3xl text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">
-                        Product proof
+                        Support launch checklist
                     </p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-                        One operator view from setup to governed answers.
+                        See what is ready before users rely on support.
                     </h2>
                     <p className="mt-4 text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Canonica feels like a support cockpit: install readiness, page surfaces, widget behavior, tickets as fallback, and review work stay connected.
+                        Product profile, imported knowledge, mapped app pages, widget install, and first approved answers stay visible in one launch path.
                     </p>
                 </div>
 

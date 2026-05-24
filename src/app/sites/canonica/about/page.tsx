@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'Canonica helps small SaaS teams keep support answers correct as products change.',
+    description: 'Canonica helps AI-built SaaS teams keep support answers correct as products change.',
     alternates: { canonical: '/about' },
 };
 
@@ -31,10 +31,10 @@ export default function CanonicaAboutPage() {
                     <div className="mx-auto max-w-3xl">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">About</p>
                         <h1 className="mb-6 text-4xl font-bold leading-tight sm:text-5xl">
-                            Fast-built SaaS products still need correct support.
+                            AI can build apps fast. Support still has to be correct.
                         </h1>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            More products are launching with smaller teams. The product can move quickly, but support answers still need to stay correct when billing, onboarding, settings, plans, and releases change.
+                            Canonica exists because solo founders and small SaaS teams now launch faster than traditional docs and helpdesks can keep up. We give them a support layer built around page context, approved answers, and reviewable gaps.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
                             Canonica keeps approved support knowledge connected to product surfaces. It gives founders launch setup, a help center, hosted docs, widget, changelog binding, tickets as fallback, and a governance queue without asking them to run a large support operation.
@@ -47,10 +47,10 @@ export default function CanonicaAboutPage() {
                         <h2 className="mb-8 text-2xl font-bold">What we believe</h2>
                         <div className="space-y-6">
                             {[
-                                { title: 'Correct answers matter more than more channels', body: 'Canonica is not trying to become a full helpdesk. It keeps the knowledge behind support surfaces clear, approved, and current.' },
+                                { title: 'Correct answers beat more channels', body: 'Canonica is not trying to become a full helpdesk. It keeps the knowledge behind support surfaces clear, approved, and current.' },
                                 { title: 'Page context should reduce user effort', body: 'A billing question from the billing screen should not get the same generic answer as a settings or onboarding question.' },
-                                { title: 'Fallback is useful, but measured', body: 'Fallback can help while coverage grows. Repeated fallback becomes a support gap, not hidden automation.' },
-                                { title: 'Founders should approve authority', body: 'Drafts, entity candidates, and mutation proposals stay reviewable. Canonica does not silently rewrite product truth.' },
+                                { title: 'Fallback should create learning', body: 'Fallback can help while coverage grows. Repeated fallback becomes a support gap, not hidden automation.' },
+                                { title: 'Founders should approve official answers', body: 'Drafts, entity candidates, and mutation proposals stay reviewable. Canonica does not silently rewrite product guidance.' },
                                 { title: 'Coverage should be visible', body: 'The main operating metric is whether product surfaces have enough approved answers for real user questions.' },
                             ].map((belief, i) => (
                                 <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
@@ -66,9 +66,9 @@ export default function CanonicaAboutPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-4 text-2xl font-bold">Built by the MenuList team</h2>
                         <p className="mb-6 text-lg text-[#a0a0c0]">
-                            Canonica is built by the same team behind{' '}
+                            Canonica was built from real support infrastructure work inside the{' '}
                             <a href="https://menulist.ai" className="text-indigo-400 hover:text-indigo-300" target="_blank" rel="noopener noreferrer">MenuList</a>
-                            . MenuList is a separate product and one client use case; Canonica stays product-neutral so any SaaS team can embed it.
+                            {' '}ecosystem, then separated into its own product for SaaS founders who need support accuracy without building a full support team.
                         </p>
                         <CanonicaLink
                             basePath={basePath}

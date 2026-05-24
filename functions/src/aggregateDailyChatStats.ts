@@ -1,6 +1,7 @@
 import { FieldValue, Firestore, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import { DB_COLLECTIONS, getChatAnalyticsDocId } from './constants/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
@@ -426,7 +427,8 @@ async function sendAggregationFailureAlert(results: any) {
 const backfillOptions = {
     region: "us-central1",
     timeoutSeconds: 540,  // 9 minutes (sufficient for up to 30 days)
-    memory: "1GiB" as const  // Increased from default 256MB for large datasets
+    memory: "1GiB" as const,  // Increased from default 256MB for large datasets
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler
 };
 
 export const backfillAggregates = onCall(backfillOptions, async (request) => {

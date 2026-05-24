@@ -129,7 +129,332 @@ body:has(.canonica-site) {
     font-weight: inherit;
 }
 
+.cn-diagram {
+    --cn-map-path: #818cf8;
+    --cn-map-path-opacity: 0.34;
+    --cn-map-pulse-color: #8b8bff;
+    --cn-map-pulse-glow: rgba(129, 140, 248, 0.56);
+    --cn-map-pulse-opacity: 0.96;
+    --cn-map-card-border: rgba(255, 255, 255, 0.075);
+
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 2rem;
+    background:
+        radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.18), transparent 32%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+        #09091a;
+    padding: clamp(1rem, 2.6vw, 2rem);
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.22);
+}
+
+.cn-diagram-paths {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cn-diagram-paths--mobile {
+    display: none;
+}
+
+.cn-diagram-path {
+    fill: none;
+    stroke: var(--cn-map-path);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-dasharray: 9 12;
+    vector-effect: non-scaling-stroke;
+    opacity: var(--cn-map-path-opacity);
+}
+
+.cn-diagram-pulse {
+    fill: none;
+    stroke: var(--cn-map-pulse-color);
+    stroke-width: 4.75;
+    stroke-linecap: round;
+    stroke-dasharray: 0.035 0.965;
+    stroke-dashoffset: 0;
+    vector-effect: non-scaling-stroke;
+    opacity: 0;
+    filter: drop-shadow(0 0 0.35rem var(--cn-map-pulse-glow));
+    animation: cn-map-pulse-flow 5.6s linear infinite;
+    animation-delay: var(--cn-diagram-pulse-delay, 0s);
+}
+
+.cn-diagram-pulse--loop {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: rotate(-90deg);
+    animation-duration: var(--cn-loop-cycle-duration, 5.6s);
+}
+
+.cn-diagram-card {
+    position: relative;
+    z-index: 1;
+    min-height: 8.25rem;
+    border: 1px solid var(--cn-map-card-border);
+    border-radius: 1.25rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022)),
+        rgba(7, 7, 20, 0.84);
+    padding: 1rem;
+}
+
+.cn-diagram-card--target {
+    animation: cn-map-card-border-flash 5.6s ease-out infinite;
+    animation-delay: var(--cn-diagram-card-pulse-delay, 0s);
+}
+
+.cn-diagram-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.cn-diagram-card__index,
+.cn-diagram-card__meta {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.045);
+    padding: 0.28rem 0.58rem;
+    color: #8f8faa;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.cn-diagram-card__index {
+    color: #a5b4fc;
+}
+
+.cn-diagram-card--source .cn-diagram-card__index {
+    color: #38bdf8;
+}
+
+.cn-diagram-card h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.cn-diagram-card p {
+    margin: 0.45rem 0 0;
+    color: #8f8faa;
+    font-size: 0.82rem;
+    line-height: 1.55;
+}
+
+.cn-diagram-core {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    width: 180px;
+    height: 180px;
+    place-items: center;
+}
+
+.cn-diagram-ring {
+    --cn-map-ring-rest-opacity: 0.34;
+    --cn-map-ring-ripple-opacity: 0.22;
+    --cn-map-ring-ripple-scale: 1.055;
+
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(129, 140, 248, 0.2);
+    opacity: var(--cn-map-ring-rest-opacity);
+    transform: scale(1);
+    transform-origin: center;
+    animation: cn-map-core-ripple 5.6s ease-out infinite;
+    pointer-events: none;
+}
+
+.cn-diagram-ring--outer {
+    width: 220px;
+    height: 220px;
+}
+
+.cn-diagram-ring--inner {
+    --cn-map-ring-rest-opacity: 0.92;
+    --cn-map-ring-ripple-opacity: 0.84;
+    --cn-map-ring-ripple-scale: 1.028;
+
+    width: 138px;
+    height: 138px;
+    border: 1px solid rgba(129, 140, 248, 0.26);
+    background: #0a0a1a;
+}
+
+.cn-diagram-mark {
+    position: relative;
+    display: grid;
+    height: 6rem;
+    width: 6rem;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: #101028;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+}
+
+.cn-diagram--hub {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.58fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(1rem, 2.6vw, 2rem);
+}
+
+.cn-diagram-column {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.cn-diagram-label {
+    width: max-content;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.42rem 0.75rem;
+    color: #8f8faa;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.cn-diagram-center {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    min-height: 20rem;
+    place-items: center;
+}
+
+.cn-sequence-diagram {
+    min-height: 28rem;
+}
+
+.cn-sequence-diagram__rail {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.58fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(1rem, 2.6vw, 2rem);
+    min-height: 25rem;
+}
+
+.cn-sequence-diagram__group {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.cn-sequence-diagram__core {
+    display: grid;
+    min-height: 20rem;
+    place-items: center;
+}
+
+.cn-sequence-diagram .cn-diagram-card {
+    min-height: 7.25rem;
+}
+
+.cn-loop-diagram {
+    --cn-loop-cycle-duration: 8.4s;
+
+    min-height: 38rem;
+}
+
+.cn-loop-diagram__paths {
+    z-index: 0;
+}
+
+.cn-loop-diagram__cards {
+    display: contents;
+}
+
+.cn-loop-diagram__center {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    transform: translate(-50%, -50%);
+}
+
+.cn-loop-diagram__card {
+    position: absolute;
+    width: min(17.5rem, 30%);
+    animation: cn-map-card-border-flash var(--cn-loop-cycle-duration) ease-out infinite;
+    animation-delay: var(--cn-loop-card-pulse-delay, 0s);
+}
+
+.cn-loop-diagram__card--0 {
+    --cn-loop-card-pulse-delay: 0.24s;
+
+    top: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.cn-loop-diagram__card--1 {
+    --cn-loop-card-pulse-delay: 0.66s;
+
+    top: 7.25rem;
+    right: 1.25rem;
+}
+
+.cn-loop-diagram__card--2 {
+    --cn-loop-card-pulse-delay: 1.08s;
+
+    right: 1.25rem;
+    bottom: 7.25rem;
+}
+
+.cn-loop-diagram__card--3 {
+    --cn-loop-card-pulse-delay: 1.5s;
+
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.cn-loop-diagram__card--4 {
+    --cn-loop-card-pulse-delay: 1.92s;
+
+    bottom: 7.25rem;
+    left: 1.25rem;
+}
+
+.cn-loop-diagram__card--5 {
+    --cn-loop-card-pulse-delay: 2.34s;
+
+    top: 7.25rem;
+    left: 1.25rem;
+}
+
 .cn-support-map {
+    --cn-map-path: #818cf8;
+    --cn-map-path-opacity: 0.34;
+    --cn-map-pulse-color: #8b8bff;
+    --cn-map-pulse-glow: rgba(129, 140, 248, 0.56);
+    --cn-map-pulse-opacity: 0.96;
+    --cn-map-card-border: rgba(255, 255, 255, 0.075);
+
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.82fr) minmax(0, 1fr);
@@ -146,24 +471,136 @@ body:has(.canonica-site) {
     box-shadow: 0 28px 90px rgba(0, 0, 0, 0.26);
 }
 
-.cn-support-map::before,
-.cn-support-map::after {
-    content: '';
+.cn-support-map__paths {
     position: absolute;
-    top: 50%;
-    width: 21%;
-    height: 1px;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, rgba(129, 140, 248, 0.68), transparent);
-    transform: translateY(-50%);
 }
 
-.cn-support-map::before {
-    left: 27%;
+.cn-support-map__paths--mobile {
+    display: none;
 }
 
-.cn-support-map::after {
-    right: 27%;
+.cn-support-map__path {
+    fill: none;
+    stroke: var(--cn-map-path);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-dasharray: 9 12;
+    vector-effect: non-scaling-stroke;
+    opacity: var(--cn-map-path-opacity);
+}
+
+.cn-map-pulse {
+    fill: none;
+    stroke: var(--cn-map-pulse-color);
+    stroke-width: 4.75;
+    stroke-linecap: round;
+    stroke-dasharray: 0.035 0.965;
+    stroke-dashoffset: 0;
+    vector-effect: non-scaling-stroke;
+    opacity: 0;
+    filter: drop-shadow(0 0 0.35rem var(--cn-map-pulse-glow));
+    animation: cn-map-pulse-flow 5.6s linear infinite;
+    animation-delay: var(--cn-map-pulse-delay, 0s);
+}
+
+.cn-map-pulse-delay-0 {
+    --cn-map-pulse-delay: 0s;
+}
+
+.cn-map-pulse-delay-1 {
+    --cn-map-pulse-delay: 0.16s;
+}
+
+.cn-map-pulse-delay-2 {
+    --cn-map-pulse-delay: 0.32s;
+}
+
+.cn-map-pulse-output-0 {
+    --cn-map-pulse-delay: 2.9s;
+}
+
+.cn-map-pulse-output-1 {
+    --cn-map-pulse-delay: 3s;
+}
+
+.cn-map-pulse-output-2 {
+    --cn-map-pulse-delay: 3.1s;
+}
+
+.cn-map-card-output-arrival-0 {
+    --cn-map-card-pulse-delay: 4.6s;
+}
+
+.cn-map-card-output-arrival-1 {
+    --cn-map-card-pulse-delay: 4.7s;
+}
+
+.cn-map-card-output-arrival-2 {
+    --cn-map-card-pulse-delay: 4.8s;
+}
+
+.cn-map-destination-pulse {
+    animation: cn-map-card-border-flash 5.6s ease-out infinite;
+    animation-delay: var(--cn-map-card-pulse-delay, 0s);
+}
+
+@keyframes cn-map-pulse-flow {
+    0% {
+        opacity: 0;
+        stroke-dashoffset: 0;
+    }
+
+    7% {
+        opacity: var(--cn-map-pulse-opacity);
+    }
+
+    32% {
+        opacity: var(--cn-map-pulse-opacity);
+        stroke-dashoffset: -1;
+    }
+
+    39%,
+    100% {
+        opacity: 0;
+        stroke-dashoffset: -1;
+    }
+}
+
+@keyframes cn-map-card-border-flash {
+    0%,
+    16%,
+    100% {
+        border-color: var(--cn-map-card-border);
+    }
+
+    4%,
+    10% {
+        border-color: var(--cn-map-pulse-color);
+    }
+}
+
+@keyframes cn-map-core-ripple {
+    0%,
+    100% {
+        opacity: var(--cn-map-ring-rest-opacity);
+        transform: scale(1);
+    }
+
+    22%,
+    64% {
+        opacity: var(--cn-map-ring-rest-opacity);
+        transform: scale(1.012);
+    }
+
+    44% {
+        opacity: var(--cn-map-ring-ripple-opacity);
+        transform: scale(var(--cn-map-ring-ripple-scale));
+    }
 }
 
 .cn-support-map__column {
@@ -236,98 +673,120 @@ body:has(.canonica-site) {
     min-height: 20rem;
 }
 
-.cn-support-map__center::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border: 1px solid rgba(129, 140, 248, 0.22);
-    border-radius: 999px;
-    background:
-        radial-gradient(circle, rgba(129, 140, 248, 0.18), transparent 58%),
-        rgba(99, 102, 241, 0.04);
-}
-
-.cn-support-map__center::after {
-    content: '';
-    position: absolute;
-    inset: 14%;
-    border: 1px dashed rgba(129, 140, 248, 0.28);
-    border-radius: 999px;
-}
-
 .cn-support-map__core {
     position: relative;
     z-index: 1;
     display: grid;
-    width: min(100%, 16rem);
-    justify-items: center;
-    gap: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    border-radius: 1.75rem;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
-        #0f1026;
-    padding: 1.35rem;
-    text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
+    width: 180px;
+    height: 180px;
+    place-items: center;
+}
+
+.cn-support-map__ring {
+    --cn-map-ring-rest-opacity: 0.34;
+    --cn-map-ring-ripple-opacity: 0.22;
+    --cn-map-ring-ripple-scale: 1.055;
+
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(129, 140, 248, 0.2);
+    opacity: var(--cn-map-ring-rest-opacity);
+    transform: scale(1);
+    transform-origin: center;
+    animation: cn-map-core-ripple 5.6s ease-out infinite;
+    pointer-events: none;
+}
+
+.cn-support-map__ring--outer {
+    width: 220px;
+    height: 220px;
+}
+
+.cn-support-map__ring--inner {
+    --cn-map-ring-rest-opacity: 0.92;
+    --cn-map-ring-ripple-opacity: 0.84;
+    --cn-map-ring-ripple-scale: 1.028;
+
+    width: 138px;
+    height: 138px;
+    border: 1px solid rgba(129, 140, 248, 0.26);
+    background: #0a0a1a;
 }
 
 .cn-support-map__mark {
+    position: relative;
     display: grid;
-    height: 4.1rem;
-    width: 4.1rem;
+    height: 6rem;
+    width: 6rem;
     place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 1.35rem;
-    background: rgba(255, 255, 255, 0.045);
-}
-
-.cn-support-map__core p {
-    margin: 0;
-    color: #8f8faa;
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-}
-
-.cn-support-map__core h3 {
-    margin: 0.45rem 0 0;
-    color: #ffffff;
-    font-size: 1.08rem;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-.cn-support-map__core span {
-    display: block;
-    margin-top: 0.65rem;
-    color: #a0a0c0;
-    font-size: 0.78rem;
-    line-height: 1.45;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    background: #101028;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.32);
 }
 
 @media (max-width: 1024px) {
+    .cn-diagram--hub,
+    .cn-sequence-diagram__rail {
+        grid-template-columns: 1fr;
+    }
+
+    .cn-diagram-paths--desktop {
+        display: none;
+    }
+
+    .cn-diagram-paths--mobile {
+        display: block;
+    }
+
+    .cn-diagram-center,
+    .cn-sequence-diagram__core {
+        min-height: 13.5rem;
+    }
+
+    .cn-sequence-diagram__group {
+        grid-template-columns: 1fr;
+    }
+
+    .cn-loop-diagram {
+        display: grid;
+        gap: 1rem;
+        min-height: auto;
+    }
+
+    .cn-loop-diagram__paths.cn-diagram-paths--desktop {
+        display: none;
+    }
+
+    .cn-loop-diagram__cards {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .cn-loop-diagram__center,
+    .cn-loop-diagram__card {
+        position: relative;
+        inset: auto;
+        width: auto;
+        transform: none;
+    }
+
+    .cn-loop-diagram__center {
+        left: auto;
+        top: auto;
+        min-height: 13.5rem;
+    }
+
     .cn-support-map {
         grid-template-columns: 1fr;
     }
 
-    .cn-support-map::before,
-    .cn-support-map::after {
-        left: 50%;
-        right: auto;
-        width: 1px;
-        height: 11%;
-        background: linear-gradient(180deg, transparent, rgba(129, 140, 248, 0.68), transparent);
-        transform: translateX(-50%);
+    .cn-support-map__paths--desktop {
+        display: none;
     }
 
-    .cn-support-map::before {
-        top: 33%;
-    }
-
-    .cn-support-map::after {
-        top: 67%;
+    .cn-support-map__paths--mobile {
+        display: block;
     }
 
     .cn-support-map__center {
@@ -336,6 +795,31 @@ body:has(.canonica-site) {
 }
 
 @media (max-width: 640px) {
+    .cn-diagram {
+        border-radius: 1.5rem;
+        padding: 1rem;
+    }
+
+    .cn-diagram-card {
+        min-height: auto;
+    }
+
+    .cn-diagram-core {
+        width: 100%;
+        height: auto;
+        min-height: 7.5rem;
+    }
+
+    .cn-diagram-ring--outer {
+        width: 7.6rem;
+        height: 7.6rem;
+    }
+
+    .cn-diagram-ring--inner {
+        width: 6.15rem;
+        height: 6.15rem;
+    }
+
     .cn-support-map {
         border-radius: 1.5rem;
         padding: 1rem;
@@ -347,5 +831,38 @@ body:has(.canonica-site) {
 
     .cn-support-map__center {
         min-height: 13.5rem;
+    }
+
+    .cn-support-map__core {
+        width: 100%;
+        height: auto;
+        min-height: 7.5rem;
+    }
+
+    .cn-support-map__ring--outer {
+        width: 7.6rem;
+        height: 7.6rem;
+    }
+
+    .cn-support-map__ring--inner {
+        width: 6.15rem;
+        height: 6.15rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cn-diagram-pulse,
+    .cn-diagram-card--target,
+    .cn-loop-diagram__card,
+    .cn-diagram-ring,
+    .cn-map-pulse,
+    .cn-map-destination-pulse,
+    .cn-support-map__ring {
+        animation: none;
+    }
+
+    .cn-diagram-pulse,
+    .cn-map-pulse {
+        opacity: 0;
     }
 }

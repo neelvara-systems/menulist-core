@@ -1,4 +1,5 @@
 import CanonicaLink from './CanonicaLink';
+import { CanonicaSequenceDiagram } from './CanonicaFlowDiagram';
 import CanonicaPageStructuredData from './PageStructuredData';
 
 export type ProductCapabilityCard = {
@@ -203,41 +204,39 @@ export default function ProductCapabilityLandingPage({
             </section>
 
             <section className="px-4 py-20 sm:px-6">
-                <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-                    <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
-                        <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{workflowTitle}</h2>
-                        <p className="mt-4 text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{workflowDescription}</p>
-                        <div className="mt-8 flex flex-wrap gap-4">
-                            <CanonicaLink
-                                basePath={basePath}
-                                href="/demo"
-                                className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
-                            >
-                                See the demo
-                            </CanonicaLink>
-                            <CanonicaLink
-                                basePath={basePath}
-                                href="/get-started"
-                                className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
-                            >
-                                Start free setup
-                            </CanonicaLink>
+                <div className="mx-auto max-w-7xl">
+                    <div className="mb-10 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+                        <div>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Workflow</p>
+                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{workflowTitle}</h2>
                         </div>
+                        <p className="text-base leading-relaxed text-[#a0a0c0] sm:text-lg">{workflowDescription}</p>
                     </div>
 
-                    <div className="space-y-3">
-                        {workflowSteps.map((step, index) => (
-                            <article key={step.title} className="flex gap-4 rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
-                                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/10 text-xs font-bold text-indigo-300">
-                                    {index + 1}
-                                </span>
-                                <div>
-                                    <h3 className="text-base font-semibold text-white">{step.title}</h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{step.description}</p>
-                                </div>
-                            </article>
-                        ))}
+                    <CanonicaSequenceDiagram
+                        idPrefix={`cn-product-capability-${activeTab.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                        splitAfter={Math.ceil(workflowSteps.length / 2)}
+                        items={workflowSteps.map((step) => ({
+                            title: step.title,
+                            detail: step.description,
+                        }))}
+                    />
+
+                    <div className="mt-8 flex flex-wrap justify-center gap-4">
+                        <CanonicaLink
+                            basePath={basePath}
+                            href="/demo"
+                            className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                        >
+                            See the demo
+                        </CanonicaLink>
+                        <CanonicaLink
+                            basePath={basePath}
+                            href="/get-started"
+                            className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-600"
+                        >
+                            Start free setup
+                        </CanonicaLink>
                     </div>
                 </div>
             </section>

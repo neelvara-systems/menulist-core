@@ -6,7 +6,7 @@ import ProductCapabilityLandingPage from '../../components/ProductCapabilityLand
 import { CANONICA_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
-    title: 'Support Control',
+    title: 'Help Center and Tickets',
     description: 'Operate Canonica help center, docs, FAQ, changelog, tickets, conversations, and weekly support review from one support control layer.',
     alternates: { canonical: '/product/support-control' },
 };
@@ -28,10 +28,10 @@ export default function SupportControlProductPage() {
             <ProductCapabilityLandingPage
                 basePath={basePath}
                 canonicalPath="/product/support-control"
-                eyebrow="Support Control"
-                title="Run docs, tickets, changelog, and widget truth together."
-                description="Canonica keeps customer-facing support surfaces connected so help articles, FAQs, release notes, tickets, and widget answers do not drift into separate systems."
-                activeTab="Support Control"
+                eyebrow="Help center + tickets"
+                title="Keep docs, FAQs, releases, widget answers, and tickets connected."
+                description="Canonica gives you a practical support layer for hosted help, page-aware answers, ticket fallback, conversations, and weekly review output."
+                activeTab="Help center + tickets"
                 tabs={CANONICA_PRODUCT_AREAS}
                 canvasTitle="Support operations without support chaos"
                 canvasSubtitle="Support Control is the layer for hosted help, knowledge base, FAQ, changelog, tickets as fallback, conversations, and weekly review output."
@@ -39,15 +39,15 @@ export default function SupportControlProductPage() {
                 canvasItems={[
                     { title: 'Hosted help', description: 'Publish docs, FAQ, and changelog on a support domain while keeping workspace internals private.' },
                     { title: 'Ticket fallback', description: 'When an answer is missing, tickets remain a fallback path and become structured support signals.' },
-                    { title: 'Weekly review', description: 'Owners can review what changed, what failed, and what support truth needs attention next.' },
+                    { title: 'Weekly review', description: 'Owners can review what changed, what failed, and which support content needs attention next.' },
                 ]}
                 metrics={[
                     { label: 'Help content', value: 'Published' },
                     { label: 'Ticket path', value: 'Fallback' },
                     { label: 'Weekly digest', value: 'Ready' },
                 ]}
-                bentoTitle="Support surfaces stay connected."
-                bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, Canonica keeps customer support truth connected by product surface."
+                bentoTitle="Your support surfaces stay connected."
+                bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, Canonica keeps customer support connected by product surface."
                 bentoCards={[
                     { title: 'Knowledge base', description: 'Long-form articles remain available for reviewed support content and hosted help.' },
                     { title: 'FAQ management', description: 'Article-backed FAQs give users short answers and keep related article context nearby.' },
@@ -55,14 +55,14 @@ export default function SupportControlProductPage() {
                     { title: 'Safe ticket context', description: 'Tickets can include capped, sanitized debugging context to reduce back-and-forth.' },
                     { title: 'Conversation signals', description: 'Widget conversations and feedback can become signals for governance instead of disappearing in logs.' },
                 ]}
-                workflowTitle="Operate support from the same truth layer."
+                workflowTitle="Publish help, answer users, and turn fallbacks into review work."
                 workflowDescription="Support Control is practical: publish help, answer users, accept fallback tickets, and turn unresolved issues into review work."
                 workflowSteps={[
                     { title: 'Publish help content', description: 'Create or import docs, FAQs, and release notes for the hosted help center.' },
                     { title: 'Connect product surfaces', description: 'Assign content to the routes and workflows where users need it.' },
-                    { title: 'Let widget answer first', description: 'Serve approved answers and related support truth before fallback.' },
+                    { title: 'Let widget answer first', description: 'Serve approved answers and related support before fallback.' },
                     { title: 'Capture fallback tickets', description: 'When coverage is missing, route the user to a ticket with safe context.' },
-                    { title: 'Review weekly output', description: 'Use digest and signal views to decide what support truth needs owner attention.' },
+                    { title: 'Review weekly output', description: 'Use digest and signal views to decide which support content needs owner attention.' },
                 ]}
             />
             <CanonicaFooter basePath={basePath} />

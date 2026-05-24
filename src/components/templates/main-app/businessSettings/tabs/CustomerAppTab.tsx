@@ -22,7 +22,7 @@ import { applyLocalizedDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, 
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import type { UserUploadedFileType } from '@type/common';
-import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Tag, Typography, message, theme } from 'antd';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCopy, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 
@@ -34,6 +34,7 @@ interface CustomerAppTabProps {
 
 export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { token } = theme.useToken();
 
     const initial = useMemo(() => resolvePWASettings(storeDetails), [storeDetails]);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
@@ -345,32 +346,17 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         <Button
                             onClick={handleReset}
                             disabled={!hasUnsavedChanges || saving}
-                            style={{
-                                background: hasUnsavedChanges && !saving ? '#ffffff' : '#f1f5f9',
-                                borderColor: hasUnsavedChanges && !saving ? '#cbd5e1' : '#e2e8f0',
-                                color: hasUnsavedChanges && !saving ? '#0f172a' : '#94a3b8',
-                                cursor: hasUnsavedChanges && !saving ? 'pointer' : 'not-allowed',
-                            }}
                         >
                             Reset
                         </Button>
-                        <button
-                            type="button"
+                        <Button
+                            type="primary"
                             disabled={!hasUnsavedChanges || saving}
                             onClick={handleSave}
-                            style={{
-                                padding: '8px 18px',
-                                background: hasUnsavedChanges ? '#0f172a' : '#cbd5e1',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: 8,
-                                cursor: hasUnsavedChanges && !saving ? 'pointer' : 'not-allowed',
-                                fontSize: 14,
-                                fontWeight: 600,
-                            }}
+                            loading={saving}
                         >
-                            {saving ? 'Saving…' : 'Save'}
-                        </button>
+                            Save
+                        </Button>
                     </Flex>
                 }
             >
@@ -381,7 +367,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
 
                 <Card
                     size="small"
-                    style={{ background: '#f8fafc', borderColor: '#e2e8f0', marginBottom: 24 }}
+                    style={{ background: token.colorFillAlter, borderColor: token.colorBorderSecondary, marginBottom: 24 }}
                     title="Customer App status"
                 >
                     <Flex gap={12} wrap="wrap">
@@ -389,8 +375,8 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                             <div
                                 key={item.label}
                                 style={{
-                                    background: '#ffffff',
-                                    border: '1px solid #e2e8f0',
+                                    background: token.colorBgContainer,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
                                     borderRadius: 12,
                                     minWidth: 190,
                                     padding: 12,
@@ -477,7 +463,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     />
                     {selectedLanguage !== referenceLanguage ? (
                         <div style={{ marginTop: 12, maxWidth: 560 }}>
-                            <Card size="small" style={{ background: '#fafafa', borderColor: '#f0f0f0' }}>
+                            <Card size="small" style={{ background: token.colorFillAlter, borderColor: token.colorBorderSecondary }}>
                                 <Flex align="flex-start" justify="space-between" gap={12}>
                                     <div style={{ minWidth: 0 }}>
                                         <Text type="secondary">{`${getStoreLanguageLabel(referenceLanguage)} reference`}</Text>
@@ -517,10 +503,10 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     {currentIconUrl ? (
                         <div
                             style={{
-                                border: '1px solid #e2e8f0',
+                                border: `1px solid ${token.colorBorderSecondary}`,
                                 borderRadius: 14,
                                 padding: '12px',
-                                background: '#ffffff',
+                                background: token.colorBgContainer,
                                 maxWidth: 560,
                             }}
                         >
@@ -533,7 +519,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                                         height: 72,
                                         borderRadius: 16,
                                         objectFit: 'contain',
-                                        background: '#ffffff',
+                                        background: token.colorBgContainer,
                                         flexShrink: 0,
                                     }}
                                 />
@@ -551,7 +537,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                                             icon={<LuRefreshCw size={14} />}
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={!enableInstallableApp || saving}
-                                            style={{ color: '#0f172a', paddingInline: 8 }}
+                                            style={{ color: token.colorText, paddingInline: 8 }}
                                         >
                                             Replace
                                         </Button>
@@ -564,7 +550,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                                                 setRemoveIconOnSave(!!savedIconUrl.trim());
                                             }}
                                             disabled={!enableInstallableApp || saving}
-                                            style={{ color: '#b91c1c', paddingInline: 8 }}
+                                            style={{ color: token.colorError, paddingInline: 8 }}
                                         >
                                             Remove
                                         </Button>
@@ -588,10 +574,10 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                                 }
                             }}
                             style={{
-                                border: '1px dashed #94a3b8',
+                                border: `1px dashed ${token.colorBorder}`,
                                 borderRadius: 12,
                                 padding: '12px 14px',
-                                background: '#f8fafc',
+                                background: token.colorFillAlter,
                                 cursor: !enableInstallableApp || saving ? 'not-allowed' : 'pointer',
                                 opacity: !enableInstallableApp ? 0.6 : 1,
                                 maxWidth: 560,
@@ -603,11 +589,11 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                                         width: 36,
                                         height: 36,
                                         borderRadius: 10,
-                                        background: '#e2e8f0',
+                                        background: token.colorFillSecondary,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: '#334155',
+                                        color: token.colorTextSecondary,
                                     }}
                                 >
                                     <LuUpload size={18} />
@@ -665,12 +651,12 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     style={{
                         marginTop: 28,
                         borderRadius: 14,
-                        borderColor: '#dbeafe',
-                        background: 'linear-gradient(180deg, #f8fbff 0%, #ffffff 100%)',
+                        borderColor: token.colorPrimaryBorder,
+                        background: `linear-gradient(180deg, ${token.colorPrimaryBg} 0%, ${token.colorBgContainer} 100%)`,
                     }}
                 >
                     <Flex align="center" gap={10} style={{ marginBottom: 10 }}>
-                        <LuSmartphone size={18} color="#1d4ed8" />
+                        <LuSmartphone size={18} color={token.colorPrimary} />
                         <Text strong>How customers install it</Text>
                     </Flex>
                     <Space direction="vertical" size={10} style={{ width: '100%' }}>
@@ -695,11 +681,11 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     </Space>
                     <Flex gap={18} wrap="wrap" style={{ marginTop: 14 }}>
                         <Flex align="center" gap={8}>
-                            <LuShare2 size={15} color="#64748b" />
+                            <LuShare2 size={15} color={token.colorTextTertiary} />
                             <Text type="secondary">Safari: Share</Text>
                         </Flex>
                         <Flex align="center" gap={8}>
-                            <LuSquare size={15} color="#64748b" />
+                            <LuSquare size={15} color={token.colorTextTertiary} />
                             <Text type="secondary">Add to Home Screen</Text>
                         </Flex>
                     </Flex>

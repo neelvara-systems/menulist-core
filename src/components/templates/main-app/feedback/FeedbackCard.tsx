@@ -81,8 +81,8 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             size="small"
         >
             {/* Header Row */}
-            <div className="flex flex-wrap items-start justify-between mb-3 gap-3">
-                <div className="flex items-center gap-3">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-3 gap-3">
+                <div className="flex flex-wrap items-center gap-3 min-w-0">
                     <StarDisplay rating={feedback.rating} size={18} />
 
                     {/* Contact Indicator Badge */}
@@ -102,7 +102,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                     )}
                 </div>
 
-                <div className="text-xs" style={{ color: token.colorTextTertiary }}>
+                <div className="text-xs shrink-0" style={{ color: token.colorTextTertiary }}>
                     {formatDate(feedback.createdOn)}
                 </div>
             </div>
@@ -123,19 +123,19 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
 
             {/* Contact Info Section */}
             {hasContactInfo && (
-            <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: token.colorFillSecondary, minWidth: 0 }}>
-                    <div className="flex flex-wrap gap-4">
+                <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: token.colorFillSecondary, minWidth: 0 }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {feedback.customerName && (
-                            <div className="flex items-center gap-2 text-sm" style={{ color: token.colorTextSecondary }}>
+                            <div className="flex items-center gap-2 text-sm min-w-0" style={{ color: token.colorTextSecondary }}>
                                 <LuUser size={12} color={token.colorTextTertiary} />
-                                {feedback.customerName}
+                                <span className="truncate">{feedback.customerName}</span>
                             </div>
                         )}
 
                         {feedback.customerPhone && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                                 <LuPhone size={12} color={token.colorTextTertiary} />
-                                <span className="text-sm" style={{ color: token.colorTextSecondary }}>
+                                <span className="text-sm truncate" style={{ color: token.colorTextSecondary }}>
                                     {formatPhoneForDisplay(feedback.customerPhone)}
                                 </span>
 
@@ -160,11 +160,11 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                         )}
 
                         {feedback.customerEmail && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                                 <LuMail size={12} color={token.colorTextTertiary} />
                                 <a
                                     href={`mailto:${feedback.customerEmail}`}
-                                    className="text-sm"
+                                    className="text-sm truncate"
                                     style={{ color: token.colorLink }}
                                 >
                                     {feedback.customerEmail}
@@ -176,7 +176,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             )}
 
                 {/* Actions */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="text-xs" style={{ color: token.colorTextTertiary }}>
                     via {feedback.source === 'feedback_qr' ? 'QR Code' : feedback.source === 'direct_link' ? 'Direct Link' : 'Menu Footer'}
                 </div>

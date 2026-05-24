@@ -37,6 +37,7 @@ function getDefaultCanonicalUrl(storeDetails?: any): string {
 
 function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
     const t = useTranslations('SEO');
+    const { token } = theme.useToken();
     const form = Form.useFormInstance();
     const businessName = Form.useWatch('name');
     const canonicalUrl = Form.useWatch('canonicalUrl');
@@ -317,7 +318,7 @@ function SeoTab({ scrollRef, storeDetails }: SeoTabProps) {
             <Card
                 size='small'
                 style={{
-                    background: '#fafafa',
+                    background: token.colorFillAlter,
                     marginBottom: 16,
                 }}
             >

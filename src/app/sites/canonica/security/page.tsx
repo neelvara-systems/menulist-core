@@ -2,16 +2,18 @@ import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import { CanonicaHubDiagram } from '../components/CanonicaFlowDiagram';
+import { CanonicaStatusBoard } from '../components/CanonicaProofBlocks';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
 import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'How Canonica protects support knowledge, widget context, safe ticket debugging context, hosted help domains, and customer workspaces.',
+    description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, scoped workspaces, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | Canonica',
-        description: 'How Canonica protects support knowledge, widget context, and customer workspaces.',
+        description: 'How Canonica protects page-aware support, widget context, and customer workspaces.',
         url: `${CANONICA_SITE_URL}/security`,
     },
 };
@@ -47,7 +49,7 @@ const CONTROLS = [
     },
     {
         title: 'Owner-approved authority',
-        body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active canonical answers.',
+        body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active approved answers.',
     },
     {
         title: 'Bounded logging',
@@ -66,7 +68,7 @@ const SECURITY_FACTS = [
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
     { label: 'Hosted help', value: 'Registry-scoped domains' },
     { label: 'Ticket context', value: 'Capped and sanitized' },
-    { label: 'Answer authority', value: 'Owner-reviewed canonical answers' },
+    { label: 'Answer authority', value: 'Owner-reviewed approved answers' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Compact summary docs' },
     { label: 'MenuList relationship', value: 'Separate product boundary' },
@@ -160,21 +162,63 @@ export default function CanonicaSecurityPage() {
                 <section className="px-6 py-24">
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security</p>
-                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Built for support knowledge that must stay controlled</h1>
+                        <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica focuses on bounded context, tenant isolation, owner-approved answers, and clear workspace controls.
+                            Canonica uses safe page hints, allowed origins, blocked routes, scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
                     </div>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto mb-16 max-w-5xl">
+                    <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-6 text-center">
+                        <h2 className="text-2xl font-bold text-white">What to remember</h2>
+                        <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
+                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, and approve support answers before they become official.
+                        </p>
+                    </div>
+                    <div className="mx-auto mb-16 max-w-7xl">
                         <div className="mb-8 text-center">
                             <h2 className="text-2xl font-bold text-white">Security at a glance</h2>
                             <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-[#808099]">
                                 The same shared infrastructure discipline used by MenuList is applied here, but Canonica keeps its own product boundary, widget runtime, and support-knowledge controls.
                             </p>
                         </div>
+                        <CanonicaHubDiagram
+                            idPrefix="cn-security-boundary"
+                            inputLabel="Product app"
+                            outputLabel="Protected surfaces"
+                            inputs={[
+                                {
+                                    title: 'Allowed origin',
+                                    detail: 'Widget config loads only from approved product and staging domains.',
+                                },
+                                {
+                                    title: 'Safe page context',
+                                    detail: 'Route, feature, workflow, role, and plan hints guide support without secrets.',
+                                },
+                                {
+                                    title: 'Blocked routes',
+                                    detail: 'Auth, payment, admin, or sensitive pages can hide the launcher.',
+                                },
+                            ]}
+                            outputs={[
+                                {
+                                    title: 'Workspace scope',
+                                    detail: 'Support knowledge stays tied to the correct Canonica workspace.',
+                                },
+                                {
+                                    title: 'Hosted help boundary',
+                                    detail: 'Public docs, FAQ, changelog, robots, and sitemap render without account data.',
+                                },
+                                {
+                                    title: 'Owner-approved authority',
+                                    detail: 'Drafts and proposals require review before becoming official answers.',
+                                },
+                            ]}
+                        />
+                    </div>
+
+                    <div className="mx-auto mb-16 max-w-5xl">
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             {SECURITY_FACTS.map((fact) => (
                                 <div key={fact.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
@@ -185,13 +229,34 @@ export default function CanonicaSecurityPage() {
                         </div>
                     </div>
 
-                    <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2">
-                        {CONTROLS.map((control) => (
-                            <article key={control.title} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
-                                <h2 className="mb-3 text-lg font-semibold text-white">{control.title}</h2>
-                                <p className="m-0 text-sm leading-relaxed text-[#a0a0c0]">{control.body}</p>
-                            </article>
-                        ))}
+                    <div className="mx-auto max-w-6xl">
+                        <CanonicaStatusBoard
+                            items={CONTROLS.map((control, index) => ({
+                                status: [
+                                    'scope',
+                                    'context',
+                                    'route',
+                                    'public help',
+                                    'ticket',
+                                    'review',
+                                    'logging',
+                                    'separate product',
+                                ][index] ?? 'control',
+                                title: control.title,
+                                detail: control.body,
+                                tone: index === 1 || index === 6 ? 'caution' as const : index === 0 || index === 5 ? 'good' as const : 'neutral' as const,
+                            }))}
+                        />
+                    </div>
+                </section>
+
+                <section className="border-t border-white/[0.06] px-6 py-16">
+                    <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Page context boundary</p>
+                        <h2 className="text-2xl font-bold text-white">Do not send secrets through page context.</h2>
+                        <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
+                            Use page, route, feature, workflow, role, plan, or state names. Do not send passwords, tokens, payment data, private customer records, or unrelated personal data.
+                        </p>
                     </div>
                 </section>
 

@@ -6,7 +6,7 @@ import { processAuthorityMaturationForAllStores } from './analytics/authorityMat
 import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetention';
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
 import { reconcileSubscriptions } from './billing/reconcileSubscriptions';
-import { SECRETS } from './config/secrets';
+import { FUNCTION_MAX_INSTANCES, SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getDecisionBlocksDocId, getMenuIntelligenceDocId } from './constants/database';
 import { FUNCTION_FLAGS } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
@@ -1071,6 +1071,7 @@ export const computeDecisionBlocksScores = onSchedule({
     timeZone: 'UTC',
     region: 'us-central1',
     timeoutSeconds: 540,
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     secrets: [
         SECRETS.GEMINI_AI_KEY,
         SECRETS.GEMINI_AI_KEY_2,
@@ -2027,6 +2028,7 @@ export const computeDecisionBlocksScores = onSchedule({
 export const triggerStoreNightlyScheduler = onCall({
     region: 'us-central1',
     timeoutSeconds: 540,
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     secrets: [
         SECRETS.GEMINI_AI_KEY,
         SECRETS.GEMINI_AI_KEY_2,
@@ -2302,6 +2304,7 @@ export const triggerStoreNightlyScheduler = onCall({
 export const triggerDecisionBlocksScoring = onCall({
     region: 'us-central1',
     timeoutSeconds: 540,
+    maxInstances: FUNCTION_MAX_INSTANCES.scheduler,
     secrets: [
         SECRETS.GEMINI_AI_KEY,
         SECRETS.GEMINI_AI_KEY_2,

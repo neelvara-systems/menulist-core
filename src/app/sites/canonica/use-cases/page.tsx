@@ -4,10 +4,11 @@ import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaLink from '../components/CanonicaLink';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
+import { CanonicaBeforeAfterStrip } from '../components/CanonicaProofBlocks';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
-    description: 'Canonica use cases for page-aware support across billing, onboarding, settings, releases, and support fallback.',
+    description: 'Canonica use cases for AI-built SaaS apps across billing, onboarding, settings, releases, errors, and support fallback.',
     alternates: { canonical: '/use-cases' },
 };
 
@@ -20,6 +21,14 @@ function getBasePath(): string {
 }
 
 const USE_CASES = [
+    {
+        title: 'AI-built app launch',
+        context: 'Cursor, Replit, Lovable, Bolt, or another AI-assisted build path',
+        question: 'Users are asking questions before my docs are ready. What do I launch first?',
+        generic: 'Create documentation and add a chatbot when you are ready.',
+        canonica: 'Launch a widget, hosted help center, ticket fallback, and review queue from your existing notes, FAQs, release notes, and recurring questions.',
+        outcome: 'Start support without building a full support stack from scratch.',
+    },
     {
         title: 'Billing and plan questions',
         context: 'Billing, invoices, plan limits, upgrades, downgrades',
@@ -49,7 +58,7 @@ const USE_CASES = [
         context: 'New features, changed workflows, removed states, version mismatch',
         question: 'Did usage limits change?',
         generic: 'Read the latest release notes for usage limits.',
-        canonica: 'The usage-limits release affected plan quota answers. Canonica flags stale-answer risk until the related canonical answer is reviewed.',
+        canonica: 'The usage-limits release affected plan quota answers. Canonica flags stale-answer risk until the related approved answer is reviewed.',
         outcome: 'Connect changelog entries to affected answers so stale support content becomes visible.',
     },
     {
@@ -62,7 +71,7 @@ const USE_CASES = [
     },
     {
         title: 'Support fallback',
-        context: 'No canonical answer, low-confidence result, negative feedback, ticket resolution',
+        context: 'No approved answer, low-confidence result, negative feedback, ticket resolution',
         question: 'Why did this action fail?',
         generic: 'Try again or contact support with a screenshot.',
         canonica: 'If approved content is missing, fallback is marked, feedback is captured, and the repeated gap becomes a signal-to-knowledge proposal.',
@@ -92,7 +101,7 @@ const ROLE_PAGES = [
     {
         title: 'For product teams',
         href: '/use-cases/product-teams',
-        detail: 'See which product areas create stale support truth.',
+        detail: 'See which product areas create stale support.',
     },
     {
         title: 'For engineering',
@@ -112,15 +121,23 @@ export default function CanonicaUseCasesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Use Cases</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Support that changes by product page, not only by keyword.
+                        Support use cases for AI-built SaaS apps.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Canonica is strongest where SaaS users ask the same question from different screens and need different support truth.
+                        When users ask from billing, onboarding, settings, releases, or error screens, Canonica serves support that matches the page instead of giving generic AI replies.
                     </p>
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto mb-12 grid max-w-6xl gap-4 md:grid-cols-4">
+                    <div className="mx-auto mb-12 grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-5">
+                        <CanonicaLink
+                            basePath={basePath}
+                            href="/use-cases/ai-built-saas"
+                            className="rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-5 transition hover:border-indigo-300/40 hover:bg-indigo-500/[0.08]"
+                        >
+                            <h2 className="text-base font-semibold text-white">For AI-built SaaS</h2>
+                            <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">Launch support after building quickly with AI.</p>
+                        </CanonicaLink>
                         {ROLE_PAGES.map((item) => (
                             <CanonicaLink
                                 key={item.href}
@@ -134,34 +151,17 @@ export default function CanonicaUseCasesPage() {
                         ))}
                     </div>
 
-                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2">
-                        {USE_CASES.map((item) => (
-                            <article key={item.title} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-                                <h2 className="text-xl font-semibold text-white">{item.title}</h2>
-                                <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                                    <div className="text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Context</div>
-                                    <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">{item.context}</p>
-                                </div>
-                                <div className="mt-3 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.05] p-4">
-                                    <div className="text-xs font-semibold uppercase tracking-widest text-indigo-300">Outcome</div>
-                                    <p className="mt-2 text-sm leading-relaxed text-[#d6d6ef]">{item.outcome}</p>
-                                </div>
-                                <div className="mt-3 rounded-xl border border-white/[0.06] bg-black/10 p-4">
-                                    <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">Example question</div>
-                                    <p className="text-sm font-medium text-white">{item.question}</p>
-                                    <div className="mt-4 grid gap-3">
-                                        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-[#6b6b8a]">Generic answer</div>
-                                            <p className="text-xs leading-relaxed text-[#808099]">{item.generic}</p>
-                                        </div>
-                                        <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/[0.06] p-3">
-                                            <div className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-indigo-300">Canonica answer</div>
-                                            <p className="text-xs leading-relaxed text-[#d6d6ef]">{item.canonica}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
+                    <div className="mx-auto max-w-7xl">
+                        <CanonicaBeforeAfterStrip
+                            items={USE_CASES.map((item) => ({
+                                title: item.title,
+                                context: item.context,
+                                question: item.question,
+                                before: item.generic,
+                                after: item.canonica,
+                                outcome: item.outcome,
+                            }))}
+                        />
                     </div>
                 </section>
 

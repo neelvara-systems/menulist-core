@@ -848,14 +848,14 @@ export default function UseMenuList() {
                     gap={6}
                     align="flex-start"
                     style={{
-                        background: '#f6ffed',
+                        background: themeToken.colorSuccessBg,
                         borderRadius: 8,
                         padding: '10px 14px',
-                        border: '1px solid #b7eb8f',
+                        border: `1px solid ${themeToken.colorSuccessBorder}`,
                         marginBottom: 24,
                     }}
                 >
-                    <LuCheck size={14} style={{ flexShrink: 0, marginTop: 3, color: '#52c41a' }} />
+                    <LuCheck size={14} style={{ flexShrink: 0, marginTop: 3, color: themeToken.colorSuccess }} />
                     <Text style={{ fontSize: 12 }}>
                         <strong>Setup tip:</strong> Open the link on your TV browser and bookmark it. The screen refreshes automatically.
                     </Text>

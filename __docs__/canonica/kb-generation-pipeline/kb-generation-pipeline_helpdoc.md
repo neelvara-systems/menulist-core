@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Customer Help Documentation
 
 > **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Last Updated:** 2026-05-24
 > **Audience:** Platform Administrators only
 > **Note:** This feature is NOT accessible to SMB owners. This helpdoc is for internal platform team reference.
 
@@ -20,7 +20,8 @@ The KB Generation Pipeline allows platform administrators to generate help artic
 2. Click **Upload New Content**
 3. Drag and drop your files or click to browse
 4. Supported formats: PDF, images, videos, documents, website URLs, YouTube URLs, Google Drive links, copied text
-5. Click **Start Generation**
+5. Remove private customer data from images or screenshots before upload; source files stay with the generation job until the job is deleted
+6. Click **Start Generation**
 
 ### Step 2 — Wait for Processing
 - The system uploads your files and creates a generation job

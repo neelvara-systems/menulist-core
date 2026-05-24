@@ -65,7 +65,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Drift checks',
-                detail: 'Version mismatch, signal anomaly, scope conflict, and deprecated entity checks flag stale support truth.',
+                detail: 'Version mismatch, signal anomaly, scope conflict, and deprecated entity checks flag stale support.',
             },
             {
                 title: 'Signal queue',

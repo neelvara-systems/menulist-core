@@ -18,10 +18,10 @@ const COMPARISON_ROWS = [
         chatbot: 'Usually no',
         helpdesk: 'Agent-dependent',
         kb: 'Static docs',
-        canonica: 'Yes: canonical answers are authoritative after review',
+        canonica: 'Yes: approved answers are authoritative after review',
     },
     {
-        feature: 'Detects stale support truth',
+        feature: 'Detects stale support',
         chatbot: 'No',
         helpdesk: 'Manual',
         kb: 'Manual',
@@ -35,7 +35,7 @@ const COMPARISON_ROWS = [
         canonica: 'Yes: fallback, feedback, and tickets become signals',
     },
     {
-        feature: 'Tracks support truth coverage',
+        feature: 'Tracks support coverage',
         chatbot: 'Conversation metrics',
         helpdesk: 'Ticket metrics',
         kb: 'Article counts',
@@ -66,7 +66,7 @@ export default function ComparisonSection() {
                         Why Canonica
                     </p>
                     <h2 className="text-3xl font-bold sm:text-4xl">
-                        Chatbots answer. Helpdesks route. Canonica keeps support truth correct.
+                        Chatbots answer. Helpdesks route. Canonica keeps approved support correct.
                     </h2>
                     <p className="mt-4 text-lg text-[#a0a0c0]">
                         It sits behind your help center, widget, tickets, and release notes as the governed knowledge layer.

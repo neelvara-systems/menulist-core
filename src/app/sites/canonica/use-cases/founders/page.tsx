@@ -3,8 +3,8 @@ import { headers } from 'next/headers';
 import UseCaseLandingPage from '../../components/UseCaseLandingPage';
 
 export const metadata: Metadata = {
-    title: 'Support for SaaS Founders',
-    description: 'Canonica helps solo SaaS founders launch page-aware support, approved answers, and support-gap review before hiring a support team.',
+    title: 'Support for AI-Built SaaS Founders',
+    description: 'Canonica helps solo founders launch page-aware support, approved answers, and support-gap review for AI-built SaaS apps.',
     alternates: { canonical: '/use-cases/founders' },
 };
 
@@ -22,19 +22,19 @@ export default function FoundersUseCasePage() {
             basePath={getBasePath()}
             canonicalPath="/use-cases/founders"
             eyebrow="For founders"
-            title="Support that improves while you build."
-            description="Canonica gives solo founders a page-aware widget, hosted help, approved answers, and a review queue for repeated misses."
-            problem="Small SaaS founders ship fast, but support content rarely keeps up. Users ask from billing, onboarding, settings, and release screens while the founder is still building the product."
+            title="Support for founders launching AI-built SaaS apps."
+            description="You built and shipped fast. Canonica helps users get correct answers from billing, onboarding, settings, releases, and error pages while you keep building."
+            problem="AI helps you create the product quickly, but users still need support, docs, answers, and fallback. Without a support layer, every repeated question comes back to you."
             question="Why did my invoice fail?"
             genericAnswer="Please check your billing settings or contact support."
             canonicaAnswer="You are on Billing Invoices. Canonica serves the approved billing retry answer first, links the invoice FAQ, and only falls back to a ticket if payment still fails."
-            ownerReview="When Canonica misses, the gap becomes review work instead of disappearing into chat history. The founder approves the answer before future users receive it as support truth."
+            ownerReview="You approve what becomes official. When Canonica misses, the gap becomes review work instead of disappearing into chat history."
             setupSteps={[
                 'Sign in and create the Canonica beta workspace.',
                 'Add company, product, support email, and support-heavy pages.',
                 'Import docs, FAQs, release notes, and recurring support answers.',
                 'Install the widget and verify page context.',
-                'Approve the first canonical answers from the governance queue.',
+                'Approve the first answers from the review queue.',
             ]}
             primaryCta="Start free beta"
             secondaryCta="Try page-aware demo"

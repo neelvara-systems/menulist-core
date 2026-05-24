@@ -23,7 +23,7 @@ import WidgetSection from './components/WidgetSection';
 import { CANONICA_SITE_DESCRIPTION } from './siteConfig';
 
 export const metadata: Metadata = {
-    title: 'Canonica — Accurate Page-Aware Support for SaaS',
+    title: 'Canonica — Support for AI-Built SaaS Apps',
     description: CANONICA_SITE_DESCRIPTION,
     alternates: { canonical: '/' },
 };
@@ -57,8 +57,8 @@ export default function CanonicaHomePage() {
             <CanonicaStructuredData />
             <main className="cn-home-flow">
                 <HeroSection basePath={basePath} />
-                <SupportKnowledgeMapSection />
                 <HomePageAwareDemoSection basePath={basePath} />
+                <SupportKnowledgeMapSection />
                 <ClosedLoopSection />
                 <ProductPreviewSection />
                 <ProductAreasSection basePath={basePath} />

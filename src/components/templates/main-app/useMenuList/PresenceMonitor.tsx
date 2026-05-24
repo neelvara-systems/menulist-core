@@ -18,7 +18,7 @@ import {
     shouldRecordStarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { StoreDataType } from '@type/platform/store';
-import { Button, Card, Flex, message, Tag, Typography } from 'antd';
+import { Button, Card, Flex, message, Tag, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { FaInstagram } from 'react-icons/fa6';
 import {
@@ -138,6 +138,7 @@ function buildAutoSurfaces(data: UseMenuListData): AutoSurface[] {
 // ── Component ────────────────────────────────────────────────
 
 export default function PresenceMonitor({ data, storeDetails, onCopyLink }: PresenceMonitorProps) {
+    const { token } = theme.useToken();
     const [updating, setUpdating] = useState<string | null>(null);
     const [localPresence, setLocalPresence] = useState<Record<string, string | undefined>>(
         storeDetails.menuPresence || {}
@@ -235,10 +236,10 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                 {allActive && (
                     <Flex
                         gap={6} align="center"
-                        style={{ background: '#f6ffed', borderRadius: 6, padding: '6px 10px', border: '1px solid #b7eb8f' }}
+                        style={{ background: token.colorSuccessBg, borderRadius: 6, padding: '6px 10px', border: `1px solid ${token.colorSuccessBorder}` }}
                     >
-                        <LuCheck size={14} style={{ color: '#52c41a' }} />
-                        <Text style={{ fontSize: 12, color: '#52c41a' }}>
+                        <LuCheck size={14} style={{ color: token.colorSuccess }} />
+                        <Text style={{ fontSize: 12, color: token.colorSuccess }}>
                             Your business is easy to find everywhere customers look
                         </Text>
                     </Flex>
@@ -260,19 +261,19 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                 gap={10} align="center"
                                 style={{
                                     padding: '8px 0',
-                                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
                                 }}
                             >
                                 {/* Status icon */}
                                 <div style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
                                     {active
-                                        ? <LuCheck size={16} style={{ color: '#52c41a' }} />
-                                        : <LuAlertTriangle size={16} style={{ color: '#faad14' }} />
+                                        ? <LuCheck size={16} style={{ color: token.colorSuccess }} />
+                                        : <LuAlertTriangle size={16} style={{ color: token.colorWarning }} />
                                     }
                                 </div>
 
                                 {/* Surface icon */}
-                                <div style={{ width: 20, textAlign: 'center', flexShrink: 0, color: '#8c8c8c' }}>
+                                <div style={{ width: 20, textAlign: 'center', flexShrink: 0, color: token.colorTextTertiary }}>
                                     {surface.icon}
                                 </div>
 
@@ -316,7 +317,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                         icon={<LuX size={12} />}
                                         loading={updating === surface.id}
                                         onClick={() => handleRemove(surface)}
-                                        style={{ fontSize: 11, color: '#8c8c8c' }}
+                                        style={{ fontSize: 11, color: token.colorTextTertiary }}
                                     >
                                         Remove
                                     </Button>
@@ -328,7 +329,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                 <Flex
                                     vertical gap={8}
                                     style={{
-                                        background: 'rgba(0,0,0,0.02)',
+                                        background: token.colorFillAlter,
                                         borderRadius: 6,
                                         padding: '10px 12px',
                                         marginTop: 4,
@@ -379,15 +380,15 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                     <Flex
                         key={surface.id}
                         gap={10} align="center"
-                        style={{ padding: '6px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}
+                        style={{ padding: '6px 0', borderBottom: `1px solid ${token.colorBorderSecondary}` }}
                     >
                         <div style={{ width: 20, textAlign: 'center', flexShrink: 0 }}>
                             {surface.active
-                                ? <LuCheck size={16} style={{ color: '#52c41a' }} />
-                                : <LuAlertTriangle size={16} style={{ color: '#faad14' }} />
+                                ? <LuCheck size={16} style={{ color: token.colorSuccess }} />
+                                : <LuAlertTriangle size={16} style={{ color: token.colorWarning }} />
                             }
                         </div>
-                        <div style={{ width: 20, textAlign: 'center', flexShrink: 0, color: '#8c8c8c' }}>
+                        <div style={{ width: 20, textAlign: 'center', flexShrink: 0, color: token.colorTextTertiary }}>
                             {surface.icon}
                         </div>
                         <Flex vertical gap={0} style={{ flex: 1, minWidth: 0 }}>

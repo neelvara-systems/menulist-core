@@ -10,7 +10,7 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { Alert, Badge, Button, Card, Divider, Flex, Typography } from "antd";
+import { Alert, Badge, Button, Card, Divider, Flex, Typography, theme } from "antd";
 import { LuLink, LuMapPin } from "react-icons/lu";
 import { SiGooglemybusiness } from "react-icons/si";
 
@@ -36,6 +36,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     scrollRef,
     storeDetails,
 }) => {
+    const { token } = theme.useToken();
     const gbpEnabled = FEATURE_FLAGS.ENABLE_GBP_SYNC;
     const gbp = storeDetails?.gbp;
     const gbpState = storeDetails?.gbpState;
@@ -113,7 +114,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             ) : (
                 // Not Connected State (Phase 0 Stub)
                 <Flex vertical gap={16} align="center" style={{ padding: "24px 0" }}>
-                    <SiGooglemybusiness size={48} style={{ color: "#9CA3AF" }} />
+                    <SiGooglemybusiness size={48} style={{ color: token.colorTextTertiary }} />
 
                     <Paragraph
                         type="secondary"

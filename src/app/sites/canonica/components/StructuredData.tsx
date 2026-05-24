@@ -2,6 +2,7 @@ import JsonLdScript from '@/components/seo/JsonLdScript';
 import {
     buildCanonicaUrl,
     CANONICA_PUBLIC_PAGES,
+    CANONICA_SITE_DESCRIPTION,
     CANONICA_SITE_URL,
 } from '../siteConfig';
 
@@ -45,7 +46,7 @@ export default function CanonicaStructuredData() {
                 applicationCategory: 'CustomerSupportApplication',
                 operatingSystem: 'Web',
                 url: CANONICA_SITE_URL,
-                description: 'Accurate page-aware support for SaaS founders: approved answers before fallback, hosted help, and reviewable fixes for missed questions.',
+                description: CANONICA_SITE_DESCRIPTION,
                 offers: {
                     '@type': 'Offer',
                     price: '999',
@@ -58,8 +59,8 @@ export default function CanonicaStructuredData() {
                 '@type': 'WebPage',
                 '@id': `${CANONICA_SITE_URL}/#webpage`,
                 url: CANONICA_SITE_URL,
-                name: 'Canonica - Accurate Page-Aware Support for SaaS',
-                description: 'Canonica helps SaaS founders ship fast without support chaos: approved page-aware answers before fallback, hosted help on their own domain, and reviewable fixes for missed questions.',
+                name: 'Canonica - Support for AI-Built SaaS Apps',
+                description: CANONICA_SITE_DESCRIPTION,
                 isPartOf: { '@id': `${CANONICA_SITE_URL}/#website` },
                 about: { '@id': `${CANONICA_SITE_URL}/#software` },
                 breadcrumb: { '@id': `${CANONICA_SITE_URL}/#breadcrumb` },

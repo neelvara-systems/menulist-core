@@ -15,7 +15,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Alert, Button, Card, Divider, Flex, Steps, Typography, message } from 'antd';
+import { Alert, Button, Card, Divider, Flex, Steps, Typography, message, theme } from 'antd';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe } from 'react-icons/lu';
 import { SiGooglemybusiness } from 'react-icons/si';
@@ -38,6 +38,7 @@ export default function GoogleListingGuide({
     onDismiss,
 }: GoogleListingGuideProps) {
     const [copied, setCopied] = useState(false);
+    const { token } = theme.useToken();
 
     // Hide if GBP auto-sync is enabled (this guide becomes unnecessary)
     if (FEATURE_FLAGS.ENABLE_GBP_SYNC) return null;
@@ -75,11 +76,11 @@ export default function GoogleListingGuide({
                             width: 36,
                             height: 36,
                             borderRadius: 8,
-                            background: '#f6ffed',
+                            background: token.colorSuccessBg,
                             flexShrink: 0,
                         }}
                     >
-                        <LuCheck size={18} style={{ color: '#52c41a' }} />
+                        <LuCheck size={18} style={{ color: token.colorSuccess }} />
                     </Flex>
                     <Flex vertical style={{ flex: 1 }}>
                         <Text strong style={{ fontSize: 13 }}>Google listing updated</Text>
@@ -111,13 +112,13 @@ export default function GoogleListingGuide({
                 gap={8}
                 style={{
                     padding: '8px 12px',
-                    background: '#fafafa',
+                    background: token.colorFillSecondary,
                     borderRadius: 8,
-                    border: '1px solid #f0f0f0',
+                    border: `1px solid ${token.colorBorder}`,
                     marginBottom: 16,
                 }}
             >
-                <LuGlobe size={14} style={{ color: '#1677ff', flexShrink: 0 }} />
+                <LuGlobe size={14} style={{ color: token.colorPrimary, flexShrink: 0 }} />
                 <Text
                     style={{
                         flex: 1,

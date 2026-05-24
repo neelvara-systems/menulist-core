@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'Recent Canonica product updates across launch setup, widget management, public website, governance, and cost-conscious runtime work.',
+    description: 'Canonica product updates that affect setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -20,6 +20,15 @@ function getBasePath(): string {
 }
 
 const UPDATES = [
+    {
+        date: 'May 24, 2026',
+        title: 'Website reframed for AI-built SaaS founders',
+        items: [
+            'Homepage now starts from the post-launch problem: users need correct answers after a founder ships an app quickly with AI.',
+            'The page-aware demo now appears as the first proof, showing generic AI vs Canonica before deeper product architecture.',
+            'A new AI-built SaaS use-case page explains the setup path, while the vibe-coded SaaS URL stays a canonicalized campaign/search alias.',
+        ],
+    },
     {
         date: 'May 22, 2026',
         title: 'Final product-suite website polish',
@@ -51,17 +60,17 @@ const UPDATES = [
         date: 'May 22, 2026',
         title: 'Founder-facing support accuracy positioning',
         items: [
-            'Homepage hero now leads with "You build revenue. Canonica keeps support accurate." so founders understand the outcome before the architecture.',
+            'Homepage copy moved toward founder-facing support accuracy before deeper architecture.',
             'The claim stays scoped to Canonica truth: approved page-aware answers before fallback, reviewable fixes for missed questions, and human approval before authoritative publishing.',
             'Copy avoids "we handle your support" because Canonica is not a helpdesk replacement, outsourcing service, or AI autopilot.',
         ],
     },
     {
         date: 'May 22, 2026',
-        title: 'Website reframed around page-aware support truth',
+        title: 'Website reframed around approved page-aware support',
         items: [
-            'Hero now leads with page-aware support truth and makes the page-aware demo the primary action.',
-            'Homepage now includes a closed-loop visual: product-page question, approved answer, fallback signal, human-reviewed proposal, and future canonical answer.',
+            'Hero now leads with approved page-aware support and makes the page-aware demo the primary action.',
+            'Homepage now includes a closed-loop visual: product-page question, approved answer, fallback signal, human-reviewed proposal, and future approved answer.',
             'Comparison now separates AI chatbot, helpdesk, knowledge base, and Canonica so the product is not misread as another support chatbot.',
             'FAQ now defines canonical answers, missing-answer behavior, non-chatbot positioning, and human approval before authoritative publishing.',
             'Role-specific use-case pages added for founders, support teams, product teams, and engineering without adding Firebase reads.',
@@ -162,10 +171,10 @@ export default function CanonicaUpdatesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Updates</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Canonica product movement, without the noise.
+                        Canonica product updates.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Recent changes that affect launch readiness, page-aware support, governance, widget operations, and public product clarity.
+                        Changes that affect setup, page-aware support, hosted help, widget runtime, governance, pricing, and safety.
                     </p>
                 </section>
 

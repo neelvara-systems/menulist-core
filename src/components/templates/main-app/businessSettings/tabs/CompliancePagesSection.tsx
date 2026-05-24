@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Button, Card, Input, Space, Tag, Typography, notification } from 'antd';
+import { Alert, Button, Card, Input, Space, Tag, Typography, notification, theme } from 'antd';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { LuExternalLink, LuFileText, LuLoader, LuRotateCcw } from 'react-icons/lu';
@@ -20,6 +20,7 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
     const [saving, setSaving] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const { token } = theme.useToken();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -152,7 +153,7 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
                 <div>
                     <Card
                         size="small"
-                        style={{ background: '#fafafa', maxHeight: 160, overflow: 'auto', marginBottom: 12 }}
+                        style={{ background: token.colorFillSecondary, maxHeight: 160, overflow: 'auto', marginBottom: 12 }}
                     >
                         <Text style={{ fontSize: 12, whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                             {currentData?.content
