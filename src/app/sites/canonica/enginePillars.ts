@@ -20,7 +20,7 @@ export const CANONICA_ENGINE_PILLARS = [
     {
         number: '04',
         title: 'Repeated-question queue',
-        description: 'Tickets, negative feedback, fallback searches, and escalations become structured signals. Repeated signals propose knowledge changes for human approval.',
+        description: 'Tickets, negative feedback, and recurring fallback searches become review inputs. Repeated patterns can propose knowledge changes for human approval.',
         highlight: 'Self-improvement',
     },
 ];

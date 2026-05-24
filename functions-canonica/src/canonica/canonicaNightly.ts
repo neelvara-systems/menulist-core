@@ -32,6 +32,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { cleanupExpiredIntegrationData } from '../integrations/deliveryLogger';
+import { hasEnabledIntegrationAdapter } from '../integrations/configStore';
 import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/eventBus';
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
 import { bumpCanonicaCacheVersion, CANONICA_CACHE_SOURCES } from './cacheVersionManifest';
@@ -2062,9 +2063,26 @@ export async function runCanonicaNightly(options: {
         if (FUNCTION_FLAGS.ENABLE_CANONICA_WORKFLOW_INTEGRATIONS) {
             try {
                 resetNightlyEventCounts();
+                let summaryTenant: { tId: number; sId: number } | null = null;
 
                 for (const tenantRun of result.tenantRuns) {
                     const { tId, sId } = tenantRun;
+
+                    const cleanupResult = await cleanupExpiredIntegrationData(tId, sId);
+                    result.integrationCleanupEvents += cleanupResult.eventsDeleted;
+                    result.integrationCleanupLogs += cleanupResult.logsDeleted;
+
+                    const hasEnabledAdapter = await hasEnabledIntegrationAdapter(tId, sId).catch(() => false);
+                    if (!hasEnabledAdapter) {
+                        tenantRun.tasks.push({
+                            name: 'workflow_integrations',
+                            status: 'skipped',
+                            durationMs: 0,
+                            details: { reason: 'no_enabled_adapter' },
+                        });
+                        continue;
+                    }
+                    summaryTenant = summaryTenant || { tId, sId };
 
                     if (tenantRun.driftDetected > 0) {
                         await emitIntegrationEvent({
@@ -2132,13 +2150,10 @@ export async function runCanonicaNightly(options: {
                         result.integrationEventsEmitted++;
                     }
 
-                    const cleanupResult = await cleanupExpiredIntegrationData(tId, sId);
-                    result.integrationCleanupEvents += cleanupResult.eventsDeleted;
-                    result.integrationCleanupLogs += cleanupResult.logsDeleted;
                 }
 
-                if (result.tenantRuns.length > 0) {
-                    const { tId, sId } = result.tenantRuns[0];
+                if (summaryTenant) {
+                    const { tId, sId } = summaryTenant;
                     await emitIntegrationEvent({
                         tId, sId,
                         eventType: INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY,

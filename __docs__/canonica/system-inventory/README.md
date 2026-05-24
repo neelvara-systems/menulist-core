@@ -83,10 +83,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Founder trust/readiness metrics | Implemented | `src/database/canonica/trustMetrics.ts`, `src/components/templates/canonica/governance/FounderTrustDashboard.tsx`, `functions-canonica/src/canonica/canonicaNightly.ts` | `platformSummary/trustMetrics_{tId}_{sId}` | Summarizes coverage, resolution readiness, drift pressure, escalations, and top failing entities. |
 | Coverage KPI | Implemented | `src/database/canonica/coverageKPI.ts`, `src/components/templates/canonica/CanonicaCoverageKPI.tsx`, nightly functions | `platformSummary/coverage_{tId}_{sId}` | Tracks canonical coverage without dashboard collection scans. |
 | Product friction intelligence | Implemented and enabled with caps | `functions-canonica/src/canonica/frictionAggregation.ts`, `frictionInsight.ts`, `src/database/canonica/frictionStats.ts`, `FrictionTab.tsx` | `canonica_frictionDailyStats`, `platformSummary/friction*` | Aggregates recurring support friction and optional weekly insight generation from bounded nightly queries. |
-| Predictive support | Implemented but disabled by default | `src/lib/canonica/predictiveEngine.ts`, `functions-canonica/src/canonica/predictiveTriggerSync.ts`, `PredictiveTriggerManager.tsx` | `canonica_predictiveTriggers`, `platformSummary/predictiveTriggers_*` | Suggests contextual help before the user asks when trigger rules match. |
-| Knowledge graph traversal | Implemented but disabled by default | `src/lib/canonica/graphTraversal.ts`, nightly graph rebuild | `platformSummary/entityGraphIndex_*`, `canonica_entityRelations` | Expands answers through related ontology nodes when enabled. |
 | Public API v1 | Implemented but rollout-gated | `src/app/api/canonica/public/v1/answers`, `/entities`, `/signals`, `src/lib/canonica/publicApi.ts` | Public API keys, canonical retrieval, entities, signals | External product integration surface. Feature flag remains off until product rollout is intentional. |
-| Workflow integrations | Implemented but disabled by server flag | `functions-canonica/src/integrations/` | `canonica_integrationEvents`, `canonica_integrationDeliveryLogs`, integration config summary doc | Emits governance events to Slack, Email, Linear, and GitHub when enabled. |
 | Email notifications | Implemented and enabled | `src/lib/notifications/`, `src/app/api/canonica/notifications/test/route.ts`, ticket DAL notification triggers | Ticket/event data, `canonica_notificationLogs` | Ticket-created/reply/status emails are fire-and-forget, rate-limited, logged in Canonica Firebase, and testable from Activation. |
 | Widget branding | Implemented | `src/lib/canonica/widgetConfig.ts`, `CanonicaWidgetManagement.tsx`, `public/widget/canonica-widget.js`, `WidgetClient.tsx` | `stores/{sId}.widgetConfig` | Widget header title, accent color, greeting, launcher, and powered-by visibility are tenant-configurable without extra runtime reads. |
 | Advanced white-label branding | Implemented but disabled by default | `src/database/canonica/branding.ts`, `WhiteLabelBranding.tsx` | `platformSummary/branding_{tId}_{sId}` | Broader KB/email branding controls remain guarded until all public support surfaces consume the same branding read model. |
@@ -130,7 +127,6 @@ Management routes are gated by Canonica product scope or platform access. Client
 - `/api/canonica/product-surfaces/rebuild-summary`
 - `/api/canonica/tenant-summary`
 - `/api/canonica/translate`
-- `/api/canonica/predictive-help`
 
 ### Public API v1
 
@@ -146,12 +142,11 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 
 | Backend unit | Trigger | Purpose | Cost posture |
 | --- | --- | --- | --- |
-| `canonicaNightly` | Scheduled Cloud Function | Runs drift, signal mutation, coverage, trust metrics, optional friction, optional graph, optional ticket knowledge, optional predictive sync, optional integrations. | Uses `platformSummary/canonicaTenantsSummary` before legacy discovery; logs structured run results. |
+| `canonicaNightly` | Scheduled Cloud Function | Runs drift, signal mutation, coverage, trust metrics, optional friction, and optional ticket knowledge. | Uses `platformSummary/canonicaTenantsSummary` before legacy discovery; logs structured run results. |
 | `triggerCanonicaNightly` | HTTP manual trigger with secret | Manual backfill/recovery for scheduler work. | Supports tenant/store targeting and dry-run style diagnostics. |
 | `embedArticleWorker` | Cloud Tasks | Generates/stores KB article embeddings after article generation. | Async work, separated from UI. |
 | `regenerateEmbedding` | Callable | Manual article embedding regeneration. | Admin/protected callable; expensive only on demand. |
 | `publishApprovedJobFn` | Callable | Publishes reviewed KB generation job output. | Transactional publishing and cache version bump. |
-| `processIntegrationEvent` | Firestore create trigger | Delivers enabled integration events. | Integration flags and config gate delivery. |
 
 ---
 
@@ -173,9 +168,6 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 - `canonica_aiOperations`
 - `canonica_cacheVersions`
 - `canonica_notificationLogs`
-- `canonica_integrationEvents`
-- `canonica_integrationDeliveryLogs`
-- `canonica_predictiveTriggers`
 - `canonica_productSurfaces`
 
 ### Shared support collections used by Canonica surfaces
@@ -195,8 +187,6 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 - `platformSummary/trustMetrics_{tId}_{sId}`
 - `platformSummary/frictionSnapshot_{tId}_{sId}`
 - `platformSummary/friction_{tId}_{sId}`
-- `platformSummary/entityGraphIndex_{tId}_{sId}`
-- `platformSummary/predictiveTriggers_{tId}_{sId}`
 
 Dashboard and scheduler flows should prefer summary docs over scanning growing collections.
 
@@ -231,10 +221,7 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_CANONICA_WHITE_LABEL`
 - `ENABLE_CANONICA_MULTI_LANGUAGE`
 - `ENABLE_CANONICA_GUIDED_WORKFLOWS`
-- `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS`
 - `ENABLE_CANONICA_AI_ESCALATION`
-- `ENABLE_CANONICA_KNOWLEDGE_GRAPH`
-- `ENABLE_CANONICA_PREDICTIVE_SUPPORT`
 
 ### Enabled in Cloud Functions by default
 
@@ -245,7 +232,7 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_CANONICA_TRUST_METRICS`
 - `ENABLE_CANONICA_FOUNDER_ONBOARDING`
 
-Integration-heavy server features stay disabled until explicitly enabled. The enabled nightly intelligence loops are capped and summary-backed.
+Enabled nightly intelligence loops are capped and summary-backed. Predictive support, workflow notifications, and knowledge graph traversal are active expansion paths and must stay guarded by cooldown storage, event caps, sanitized delivery payloads, and compact `platformSummary` reads.
 
 ---
 
@@ -268,8 +255,8 @@ The website should not claim:
 - Enterprise helpdesk replacement.
 - CRM, task management, project management, or full customer support inbox replacement.
 - Fully automated publishing without owner review.
-- Always-on email/workflow integrations unless the relevant flags and production config are enabled.
-- Public API or workflow adapters as default package features while their rollout flags remain disabled.
+- Always-on external workflow adapters as default package features.
+- Public API as a default package feature while its rollout flag remains disabled.
 - MenuList-specific hardcoded behavior.
 
 ---
@@ -299,13 +286,10 @@ Core Canonica flows are implemented and documented enough for staging use:
 The following remain intentional rollout controls:
 
 - public API
-- workflow integrations
-- predictive support
-- knowledge graph traversal
 - multi-language
 - advanced cross-surface white-label branding
 
-Those features exist in code but should stay conservative in website copy unless enabled for a client.
+Those features remain behind intentional rollout controls and should stay conservative in website copy unless enabled for a client.
 
 ---
 
@@ -324,9 +308,6 @@ Findings:
 Intentional rollout-gated features still found in code:
 
 - Public API v1
-- Workflow integrations and delivery logs
-- Predictive support
-- Knowledge graph traversal
 - Multi-language articles
 - Advanced cross-surface white-label branding
 - AI escalation

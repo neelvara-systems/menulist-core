@@ -227,7 +227,7 @@ ENABLE_CANONICA_TRUST_METRICS: true
 - Per-conversation debugging
 - Export/sharing functionality
 - Email digest of trust metrics
-- Predictive degradation alerts
+- Automatic degradation alerts
 - Custom metric thresholds
 - Historical trend graphs (beyond 7-day delta)
 

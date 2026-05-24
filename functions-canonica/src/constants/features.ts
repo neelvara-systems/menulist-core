@@ -92,7 +92,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/workflow-integrations/
      */
-    ENABLE_CANONICA_WORKFLOW_INTEGRATIONS: false,
+    ENABLE_CANONICA_WORKFLOW_INTEGRATIONS: true,
 
     /**
      * Canonica Ticket → Knowledge Loop (Expansion Item #9)
@@ -119,7 +119,7 @@ export const FUNCTION_FLAGS = {
      *
      * @see __docs__/canonica/knowledge-graph-exploitation/
      */
-    ENABLE_CANONICA_KNOWLEDGE_GRAPH: false,
+    ENABLE_CANONICA_KNOWLEDGE_GRAPH: true,
 
     /**
      * Canonica Predictive Support (Nightly Trigger Sync)
@@ -133,5 +133,5 @@ export const FUNCTION_FLAGS = {
      * Requires: ENABLE_CANONICA_NIGHTLY + ENABLE_CANONICA_FRICTION_INTELLIGENCE
      * @see __docs__/canonica/predictive-support/
      */
-    ENABLE_CANONICA_PREDICTIVE_SUPPORT: false,
+    ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 } as const;

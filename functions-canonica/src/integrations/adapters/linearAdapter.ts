@@ -17,6 +17,7 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
+import { safeText, sanitizeDeliveryError } from '../safety';
 
 const LINEAR_API_URL = 'https://api.linear.app/graphql';
 
@@ -52,17 +53,17 @@ function formatIssueDescription(event: IntegrationEvent): string {
     switch (event.eventType) {
         case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:
             lines.push(
-                `**Answer:** ${p.answerTitle || 'Unknown'}`,
-                `**Drift Class:** ${p.driftClass}`,
-                `**Reason:** ${p.driftReason}`,
-                `**Entity:** ${p.entityName} (${p.entityType})`,
+                `**Answer:** ${safeText(p.answerTitle || 'Unknown')}`,
+                `**Drift Class:** ${safeText(p.driftClass)}`,
+                `**Reason:** ${safeText(p.driftReason, 220)}`,
+                `**Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
             );
             break;
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
             lines.push(
                 `**Mutation Type:** ${p.mutationType}`,
-                `**Entities:** ${(p.entityNames || []).join(', ')}`,
+                `**Entities:** ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}`,
                 `**Signal Count:** ${p.signalCount}`,
                 `**Confidence:** ${Math.round((p.confidenceScore || 0) * 100)}%`,
             );
@@ -70,24 +71,24 @@ function formatIssueDescription(event: IntegrationEvent): string {
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
             lines.push(
-                `**Entity:** ${p.entityName} (${p.entityType})`,
+                `**Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
                 `**Fallback Count:** ${p.fallbackCount} in ${p.windowDays} days`,
                 `**Sample Queries:**`,
-                ...(p.sampleQueries || []).map((q: string) => `- ${q}`),
+                ...(p.sampleQueries || []).map((q: string) => `- ${safeText(q, 160)}`),
             );
             break;
 
         case INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING:
             lines.push(
-                `**Entity:** ${p.entityName} (${p.entityType})`,
+                `**Entity:** ${safeText(p.entityName)} (${safeText(p.entityType, 80)})`,
                 `**Failure Count:** ${p.failureCount} in ${p.windowDays} days`,
                 `**Common Queries:**`,
-                ...(p.commonQueries || []).map((q: string) => `- ${q}`),
+                ...(p.commonQueries || []).map((q: string) => `- ${safeText(q, 160)}`),
             );
             break;
 
         default:
-            lines.push('```json', JSON.stringify(p, null, 2).slice(0, 500), '```');
+            lines.push('```json', safeText(JSON.stringify(p, null, 2), 500), '```');
     }
 
     lines.push('', '---', '*Created automatically by Canonica governance engine.*');
@@ -99,7 +100,7 @@ export class LinearAdapter implements IIntegrationAdapter {
 
     formatPayload(event: IntegrationEvent): { title: string; description: string; priority: number } {
         const eventTitle = EVENT_TITLES[event.eventType] || event.eventType;
-        const entityName = event.payload.entityName || event.payload.answerTitle || '';
+        const entityName = safeText(event.payload.entityName || event.payload.answerTitle || '', 80);
         const title = entityName
             ? `[Canonica] ${eventTitle}: ${entityName}`
             : `[Canonica] ${eventTitle}`;
@@ -161,13 +162,13 @@ export class LinearAdapter implements IIntegrationAdapter {
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => 'Unknown error');
-                return { success: false, statusCode: response.status, error: errorText.slice(0, 200), durationMs };
+                return { success: false, statusCode: response.status, error: sanitizeDeliveryError(errorText), durationMs };
             }
 
             const data = await response.json() as any;
 
             if (data.errors && data.errors.length > 0) {
-                return { success: false, error: data.errors[0]?.message || 'GraphQL error', durationMs };
+                return { success: false, error: sanitizeDeliveryError(data.errors[0]?.message || 'GraphQL error'), durationMs };
             }
 
             if (data.data?.issueCreate?.success) {
@@ -183,7 +184,7 @@ export class LinearAdapter implements IIntegrationAdapter {
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
+                error: sanitizeDeliveryError(error),
                 durationMs: Date.now() - startMs,
             };
         }

@@ -2186,7 +2186,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_DRIFT_DETECTION = true (events need drift data)
      * @see __docs__/canonica/workflow-integrations/
      */
-    ENABLE_CANONICA_WORKFLOW_INTEGRATIONS: false,
+    ENABLE_CANONICA_WORKFLOW_INTEGRATIONS: true,
 
     /**
      * Canonica AI Failure Escalation
@@ -2249,12 +2249,12 @@ export const FEATURE_FLAGS = {
      *
      * Expansion Item #11 — Makes entity relationships work during retrieval.
      * Zero new Firestore collections. Uses platformSummary/entityGraphIndex_{tId}_{sId}.
-     * Cost: +1 Firestore read per query (~$0.036/100K queries).
+     * Cost: 1 summary read per tenant/server cache window when graph cache misses.
      *
      * Requires: ENABLE_CANONICA_ONTOLOGY + ENABLE_CANONICA_CANONICAL_ANSWERS = true
      * @see __docs__/canonica/knowledge-graph-exploitation/
      */
-    ENABLE_CANONICA_KNOWLEDGE_GRAPH: false,
+    ENABLE_CANONICA_KNOWLEDGE_GRAPH: true,
 
     /**
      * Canonica Predictive Support (Proactive Help Triggers)
@@ -2273,7 +2273,7 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_CANONICA_CONTEXT_AWARE + ENABLE_CANONICA_CANONICAL_ANSWERS = true
      * @see __docs__/canonica/predictive-support/
      */
-    ENABLE_CANONICA_PREDICTIVE_SUPPORT: false,
+    ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)

@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 type CanonicaLogoMarkProps = {
     height?: number | string;
     width?: number | string;
-    idPrefix: string;
+    idPrefix?: string;
     className?: string;
     style?: CSSProperties;
     title?: string;
@@ -17,7 +17,7 @@ const RIGHT_PATH = 'M1715.48 970.547C1739.76 999.424 1772.14 1020.36 1808.44 103
 export default function CanonicaLogoMark({
     height = 28,
     width,
-    idPrefix,
+    idPrefix = 'canonica-logo-mark',
     className,
     style,
     title,

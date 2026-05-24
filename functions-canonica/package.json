@@ -2,7 +2,7 @@
   "name": "canonica-functions",
   "description": "Canonica Cloud Functions — Support Knowledge Control Plane",
   "scripts": {
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('lib',{recursive:true,force:true})\" && tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions --config ../firebase-canonica.json",
     "shell": "npm run build && firebase functions:shell --config ../firebase-canonica.json",

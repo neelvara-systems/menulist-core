@@ -238,7 +238,7 @@ body:has(.canonica-site) {
 }
 
 .cn-diagram-card--source .cn-diagram-card__index {
-    color: #38bdf8;
+    color: #a5b4fc;
 }
 
 .cn-diagram-card h3 {
@@ -656,7 +656,7 @@ body:has(.canonica-site) {
     width: 0.68rem;
     flex: 0 0 auto;
     border-radius: 999px;
-    background: #38bdf8;
+    background: #403ea4;
     box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.12);
 }
 

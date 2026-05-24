@@ -1,10 +1,10 @@
 # Canonica — Predictive Support System
 
-> **Status:** DOCUMENTED — Implementation Pending
+> **Status:** ✅ IMPLEMENTED — Enabled with guards
 > **Version:** 1.0.0
 > **Created:** 2026-03-10
-> **Last Updated:** 2026-03-10
-> **Feature Flag:** `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (OFF by default)
+> **Last Updated:** 2026-05-24
+> **Feature Flag:** `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (enabled)
 > **Expansion Item:** #12 (canonica-expansion-tracker.md)
 > **Dependencies:** #1 Context-Aware (DONE), #5 Friction Intelligence (DONE), #11 Knowledge Graph (DONE)
 
@@ -63,7 +63,7 @@ Suggestion Payload → Widget renders contextual help
 5. **Non-blocking UI** — Context card pattern. Never blocks user workflow. Dismissible.
 6. **Nightly auto-suggestions** — Friction patterns auto-generate trigger rule suggestions (founder approves).
 7. **Fire-and-forget signals** — Suggestion interactions (shown/clicked/dismissed) logged to existing signal events.
-8. **Feature-flagged** — `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (OFF by default). Safe rollout.
+8. **Feature-flagged and enabled with guards** — `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is active with API-key scope, origin checks, rate limits, Redis cooldowns, and fail-closed behavior when cooldown storage is unavailable.
 
 ---
 

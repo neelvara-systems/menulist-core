@@ -1,6 +1,6 @@
 # Canonica Source File Inventory
 
-> **Status:** Current as of 2026-05-22
+> **Status:** Current as of 2026-05-24
 > **Purpose:** Record the Canonica source/doc surface reviewed for the system inventory.  
 > **Rule:** Code paths are primary. Existing docs are secondary and must be reconciled to runtime behavior.
 
@@ -33,15 +33,12 @@ All files under these folders are Canonica-related and were included in the inve
 - `__docs__/canonica/instant-response-infrastructure/`
 - `__docs__/canonica/kb-generation-pipeline/`
 - `__docs__/canonica/knowledge-base/`
-- `__docs__/canonica/knowledge-graph-exploitation/`
-- `__docs__/canonica/predictive-support/`
 - `__docs__/canonica/product-friction-intelligence/`
 - `__docs__/canonica/product-surface-contexts/`
 - `__docs__/canonica/public-api/`
 - `__docs__/canonica/system-inventory/`
 - `__docs__/canonica/ticket-knowledge-loop/`
 - `__docs__/canonica/ticket-system/`
-- `__docs__/canonica/workflow-integrations/`
 
 Top-level Canonica docs included:
 
@@ -127,7 +124,6 @@ Top-level Canonica docs included:
 
 - `src/app/api/canonica/activation/summary/route.ts`
 - `src/app/api/canonica/onboard/route.ts`
-- `src/app/api/canonica/predictive-help/route.ts`
 - `src/app/api/canonica/product-surfaces/rebuild-summary/route.ts`
 - `src/app/api/canonica/public/v1/answers/route.ts`
 - `src/app/api/canonica/public/v1/entities/route.ts`
@@ -170,7 +166,6 @@ Top-level Canonica docs included:
 - `src/components/templates/canonica/governance/FounderTrustDashboard.tsx`
 - `src/components/templates/canonica/governance/FrictionTab.tsx`
 - `src/components/templates/canonica/governance/MultiLanguageArticles.tsx`
-- `src/components/templates/canonica/governance/PredictiveTriggerManager.tsx`
 - `src/components/templates/canonica/governance/WhiteLabelBranding.tsx`
 - `src/components/templates/canonica/governance/index.tsx`
 - `src/components/templates/canonica/productSurfaces/CanonicaProductSurfaces.tsx`
@@ -224,7 +219,6 @@ Top-level Canonica docs included:
 - `src/database/canonica/entityCandidates.ts`
 - `src/database/canonica/frictionStats.ts`
 - `src/database/canonica/mutationProposals.ts`
-- `src/database/canonica/predictiveTriggers.ts`
 - `src/database/canonica/productSurfaces.ts`
 - `src/database/canonica/releases.ts`
 - `src/database/canonica/signalEvents.ts`
@@ -234,7 +228,6 @@ Top-level Canonica docs included:
 - `src/hooks/canonica/useEntityCandidates.ts`
 - `src/hooks/canonica/useFrictionInsights.ts`
 - `src/hooks/canonica/useMutationProposals.ts`
-- `src/hooks/canonica/usePredictiveTriggers.ts`
 - `src/lib/canonica/activationSummary.ts`
 - `src/lib/canonica/cacheFreshness.ts`
 - `src/lib/canonica/cacheVersionAdmin.ts`
@@ -249,10 +242,8 @@ Top-level Canonica docs included:
 - `src/lib/canonica/entityExtraction.ts`
 - `src/lib/canonica/escalationEvaluator.ts`
 - `src/lib/canonica/escalationTypes.ts`
-- `src/lib/canonica/graphTraversal.ts`
 - `src/lib/canonica/instantCache.ts`
 - `src/lib/canonica/instantCache.types.ts`
-- `src/lib/canonica/predictiveEngine.ts`
 - `src/lib/canonica/procedureValidation.ts`
 - `src/lib/canonica/productSurfaceContent.ts`
 - `src/lib/canonica/productSurfaceContentServer.ts`
@@ -287,20 +278,9 @@ Top-level Canonica docs included:
 - `functions-canonica/src/canonica/frictionAggregation.ts`
 - `functions-canonica/src/canonica/frictionInsight.ts`
 - `functions-canonica/src/canonica/onboardingBootstrap.ts`
-- `functions-canonica/src/canonica/predictiveTriggerSync.ts`
 - `functions-canonica/src/canonica/resolutionExtractor.ts`
 - `functions-canonica/src/canonica/tenantSummary.ts`
 - `functions-canonica/src/canonica/ticketKnowledgePrompt.ts`
-- `functions-canonica/src/integrations/adapters/IAdapter.ts`
-- `functions-canonica/src/integrations/adapters/emailAdapter.ts`
-- `functions-canonica/src/integrations/adapters/githubAdapter.ts`
-- `functions-canonica/src/integrations/adapters/linearAdapter.ts`
-- `functions-canonica/src/integrations/adapters/slackAdapter.ts`
-- `functions-canonica/src/integrations/configStore.ts`
-- `functions-canonica/src/integrations/deliveryLogger.ts`
-- `functions-canonica/src/integrations/eventBus.ts`
-- `functions-canonica/src/integrations/eventProcessor.ts`
-- `functions-canonica/src/integrations/types.ts`
 - `functions-canonica/src/logic/embedArticleWorker.ts`
 - `functions-canonica/src/logic/publishApprovedJob.ts`
 - `functions-canonica/src/logic/regenerateEmbedding.ts`
@@ -321,6 +301,7 @@ Top-level Canonica docs included:
 - `functions-canonica` is intentionally separate from MenuList Cloud Functions.
 - Canonica dashboard and website routes are intentionally separate from the MenuList owner dashboard.
 - MenuList Help Center components are shared support surfaces, not Canonica management screens.
-- Public API, workflow integrations, predictive support, graph traversal, multi-language, advanced white-label, and AI escalation are present but rollout-gated or disabled by default.
-- Notifications, ticket knowledge extraction, and product friction intelligence are enabled with rate limits, nightly caps, and summary-backed UI reads.
+- Public API, multi-language, advanced white-label, and AI escalation are present but rollout-gated or disabled by default.
+- Predictive support, workflow integrations, and graph traversal are active runtime paths. Keep them bounded through Redis cooldowns, event caps, sanitized workflow delivery, and summary-backed graph/index reads.
+- Notifications, workflow integrations, ticket knowledge extraction, and product friction intelligence are enabled with rate limits, nightly caps, and summary-backed UI reads.
 - Website copy must treat rollout-gated code as controlled capability, not as a default promise.

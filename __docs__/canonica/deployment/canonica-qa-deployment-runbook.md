@@ -77,14 +77,13 @@ API/runtime flows tested:
 - widget runtime origin denial `403`
 - `POST /api/widget/search` validation path without AI generation
 - `POST /api/widget/feedback` with a seeded `aiSearchHistory` record
-- `POST /api/canonica/predictive-help` feature-gated graceful `204`
 - Canonica public API feature gate `404`
 - Canonica translation feature gate `403`
 - `POST /api/canonica/tenant-summary`
 
 Firestore client-rule flows tested against `canonica-qa`:
 
-- Allowed tenant-scoped create/read/update for support tickets, changelog pages through a client transaction, KB articles, KB sections, KB generation jobs, KB staging sections/chunks, chat sessions, feedback, AI search history, Canonica entities, relations, canonical answers, releases, mutation proposals, signal events, entity search index, entity candidates, predictive triggers, cache versions, KB categories, and `platformSummary/trustMetrics_{tId}_{sId}`.
+- Allowed tenant-scoped create/read/update for support tickets, changelog pages through a client transaction, KB articles, KB sections, KB generation jobs, KB staging sections/chunks, chat sessions, feedback, AI search history, Canonica entities, relations, canonical answers, releases, mutation proposals, signal events, entity search index, entity candidates, cache versions, KB categories, and `platformSummary/trustMetrics_{tId}_{sId}`.
 - Allowed tenant-scoped create/read for Canonica audit logs, with updates intentionally denied.
 - Rejected cross-tenant support ticket and cross-tenant changelog writes with `permission-denied`.
 
@@ -312,7 +311,7 @@ Before production launch on `canonica.app`:
 6. Create production `CANONICA_CRON_SECRET` in Secret Manager.
 7. Deploy Firestore rules, Firestore indexes, Storage rules, and functions with `firebase-canonica.json` against the production Canonica project.
 8. Run the manual scheduler smoke test and verify the `canonica_schedulerRunLogs/{runLogId}` document.
-9. Confirm the target branch's Canonica function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap; expensive optional friction, graph, workflow, ticket-resolution, and predictive flows remain disabled.
+9. Confirm the target branch's Canonica function flags before deploying. The ready-to-use default enables the nightly operational loop, trust metrics, capped draft generation, and capped onboarding bootstrap; optional friction, ticket-resolution, public API, translation, white-label, and escalation flows remain controlled by rollout flags.
 10. Verify manual scheduler logs, tenant summary discovery, and cost expectations before sending production customer traffic.
 
 ## Production Warnings

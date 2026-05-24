@@ -22,7 +22,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
 import { canonicaTokenize } from "@lib/canonica/tokenizer";
-import { CanonicaAnswerType, CanonicaCanonicalAnswer, CanonicaContextPayload, CanonicaEntity, CanonicaEntitySearchIndex, CanonicaGraphExpansionResult, CanonicaRelease } from "@type/canonica";
+import { CanonicaAnswerType, CanonicaCanonicalAnswer, CanonicaContextPayload, CanonicaEntity, CanonicaEntityGraphIndex, CanonicaEntitySearchIndex, CanonicaGraphExpansionResult, CanonicaRelease } from "@type/canonica";
 
 // ═══════════════════════════════════════════════════════════════
 // KNOWLEDGE INTEGRITY GUARD (Phase 4 — ChatGPT Review Fix)
@@ -543,6 +543,7 @@ export async function attemptCanonicalRetrieval(
         // Feature-flagged: ENABLE_CANONICA_KNOWLEDGE_GRAPH
         // ═══════════════════════════════════════════════════════════════
         let graphExpansion: CanonicaGraphExpansionResult | undefined;
+        let graphIndexForSuggestions: CanonicaEntityGraphIndex | undefined;
         let effectiveEntityIds = matchedEntities.slice(0, 3).map(m => m.entityId);
 
         if (FEATURE_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH && matchedEntities.length > 0) {
@@ -556,6 +557,7 @@ export async function attemptCanonicalRetrieval(
                 if (graphResult) {
                     effectiveEntityIds = graphResult.expandedEntityIds.slice(0, 5);
                     graphExpansion = graphResult.graphExpansion;
+                    graphIndexForSuggestions = graphResult.graphIndex;
                 }
             } catch {
                 // Graceful degradation — graph failure never blocks retrieval
@@ -619,12 +621,11 @@ export async function attemptCanonicalRetrieval(
         // Knowledge Graph: rebuild suggestions now that we have bestAnswer
         if (graphExpansion && FEATURE_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH) {
             try {
-                const { buildRelatedSuggestions, loadGraphIndex } = await import('@lib/canonica/graphTraversal');
-                const gIdx = await loadGraphIndex(context.tId, context.sId);
-                if (gIdx) {
+                const { buildRelatedSuggestions } = await import('@lib/canonica/graphTraversal');
+                if (graphIndexForSuggestions) {
                     const suggestions = buildRelatedSuggestions(
                         graphExpansion.expandedEntities,
-                        gIdx,
+                        graphIndexForSuggestions,
                         bestAnswer
                     );
                     if (suggestions.length > 0) {

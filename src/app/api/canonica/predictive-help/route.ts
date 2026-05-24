@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
             context,
             tId,
             sId,
-            userId || 'anonymous'
+            hashApiKey(`${apiKeyRateLimitId}:${userId || 'anonymous'}`).slice(0, 24)
         );
 
         if (!suggestion) {

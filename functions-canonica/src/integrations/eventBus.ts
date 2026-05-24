@@ -23,6 +23,7 @@ import {
     EVENT_STATUS,
     INTEGRATION_LIMITS,
 } from './types';
+import { sanitizeIntegrationPayload } from './safety';
 
 // Track events emitted in current nightly run to enforce per-tenant cap
 const nightlyEventCounts = new Map<string, number>();
@@ -68,7 +69,7 @@ export async function emitIntegrationEvent(params: {
             tId: params.tId,
             sId: params.sId,
             severity: params.severity,
-            payload: params.payload,
+            payload: sanitizeIntegrationPayload(params.payload),
             status: EVENT_STATUS.PENDING,
             createdAt: Timestamp.now(),
         };

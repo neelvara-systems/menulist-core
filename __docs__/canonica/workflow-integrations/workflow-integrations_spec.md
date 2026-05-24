@@ -189,11 +189,11 @@ When a founder enables an integration:
 |-----------|---------------|
 | Rate limiting | Max 20 events per minute per integration per tenant |
 | Retry cap | 3 retries with exponential backoff (1s, 4s, 16s), then drop |
-| Secret storage | API keys/tokens in environment variables, NOT Firestore |
+| Secret storage | Raw webhook/token config stays server-side and is never returned by owner-facing APIs |
 | Payload sanitization | No PII in event payloads (no user emails, no ticket content) |
 | Circuit breaker | After 10 consecutive failures, disable integration + alert founder |
 | Delivery logging | Every attempt logged (success/failure/retry count/error) |
-| Feature flag | `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` — OFF by default |
+| Feature flag | `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` — enabled with caps, circuit breaker, and sanitized delivery |
 
 ---
 

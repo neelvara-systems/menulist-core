@@ -3,10 +3,11 @@
 > **Status:** ACTIVE — Living Document
 > **Version:** 1.0.0
 > **Created:** 2026-03-07
-> **Last Updated:** 2026-03-10
+> **Last Updated:** 2026-05-24
 > **Source:** ChatGPT ICP gap analysis → Cascade codebase cross-check
 > **Purpose:** Track implementation progress of 12 ICP-driven expansion items. Reference this doc BEFORE starting work on any item.
 > **Rule:** Update this doc after completing each item (status, date, key files, notes).
+> **2026-05-24 Update:** Tool integrations, knowledge graph traversal/exploitation, and predictive support were restored to active runtime and hardened with caps, fail-closed guards, summary-backed reads, and sanitized workflow delivery. Core ontology, entities, canonical answers, surfaces, drift, and mutation proposals remain active.
 
 ---
 
@@ -29,12 +30,12 @@
 | 4   | Automatic Knowledge Creation  | Core Experience | ✅ COMPLETE | Implemented 2026-03-09. `draftGenerator.ts` + `draftPrompt.ts` (frontend + CF). Nightly Step 9. +7 additive fields on suggestedChange. `approveDraftAsCanonicalAnswer` DAL. Flag: `ENABLE_CANONICA_AUTO_KNOWLEDGE`. Docs: `automatic-knowledge-creation/` (8 docs + archive).                                                                                                | P2       | #9 (ticket→knowledge feeds this)                      |
 | 5   | Product Friction Insights     | Core Experience | � COMPLETE  | Implemented 2026-03-09. Flag: `ENABLE_CANONICA_FRICTION_INTELLIGENCE`. 6 new files + 5 modified. Nightly Steps 10/10b/11 wired. GovernanceHub "Friction" tab. Zero TS errors. Docs: `__docs__/canonica/product-friction-intelligence/` (8 docs + 1 archive).                                                                                                                 | P2       | #10 (trust metrics is the UI layer)                   |
 | 6   | Simple Onboarding             | Adoption        | COMPLETE    | Implemented 2026-03-09. Flag: `ENABLE_CANONICA_FOUNDER_ONBOARDING`. 2 new files + 5 modified. Nightly Step 12 (separate discovery loop). Zero new collections. Zero TS errors. Docs: `__docs__/canonica/founder-onboarding/` (8 docs + 1 archive).                                                                                                                           | P1       | None                                                  |
-| 7   | Tool Integrations             | Adoption        | COMPLETE    | Implemented 2026-03-09. Flag: `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS`. 10 new CF files + 5 modified. 4 adapters (Slack, Email, Linear, GitHub). Nightly Step 13. 2 new collections + 4 indexes. Zero TS errors. Docs: `__docs__/canonica/workflow-integrations/` (8 docs + 1 archive).                                                                                       | P3       | #1, #8 (context + escalation drive integration value) |
+| 7   | Tool Integrations             | Adoption        | COMPLETE    | Restored and hardened 2026-05-24. Slack/email settings are owner-configurable through `/api/canonica/integrations`; raw webhooks stay server-side. Delivery payloads/errors are sanitized, event emission is capped, and `processIntegrationEvent` dispatches append-only events to configured adapters. Linear/GitHub adapters remain server-side/config-driven. | P2       | #3, #10                                               |
 | 8   | AI Escalation Path            | Adoption        | COMPLETE    | Implemented 2026-03-09. Flag: `ENABLE_CANONICA_AI_ESCALATION`. 2 new files + 12 modified. 5 escalation triggers (S1-S5), inline retrieval+entity debug on tickets, knowledgeCandidate tagging, sessionFailureCount chain, explicit intent detection, "Still need help?" UI. Zero new collections. Zero TS errors. Docs: `__docs__/canonica/ai-failure-escalation/` (8 docs). | P1       | #1 (context makes escalation tickets richer)          |
 | 9   | Ticket → Knowledge Conversion | Adoption        | ✅ COMPLETE | Implemented 2026-03-09. `resolutionExtractor.ts` + `ticketKnowledgePrompt.ts` (CF). Nightly Step 14. `emitTicketResolutionSignal` in signalEmitter. +4 additive fields. Flag: `ENABLE_CANONICA_TICKET_KNOWLEDGE`. Docs: `ticket-knowledge-loop/` (8 docs + archive).                                                                                                         | P2       | #4, #8                                                |
 | 10  | Trust Metrics for Founders    | Adoption        | ✅ COMPLETE | Implemented 2026-03-09. Flag: `ENABLE_CANONICA_TRUST_METRICS`. 2 new files + 4 modified. 4 metrics + top 5 failing + escalation breakdown. Zero new collections. Zero TS errors. Docs: `__docs__/canonica/founder-trust-layer/` (8 docs + archive).                                                                                                                          | P2       | #5                                                    |
-| 11  | Knowledge Graph Exploitation  | Strategic       | ✅ COMPLETE | Implemented 2026-03-10. `graphTraversal.ts` (~250 lines). 1-hop entity expansion, interaction rules, related suggestions. Nightly Step 15 graph index rebuild. Retrieval integration. Flag: `ENABLE_CANONICA_KNOWLEDGE_GRAPH`. Docs: `knowledge-graph-exploitation/` (8 docs + archive).                                                                                     | P3       | #1, #2                                                |
-| 12  | Predictive Support            | Strategic       | ✅ COMPLETE | Implemented 2026-03-10. `predictiveEngine.ts`, `predictiveTriggers.ts` DAL, `/api/canonica/predictive-help` route (API key auth), admin UI, nightly Step 16. 1 new collection. Cooldowns via Upstash Redis. Flag: `ENABLE_CANONICA_PREDICTIVE_SUPPORT`. Docs: `predictive-support/` (8 docs + archive).                                                                      | P4       | #1, #5, #11                                           |
+| 11  | Knowledge Graph Exploitation  | Strategic       | COMPLETE    | Restored and hardened 2026-05-24. Retrieval performs bounded 1-hop traversal from the precomputed `entityGraphIndex_{tId}_{sId}` summary and reuses the loaded graph for related suggestions to avoid duplicate reads.                         | P2       | #1, #4                                                |
+| 12  | Predictive Support            | Strategic       | COMPLETE    | Restored and hardened 2026-05-24. Widget predictive calls require `cn_*` key scope, allowed origin, route/context validation, request rate limiting, hashed cooldown identity, and Redis-backed cooldowns. If cooldown storage is missing, prompts fail closed.                                                   | P2       | #1, #10                                               |
 
 **Legend:** 🔴 NOT BUILT | 🟡 PARTIAL (infrastructure exists, product layer missing) | 🟢 COMPLETE
 
@@ -113,6 +114,7 @@
 **New files:** `src/lib/canonica/instantCache.ts` (124 lines), `src/lib/canonica/instantCache.types.ts` (36 lines)
 **Modified files:** `src/lib/search/searchCore.ts` (Stage 2.5 + cache write), `src/config/features.ts` (flag)
 **Key decisions:** Entity-based cache keys (not intent-based), Upstash Redis (already in project), canonical-only caching (not RAG), version-based invalidation, no pre-cache workers, no semantic caching
+**2026-05 hardening:** `searchCore.ts` now keeps a short per-tenant in-memory TTL cache for the entity search index and latest active release used by instant-cache/canonical lookup, reducing repeated bounded Firestore reads during bursts without changing canonical answer freshness checks.
 
 ---
 
@@ -216,18 +218,9 @@
 - Telegram alerts exist for MenuList ops but not for Canonica events
 - Signal emitter (`signalEmitter.ts`) is an existing fire-and-forget event pattern that this system follows
 
-**Documentation completed:** 2026-03-09
+**2026-05-24 runtime decision:** Archived. The first launch product should keep support knowledge governance, widget, tickets, and notifications stable before adding external workflow adapters. Historical design docs were moved to the archive folder.
 
-- **Feature flag:** `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS`
-- **Architecture:** Integration Event Bus (append-only) → Cloud Function (onCreate) → 4 Adapters (Slack, Email, Linear, GitHub)
-- **New collections:** `canonica_integrationEvents`, `canonica_integrationDeliveryLogs`
-- **Config storage:** `platformSummary/integrationConfig_{tId}_{sId}` (no new collection)
-- **Nightly batch:** Hooks in as Step 13 (after existing 12 steps)
-- **Cost:** ~$0.02/month at 10 tenants, ~$1.45/month at 1,000 tenants
-- **Docs:** `__docs__/canonica/workflow-integrations/` (8 docs + 1 archive)
-- **ChatGPT accuracy:** ~75% — valid architectural pattern, but proposed generic ticket events instead of governance events, wrong scoping (projectId vs tId/sId), missed existing infrastructure
-
-**Doctrine check:** ✅ Allowed — Freeze §2 explicitly permits "New integrations without breaking invariants"
+**Doctrine check:** Allowed in principle, but not launch-ready enough to keep as active code.
 
 ---
 
@@ -330,16 +323,15 @@
 - `canonica_entity_relations` collection exists in `DB_COLLECTIONS`
 - Entity relations DAL exists (`entities.ts` has relation CRUD)
 - Entity types include `relatedEntities` field
-- But retrieval does NOT traverse entity relationships
-- Single-entity matching only in current `canonicalRetrieval.ts`
+- Retrieval now performs bounded 1-hop traversal from the precomputed graph index
+- Single query evaluation still stays deterministic and summary-backed
 
 **What's genuinely missing:**
 
-- Graph traversal in retrieval: if entity A relates to entity B, include B's answers in context
 - Multi-entity answer composition
-- Relationship-aware specificity scoring
+- Deeper-than-1-hop traversal remains intentionally out of scope
 
-**ChatGPT accuracy: ~80%** — Valid. Infrastructure exists but not exploited. This is genuinely powerful and rare.
+**ChatGPT accuracy: ~80%** — Valid. Infrastructure exists and is now exploited through bounded 1-hop traversal.
 
 **Doctrine check:** ✅ Allowed — "Ontology depth" expansion (Non-Goals §VII). Strengthens Pillar 1.
 
@@ -349,33 +341,11 @@
 
 **ChatGPT claim:** Instead of answering questions, proactively show common issues based on context. Proposes Pub/Sub + Cloud Run edge collector + 4 new collections (triggerRules, frictionPatterns, helpSuggestions, suggestionSignals).
 
-**Codebase reality (HONEST):**
-
-- Zero predictive/proactive trigger system exists
-- BUT ~70% of required infrastructure already built:
-  - `CanonicaContextPayload` already has page/feature/workflow/plan/userRole (Item #1 DONE)
-  - `CanonicaFrictionSnapshot` already computes topFrictionEntities nightly (Item #5 DONE)
-  - `canonica_signalEvents` already collects entity-bound friction signals
-  - `Upstash Redis` already deployed (reusable for cooldowns)
-  - `platformSummary` pattern proven for cached read-hot docs (entityGraphIndex)
-  - Entity search index + canonical answers provide governed content
-  - Knowledge graph (Item #11 DONE) can expand trigger entity coverage
-
-**What's genuinely missing:**
-
-- Trigger rules system (collection + platformSummary cache)
-- Predictive evaluation engine (rule matching + condition evaluation)
-- Proactive help API route (`/api/canonica/predictive-help`)
-- Widget SDK extension (`canon.page()` for page entry, not just search)
-- Suggestion interaction signals (shown/clicked/dismissed)
-- Nightly auto-trigger generation from friction patterns
-- Admin UI for trigger management (Governance tab)
+**2026-05-24 runtime decision:** Restored and hardened. The concept is valid when it remains rule-based, page-aware, cooldown-backed, and fail-closed. Page-aware support remains active through product surfaces, safe context, canonical-first retrieval, related content, ticket fallback, and proactive suggestions only when an approved trigger matches.
 
 **ChatGPT accuracy: ~55%** — Core concept (rule-based proactive help) is valid (90%). Architecture (Pub/Sub + Cloud Run + 4 collections) is massive over-engineering (20%). Only 1 new collection needed; rest already exists or is derived at runtime.
 
-**Doctrine check:** ✅ Allowed — reduces fallback reliance (Non-Goals §IX filter #4). Prevents tickets before they happen. Additive signal types on existing collection (freeze-compliant).
-
-**Full documentation:** `__docs__/canonica/predictive-support/` (8 docs + archive)
+**Doctrine check:** ✅ Allowed — reduces fallback reliance and strengthens page-aware support. The active implementation uses one summary read, widget key scope, allowed origin checks, and Redis cooldowns.
 
 ---
 
@@ -389,12 +359,12 @@
 | 4. Automatic Knowledge Creation  | ⚠️ Careful          | AI-generated content could bypass governance | AI drafts must be PROPOSALS, never auto-published             |
 | 5. Product Friction Insights     | ✅ Yes              | None                                         | Metrics serve governance health                               |
 | 6. Simple Onboarding             | ⚠️ Careful          | Could skip entity approval                   | Provisional/draft status — not active until approved          |
-| 7. Tool Integrations             | ✅ Yes              | None                                         | Explicitly allowed in freeze                                  |
+| 7. Tool Integrations             | ✅ Yes             | External delivery can leak payloads/secrets | Owner-scoped config, sanitized payloads/errors, event caps     |
 | 8. AI Escalation Path            | ✅ Yes              | None                                         | Strengthens signal collection                                 |
 | 9. Ticket → Knowledge Conversion | ✅ Yes              | None                                         | Strengthens knowledge pipeline                                |
 | 10. Trust Metrics                | ✅ Yes              | None                                         | Governance health metrics                                     |
-| 11. Knowledge Graph              | ✅ Yes              | None                                         | Ontology depth expansion                                      |
-| 12. Predictive Support           | ✅ Yes              | None                                         | Reduces fallback reliance                                     |
+| 11. Knowledge Graph Traversal    | ✅ Yes             | Extra retrieval reads                       | Precomputed summary doc, 1-hop cap, reused graph read          |
+| 12. Predictive Support           | ✅ Yes             | Extra widget reads and prompt spam          | API rate limits, Redis cooldown, fail-closed without cooldown  |
 
 ---
 
@@ -407,8 +377,8 @@ Based on dependencies and impact:
 | **Phase A** (Foundation)       | #1 Context-Aware, #6 Simple Onboarding, #8 Escalation Path           | These unblock everything else. Context is the prerequisite for 6 other items. Onboarding reduces adoption friction. Escalation connects existing systems. |
 | **Phase B** (Knowledge Loop)   | #4 Auto Knowledge Creation, #9 Ticket→Knowledge, #2 Guided Workflows | Builds the self-improving knowledge loop. Turns signals into content. Makes answers actionable.                                                           |
 | **Phase C** (Insights & Trust) | #5 Friction Insights, #10 Trust Metrics                              | Founder-facing value layer. Shows the system is working.                                                                                                  |
-| **Phase D** (Advanced)         | #3 Instant Caching, #7 Integrations, #11 Knowledge Graph             | Performance + workflow + depth.                                                                                                                           |
-| **Phase E** (Differentiator)   | #12 Predictive Support                                               | Requires all prior phases. Most powerful capability.                                                                                                      |
+| **Phase D** (Advanced)         | #3 Instant Caching                                                   | Performance without expanding external integration or traversal scope.                                                                                     |
+| **Advanced**                   | #7 Integrations, #11 Graph Traversal, #12 Predictive Support         | Active with caps, fail-closed guards, and summary-backed reads.                                                                                            |
 
 ---
 
@@ -424,12 +394,12 @@ Based on dependencies and impact:
 | 4   | Automatic Knowledge Creation  | ✅ IMPLEMENTED | 2026-03-09 | New: `src/lib/canonica/draftGenerator.ts`, `src/lib/canonica/draftPrompt.ts`, `functions-canonica/src/canonica/draftGenerator.ts`. Modified: `canonicaNightly.ts` (step 9), `types/canonica/index.ts` (suggestedChange +7 additive fields), `mutationProposals.ts` (+approveDraftAsCanonicalAnswer), `features.ts` (×2 flags). Docs: `__docs__/canonica/automatic-knowledge-creation/` (8 docs + archive)                                                                                                                                                                                                                                                                                                                                                                                                                               | 3 new files + 5 modified. Flag: `ENABLE_CANONICA_AUTO_KNOWLEDGE` (ON, capped, human-reviewed). tsc: 0 errors. Zero new collections. ADR-1 through ADR-5. ChatGPT ~50% accuracy.                                           |
 | 5   | Product Friction Insights     | ✅ IMPLEMENTED | 2026-05-22 | Implemented in `functions-canonica/src/canonica/frictionAggregation.ts`, `functions-canonica/src/canonica/frictionInsight.ts`, `src/database/canonica/frictionStats.ts`, and GovernanceHub `FrictionTab.tsx`. Uses `canonica_frictionDailyStats` plus `platformSummary/frictionSnapshot_*` / `platformSummary/friction_*`. Flag: `ENABLE_CANONICA_FRICTION_INTELLIGENCE` (ON).                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Capped nightly/weekly support-signal intelligence. Summary-backed UI, no product analytics/session replay, no realtime dashboard scans.                                                                                  |
 | 6   | Simple Onboarding             | ✅ IMPLEMENTED | 2026-03-09 | `functions-canonica/src/canonica/onboardingBootstrap.ts` extracts entities from published KB jobs, auto-promotes high-confidence entities, and generates draft canonical-answer proposals.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Flag: `ENABLE_CANONICA_FOUNDER_ONBOARDING` (ON, capped, human-reviewed). Zero new collections.                                                             |
-| 7   | Tool Integrations             | ⏳ Pending     | —          | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | —                                                                                                                                                                                                                        |
+| 7   | Tool Integrations             | ✅ IMPLEMENTED | 2026-05-24 | `functions-canonica/src/integrations/*`, `functions-canonica/src/index.ts` (`processIntegrationEvent`), `functions-canonica/src/canonica/canonicaNightly.ts` (Step 13), `/api/canonica/integrations`, `CanonicaSettings.tsx`, rules/indexes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Restored and hardened. Slack/email are owner-configurable. Raw webhooks stay server-side; payloads/errors are sanitized; event emission is capped; delivery logs are append-only.                                                |
 | 8   | AI Escalation Path            | ⏳ Pending     | —          | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | —                                                                                                                                                                                                                        |
 | 9   | Ticket → Knowledge Conversion | ✅ IMPLEMENTED | 2026-03-09 | New: `functions-canonica/src/canonica/resolutionExtractor.ts`, `functions-canonica/src/canonica/ticketKnowledgePrompt.ts`. Modified: `signalEmitter.ts` (+emitTicketResolutionSignal), `types/canonica/index.ts` (+4 additive fields + draftSource value), `canonicaNightly.ts` (+Step 14 + 4 result fields), `features.ts` (×2 flags), `TicketDetailView.tsx` (+UI wiring on Resolved/Closed). Docs: `__docs__/canonica/ticket-knowledge-loop/` (8 docs + archive). Flag: `ENABLE_CANONICA_TICKET_KNOWLEDGE` (ON). Zero new collections. tsc: 0 errors.                                                                                                                                                                                                                                                                                | 2 new files + 5 modified. Accumulation architecture (Intercom-validated). ChatGPT ~55% accuracy (9+ collections → 0). 5 ADRs. Resolution signals now use a separate dedupe key from ticket creation.                    |
 | 10  | Trust Metrics for Founders    | ✅ IMPLEMENTED | 2026-03-09 | New: `FounderTrustDashboard.tsx`, `trustMetrics.ts` (DAL). Modified: `types/canonica/index.ts` (+3 interfaces), `canonicaNightly.ts` (+aggregateTrustMetrics step 9), `features.ts` (×2 flags), `governance/index.tsx` (+Trust tab). Docs: `__docs__/canonica/founder-trust-layer/` (8 docs + archive). Flag: `ENABLE_CANONICA_TRUST_METRICS` (ON). Zero new collections. tsc: 0 errors.                                                                                                                                                                                                                                                                                                                                                                                                                                                | 2 new files + 4 modified. ChatGPT ~55% accuracy (6 collections → 0). Industry-validated (Intercom). 4 metrics + top 5 failing + escalation breakdown. 5 ADRs.                                                            |     | ChatGPT ~55% accuracy. 6 proposed collections → 0. Industry-validated (Intercom 3-metric model). 4 metrics: Coverage, Resolution, Drift, Entity Health. Single platformSummary doc. |
-| 11  | Knowledge Graph Exploitation  | ✅ IMPLEMENTED | 2026-03-10 | New: `src/lib/canonica/graphTraversal.ts` (~250 lines). Modified: `canonicalRetrieval.ts` (graph expansion + multi-entity scoring + post-answer suggestions), `searchCore.ts` (+graphExpansion wiring + GRAPH_EXPANSION_HIT log), `types.ts` (+graphExpansion on CoreSearchResult), `types/canonica/index.ts` (+6 additive types: CanonicaInteractionRule, CanonicaEntityGraphNode, CanonicaEntityGraphIndex, CanonicaGraphExpansionResult, CanonicaInteractionType, CANONICA_INTERACTION_TYPES), `features.ts` (×2 flags), `functions-canonica/constants/features.ts` (+1 flag), `canonicaNightly.ts` (+Step 15 rebuildEntityGraphIndex ~150 lines + 3 result fields). Docs: `__docs__/canonica/knowledge-graph-exploitation/` (8 docs + archive). Flag: `ENABLE_CANONICA_KNOWLEDGE_GRAPH` (OFF). Zero new collections. tsc: 0 errors. | 1 new file + 7 modified. ChatGPT ~70% accuracy. 7 ADRs. interactionRules.ts folded into graphTraversal.ts (simpler). Nightly rebuild preserves manually-authored interaction rules. Bidirectional relation expansion.    |
-| 12  | Predictive Support            | ✅ IMPLEMENTED | 2026-03-10 | New: `src/lib/canonica/predictiveEngine.ts` (~250 lines), `src/database/canonica/predictiveTriggers.ts` (~180 lines), `src/app/api/canonica/predictive-help/route.ts` (~100 lines), `src/hooks/canonica/usePredictiveTriggers.ts` (~170 lines), `src/components/templates/canonica/governance/PredictiveTriggerManager.tsx` (~320 lines), `functions-canonica/src/canonica/predictiveTriggerSync.ts` (~260 lines). Modified: `types/canonica/index.ts` (+3 interfaces, +3 const objects, +3 signal types), `features.ts` (×2 flags), `database.ts` (×2 collections), `canonicaNightly.ts` (+Step 16 + import + 4 result fields), `signalEmitter.ts` (+emitSuggestionSignal), `governance/index.tsx` (+LuZap import + PredictiveTriggerManager import + Triggers tab). Docs: `__docs__/canonica/predictive-support/` (8 docs + archive). | 6 new files + 8 modified. Flag: `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (OFF). 1 new collection: `canonica_predictiveTriggers`. Cooldowns via Upstash Redis. Nightly Step 16. 7 ADRs. ChatGPT ~55% accuracy. tsc: 0 errors. |
+| 11  | Knowledge Graph Exploitation  | ✅ IMPLEMENTED | 2026-05-24 | `src/lib/canonica/graphTraversal.ts`, `canonicalRetrieval.ts`, widget/search responses, `functions-canonica/src/canonica/canonicaNightly.ts`, rules/indexes, `platformSummary/entityGraphIndex_*`. | Restored and hardened. Retrieval expands entities through 1-hop graph traversal and reuses the already-loaded graph for related suggestions. |
+| 12  | Predictive Support            | ✅ IMPLEMENTED | 2026-05-24 | `/api/canonica/predictive-help`, `public/widget/canonica-widget.js`, `PredictiveTriggerManager.tsx`, `predictiveTriggers.ts`, `usePredictiveTriggers.ts`, `functions-canonica/src/canonica/predictiveTriggerSync.ts`, rules/indexes. | Restored and hardened. Predictive calls require widget scope/origin, hashed cooldown identity, Redis cooldown, rate limits, and fail closed when cooldown storage is missing. |
 
 ---
 

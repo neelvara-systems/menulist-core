@@ -6,6 +6,15 @@
 
 ---
 
+## May 24, 2026 — Canonica Optional Expansions Restored
+
+### Changed
+
+- **Canonica optional expansions restored and hardened** — Predictive support, external workflow integrations, and graph traversal are active code paths again because they support page-aware guidance, governance notifications, and deterministic retrieval quality.
+- **Workflow notifications are owner-configurable** — Product Details now includes Slack and email workflow notifications. Webhook URLs stay server-side, are never returned after save, and delivery payloads/errors are sanitized before logging.
+- **Predictive support now fails closed without cooldown storage** — The widget predictive endpoint keeps API-key scope, origin checks, rate limits, and hashed user cooldown keys; if Upstash cooldown storage is unavailable, proactive prompts are skipped instead of repeating.
+- **Graph traversal stays summary-backed** — Retrieval uses the precomputed `platformSummary/entityGraphIndex_{tId}_{sId}` document and reuses the loaded graph for suggestions to avoid duplicate reads per search.
+
 ## May 24, 2026 — Website Mobile Diagram Polish
 
 ### Changed
@@ -96,7 +105,7 @@
 - **Onboarding routes to Activation** — Completed Canonica onboarding now sends owners to the Activation Command Center instead of the operations dashboard.
 - **Subscription status is mirrored to the store summary** — New Canonica onboarding writes a compact `stores/{sId}.canonicaSubscription` summary, avoiding normal activation-page subscription queries.
 - **Canonica API scope hardening** — Canonica management APIs now require a Canonica product scope instead of falling back to generic MenuList tenant/store session fields.
-- **Canonica core flags are ready-to-use** — Ontology, canonical answers, drift, signal mutation, governance UI, instant canonical cache, capped auto knowledge, capped founder onboarding, nightly scheduler, and trust metrics are enabled; higher-cost optional expansion flows remain disabled.
+- **Canonica core and expansion flags are ready-to-use** — Ontology, canonical answers, drift, signal mutation, governance UI, instant canonical cache, capped auto knowledge, capped founder onboarding, nightly scheduler, trust metrics, graph traversal, workflow notifications, and predictive support are enabled with caps and fail-closed guards.
 
 ## May 21, 2026 — Billing Pause Option Disabled
 

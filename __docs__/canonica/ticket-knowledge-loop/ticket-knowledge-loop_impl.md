@@ -41,8 +41,7 @@ Step 9:  Draft Generation for new proposals (existing, Item #4)
 Step 10: Friction Aggregation (existing, Item #5)
 Step 11: Friction Insight Generation (existing, Item #5)
 Step 12: Onboarding Bootstrap (existing, Item #6)
-Step 13: Integration Events (existing, Item #7)
-Step 14: [NEW] Ticket Resolution Knowledge Extraction ← THIS FEATURE
+Step 13: [NEW] Ticket Resolution Knowledge Extraction <- THIS FEATURE
 ```
 
 ---

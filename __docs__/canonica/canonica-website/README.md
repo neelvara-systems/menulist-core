@@ -112,10 +112,9 @@
 | `src/app/sites/canonica/systemCoverage.ts` | Shared implemented Canonica system coverage groups |
 | `src/app/sites/canonica/components/StructuredData.tsx` | Homepage Organization/WebSite/SoftwareApplication JSON-LD |
 | `public/canonica-og-image.png` | 1200x630 public social preview image |
-| `public/canonica-logo.svg` | Canonica wordmark SVG asset using the dimensional infinity mark |
-| `public/canonica-logo-mark-wide.svg` | Native cropped infinity-mark SVG retained for asset compatibility |
+| `public/canonica-logo.svg` | Single Canonica icon-mark SVG asset for metadata and static asset references |
 | `public/canonica-logo-mark-wide.png` | Cropped infinity-mark PNG source for splash/icon generation and metadata-adjacent surfaces |
-| `src/app/sites/canonica/components/CanonicaLogoMark.tsx` | Shared true-vector infinity mark rendered inline in public website header, footer, diagrams, loaders, and dashboard navigation to avoid raster blur |
+| `src/app/sites/canonica/components/CanonicaLogoMark.tsx` | Shared inline SVG icon-mark component used across header, footer, diagrams, loaders, and dashboard navigation without PNG UI usage |
 | `src/app/sites/canonica/components/CanonicaFlowDiagram.tsx` | Reusable Canonica hub, column-based sequence, and loop diagrams with logo-only core, ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | `src/app/sites/canonica/components/CanonicaProofBlocks.tsx` | Reusable proof blocks for before/after examples, status snapshots, and fit/decision tiles that reduce text-heavy sections without adding runtime data calls |
 | `public/canonica-favicon.ico` | Canonica favicon bundle with 16, 32, and 48px PNG entries |

@@ -147,7 +147,7 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 - `/sites/canonica/sitemap.xml`, `/sites/canonica/robots.txt` → Canonica product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, predictive suggestions from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/activation`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/activation`.
 
 ### API Routes
 
@@ -189,13 +189,11 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 ### Cloud Functions
 
 - `functions-canonica/src/index.ts` — Canonica Cloud Functions entry point
-- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica nightly: summary-based tenant discovery, drift detection, signal mutation, signal resolution, coverage KPI, trust metrics, fallback detection, impact tracking, confidence adjustment, signal TTL, graph rebuild, predictive sync
+- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica nightly: summary-based tenant discovery, drift detection, signal mutation, signal resolution, coverage KPI, trust metrics, fallback detection, impact tracking, confidence adjustment, and signal TTL
 - `functions-canonica/src/canonica/tenantSummary.ts` — Cost-optimized `platformSummary/canonicaTenantsSummary` registry used by the scheduler before legacy entity-scan fallback
 - `functions-canonica/src/canonica/canonicaNightly.ts` — Persists structured run logs to `canonica_schedulerRunLogs` with per-tenant task results and diagnostics
 - `functions-canonica/src/canonica/draftGenerator.ts` — Canonical answer draft generation
 - `functions-canonica/src/canonica/resolutionExtractor.ts` — Ticket-resolution knowledge extraction
-- `functions-canonica/src/canonica/predictiveTriggerSync.ts` — Predictive support trigger sync
-- `functions-canonica/src/integrations/eventProcessor.ts` — Canonica integration event delivery
 
 ### Types
 
@@ -288,9 +286,6 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 | `canonica_notificationLogs`      | Canonica ticket/test notification delivery logs | Platform-only read, server-written |
 | `platformSummary/canonicaTenantsSummary` | Scheduler tenant/store registry | Server-written, platform-only summary |
 | `platformSummary/trustMetrics_{tId}_{sId}` | Founder trust metrics dashboard read model | Tenant+Store scoped summary |
-| `canonica_integrationEvents`     | Workflow integration events             | Tenant+Store scoped, server-written |
-| `canonica_integrationDeliveryLogs` | Integration delivery attempt logs      | Tenant+Store scoped, server-written |
-| `canonica_predictiveTriggers`    | Predictive support trigger rules        | Tenant+Store scoped                 |
 | `canonica_productSurfaces`       | Route/page/workflow context definitions | Tenant+Store scoped                 |
 | `platformSummary/contextContent_{tId}_{sId}` | Compact related-content surface summary | Tenant+Store scoped summary |
 

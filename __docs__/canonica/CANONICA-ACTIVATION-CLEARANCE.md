@@ -380,11 +380,8 @@ All flags are in `src/config/features.ts`. All default to `false`.
 | `canonica_auditLogs`               | Governance audit trail         | tId + sId | Append-only              |
 | `canonica_frictionDailyStats`      | Daily friction aggregates      | tId + sId | Server write, client read|
 | `canonica_schedulerRunLogs`        | Nightly scheduler diagnostics  | Platform  | Server write, platform read |
-| `canonica_integrationEvents`       | Workflow integration events    | tId + sId | Server write, client read |
-| `canonica_integrationDeliveryLogs` | Integration delivery logs      | tId + sId | Server write, client read |
-| `canonica_predictiveTriggers`      | Predictive support triggers    | tId + sId | CRUD                     |
 
-Canonica query-backed collections have 33 query/vector indexes mirrored in both `firestore.indexes.json` and `firestore-canonica.indexes.json`, including the tenant-filtered `kb_articles` vector search index.
+Canonica query-backed collections have query/vector indexes mirrored in both `firestore.indexes.json` and `firestore-canonica.indexes.json` where the shared and dedicated deployments need the same access path, including the tenant-filtered `kb_articles` vector search index.
 
 All Canonica collection constants are mirrored in `src/constants/database.ts`, `functions/src/constants/database.ts`, and `functions-canonica/src/constants/database.ts`.
 
@@ -555,7 +552,7 @@ Every integration point is designed to fail silently:
 3. **Review generated entity candidates and draft canonical answers** — Use `/canonica/governance?tab=candidates` and `/canonica/governance?tab=signal-queue`.
 4. **Publish 5-10 canonical answers** for highest-traffic entities — Confirm canonical retrieval and cache-version behavior.
 5. **Monitor coverage, drift, and trust metrics** — Use `/canonica/dashboard` and `/canonica/governance?tab=trust`.
-6. **Keep optional expansion flags disabled** until usage justifies their cost — friction, graph, workflow integrations, ticket-resolution extraction, and predictive support remain non-core.
+6. **Keep enabled expansion paths bounded** — predictive support, graph traversal, and workflow integrations are active because they strengthen page-aware guidance, deterministic retrieval, and governance awareness. Keep Redis cooldowns, summary-backed graph reads, event caps, and sanitized workflow delivery in place before wider client rollout.
 
 ---
 

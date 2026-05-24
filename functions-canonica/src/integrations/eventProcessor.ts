@@ -21,6 +21,8 @@ import {
     ADAPTER_TYPES,
     AdapterConfig,
     AdapterType,
+    EVENT_SEVERITY,
+    INTEGRATION_EVENT_TYPES,
     IIntegrationAdapter,
     INTEGRATION_LIMITS,
     IntegrationConfig,
@@ -53,6 +55,20 @@ function getAdapterConfig(config: IntegrationConfig, adapterType: AdapterType): 
     return c;
 }
 
+function isValidEvent(event: IntegrationEvent): boolean {
+    const eventTypes = new Set<string>(Object.values(INTEGRATION_EVENT_TYPES));
+    const severities = new Set<string>(Object.values(EVENT_SEVERITY));
+    return Boolean(
+        event
+        && Number.isFinite(Number(event.tId))
+        && Number.isFinite(Number(event.sId))
+        && Number(event.tId) > 0
+        && Number(event.sId) > 0
+        && eventTypes.has(event.eventType)
+        && severities.has(event.severity)
+    );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN PROCESSOR
 // ═══════════════════════════════════════════════════════════════
@@ -73,6 +89,11 @@ export async function processEvent(
     event: IntegrationEvent,
 ): Promise<{ delivered: number; failed: number }> {
     const result = { delivered: 0, failed: 0 };
+    if (!isValidEvent(event)) {
+        logger.warn('[Canonica Integration] Invalid event skipped', { eventId });
+        await updateEventStatus(eventId, 'failed').catch(() => { });
+        return result;
+    }
 
     // Read tenant integration config
     const config = await getIntegrationConfig(event.tId, event.sId);
@@ -161,6 +182,14 @@ export async function processEvent(
     if (anyAttempted) {
         const finalStatus = anyDelivered ? 'delivered' : 'failed';
         await updateEventStatus(eventId, finalStatus).catch(() => { });
+    } else {
+        logger.info('[Canonica Integration] No enabled adapters for event', {
+            tId: event.tId,
+            sId: event.sId,
+            eventId,
+            eventType: event.eventType,
+        });
+        await updateEventStatus(eventId, 'delivered').catch(() => { });
     }
 
     return result;

@@ -44,7 +44,7 @@ The summary rebuild endpoint uses bounded reads:
 - published KB articles: max 500
 - published FAQs: max 500
 - latest changelog pages: max 3 pages
-- recent support tickets: max 300
+- recent support tickets: max 300, ordered by `createdOn desc` before the limit so ticket counts reflect the newest fallback activity
 
 The rebuild happens on explicit management operations, not every customer page load.
 
@@ -54,6 +54,7 @@ Required composite indexes:
 
 - `canonica_productSurfaces`: `tId`, `sId`, `active`, `priority`
 - `canonica_productSurfaces`: `tId`, `sId`, `key`
+- `supportTickets`: `tId`, `sId`, `deleted`, `createdOn desc`
 
 ## Cost Impact
 

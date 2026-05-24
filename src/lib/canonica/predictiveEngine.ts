@@ -159,6 +159,7 @@ function evaluateConditions(
 // ═══════════════════════════════════════════════════════════════
 
 const COOLDOWN_PREFIX = 'canon:ps:';
+const isRedisConfigured = () => Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 /**
  * Check if a trigger is on cooldown for a user.
@@ -166,6 +167,10 @@ const COOLDOWN_PREFIX = 'canon:ps:';
  * Graceful degradation: returns false (allow) if Redis unavailable.
  */
 async function checkCooldown(userId: string, triggerId: string): Promise<boolean> {
+    if (!isRedisConfigured()) {
+        return true;
+    }
+
     try {
         const { Redis } = await import('@upstash/redis');
         const redis = new Redis({
@@ -176,8 +181,8 @@ async function checkCooldown(userId: string, triggerId: string): Promise<boolean
         const exists = await redis.exists(key);
         return exists === 1;
     } catch {
-        // Graceful degradation — if Redis unavailable, allow trigger
-        return false;
+        // Fail closed to avoid repeated proactive prompts when cooldown storage is unavailable.
+        return true;
     }
 }
 
@@ -186,6 +191,8 @@ async function checkCooldown(userId: string, triggerId: string): Promise<boolean
  * Uses Redis TTL for automatic expiry — no cleanup needed.
  */
 async function setCooldown(userId: string, triggerId: string, cooldownHours: number): Promise<void> {
+    if (!isRedisConfigured()) return;
+
     try {
         const { Redis } = await import('@upstash/redis');
         const redis = new Redis({

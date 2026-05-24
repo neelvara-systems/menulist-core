@@ -22,8 +22,7 @@
 │  Step 7: Confidence Auto-Adjustment ───────────────────────┤  Exist     │
 │  Step 8: Signal TTL Archive                                │            │
 │  ...                                                       │            │
-│  Step 13: Integration Events (if enabled)                  │            │
-│  Step 14: Ticket Knowledge Loop (if enabled) ──────────────┘            │
+│  Step 13: Ticket Knowledge Loop (if enabled) ──────────────┘            │
 │                                                                          │
 │  ════════════════════════════════════════════════════════════════════    │
 │                                                                          │

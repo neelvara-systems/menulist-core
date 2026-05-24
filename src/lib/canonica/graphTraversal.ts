@@ -30,6 +30,11 @@ const MAX_ENTITIES_AFTER_EXPANSION = 10;
 const MAX_RELATIONS_PER_ENTITY = 20;
 const MAX_SUGGESTIONS = 3;
 const MIN_INTERACTION_CONFIDENCE = 0.5;
+const GRAPH_INDEX_CACHE_TTL_MS = 60_000;
+const graphIndexCache = new Map<string, {
+    expiresAt: number;
+    value: CanonicaEntityGraphIndex | null;
+}>();
 
 // ═══════════════════════════════════════════════════════════════
 // GRAPH INDEX LOADING
@@ -52,12 +57,25 @@ export async function loadGraphIndex(
             return null;
         }
 
+        const cacheKey = `${Number(tId)}:${Number(sId)}`;
+        const cached = graphIndexCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            return cached.value;
+        }
+        if (cached) {
+            graphIndexCache.delete(cacheKey);
+        }
+
         const snap = await canonicaFirestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`entityGraphIndex_${tId}_${sId}`)
             .get();
-        if (!snap.exists) return null;
-        return snap.data() as CanonicaEntityGraphIndex;
+        const value = snap.exists ? snap.data() as CanonicaEntityGraphIndex : null;
+        graphIndexCache.set(cacheKey, {
+            expiresAt: Date.now() + GRAPH_INDEX_CACHE_TTL_MS,
+            value,
+        });
+        return value;
     } catch {
         return null;
     }

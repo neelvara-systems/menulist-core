@@ -22,7 +22,7 @@
 
 The Trust Dashboard is a governance tool used by SaaS founders during deliberate review sessions. It is not an operational screen that founders check on the go. The metrics update nightly and require thoughtful analysis — not quick mobile glances.
 
-If trust metrics were degrading critically, the existing integration events system (Slack/Email notifications via Expansion Item #7) would alert the founder on mobile. The dashboard itself does not need a mobile surface.
+If trust metrics are degrading critically, the dashboard and weekly review surfaces remain the owner review path. The dashboard itself does not need a dedicated mobile surface for v1.
 
 ---
 
@@ -37,6 +37,6 @@ This would be a read-only antd-mobile card layout using the same `getTrustMetric
 
 ---
 
-## §4 — Mobile Notification Path (Already Covered)
+## §4 — Mobile Notification Path
 
-When `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` is enabled, critical trust events (coverage drop, drift spike) can be pushed to Slack/Email — which founders already check on mobile. This provides mobile awareness without building a dedicated mobile screen.
+Critical trust alerts are not part of the active v1 mobile scope. If this becomes necessary, add a Canonica-native notification design rather than relying on archived workflow integrations.

@@ -16,7 +16,9 @@ import {
     DeliveryResult,
     ADAPTER_TYPES,
     INTEGRATION_EVENT_TYPES,
+    INTEGRATION_LIMITS,
 } from '../types';
+import { escapeHtml, safeText, sanitizeDeliveryError } from '../safety';
 
 const EVENT_TITLES: Record<string, string> = {
     [INTEGRATION_EVENT_TYPES.DRIFT_DETECTED]: 'Drift Detected',
@@ -48,6 +50,9 @@ function getTransporter(): nodemailer.Transporter | null {
         port: parseInt(process.env.SMTP_PORT || '587', 10),
         secure: false,
         auth: { user, pass },
+        connectionTimeout: INTEGRATION_LIMITS.ADAPTER_TIMEOUT_MS,
+        greetingTimeout: INTEGRATION_LIMITS.ADAPTER_TIMEOUT_MS,
+        socketTimeout: INTEGRATION_LIMITS.ADAPTER_TIMEOUT_MS,
     });
 
     return transporter;
@@ -64,23 +69,23 @@ function formatEventHtml(event: IntegrationEvent): string {
     switch (event.eventType) {
         case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:
             detailsHtml = `
-                <tr><td><strong>Answer:</strong></td><td>${p.answerTitle || 'Unknown'}</td></tr>
-                <tr><td><strong>Drift Class:</strong></td><td>${p.driftClass}</td></tr>
-                <tr><td><strong>Reason:</strong></td><td>${p.driftReason}</td></tr>
-                <tr><td><strong>Entity:</strong></td><td>${p.entityName} (${p.entityType})</td></tr>`;
+                <tr><td><strong>Answer:</strong></td><td>${escapeHtml(p.answerTitle || 'Unknown')}</td></tr>
+                <tr><td><strong>Drift Class:</strong></td><td>${escapeHtml(p.driftClass)}</td></tr>
+                <tr><td><strong>Reason:</strong></td><td>${escapeHtml(p.driftReason)}</td></tr>
+                <tr><td><strong>Entity:</strong></td><td>${escapeHtml(p.entityName)} (${escapeHtml(p.entityType, 80)})</td></tr>`;
             break;
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
             detailsHtml = `
-                <tr><td><strong>Type:</strong></td><td>${p.mutationType}</td></tr>
-                <tr><td><strong>Entities:</strong></td><td>${(p.entityNames || []).join(', ')}</td></tr>
+                <tr><td><strong>Type:</strong></td><td>${escapeHtml(p.mutationType)}</td></tr>
+                <tr><td><strong>Entities:</strong></td><td>${escapeHtml((p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', '), 300)}</td></tr>
                 <tr><td><strong>Signals:</strong></td><td>${p.signalCount}</td></tr>
                 <tr><td><strong>Confidence:</strong></td><td>${Math.round((p.confidenceScore || 0) * 100)}%</td></tr>`;
             break;
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
             detailsHtml = `
-                <tr><td><strong>Entity:</strong></td><td>${p.entityName} (${p.entityType})</td></tr>
+                <tr><td><strong>Entity:</strong></td><td>${escapeHtml(p.entityName)} (${escapeHtml(p.entityType, 80)})</td></tr>
                 <tr><td><strong>Fallbacks:</strong></td><td>${p.fallbackCount} in ${p.windowDays} days</td></tr>`;
             break;
 
@@ -101,7 +106,7 @@ function formatEventHtml(event: IntegrationEvent): string {
             break;
 
         default:
-            detailsHtml = `<tr><td colspan="2"><pre>${JSON.stringify(p, null, 2).slice(0, 500)}</pre></td></tr>`;
+            detailsHtml = `<tr><td colspan="2"><pre>${escapeHtml(JSON.stringify(p, null, 2), 500)}</pre></td></tr>`;
     }
 
     return `
@@ -125,7 +130,7 @@ export class EmailAdapter implements IIntegrationAdapter {
 
     formatPayload(event: IntegrationEvent): { subject: string; html: string } {
         const title = EVENT_TITLES[event.eventType] || event.eventType;
-        const entityName = event.payload.entityName || event.payload.answerTitle || '';
+        const entityName = safeText(event.payload.entityName || event.payload.answerTitle || '', 80);
         const subject = entityName
             ? `[Canonica] ${title}: ${entityName}`
             : `[Canonica] ${title}`;
@@ -148,7 +153,8 @@ export class EmailAdapter implements IIntegrationAdapter {
             };
         }
 
-        if (!config.recipients || config.recipients.length === 0) {
+        const recipients = Array.from(new Set((config.recipients || []).slice(0, INTEGRATION_LIMITS.MAX_EMAIL_RECIPIENTS)));
+        if (recipients.length === 0) {
             return {
                 success: false,
                 error: 'No recipients configured',
@@ -161,7 +167,7 @@ export class EmailAdapter implements IIntegrationAdapter {
 
             await smtp.sendMail({
                 from: process.env.SMTP_USER || 'noreply@canonica.app',
-                to: config.recipients.join(', '),
+                to: recipients.join(', '),
                 subject,
                 html,
             });
@@ -173,7 +179,7 @@ export class EmailAdapter implements IIntegrationAdapter {
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'SMTP send failed',
+                error: sanitizeDeliveryError(error instanceof Error ? error.message : 'SMTP send failed'),
                 durationMs: Date.now() - startMs,
             };
         }

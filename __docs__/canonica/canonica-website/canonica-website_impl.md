@@ -293,7 +293,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 ### Prerequisites
 1. Add `canonica.app` domain to Vercel project dashboard
 2. Configure DNS for canonica.app pointing to Vercel
-3. Keep `public/canonica-og-image.png`, `public/canonica.webmanifest`, `public/canonica-logo.svg`, `public/canonica-logo-mark-wide.*`, `public/canonica-favicon.*`, and Canonica icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. Header, footer, diagrams, loaders, and dashboard navigation use the shared true-vector `CanonicaLogoMark` so the mark stays consistent and does not blur.
+3. Keep `public/canonica-og-image.png`, `public/canonica.webmanifest`, `public/canonica-logo.svg`, `public/canonica-logo-mark-wide.png`, `public/canonica-favicon.*`, and Canonica icon PNGs available for OpenGraph, app metadata, splash generation, dashboard branding, and favicon previews. Header, footer, diagrams, loaders, and dashboard navigation use the shared inline SVG `CanonicaLogoMark` so the mark stays consistent without PNG UI usage.
 
 ### Security
 - `/sites/*` direct access blocked in production (middleware redirects to `/`)

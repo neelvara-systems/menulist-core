@@ -518,14 +518,12 @@ Boundary rule: this mount context is a transient retrieval hint, not Canonica te
 
 ### 4.6.2 — Server Retrieval Boundary
 
-`coreSearch()` and `attemptCanonicalRetrieval()` run in API routes, so Canonica canonical retrieval, instant-cache entity lookup, graph traversal, predictive trigger lookup, and server signal emission must use `canonicaFirestoreAdmin`. They must not use browser Firebase DAL functions that depend on client auth state.
+`coreSearch()` and `attemptCanonicalRetrieval()` run in API routes, so Canonica canonical retrieval, instant-cache entity lookup, and server signal emission must use `canonicaFirestoreAdmin`. They must not use browser Firebase DAL functions that depend on client auth state.
 
 Current server-side read path:
 
 - `src/lib/search/searchCore.ts` reads entity index and latest release through Canonica Admin Firestore for instant-cache lookup.
 - `src/lib/canonica/canonicalRetrieval.ts` reads entity index, canonical answers, releases, and entity descriptions through Canonica Admin Firestore.
-- `src/lib/canonica/graphTraversal.ts` reads `platformSummary/entityGraphIndex_{tId}_{sId}` through Canonica Admin Firestore.
-- `src/lib/canonica/predictiveEngine.ts` reads `platformSummary/predictiveTriggers_{tId}_{sId}` and active answers through Canonica Admin Firestore.
 - `src/lib/canonica/signalEmitter.ts` writes server-side signals through Canonica Admin Firestore and skips invalid tenant/store context.
 
 ### 4.7 — Feature Flag

@@ -17,6 +17,7 @@ import {
     INTEGRATION_LIMITS,
     INTEGRATION_EVENT_TYPES,
 } from '../types';
+import { safeText, sanitizeDeliveryError } from '../safety';
 
 const SEVERITY_EMOJI: Record<string, string> = {
     critical: '🚨',
@@ -50,22 +51,22 @@ function formatEventDetails(event: IntegrationEvent): string {
 
     switch (event.eventType) {
         case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:
-            return `*Answer:* ${p.answerTitle || 'Unknown'}\n*Drift Class:* ${p.driftClass}\n*Reason:* ${p.driftReason}\n*Entity:* ${p.entityName} (${p.entityType})`;
+            return `*Answer:* ${safeText(p.answerTitle || 'Unknown')}\n*Drift Class:* ${safeText(p.driftClass)}\n*Reason:* ${safeText(p.driftReason, 220)}\n*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})`;
 
         case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
-            return `*Type:* ${p.mutationType}\n*Entities:* ${(p.entityNames || []).join(', ')}\n*Signals:* ${p.signalCount}\n*Confidence:* ${Math.round((p.confidenceScore || 0) * 100)}%`;
+            return `*Type:* ${safeText(p.mutationType)}\n*Entities:* ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}\n*Signals:* ${p.signalCount}\n*Confidence:* ${Math.round((p.confidenceScore || 0) * 100)}%`;
 
         case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
-            return `*Entity:* ${p.entityName} (${p.entityType})\n*Fallbacks:* ${p.fallbackCount} in ${p.windowDays} days\n*Sample queries:* ${(p.sampleQueries || []).slice(0, 2).join(', ')}`;
+            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Fallbacks:* ${p.fallbackCount} in ${p.windowDays} days\n*Sample queries:* ${(p.sampleQueries || []).slice(0, 2).map((query: unknown) => safeText(query, 120)).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.COVERAGE_DROP:
             return `*Current:* ${Math.round((p.currentRate || 0) * 100)}%\n*Previous:* ${Math.round((p.previousRate || 0) * 100)}%\n*Threshold:* ${Math.round((p.threshold || 0) * 100)}%\n*Queries:* ${p.totalQueries} total, ${p.canonicalHits} canonical`;
 
         case INTEGRATION_EVENT_TYPES.ARTICLE_APPROVED:
-            return `*Answer:* ${p.answerTitle}\n*Type:* ${p.mutationType}\n*Approved by:* ${p.approvedBy}\n*Entities:* ${(p.entityNames || []).join(', ')}`;
+            return `*Answer:* ${safeText(p.answerTitle)}\n*Type:* ${safeText(p.mutationType)}\n*Approved by:* ${safeText(p.approvedBy, 80)}\n*Entities:* ${(p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING:
-            return `*Entity:* ${p.entityName} (${p.entityType})\n*Failures:* ${p.failureCount} in ${p.windowDays} days\n*Common queries:* ${(p.commonQueries || []).slice(0, 2).join(', ')}`;
+            return `*Entity:* ${safeText(p.entityName)} (${safeText(p.entityType, 60)})\n*Failures:* ${p.failureCount} in ${p.windowDays} days\n*Common queries:* ${(p.commonQueries || []).slice(0, 2).map((query: unknown) => safeText(query, 120)).join(', ')}`;
 
         case INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY: {
             const lines = [
@@ -82,7 +83,7 @@ function formatEventDetails(event: IntegrationEvent): string {
         }
 
         default:
-            return JSON.stringify(p, null, 2).slice(0, 500);
+            return safeText(JSON.stringify(p, null, 2), 500);
     }
 }
 
@@ -131,10 +132,10 @@ export class SlackAdapter implements IIntegrationAdapter {
     async send(event: IntegrationEvent, config: SlackConfig): Promise<DeliveryResult> {
         const startMs = Date.now();
 
-        if (!config.webhookUrl) {
+        if (!config.webhookUrl || !config.webhookUrl.startsWith('https://hooks.slack.com/services/')) {
             return {
                 success: false,
-                error: 'No webhook URL configured',
+                error: 'Slack webhook URL is not configured',
                 durationMs: Date.now() - startMs,
             };
         }
@@ -164,13 +165,13 @@ export class SlackAdapter implements IIntegrationAdapter {
             return {
                 success: false,
                 statusCode: response.status,
-                error: errorText.slice(0, 200),
+                error: sanitizeDeliveryError(errorText),
                 durationMs,
             };
         } catch (error) {
             return {
                 success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
+                error: sanitizeDeliveryError(error),
                 durationMs: Date.now() - startMs,
             };
         }

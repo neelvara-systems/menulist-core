@@ -40,9 +40,6 @@
 | 9   | `canonica_entityCandidates`  | `CANONICA_ENTITY_CANDIDATES`   | `entityCandidates.ts`  | tId+sId+confidence, tId+sId+status+confidence               |
 | 10  | `canonica_frictionDailyStats` | `CANONICA_FRICTION_DAILY_STATS` | `frictionStats.ts`    | tId+sId+date, tId+sId+entityId+date                         |
 | 11  | `canonica_schedulerRunLogs`  | `CANONICA_SCHEDULER_RUN_LOGS`  | Scheduler only         | Platform read, server write                                 |
-| 12  | `canonica_integrationEvents` | `CANONICA_INTEGRATION_EVENTS`  | Integration functions  | tId+createdAt, status+createdAt                             |
-| 13  | `canonica_integrationDeliveryLogs` | `CANONICA_INTEGRATION_DELIVERY_LOGS` | Integration functions | eventId+createdAt, tId+adapter+status+createdAt             |
-| 14  | `canonica_predictiveTriggers` | `CANONICA_PREDICTIVE_TRIGGERS` | `predictiveTriggers.ts` | tId+sId+createdOn, tId+sId+status+createdOn                 |
 
 ### 1.3 Feature Flag Chain (Verified)
 
@@ -54,7 +51,7 @@ ENABLE_CANONICA_ONTOLOGY (Pillar 1) — all OFF
               └── ENABLE_CANONICA_PUBLIC_API (Pillar 5)
 ```
 
-Core ready-to-use flags are now enabled for Canonica activation. Public API and higher-cost optional expansion flags remain disabled until rollout gates are met.
+Core ready-to-use flags are now enabled for Canonica activation. Predictive support, workflow notifications, and knowledge graph traversal are also enabled with bounded reads, event caps, sanitized delivery, and fail-closed runtime guards.
 
 ---
 
@@ -68,7 +65,7 @@ Core ready-to-use flags are now enabled for Canonica activation. Public API and 
 | **2 — Canonical Answer Engine** | Governed, versioned, scoped answers; canonical-first retrieval | `canonicalAnswers.ts` + `canonicalRetrieval.ts` — 3-layer retrieval stack, version filtering, specificity scoring                                     | **VERIFIED**                               |
 | **3 — Drift Governance**        | 4 drift classes, deterministic, idempotent                     | `driftDetection.ts` — all 4 classes implemented: version, signal, scope conflict, orphan                                                              | **VERIFIED**                               |
 | **4 — Signal Mutation**         | 3 signal sources, 4 mutation types, human approval             | `signalMutation.ts` + `signalEmitter.ts` + `mutationProposals.ts` — entity-based clustering, proposal generation, state machine guards                | **VERIFIED**                               |
-| **5 — Public API**              | Public retrieval, webhooks, signal ingestion                   | `public/v1/answers`, `public/v1/entities`, and `public/v1/signals` implemented with `cn_*` key auth, rate limits, tenant-derived context, and workflow integration event bus for outbound drift/governance delivery | **VERIFIED** |
+| **5 — Public API**              | Public retrieval and signal ingestion                          | `public/v1/answers`, `public/v1/entities`, and `public/v1/signals` implemented with `cn_*` key auth, rate limits, and tenant-derived context | **VERIFIED** |
 
 ### 2.2 Invariants
 
@@ -166,7 +163,7 @@ activateRelease(releaseId)
 
 - Tenant discovery: `canonica_entities` scan capped at 1000 docs with truncation logged
 - Cross-tenant safety: Each function takes explicit `tId, sId` — no cross-contamination possible
-- Unbounded loop protection: tenant discovery, answers, entities, signals, graph, search index, and predictive trigger reads all use explicit limits
+- Unbounded loop protection: tenant discovery, answers, entities, signals, and search index reads all use explicit limits
 - Empty dataset safety: All functions handle `null`/empty returns gracefully
 - Manual trigger safety: `triggerCanonicaNightly` requires `Authorization: Bearer ${CRON_SECRET}` outside the Firebase emulator
 - Dedicated Firebase auth safety: `/api/auth/set-claims` mints a separate Canonica custom token in separate mode so client DAL calls satisfy `firestore-canonica.rules`
@@ -188,22 +185,16 @@ Settings / onboarding
 
 **Verdict:** SAFE. Raw widget keys are not persisted. Rate-limit keys use key hashes, not raw API keys. Malformed keys avoid Firestore reads, misconfigured store contexts fail closed, and feedback cannot update another workspace's search history record.
 
-### Flow G — Guided + Predictive Public Widget
+### Flow G — Guided Public Widget
 
 ```
 Canonical procedure answer
   → coreSearch returns procedure
   → /api/widget/search includes procedure when ENABLE_CANONICA_GUIDED_WORKFLOWS
   → WidgetClient renders prerequisites, warnings, steps, expected results, and troubleshooting hints
-
-CanonicaWidget.page()/setContext()
-  → POST /api/canonica/predictive-help
-  → trigger suggestion returned
-  → embed script forwards suggestion to iframe
-  → WidgetClient displays proactive help message
 ```
 
-**Verdict:** WIRED. Backend procedure/predictive payloads now reach the public end-user surface instead of being silently dropped.
+**Verdict:** WIRED. Backend procedure payloads reach the public end-user surface when the guided workflow flag is enabled.
 
 ### Flow H — KB Navigation Tenant Scope
 
@@ -314,7 +305,7 @@ Platform operator opens Canonica management
 | 12  | Owner shell not mobile-safe      | Canonica layout now uses mobile drawer navigation and no fixed-width content      |
 | 13  | Widget image previews assumed PNG | Widget messages now retain MIME type for uploaded images                          |
 | 14  | Help Center did not pass context-aware product context into AI search | `HeroSearchBar` now builds tab-aware `productContext`; `HelpChat` sends it as top-level request data |
-| 15  | Server retrieval fast paths could depend on client Firebase DALs | Canonical retrieval, instant-cache search, graph traversal, predictive help, and server signal writes now use Canonica Admin Firestore |
+| 15  | Server retrieval fast paths could depend on client Firebase DALs | Canonical retrieval, instant-cache search, and server signal writes now use Canonica Admin Firestore |
 | 16  | Widget context clearing could leave stale context inside iframe | `setContext(null)` now clears widget state and posts the cleared context to the iframe |
 | 17  | Graph suggestions could render non-string objects in the widget | Widget suggestions are normalized before rendering and before quick-question clicks |
 | 18  | Help Center hero used token-dependent render state during SSR | Token-dependent decorative layer is mounted client-side with stable SSR fallbacks |
@@ -361,7 +352,7 @@ Each flag depends on all previous flags being enabled first.
 | 16  | Master Execution Prompt missing Canonica rules               | `MASTER-EXECUTION-PROMPT.md` | Added STEP 9B with 5-component readiness checklist       |
 | 17  | Context-aware Help Center mounting was incomplete            | `HeroSearchBar.tsx`, `HelpChat`, `search-kb/route.ts` | Added validated top-level `productContext` flow and backend session-role override |
 | 18  | Context schema allowed fragile or sensitive free-form strings | `contextSchema.ts`           | Added trimming, size limits, sanitization, unknown-field stripping, and contact-detail rejection |
-| 19  | Server search/retrieval paths mixed client Firebase access into API code | `canonicalRetrieval.ts`, `searchCore.ts`, `graphTraversal.ts` | Replaced server reads with Canonica Admin Firestore helpers |
+| 19  | Server search/retrieval paths mixed client Firebase access into API code | `canonicalRetrieval.ts`, `searchCore.ts` | Replaced server reads with Canonica Admin Firestore helpers |
 | 20  | Widget could keep stale context after host context reset      | `canonica-widget.js`, `WidgetClient.tsx` | Clear-context messages now update iframe state instead of being ignored |
 | 21  | Widget graph suggestions could break React rendering          | `WidgetClient.tsx`           | Added suggestion normalization for object/string suggestion payloads |
 | 22  | Public API routes missing for Pillar 5                        | `src/app/api/canonica/public/v1/*` | Added answers, entities, and signals endpoints with `cn_*` key auth, rate limits, and tenant-derived context |

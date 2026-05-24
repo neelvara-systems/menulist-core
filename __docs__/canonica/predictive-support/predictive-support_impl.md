@@ -2,7 +2,7 @@
 
 > **Version:** 1.0.0
 > **Last Updated:** 2026-03-10
-> **Status:** DOCUMENTED — Implementation Pending
+> **Status:** ✅ IMPLEMENTED — Enabled with guards
 > **Feature Flag:** `ENABLE_CANONICA_PREDICTIVE_SUPPORT`
 
 ---
@@ -627,7 +627,7 @@ Old widget SDKs without `canon.page()` simply don't call the predictive API. No 
 ### Frontend (`src/config/features.ts`)
 
 ```typescript
-ENABLE_CANONICA_PREDICTIVE_SUPPORT: false,
+ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 // Requires: ENABLE_CANONICA_CONTEXT_AWARE = true
 // Requires: ENABLE_CANONICA_CANONICAL_ANSWERS = true
 ```
@@ -635,7 +635,7 @@ ENABLE_CANONICA_PREDICTIVE_SUPPORT: false,
 ### Cloud Functions (`functions-canonica/src/constants/features.ts`)
 
 ```typescript
-ENABLE_CANONICA_PREDICTIVE_SUPPORT: false,
+ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 ```
 
 ---

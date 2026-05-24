@@ -6,7 +6,6 @@ import { useEffect } from "react";
 const REVEAL_DELAY_STEP = 0.09;
 const REVEAL_MAX_DELAY = 0.9;
 const EXPLICIT_REVEAL_SELECTOR = "[data-canonica-reveal], [data-canonica-reveal-item]";
-const STRUCTURAL_REVEAL_SELECTOR = "main section, main article, main aside, footer section, footer article, footer aside";
 const CARD_REVEAL_SELECTOR = [
     "main .grid > a[class*='rounded-']",
     "main .grid > article[class*='rounded-']",
@@ -44,7 +43,15 @@ function hasReadableContent(element: HTMLElement) {
     return (element.textContent || "").trim().length > 0 || element.children.length > 0;
 }
 
+function isLayoutContainer(element: HTMLElement) {
+    return ["main", "section", "footer", "header", "nav", "aside"].includes(element.tagName.toLowerCase());
+}
+
 function isCardLikeElement(element: HTMLElement) {
+    if (isLayoutContainer(element)) {
+        return false;
+    }
+
     const className = getElementClassName(element);
     if (!className || !className.includes("rounded-") || className.includes("rounded-full")) {
         return false;
@@ -60,35 +67,16 @@ function isCardLikeElement(element: HTMLElement) {
     }
 
     const bounds = element.getBoundingClientRect();
-    return bounds.width >= 88 && bounds.height >= 40;
-}
-
-function isStructuralRevealCandidate(element: HTMLElement) {
-    const tagName = element.tagName.toLowerCase();
-    if (tagName === "section" || tagName === "aside" || tagName === "footer") {
-        return hasReadableContent(element);
-    }
-
-    if (tagName !== "article") {
-        return true;
-    }
-
-    const className = getElementClassName(element);
-    const hasRoundedClass = /rounded-(?:xl|2xl|3xl|lg|md|sm|\[1\.75rem\])/;
-    if (!hasRoundedClass.test(className) && !className.includes("rounded-full")) {
-        return false;
-    }
-
-    return hasReadableContent(element);
+    return bounds.width >= 72 && bounds.height >= 18;
 }
 
 function shouldRevealElement(element: HTMLElement) {
-    if (element.matches(EXPLICIT_REVEAL_SELECTOR)) {
-        return hasReadableContent(element);
+    if (isLayoutContainer(element)) {
+        return false;
     }
 
-    if (element.matches(STRUCTURAL_REVEAL_SELECTOR)) {
-        return isStructuralRevealCandidate(element);
+    if (element.matches(EXPLICIT_REVEAL_SELECTOR)) {
+        return hasReadableContent(element);
     }
 
     return isCardLikeElement(element);
@@ -120,7 +108,6 @@ export default function CanonicaScrollReveal() {
         const declaredTargets = targetRegions.flatMap((region) =>
             [
                 ...Array.from(region.querySelectorAll<HTMLElement>(EXPLICIT_REVEAL_SELECTOR)),
-                ...Array.from(region.querySelectorAll<HTMLElement>(STRUCTURAL_REVEAL_SELECTOR)),
                 ...Array.from(region.querySelectorAll<HTMLElement>(CARD_REVEAL_SELECTOR)),
             ],
         );

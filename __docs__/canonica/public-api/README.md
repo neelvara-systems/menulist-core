@@ -16,9 +16,8 @@ It is intentionally narrow:
 - Read canonical answers
 - Read the entity registry
 - Ingest structured signals
-- Use existing workflow integrations for outbound drift/governance notifications
 
-It does not expose raw KB article editing, ticket workflow automation, or direct canonical answer mutation.
+It does not expose raw KB article editing, ticket workflow automation, outbound workflow adapters, or direct canonical answer mutation.
 
 ---
 
@@ -28,7 +27,7 @@ It does not expose raw KB article editing, ticket workflow automation, or direct
 | --- | --- | --- | --- |
 | `/api/canonica/public/v1/answers` | `POST` | Canonical-first answer retrieval using query, version, scope, and optional context | Reads entity index, latest release, and active canonical answers from Canonica Firestore |
 | `/api/canonica/public/v1/entities` | `GET` | Read-only entity registry for stable ontology IDs | Reads capped tenant entity list from Canonica Firestore |
-| `/api/canonica/public/v1/signals` | `POST` | Ingest external ticket/chat/escalation/suggestion signals | Writes one `canonica_signalEvents` document through the server signal emitter |
+| `/api/canonica/public/v1/signals` | `POST` | Ingest external ticket/chat/escalation signals | Writes one `canonica_signalEvents` document through the server signal emitter |
 
 All endpoints:
 
@@ -111,14 +110,6 @@ Response:
 ```
 
 Signal ingestion requires `ENABLE_CANONICA_SIGNAL_MUTATION` because signals feed the mutation governance loop.
-
----
-
-## Outbound Drift Notifications
-
-Outbound drift and governance notifications are handled by the workflow integration event bus in `functions-canonica/src/integrations/`.
-
-That path writes `canonica_integrationEvents`, then the Canonica Functions event processor dispatches to configured adapters such as Slack, email, Linear, or GitHub with delivery logs and circuit breaker tracking.
 
 ---
 

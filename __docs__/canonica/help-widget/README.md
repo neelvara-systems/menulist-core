@@ -3,7 +3,7 @@
 > **Feature:** Embeddable context-aware help widget for SaaS products
 > **Status:** v2 IMPLEMENTED
 > **Date:** 2026-05-12
-> **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context layer), `ENABLE_CANONICA_GUIDED_WORKFLOWS` (procedure rendering), `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (proactive suggestions)
+> **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context layer), `ENABLE_CANONICA_GUIDED_WORKFLOWS` (procedure rendering)
 > **Auth:** API key via `X-API-Key` header. Raw keys are returned once and stored as `canonicaWidgetApi.apiKeyHash` with a display-only `keyPrefix`.
 
 ---
@@ -71,7 +71,7 @@ The UI Configuration tab now covers the low-cost branding controls SaaS owners e
 
 Saved widget settings are stored on the workspace store document under `widgetConfig`, `widgetAllowedOrigins`, and `widgetConfigVersion`. The installed script reads those settings through `GET /api/widget/config` with the widget key, so already-installed snippets can pick up dashboard changes without requiring customers to edit script attributes. Script attributes remain supported and intentionally override remote config for per-environment exceptions.
 
-Runtime config and predictive suggestions are intentionally short-cached. The server and browser both avoid repeated config reads for the same widget key/origin, unchanged dashboard saves do not write, and identical page-context predictive checks reuse a short-lived suggestion/miss. This keeps the embed centrally configurable without adding realtime listeners or page-load writes. Cache policy is not exposed as a customer setting; the management UI only tells operators that installed widgets can take up to 60 seconds to pick up saved changes.
+Runtime config is intentionally short-cached. The server and browser avoid repeated config reads for the same widget key/origin, and unchanged dashboard saves do not write. This keeps the embed centrally configurable without adding realtime listeners or page-load writes. Cache policy is not exposed as a customer setting; the management UI only tells operators that installed widgets can take up to 60 seconds to pick up saved changes.
 
 Route blocklists are stored in the same dashboard config and evaluated inside the loader script against the host page pathname. They are for pages where the client product already has its own help surface, such as `/help-center` or `/help-center/*`.
 
@@ -149,11 +149,12 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-22 | 2.4.4   | Added launch-grade widget branding controls for header title, accent color propagation, greeting, and powered-by visibility without adding runtime Firestore reads. |
+| 2026-05-24 | 2.4.5   | Removed predictive support from the active widget runtime so page context only drives search and related support content. |
 | 2026-05-20 | 2.4.2   | Added route blocklist settings for hiding the widget on selected client routes without adding Firebase reads. |
 | 2026-05-20 | 2.4.1   | Split widget management into customer-understandable tabs and removed the standalone Cost & Cache customer-facing section. |
 | 2026-05-19 | 2.4.0   | Added dedicated `/canonica/widget` management console, scoped `canonicaWidgetApi` credentials, public runtime config endpoint, and dashboard-backed script config loading. |
 | 2026-05-21 | 2.4.3   | Removed the temporary MenuList widget host from runtime/docs; client products now integrate only through the generic public widget script and Canonica-issued widget keys. |
-| 2026-05-19 | 2.3.1   | Firebase cost hardening added: hash-only Canonica auth path, short widget auth cache, predictive trigger index cache, and context-scoped search cache keys. |
+| 2026-05-19 | 2.3.1   | Firebase cost hardening added: hash-only Canonica auth path, short widget auth cache, and context-scoped search cache keys. |
 | 2026-05-18 | 2.3.0   | Runtime widget contract updated: mount-time script context attributes, `data-history`, explicit clear-history API, and open/close events.                                                            |
 | 2026-03-08 | 2.0.0   | Complete documentation rewrite: v2 architecture with context-aware support, launcher customization, session memory, feedback signals, origin allowlist. Unified search architecture. ChatGPT conversation reviewed + validated against Canonica codebase. |
 | 2026-03-07 | 1.0.0   | Initial implementation: embed script + iframe page + public API + feature flag                                                                                                                                                                            |

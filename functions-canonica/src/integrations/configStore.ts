@@ -16,9 +16,10 @@ import { firestoreAdmin as db } from '../firebaseAdmin';
 import {
     IntegrationConfig,
     AdapterType,
-    CircuitBreakerState,
+    ADAPTER_TYPES,
     INTEGRATION_LIMITS,
 } from './types';
+import { normalizeIntegrationConfig } from './safety';
 
 /**
  * Get the config doc ID for a tenant.
@@ -31,19 +32,7 @@ function getConfigDocId(tId: number, sId: number): string {
  * Default empty config (all integrations disabled).
  */
 function getDefaultConfig(): IntegrationConfig {
-    return {
-        slack: { enabled: false, webhookUrl: '', channel: '', eventFilters: [] },
-        email: { enabled: false, recipients: [], eventFilters: [] },
-        linear: { enabled: false, apiKey: '', teamId: '', eventFilters: [] },
-        github: { enabled: false, token: '', owner: '', repo: '', eventFilters: [] },
-        circuitBreaker: {
-            slack: { consecutiveFailures: 0, disabledAt: null },
-            email: { consecutiveFailures: 0, disabledAt: null },
-            linear: { consecutiveFailures: 0, disabledAt: null },
-            github: { consecutiveFailures: 0, disabledAt: null },
-        },
-        modifiedOn: Timestamp.now(),
-    };
+    return normalizeIntegrationConfig({ modifiedOn: Timestamp.now() });
 }
 
 /**
@@ -58,7 +47,7 @@ export async function getIntegrationConfig(tId: number, sId: number): Promise<In
         return getDefaultConfig();
     }
 
-    return doc.data() as IntegrationConfig;
+    return normalizeIntegrationConfig(doc.data());
 }
 
 /**
@@ -85,6 +74,11 @@ export function isAdapterAvailable(
     }
 
     return true;
+}
+
+export async function hasEnabledIntegrationAdapter(tId: number, sId: number): Promise<boolean> {
+    const config = await getIntegrationConfig(tId, sId);
+    return (Object.values(ADAPTER_TYPES) as AdapterType[]).some(adapterType => isAdapterAvailable(config, adapterType));
 }
 
 /**

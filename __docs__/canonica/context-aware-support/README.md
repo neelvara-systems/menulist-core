@@ -83,7 +83,7 @@ We extend these existing systems. We do NOT build 8 new components.
 ## Dependencies
 
 - **Depends on:** Nothing (no prerequisites)
-- **Unlocks:** #2 Guided Workflows, #3 Caching, #7 Integrations, #8 Escalation, #11 Knowledge Graph, #12 Predictive Support
+- **Unlocks:** guided workflows, caching, controlled escalation review, and page-aware support content.
 
 ---
 

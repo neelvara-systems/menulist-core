@@ -1,10 +1,10 @@
 # Canonica — External Workflow Integrations
 
-> **Status:** ✅ IMPLEMENTED — Feature Flag OFF
+> **Status:** ✅ IMPLEMENTED — Enabled with guards
 > **Version:** 1.0.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
-> **Feature Flag:** `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` (OFF by default)
+> **Last Updated:** 2026-05-24
+> **Feature Flag:** `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` (enabled)
 > **Expansion Item:** #7 in [canonica-expansion-tracker.md](../canonica-expansion-tracker.md)
 > **Doctrine Check:** ✅ Allowed — Freeze §2 explicitly permits "New integrations without breaking invariants"
 
@@ -85,9 +85,9 @@ Delivery Log (canonica_integrationDeliveryLogs)
 | 5   | **Per-tenant config** — event filters per integration                      | Founders control what goes where. No spam.           |
 | 6   | **3 retries then drop** — with delivery log                                | Matches industry standard. Never blocks main system. |
 | 7   | **Reuses existing SMTP** — same nodemailer as lifecycle messaging          | Zero new infrastructure for email.                   |
-| 8   | **Secrets in environment variables** — not Firestore                       | Security best practice for API keys/tokens.          |
+| 8   | **Secrets stay server-side** — raw webhook/token config is not returned to the browser | Owner setup without public secret exposure.          |
 | 9   | **Runs in Canonica Firebase project** — functions-canonica/                | Follows multi-product separation playbook.           |
-| 10  | **Feature-flagged** — OFF by default                                       | Safe production deploy. Zero impact until enabled.   |
+| 10  | **Feature-flagged and enabled with guards**                                | Event caps, circuit breakers, and sanitized delivery keep rollout bounded. |
 
 ---
 

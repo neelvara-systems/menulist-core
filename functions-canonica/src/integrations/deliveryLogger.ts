@@ -12,6 +12,7 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { AdapterType, DeliveryLogEntry, DeliveryResult } from './types';
+import { sanitizeDeliveryError } from './safety';
 
 /**
  * Log a delivery attempt (success or failure).
@@ -34,7 +35,7 @@ export async function logDeliveryAttempt(params: {
             attempt: params.attempt,
             status: params.result.success ? 'success' : 'failed',
             statusCode: params.result.statusCode ?? null,
-            error: params.result.error ?? null,
+            error: params.result.error ? sanitizeDeliveryError(params.result.error) : null,
             durationMs: params.result.durationMs,
             createdAt: Timestamp.now(),
         };
