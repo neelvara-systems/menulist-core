@@ -17,6 +17,7 @@ import { LOG_FILES } from '@constant/logging';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
+import { getCanonicaScopedSession, isCanonicaRuntimeRoute, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { coreSearch } from '@lib/search/searchCore';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
@@ -26,6 +27,15 @@ import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
+
+const parseHeaderUrl = (value: string | null): URL | null => {
+    if (!value) return null;
+    try {
+        return new URL(value);
+    } catch {
+        return null;
+    }
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
@@ -87,14 +97,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         }
 
+        const refererUrl = parseHeaderUrl(request.headers.get('referer'));
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+        const isCanonicaRuntimeSearch = isCanonicaRuntimeRoute(refererUrl?.pathname, refererUrl?.hostname)
+            || isCanonicaRuntimeRoute(null, host);
+        const searchSession = isCanonicaRuntimeSearch ? getCanonicaScopedSession(session) : session;
+        if (isCanonicaRuntimeSearch && !resolveCanonicaSessionScope(searchSession)) {
+            return NextResponse.json({ error: 'Canonica workspace is not available' }, { status: 403 });
+        }
+
         // ===== CORE SEARCH — Single source of truth =====
         const operationStart = Date.now();
         const result = await coreSearch({
             query: searchQuery,
             mountContext: 'help_center',
-            tId: session.tId,
-            sId: session.sId,
-            uId: session.uId,
+            tId: searchSession.tId,
+            sId: searchSession.sId,
+            uId: searchSession.uId,
             mode,
             conversationHistory: mode === 'assistant' && context ? context : undefined,
             imageUrl: imageUrl || undefined,
@@ -151,7 +170,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (result.aiProviderUsed) {
-            recordAiOperationForSession(session, {
+            recordAiOperationForSession(searchSession, {
                 action: AI_ACTIONS_TYPES.HELP_CENTER_SEARCH,
                 billingMode: 'internal',
                 clientResponse: {

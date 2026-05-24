@@ -162,6 +162,7 @@ async function loadRecentTickets(tId: number, sId: number): Promise<SupportTicke
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('deleted', '==', false)
+        .orderBy('createdOn', 'desc')
         .limit(MAX_TICKETS_FOR_SUMMARY)
         .get();
 

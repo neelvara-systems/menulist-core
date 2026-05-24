@@ -48,6 +48,8 @@ const SIMILARITY_THRESHOLD_LOW = 0.4;
 const VECTOR_SEARCH_LIMIT = 12;
 const RAG_CONTEXT_LIMIT = 6;
 const SEARCH_CACHE_VERSION = 'rag-v3';
+const CANONICA_LOOKUP_CACHE_TTL_MS = 30_000;
+const MAX_CANONICA_LOOKUP_CACHE_ENTRIES = 300;
 
 const LOG_FILE = LOG_FILES.KB_SEARCH;
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
@@ -56,6 +58,32 @@ type KnowledgeBaseCacheState = {
     version: string;
     hasPublishedArticles: boolean;
     sourceVersion?: number;
+};
+
+type TimedCacheEntry<T> = {
+    value: T;
+    expiresAt: number;
+};
+
+const entitySearchIndexCache = new Map<string, TimedCacheEntry<any[]>>();
+const latestReleaseCache = new Map<string, TimedCacheEntry<any | null>>();
+
+const readTimedCache = <T>(cache: Map<string, TimedCacheEntry<T>>, key: string): T | undefined => {
+    const cached = cache.get(key);
+    if (!cached) return undefined;
+    if (cached.expiresAt <= Date.now()) {
+        cache.delete(key);
+        return undefined;
+    }
+    return cached.value;
+};
+
+const rememberTimedCache = <T>(cache: Map<string, TimedCacheEntry<T>>, key: string, value: T) => {
+    if (cache.size >= MAX_CANONICA_LOOKUP_CACHE_ENTRIES) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey) cache.delete(oldestKey);
+    }
+    cache.set(key, { value, expiresAt: Date.now() + CANONICA_LOOKUP_CACHE_TTL_MS });
 };
 
 const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<KnowledgeBaseCacheState> => {
@@ -94,6 +122,10 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
 };
 
 const getCanonicaEntitySearchIndexServer = async (tId: number, sId: number): Promise<any[]> => {
+    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const cached = readTimedCache(entitySearchIndexCache, cacheKey);
+    if (cached) return cached;
+
     const snapshot = await firestoreAdmin
         .collection(DB_COLLECTIONS.CANONICA_ENTITY_SEARCH_INDEX)
         .where('tId', '==', tId)
@@ -101,10 +133,16 @@ const getCanonicaEntitySearchIndexServer = async (tId: number, sId: number): Pro
         .limit(500)
         .get();
 
-    return snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    const searchIndex = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+    rememberTimedCache(entitySearchIndexCache, cacheKey, searchIndex);
+    return searchIndex;
 };
 
 const getCanonicaLatestReleaseServer = async (tId: number, sId: number): Promise<any | null> => {
+    const cacheKey = `${Number(tId)}:${Number(sId)}`;
+    const cached = readTimedCache(latestReleaseCache, cacheKey);
+    if (cached !== undefined) return cached;
+
     const snapshot = await firestoreAdmin
         .collection(DB_COLLECTIONS.CANONICA_RELEASES)
         .where('tId', '==', tId)
@@ -114,9 +152,14 @@ const getCanonicaLatestReleaseServer = async (tId: number, sId: number): Promise
         .limit(1)
         .get();
 
-    if (snapshot.empty) return null;
+    if (snapshot.empty) {
+        rememberTimedCache(latestReleaseCache, cacheKey, null);
+        return null;
+    }
     const doc = snapshot.docs[0];
-    return { ...doc.data(), id: doc.id };
+    const release = { ...doc.data(), id: doc.id };
+    rememberTimedCache(latestReleaseCache, cacheKey, release);
+    return release;
 };
 
 const isKnowledgeBaseRefusal = (answer: string): boolean => {
