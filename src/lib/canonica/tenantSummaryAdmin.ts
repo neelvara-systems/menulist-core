@@ -19,6 +19,9 @@ export async function upsertCanonicaTenantSummaryAdmin(params: {
     source: string;
     active?: boolean;
     hasEntities?: boolean;
+    timeZone?: string;
+    businessDayEndTime?: string;
+    schedulerHour?: number;
 }): Promise<{ skipped: boolean }> {
     const scope = normalizeTenantStore(params.tId, params.sId);
     if (!scope) {
@@ -33,17 +36,24 @@ export async function upsertCanonicaTenantSummaryAdmin(params: {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const key = `${scope.tId}_${scope.sId}`;
 
+    const entry: Record<string, any> = {
+        pId: 'CN',
+        ...scope,
+        active: params.active !== false,
+        hasEntities: params.hasEntities,
+        source: params.source,
+        lastSeenAt: now,
+        updatedAt: now,
+    };
+    if (params.timeZone) entry.timeZone = String(params.timeZone).slice(0, 80);
+    if (params.businessDayEndTime) entry.businessDayEndTime = String(params.businessDayEndTime).slice(0, 5);
+    if (Number.isInteger(params.schedulerHour) && Number(params.schedulerHour) >= 0 && Number(params.schedulerHour) <= 23) {
+        entry.schedulerHour = Number(params.schedulerHour);
+    }
+
     await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(CANONICA_TENANT_SUMMARY_DOC_ID).set({
         tenants: {
-            [key]: {
-                pId: 'CN',
-                ...scope,
-                active: params.active !== false,
-                hasEntities: params.hasEntities,
-                source: params.source,
-                lastSeenAt: now,
-                updatedAt: now,
-            },
+            [key]: entry,
         },
         updatedAt: now,
     }, { merge: true });

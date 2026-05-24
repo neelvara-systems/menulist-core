@@ -19,6 +19,7 @@ All files under these folders are Canonica-related and were included in the inve
 - `__docs__/canonica/chat-monitoring/`
 - `__docs__/canonica/client-activation-command-center/`
 - `__docs__/canonica/client-onboarding/`
+- `__docs__/canonica/compiled-context-distribution/`
 - `__docs__/canonica/context-aware-support/`
 - `__docs__/canonica/deployment/`
 - `__docs__/canonica/doctrine/`
@@ -123,6 +124,10 @@ Top-level Canonica docs included:
 ## Canonica APIs and Widget Runtime Routes
 
 - `src/app/api/canonica/activation/summary/route.ts`
+- `src/app/api/canonica/bundles/public/[...path]/route.ts`
+- `src/app/api/canonica/bundles/rebuild/route.ts`
+- `src/app/api/canonica/mcp/route.ts`
+- `src/app/api/canonica/mcp/session/route.ts`
 - `src/app/api/canonica/onboard/route.ts`
 - `src/app/api/canonica/product-surfaces/rebuild-summary/route.ts`
 - `src/app/api/canonica/public/v1/answers/route.ts`
@@ -235,6 +240,10 @@ Top-level Canonica docs included:
 - `src/lib/canonica/cacheVersionManifest.ts`
 - `src/lib/canonica/cacheVersionServer.ts`
 - `src/lib/canonica/canonicalRetrieval.ts`
+- `src/lib/canonica/compiledContext.ts`
+- `src/lib/canonica/compiledSourceVersionsAdmin.ts`
+- `src/lib/canonica/compiledSourceVersionsClient.ts`
+- `src/lib/canonica/contextBundleBuilderServer.ts`
 - `src/lib/canonica/documentComposer.ts`
 - `src/lib/canonica/draftGenerator.ts`
 - `src/lib/canonica/draftPrompt.ts`
@@ -244,6 +253,7 @@ Top-level Canonica docs included:
 - `src/lib/canonica/escalationTypes.ts`
 - `src/lib/canonica/instantCache.ts`
 - `src/lib/canonica/instantCache.types.ts`
+- `src/lib/canonica/mcpSession.ts`
 - `src/lib/canonica/procedureValidation.ts`
 - `src/lib/canonica/productSurfaceContent.ts`
 - `src/lib/canonica/productSurfaceContentServer.ts`
@@ -274,6 +284,8 @@ Top-level Canonica docs included:
 - `functions-canonica/src/utils/tiptapUtils.ts`
 - `functions-canonica/src/canonica/cacheVersionManifest.ts`
 - `functions-canonica/src/canonica/canonicaNightly.ts`
+- `functions-canonica/src/canonica/compiledContextVersions.ts`
+- `functions-canonica/src/canonica/contextBundleBuilder.ts`
 - `functions-canonica/src/canonica/draftGenerator.ts`
 - `functions-canonica/src/canonica/frictionAggregation.ts`
 - `functions-canonica/src/canonica/frictionInsight.ts`
@@ -301,7 +313,8 @@ Top-level Canonica docs included:
 - `functions-canonica` is intentionally separate from MenuList Cloud Functions.
 - Canonica dashboard and website routes are intentionally separate from the MenuList owner dashboard.
 - MenuList Help Center components are shared support surfaces, not Canonica management screens.
-- Public API, multi-language, advanced white-label, and AI escalation are present but rollout-gated or disabled by default.
+- Public API, MCP, multi-language, advanced white-label, and AI escalation are present but rollout-gated or disabled by default.
 - Predictive support, workflow integrations, and graph traversal are active runtime paths. Keep them bounded through Redis cooldowns, event caps, sanitized workflow delivery, and summary-backed graph/index reads.
+- Compiled context bundles are the approved read distribution layer for widget, public API, and MCP; Storage bundles must never include drafts, tickets, chats, raw signals, audit logs, API keys, or billing data.
 - Notifications, workflow integrations, ticket knowledge extraction, and product friction intelligence are enabled with rate limits, nightly caps, and summary-backed UI reads.
 - Website copy must treat rollout-gated code as controlled capability, not as a default promise.

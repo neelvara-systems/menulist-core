@@ -5,7 +5,7 @@
  * Deploys to the "canonica" Firebase project (separate from MenuList's ecomsai).
  * 
  * Exported Functions:
- * - canonicaNightly: Scheduled Canonica batch (drift, mutation, resolution, KPI, trust metrics, etc.)
+ * - canonicaNightly: Scheduled Canonica master scheduler alias
  * - triggerCanonicaNightly: HTTPS manual trigger guarded by CRON_SECRET
  * 
  * @see __docs__/canonica/doctrine/07-multi-product-tenancy.md
@@ -23,7 +23,7 @@ import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
-import { runCanonicaNightly } from './canonica/canonicaNightly';
+import { runCanonicaMasterScheduler } from './canonica/canonicaMasterScheduler';
 import { assertCanonicaPlatformCallable } from './callableAuth';
 import { CANONICA_SECRET_GROUPS, readCanonicaCronSecret } from './config/secrets';
 import { DB_COLLECTIONS } from './constants/database';
@@ -43,28 +43,28 @@ const CANONICA_AI_OPTIONS = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// CANONICA NIGHTLY SCHEDULER
-// Batch: drift → resolution → mutation → KPI → trust metrics → fallback → impact → confidence → TTL
-// Runs daily at 3:00 AM UTC (offset from MenuList's 2:30 AM)
+// CANONICA MASTER SCHEDULER
+// One scheduled function owns Canonica scheduled work. It runs hourly and the
+// master scheduler filters tenants by workspace-local EOD + settlement buffer.
+// The export name stays canonicaNightly for deploy compatibility.
 // ═══════════════════════════════════════════════════════════════
 
 export const canonicaNightly = onSchedule(
     {
         region: 'us-central1',
-        schedule: '0 3 * * *',
+        schedule: '30 * * * *',
         timeZone: 'UTC',
         timeoutSeconds: 540,
         memory: '512MiB',
         maxInstances: 1,
     },
     async () => {
-        logger.info('[Canonica Scheduler] Starting nightly batch...');
-        const result = await runCanonicaNightly({ trigger: 'scheduled', triggeredBy: 'system' });
+        logger.info('[Canonica Scheduler] Starting master scheduler tick...');
+        const result = await runCanonicaMasterScheduler({ trigger: 'scheduled', triggeredBy: 'system' });
         logger.info('[Canonica Scheduler] Complete', {
-            runLogId: result.runLogId,
+            runLogId: result.runId,
             status: result.status,
-            tenantsProcessed: result.tenantsProcessed,
-            errorCount: result.errorDetails.length,
+            tasks: result.tasks.map(task => ({ name: task.name, status: task.status, activity: task.activity })),
         });
     }
 );
@@ -101,13 +101,16 @@ export const triggerCanonicaNightly = onRequest(
             return;
         }
 
-        logger.info('[Canonica Manual] Triggered manually...');
-        const result = await runCanonicaNightly({ trigger: 'manual', triggeredBy: 'cron_secret' });
+        logger.info('[Canonica Manual] Triggered master scheduler manually...');
+        const result = await runCanonicaMasterScheduler({
+            trigger: 'manual',
+            triggeredBy: 'cron_secret',
+            forceAllTenants: true,
+        });
         logger.info('[Canonica Manual] Complete', {
-            runLogId: result.runLogId,
+            runLogId: result.runId,
             status: result.status,
-            tenantsProcessed: result.tenantsProcessed,
-            errorCount: result.errorDetails.length,
+            tasks: result.tasks.map(task => ({ name: task.name, status: task.status, activity: task.activity })),
         });
         res.status(result.status === 'failed' ? 500 : 200).json(result);
     }

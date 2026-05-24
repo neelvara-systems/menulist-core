@@ -1,5 +1,6 @@
 import { FieldValue, Firestore, Timestamp } from "firebase-admin/firestore";
 import { CANONICA_CACHE_VERSIONS_COLLECTION } from "../types/constants";
+import { markCompiledContextSourceChanged } from "./compiledContextVersions";
 
 export const CANONICA_CACHE_SOURCES = {
     KB: "kb",
@@ -60,4 +61,9 @@ export const bumpCanonicaCacheVersion = async (
         .collection(CANONICA_CACHE_VERSIONS_COLLECTION)
         .doc(getCanonicaCacheVersionDocId(source, tenantId, storeId))
         .set(getCanonicaCacheVersionBumpData(source, tenantId, storeId, metadata), { merge: true });
+    await markCompiledContextSourceChanged(db, source, tenantId, storeId, {
+        reason: metadata?.reason || `${source}_cache_version_bumped`,
+        sourceId: metadata?.sourceId,
+        sourceType: metadata?.sourceType,
+    });
 };

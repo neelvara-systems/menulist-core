@@ -16,7 +16,8 @@ import { GithubAdapter } from './adapters/githubAdapter';
 import { LinearAdapter } from './adapters/linearAdapter';
 import { SlackAdapter } from './adapters/slackAdapter';
 import { getIntegrationConfig, isAdapterAvailable, recordDeliveryFailure, recordDeliverySuccess } from './configStore';
-import { logDeliveryAttempt, updateEventStatus } from './deliveryLogger';
+import { logDeliveryAttempt, updateEventStatus, updateIntegrationHealth } from './deliveryLogger';
+import { consumeAdapterDailySlot, consumeAdapterMinuteSlot, filterEmailRecipientsByDailyLimit } from './rateLimiter';
 import {
     ADAPTER_TYPES,
     AdapterConfig,
@@ -25,6 +26,7 @@ import {
     INTEGRATION_EVENT_TYPES,
     IIntegrationAdapter,
     INTEGRATION_LIMITS,
+    DeliveryResult,
     IntegrationConfig,
     IntegrationEvent,
     RETRY_DELAYS_MS,
@@ -122,8 +124,104 @@ export async function processEvent(
         const currentFailures = cbState?.consecutiveFailures || 0;
 
         let delivered = false;
+        let deliveryConfig: AdapterConfig = adapterConfig;
+        const adapterSlotAvailable = await consumeAdapterMinuteSlot(event.tId, event.sId, adapterType).catch(() => false);
+        if (!adapterSlotAvailable) {
+            const rateLimitResult = {
+                success: false,
+                error: 'Adapter rate limit exceeded',
+                durationMs: 0,
+            };
+            await logDeliveryAttempt({
+                eventId,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                attempt: 0,
+                result: rateLimitResult,
+                status: 'rate_limited',
+            });
+            await updateIntegrationHealth({
+                eventId,
+                eventType: event.eventType,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                status: 'rate_limited',
+                result: rateLimitResult,
+            });
+            result.failed++;
+            continue;
+        }
+
+        const adapterDailySlotAvailable = await consumeAdapterDailySlot(event.tId, event.sId, adapterType).catch(() => false);
+        if (!adapterDailySlotAvailable) {
+            const rateLimitResult = {
+                success: false,
+                error: 'Adapter daily rate limit exceeded',
+                durationMs: 0,
+            };
+            await logDeliveryAttempt({
+                eventId,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                attempt: 0,
+                result: rateLimitResult,
+                status: 'rate_limited',
+            });
+            await updateIntegrationHealth({
+                eventId,
+                eventType: event.eventType,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                status: 'rate_limited',
+                result: rateLimitResult,
+            });
+            result.failed++;
+            continue;
+        }
+
+        if (adapterType === ADAPTER_TYPES.EMAIL) {
+            const recipients = Array.isArray((adapterConfig as any).recipients) ? (adapterConfig as any).recipients : [];
+            const allowedRecipients = await filterEmailRecipientsByDailyLimit(event.tId, event.sId, recipients).catch(() => []);
+            if (allowedRecipients.length === 0) {
+                const rateLimitResult = {
+                    success: false,
+                    error: 'Email recipient daily limit exceeded',
+                    durationMs: 0,
+                };
+                await logDeliveryAttempt({
+                    eventId,
+                    tId: event.tId,
+                    sId: event.sId,
+                    adapter: adapterType,
+                    attempt: 0,
+                    result: rateLimitResult,
+                    status: 'rate_limited',
+                });
+                await updateIntegrationHealth({
+                    eventId,
+                    eventType: event.eventType,
+                    tId: event.tId,
+                    sId: event.sId,
+                    adapter: adapterType,
+                    status: 'rate_limited',
+                    result: rateLimitResult,
+                });
+                result.failed++;
+                continue;
+            }
+            deliveryConfig = { ...(adapterConfig as any), recipients: allowedRecipients } as AdapterConfig;
+        }
 
         // Attempt delivery with retries
+        let finalDeliveryResult: DeliveryResult = {
+            success: false,
+            error: 'Delivery not attempted',
+            durationMs: 0,
+        };
         for (let attempt = 1; attempt <= INTEGRATION_LIMITS.MAX_DELIVERY_ATTEMPTS; attempt++) {
             // Backoff delay (skip for first attempt)
             if (attempt > 1) {
@@ -131,7 +229,8 @@ export async function processEvent(
                 await sleep(delay);
             }
 
-            const deliveryResult = await adapter.send(event, adapterConfig);
+            const deliveryResult = await adapter.send(event, deliveryConfig);
+            finalDeliveryResult = deliveryResult;
 
             // Log the attempt
             await logDeliveryAttempt({
@@ -173,8 +272,26 @@ export async function processEvent(
         if (delivered) {
             result.delivered++;
             anyDelivered = true;
+            await updateIntegrationHealth({
+                eventId,
+                eventType: event.eventType,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                status: 'success',
+                result: finalDeliveryResult,
+            });
         } else {
             result.failed++;
+            await updateIntegrationHealth({
+                eventId,
+                eventType: event.eventType,
+                tId: event.tId,
+                sId: event.sId,
+                adapter: adapterType,
+                status: 'failed',
+                result: finalDeliveryResult,
+            });
         }
     }
 

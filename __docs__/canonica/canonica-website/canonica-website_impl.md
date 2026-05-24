@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.28
+> **Version:** 1.2.29
 > **Last Updated:** 2026-05-24
 > **Audience:** Developers
 
@@ -47,6 +47,8 @@ src/app/sites/canonica/
 ├── product/faq-management/page.tsx # FAQ Management feature page
 ├── product/changelog/page.tsx     # Changelog feature page
 ├── product/tickets/page.tsx       # Tickets feature page
+├── product/workflow-notifications/page.tsx # Workflow Notifications feature page
+├── product/proactive-help/page.tsx # Proactive Help feature page
 ├── productFeatures.ts             # Shared product-feature route data and sitemap source
 ├── use-cases/page.tsx             # AI-built SaaS and founder/operator use-case page
 ├── use-cases/ai-built-saas/page.tsx # AI-built SaaS use-case page
@@ -61,7 +63,7 @@ src/app/sites/canonica/
 ├── demo/page.tsx                  # Static interactive demo page
 ├── demo/CanonicaPublicDemo.tsx    # Account-free page-aware support demo
 ├── install/page.tsx               # Widget install and page context page
-├── integrations/page.tsx          # Redirect alias to /install for older links
+├── integrations/page.tsx          # Slack/email workflow notifications page
 ├── pricing/page.tsx               # Pricing page
 ├── resources/page.tsx             # Public learning hub
 ├── updates/page.tsx               # Public website update log
@@ -125,6 +127,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
 - homepage includes a screenshot-led responsive product scene showing activation, widget context, product surfaces, and governance queue states
 - public website pages now include use cases, widget install, resources, and updates so the site matches the buying-page shape expected from support tooling without adding unsupported API or adapter claims
+- `/integrations` now explains the supported Slack/email workflow notification path, including test delivery and compact delivery health, while keeping broader adapters controlled rollout
 - header links include `/demo`
 - `/demo` is static and account-free; it does not call Firebase or an AI provider
 - pricing exposes Starter, Growth, and Studio INR packaging
@@ -162,6 +165,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 22 product-area pass added landing-style pages for Launch Setup, Page-Aware Widget, Support Control, and Knowledge Governance so each major capability can be evaluated independently while reusing static, zero-Firebase-cost product proof components.
 - May 22 final polish pass made those product areas first-class in the header Product dropdown, homepage product-area section, resources hub, and SEO/use-case cross-link blocks so visitors can evaluate Canonica like a product suite instead of a single long page.
 - May 23 product-feature pass added standalone `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, and `/product/tickets` pages using a reusable outcome-hero, visual proof grid, workflow, connected-surfaces, FAQ, and CTA pattern inspired by modern feature-specific SaaS pages.
+- May 24 workflow notification/proactive help pass added standalone `/product/workflow-notifications` and `/product/proactive-help` pages, converted `/integrations` from an install redirect to a real Slack/email notification page, and updated sitemap/LLM context/resources/FAQ so public claims match the hardened runtime.
 - May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with Canonica's dark surface, indigo, and cyan theme, and set the Canonica route stylesheet background so white body bleed does not appear around dark pages.
 - May 23 product-feature route hardening replaced the dynamic `[feature]` route with four explicit product-feature page files backed by `ProductFeatureRoutePage`, avoiding fragile Next dev static-path worker failures while keeping shared feature data and sitemap registry coverage.
 - May 23 dark-theme consistency pass removed remaining light-mode product mockups from the account-free demo, product capability landing template, and homepage widget section so newly added public pages stay visually consistent with Canonica's dark infrastructure theme.
@@ -263,7 +267,7 @@ export default function CanonicaLink({ href, basePath = '', children, ...props }
 - `product/page.tsx` — Product page
 - `use-cases/page.tsx` — Use-case page
 - `install/page.tsx` — Widget install and page context page
-- `integrations/page.tsx` — Redirect alias to `/install`
+- `integrations/page.tsx` — Slack/email workflow notification page
 - `resources/page.tsx` — Resources hub
 - `updates/page.tsx` — Public website update log
 - `pricing/page.tsx` — Pricing page
@@ -383,3 +387,4 @@ Conversion analytics is client-side only:
 | 2026-05-24 | 1.2.26 | Synchronized the closed-loop diagram ring pulse and six card border highlights so the ring starts at step 01 and the cards flash in order within the same cycle |
 | 2026-05-24 | 1.2.27 | Converted reusable sequence diagrams from horizontal strips into the shared input column, logo center, and output column layout used by the source-map diagrams |
 | 2026-05-24 | 1.2.28 | Slowed the closed-loop ring and card-highlight animation to an 8.4-second loop-specific cycle while keeping the highlights synchronized with the ring pulse |
+| 2026-05-24 | 1.2.29 | Added public Workflow Notifications and Proactive Help product-feature pages, converted `/integrations` from install alias to Slack/email notification page, and updated route registry, resources, FAQ, updates, LLM context, and docs for the hardened runtime scope |

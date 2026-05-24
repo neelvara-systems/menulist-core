@@ -81,6 +81,7 @@
         mobileVisibility: 'show',
         poweredByVisible: true,
         blockedRoutes: [],
+        predictiveEnabled: false,
     };
     var explicitConfig = {};
     var position = defaultConfig.position;
@@ -99,6 +100,7 @@
     var mobileVisibility = defaultConfig.mobileVisibility;
     var poweredByVisible = defaultConfig.poweredByVisible;
     var blockedRoutes = defaultConfig.blockedRoutes;
+    var predictiveEnabled = defaultConfig.predictiveEnabled;
     var useRemoteConfig = script.getAttribute('data-use-remote-config') !== 'false';
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
@@ -124,6 +126,7 @@
     var predictiveRequestTimer = null;
     var predictiveSuggestionCache = {};
     var predictiveSuggestionCacheTtlMs = 60000;
+    var contextBundleConfig = null;
     var eventListeners = {};
 
     function isValidChoice(value, allowed) {
@@ -277,7 +280,27 @@
         if (isValidChoice(input.mobileVisibility, ['show', 'hide'])) config.mobileVisibility = input.mobileVisibility;
         if (typeof input.poweredByVisible === 'boolean') config.poweredByVisible = input.poweredByVisible;
         if (Array.isArray(input.blockedRoutes)) config.blockedRoutes = normalizeBlockedRoutes(input.blockedRoutes);
+        if (typeof input.predictiveEnabled === 'boolean') config.predictiveEnabled = input.predictiveEnabled;
         return config;
+    }
+
+    function sanitizeBundleConfig(value) {
+        if (!value || typeof value !== 'object') return null;
+        if (value.status !== 'ready' || !Number.isFinite(Number(value.bundleVersion))) return null;
+        var files = value.files && typeof value.files === 'object' ? value.files : {};
+        var safeFiles = {};
+        ['widgetBootstrap', 'contextIndex', 'docsNav', 'canonicalLite'].forEach(function (key) {
+            if (typeof files[key] === 'string' && files[key].indexOf('/api/canonica/bundles/public/') === 0) {
+                safeFiles[key] = files[key];
+            }
+        });
+        return {
+            status: 'ready',
+            bundleVersion: Number(value.bundleVersion),
+            generatedAt: typeof value.generatedAt === 'string' ? value.generatedAt : null,
+            basePath: typeof value.basePath === 'string' && value.basePath.indexOf('/api/canonica/bundles/public/') === 0 ? value.basePath : null,
+            files: safeFiles,
+        };
     }
 
     function applyConfig(config) {
@@ -306,6 +329,7 @@
         mobileVisibility = merged.mobileVisibility;
         poweredByVisible = merged.poweredByVisible;
         blockedRoutes = normalizeBlockedRoutes(merged.blockedRoutes);
+        predictiveEnabled = Boolean(merged.predictiveEnabled);
         s = sizes[size] || sizes.medium;
 
         updateWidgetChrome();
@@ -699,6 +723,7 @@
     };
 
     function requestPredictiveHelp(ctx) {
+        if (!predictiveEnabled) return;
         if (!ctx || !ctx.page || !window.fetch) return;
         if (isCurrentRouteBlocked()) return;
         if (predictiveRequestTimer) window.clearTimeout(predictiveRequestTimer);
@@ -774,17 +799,19 @@
                 window.sessionStorage.removeItem(getRemoteConfigCacheKey());
                 return null;
             }
+            contextBundleConfig = sanitizeBundleConfig(cached.bundle);
             return sanitizeRemoteConfig(cached.config);
         } catch (_) {
             return null;
         }
     }
 
-    function writeCachedRemoteConfig(config, ttlSeconds) {
+    function writeCachedRemoteConfig(config, ttlSeconds, bundle) {
         try {
             if (!window.sessionStorage) return;
             window.sessionStorage.setItem(getRemoteConfigCacheKey(), JSON.stringify({
                 config: config,
+                bundle: sanitizeBundleConfig(bundle),
                 expiresAt: Date.now() + Math.max(10, Math.min(300, ttlSeconds || 60)) * 1000,
             }));
         } catch (_) {}
@@ -825,7 +852,9 @@
         }).then(function (data) {
             if (!data || !data.config) return;
             var remoteConfig = sanitizeRemoteConfig(data.config);
-            writeCachedRemoteConfig(remoteConfig, data.cacheTtlSeconds || remoteConfigCacheTtlMs / 1000);
+            remoteConfig.predictiveEnabled = Boolean(data.capabilities && data.capabilities.predictiveSupport);
+            contextBundleConfig = sanitizeBundleConfig(data.bundles);
+            writeCachedRemoteConfig(remoteConfig, data.cacheTtlSeconds || remoteConfigCacheTtlMs / 1000, contextBundleConfig);
             applyConfig(remoteConfig);
         }).catch(function () {
             // Dashboard config is optional. Script attributes keep the widget usable.

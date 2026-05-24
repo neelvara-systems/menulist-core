@@ -29,6 +29,14 @@ import {
     parseProductSurfaceSaveInput,
 } from '@lib/canonica/productSurfaceContent';
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
+import {
+    initializeCanonicaCompiledContextControlPlaneAdmin,
+    markCanonicaCompiledContextSourceChangedAdmin,
+} from '@lib/canonica/compiledSourceVersionsAdmin';
+import {
+    normalizeCanonicaBusinessDayEndTime,
+    normalizeCanonicaTimeZone,
+} from '@lib/canonica/schedulerSettings';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
 import { admin } from '@lib/firebase/firebaseAdmin';
@@ -61,6 +69,8 @@ const OnboardRequestSchema = z.object({
     supportEmail: OptionalEmailSchema,
     billingModel: BillingModelSchema.optional().default('subscription'),
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).optional().default([]),
+    timeZone: z.string().trim().max(80).optional(),
+    businessDayEndTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
     planId: z.string().trim().max(80).optional().default('canonica_beta'),
     interval: z.enum(['MONTH', 'YEAR']).optional().default('MONTH'),
     currency: z.enum(['INR', 'USD']).optional().default('INR'),
@@ -379,6 +389,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             planId,
             interval,
             currency,
+            timeZone,
+            businessDayEndTime,
         } = validation.data;
 
         // 4. Resolve plan
@@ -401,6 +413,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const storeName = productName || companyName;
         const ownerRole = getOwnerRoleId();
         const launchProfileCreatedAt = admin.firestore.Timestamp.now();
+        const schedulerTimeZone = normalizeCanonicaTimeZone(timeZone);
+        const schedulerBusinessDayEndTime = normalizeCanonicaBusinessDayEndTime(businessDayEndTime);
 
         const result = await db.runTransaction(async (transaction) => {
             // Centralized tenant + store creation
@@ -427,11 +441,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     productUrl: productUrl || '',
                     supportEmail: supportEmail || '',
                     billingModel,
+                    timeZone: schedulerTimeZone,
+                    businessDayEndTime: schedulerBusinessDayEndTime,
                     primarySurfaces: normalizeOnboardingSurfaces(primarySurfaces),
                     canonicaLaunchProfile: {
                         productUrl: productUrl || '',
                         supportEmail: supportEmail || '',
                         billingModel,
+                        timeZone: schedulerTimeZone,
+                        businessDayEndTime: schedulerBusinessDayEndTime,
                         primarySurfaces: normalizeOnboardingSurfaces(primarySurfaces),
                         createdAt: launchProfileCreatedAt,
                     },
@@ -500,8 +518,27 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             sId: result.storeId,
             source: 'client_onboarding',
             hasEntities: false,
+            timeZone: schedulerTimeZone,
+            businessDayEndTime: schedulerBusinessDayEndTime,
         }).catch((summaryError) => {
             secureError('[Canonica Onboard] Tenant summary sync failed', summaryError as Error, {
+                tenantId: result.tenantId,
+                storeId: result.storeId,
+            });
+        });
+
+        await initializeCanonicaCompiledContextControlPlaneAdmin(result.tenantId, result.storeId, {
+            reason: 'client_onboarding',
+            sourceType: 'canonica_workspace',
+        }).then(async () => {
+            if (initialSurfaceCount > 0) {
+                await markCanonicaCompiledContextSourceChangedAdmin('surfaces', result.tenantId, result.storeId, {
+                    reason: 'initial_surfaces_created',
+                    sourceType: 'canonica_product_surfaces',
+                });
+            }
+        }).catch((bundleInitError) => {
+            secureError('[Canonica Onboard] Compiled context control-plane init failed', bundleInitError as Error, {
                 tenantId: result.tenantId,
                 storeId: result.storeId,
             });

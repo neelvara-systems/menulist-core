@@ -1,7 +1,7 @@
 # Predictive Support — Technical Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-10
+> **Version:** 1.1.1
+> **Last Updated:** 2026-05-24
 > **Status:** ✅ IMPLEMENTED — Enabled with guards
 > **Feature Flag:** `ENABLE_CANONICA_PREDICTIVE_SUPPORT`
 
@@ -48,16 +48,21 @@ Predictive Support sits **above** the retrieval layer and **beside** the widget:
 ### 1.2 — Data Flow
 
 ```
+0. Widget config → /api/widget/config
+   Response includes capabilities.predictiveSupport.
+   The public widget does not call predictive help unless active triggers exist.
+
 1. Widget SDK → POST /api/canonica/predictive-help
    Payload: { page, feature, workflow, plan, userRole, entityHints }
 
 2. API Route → predictiveEngine.evaluateTriggers()
-   Loads trigger rules from platformSummary (cached)
+   Loads trigger rules from platformSummary (cached; empty/no-active summaries use a longer 5-minute negative cache)
    Evaluates conditions against context
    Checks cooldown in Upstash Redis
 
-3. predictiveEngine → Canonical Answer / KB Article resolution
-   Fetches answer for matched entity (1 Firestore read)
+3. predictiveEngine → pre-resolved suggestion first
+   Uses trigger.resolvedSuggestion from the summary doc. Canonical-answer reads
+   are fallback only for stale or legacy summary docs.
 
 4. API Route → Returns suggestion payload
    { type, title, summary, articles[], actionType, triggerId }
@@ -217,7 +222,7 @@ metadata: {
 
 **Why platformSummary, not a separate collection?**
 
-- Trigger rules are small (~200 rules max per tenant)
+- Trigger rules are bounded (~500 rules max per tenant)
 - Loaded as a single document (1 read)
 - Cached in-memory by trigger workers
 - Same pattern as `entityGraphIndex_{tId}_{sId}` (proven)
@@ -231,11 +236,15 @@ metadata: {
   lastUpdated: Timestamp;
   version: number;
   triggerCount: number;
+  activeTriggerCount: number;
+  sourceHash: string;
   triggers: Record<string, CanonicaPredictiveTrigger>; // triggerId → trigger
 }
 ```
 
-**Size estimate:** 200 triggers × ~500 bytes = ~100KB (well within Firestore 1MB doc limit)
+Active entity-bound triggers may include `resolvedSuggestion` with title, summary, source answer ID/version, related article IDs, and procedure metadata. This keeps runtime predictive calls to one summary read in the common path.
+
+**Size estimate:** 500 triggers × ~500-900 bytes = ~250-450KB (well within Firestore 1MB doc limit)
 
 ### 3.2 — Individual Trigger Documents (for CRUD)
 
@@ -319,6 +328,9 @@ export async function evaluateTriggers(
   sId: number,
   userId: string,
 ): Promise<CanonicaPredictiveSuggestion | null> {
+  // 0. Public widget only calls this route when /api/widget/config reports
+  // capabilities.predictiveSupport=true for the tenant.
+
   // 1. Load trigger rules (platformSummary doc — 1 read, cached)
   const triggerDoc = await loadTriggerIndex(tId, sId);
   if (!triggerDoc || triggerDoc.triggerCount === 0) return null;
@@ -344,7 +356,9 @@ export async function evaluateTriggers(
     );
     if (cooledDown) continue; // Skip — recently shown
 
-    // 5. Resolve content for this trigger
+    // 5. Resolve content for this trigger.
+    // Common path uses trigger.resolvedSuggestion from the nightly summary.
+    // Canonical-answer lookup is a stale/legacy summary fallback only.
     const suggestion = await resolveSuggestion(trigger, tId, sId);
     if (!suggestion) continue;
 
@@ -438,6 +452,7 @@ async function checkCooldown(
   cooldownHours: number,
 ): Promise<boolean> {
   if (!FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) return false;
+  if (!isRedisConfigured()) return true; // fail closed if cooldown storage is unavailable
   const key = `${COOLDOWN_PREFIX}${userId}:${triggerId}`;
   const exists = await redis.exists(key);
   return exists === 1; // true = on cooldown, skip
@@ -585,7 +600,7 @@ Old widget SDKs without `canon.page()` simply don't call the predictive API. No 
 ## §9 — Governance Rules
 
 1. **Trigger rules are human-governed** — Auto-generated triggers start as `suggested` status. Never auto-activate.
-2. **Maximum 200 triggers per tenant** — Hard cap to prevent explosion.
+2. **Maximum 500 triggers per tenant** — Hard cap to prevent explosion.
 3. **Priority 0-100** — Strictly bounded.
 4. **Cooldown minimum 1 hour** — Prevents annoyance.
 5. **Cooldown maximum 720 hours (30 days)** — Prevents stale triggers from never showing.
@@ -602,9 +617,9 @@ Old widget SDKs without `canon.page()` simply don't call the predictive API. No 
 | Trigger rules doc not found           | Return 204 (no suggestion). Silent.                        |
 | No triggers match context             | Return 204 (no suggestion). Silent.                        |
 | All matching triggers on cooldown     | Return 204 (no suggestion). Silent.                        |
-| Canonical answer not found for entity | Skip trigger, try next. Log warning.                       |
-| Redis unavailable for cooldown        | Skip cooldown check (allow trigger). Graceful degradation. |
-| Trigger doc exceeds 1MB               | Log error. Hard limit of 200 triggers prevents this.       |
+| Canonical answer not found for entity | Use trigger title/summary if present; otherwise skip trigger and try next. |
+| Redis unavailable for cooldown        | Fail closed and skip proactive suggestions to avoid repeated prompts. |
+| Trigger doc exceeds 1MB               | Log error. Hard limit of 500 triggers plus bounded snippets prevents this. |
 | API route error                       | Return 204. Never block product. Never throw to widget.    |
 | Nightly batch fails                   | Triggers remain unchanged. No operational risk.            |
 
@@ -617,7 +632,7 @@ Old widget SDKs without `canon.page()` simply don't call the predictive API. No 
 | Trigger rule loading   | <20ms     | ~5ms (single doc read, cached) |
 | Condition evaluation   | <5ms      | ~1ms (simple string matching)  |
 | Cooldown check         | <10ms     | ~3ms (Upstash Redis)           |
-| Answer resolution      | <30ms     | ~20ms (1 Firestore read)       |
+| Answer resolution      | <30ms     | ~0ms common path via `resolvedSuggestion`; 1 Firestore read only for stale/legacy summaries |
 | **Total API response** | **<50ms** | **~30ms**                      |
 
 ---
@@ -684,14 +699,24 @@ ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
 
 **Rationale:** Simplicity. Zendesk supports OR/nested but it creates complex UX and error-prone rules. AND-only covers 95% of use cases. If OR is needed later, create two separate triggers (same result, simpler model).
 
-### ADR-6: Maximum 200 Triggers Per Tenant
+### ADR-6: Maximum 500 Triggers Per Tenant
 
-**Decision:** Hard cap at 200 triggers per tenant.
+**Decision:** Hard cap at 500 triggers per tenant.
 
-**Rationale:** 200 triggers × ~500 bytes = ~100KB. Well within Firestore 1MB doc limit. Prevents abuse. Most tenants will have 10-50 triggers. If a tenant genuinely needs 200+, their product has larger UX problems.
+**Rationale:** 500 triggers with pre-resolved snippets remains within Firestore's 1MB document limit for the intended trigger shape. Most tenants will have 10-50 active triggers. The cap prevents runaway widget/runtime cost while keeping room for larger products.
 
 ### ADR-7: Auto-Generated Triggers Require Approval
 
 **Decision:** Auto-generated triggers start as `suggested` status. Never auto-activate.
 
 **Rationale:** Canonica doctrine: "Signals propose mutations. Humans approve." Same principle applies to trigger rules. Auto-activation could cause annoying/incorrect proactive help.
+
+---
+
+## Version History
+
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-05-24 | 1.1.1 | Added longer negative cache for empty/no-active trigger summaries. |
+| 2026-05-24 | 1.1.0 | Added widget capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed behavior. |
+| 2026-03-10 | 1.0.0 | Initial implementation blueprint. |

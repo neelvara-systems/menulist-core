@@ -7,6 +7,7 @@ import {
     CanonicaCacheSource,
     getCanonicaCacheVersionDocId,
 } from './cacheVersionManifest';
+import { markCanonicaCompiledContextSourceChanged } from './compiledSourceVersionsClient';
 
 type CacheVersionBumpMetadata = {
     reason?: string;
@@ -59,4 +60,6 @@ export const bumpCanonicaCacheVersion = async (
         },
         { merge: true },
     );
+
+    await markCanonicaCompiledContextSourceChanged(source, tenantId, storeId, metadata);
 };

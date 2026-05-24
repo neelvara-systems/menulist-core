@@ -3,7 +3,8 @@ import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { revalidateCanonicaPublicClientCache } from '@lib/cache/canonicaPublicClientCache';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { canonicaFirebaseClient, canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
+import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChangelogPage } from '@type/changelog';
 import { UserUploadedFileType } from '@type/common';
@@ -48,7 +49,9 @@ const uploadImage = async (data: UserUploadedFileType, type = 'files') => {
 
         // Upload to Firebase Storage
         uploadedUrl = await uploadBase64ToStorage({
+            cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
             fileId: docId,
+            storage: canonicaStorage,
             url: data.url,
             path,
             type: data.type

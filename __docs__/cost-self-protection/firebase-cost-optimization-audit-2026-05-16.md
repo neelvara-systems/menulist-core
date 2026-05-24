@@ -163,6 +163,11 @@ Scope: validated ChatGPT Firebase/GCP cost suggestions against the live MenuList
 | OBP fallback image cache metadata | `src/database/stores/uploadOBPPhoto.ts` | Adds long-lived immutable cache metadata to non-prepared OBP photo/cover fallback uploads. | Fallback OBP paths use timestamped file IDs and are stored as public image URLs. |
 | MenuList Function max-instance guards | `functions/src/config/secrets.ts`, `functions/src/decisionBlocksScoring.ts`, manual aggregation/scheduler/operations functions | Caps expensive AI, scheduler, webhook, and manual-recovery function scaling to prevent runaway concurrency while preserving existing memory/timeout choices. | No memory reductions were applied; AI functions keep their existing 2GiB and long timeout settings. |
 | Canonica Function region pinning | `functions-canonica/src/index.ts` | Pins Canonica Functions to `us-central1` explicitly instead of relying on defaults. | Existing max-instance limits remain unchanged; no Canonica data model or retrieval behavior changes. |
+| Shared Storage cache-control constants | `src/lib/storage/cacheControl.ts` | Centralizes public/private immutable Storage cache metadata so future upload paths do not re-invent headers. | Constants are only applied by callers whose path semantics are known. |
+| Base64 upload cache metadata + product storage override | `src/database/storage/uploadBase64ToStorage.ts` | Allows safe callers to attach Cache-Control metadata and route separated Canonica uploads to Canonica Storage. | Existing callers keep the old default unless they opt in. |
+| Public versioned asset cache metadata | `src/database/pwa/index.ts`, `src/database/static/static.ts`, `src/database/changelog/index.ts` | Adds long-lived public immutable caching to PWA icon overrides, static asset previews, and public Canonica changelog assets. | These paths use timestamp/unique IDs, so changed content writes a new object path. |
+| Private versioned upload cache metadata | `src/app/api/public/create-menu/route.ts`, `src/components/templates/platform/KBGeneration/UploadModal.tsx`, `src/database/tickets/index.ts`, `src/database/chatSessions/index.ts` | Adds browser-side immutable caching for draft/source/support/chat uploads without allowing shared CDN caching. | These are internal or owner-scoped assets, so `private` avoids widening cache visibility. |
+| Canonica Storage delete alignment | `src/database/storage/deleteFromStorage.ts`, `src/database/kb-generation/jobs.ts`, `src/database/tickets/index.ts` | Lets Canonica cleanup delete files from Canonica Storage when Canonica runs in separated Firebase mode. | MenuList callers keep the default Storage instance. |
 
 ### Rejected From This Pass
 
@@ -170,6 +175,8 @@ Scope: validated ChatGPT Firebase/GCP cost suggestions against the live MenuList
 - No blanket `.limit()` changes on list screens; pagination/UX changes need per-surface decisions.
 - No published immutable snapshot rewrite; that remains a separate architecture decision touching routing, publish, OBP, multi-outlet, SEO, and cache invalidation.
 - No dependency upgrades despite Firebase CLI warnings about `firebase-functions`; dependency freeze remains in force.
+- No immutable cache metadata on fixed-path logo/profile/font/template uploads because those paths can be overwritten and would risk stale assets.
+- No immutable cache metadata on legacy project/notes fallback uploads where the file ID can be reused by the same logical record.
 
 ### Verification And Deployment
 
@@ -180,3 +187,5 @@ Scope: validated ChatGPT Firebase/GCP cost suggestions against the live MenuList
 - MenuList Functions deployed to `ecomsai` with affected function filters.
 - Canonica deploy to project `canonica` failed with Cloud Resource Manager `403`; accessible configured target is `canonica-qa`.
 - Canonica Functions codebase deployed to `canonica-qa` with `firebase deploy --only functions:canonica --project canonica-qa --config firebase-canonica.json`.
+- Additional repo-wide Storage cache pass verified with `git diff --check` and `npx tsc --noEmit --incremental false`.
+- Additional Function audit found no remaining exported MenuList or Canonica Function gap requiring code changes; no Firebase Functions deploy was required for the Storage metadata pass.

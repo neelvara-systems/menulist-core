@@ -15,6 +15,7 @@ import {
     sanitizeWidgetRuntimeTelemetry,
     shouldUpdateWidgetRuntimeStatus,
 } from '@lib/canonica/widgetRuntimeStatus';
+import { getCanonicaBundleManifestDocId } from '@lib/canonica/compiledContext';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import {
     CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
@@ -89,6 +90,64 @@ const rememberRuntimeConfig = (
         etag,
         expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
     });
+};
+
+const hasActivePredictiveTriggers = async (
+    db: any,
+    tId: number,
+    sId: number,
+): Promise<boolean> => {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT) return false;
+    const snap = await db
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(`predictiveTriggers_${tId}_${sId}`)
+        .get();
+    if (!snap.exists) return false;
+    const data = snap.data() || {};
+    if (Number(data.activeTriggerCount || 0) > 0) return true;
+    if (data.activeTriggerCount === undefined && data.triggers && typeof data.triggers === 'object') {
+        return Object.values(data.triggers).some((trigger: any) => trigger?.status === 'active');
+    }
+    return false;
+};
+
+const toIsoTimestamp = (value: any): string | null => {
+    if (!value) return null;
+    if (typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const getReadyPublicBundleConfig = async (
+    db: any,
+    tId: number,
+    sId: number,
+) => {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_CANONICA_WIDGET_BUNDLE_BOOTSTRAP) {
+        return null;
+    }
+    const snap = await db
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getCanonicaBundleManifestDocId(tId, sId))
+        .get();
+    if (!snap.exists) return null;
+    const manifest = snap.data() || {};
+    if (manifest.status !== 'ready' || !manifest.publicBundleId || !manifest.activeVersion) return null;
+    const basePath = `/api/canonica/bundles/public/${manifest.publicBundleId}/v${manifest.activeVersion}`;
+    return {
+        status: manifest.status,
+        bundleVersion: Number(manifest.activeVersion || manifest.bundleVersion || 0),
+        generatedAt: toIsoTimestamp(manifest.generatedAt),
+        basePath,
+        files: {
+            widgetBootstrap: `${basePath}/widget-bootstrap.json`,
+            contextIndex: `${basePath}/context-index.json`,
+            docsNav: `${basePath}/docs-nav.json`,
+            canonicalLite: `${basePath}/canonical-lite.json`,
+        },
+        stats: manifest.stats || {},
+    };
 };
 
 export function OPTIONS(request: NextRequest) {
@@ -192,11 +251,20 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        const [predictiveSupport, bundleConfig] = await Promise.all([
+            hasActivePredictiveTriggers(db, tId, sId).catch(() => false),
+            getReadyPublicBundleConfig(db, tId, sId).catch(() => null),
+        ]);
         const body = {
             schemaVersion: CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
             cacheTtlSeconds: CANONICA_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
             configVersion: Number(storeData.widgetConfigVersion || 0),
             config: normalizeWidgetConfig(storeData.widgetConfig),
+            capabilities: {
+                predictiveSupport,
+                contextBundles: Boolean(bundleConfig),
+            },
+            bundles: bundleConfig,
         };
         const etag = generateETag(body);
 

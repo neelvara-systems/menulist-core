@@ -4,7 +4,7 @@ import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { bumpCanonicaCacheVersion } from "@lib/canonica/cacheVersionClient";
 import { CANONICA_CACHE_SOURCES } from "@lib/canonica/cacheVersionManifest";
-import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
+import { canonicaFirebaseClient, canonicaStorage } from "@lib/firebase/canonicaFirebaseClient";
 import { triggerStartGeneration } from "@lib/firebase/functions";
 import { INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
 import { getKnowledgeBaseCategoriesDocId } from "@database/knowledgeBase/categories";
@@ -137,7 +137,7 @@ export const deleteIngestionJob = async (jobId: string) => {
 
             // 4. Delete associated files from storage after the transaction
             if (jobData.sourceFiles && jobData.sourceFiles.length > 0) {
-                const deletePromises = jobData.sourceFiles.map(file => deleteFileByUrl(file.downloadURL));
+                const deletePromises = jobData.sourceFiles.map(file => deleteFileByUrl(file.downloadURL, canonicaStorage));
                 await Promise.all(deletePromises);
             }
 

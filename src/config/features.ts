@@ -2117,6 +2117,71 @@ export const FEATURE_FLAGS = {
     ENABLE_CANONICA_INSTANT_CACHE: true,
 
     /**
+     * Canonica Compiled Context Bundles
+     *
+     * true: Approved Canonica context is compiled into immutable Firebase
+     *       Storage JSON bundles and served through manifest/cache-first
+     *       runtime paths for widget, public API, and MCP.
+     * false: Runtime paths keep existing Firestore-backed behavior.
+     *
+     * Cost model: source-change-driven rebuilds only. Runtime reads use
+     * platformSummary manifest + Storage/server cache instead of collection
+     * fanout. Storage downloads are versioned and cacheable.
+     *
+     * @see __docs__/canonica/compiled-context-distribution/
+     */
+    ENABLE_CANONICA_CONTEXT_BUNDLES: true,
+
+    /**
+     * Canonica Context Bundle Builder
+     *
+     * true: Authenticated owners/admins can rebuild compiled context from the
+     *       Activation Command Center; nightly can repair stale manifests.
+     * false: Source-version and manifest read paths stay visible, but rebuild
+     *        actions are disabled.
+     *
+     * Requires: ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     */
+    ENABLE_CANONICA_BUNDLE_BUILDER: true,
+
+    /**
+     * Canonica Widget Bundle Bootstrap
+     *
+     * true: Widget config response includes active public bundle version and
+     *       proxy paths when a ready manifest exists.
+     * false: Widget config returns only the legacy remote config payload.
+     *
+     * Requires: ENABLE_CANONICA_WIDGET + ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     */
+    ENABLE_CANONICA_WIDGET_BUNDLE_BOOTSTRAP: true,
+
+    /**
+     * Canonica Public API Bundle Reads
+     *
+     * true: Public read endpoints prefer compiled approved bundles and fall
+     *       back to bounded Firestore reads if the bundle is missing.
+     * false: Public API reads use the existing Firestore read path.
+     *
+     * Requires: ENABLE_CANONICA_PUBLIC_API + ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     */
+    ENABLE_CANONICA_PUBLIC_API_BUNDLE_READS: true,
+
+    /**
+     * Canonica MCP
+     *
+     * true: Enables session-token auth and read-only JSON-RPC MCP tools backed
+     *       by private compiled context bundles.
+     * false: MCP endpoints return disabled responses.
+     *
+     * Keep disabled by default until selected design-partner rollout. MCP can
+     * multiply context reads quickly, so this must never query raw Firestore
+     * collections per tool call.
+     *
+     * Requires: ENABLE_CANONICA_CONTEXT_BUNDLES = true
+     */
+    ENABLE_CANONICA_MCP: false,
+
+    /**
      * Canonica Automatic Knowledge Creation (AI Draft Generation)
      *
      * true: When new_answer_required mutation proposals are created (nightly batch

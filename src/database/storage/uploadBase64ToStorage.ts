@@ -10,7 +10,7 @@
  */
 
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
-import { getDownloadURL, ref, uploadString, UploadMetadata } from "firebase/storage";
+import { getDownloadURL, ref, uploadString, type FirebaseStorage, type UploadMetadata } from "firebase/storage";
 
 /**
  * Supported file types for upload
@@ -27,7 +27,9 @@ type SupportedFileType =
     | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "text/plain";
 
 interface UploadFileData {
+    cacheControl?: string;      // Optional Cache-Control metadata for versioned/immutable paths
     fileId: string;              // Unique identifier for the file
+    storage?: FirebaseStorage | null; // Optional Firebase Storage instance for separated products
     url: string;                 // Base64 encoded data URL or base64 string
     path: string;                // Storage path (without extension)
     type?: SupportedFileType;    // File type/MIME type (images or documents)
@@ -173,6 +175,7 @@ const uploadBase64ToStorage = async (fileData: UploadFileData): Promise<string> 
         
         // Create upload metadata
         const metadata: UploadMetadata = {
+            ...(fileData.cacheControl ? { cacheControl: fileData.cacheControl } : {}),
             contentType: typeConfig.contentType,
             customMetadata: {
                 fileId: fileData.fileId,
@@ -181,7 +184,7 @@ const uploadBase64ToStorage = async (fileData: UploadFileData): Promise<string> 
         };
 
         // Create storage reference
-        const storageRef = ref(firebaseStorage, fileName);
+        const storageRef = ref(fileData.storage || firebaseStorage, fileName);
         
         // Upload the file
         await uploadString(

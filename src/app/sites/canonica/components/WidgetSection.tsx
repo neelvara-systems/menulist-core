@@ -43,6 +43,16 @@ const WIDGET_STATES = [
         ] as Array<[string, string]>,
     },
     {
+        status: 'configured',
+        title: 'Show proactive help carefully',
+        detail: 'Configured prompts can appear only when active triggers and approved support summaries exist.',
+        tone: 'neutral' as const,
+        rows: [
+            ['trigger', 'active only'],
+            ['prompt', 'approved summary'],
+        ] as Array<[string, string]>,
+    },
+    {
         status: 'review',
         title: 'Review support gaps',
         detail: 'Fallbacks, tickets, safe debugging context, and negative feedback become review work.',
@@ -73,7 +83,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         Put help inside the screen where users are stuck.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Users ask from inside your app. Canonica reads safe page hints, finds approved answers and related docs, and opens ticket fallback only when coverage is missing.
+                        Users ask from inside your app. Canonica reads safe page hints, finds approved answers and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing.
                     </p>
                     <CanonicaLink
                         basePath={basePath}
@@ -100,10 +110,10 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                                 <div className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-5">
                                     <h3 className="text-2xl font-bold">Need help with this invoice?</h3>
                                     <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                        The widget opens inside the client product, detects safe billing context, and prefers approved invoice answers before fallback.
+                                        The widget opens inside the client product, detects safe billing context, and prefers approved invoice answers or configured prompts before fallback.
                                     </p>
-                                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                        {['Canonical answer', 'Related FAQ', 'Release note', 'Ticket fallback'].map((label) => (
+                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                        {['Canonical answer', 'Related FAQ', 'Proactive prompt', 'Ticket fallback'].map((label) => (
                                             <span key={label} className="rounded-xl border border-white/[0.08] bg-[#0f0f23] px-4 py-3 text-sm font-semibold text-[#d6d6ef]">
                                                 {label}
                                             </span>

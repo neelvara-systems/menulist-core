@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import { FEATURE_FLAGS } from '@config/features';
+import {
+    getCanonicaContextBundleManifestServer,
+    loadCanonicaBundleObjectServer,
+} from '@lib/canonica/contextBundleBuilderServer';
 import { CANONICA_PUBLIC_API_SCHEMA_VERSION, authenticateCanonicaPublicApi, toIsoTimestamp } from '@lib/canonica/publicApi';
 import { apiError, generateETag } from '@lib/publicApi/auth';
 import { secureError } from '@lib/security/secureLogger';
@@ -28,6 +33,40 @@ function getCanonicaAdminDb() {
     return canonicaFirestoreAdmin;
 }
 
+async function loadBundledEntities(params: {
+    tId: number;
+    sId: number;
+    type?: string;
+    status?: string;
+    limit: number;
+}) {
+    if (!FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_CANONICA_PUBLIC_API_BUNDLE_READS) {
+        return null;
+    }
+    const manifest = await getCanonicaContextBundleManifestServer(params.tId, params.sId).catch(() => null);
+    if (!manifest || manifest.status !== 'ready') return null;
+    const ref = manifest.bundles?.['private:mcp/entity-index.json'];
+    if (!ref?.path) return null;
+    const bundle = await loadCanonicaBundleObjectServer<{ entities?: any[] }>(ref.path).catch(() => null);
+    if (!bundle || !Array.isArray(bundle.entities)) return null;
+
+    const visibleStatuses = params.status ? new Set([params.status]) : new Set(['active', 'beta']);
+    return bundle.entities
+        .filter((entity) => (!params.type || entity.type === params.type) && visibleStatuses.has(entity.status))
+        .slice(0, params.limit)
+        .map((entity) => ({
+            id: entity.id,
+            type: entity.type,
+            name: entity.name,
+            slug: entity.slug,
+            description: entity.description || '',
+            status: entity.status,
+            aliases: Array.isArray(entity.aliases) ? entity.aliases.slice(0, 20) : [],
+            currentVersion: entity.currentVersion ?? null,
+            modifiedOn: entity.modifiedOn || null,
+        }));
+}
+
 export async function GET(request: NextRequest) {
     const auth = await authenticateCanonicaPublicApi(request, 'GET /api/canonica/public/v1/entities');
     if (auth.ok === false) return auth.response;
@@ -40,35 +79,45 @@ export async function GET(request: NextRequest) {
         }
 
         const { type, status, limit } = validation.data;
-        const snapshot = await getCanonicaAdminDb()
-            .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
-            .where('tId', '==', auth.context.tId)
-            .where('sId', '==', auth.context.sId)
-            .limit(Math.min(limit * 2, 200))
-            .get();
+        const bundledEntities = await loadBundledEntities({
+            tId: auth.context.tId,
+            sId: auth.context.sId,
+            type,
+            status,
+            limit,
+        });
+        const resolvedEntities = bundledEntities || (await (async () => {
+            const snapshot = await getCanonicaAdminDb()
+                .collection(DB_COLLECTIONS.CANONICA_ENTITIES)
+                .where('tId', '==', auth.context.tId)
+                .where('sId', '==', auth.context.sId)
+                .limit(Math.min(limit * 2, 200))
+                .get();
 
-        const visibleStatuses = status ? new Set([status]) : new Set(['active', 'beta']);
-        const entities = snapshot.docs
-            .map((doc) => ({ ...doc.data(), id: doc.id } as any))
-            .filter((entity) => (!type || entity.type === type) && visibleStatuses.has(entity.status))
-            .slice(0, limit)
-            .map((entity) => ({
-                id: entity.id,
-                type: entity.type,
-                name: entity.name,
-                slug: entity.slug,
-                description: entity.description || '',
-                status: entity.status,
-                aliases: Array.isArray(entity.aliases) ? entity.aliases.slice(0, 20) : [],
-                currentVersion: entity.currentVersion ?? null,
-                modifiedOn: toIsoTimestamp(entity.modifiedOn),
-            }));
+            const visibleStatuses = status ? new Set([status]) : new Set(['active', 'beta']);
+            return snapshot.docs
+                .map((doc) => ({ ...doc.data(), id: doc.id } as any))
+                .filter((entity) => (!type || entity.type === type) && visibleStatuses.has(entity.status))
+                .slice(0, limit)
+                .map((entity) => ({
+                    id: entity.id,
+                    type: entity.type,
+                    name: entity.name,
+                    slug: entity.slug,
+                    description: entity.description || '',
+                    status: entity.status,
+                    aliases: Array.isArray(entity.aliases) ? entity.aliases.slice(0, 20) : [],
+                    currentVersion: entity.currentVersion ?? null,
+                    modifiedOn: toIsoTimestamp(entity.modifiedOn),
+                }));
+        })());
 
         const response = {
             schemaVersion: CANONICA_PUBLIC_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
-            count: entities.length,
-            entities,
+            source: bundledEntities ? 'compiled_bundle' : 'firestore_fallback',
+            count: resolvedEntities.length,
+            entities: resolvedEntities,
         };
         const etag = `"${generateETag(response)}"`;
 

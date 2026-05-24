@@ -31,6 +31,7 @@ import {
     LuHelpCircle,
     LuCircle,
     LuCode,
+    LuDatabase,
     LuExternalLink,
     LuLayers,
     LuMail,
@@ -99,6 +100,7 @@ export default function CanonicaActivationCommandCenter() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [testingNotification, setTestingNotification] = useState(false);
+    const [rebuildingContext, setRebuildingContext] = useState(false);
 
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
@@ -181,6 +183,29 @@ export default function CanonicaActivationCommandCenter() {
         }
     }, [loadSummary]);
 
+    const rebuildCompiledContext = useCallback(async () => {
+        setRebuildingContext(true);
+        try {
+            const response = await fetch('/api/canonica/bundles/rebuild', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'activation_manual_rebuild', force: true }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to rebuild compiled context');
+            }
+            message.success(data.manifest?.status === 'ready'
+                ? `Compiled context v${data.manifest.bundleVersion} is ready`
+                : 'Compiled context rebuild finished');
+            await loadSummary(true);
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to rebuild compiled context');
+        } finally {
+            setRebuildingContext(false);
+        }
+    }, [loadSummary]);
+
     if (loading) {
         return <Skeleton active paragraph={{ rows: 10 }} />;
     }
@@ -196,6 +221,16 @@ export default function CanonicaActivationCommandCenter() {
             />
         );
     }
+
+    const bundleStatus = summary.compiledContext?.status || 'empty';
+    const bundleStatusColor: Record<string, string> = {
+        ready: 'success',
+        stale: 'warning',
+        building: 'processing',
+        failed: 'error',
+        superseded: 'warning',
+        empty: 'default',
+    };
 
     return (
         <Flex vertical gap={isMobile ? 14 : 20} style={{ paddingBottom: isMobile ? 80 : 0 }}>
@@ -380,6 +415,39 @@ export default function CanonicaActivationCommandCenter() {
                                         <Text code style={{ whiteSpace: 'normal', textAlign: 'right' }}>{summary.widget.runtimeStatus.lastPath}</Text>
                                     </Flex>
                                 )}
+                            </Space>
+                        </Card>
+                        <Card title="Compiled Context">
+                            <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Status</Text>
+                                    <Tag color={bundleStatusColor[bundleStatus] || 'default'}>
+                                        {bundleStatus}
+                                    </Tag>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Version</Text>
+                                    <Text>{summary.compiledContext?.activeVersion || summary.compiledContext?.bundleVersion || 0}</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Context size</Text>
+                                    <Text>{Math.round((summary.compiledContext?.stats?.bytesTotal || 0) / 1024)} KB</Text>
+                                </Flex>
+                                <Flex justify="space-between" gap={12}>
+                                    <Text type="secondary">Routes</Text>
+                                    <Text>{summary.compiledContext?.stats?.routes || 0}</Text>
+                                </Flex>
+                                {summary.compiledContext?.lastBuildError && (
+                                    <Text type="danger">{summary.compiledContext.lastBuildError}</Text>
+                                )}
+                                <Button
+                                    block
+                                    icon={<LuDatabase />}
+                                    loading={rebuildingContext}
+                                    onClick={rebuildCompiledContext}
+                                >
+                                    Rebuild Context
+                                </Button>
                             </Space>
                         </Card>
                         <Card title="Ticket Notifications">

@@ -139,6 +139,13 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         changeFrequency: 'monthly',
     },
     {
+        path: '/integrations',
+        title: 'Integrations | Canonica',
+        description: 'Slack and email workflow notifications for Canonica support governance: digest-first alerts, test delivery, compact health, and bounded delivery.',
+        priority: 0.8,
+        changeFrequency: 'monthly',
+    },
+    {
         path: '/resources',
         title: 'Resources | Canonica',
         description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, pricing, safety, and setup.',

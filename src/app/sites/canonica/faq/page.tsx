@@ -99,6 +99,14 @@ const FAQS = [
         answer: 'Yes. Canonica can complement ticket tools as the governed support-knowledge layer, but public website copy does not promise broad helpdesk integrations while those paths are rollout-gated.',
     },
     {
+        question: 'Can Canonica notify my team in Slack or email?',
+        answer: 'Yes. Canonica supports Slack and email workflow notifications for governance events such as digest summaries, coverage drops, repeated answer failures, and test delivery. Broader adapter integrations should stay controlled rollout until they are safe for every workspace.',
+    },
+    {
+        question: 'Will proactive help interrupt users everywhere?',
+        answer: 'No. Proactive help is configured and page-aware. The widget should only request or show configured prompts when the workspace has active triggers and approved support summaries for that page context.',
+    },
+    {
         question: 'What happens when a product release changes an answer?',
         answer: 'Changelogs can be tied to product surfaces and affected answers. Drift and release-impact checks then show which support content needs review.',
     },

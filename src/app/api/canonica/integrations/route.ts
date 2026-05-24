@@ -65,9 +65,7 @@ const IntegrationsSaveSchema = z.object({
 });
 
 const DEFAULT_EVENT_FILTERS: IntegrationEventType[] = [
-    'drift_detected',
-    'mutation_proposed',
-    'knowledge_gap_detected',
+    'nightly_summary',
     'coverage_drop',
     'ai_failure_recurring',
 ];
@@ -105,7 +103,34 @@ const normalizeRecipientList = (value: unknown): string[] => {
     )).slice(0, 5);
 };
 
-const buildSafeResponse = (data: Record<string, any> = {}) => ({
+const toIso = (value: any): string | null => {
+    if (!value) return null;
+    if (typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (typeof value === 'string') return value;
+    return null;
+};
+
+const buildSafeHealth = (data: Record<string, any> = {}) => {
+    const adapters = data.adapters || {};
+    return {
+        slack: {
+            lastStatus: typeof adapters.slack?.lastStatus === 'string' ? adapters.slack.lastStatus : null,
+            lastAttemptAt: toIso(adapters.slack?.lastAttemptAt),
+            lastSuccessAt: toIso(adapters.slack?.lastSuccessAt),
+            lastFailureAt: toIso(adapters.slack?.lastFailureAt),
+            lastError: typeof adapters.slack?.lastError === 'string' ? adapters.slack.lastError : null,
+        },
+        email: {
+            lastStatus: typeof adapters.email?.lastStatus === 'string' ? adapters.email.lastStatus : null,
+            lastAttemptAt: toIso(adapters.email?.lastAttemptAt),
+            lastSuccessAt: toIso(adapters.email?.lastSuccessAt),
+            lastFailureAt: toIso(adapters.email?.lastFailureAt),
+            lastError: typeof adapters.email?.lastError === 'string' ? adapters.email.lastError : null,
+        },
+    };
+};
+
+const buildSafeResponse = (data: Record<string, any> = {}, health: Record<string, any> = {}) => ({
     slack: {
         enabled: Boolean(data.slack?.enabled && data.slack?.webhookUrl),
         webhookConfigured: Boolean(data.slack?.webhookUrl),
@@ -119,6 +144,7 @@ const buildSafeResponse = (data: Record<string, any> = {}) => ({
     },
     eventTypes: INTEGRATION_EVENT_TYPES,
     defaultEventFilters: DEFAULT_EVENT_FILTERS,
+    health: buildSafeHealth(health),
 });
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
@@ -132,8 +158,14 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!db) return NextResponse.json({ error: 'Canonica Firebase is not configured' }, { status: 503 });
 
     try {
-        const snap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId)).get();
-        return NextResponse.json(buildSafeResponse(snap.exists ? snap.data() || {} : {}));
+        const [configSnap, healthSnap] = await Promise.all([
+            db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(configDocId(scope.tenantId, scope.storeId)).get(),
+            db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`integrationHealth_${scope.tenantId}_${scope.storeId}`).get(),
+        ]);
+        return NextResponse.json(buildSafeResponse(
+            configSnap.exists ? configSnap.data() || {} : {},
+            healthSnap.exists ? healthSnap.data() || {} : {},
+        ));
     } catch (error) {
         secureError('[Canonica Integrations] Failed to load settings', error as Error, {
             tenantId: scope.tenantId,

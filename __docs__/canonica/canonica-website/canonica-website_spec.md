@@ -1,6 +1,6 @@
 # Canonica Website — Spec
 
-> **Version:** 1.2.12
+> **Version:** 1.2.13
 > **Last Updated:** 2026-05-24
 > **Audience:** CEO / PM / Marketing
 
@@ -39,7 +39,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 6. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage
 7. **Best Fit / Not Fit** — Decision tiles that qualify solo founders and small SaaS teams while rejecting helpdesk replacement and auto-publish expectations
 8. **Setup Funnel** — Animated sequence for adding product, picking 2-5 stuck pages, importing docs/FAQs/changelogs, installing the widget, and reviewing first approved answers
-9. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, and support-gap review
+9. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, configured proactive prompts, and support-gap review
 10. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, owner-approval, and workspace-scope controls
 11. **Canonica Engine** — Animated sequence for product structure, approved answers, stale-answer review, and repeated-question queue
 12. **Product System** — Animated hub diagram for Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
@@ -75,6 +75,16 @@ Product-area subpages:
 - `/product/knowledge-governance`
 
 Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, large browser-style product canvas, bento benefit grid, animated workflow sequence, and CTA. These pages stay static and may only claim implemented Canonica behavior.
+
+Product-feature subpages:
+- `/product/knowledge-base`
+- `/product/faq-management`
+- `/product/changelog`
+- `/product/tickets`
+- `/product/workflow-notifications`
+- `/product/proactive-help`
+
+Feature pages must use buyer-facing wording and avoid overclaiming. Workflow Notifications can claim Slack/email self-service setup, event filters, send-test delivery, compact health, digest-first behavior, critical alerts, and bounded delivery. Proactive Help can claim configured page-aware prompts tied to active triggers and approved support summaries, but must not imply always-on autonomous widget behavior.
 
 ### 3. Use Cases (`/use-cases`)
 **Goal:** Help small SaaS operators recognize when Canonica is useful.
@@ -135,6 +145,20 @@ Rules:
 - Runtime verification mock: key, origin, blocked route, context marker, hosted help
 - Animated install flow and owner-control hub diagram
 - Owner dashboard controls
+- Configured proactive help should be referenced only as owner-controlled and capability-gated.
+
+### 4A. Integrations (`/integrations`)
+**Goal:** Explain the production-ready workflow notification path without turning Canonica into a broad integration marketplace.
+
+**Sections:**
+- Slack alerts
+- Email recipients
+- Digest-first delivery
+- Critical coverage / repeated answer-failure alerts
+- Send-test notification
+- Compact delivery health
+- Bounded delivery through rate caps and retention
+- Controlled rollout guardrail for broader workflow adapters
 
 ### 5. Resources (`/resources`)
 **Goal:** Give buyers and new users a website-side learning hub.
@@ -146,6 +170,8 @@ Rules:
 - Widget install guide
 - Knowledge governance guide
 - Product surface guide
+- Workflow notification guide
+- Proactive help guide
 - Cost and cache guide
 - Links into demo, product, pricing, and get-started
 
@@ -213,6 +239,8 @@ Rules:
 - Custom help domains
 - Safe ticket debugging context
 - Article-backed FAQ generation and review
+- Slack/email workflow notifications and adapter boundaries
+- Configured proactive help and widget call gating
 - Release-aware answer review
 - Pricing model
 - Product separation from MenuList
@@ -297,7 +325,7 @@ Tracked events:
 
 ## Market Pattern Check
 
-Comparable support platforms commonly expose product depth, pricing, demo/start actions, install/developer setup, resources, security/trust, and updates. Canonica leads with the implemented widget install path because non-widget delivery paths are rollout-gated, not default buyer-facing package promises. The site also avoids unsupported pages such as a live status page, because there is no implemented status/incident backend yet.
+Comparable support platforms commonly expose product depth, pricing, demo/start actions, install/developer setup, integrations, resources, security/trust, and updates. Canonica now exposes integrations only for the implemented Slack/email workflow notification path. Broader workflow adapters remain controlled rollout, and the site avoids unsupported pages such as a live status page because there is no implemented status/incident backend yet.
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case pages cross-link back into those families. Canonica applies that pattern without adding runtime reads, unimplemented integrations, or unsupported public docs routes.
 

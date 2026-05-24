@@ -6,6 +6,7 @@ import {
     CanonicaCacheSource,
     getCanonicaCacheVersionDocId,
 } from './cacheVersionManifest';
+import { markCanonicaCompiledContextSourceChangedAdmin } from './compiledSourceVersionsAdmin';
 
 type CacheVersionBumpMetadata = {
     reason?: string;
@@ -42,4 +43,6 @@ export const bumpCanonicaCacheVersionAdmin = async (
         .collection(DB_COLLECTIONS.CANONICA_CACHE_VERSIONS)
         .doc(getCanonicaCacheVersionDocId(source, tenantId, storeId))
         .set(data, { merge: true });
+
+    await markCanonicaCompiledContextSourceChangedAdmin(source, tenantId, storeId, metadata);
 };

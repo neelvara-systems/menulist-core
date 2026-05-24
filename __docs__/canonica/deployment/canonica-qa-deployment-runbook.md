@@ -1,6 +1,6 @@
 # Canonica QA Deployment Runbook
 
-> Last updated: 2026-05-21
+> Last updated: 2026-05-24
 > Environment: QA / staging
 > Firebase project: `canonica-qa`
 > Product staging domain: `ecomsai.com`
@@ -28,6 +28,49 @@ Canonica is running as a separate product inside the shared Next.js/Vercel codeb
 | Firebase CLI config | `firebase-canonica.json` |
 
 QA Auth, Firestore, Storage, Functions, Eventarc, Cloud Tasks, Cloud Scheduler, Artifact Registry, Secret Manager, Pub/Sub, Cloud Run, and App Engine are enabled.
+
+## 2026-05-24 Optional Expansion Hardening
+
+Current implementation:
+
+- Workflow integrations are production-scoped to Slack and email self-service setup. Linear/GitHub adapters remain controlled rollout until per-tenant secret handling is self-service safe.
+- Integration events, delivery logs, and delivery rate counters include `expiresAt` and must have Firestore TTL enabled:
+  - `canonica_integrationEvents.expiresAt`
+  - `canonica_integrationDeliveryLogs.expiresAt`
+  - `canonica_integrationRateLimits.expiresAt`
+- The settings API reads compact `platformSummary/integrationHealth_{tId}_{sId}` instead of raw delivery logs.
+- Nightly workflow events are digest-first: at most one nightly summary plus critical coverage / repeated AI failure alerts per active tenant by default.
+- Predictive support is widget-config gated. The widget only calls `/api/canonica/predictive-help` when `capabilities.predictiveSupport` is true.
+- Predictive trigger summaries store resolved suggestion snippets and `sourceHash`; unchanged summaries skip writes.
+- Graph summaries store `sourceHash`; unchanged graph rebuilds skip writes.
+
+Deployment checklist for this pass:
+
+```bash
+npm --prefix functions-canonica run build
+firebase deploy --only functions:canonica --project canonica-qa --config firebase-canonica.json
+firebase deploy --only firestore:indexes --project canonica-qa --config firebase-canonica.json
+```
+
+QA note: the 2026-05-24 Firebase CLI index deploy compiled rules but stopped on an existing `kb_articles` index conflict. Do not use `--force` unless the live index set has been audited, because that can delete indexes that are present in the project but missing from the local file. The TTL fields for this pass were enabled directly with targeted Firestore TTL commands:
+
+```bash
+gcloud firestore fields ttls update expiresAt --collection-group=canonica_integrationEvents --database='(default)' --project=canonica-qa --enable-ttl --async
+gcloud firestore fields ttls update expiresAt --collection-group=canonica_integrationDeliveryLogs --database='(default)' --project=canonica-qa --enable-ttl --async
+gcloud firestore fields ttls update expiresAt --collection-group=canonica_integrationRateLimits --database='(default)' --project=canonica-qa --enable-ttl --async
+```
+
+Verify the TTL state:
+
+```bash
+gcloud firestore fields ttls list --collection-group=canonica_integrationEvents --database='(default)' --project=canonica-qa
+gcloud firestore fields ttls list --collection-group=canonica_integrationDeliveryLogs --database='(default)' --project=canonica-qa
+gcloud firestore fields ttls list --collection-group=canonica_integrationRateLimits --database='(default)' --project=canonica-qa
+```
+
+QA verification after the targeted TTL update showed all three TTL fields in `ACTIVE` state.
+
+Production must repeat the same TTL setup in the production Canonica Firebase project after rules/indexes/functions are deployed there.
 
 ## 2026-05-21 Product-Separation Verification
 
@@ -153,7 +196,7 @@ Firestore rules and indexes:
 
 - `firestore-canonica.rules` deployed to `canonica-qa`.
 - `firestore-canonica.indexes.json` deployed to `canonica-qa`.
-- Current index file has 37 composite indexes and no field overrides.
+- Current index file has composite indexes plus TTL field overrides for Canonica integration events, delivery logs, and delivery rate counters.
 
 Storage rules:
 

@@ -140,6 +140,9 @@ export const DB_COLLECTIONS = {
     CANONICA_ENTITY_SEARCH_INDEX: 'canonica_entitySearchIndex',
     CANONICA_ENTITY_CANDIDATES: 'canonica_entityCandidates',
     CANONICA_SCHEDULER_RUN_LOGS: 'canonica_schedulerRunLogs',
+    CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
+    CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
+    CANONICA_INTEGRATION_RATE_LIMITS: 'canonica_integrationRateLimits',
     CANONICA_FAQS: 'canonica_faqs',
 
     // ═══════════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
 # Canonica — External Workflow Integrations — Implementation
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-09
+> **Version:** 1.1.1
+> **Last Updated:** 2026-05-24
 > **Audience:** Developers
 > **Feature Flag:** `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` (client + CF)
 
@@ -30,11 +30,11 @@
 │              │                                           │
 │    ┌─────────┼─────────┬──────────┐                     │
 │    ▼         ▼         ▼          ▼                     │
-│  Slack    Email     Linear     GitHub                    │
+│  Slack    Email     Linear*    GitHub*                   │
 └─────────────────────────────────────────────────────────┘
 ```
 
-This is an **extension of Pillar 5 (API & Integration Layer)**. It adds outbound event delivery without modifying Pillars 1-4. Zero impact on frozen infrastructure.
+This is an **extension of Pillar 5 (API & Integration Layer)**. It adds outbound event delivery without modifying Pillars 1-4. Owner-facing production setup supports Slack and email. Linear and GitHub adapters exist in the Cloud Functions registry for controlled rollout only until their secret-management UX is completed.
 
 ---
 
@@ -46,15 +46,16 @@ functions-canonica/src/
 ├── integrations/
 │   ├── types.ts                    # Integration event types + adapter interface
 │   ├── eventBus.ts                 # emitIntegrationEvent() — writes to Firestore
-│   ├── eventProcessor.ts           # Cloud Function: onCreate trigger → dispatch
+│   ├── eventProcessor.ts           # Cloud Function: onCreate trigger → dispatch, rate caps, health
 │   ├── configStore.ts              # Read integration config for tenant
+│   ├── rateLimiter.ts              # Persistent compact adapter/email delivery counters
 │   ├── adapters/
 │   │   ├── IAdapter.ts             # Adapter interface (send + formatPayload)
 │   │   ├── slackAdapter.ts         # Slack Incoming Webhook adapter
 │   │   ├── emailAdapter.ts         # SMTP adapter (reuses nodemailer)
 │   │   ├── linearAdapter.ts        # Linear GraphQL API adapter
 │   │   └── githubAdapter.ts        # GitHub REST API adapter
-│   └── deliveryLogger.ts           # Log delivery attempts + retry logic
+│   └── deliveryLogger.ts           # TTL delivery logs + compact health summary
 ├── constants/
 │   ├── database.ts                 # + CANONICA_INTEGRATION_EVENTS, CANONICA_INTEGRATION_DELIVERY_LOGS
 │   └── features.ts                 # + ENABLE_CANONICA_WORKFLOW_INTEGRATIONS
@@ -64,9 +65,10 @@ functions-canonica/src/
 src/
 ├── types/canonica/index.ts         # + CanonicaIntegrationEvent, CanonicaIntegrationConfig types
 ├── database/canonica/
-│   └── integrations.ts             # DAL for integration config CRUD
+├── app/api/canonica/integrations/route.ts          # Slack/email settings API
+├── app/api/canonica/integrations/test/route.ts     # Queues one controlled test event
 ├── components/templates/canonica/
-│   └── IntegrationSettings.tsx     # Settings UI (enable/disable, config, test)
+│   └── CanonicaSettings.tsx        # Settings UI (enable/disable, config, health, test)
 └── config/features.ts              # + ENABLE_CANONICA_WORKFLOW_INTEGRATIONS
 ```
 
@@ -83,6 +85,7 @@ src/
 | Field | Type | Description |
 |-------|------|-------------|
 | `eventId` | string | Auto-generated doc ID |
+| `pId` | string | Always `CN` |
 | `eventType` | string | One of 7 event types (see §4) |
 | `tId` | number | Tenant ID |
 | `sId` | number | Store ID |
@@ -90,9 +93,10 @@ src/
 | `payload` | map | Event-specific data (varies by type) |
 | `status` | string | `'pending' \| 'processing' \| 'delivered' \| 'failed'` |
 | `createdAt` | Timestamp | When event was created |
+| `expiresAt` | Timestamp | Firestore TTL deletion timestamp |
 
 **Index:** `tId ASC, createdAt DESC` (for tenant event history query)
-**TTL:** 90 days (auto-cleanup via nightly batch)
+**TTL:** 90 days (Firestore TTL; no nightly cleanup query)
 
 ### 3.2 — Integration Delivery Logs Collection
 
@@ -102,18 +106,32 @@ src/
 | Field | Type | Description |
 |-------|------|-------------|
 | `eventId` | string | Reference to integration event |
+| `pId` | string | Always `CN` |
 | `tId` | number | Tenant ID |
 | `sId` | number | Store ID |
 | `adapter` | string | `'slack' \| 'email' \| 'linear' \| 'github'` |
 | `attempt` | number | 1, 2, or 3 |
-| `status` | string | `'success' \| 'failed'` |
+| `status` | string | `'success' \| 'failed' \| 'rate_limited'` |
 | `statusCode` | number/null | HTTP status code (if applicable) |
 | `error` | string/null | Error message (if failed) |
 | `durationMs` | number | Delivery time in milliseconds |
 | `createdAt` | Timestamp | When delivery was attempted |
+| `expiresAt` | Timestamp | Firestore TTL deletion timestamp |
 
 **Index:** `eventId ASC, createdAt ASC` (for delivery history per event)
 **TTL:** 90 days
+
+### 3.2.1 — Integration Rate Limit Counters
+
+**Collection:** `canonica_integrationRateLimits`
+**Write pattern:** deterministic document IDs, compact counters, Firestore TTL.
+
+Counters enforce:
+- per-tenant/per-adapter minute caps
+- per-tenant/per-adapter daily caps
+- per-recipient daily email caps
+
+The processor reads/writes these docs by direct ID inside transactions. No collection scans are used.
 
 ### 3.3 — Integration Config (per-tenant)
 
@@ -129,19 +147,18 @@ src/
 | `email.enabled` | boolean | Email integration active |
 | `email.recipients` | string[] | Email addresses (max 5) |
 | `email.eventFilters` | string[] | Which event types to deliver |
-| `linear.enabled` | boolean | Linear integration active |
-| `linear.apiKey` | string | Linear API key (encrypted at rest) |
-| `linear.teamId` | string | Linear team ID for issue creation |
-| `linear.eventFilters` | string[] | Which event types to deliver |
-| `github.enabled` | boolean | GitHub integration active |
-| `github.token` | string | GitHub personal access token (encrypted at rest) |
-| `github.owner` | string | Repository owner |
-| `github.repo` | string | Repository name |
-| `github.eventFilters` | string[] | Which event types to deliver |
+| `linear.*` | map | Controlled-rollout adapter config. Not exposed in owner settings until secret management is production-ready. |
+| `github.*` | map | Controlled-rollout adapter config. Not exposed in owner settings until secret management is production-ready. |
 | `circuitBreaker` | map | Per-adapter: `{ consecutiveFailures: number, disabledAt: Timestamp \| null }` |
 | `modifiedOn` | Timestamp | Last config change |
 
 **Why platformSummary?** Follows existing Canonica pattern (branding, coverage KPI). No new collection. Config is small (<2KB). Read once per event dispatch.
+
+### 3.4 — Delivery Health Summary
+
+**Storage:** `platformSummary/integrationHealth_{tId}_{sId}`
+
+This doc stores sanitized last attempt/success/failure state per adapter. The owner settings UI reads this through the server API, so it never queries raw delivery logs.
 
 ---
 
@@ -283,16 +300,16 @@ export async function emitIntegrationEvent(params: {
 
 **Behavior:**
 1. Feature flag check (`ENABLE_CANONICA_WORKFLOW_INTEGRATIONS`)
-2. Write document to `canonica_integrationEvents` with `status: 'pending'`
-3. Fire-and-forget — errors logged, never thrown
-4. Cloud Function `processIntegrationEvent` triggers on `onCreate`
+2. Add `pId: "CN"` and `expiresAt`
+3. Sanitize payload and write document to `canonica_integrationEvents` with `status: 'pending'`
+4. Fire-and-forget — errors logged, never thrown
+5. Cloud Function `processIntegrationEvent` triggers on `onCreate`
 
 **Wiring points (nightly batch):**
-- After Step 1 (drift detection) → emit `drift_detected` for each new drift
-- After Step 3 (signal mutation) → emit `mutation_proposed` for each new proposal
-- After Step 4 (coverage KPI) → emit `coverage_drop` if below threshold
-- After Step 5 (fallback detection) → emit `knowledge_gap_detected` for new gaps
-- End of nightly run → emit `nightly_summary`
+- Step 13 reads whether a tenant has any enabled adapter.
+- It emits `coverage_drop` immediately only when coverage is below threshold.
+- It emits one tenant `nightly_summary` digest when the tenant has governance/support activity.
+- It does not emit per-drift/per-proposal/per-gap fan-out by default; those event types remain available for explicit flows and controlled rollout.
 
 **Wiring points (real-time):**
 - Governance UI: approve mutation → emit `article_approved`
@@ -305,13 +322,16 @@ export async function emitIntegrationEvent(params: {
 1. Read event document
 2. Read tenant integration config from `platformSummary/integrationConfig_{tId}_{sId}`
 3. For each enabled adapter where event type matches filter:
-   a. Format payload via adapter
-   b. Attempt delivery
-   c. Log result to `canonica_integrationDeliveryLogs`
-   d. If failed: schedule retry (up to 3 attempts)
+   a. Consume per-adapter minute counter
+   b. Consume per-adapter daily counter
+   c. For email, consume per-recipient daily counters
+   d. Format payload via adapter
+   e. Attempt delivery with bounded retry
+   f. Log result to `canonica_integrationDeliveryLogs`
+   g. Update compact health summary in `platformSummary/integrationHealth_{tId}_{sId}`
 4. Update event status to `'delivered'` or `'failed'`
 
-**Retry strategy:** Exponential backoff with jitter
+**Retry strategy:** bounded exponential backoff without open-ended retries
 - Attempt 1: immediate
 - Attempt 2: 1 second delay
 - Attempt 3: 4 seconds delay
@@ -372,7 +392,7 @@ export interface DeliveryResult {
 ### 5.6 — Linear Adapter
 
 **Method:** GraphQL API (`https://api.linear.app/graphql`)
-**Auth:** Bearer token (Linear API key from config)
+**Auth:** Bearer token from controlled-rollout config only; not self-service owner UI
 **Operation:** `issueCreate` mutation
 **Timeout:** 15 seconds
 **Mapping:**
@@ -445,25 +465,20 @@ export interface DeliveryResult {
 - Delivery latency of <5 seconds is acceptable for governance events
 - Matches industry pattern (Stripe, GitHub, Intercom all use async delivery)
 
-### ADR-6: Secrets in Environment Variables
+### ADR-6: Secret Handling and Rollout Boundary
 
-**Decision:** API keys (Linear, GitHub) stored as environment variables on Cloud Functions, NOT in Firestore.
+**Decision:** Owner-facing production setup supports Slack and email now. Linear and GitHub adapter code remains available in Cloud Functions, but owner UI/API do not expose those credentials until per-tenant secret storage is finalized.
 
-**Wait — but config is in Firestore?**
-The config document stores `enabled`, `eventFilters`, `teamId`, `owner`, `repo` — non-sensitive settings. The actual API keys/tokens are stored as Firebase Functions secrets (encrypted at rest, injected at runtime). The config doc stores a boolean `hasApiKey: true` to indicate whether the secret exists.
+**Current production behavior:**
+- Slack webhook URL is stored server-side in Canonica Firestore and is never returned to the browser after save.
+- Email uses existing SMTP function environment variables.
+- Linear/GitHub credentials are not configurable from the owner dashboard.
 
 **Why?**
-- Firestore is not designed for secret storage (no encryption at rest for field-level)
-- Firebase Functions secrets use Google Cloud Secret Manager (AES-256)
-- Follows security best practice from Canonica SECURITY_IMPLEMENTATION_RULES
-
-**Implementation:**
-- Slack: Webhook URL contains token (stored in config — acceptable, Slack's own recommendation)
-- Linear: API key → `CANONICA_LINEAR_API_KEY_{tId}_{sId}` env var
-- GitHub: PAT → `CANONICA_GITHUB_TOKEN_{tId}_{sId}` env var
-- Email: Uses existing SMTP env vars (no new secrets)
-
-**Scale limitation:** Environment variables don't scale to 1000+ tenants with unique keys. At that scale, migrate to Google Cloud Secret Manager API with runtime lookup. For v1 (<100 tenants), env vars are sufficient and simpler.
+- Slack incoming webhooks are the fastest self-service path and already scoped by Slack.
+- Email is operationally simple and reuses existing SMTP infrastructure.
+- GitHub/Linear issue creation needs a better credential lifecycle than raw owner-entered tokens in Firestore.
+- This keeps the feature production-safe without deleting adapter code needed for later rollout.
 
 ---
 
@@ -476,15 +491,13 @@ Existing Steps 1-12 (unchanged)
      │
      ▼
 Step 13: Integration Event Emission
-  - Collect results from Steps 1-5
-  - Emit drift_detected events (from Step 1 results)
-  - Emit mutation_proposed events (from Step 3/5 results)
-  - Emit coverage_drop event (from Step 4, if below threshold)
-  - Emit knowledge_gap_detected events (from Step 5 results)
-  - Emit nightly_summary event (aggregate results)
+  - Skip tenants with no enabled adapter
+  - Emit coverage_drop only below threshold
+  - Emit one tenant nightly_summary digest when there is activity
+  - Let Firestore TTL own old event/log/counter cleanup
 ```
 
-**Cost:** Zero additional Firestore reads. Events are generated from data already loaded in Steps 1-5. Only new writes are the integration event documents.
+**Cost:** One config read per tenant to skip unused work, plus 0-2 event writes for active tenants. No cleanup queries.
 
 ---
 
@@ -495,6 +508,7 @@ Step 13: Integration Event Emission
 | Max events per nightly run per tenant | 50 | Prevents noisy tenants from flooding |
 | Max delivery attempts per event | 3 | Industry standard (Stripe, GitHub) |
 | Max events per minute per adapter | 20 | Prevents external API rate limit hits |
+| Max events per day per adapter | 50 | Prevents noisy tenants from turning integrations into a notification/cost fan-out |
 | Circuit breaker threshold | 10 consecutive failures | Auto-disables broken integrations |
 | Circuit breaker cooldown | 24 hours | Reasonable recovery window |
 | Event TTL | 90 days | Auto-cleanup, prevents unbounded growth |
@@ -534,22 +548,25 @@ Step 13: Integration Event Emission
 8. `functions-canonica/src/integrations/adapters/emailAdapter.ts`
 
 **Files to modify:**
-1. `functions-canonica/src/constants/database.ts` — add 2 collections
+1. `functions-canonica/src/constants/database.ts` — add event/log/rate-limit collections
 2. `functions-canonica/src/constants/features.ts` — add flag
 3. `functions-canonica/src/index.ts` — export processIntegrationEvent
 4. `functions-canonica/src/canonica/canonicaNightly.ts` — add Step 13
-5. `src/constants/database.ts` — add 2 collections (mirror)
+5. `src/constants/database.ts` — add collection mirrors
 6. `src/config/features.ts` — add flag
 7. `src/types/canonica/index.ts` — add integration types
 
 **Frontend (config UI):**
-8. `src/database/canonica/integrations.ts` — config DAL
-9. `src/components/templates/canonica/IntegrationSettings.tsx` — settings UI
+8. `src/app/api/canonica/integrations/route.ts` — Slack/email settings API
+9. `src/app/api/canonica/integrations/test/route.ts` — controlled test event API
+10. `src/components/templates/canonica/CanonicaSettings.tsx` — settings UI
 
-### Phase 2: Tier B Adapters (Session 2)
+### Controlled-Rollout Adapters
 
 1. `functions-canonica/src/integrations/adapters/linearAdapter.ts`
 2. `functions-canonica/src/integrations/adapters/githubAdapter.ts`
+
+These adapters are not exposed in owner settings until the per-tenant secret lifecycle is implemented.
 
 ---
 
@@ -569,4 +586,6 @@ Step 13: Integration Event Emission
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-24 | 1.1.1 | Added per-tenant/per-adapter daily delivery cap and nightly repeated-AI-failure alert emission. |
+| 2026-05-24 | 1.1.0 | Hardened workflow integrations with digest-first emissions, Firestore TTL, compact health summaries, rate counters, owner test notifications, and Slack/email production scope. |
 | 2026-03-09 | 1.0.0 | Initial implementation blueprint |

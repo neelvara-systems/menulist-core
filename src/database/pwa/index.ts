@@ -18,6 +18,7 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { revalidatePublicClientCache } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { uploadFile } from '@lib/firebase/storage';
+import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { getLocalizedText, getPrimaryLocalizedLanguage, isLocalizedText, LocalizedTextValue } from '@lib/localization/text';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -152,7 +153,10 @@ export const uploadPWAIconOverride = async ({
         fileId,
     });
 
-    const result = await uploadFile(storagePath, file, onProgress || (() => { }));
+    const result = await uploadFile(storagePath, file, onProgress || (() => { }), null, {
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
+        contentType: file.type || 'image/png',
+    });
     return result.downloadURL;
 };
 

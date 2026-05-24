@@ -65,48 +65,52 @@ function formatEventHtml(event: IntegrationEvent): string {
     const time = new Date(event.createdAt.toMillis()).toISOString();
 
     let detailsHtml = '';
+    if (p.test) {
+        detailsHtml = '<tr><td><strong>Test:</strong></td><td>Canonica workflow notifications are connected.</td></tr>';
+    } else {
 
-    switch (event.eventType) {
-        case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:
-            detailsHtml = `
+        switch (event.eventType) {
+            case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:
+                detailsHtml = `
                 <tr><td><strong>Answer:</strong></td><td>${escapeHtml(p.answerTitle || 'Unknown')}</td></tr>
                 <tr><td><strong>Drift Class:</strong></td><td>${escapeHtml(p.driftClass)}</td></tr>
                 <tr><td><strong>Reason:</strong></td><td>${escapeHtml(p.driftReason)}</td></tr>
                 <tr><td><strong>Entity:</strong></td><td>${escapeHtml(p.entityName)} (${escapeHtml(p.entityType, 80)})</td></tr>`;
-            break;
+                break;
 
-        case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
-            detailsHtml = `
+            case INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED:
+                detailsHtml = `
                 <tr><td><strong>Type:</strong></td><td>${escapeHtml(p.mutationType)}</td></tr>
                 <tr><td><strong>Entities:</strong></td><td>${escapeHtml((p.entityNames || []).map((name: unknown) => safeText(name, 80)).join(', '), 300)}</td></tr>
                 <tr><td><strong>Signals:</strong></td><td>${p.signalCount}</td></tr>
                 <tr><td><strong>Confidence:</strong></td><td>${Math.round((p.confidenceScore || 0) * 100)}%</td></tr>`;
-            break;
+                break;
 
-        case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
-            detailsHtml = `
+            case INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED:
+                detailsHtml = `
                 <tr><td><strong>Entity:</strong></td><td>${escapeHtml(p.entityName)} (${escapeHtml(p.entityType, 80)})</td></tr>
                 <tr><td><strong>Fallbacks:</strong></td><td>${p.fallbackCount} in ${p.windowDays} days</td></tr>`;
-            break;
+                break;
 
-        case INTEGRATION_EVENT_TYPES.COVERAGE_DROP:
-            detailsHtml = `
+            case INTEGRATION_EVENT_TYPES.COVERAGE_DROP:
+                detailsHtml = `
                 <tr><td><strong>Current:</strong></td><td>${Math.round((p.currentRate || 0) * 100)}%</td></tr>
                 <tr><td><strong>Previous:</strong></td><td>${Math.round((p.previousRate || 0) * 100)}%</td></tr>
                 <tr><td><strong>Threshold:</strong></td><td>${Math.round((p.threshold || 0) * 100)}%</td></tr>`;
-            break;
+                break;
 
-        case INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY:
-            detailsHtml = `
+            case INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY:
+                detailsHtml = `
                 <tr><td><strong>Tenants:</strong></td><td>${p.tenantsProcessed}</td></tr>
                 <tr><td><strong>Drift:</strong></td><td>${p.driftDetected} detected, ${p.driftCleared} cleared</td></tr>
                 <tr><td><strong>Proposals:</strong></td><td>${p.proposalsCreated}</td></tr>
                 <tr><td><strong>Coverage:</strong></td><td>${Math.round((p.coverageRate || 0) * 100)}%</td></tr>
                 <tr><td><strong>Errors:</strong></td><td>${(p.errors || []).length}</td></tr>`;
-            break;
+                break;
 
-        default:
-            detailsHtml = `<tr><td colspan="2"><pre>${escapeHtml(JSON.stringify(p, null, 2), 500)}</pre></td></tr>`;
+            default:
+                detailsHtml = `<tr><td colspan="2"><pre>${escapeHtml(JSON.stringify(p, null, 2), 500)}</pre></td></tr>`;
+        }
     }
 
     return `

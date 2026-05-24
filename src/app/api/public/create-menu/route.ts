@@ -26,6 +26,7 @@ import { genAIClient } from '@lib/google/genAi';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { secureError, secureLog } from '@lib/security/secureLogger';
+import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
@@ -132,6 +133,7 @@ export async function POST(req: NextRequest) {
         const file = bucket.file(storagePath);
         await file.save(buffer, {
             metadata: {
+                cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
                 contentType: imageFile.type,
                 metadata: {
                     draftToken,

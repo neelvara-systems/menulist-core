@@ -46,6 +46,7 @@ const RESOURCE_GROUPS = [
         description: 'Check install, hosted help, and security before implementation.',
         items: [
             ['Widget and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
+            ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
             ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],
             ['Security', '/security', 'Review tenant isolation, widget origin controls, and owner-approved authority.'],
         ],
@@ -112,10 +113,10 @@ export default function CanonicaResourcesPage() {
                                 <h2 className="text-2xl font-bold text-white">Evaluate the individual support surfaces.</h2>
                             </div>
                             <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                Knowledge Base, FAQ, Changelog, and Tickets each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context.
+                                Knowledge Base, FAQ, Changelog, Tickets, Workflow Notifications, and Proactive Help each have a dedicated buyer-facing page with workflow, proof cards, and connected support-truth context.
                             </p>
                         </div>
-                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                             {CANONICA_SUPPORT_FEATURES.map((feature) => (
                                 <CanonicaLink
                                     key={feature.href}

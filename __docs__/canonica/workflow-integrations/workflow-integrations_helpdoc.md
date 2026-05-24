@@ -1,14 +1,14 @@
 # Canonica — External Workflow Integrations — Help Documentation
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-09
+> **Version:** 1.1.0
+> **Last Updated:** 2026-05-24
 > **Audience:** Canonica Customers (SaaS Founders)
 
 ---
 
 ## §1 — What Are Workflow Integrations?
 
-Canonica monitors your support knowledge for drift, gaps, and coverage changes. Workflow Integrations deliver these governance events directly to the tools your team already uses — Slack, email, Linear, or GitHub.
+Canonica monitors your support knowledge for drift, gaps, and coverage changes. Workflow Integrations deliver the most important governance events directly to Slack or email.
 
 Instead of logging into Canonica to check your knowledge health, you receive notifications where you already work.
 
@@ -20,8 +20,8 @@ Instead of logging into Canonica to check your knowledge health, you receive not
 |-------------|-------------|------------|
 | **Slack** | Sends governance alerts to a Slack channel | 30 seconds |
 | **Email** | Sends critical alerts + weekly digest | 30 seconds |
-| **Linear** | Creates issues from knowledge gaps and friction signals | 2 minutes |
-| **GitHub** | Creates issues from knowledge gaps and friction signals | 2 minutes |
+| **Linear** | Controlled rollout adapter for issue creation | By request |
+| **GitHub** | Controlled rollout adapter for issue creation | By request |
 
 ---
 
@@ -39,7 +39,7 @@ Instead of logging into Canonica to check your knowledge health, you receive not
    - Copy the Webhook URL
 4. Paste the Webhook URL into Canonica
 5. Select which event types you want to receive
-6. Click **Test** to verify the connection
+6. Click **Send Test Notification** to verify the connection
 7. Click **Save**
 
 ### 3.2 — Email Setup
@@ -48,36 +48,12 @@ Instead of logging into Canonica to check your knowledge health, you receive not
 2. Click **Enable** on the Email card
 3. Enter up to 5 email addresses
 4. Select which event types you want to receive
-5. Click **Test** to send a test email
+5. Click **Send Test Notification** to send a test email
 6. Click **Save**
 
-### 3.3 — Linear Setup
+### 3.3 — Linear and GitHub
 
-1. Go to **Canonica Dashboard → Settings → Integrations**
-2. Click **Enable** on the Linear card
-3. Generate a Linear API key:
-   - Go to [linear.app](https://linear.app) → Settings → API → Personal API Keys
-   - Create a new key with "Issues: Write" scope
-   - Copy the key
-4. Paste the API key into Canonica
-5. Enter your Linear Team ID (found in Settings → Teams → click team → URL contains team ID)
-6. Select which event types should create issues
-7. Click **Test** to create a test issue
-8. Click **Save**
-
-### 3.4 — GitHub Setup
-
-1. Go to **Canonica Dashboard → Settings → Integrations**
-2. Click **Enable** on the GitHub card
-3. Generate a GitHub Personal Access Token:
-   - Go to [github.com](https://github.com) → Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens
-   - Create a new token with "Issues: Read and Write" permission for your repository
-   - Copy the token
-4. Paste the token into Canonica
-5. Enter the repository owner and name (e.g., `mycompany` and `product-issues`)
-6. Select which event types should create issues
-7. Click **Test** to create a test issue
-8. Click **Save**
+Linear and GitHub issue creation is available only in controlled rollout. Slack and email are the self-service production integrations. This avoids asking owners to paste long-lived issue tracker tokens before the per-tenant secret lifecycle is finalized.
 
 ---
 
@@ -101,8 +77,7 @@ You can choose which events each integration receives:
 
 - **Slack** — Recommended: all event types (for team awareness)
 - **Email** — Recommended: `coverage_drop`, `ai_failure_recurring`, `nightly_summary` (critical + digest)
-- **Linear** — Recommended: `knowledge_gap_detected`, `ai_failure_recurring` (engineering-relevant only)
-- **GitHub** — Recommended: same as Linear
+- **Linear/GitHub** — Controlled rollout only
 
 You can change filters at any time in Settings → Integrations.
 
@@ -118,12 +93,12 @@ You can change filters at any time in Settings → Integrations.
 4. If the test fails, regenerate the Slack webhook URL and update it in Canonica
 5. Check the event filter — make sure the event types you expect are selected
 
-### "Linear issues aren't being created"
+### "The test notification did not arrive"
 
-1. Verify the API key is valid (test in Linear's API explorer)
-2. Check the Team ID is correct
-3. Ensure the API key has "Issues: Write" scope
-4. Click **Test** in Canonica to create a test issue
+1. Save the integration first.
+2. Confirm at least one event type is selected.
+3. Click **Send Test Notification**.
+4. Wait a few seconds, then review the delivery health status shown on the integration card.
 
 ### "I'm getting too many notifications"
 
@@ -142,7 +117,7 @@ If an integration fails 10 times in a row, Canonica automatically disables it to
 
 | Limit | Value |
 |-------|-------|
-| Max integrations per tenant | 4 (one of each type) |
+| Max self-service integrations per tenant | 2 (Slack + email) |
 | Max email recipients | 5 |
 | Max events per night | 50 per tenant |
 | Max emails per day per recipient | 20 |
@@ -153,9 +128,8 @@ If an integration fails 10 times in a row, Canonica automatically disables it to
 ## §8 — Privacy & Security
 
 - **No PII in events** — Event payloads contain entity names, signal counts, and coverage metrics. No user emails, no ticket content, no personal data.
-- **API keys encrypted** — Linear and GitHub tokens are stored using encrypted environment variables, not in the database.
 - **Slack webhooks** — Webhook URLs are stored in your Canonica configuration. Only your Canonica account can trigger deliveries.
-- **Delivery logs** — All delivery attempts are logged for 90 days. You can review them in the governance dashboard.
+- **Delivery logs** — Delivery attempts are retained for 90 days with Firestore TTL. The settings screen shows compact delivery health instead of reading raw logs.
 
 ---
 
@@ -163,4 +137,5 @@ If an integration fails 10 times in a row, Canonica automatically disables it to
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-24 | 1.1.0 | Updated production scope to Slack/email, added Send Test Notification flow, delivery health, and TTL retention wording. |
 | 2026-03-09 | 1.0.0 | Initial help documentation |

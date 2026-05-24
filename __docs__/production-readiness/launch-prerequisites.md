@@ -51,7 +51,80 @@ firebase functions:secrets:set TELEGRAM_CHAT_ID
    - In budget settings, check "Connect a Pub/Sub topic"
    - Create topic: `budget-alerts`
    - Create push subscription pointing to: `https://us-central1-<PROJECT_ID>.cloudfunctions.net/gcpBudgetAlertWebhook`
+   - Configure `GCP_BUDGET_WEBHOOK_SECRET` for the deployed function and pass the matching `x-menulist-budget-secret` header or `secret` query value from the push bridge
    - This will auto-activate SAFE_MODE when budget threshold is exceeded
+   - Do not mark this complete until a test Pub/Sub alert activates SAFE_MODE in `ops_config/system`
+
+---
+
+## Step 2B: Enable Cloud Billing Export to BigQuery (10 minutes)
+
+> This is for GCP/Firebase bill visibility, not product analytics and not a Firestore event mirror.
+
+Current verified setup:
+
+| Item | Current value |
+| --- | --- |
+| Active GCP project | `ecomsai` |
+| Billing account | `011AD1-8DC063-7B9851` (`Firebase Payment`) |
+| Billing status | Enabled for `ecomsai` |
+| BigQuery API | Enabled |
+| BigQuery dataset | Not created yet |
+
+Before production, create the billing export dataset and enable export:
+
+1. Open **Google Cloud Console** → **Billing** → select **Firebase Payment**.
+2. Go to **Billing export** → **BigQuery export**.
+3. Create or select a dataset:
+
+| Option | Dataset | When to use |
+| --- | --- | --- |
+| Simple launch setup | `ecomsai.cloud_billing_export` | Recommended unless a separate FinOps project is created |
+| Cleaner finance separation | `<finops-project>.cloud_billing_export` | Use only if a dedicated billing/admin project is created before launch |
+
+4. Dataset location: choose `US` multi-region unless a formal data-residency decision says otherwise. Dataset location cannot be changed later.
+5. Enable:
+   - Standard usage cost export
+   - Detailed usage cost export
+6. Optional later: enable Pricing export only if BigQuery Data Transfer API is enabled and pricing-table analysis is needed.
+
+After export is enabled, wait for tables to appear, then verify rows exist for the billing account. Do not create Firestore collections such as `ops_daily_cost` for this. BigQuery is the cost-visibility layer; GCP Budget Alerts + SAFE_MODE remain the protection layer.
+
+---
+
+## Step 2C: Verify SAFE_MODE Circuit Breaker (15 minutes)
+
+> SAFE_MODE is core-built in code, but production launch requires live verification.
+
+Current code status:
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Feature flag | Built | `ENABLE_COST_PROTECTION: true` in `src/config/features.ts` |
+| API route guard | Built | `src/lib/ops/safeMode.ts` |
+| Ops toggle | Built | `src/app/api/ops/safe-mode/route.ts` |
+| Budget webhook activation | Built | `functions/src/triggers/operations.ts` → `gcpBudgetAlertWebhook` |
+| Direct Cloud Function coverage | Audit required | `functions/src/monitoring/safeMode.ts` exists, but direct expensive callables/triggers must be checked before production |
+
+Before production, verify:
+
+1. Create or confirm `ops_config/system`:
+
+```json
+{
+  "SAFE_MODE": false,
+  "reason": null
+}
+```
+
+2. From Ops Control Room, enable SAFE_MODE.
+3. Confirm at least one expensive AI/API route returns `503` with code `SAFE_MODE_ACTIVE`.
+4. Confirm public menu and OBP pages still load normally.
+5. Disable SAFE_MODE and confirm AI/API route behavior resumes.
+6. Trigger a test GCP Budget Alert Pub/Sub payload against `gcpBudgetAlertWebhook` and confirm it sets `ops_config/system.SAFE_MODE = true`.
+7. Audit any direct expensive Firebase callable/trigger paths and add `isSafeModeActive()` before launch if they can be user-triggered or budget-heavy.
+
+Do not treat SAFE_MODE as production-ready until all seven checks pass.
 
 ---
 
@@ -81,9 +154,9 @@ Required for `alertEscalation` query (severity + acknowledged + timestamp).
 
 ---
 
-## Step 5: Enable Feature Flags (2 minutes)
+## Step 5: Confirm Feature Flags (2 minutes)
 
-In `src/config/features.ts`, set these to `true` one by one:
+In `src/config/features.ts`, confirm these are `true` one by one:
 
 ```typescript
 ENABLE_COST_PROTECTION: true,    // SAFE_MODE circuit breaker
@@ -91,7 +164,7 @@ ENABLE_OPS_ALERTS: true,         // Telegram alert delivery
 ENABLE_MENU_HEALTH_MONITOR: true, // Post-publish verification
 ```
 
-**Order matters:** Enable SAFE_MODE first so you have a kill switch before enabling the others.
+**Order matters:** SAFE_MODE must be enabled and verified first so you have a kill switch before enabling the others.
 
 ---
 
@@ -289,10 +362,11 @@ _Estimates based on 50 stores, 3 publishes/day average._
 | ----------------------------- | ---------- | ---------------------------------------------- |
 | Publish health check          | ✅ Auto    | Runs after every publish, writes health status |
 | Telegram alerts               | ✅ Auto    | Fires on health failure, cost spike            |
-| SAFE_MODE on budget spike     | ✅ Auto    | GCP → Pub/Sub → webhook → SAFE_MODE            |
+| SAFE_MODE on budget spike     | ☐ Pre-prod verify | GCP → Pub/Sub → secret-protected webhook → SAFE_MODE |
 | Alert escalation              | ✅ Auto    | 30-min re-alert for critical unacknowledged    |
 | Create Telegram bot           | ❌ Manual  | One-time setup (5 min)                         |
 | Set GCP budget alerts         | ❌ Manual  | One-time setup (10 min)                        |
+| Verify SAFE_MODE end-to-end   | ❌ Manual  | Step 2C must pass before production            |
 | UptimeRobot setup             | ❌ Manual  | One-time setup (5 min)                         |
 | Deploy functions              | ❌ Manual  | `firebase deploy --only functions`             |
 | Enable feature flags          | ❌ Manual  | 3 lines in features.ts                         |
@@ -342,3 +416,4 @@ firebase functions:secrets:set GEMINI_AI_KEY_4
 | 1.0     | February 20, 2026 | Initial prerequisites guide                                                |
 | 1.1     | February 20, 2026 | Added Step 7: SMTP email setup for lifecycle messaging, updated cost table |
 | 1.2     | March 13, 2026    | Added Step 9: AI key rotation setup for multi-key Gemini protection        |
+| 1.3     | May 24, 2026      | Added Cloud Billing export and SAFE_MODE pre-production verification gates |

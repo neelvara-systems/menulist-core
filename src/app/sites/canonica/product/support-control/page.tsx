@@ -7,7 +7,7 @@ import { CANONICA_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Help Center and Tickets',
-    description: 'Operate Canonica help center, docs, FAQ, changelog, tickets, conversations, and weekly support review from one support control layer.',
+    description: 'Operate Canonica help center, docs, FAQ, changelog, tickets, conversations, weekly support review, and workflow notifications from one support control layer.',
     alternates: { canonical: '/product/support-control' },
 };
 
@@ -30,21 +30,22 @@ export default function SupportControlProductPage() {
                 canonicalPath="/product/support-control"
                 eyebrow="Help center + tickets"
                 title="Keep docs, FAQs, releases, widget answers, and tickets connected."
-                description="Canonica gives you a practical support layer for hosted help, page-aware answers, ticket fallback, conversations, and weekly review output."
+                description="Canonica gives you a practical support layer for hosted help, page-aware answers, ticket fallback, conversations, weekly review output, and owner notifications."
                 activeTab="Help center + tickets"
                 tabs={CANONICA_PRODUCT_AREAS}
                 canvasTitle="Support operations without support chaos"
-                canvasSubtitle="Support Control is the layer for hosted help, knowledge base, FAQ, changelog, tickets as fallback, conversations, and weekly review output."
+                canvasSubtitle="Support Control is the layer for hosted help, knowledge base, FAQ, changelog, tickets as fallback, conversations, workflow notifications, and weekly review output."
                 canvasBadge="Support live"
                 canvasItems={[
                     { title: 'Hosted help', description: 'Publish docs, FAQ, and changelog on a support domain while keeping workspace internals private.' },
                     { title: 'Ticket fallback', description: 'When an answer is missing, tickets remain a fallback path and become structured support signals.' },
+                    { title: 'Workflow notifications', description: 'Send digest-first Slack or email updates when governance movement needs owner attention.' },
                     { title: 'Weekly review', description: 'Owners can review what changed, what failed, and which support content needs attention next.' },
                 ]}
                 metrics={[
                     { label: 'Help content', value: 'Published' },
                     { label: 'Ticket path', value: 'Fallback' },
-                    { label: 'Weekly digest', value: 'Ready' },
+                    { label: 'Notifications', value: 'Slack + email' },
                 ]}
                 bentoTitle="Your support surfaces stay connected."
                 bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, Canonica keeps customer support connected by product surface."
@@ -54,14 +55,16 @@ export default function SupportControlProductPage() {
                     { title: 'Changelog support', description: 'Release notes can stay connected to product surfaces and affected support answers.' },
                     { title: 'Safe ticket context', description: 'Tickets can include capped, sanitized debugging context to reduce back-and-forth.' },
                     { title: 'Conversation signals', description: 'Widget conversations and feedback can become signals for governance instead of disappearing in logs.' },
+                    { title: 'Workflow notifications', description: 'Slack and email delivery can surface digest output, coverage drops, repeated failures, and test results.' },
                 ]}
-                workflowTitle="Publish help, answer users, and turn fallbacks into review work."
-                workflowDescription="Support Control is practical: publish help, answer users, accept fallback tickets, and turn unresolved issues into review work."
+                workflowTitle="Publish help, answer users, notify owners, and turn fallbacks into review work."
+                workflowDescription="Support Control is practical: publish help, answer users, accept fallback tickets, notify owners when attention is needed, and turn unresolved issues into review work."
                 workflowSteps={[
                     { title: 'Publish help content', description: 'Create or import docs, FAQs, and release notes for the hosted help center.' },
                     { title: 'Connect product surfaces', description: 'Assign content to the routes and workflows where users need it.' },
                     { title: 'Let widget answer first', description: 'Serve approved answers and related support before fallback.' },
                     { title: 'Capture fallback tickets', description: 'When coverage is missing, route the user to a ticket with safe context.' },
+                    { title: 'Notify the owner', description: 'Use Slack or email for test delivery, critical alerts, and digest-first governance summaries.' },
                     { title: 'Review weekly output', description: 'Use digest and signal views to decide which support content needs owner attention.' },
                 ]}
             />

@@ -6,6 +6,7 @@ import { addDoc, collection } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { AssetsCategoryType, CraftBuilderAssetsTypesType } from "@type/assets";
 import { arrayRemove, arrayUnion, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
 
@@ -27,6 +28,7 @@ const getPreviewUrl = (type, data: any) => {
             //deployed url : "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/craftBuilder%2Fassets%2Fillustrations%2F1725798041128?alt=media&token=ce2b79a1-4c28-4a98-b4b8-22382a844723"
             //upload new preview image 
             let previewUrl = await uploadBase64ToStorage({
+                cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
                 fileId: id,
                 url: data.newPreview,
                 path: `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/${type}/${id}`,

@@ -134,4 +134,26 @@ export const FUNCTION_FLAGS = {
      * @see __docs__/canonica/predictive-support/
      */
     ENABLE_CANONICA_PREDICTIVE_SUPPORT: true,
+
+    /**
+     * Canonica Compiled Context Bundles
+     *
+     * When true + ENABLE_CANONICA_NIGHTLY is true:
+     * Nightly checks sourceVersions vs bundleManifest and repairs stale
+     * compiled context bundles. Rebuilds are source-change-driven and bounded.
+     *
+     * @see __docs__/canonica/compiled-context-distribution/
+     */
+    ENABLE_CANONICA_CONTEXT_BUNDLES: true,
+
+    /**
+     * Canonica Context Bundle Builder
+     *
+     * Enables the Firebase-side bundle builder used by nightly repair and
+     * manual backend rebuilds. Runtime widget/API/MCP paths still require
+     * their own application flags.
+     *
+     * @see __docs__/canonica/compiled-context-distribution/
+     */
+    ENABLE_CANONICA_BUNDLE_BUILDER: true,
 } as const;

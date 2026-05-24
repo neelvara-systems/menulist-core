@@ -23,6 +23,7 @@ export const CANONICA_DB_COLLECTIONS = {
     CANONICA_NOTIFICATION_LOGS: 'canonica_notificationLogs',
     CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
     CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
+    CANONICA_INTEGRATION_RATE_LIMITS: 'canonica_integrationRateLimits',
     CANONICA_PREDICTIVE_TRIGGERS: 'canonica_predictiveTriggers',
     CANONICA_PRODUCT_SURFACES: 'canonica_productSurfaces',
     CANONICA_FAQS: 'canonica_faqs',

@@ -7,9 +7,10 @@ import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitCanonicaSignal } from "@lib/canonica/signalEmitter";
-import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
+import { canonicaFirebaseClient, canonicaStorage } from "@lib/firebase/canonicaFirebaseClient";
 import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
 import { triggerNotification } from "@lib/notifications/client";
+import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { CANONICA_SIGNAL_TYPE } from "@type/canonica";
 import { UserUploadedFileType } from "@type/common";
@@ -54,7 +55,9 @@ const uploadImage = async (data: UserUploadedFileType, type = 'documents') => {
 
         // Upload to Firebase Storage
         uploadedUrl = await uploadBase64ToStorage({
+            cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
             fileId: docId,
+            storage: canonicaStorage,
             url: data.url,
             path,
             type: data.type
@@ -275,7 +278,7 @@ export const deleteTicket = async (data: any) => {
         async () => {
             if (data.documents?.length) {
                 for (let i = 0; i < data.documents.length; i++) {
-                    await deleteFileByUrl(data.documents[i].url)
+                    await deleteFileByUrl(data.documents[i].url, canonicaStorage)
                 }
             }
             const docRef = getDocRef(data.id);

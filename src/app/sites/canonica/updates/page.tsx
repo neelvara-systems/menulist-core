@@ -22,6 +22,15 @@ function getBasePath(): string {
 const UPDATES = [
     {
         date: 'May 24, 2026',
+        title: 'Workflow notifications and proactive help added to the public product story',
+        items: [
+            'Slack and email workflow notifications now have a dedicated Integrations page plus a Workflow Notifications product page.',
+            'The website now explains digest-first delivery, test notification, compact health, and bounded delivery without marketing broader adapters as generally available.',
+            'Proactive Help now has a dedicated product page and is described as configured, page-aware prompts tied to active triggers and approved support summaries.',
+        ],
+    },
+    {
+        date: 'May 24, 2026',
         title: 'Website reframed for AI-built SaaS founders',
         items: [
             'Homepage now starts from the post-launch problem: users need correct answers after a founder ships an app quickly with AI.',

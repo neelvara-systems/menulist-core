@@ -7,6 +7,7 @@ import type {
     CanonicaActivationStepStatus,
     CanonicaActivationSubscriptionSummary,
     CanonicaActivationSummary,
+    CanonicaCompiledContextReadiness,
     CanonicaSurfaceReadinessItem,
     CanonicaSurfaceContentSummary,
     CanonicaTrustMetrics,
@@ -174,6 +175,7 @@ export function buildCanonicaActivationSummary(params: {
     contextSummary?: CanonicaSurfaceContentSummary | null;
     coverage?: CanonicaCoverageData | null;
     trustMetrics?: CanonicaTrustMetrics | null;
+    compiledContext?: CanonicaCompiledContextReadiness | null;
 }): CanonicaActivationSummary {
     const storeData = params.storeData || {};
     const subscription = normalizeSubscription(storeData.canonicaSubscription || params.subscription);
@@ -394,6 +396,8 @@ export function buildCanonicaActivationSummary(params: {
         })),
         entityCount,
         activeCanonicalAnswerCount,
+        compiledContextStatus: params.compiledContext?.status || null,
+        compiledContextVersion: params.compiledContext?.bundleVersion || 0,
     };
 
     return {
@@ -440,11 +444,12 @@ export function buildCanonicaActivationSummary(params: {
             canonicalCoverageTotal: Number.isFinite(Number(params.coverage?.coverage?.total)) ? Number(params.coverage?.coverage?.total) : null,
             trustScore: getTrustScore(params.trustMetrics),
         },
+        compiledContext: params.compiledContext || null,
         steps,
         readModel: {
-            firestoreReads: 5,
+            firestoreReads: 6,
             firestoreWrites: '0 on normal view; 1 compact platformSummary write only when readiness signature changes or becomes stale.',
-            source: 'stores + platformSummary activation/context/coverage/trust docs',
+            source: 'stores + platformSummary activation/context/coverage/trust/bundle docs',
         },
     };
 }

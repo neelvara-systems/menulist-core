@@ -18,6 +18,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import { markCanonicaCompiledContextSourceChanged } from '@lib/canonica/compiledSourceVersionsClient';
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { CanonicaRelease } from "@type/canonica";
 
@@ -107,6 +108,11 @@ export const addRelease = async (data: Omit<CanonicaRelease, 'id'>) => {
                 status: 'pending', // Always start as pending
             });
             const docRef = await addDoc(getCollectionRef(), submitData);
+            await markCanonicaCompiledContextSourceChanged('releases', data.tId, data.sId, {
+                reason: 'release_create',
+                sourceId: docRef.id,
+                sourceType: COLLECTION,
+            });
             return { ...submitData, id: docRef.id } as CanonicaRelease;
         },
         data,
@@ -165,6 +171,11 @@ export const activateRelease = async (releaseId: string) => {
             // 4. Activate
             const composedData = await canonicaRequestBodyComposer({ status: 'active' });
             await setDoc(getDocRef(releaseId), composedData, { merge: true });
+            await markCanonicaCompiledContextSourceChanged('releases', release.tId, release.sId, {
+                reason: 'release_activate',
+                sourceId: releaseId,
+                sourceType: COLLECTION,
+            });
             return composedData;
         },
         { releaseId },

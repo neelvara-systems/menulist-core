@@ -1,7 +1,7 @@
 # Predictive Support — Firebase & Cost Analysis
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-10
+> **Version:** 1.1.1
+> **Last Updated:** 2026-05-24
 > **Feature Flag:** `ENABLE_CANONICA_PREDICTIVE_SUPPORT`
 
 ---
@@ -18,7 +18,7 @@
 
 | Collection | Usage | Additional Impact |
 |-----------|-------|-------------------|
-| `platformSummary` | Cache doc: `predictiveTriggers_{tId}_{sId}` | +1 doc per tenant (~100KB max) |
+| `platformSummary` | Cache doc: `predictiveTriggers_{tId}_{sId}` | +1 doc per tenant (~100KB max), includes `activeTriggerCount`, `sourceHash`, and pre-resolved suggestion snippets |
 | `canonica_signalEvents` | suggestion_shown/clicked/dismissed signals | +3 signal types (same collection) |
 | `canonica_auditLogs` | Trigger create/update/delete/auto-disable events | Negligible additional writes |
 
@@ -26,16 +26,24 @@
 
 ## §2 — Firestore Operations Per Action
 
-### 2.1 — Predictive Help API Call (Per Page Visit)
+### 2.1 — Widget Config / Capability Check
+
+| Operation | Count | Type | Description |
+|-----------|-------|------|-------------|
+| Load trigger summary | 0-1 | READ | `platformSummary/predictiveTriggers_{tId}_{sId}` on widget config cache miss only |
+| Return capability | 0 | — | `capabilities.predictiveSupport` is true only when active triggers exist |
+| **Total** | **0-1** | **READ** | Prevents predictive API calls for tenants with no active triggers |
+
+### 2.2 — Predictive Help API Call (Only When Capability Is Enabled)
 
 | Operation | Count | Type | Description |
 |-----------|-------|------|-------------|
 | Load trigger rules | 1 | READ | platformSummary/predictiveTriggers_{tId}_{sId} |
-| Resolve canonical answer | 0-1 | READ | Only if trigger matches + entity bound |
+| Resolve canonical answer | 0-1 | READ | Usually 0 because nightly cache stores `resolvedSuggestion`; fallback only for stale/legacy summary docs |
 | Log suggestion signal | 0-1 | WRITE | Only if suggestion shown (fire-and-forget) |
-| **Total per page visit** | **1-3** | **Mixed** | |
+| **Total per predictive request** | **1-2** | **Mixed** | The widget does not call this endpoint unless config says active triggers exist |
 
-### 2.2 — Trigger CRUD (Admin Action)
+### 2.3 — Trigger CRUD (Admin Action)
 
 | Operation | Count | Type | Description |
 |-----------|-------|------|-------------|
@@ -43,18 +51,19 @@
 | Audit log | 1 | WRITE | canonica_auditLogs |
 | **Total per CRUD** | **2** | **WRITE** | |
 
-### 2.3 — Nightly Batch (Step 16)
+### 2.4 — Nightly Batch (Step 16)
 
 | Operation | Count | Type | Description |
 |-----------|-------|------|-------------|
 | Load friction snapshot | 1 | READ | platformSummary/frictionSnapshot_{tId}_{sId} |
 | Load existing triggers | 1 | READ | Query canonica_predictiveTriggers |
 | Auto-gen suggestions | 0-5 | WRITE | New suggested triggers |
+| Load answer snippets for active trigger entities | 0-N | READ | Bounded `array-contains-any` chunks, only for active entity-bound triggers |
 | Load suggestion signals | 1 | READ | Batched signal counts (existing function) |
 | Update effectiveness scores | 0-50 | WRITE | Update trigger effectiveness |
-| Rebuild cache doc | 1 | WRITE | platformSummary/predictiveTriggers_{tId}_{sId} |
+| Rebuild cache doc | 0-1 | WRITE | Skips write when `sourceHash` is unchanged |
 | Audit log entries | 0-5 | WRITE | For auto-disabled triggers |
-| **Total per tenant per night** | **~5-65** | **Mixed** | |
+| **Total per tenant per night** | **~4-65** | **Mixed** | Higher only when active trigger/entity coverage is large |
 
 ---
 
@@ -66,6 +75,7 @@
 |-----------|-------|
 | Tenants | 10 (early) / 100 (growth) / 1,000 (scale) |
 | Page visits per tenant per day | 500 |
+| Widget config cache misses per tenant per day | 100 |
 | Trigger match rate | 20% (100 suggestions/day/tenant) |
 | Suggestion shown rate | 80% of matches (after cooldown) |
 | Nightly batch frequency | Once daily |
@@ -82,20 +92,21 @@
 
 ```
 Per tenant per day:
-  Reads:  500 page visits × 1 read = 500 reads
-          + 100 matches × 1 answer read = 100 reads
-          = 600 reads/day/tenant
+  Reads:  100 config cache misses × 1 summary read = 100 reads
+          + 100 predictive requests × 1 summary read = 100 reads
+          + answer fallback reads are usually 0 because summary stores resolvedSuggestion
+          = ~200 reads/day/tenant
 
   Writes: 80 suggestion signals × 1 write = 80 writes
-          + nightly batch ~50 writes = 50 writes
-          = 130 writes/day/tenant
+          + nightly batch ~0-50 writes = 50 writes worst case
+          = ~80-130 writes/day/tenant
 
 Per tenant per month:
-  Reads:  600 × 30 = 18,000 reads
+  Reads:  200 × 30 = 6,000 reads
   Writes: 130 × 30 = 3,900 writes
 
 At 1,000 tenants per month:
-  Reads:  18M × $0.036/100K = $6.48
+  Reads:  6M × $0.036/100K = $2.16
   Writes: 3.9M × $0.108/100K = $4.21
   Total:  ~$10.69/month
 
@@ -114,7 +125,7 @@ Upstash Redis (cooldowns):
 |-------|-----------|-------|-------|
 | 10 tenants | $0.15 | $0.01 | **$0.16** |
 | 100 tenants | $1.50 | $1.20 | **$2.70** |
-| 1,000 tenants | $10.69 | $12.00 | **$22.69** |
+| 1,000 tenants | ~$6.37 worst case | $12.00 | **~$18.37** |
 
 ---
 
@@ -176,6 +187,11 @@ Upstash Redis (cooldowns):
 
 ### 6.1 — Read Optimization
 - **platformSummary cache:** 1 read loads ALL triggers (vs N reads from collection)
+- **Remote capability gate:** widget only calls predictive API when the config endpoint confirms active triggers
+- **Negative trigger cache:** empty/no-active trigger summaries are cached for 5 minutes per warm server instance
+- **Pre-resolved suggestions:** nightly stores canonical answer snippets in the trigger summary, removing the usual runtime answer read
+- **Targeted answer lookup:** nightly loads answers only for active trigger entity IDs, not every active answer in the workspace
+- **Unchanged-write skip:** cache write is skipped when `sourceHash` is unchanged
 - **Cooldown-first check:** Only resolve canonical answer if cooldown passes
 - **Short-circuit evaluation:** Stop at first matching trigger (priority-sorted)
 
@@ -185,7 +201,18 @@ Upstash Redis (cooldowns):
 - **Redis TTL auto-cleanup:** No Firestore writes for cooldown expiry
 
 ### 6.3 — Cost Guard Rails
-- **Max 200 triggers per tenant:** Bounds platformSummary doc size
+- **Max 500 triggers per tenant:** Bounds platformSummary doc size
 - **Max 5 auto-generated suggestions per nightly run:** Prevents suggestion explosion
 - **12-month TTL on suggestion signals:** Same as existing signal cleanup
 - **Cooldown minimum 1 hour:** Prevents excessive Redis commands
+- **Fail closed when Redis missing:** avoids repeated proactive prompts if cooldown storage is not configured
+
+---
+
+## Version History
+
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-05-24 | 1.1.1 | Added 5-minute negative trigger-index cache for tenants with no active triggers. |
+| 2026-05-24 | 1.1.0 | Added widget capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and updated cost model. |
+| 2026-03-10 | 1.0.0 | Initial Firebase and cost analysis. |

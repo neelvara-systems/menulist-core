@@ -124,7 +124,7 @@ These align with Canonica's Non-Goals Charter (doctrine/02):
 
 - No live chat / agent handoff — Canonica is not a helpdesk
 - No ticket creation from widget — operational layer, not distribution surface
-- No proactive messages / tooltips / onboarding tours — not a product tour tool
+- No generic marketing popups, tooltips, or onboarding tours — predictive help is allowed only when it is deterministic, feature-flagged, page-context gated, cooldown-protected, and backed by approved Canonica support knowledge
 - No DOM scraping / automatic context extraction — SDK-first, SaaS developer provides context
 - No automatic screenshot capture — user-initiated image upload only (no DOM/vision scraping)
 - No full CSS customization — controlled customization only (accent color, shape, position)
@@ -149,7 +149,8 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-22 | 2.4.4   | Added launch-grade widget branding controls for header title, accent color propagation, greeting, and powered-by visibility without adding runtime Firestore reads. |
-| 2026-05-24 | 2.4.5   | Removed predictive support from the active widget runtime so page context only drives search and related support content. |
+| 2026-05-24 | 2.4.6   | Restored predictive support as a guarded runtime capability. The widget calls predictive help only when config confirms active triggers, allowed origin, safe context, rate limits, and cooldown storage are in place. |
+| 2026-05-24 | 2.4.5   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |
 | 2026-05-20 | 2.4.2   | Added route blocklist settings for hiding the widget on selected client routes without adding Firebase reads. |
 | 2026-05-20 | 2.4.1   | Split widget management into customer-understandable tabs and removed the standalone Cost & Cache customer-facing section. |
 | 2026-05-19 | 2.4.0   | Added dedicated `/canonica/widget` management console, scoped `canonicaWidgetApi` credentials, public runtime config endpoint, and dashboard-backed script config loading. |

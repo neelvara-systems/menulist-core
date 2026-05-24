@@ -46,6 +46,19 @@ function getBentoCardClass(index: number, totalCards: number) {
         return fiveCardLayout[index] || '';
     }
 
+    if (totalCards === 6) {
+        const sixCardLayout = [
+            'md:col-span-2 lg:col-span-3',
+            'md:col-span-2 lg:col-span-3',
+            'lg:col-span-2',
+            'lg:col-span-2',
+            'lg:col-span-2',
+            'lg:col-span-6',
+        ];
+
+        return sixCardLayout[index] || '';
+    }
+
     if (index === 0) {
         return 'md:col-span-2 lg:col-span-2';
     }
@@ -189,7 +202,7 @@ export default function ProductCapabilityLandingPage({
                         <h2 className="text-3xl font-bold leading-tight sm:text-4xl">{bentoTitle}</h2>
                         <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">{bentoDescription}</p>
                     </div>
-                    <div className={`grid gap-4 md:grid-cols-2 ${bentoCards.length === 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'}`}>
+                    <div className={`grid gap-4 md:grid-cols-2 ${bentoCards.length >= 5 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'}`}>
                         {bentoCards.map((card, index) => (
                             <article
                                 key={card.title}

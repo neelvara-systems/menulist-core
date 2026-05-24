@@ -884,6 +884,7 @@ export interface CanonicaActivationSummary {
         canonicalCoverageTotal?: number | null;
         trustScore?: number | null;
     };
+    compiledContext?: CanonicaCompiledContextReadiness | null;
     steps: CanonicaActivationStep[];
     readModel: {
         firestoreReads: number;
@@ -892,6 +893,111 @@ export interface CanonicaActivationSummary {
         legacySubscriptionFallbackUsed?: boolean;
         legacySubscriptionFallbackReadCap?: number;
     };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPILED CONTEXT DISTRIBUTION
+// Storage-backed approved context for widget, public API, and MCP runtimes.
+// Feature-flagged: ENABLE_CANONICA_CONTEXT_BUNDLES
+// @see __docs__/canonica/compiled-context-distribution/
+// ═══════════════════════════════════════════════════════════════
+
+export const CANONICA_CONTEXT_SOURCE_KEYS = {
+    WORKSPACE_PROFILE: 'workspaceProfile',
+    WIDGET_CONFIG: 'widgetConfig',
+    KB: 'kb',
+    DOCS_NAV: 'docsNav',
+    ENTITIES: 'entities',
+    ENTITY_RELATIONS: 'entityRelations',
+    CANONICAL: 'canonical',
+    SURFACES: 'surfaces',
+    RELEASES: 'releases',
+    BRANDING: 'branding',
+    MCP_POLICY: 'mcpPolicy',
+    PREDICTIVE_TRIGGERS: 'predictiveTriggers',
+} as const;
+
+export type CanonicaContextSourceKey = typeof CANONICA_CONTEXT_SOURCE_KEYS[keyof typeof CANONICA_CONTEXT_SOURCE_KEYS];
+
+export type CanonicaCompiledSourceVersions = Partial<Record<CanonicaContextSourceKey, number>> & {
+    schemaVersion?: number;
+    pId?: ProductId;
+    tId?: number;
+    sId?: number;
+    updatedAt?: any;
+    lastReason?: string;
+    lastSourceId?: string;
+    lastSourceType?: string;
+};
+
+export type CanonicaBundleStatus = 'empty' | 'building' | 'ready' | 'stale' | 'failed' | 'superseded';
+
+export interface CanonicaBundleFileRef {
+    path: string;
+    bytes: number;
+    hash: string;
+    contentType?: string;
+    cacheControl?: string;
+    url?: string;
+}
+
+export interface CanonicaContextBundleStats {
+    entities: number;
+    entityRelations: number;
+    canonicalAnswers: number;
+    surfaces: number;
+    routes: number;
+    articles: number;
+    faqs: number;
+    releases: number;
+    bytesTotal: number;
+    publicBytesTotal: number;
+    privateBytesTotal: number;
+}
+
+export interface CanonicaContextBundleLimits {
+    maxPublicBootstrapBytes: number;
+    maxPublicRouteBytes: number;
+    maxMcpResponseBytes: number;
+    maxMcpToolCallsPerMinute: number;
+}
+
+export interface CanonicaContextBundleManifest extends CanonicaDocumentIdentity {
+    id?: string;
+    schemaVersion: number;
+    tId: number;
+    sId: number;
+    publicBundleId: string;
+    bundleVersion: number;
+    activeVersion: number;
+    lastReadyVersion: number;
+    status: CanonicaBundleStatus;
+    generatedAt?: any;
+    lastBuildStartedAt?: any;
+    lastBuildCompletedAt?: any;
+    lastBuildError?: string | null;
+    staleReason?: string | null;
+    hash?: string;
+    sourceVersions: CanonicaCompiledSourceVersions;
+    stats: CanonicaContextBundleStats;
+    bundles: Record<string, CanonicaBundleFileRef>;
+    limits: CanonicaContextBundleLimits;
+}
+
+export interface CanonicaCompiledContextReadiness {
+    status: CanonicaBundleStatus;
+    bundleVersion: number;
+    activeVersion: number;
+    lastReadyVersion: number;
+    publicBundleId?: string | null;
+    generatedAt?: any;
+    lastBuildCompletedAt?: any;
+    lastBuildError?: string | null;
+    staleReason?: string | null;
+    stats?: Partial<CanonicaContextBundleStats>;
+    limits?: Partial<CanonicaContextBundleLimits>;
+    publicBundlesReady: boolean;
+    privateBundlesReady: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1162,6 +1268,18 @@ export interface CanonicaPredictiveTrigger {
         customSummary?: string;
     };
 
+    resolvedSuggestion?: {
+        title: string;
+        summary: string;
+        sourceAnswerId?: string;
+        sourceAnswerVersion?: string | number;
+        articles?: Array<{
+            id: string;
+            title: string;
+        }>;
+        procedure?: CanonicaProcedure;
+    };
+
     priority: number;
     cooldownHours: number;
     maxImpressionsPerUser?: number;
@@ -1195,6 +1313,7 @@ export interface CanonicaPredictiveTriggerIndex {
     lastUpdated: Timestamp;
     version: number;
     triggerCount: number;
+    activeTriggerCount?: number;
     triggers: Record<string, CanonicaPredictiveTrigger>;
 }
 

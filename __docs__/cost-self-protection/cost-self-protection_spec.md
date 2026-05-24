@@ -1,7 +1,7 @@
 # Cost Self-Protection (SAFE_MODE) — Product Specification
 
-**Status:** 📝 DOCUMENTED  
-**Created:** February 20, 2026  
+**Status:** ✅ CORE BUILT — Pre-production verification required
+**Created:** February 20, 2026
 **Audience:** CEO, PM, Non-developers
 
 ---
@@ -16,11 +16,14 @@
 
 ## Problem Statement
 
-Currently, if a bug causes an infinite write loop or a compromised account triggers thousands of AI generations:
-1. There is **no way to instantly stop** expensive operations system-wide
-2. Individual feature flags exist but require knowing WHICH feature is causing the spike
-3. Firebase bills can grow rapidly before anyone notices
-4. Google Cloud budget alerts notify but don't automatically protect
+If production launch happens without SAFE_MODE verified, a bug or compromised account could still trigger expensive AI or bulk operations before the team contains it.
+
+The risk is not that the circuit breaker is missing from code. The risk is incomplete launch wiring:
+
+1. `ops_config/system` may not exist or may have the wrong SAFE_MODE value.
+2. The `/ops` toggle may not be verified against production Firebase.
+3. GCP Budget Alerts may not be connected to the secret-protected webhook.
+4. Direct expensive Cloud Function entry points may need a final SAFE_MODE coverage audit.
 
 SAFE_MODE provides a single switch that immediately reduces system cost to near-zero while keeping core product (menu viewing) operational.
 
@@ -77,9 +80,9 @@ SAFE_MODE provides a single switch that immediately reduces system cost to near-
 |---------|-----|-----|
 | Manual (ops dashboard) | Click "Enable SAFE_MODE" button | Founder |
 | Manual (Firestore Console) | Set `ops_config/system.SAFE_MODE = true` | Founder/developer |
-| GCP budget alert → Telegram | Founder sees budget alert on Telegram → manually activates | Founder |
+| GCP budget alert → webhook | Budget alert Pub/Sub push calls `gcpBudgetAlertWebhook`, which activates SAFE_MODE and sends Telegram alert | Automatic + founder notified |
 
-**Note:** ChatGPT proposed automated activation via cron-based spike detection. **Rejected** because automated activation without human judgment could disable critical operations during legitimate high-usage periods (e.g., viral menu share). Manual activation via budget alert is safer and simpler.
+**Note:** ChatGPT proposed cron-based spike detection. **Rejected** because Firebase does not expose real-time read/write counts cleanly inside the app and a custom cron would add more Firestore writes. GCP Budget Alerts remain the external trigger; SAFE_MODE deactivation stays manual.
 
 ---
 

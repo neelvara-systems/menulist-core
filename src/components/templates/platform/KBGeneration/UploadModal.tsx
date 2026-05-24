@@ -5,6 +5,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { uploadFile } from '@lib/firebase/storage';
 import { canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
+import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
 import { Button, Image, Input, List, message, Modal, Progress, Typography, Upload, UploadProps } from 'antd';
@@ -32,6 +33,7 @@ function sanitizeKnowledgeSourceFileName(fileName: string): string {
 
 function getKnowledgeSourceUploadMetadata(file: File): UploadMetadata {
   return {
+    cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
     contentType: file.type || 'application/octet-stream',
     customMetadata: {
       retentionPolicy: KNOWLEDGE_SOURCE_RETENTION_POLICY,

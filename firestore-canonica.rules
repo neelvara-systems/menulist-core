@@ -285,7 +285,7 @@ service cloud.firestore {
     }
 
     function isCanonicaPlatformSummaryDoc(document) {
-      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent)_.*$');
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
     }
 
     function isCanonicaTenantMember(data) {

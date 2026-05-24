@@ -13,9 +13,11 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
+import { createHash } from 'crypto';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { markCompiledContextSourceChanged } from './compiledContextVersions';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -27,6 +29,79 @@ const AUTO_DISABLE_SCORE_THRESHOLD = -0.3;
 const AUTO_DISABLE_MIN_IMPRESSIONS = 100;
 const MAX_TRIGGERS_PER_TENANT = 500;
 const MAX_TRIGGER_SIGNALS_PER_RUN = 2000;
+const MAX_CANONICAL_ANSWERS_FOR_TRIGGER_CACHE = 1000;
+const MAX_ENTITY_IDS_PER_ANSWER_LOOKUP = 30;
+
+function stableStringify(value: any): string {
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+    if (value && typeof value === 'object') {
+        return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
+function hashPayload(value: any): string {
+    return createHash('sha256').update(stableStringify(value)).digest('hex');
+}
+
+function resolveAnswerVersion(answer: any): string | number | undefined {
+    return answer?.productBinding?.lastValidatedInVersion
+        || answer?.productBinding?.introducedInVersion
+        || answer?.modifiedOn?.toMillis?.()
+        || answer?.createdOn?.toMillis?.();
+}
+
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += chunkSize) {
+        chunks.push(items.slice(i, i + chunkSize));
+    }
+    return chunks;
+}
+
+async function loadAnswerSummariesByEntity(
+    tId: number,
+    sId: number,
+    entityIds: string[],
+): Promise<Map<string, any>> {
+    const out = new Map<string, any>();
+    const targetEntityIds = Array.from(new Set(
+        entityIds
+            .filter((entityId): entityId is string => typeof entityId === 'string' && Boolean(entityId.trim()))
+            .map(entityId => entityId.trim())
+    )).slice(0, MAX_TRIGGERS_PER_TENANT);
+
+    if (targetEntityIds.length === 0) return out;
+
+    const targetSet = new Set(targetEntityIds);
+    const seenAnswerIds = new Set<string>();
+
+    for (const chunk of chunkArray(targetEntityIds, MAX_ENTITY_IDS_PER_ANSWER_LOOKUP)) {
+        if (seenAnswerIds.size >= MAX_CANONICAL_ANSWERS_FOR_TRIGGER_CACHE) break;
+
+        const snap = await db
+            .collection(DB_COLLECTIONS.CANONICA_CANONICAL_ANSWERS)
+            .where('tId', '==', tId)
+            .where('sId', '==', sId)
+            .where('status', '==', 'active')
+            .where('scope.entityIds', 'array-contains-any', chunk)
+            .limit(MAX_CANONICAL_ANSWERS_FOR_TRIGGER_CACHE - seenAnswerIds.size)
+            .get();
+
+        snap.docs.forEach(doc => {
+            if (seenAnswerIds.has(doc.id)) return;
+            seenAnswerIds.add(doc.id);
+
+            const answer: any = { ...doc.data(), id: doc.id };
+            const answerEntityIds: string[] = Array.isArray(answer.scope?.entityIds) ? answer.scope.entityIds : [];
+            answerEntityIds.forEach(entityId => {
+                if (targetSet.has(entityId) && !out.has(entityId)) out.set(entityId, answer);
+            });
+        });
+    }
+
+    return out;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // RESULT TYPE
@@ -134,23 +209,57 @@ async function rebuildTriggerCache(tId: number, sId: number): Promise<number> {
             .get();
 
         const triggers: Record<string, any> = {};
-        snap.docs.forEach(d => {
-            triggers[d.id] = { ...d.data(), id: d.id };
+        const rawTriggers: any[] = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        const activeTriggerEntityIds = rawTriggers
+            .filter(trigger => trigger.status === 'active' && typeof trigger.action?.entityId === 'string' && trigger.action.entityId)
+            .map(trigger => trigger.action.entityId as string);
+        const activeEntityTriggerExists = activeTriggerEntityIds.length > 0;
+        const answersByEntity = activeEntityTriggerExists
+            ? await loadAnswerSummariesByEntity(tId, sId, activeTriggerEntityIds)
+            : new Map<string, any>();
+
+        rawTriggers.forEach(trigger => {
+            const answer = trigger.action?.entityId ? answersByEntity.get(trigger.action.entityId) : null;
+            const resolvedTitle = trigger.action?.customTitle || answer?.title || trigger.name;
+            const resolvedSummary = trigger.action?.customSummary || answer?.content?.structuredSummary || '';
+            triggers[trigger.id] = {
+                ...trigger,
+                ...(resolvedTitle ? {
+                    resolvedSuggestion: {
+                        title: resolvedTitle,
+                        summary: resolvedSummary,
+                        sourceAnswerId: answer?.id,
+                        sourceAnswerVersion: resolveAnswerVersion(answer),
+                        articles: answer?.id ? [{ id: answer.id, title: answer.title || resolvedTitle }] : undefined,
+                        procedure: trigger.action?.type === 'workflow_guide' ? answer?.content?.procedure : undefined,
+                    },
+                } : {}),
+            };
         });
 
         const triggerCount = Object.keys(triggers).length;
+        const activeTriggerCount = Object.values(triggers).filter(trigger => trigger.status === 'active').length;
+        const sourceHash = hashPayload({ triggerCount, activeTriggerCount, triggers });
+        const docRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`predictiveTriggers_${tId}_${sId}`);
+        const existingSnap = await docRef.get();
+        if (existingSnap.exists && existingSnap.data()?.sourceHash === sourceHash) {
+            return triggerCount;
+        }
 
-        await db
-            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(`predictiveTriggers_${tId}_${sId}`)
-            .set({
-                tId,
-                sId,
-                lastUpdated: Timestamp.now(),
-                version: Date.now(),
-                triggerCount,
-                triggers,
-            });
+        await docRef.set({
+            tId,
+            sId,
+            lastUpdated: Timestamp.now(),
+            version: Date.now(),
+            triggerCount,
+            activeTriggerCount,
+            sourceHash,
+            triggers,
+        });
+        await markCompiledContextSourceChanged(db, 'predictiveTriggers', tId, sId, {
+            reason: 'predictive_trigger_summary_rebuilt',
+            sourceType: 'platformSummary/predictiveTriggers',
+        });
 
         return triggerCount;
     } catch (error) {

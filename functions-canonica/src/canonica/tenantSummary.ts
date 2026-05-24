@@ -6,6 +6,9 @@ export const CANONICA_TENANT_SUMMARY_DOC_ID = 'canonicaTenantsSummary';
 export interface CanonicaTenantStore {
     tId: number;
     sId: number;
+    timeZone?: string;
+    businessDayEndTime?: string;
+    schedulerHour?: number;
 }
 
 export interface CanonicaTenantSummaryEntry extends CanonicaTenantStore {
@@ -27,6 +30,17 @@ function normalizeTenantStore(tId: number | string, sId: number | string): Canon
     return { tId: tenantId, sId: storeId };
 }
 
+function normalizeOptionalString(value: unknown, maxLength: number): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed ? trimmed.slice(0, maxLength) : undefined;
+}
+
+function normalizeOptionalHour(value: unknown): number | undefined {
+    const hour = Number(value);
+    return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : undefined;
+}
+
 export function getCanonicaTenantSummaryKey(tId: number | string, sId: number | string): string {
     const scope = normalizeTenantStore(tId, sId);
     if (!scope) {
@@ -44,7 +58,14 @@ export function parseCanonicaTenantSummary(data: Record<string, any> | undefined
         if (!entry || entry.active === false) continue;
         if (entry.hasEntities === false) continue;
         const scope = normalizeTenantStore(entry.tId, entry.sId);
-        if (scope) result.push(scope);
+        if (scope) {
+            result.push({
+                ...scope,
+                timeZone: normalizeOptionalString(entry.timeZone, 80),
+                businessDayEndTime: normalizeOptionalString(entry.businessDayEndTime, 5),
+                schedulerHour: normalizeOptionalHour(entry.schedulerHour),
+            });
+        }
     }
 
     return result;
@@ -73,6 +94,14 @@ export async function upsertCanonicaTenantSummary(
         updatedAt: now,
     };
 
+    const sourceOptions = options as typeof options & Pick<CanonicaTenantStore, 'timeZone' | 'businessDayEndTime' | 'schedulerHour'>;
+    const timeZone = normalizeOptionalString(sourceOptions.timeZone, 80);
+    const businessDayEndTime = normalizeOptionalString(sourceOptions.businessDayEndTime, 5);
+    const schedulerHour = normalizeOptionalHour(sourceOptions.schedulerHour);
+    if (timeZone) entry.timeZone = timeZone;
+    if (businessDayEndTime) entry.businessDayEndTime = businessDayEndTime;
+    if (schedulerHour !== undefined) entry.schedulerHour = schedulerHour;
+
     await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(CANONICA_TENANT_SUMMARY_DOC_ID).set({
         tenants: {
             [key]: entry,
@@ -93,7 +122,8 @@ export async function upsertCanonicaTenantSummaryEntries(
     for (const tenant of tenants) {
         const scope = normalizeTenantStore(tenant.tId, tenant.sId);
         if (!scope) continue;
-        entries[getCanonicaTenantSummaryKey(scope.tId, scope.sId)] = {
+        const sourceTenant = tenant as CanonicaTenantStore;
+        const entry: CanonicaTenantSummaryEntry = {
             pId: 'CN',
             ...scope,
             active: options.active !== false,
@@ -102,6 +132,13 @@ export async function upsertCanonicaTenantSummaryEntries(
             lastSeenAt: now,
             updatedAt: now,
         };
+        const timeZone = normalizeOptionalString(sourceTenant.timeZone, 80);
+        const businessDayEndTime = normalizeOptionalString(sourceTenant.businessDayEndTime, 5);
+        const schedulerHour = normalizeOptionalHour(sourceTenant.schedulerHour);
+        if (timeZone) entry.timeZone = timeZone;
+        if (businessDayEndTime) entry.businessDayEndTime = businessDayEndTime;
+        if (schedulerHour !== undefined) entry.schedulerHour = schedulerHour;
+        entries[getCanonicaTenantSummaryKey(scope.tId, scope.sId)] = entry;
     }
 
     if (Object.keys(entries).length === 0) return;

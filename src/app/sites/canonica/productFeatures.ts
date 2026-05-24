@@ -340,6 +340,176 @@ export const CANONICA_SUPPORT_FEATURES: CanonicaProductFeature[] = [
             },
         ],
     },
+    {
+        slug: 'workflow-notifications',
+        label: 'Workflow Notifications',
+        href: '/product/workflow-notifications',
+        eyebrow: 'Workflow Notifications',
+        title: 'Slack and email alerts for support governance.',
+        description:
+            'Send bounded Slack and email notifications for the support events owners should actually see: nightly digests, critical coverage drops, repeated AI failures, and controlled test messages.',
+        heroBullets: [
+            'Slack webhook and email recipients',
+            'Digest-first governance updates',
+            'Delivery health and test notification',
+        ],
+        proofTitle: 'Notify owners without turning support into alert noise.',
+        proofDescription:
+            'Canonica keeps workflow notifications tied to governance. Routine drift, gaps, and proposal activity can roll into digest output, while critical failures can alert immediately.',
+        cards: [
+            {
+                title: 'Configure Slack',
+                description:
+                    'Add a Slack destination and choose the support events that should reach the channel.',
+            },
+            {
+                title: 'Configure email',
+                description:
+                    'Add owner or team recipients for the same governance events without forcing everyone into the dashboard.',
+            },
+            {
+                title: 'Send a test notification',
+                description:
+                    'Verify the destination before relying on it for production support movement.',
+            },
+            {
+                title: 'Prefer daily digests',
+                description:
+                    'Use digest-first delivery for normal drift, proposal, gap, and summary activity so owners are not spammed.',
+            },
+            {
+                title: 'Track delivery health',
+                description:
+                    'Show recent success, failure, disabled adapter state, and consecutive failure count from a compact health summary.',
+            },
+            {
+                title: 'Cap delivery volume',
+                description:
+                    'Rate limits and retention policies keep notification work bounded as tenants, events, and recipients grow.',
+            },
+        ],
+        workflowTitle: 'From support movement to owner attention.',
+        workflowDescription:
+            'Notifications should help owners act, not recreate raw logs. Canonica keeps configuration, testing, delivery, and health review in one workflow.',
+        workflowSteps: [
+            { title: 'Choose destinations', description: 'Add Slack or email destinations for the workspace.' },
+            { title: 'Pick event filters', description: 'Select the support events that deserve notification.' },
+            { title: 'Send test message', description: 'Confirm the destination and capture delivery status.' },
+            { title: 'Deliver digest or alert', description: 'Routine movement rolls into digest; critical events can alert sooner.' },
+            { title: 'Review health', description: 'Use the compact health summary instead of reading delivery logs.' },
+        ],
+        connectedTitle: 'Notifications should stay connected to support truth.',
+        connectedDescription:
+            'Workflow notifications are useful only when they point owners back to the support content, answers, tickets, and governance items that need review.',
+        connectedItems: [
+            { title: 'Governance', description: 'Coverage drops, drift, proposals, and failed support paths can reach owners.' },
+            { title: 'Tickets', description: 'Fallback activity can be summarized without making every ticket an alert.' },
+            { title: 'Weekly digest', description: 'Normal support movement stays grouped for owner review.' },
+            { title: 'Settings', description: 'Slack, email, filters, test delivery, and health remain owner-controlled.' },
+        ],
+        faq: [
+            {
+                title: 'Does Canonica send every event immediately?',
+                description:
+                    'No. The production default should stay digest-first, with immediate alerts reserved for critical coverage or repeated failure conditions.',
+            },
+            {
+                title: 'Are Slack and email self-service?',
+                description:
+                    'Yes. Slack webhook and email recipient configuration are owner-facing. Broader workflow adapters should stay controlled until their credential and delivery model is safe for self-service.',
+            },
+            {
+                title: 'Do notifications expose private workspace IDs?',
+                description:
+                    'No. Public and notification copy should describe the support event and destination without exposing tenant, store, or raw implementation identifiers.',
+            },
+        ],
+    },
+    {
+        slug: 'proactive-help',
+        label: 'Proactive Help',
+        href: '/product/proactive-help',
+        eyebrow: 'Proactive Help',
+        title: 'Show help before users ask, only where it is configured.',
+        description:
+            'Canonica can use owner-approved, page-aware triggers to suggest relevant help from the widget when active triggers exist for the current app page.',
+        heroBullets: [
+            'Owner-approved page triggers',
+            'Widget skips calls when disabled',
+            'Resolved suggestion summaries',
+        ],
+        proofTitle: 'Proactive help should be helpful, quiet, and bounded.',
+        proofDescription:
+            'The widget should not guess or interrupt everywhere. Canonica keeps proactive prompts tied to active triggers, safe page context, cached trigger summaries, and approved support content.',
+        cards: [
+            {
+                title: 'Trigger by product page',
+                description:
+                    'Use safe route, feature, workflow, plan, or role context to match a prompt to the screen where the user is working.',
+            },
+            {
+                title: 'Serve approved suggestions',
+                description:
+                    'Resolved trigger summaries can point to reviewed answers or support content instead of running broad lookup on every page view.',
+            },
+            {
+                title: 'Skip when disabled',
+                description:
+                    'Runtime configuration tells the widget whether proactive help is enabled, so inactive tenants avoid unnecessary API calls.',
+            },
+            {
+                title: 'Cache no-trigger states',
+                description:
+                    'When no active triggers exist, negative caching avoids repeated backend checks for the same page context.',
+            },
+            {
+                title: 'Respect widget controls',
+                description:
+                    'Allowed origins, blocked routes, and safe context rules still apply before any proactive prompt appears.',
+            },
+            {
+                title: 'Turn misses into review',
+                description:
+                    'If a prompt is missing or weak, feedback and fallback can become governance work instead of invisible analytics noise.',
+            },
+        ],
+        workflowTitle: 'From page trigger to quiet in-app guidance.',
+        workflowDescription:
+            'Proactive help stays owner-controlled: configure the page trigger, connect it to approved support, let the widget display it only when eligible, and review feedback.',
+        workflowSteps: [
+            { title: 'Map the support-heavy page', description: 'Connect the route or workflow to the product surface where users get stuck.' },
+            { title: 'Create an active trigger', description: 'Define when the widget should suggest help for that page context.' },
+            { title: 'Resolve the suggestion', description: 'Attach reviewed support content or an approved answer summary.' },
+            { title: 'Let runtime gate the call', description: 'The widget checks capability state before requesting proactive help.' },
+            { title: 'Review feedback', description: 'Use feedback and fallback signals to improve the trigger or support content.' },
+        ],
+        connectedTitle: 'Proactive prompts should follow the same authority model.',
+        connectedDescription:
+            'A proactive suggestion is still support knowledge. It must stay scoped to product context, approved content, widget controls, and reviewable signals.',
+        connectedItems: [
+            { title: 'Widget', description: 'The prompt appears inside the same page-aware runtime controls.' },
+            { title: 'Approved answers', description: 'Suggestions can point to reviewed answer summaries instead of free-form guesses.' },
+            { title: 'Product surfaces', description: 'Triggers stay attached to routes, workflows, and product areas.' },
+            { title: 'Governance', description: 'Feedback and fallbacks keep proactive help reviewable.' },
+        ],
+        faq: [
+            {
+                title: 'Is proactive help enabled for every workspace?',
+                description:
+                    'No. It should appear only when configured and enabled for the workspace, with runtime capability checks preventing unnecessary calls when inactive.',
+            },
+            {
+                title: 'Does proactive help auto-generate answers?',
+                description:
+                    'No. Proactive prompts should point to approved support content or reviewable fallback paths. They do not publish new authoritative answers by themselves.',
+            },
+            {
+                title: 'Will this increase widget cost on every page?',
+                description:
+                    'The runtime is designed to skip proactive calls when the feature is disabled and use trigger summaries and negative caching when no active triggers exist.',
+            },
+        ],
+    },
 ];
 
 export function getCanonicaSupportFeature(slug: string) {

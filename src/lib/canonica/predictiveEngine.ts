@@ -9,7 +9,7 @@
  * 2. Filter by page match
  * 3. Evaluate conditions against context (AND logic)
  * 4. Check cooldown via Upstash Redis
- * 5. Resolve canonical answer / article content
+ * 5. Resolve from summary-backed suggestion, with canonical-answer fallback only for stale summaries
  * 6. Return suggestion payload
  * 
  * Design constraints:
@@ -45,6 +45,7 @@ const getCanonicaAdminDb = () => {
     return canonicaFirestoreAdmin;
 };
 const TRIGGER_INDEX_CACHE_TTL_MS = 60_000;
+const EMPTY_TRIGGER_INDEX_CACHE_TTL_MS = 5 * 60_000;
 const triggerIndexCache = new Map<string, {
     expiresAt: number;
     value: CanonicaPredictiveTriggerIndex | null;
@@ -83,8 +84,12 @@ export async function loadTriggerIndex(
             .doc(`predictiveTriggers_${tId}_${sId}`)
             .get();
         const value = snap.exists ? snap.data() as CanonicaPredictiveTriggerIndex : null;
+        const hasActiveTriggers = Number(value?.activeTriggerCount || 0) > 0
+            || (value?.activeTriggerCount === undefined
+                && value?.triggers
+                && Object.values(value.triggers).some((trigger: any) => trigger?.status === 'active'));
         triggerIndexCache.set(cacheKey, {
-            expiresAt: Date.now() + TRIGGER_INDEX_CACHE_TTL_MS,
+            expiresAt: Date.now() + (hasActiveTriggers ? TRIGGER_INDEX_CACHE_TTL_MS : EMPTY_TRIGGER_INDEX_CACHE_TTL_MS),
             value,
         });
         return value;
@@ -164,7 +169,7 @@ const isRedisConfigured = () => Boolean(process.env.UPSTASH_REDIS_REST_URL && pr
 /**
  * Check if a trigger is on cooldown for a user.
  * Returns true if on cooldown (skip trigger), false if eligible.
- * Graceful degradation: returns false (allow) if Redis unavailable.
+ * Fail-closed: returns true (skip trigger) if Redis unavailable.
  */
 async function checkCooldown(userId: string, triggerId: string): Promise<boolean> {
     if (!isRedisConfigured()) {
@@ -220,6 +225,17 @@ async function resolveSuggestion(
     tId: number,
     sId: number
 ): Promise<CanonicaPredictiveSuggestion | null> {
+    if (trigger.resolvedSuggestion?.title) {
+        return {
+            triggerId: trigger.id,
+            type: trigger.action.type,
+            title: trigger.action.customTitle || trigger.resolvedSuggestion.title,
+            summary: trigger.action.customSummary || trigger.resolvedSuggestion.summary || '',
+            articles: trigger.resolvedSuggestion.articles,
+            procedure: trigger.action.type === 'workflow_guide' ? trigger.resolvedSuggestion.procedure : undefined,
+        };
+    }
+
     let title = trigger.action.customTitle || trigger.name;
     let summary = trigger.action.customSummary || '';
     let procedure: CanonicaProcedure | undefined;

@@ -1,5 +1,5 @@
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
-import { deleteObject, ref } from "firebase/storage";
+import { deleteObject, ref, type FirebaseStorage } from "firebase/storage";
 
 /**
  * Delete file from Firebase Storage by URL
@@ -12,7 +12,7 @@ import { deleteObject, ref } from "firebase/storage";
  * - unauthorized: No permission to delete
  * - unknown: Other errors
  */
-export const deleteFileByUrl = async (url: string): Promise<{
+export const deleteFileByUrl = async (url: string, storageOverride?: FirebaseStorage | null): Promise<{
     success: boolean;
     error?: string;
     code?: string;
@@ -28,7 +28,7 @@ export const deleteFileByUrl = async (url: string): Promise<{
             };
         }
 
-        const storageRef = ref(firebaseStorage, url);
+        const storageRef = ref(storageOverride || firebaseStorage, url);
 
         // Delete the file
         await deleteObject(storageRef);

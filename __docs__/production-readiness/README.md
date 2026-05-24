@@ -24,6 +24,8 @@ Structured pre-launch verification checklist. Run through each section before on
 | SSL auto-renewal | ✅ | Vercel managed |
 | Firebase project on Blaze plan | ☐ | Required for Cloud Functions |
 | GCP budget alerts configured | ☐ | Set at ₹500, ₹1000, ₹2000 thresholds |
+| Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `ecomsai.cloud_billing_export` or a dedicated FinOps project. |
+| SAFE_MODE circuit breaker verified | ☐ | Core code exists. Before launch, verify `/ops` toggle, AI route `503`, public menu/OBP unaffected, budget webhook activation, and direct Cloud Function coverage audit. |
 | Environment variables set in Vercel | ☐ | All secrets configured |
 | Firebase Functions deployed | ☐ | `firebase deploy --only functions` |
 | Firestore indexes deployed | ☐ | `firebase deploy --only firestore:indexes` |
@@ -101,8 +103,9 @@ Each must:
 | Telegram alert bot created | ☐ | See `__docs__/ops-alerting-delivery/` |
 | Telegram alerts working | ☐ | Test with manual alert trigger |
 | Menu health monitor deployed | ☐ | See `__docs__/menu-health-monitor/` |
-| SAFE_MODE mechanism ready | ☐ | See `__docs__/cost-self-protection/` |
+| SAFE_MODE mechanism ready | ☐ | Core built; complete `launch-prerequisites.md` Step 2C before production |
 | GCP budget alerts configured | ☐ | Set progressive thresholds |
+| BigQuery billing export data verified | ☐ | After export is enabled, confirm billing tables receive daily cost rows before production launch |
 
 ---
 
@@ -167,6 +170,7 @@ Each must:
 - [ ] Check Sentry → any new error patterns?
 - [ ] Check Telegram → any alerts fired?
 - [ ] Check Firebase Console → usage normal?
+- [ ] Check BigQuery billing export → any cost spikes by service/SKU?
 - [ ] Message first 5 owners → "Is everything working?"
 
 ### Weekly Check
@@ -190,6 +194,7 @@ Each must:
 - Public menu doesn't load on mobile
 - No error monitoring configured
 - No budget alerts set
+- SAFE_MODE is not verified end-to-end
 
 ---
 
@@ -197,4 +202,6 @@ Each must:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | May 24, 2026 | Added SAFE_MODE pre-production verification requirement and launch blocker |
+| 1.1 | May 24, 2026 | Added pre-production Cloud Billing export to BigQuery requirement and post-launch billing review check |
 | 1.0 | February 20, 2026 | Initial checklist from ChatGPT review |

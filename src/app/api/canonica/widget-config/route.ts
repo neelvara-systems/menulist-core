@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { markCanonicaCompiledContextSourceChangedAdmin } from '@lib/canonica/compiledSourceVersionsAdmin';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/canonica/widgetRuntimeStatus';
 import {
@@ -157,6 +158,16 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             widgetConfigUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
             widgetConfigVersion: admin.firestore.FieldValue.increment(1),
         }, { merge: true });
+        await markCanonicaCompiledContextSourceChangedAdmin('widgetConfig', scope.tenantId, scope.storeId, {
+            reason: 'widget_config_update',
+            sourceType: 'stores',
+            sourceId: String(scope.storeId),
+        }).catch((sourceVersionError) => {
+            secureError('[Canonica Widget Config] Failed to mark compiled context stale', sourceVersionError as Error, {
+                storeId: scope.storeId,
+                tenantId: scope.tenantId,
+            });
+        });
 
         secureLog('[Canonica Widget Config] Settings saved', {
             originsCount: allowedOrigins.length,

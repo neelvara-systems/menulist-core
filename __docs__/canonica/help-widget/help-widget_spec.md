@@ -199,7 +199,7 @@ Aligned with Canonica Non-Goals Charter (doctrine/02):
 
 - No live chat / agent handoff — Canonica is not a helpdesk
 - No ticket creation from widget — distribution surface, not operational layer
-- No proactive messages / tooltips / onboarding tours — not a product tour tool
+- No generic marketing popups, tooltips, or onboarding tours — predictive help is allowed only when deterministic, feature-flagged, page-context gated, cooldown-protected, and backed by approved Canonica support knowledge
 - No DOM scraping / automatic context extraction — SDK-first approach
 - No automatic screenshot capture / DOM scraping — user-initiated image upload only
 - No full CSS customization / themes — controlled customization only

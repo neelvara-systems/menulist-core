@@ -8,11 +8,12 @@
  */
 
 import { CANONICA_ROUTES, toCanonicaDashboardRoute } from '@constant/canonica/navigations';
+import TIMEZONES_LIST from '@data/timeZones';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { Alert, Button, Card, Checkbox, Descriptions, Divider, Flex, Form, Grid, Input, Select, Skeleton, Space, Switch, Tag, Typography, message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { LuBell, LuCode, LuSave, LuSettings } from 'react-icons/lu';
+import { LuBell, LuCode, LuSave, LuSend, LuSettings } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 
@@ -22,6 +23,8 @@ type WorkspaceProfile = {
     supportEmail?: string;
     billingModel: 'free' | 'subscription' | 'usage' | 'one_time' | 'not_sure';
     primarySurfaces: string[];
+    timeZone?: string;
+    businessDayEndTime?: string;
 };
 
 type WorkflowIntegrationsForm = {
@@ -53,6 +56,13 @@ type WorkflowIntegrationsResponse = {
     };
     eventTypes?: string[];
     defaultEventFilters?: string[];
+    health?: Record<string, {
+        lastStatus?: string | null;
+        lastAttemptAt?: string | null;
+        lastSuccessAt?: string | null;
+        lastFailureAt?: string | null;
+        lastError?: string | null;
+    }>;
 };
 
 const SURFACE_OPTIONS = [
@@ -63,6 +73,11 @@ const SURFACE_OPTIONS = [
     { label: 'Integrations', value: 'integrations' },
     { label: 'Release notes', value: 'release_notes' },
 ];
+
+const TIMEZONE_OPTIONS = (TIMEZONES_LIST as Array<{ label: string; tzCode: string }>).map((zone) => ({
+    label: zone.label,
+    value: zone.tzCode,
+}));
 
 export default function CanonicaSettings() {
     const session = useClientAuthSession();
@@ -76,7 +91,9 @@ export default function CanonicaSettings() {
     const [savingProfile, setSavingProfile] = useState(false);
     const [loadingIntegrations, setLoadingIntegrations] = useState(true);
     const [savingIntegrations, setSavingIntegrations] = useState(false);
+    const [testingIntegrations, setTestingIntegrations] = useState(false);
     const [integrationEventTypes, setIntegrationEventTypes] = useState<string[]>([]);
+    const [integrationHealth, setIntegrationHealth] = useState<WorkflowIntegrationsResponse['health']>({});
     const [slackWebhookConfigured, setSlackWebhookConfigured] = useState(false);
 
     const loadProfile = useCallback(async () => {
@@ -101,6 +118,7 @@ export default function CanonicaSettings() {
             if (!response.ok) throw new Error(data.error || 'Failed to load workflow notifications');
             const defaults = data.defaultEventFilters || [];
             setIntegrationEventTypes(data.eventTypes || []);
+            setIntegrationHealth(data.health || {});
             setSlackWebhookConfigured(Boolean(data.slack?.webhookConfigured));
             integrationsForm.setFieldsValue({
                 slack: {
@@ -160,6 +178,7 @@ export default function CanonicaSettings() {
             const data: WorkflowIntegrationsResponse & { error?: string } = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || 'Failed to save workflow notifications');
             setSlackWebhookConfigured(Boolean(data.slack?.webhookConfigured));
+            setIntegrationHealth(data.health || integrationHealth);
             integrationsForm.setFieldsValue({
                 slack: {
                     enabled: Boolean(data.slack?.enabled),
@@ -180,12 +199,42 @@ export default function CanonicaSettings() {
         } finally {
             setSavingIntegrations(false);
         }
-    }, [integrationsForm]);
+    }, [integrationsForm, integrationHealth]);
+
+    const handleTestIntegrations = useCallback(async () => {
+        setTestingIntegrations(true);
+        try {
+            const response = await fetch('/api/canonica/integrations/test', { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || 'Failed to send test notification');
+            message.success(data.message || 'Test notification queued');
+            window.setTimeout(loadIntegrations, 2500);
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to send test notification');
+        } finally {
+            setTestingIntegrations(false);
+        }
+    }, [loadIntegrations]);
 
     const eventTypeOptions = integrationEventTypes.map(value => ({
         value,
         label: value.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' '),
     }));
+
+    const renderHealthStatus = (adapter: 'slack' | 'email') => {
+        const status = integrationHealth?.[adapter];
+        if (!status?.lastAttemptAt) return <Text type="secondary">No delivery test yet.</Text>;
+        const color = status.lastStatus === 'success' ? 'green' : status.lastStatus === 'rate_limited' ? 'gold' : 'red';
+        return (
+            <Flex vertical gap={4}>
+                <Space wrap>
+                    <Tag color={color}>{status.lastStatus || 'unknown'}</Tag>
+                    <Text type="secondary">{new Date(status.lastAttemptAt).toLocaleString()}</Text>
+                </Space>
+                {status.lastError && <Text type="secondary">{status.lastError}</Text>}
+            </Flex>
+        );
+    };
 
     return (
         <Flex vertical gap={isMobile ? 14 : 20}>
@@ -236,6 +285,17 @@ export default function CanonicaSettings() {
                             <Form.Item name="primarySurfaces" label="Main product pages" initialValue={['billing', 'onboarding', 'settings']}>
                                 <Select mode="multiple" options={SURFACE_OPTIONS} placeholder="Select the pages users ask about most" />
                             </Form.Item>
+                            <Form.Item name="timeZone" label="Workspace timezone" initialValue="UTC">
+                                <Select
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={TIMEZONE_OPTIONS}
+                                    placeholder="UTC"
+                                />
+                            </Form.Item>
+                            <Form.Item name="businessDayEndTime" label="Support day ends" initialValue="00:00">
+                                <Input type="time" />
+                            </Form.Item>
                         </Form>
                         {isMobile && (
                             <Button type="primary" block icon={<LuSave size={14} />} loading={savingProfile} onClick={handleSaveProfile}>
@@ -276,9 +336,14 @@ export default function CanonicaSettings() {
             <Card
                 title={<Flex align="center" gap={8}><LuBell size={16} /> Workflow Notifications</Flex>}
                 extra={!isMobile && (
-                    <Button type="primary" icon={<LuSave size={14} />} loading={savingIntegrations} onClick={handleSaveIntegrations}>
-                        Save
-                    </Button>
+                    <Space>
+                        <Button icon={<LuSend size={14} />} loading={testingIntegrations} onClick={handleTestIntegrations}>
+                            Send Test
+                        </Button>
+                        <Button type="primary" icon={<LuSave size={14} />} loading={savingIntegrations} onClick={handleSaveIntegrations}>
+                            Save
+                        </Button>
+                    </Space>
                 )}
             >
                 {loadingIntegrations ? (
@@ -316,6 +381,10 @@ export default function CanonicaSettings() {
                                     <Form.Item name={['slack', 'eventFilters']} label="Events">
                                         <Select mode="multiple" options={eventTypeOptions} placeholder="Choose events" />
                                     </Form.Item>
+                                    <div>
+                                        <Text strong>Delivery health</Text>
+                                        <div style={{ marginTop: 6 }}>{renderHealthStatus('slack')}</div>
+                                    </div>
                                 </Flex>
                             </Card>
 
@@ -336,14 +405,23 @@ export default function CanonicaSettings() {
                                     <Form.Item name={['email', 'eventFilters']} label="Events">
                                         <Select mode="multiple" options={eventTypeOptions} placeholder="Choose events" />
                                     </Form.Item>
+                                    <div>
+                                        <Text strong>Delivery health</Text>
+                                        <div style={{ marginTop: 6 }}>{renderHealthStatus('email')}</div>
+                                    </div>
                                 </Flex>
                             </Card>
                         </Form>
 
                         {isMobile && (
-                            <Button type="primary" block icon={<LuSave size={14} />} loading={savingIntegrations} onClick={handleSaveIntegrations}>
-                                Save Workflow Notifications
-                            </Button>
+                            <Flex vertical gap={8}>
+                                <Button block icon={<LuSend size={14} />} loading={testingIntegrations} onClick={handleTestIntegrations}>
+                                    Send Test Notification
+                                </Button>
+                                <Button type="primary" block icon={<LuSave size={14} />} loading={savingIntegrations} onClick={handleSaveIntegrations}>
+                                    Save Workflow Notifications
+                                </Button>
+                            </Flex>
                         )}
                     </Flex>
                 )}

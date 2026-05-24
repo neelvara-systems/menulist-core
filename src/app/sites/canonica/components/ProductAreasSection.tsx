@@ -70,7 +70,7 @@ export default function ProductAreasSection({ basePath = '' }: { basePath?: stri
                             View product overview
                         </CanonicaLink>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {CANONICA_SUPPORT_FEATURES.map((feature) => (
                             <CanonicaLink
                                 key={feature.href}

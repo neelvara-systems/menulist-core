@@ -1,7 +1,7 @@
 # Canonica — External Workflow Integrations
 
 > **Status:** ✅ IMPLEMENTED — Enabled with guards
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
 > **Last Updated:** 2026-05-24
 > **Feature Flag:** `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` (enabled)
@@ -12,7 +12,7 @@
 
 ## What This Feature Is
 
-An **outbound event delivery system** that exports structured Canonica governance events (drift detected, mutation proposed, knowledge gap found, etc.) into external tools where SaaS teams already work — Slack, Linear, GitHub, Email.
+An **outbound event delivery system** that exports structured Canonica governance events into external tools where SaaS teams already work. Self-service production setup supports Slack and email. Linear/GitHub issue adapters exist for controlled rollout, but are not owner-configurable until the per-tenant secret lifecycle is production-ready.
 
 Canonica = **event producer only**. It never embeds external workflows. It never becomes a workflow orchestration platform.
 
@@ -42,8 +42,8 @@ Cloud Function: processIntegrationEvent (onCreate trigger)
      │
      ├── Slack Adapter    → Webhook POST (Block Kit message)
      ├── Email Adapter    → SMTP send (reuses existing nodemailer)
-     ├── Linear Adapter   → GraphQL API (issue creation)
-     └── GitHub Adapter   → REST API (issue creation)
+     ├── Linear Adapter   → GraphQL API (controlled rollout)
+     └── GitHub Adapter   → REST API (controlled rollout)
      │
      ▼
 Delivery Log (canonica_integrationDeliveryLogs)
@@ -79,7 +79,7 @@ Delivery Log (canonica_integrationDeliveryLogs)
 | #   | Decision                                                                   | Rationale                                            |
 | --- | -------------------------------------------------------------------------- | ---------------------------------------------------- |
 | 1   | **Event producer only** — no bidirectional sync, no workflow orchestration | Protects 3-year freeze. Prevents bloat.              |
-| 2   | **4 adapters at launch** — Slack, Email, Linear, GitHub                    | Covers 95% of SaaS team workflows. Notion deferred.  |
+| 2   | **2 self-service adapters at launch** — Slack and Email; Linear/GitHub controlled rollout | Avoids half-safe issue tracker token handling while keeping adapter code ready. |
 | 3   | **Append-only event log** — write once, never update                       | Firebase cost optimal. Audit trail built-in.         |
 | 4   | **Cloud Function onCreate trigger** — not polling                          | Zero cost when idle. Scales automatically.           |
 | 5   | **Per-tenant config** — event filters per integration                      | Founders control what goes where. No spam.           |
@@ -96,7 +96,7 @@ Delivery Log (canonica_integrationDeliveryLogs)
 | Tier              | Adapter                 | Justification                                                                           |
 | ----------------- | ----------------------- | --------------------------------------------------------------------------------------- |
 | **A — Must Have** | Slack, Email, Event Bus | 90%+ of SaaS teams use Slack. Email is universal fallback. Event bus is infrastructure. |
-| **B — Valuable**  | Linear, GitHub          | Engineering teams. Converts friction signals into backlog items.                        |
+| **B — Controlled rollout** | Linear, GitHub | Engineering teams. Keep adapters behind platform-controlled setup until secret lifecycle is ready. |
 | **C — Future**    | Notion                  | Niche. Most teams skip this. Deferred indefinitely.                                     |
 
 ---
@@ -118,7 +118,7 @@ Delivery Log (canonica_integrationDeliveryLogs)
 | 100 tenants   | ~10,000      | ~$0.08         | ~$0.05  | **~$0.13** |
 | 1,000 tenants | ~100,000     | ~$0.80         | ~$0.50  | **~$1.30** |
 
-Negligible. Dominated by external API calls (Slack/Linear/GitHub), which are free.
+Negligible. Dominated by low-volume Slack/email delivery and existing SMTP cost.
 
 ---
 
@@ -126,4 +126,5 @@ Negligible. Dominated by external API calls (Slack/Linear/GitHub), which are fre
 
 | Date       | Version | Change                                                                      |
 | ---------- | ------- | --------------------------------------------------------------------------- |
+| 2026-05-24 | 1.1.0 | Updated production scope to Slack/email self-service, digest-first emissions, TTL retention, delivery health, and controlled-rollout Linear/GitHub adapters. |
 | 2026-03-09 | 1.0.0   | Initial documentation from ChatGPT analysis + codebase audit + web research |

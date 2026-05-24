@@ -118,7 +118,8 @@ The mutation engine (signal events from widget feedback â†’ mutation proposals â
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-24 | 2.4.5   | Removed predictive support cost paths from active widget runtime documentation. |
+| 2026-05-24 | 2.4.6   | Restored predictive support cost docs with summary-backed capability gating: one extra trigger-summary read only on widget config cache misses, and no predictive API calls when active triggers are absent. |
+| 2026-05-24 | 2.4.5   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |
 | 2026-05-22 | 2.4.4   | Added widget branding cost note: launch-grade branding rides existing runtime config and adds no Firestore reads/listeners. |
 | 2026-05-21 | 2.4.3   | Removed temporary client-product connector cost notes after separating Canonica runtime from client product code. |
 | 2026-05-20 | 2.4.2   | Added route blocklist cost note: no new collections, reads, writes, or Firestore listeners. |

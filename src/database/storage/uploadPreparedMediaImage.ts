@@ -2,8 +2,8 @@ import uploadBlobToStorage from "@database/storage/uploadBlobToStorage";
 import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } from "@lib/media/imageProfiles";
 import { buildMediaStoragePath, getDataUrlBlob, getMediaDataFingerprint, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
 import type { PreparedMediaImage, PreparedMediaVariant } from "@lib/media/prepareMediaImage";
+import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 
-const IMMUTABLE_PUBLIC_MEDIA_CACHE_CONTROL = 'public,max-age=31536000,immutable';
 const PUBLIC_MEDIA_RETENTION_POLICY = 'public_asset_until_replaced_or_deleted';
 
 interface UploadPreparedMediaImageData {
@@ -98,7 +98,7 @@ export async function uploadPreparedMediaImage({
 
         return uploadBlobToStorage({
             blob: variantBlob,
-            cacheControl: IMMUTABLE_PUBLIC_MEDIA_CACHE_CONTROL,
+            cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
             contentType: variantContentType,
             customMetadata: {
                 checksum,

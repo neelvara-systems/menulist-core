@@ -28,6 +28,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
+import { createHash } from 'crypto';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -36,6 +37,7 @@ import { hasEnabledIntegrationAdapter } from '../integrations/configStore';
 import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/eventBus';
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
 import { bumpCanonicaCacheVersion, CANONICA_CACHE_SOURCES } from './cacheVersionManifest';
+import { repairCompiledContextBundle } from './contextBundleBuilder';
 import { generateDraftsForNewProposals } from './draftGenerator';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
@@ -58,6 +60,15 @@ const SCHEDULER_LIMITS = {
     graphRelationsPerTenant: 2000,
     graphAnswersPerTenant: 1000,
 };
+
+const AI_FAILURE_ALERT_THRESHOLD = 3;
+const AI_FAILURE_WINDOW_DAYS = 1;
+const AI_TASK_PHASES = new Set([
+    'draft_generation',
+    'ticket_knowledge',
+    'friction_insight',
+    'bootstrap',
+]);
 
 type CanonicaNightlyTrigger = 'scheduled' | 'manual';
 type CanonicaNightlyStatus = 'success' | 'partial' | 'failed' | 'skipped' | 'running';
@@ -95,6 +106,36 @@ interface CanonicaTenantRun {
     signalsResolved: number;
     coverageRate: number;
     signalsArchived: number;
+}
+
+function getRecurringAiFailureSummary(tenantRun: CanonicaTenantRun): {
+    failureCount: number;
+    phases: string[];
+    errors: string[];
+} {
+    const aiDiagnostics = tenantRun.errors.filter((diagnostic) => {
+        const text = `${diagnostic.phase} ${diagnostic.operation} ${diagnostic.error}`.toLowerCase();
+        return AI_TASK_PHASES.has(diagnostic.phase)
+            || text.includes('gemini')
+            || text.includes('vertex')
+            || text.includes('openai')
+            || text.includes('model')
+            || text.includes('embedding')
+            || text.includes('generate');
+    });
+
+    const draftTask = tenantRun.tasks.find(task => task.name === 'draft_generation');
+    const draftsFailed = Number(draftTask?.details?.draftsFailed || 0);
+    const phases = Array.from(new Set([
+        ...aiDiagnostics.map(diagnostic => diagnostic.phase),
+        ...(draftsFailed > 0 ? ['draft_generation'] : []),
+    ]));
+
+    return {
+        failureCount: aiDiagnostics.length + (Number.isFinite(draftsFailed) ? draftsFailed : 0),
+        phases,
+        errors: aiDiagnostics.map(diagnosticToMessage).slice(0, 5),
+    };
 }
 
 interface TenantDiscoveryResult {
@@ -151,7 +192,7 @@ function isCanonicaEnabled(): boolean {
  * Reads platformSummary/canonicaTenantsSummary first. Falls back to the old
  * canonica_entities scan only for migration/backfill safety.
  */
-async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
+export async function discoverActiveTenants(): Promise<TenantDiscoveryResult> {
     const summarySnap = await db
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(CANONICA_TENANT_SUMMARY_DOC_ID)
@@ -1260,6 +1301,19 @@ interface GraphRebuildResult {
     entityCount: number;
     relationCount: number;
     orphanRelations: number;
+    unchanged?: boolean;
+}
+
+function stableStringify(value: any): string {
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+    if (value && typeof value === 'object') {
+        return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
+function hashGraphPayload(value: any): string {
+    return createHash('sha256').update(stableStringify(value)).digest('hex');
 }
 
 /**
@@ -1379,20 +1433,42 @@ async function rebuildEntityGraphIndex(tId: number, sId: number): Promise<GraphR
         }
     }
 
+    Object.values(graph).forEach(node => {
+        node.related.sort();
+        Object.keys(node.relationTypes).forEach(relationType => {
+            node.relationTypes[relationType].sort();
+        });
+    });
+
     // 5. Write graph index to platformSummary
     const docKey = `entityGraphIndex_${tId}_${sId}`;
     const existingDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).get();
     const previousVersion = existingDoc.exists ? (existingDoc.data()?.version || 0) : 0;
+    const preservedInteractionRules = existingDoc.exists && existingDoc.data()?.interactionRules
+        ? existingDoc.data()?.interactionRules
+        : undefined;
+    const sourceHash = hashGraphPayload({
+        entityCount: result.entityCount,
+        relationCount: result.relationCount,
+        graph,
+        interactionRules: preservedInteractionRules || [],
+    });
+
+    if (existingDoc.exists && existingDoc.data()?.sourceHash === sourceHash) {
+        result.unchanged = true;
+        return result;
+    }
 
     await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).set({
         lastRebuiltAt: Timestamp.now(),
         version: previousVersion + 1,
         entityCount: result.entityCount,
         relationCount: result.relationCount,
+        sourceHash,
         graph,
         // interactionRules are authored separately — preserve them if they exist
-        ...(existingDoc.exists && existingDoc.data()?.interactionRules
-            ? { interactionRules: existingDoc.data()?.interactionRules }
+        ...(preservedInteractionRules
+            ? { interactionRules: preservedInteractionRules }
             : {}),
     });
 
@@ -1420,7 +1496,7 @@ export interface CanonicaNightlyResult {
         scannedDocs: number;
         truncated: boolean;
         tenantCount: number;
-        source: 'summary' | 'entity_scan' | 'not_started';
+        source: 'summary' | 'entity_scan' | 'not_started' | 'scheduler_filter' | 'manual_scope';
     };
     tenantsProcessed: number;
     totalDriftDetected: number;
@@ -1462,6 +1538,10 @@ export interface CanonicaNightlyResult {
     predictiveTriggersTotal: number;
     predictiveEffectivenessUpdated: number;
     predictiveAutoDisabled: number;
+    // Step 17: Compiled Context Bundle Repair
+    compiledContextBundlesRebuilt: number;
+    compiledContextBundlesSkipped: number;
+    compiledContextBytesGenerated: number;
     errors: string[];
     errorDetails: CanonicaSchedulerDiagnostic[];
     tenantRuns: CanonicaTenantRun[];
@@ -1474,6 +1554,8 @@ export interface CanonicaNightlyResult {
 export async function runCanonicaNightly(options: {
     trigger?: CanonicaNightlyTrigger;
     triggeredBy?: string;
+    tenantScope?: CanonicaTenantStore[];
+    tenantDiscoverySource?: TenantDiscoveryResult['source'] | 'scheduler_filter' | 'manual_scope';
 } = {}): Promise<CanonicaNightlyResult> {
     const trigger = options.trigger || 'scheduled';
     const triggeredBy = options.triggeredBy || (trigger === 'scheduled' ? 'system' : 'manual');
@@ -1530,6 +1612,9 @@ export async function runCanonicaNightly(options: {
         predictiveTriggersTotal: 0,
         predictiveEffectivenessUpdated: 0,
         predictiveAutoDisabled: 0,
+        compiledContextBundlesRebuilt: 0,
+        compiledContextBundlesSkipped: 0,
+        compiledContextBytesGenerated: 0,
         errors: [],
         errorDetails: [],
         tenantRuns: [],
@@ -1562,6 +1647,8 @@ export async function runCanonicaNightly(options: {
                     trustMetricsWritten: result.totalTrustMetricsWritten,
                     graphIndexRebuilt: result.graphIndexRebuilt,
                     predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
+                    compiledContextBundlesRebuilt: result.compiledContextBundlesRebuilt,
+                    compiledContextBytesGenerated: result.compiledContextBytesGenerated,
                 },
                 errors: result.errorDetails.slice(0, 100),
                 errorMessages: result.errors.slice(0, 100),
@@ -1576,6 +1663,7 @@ export async function runCanonicaNightly(options: {
                     ticketKnowledgeEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_TICKET_KNOWLEDGE,
                     graphEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_KNOWLEDGE_GRAPH,
                     predictiveSupportEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_PREDICTIVE_SUPPORT,
+                    compiledContextBundlesEnabled: FUNCTION_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES,
                 },
                 ...payload,
             }, { merge: true });
@@ -1667,8 +1755,17 @@ export async function runCanonicaNightly(options: {
 
         await writeRunLog({ phase: 'tenant_discovery' });
 
-        // Discover tenants with Canonica data
-        const discovery = await discoverActiveTenants();
+        // Discover tenants with Canonica data. The master scheduler can pass
+        // a pre-filtered tenant scope so hourly EOD checks do not reprocess
+        // every active workspace.
+        const discovery = options.tenantScope
+            ? {
+                tenants: options.tenantScope,
+                scannedDocs: options.tenantScope.length,
+                truncated: false,
+                source: options.tenantDiscoverySource || 'scheduler_filter',
+            }
+            : await discoverActiveTenants();
         tenants = discovery.tenants;
         result.tenantDiscovery = {
             scannedDocs: discovery.scannedDocs,
@@ -1985,6 +2082,35 @@ export async function runCanonicaNightly(options: {
                 );
             }
 
+            if (FUNCTION_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES && FUNCTION_FLAGS.ENABLE_CANONICA_BUNDLE_BUILDER) {
+                await runTenantTask(
+                    tenantRun,
+                    'compiled_context_bundle_repair',
+                    'repairCompiledContextBundle',
+                    async () => {
+                        const repair = await repairCompiledContextBundle(tId, sId);
+                        if (repair.status === 'failed') {
+                            throw new Error(repair.error || 'Compiled context bundle repair failed');
+                        }
+                        return repair as any;
+                    },
+                    (taskResult) => {
+                        result.compiledContextBundlesRebuilt += taskResult.rebuilt ? 1 : 0;
+                        result.compiledContextBundlesSkipped += taskResult.status === 'skipped' ? 1 : 0;
+                        result.compiledContextBytesGenerated += taskResult.rebuilt ? Number(taskResult.bytesTotal || 0) : 0;
+                    },
+                    (taskResult) => ({
+                        status: taskResult.status,
+                        rebuilt: taskResult.rebuilt,
+                        skippedReason: taskResult.skippedReason || null,
+                        bundleVersion: taskResult.bundleVersion,
+                        routes: taskResult.routes,
+                        bytesTotal: taskResult.bytesTotal,
+                        error: taskResult.error || null,
+                    })
+                );
+            }
+
             tenantRun.durationMs = Date.now() - tenantStart;
             const failedTasks = tenantRun.tasks.filter(task => task.status === 'failed').length;
             tenantRun.status = failedTasks === 0 ? 'success' : (failedTasks === tenantRun.tasks.length ? 'failed' : 'partial');
@@ -2063,7 +2189,6 @@ export async function runCanonicaNightly(options: {
         if (FUNCTION_FLAGS.ENABLE_CANONICA_WORKFLOW_INTEGRATIONS) {
             try {
                 resetNightlyEventCounts();
-                let summaryTenant: { tId: number; sId: number } | null = null;
 
                 for (const tenantRun of result.tenantRuns) {
                     const { tId, sId } = tenantRun;
@@ -2082,41 +2207,13 @@ export async function runCanonicaNightly(options: {
                         });
                         continue;
                     }
-                    summaryTenant = summaryTenant || { tId, sId };
-
-                    if (tenantRun.driftDetected > 0) {
-                        await emitIntegrationEvent({
-                            tId, sId,
-                            eventType: INTEGRATION_EVENT_TYPES.DRIFT_DETECTED,
-                            severity: EVENT_SEVERITY.HIGH,
-                            payload: {
-                                driftCount: tenantRun.driftDetected,
-                                driftCleared: tenantRun.driftCleared,
-                                driftClass: 'nightly_batch_summary',
-                                driftReason: `${tenantRun.driftDetected} answer(s) flagged with drift in nightly evaluation`,
-                                entityName: 'Multiple',
-                                entityType: 'batch',
-                            },
-                        });
-                        result.integrationEventsEmitted++;
-                    }
 
                     const tenantProposals = tenantRun.proposalsCreated + tenantRun.fallbackProposals;
-                    if (tenantProposals > 0) {
-                        await emitIntegrationEvent({
-                            tId, sId,
-                            eventType: INTEGRATION_EVENT_TYPES.MUTATION_PROPOSED,
-                            severity: EVENT_SEVERITY.HIGH,
-                            payload: {
-                                proposalCount: tenantProposals,
-                                mutationType: 'nightly_batch_summary',
-                                entityNames: [],
-                                signalCount: tenantRun.signalsResolved,
-                                confidenceScore: 0,
-                            },
-                        });
-                        result.integrationEventsEmitted++;
-                    }
+                    const shouldSendTenantDigest = tenantRun.driftDetected > 0
+                        || tenantProposals > 0
+                        || tenantRun.fallbackProposals > 0
+                        || tenantRun.signalsResolved > 0
+                        || tenantRun.coverageRate > 0;
 
                     if (tenantRun.coverageRate > 0 && tenantRun.coverageRate < COVERAGE_DROP_THRESHOLD) {
                         await emitIntegrationEvent({
@@ -2134,42 +2231,49 @@ export async function runCanonicaNightly(options: {
                         result.integrationEventsEmitted++;
                     }
 
-                    if (tenantRun.fallbackProposals > 0) {
+                    const aiFailureSummary = getRecurringAiFailureSummary(tenantRun);
+                    if (aiFailureSummary.failureCount >= AI_FAILURE_ALERT_THRESHOLD) {
                         await emitIntegrationEvent({
                             tId, sId,
-                            eventType: INTEGRATION_EVENT_TYPES.KNOWLEDGE_GAP_DETECTED,
-                            severity: EVENT_SEVERITY.HIGH,
+                            eventType: INTEGRATION_EVENT_TYPES.AI_FAILURE_RECURRING,
+                            severity: aiFailureSummary.failureCount >= AI_FAILURE_ALERT_THRESHOLD * 2
+                                ? EVENT_SEVERITY.CRITICAL
+                                : EVENT_SEVERITY.HIGH,
                             payload: {
-                                entityName: 'Multiple',
-                                entityType: 'batch',
-                                fallbackCount: tenantRun.fallbackProposals,
-                                windowDays: 14,
-                                sampleQueries: [],
+                                entityName: 'Workspace AI operations',
+                                entityType: 'support_generation',
+                                failureCount: aiFailureSummary.failureCount,
+                                windowDays: AI_FAILURE_WINDOW_DAYS,
+                                commonQueries: aiFailureSummary.phases,
+                                errors: aiFailureSummary.errors,
                             },
                         });
                         result.integrationEventsEmitted++;
                     }
 
-                }
+                    if (shouldSendTenantDigest) {
+                        await emitIntegrationEvent({
+                            tId, sId,
+                            eventType: INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY,
+                            severity: tenantRun.coverageRate > 0 && tenantRun.coverageRate < COVERAGE_DROP_THRESHOLD
+                                ? EVENT_SEVERITY.HIGH
+                                : EVENT_SEVERITY.LOW,
+                            payload: {
+                                runLogId,
+                                tenantsProcessed: 1,
+                                driftDetected: tenantRun.driftDetected,
+                                driftCleared: tenantRun.driftCleared,
+                                proposalsCreated: tenantProposals,
+                                fallbackProposals: tenantRun.fallbackProposals,
+                                signalsResolved: tenantRun.signalsResolved,
+                                coverageRate: tenantRun.coverageRate,
+                                signalsArchived: tenantRun.signalsArchived,
+                                errors: tenantRun.errors.slice(0, 5),
+                            },
+                        });
+                        result.integrationEventsEmitted++;
+                    }
 
-                if (summaryTenant) {
-                    const { tId, sId } = summaryTenant;
-                    await emitIntegrationEvent({
-                        tId, sId,
-                        eventType: INTEGRATION_EVENT_TYPES.NIGHTLY_SUMMARY,
-                        severity: EVENT_SEVERITY.LOW,
-                        payload: {
-                            runLogId,
-                            tenantsProcessed: result.tenantsProcessed,
-                            driftDetected: result.totalDriftDetected,
-                            driftCleared: result.totalDriftCleared,
-                            proposalsCreated: result.totalProposalsCreated + result.totalFallbackProposals,
-                            coverageRate: result.coverageRate,
-                            signalsArchived: result.totalSignalsArchived,
-                            errors: result.errors.slice(0, 5),
-                        },
-                    });
-                    result.integrationEventsEmitted++;
                 }
 
                 if (result.integrationEventsEmitted > 0) {

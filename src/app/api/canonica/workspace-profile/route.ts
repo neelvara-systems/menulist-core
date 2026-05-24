@@ -3,7 +3,13 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { markCanonicaCompiledContextSourceChangedAdmin } from '@lib/canonica/compiledSourceVersionsAdmin';
+import {
+    normalizeCanonicaBusinessDayEndTime,
+    normalizeCanonicaTimeZone,
+} from '@lib/canonica/schedulerSettings';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -26,6 +32,8 @@ const WorkspaceProfileSchema = z.object({
     supportEmail: OptionalEmailSchema,
     billingModel: z.enum(['free', 'subscription', 'usage', 'one_time', 'not_sure']).default('subscription'),
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).default([]),
+    timeZone: z.string().trim().max(80).optional(),
+    businessDayEndTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
 });
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
@@ -58,6 +66,8 @@ const buildProfileResponse = (storeData: Record<string, any>) => ({
     supportEmail: storeData.supportEmail || '',
     billingModel: storeData.billingModel || 'subscription',
     primarySurfaces: normalizePrimarySurfaces(storeData.primarySurfaces),
+    timeZone: normalizeCanonicaTimeZone(storeData.timeZone),
+    businessDayEndTime: normalizeCanonicaBusinessDayEndTime(storeData.businessDayEndTime),
 });
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
@@ -125,6 +135,8 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             supportEmail: parsed.supportEmail || '',
             billingModel: parsed.billingModel,
             primarySurfaces,
+            timeZone: normalizeCanonicaTimeZone(parsed.timeZone),
+            businessDayEndTime: normalizeCanonicaBusinessDayEndTime(parsed.businessDayEndTime),
         };
         const currentProfile = buildProfileResponse(storeData);
         if (JSON.stringify(currentProfile) === JSON.stringify(nextProfile)) {
@@ -135,12 +147,36 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             ...nextProfile,
             pId: PRODUCT_IDS.CANONICA,
             productId: PRODUCT_IDS.CANONICA,
+            timeZone: nextProfile.timeZone,
+            businessDayEndTime: nextProfile.businessDayEndTime,
             canonicaLaunchProfile: {
                 ...nextProfile,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        await upsertCanonicaTenantSummaryAdmin({
+            tId: scope.tenantId,
+            sId: scope.storeId,
+            source: 'workspace_profile_update',
+            timeZone: nextProfile.timeZone,
+            businessDayEndTime: nextProfile.businessDayEndTime,
+        }).catch((summaryError) => {
+            secureError('[Canonica Workspace Profile] Failed to sync scheduler summary', summaryError as Error, {
+                storeId: scope.storeId,
+                tenantId: scope.tenantId,
+            });
+        });
+        await markCanonicaCompiledContextSourceChangedAdmin('workspaceProfile', scope.tenantId, scope.storeId, {
+            reason: 'workspace_profile_update',
+            sourceType: 'stores',
+            sourceId: String(scope.storeId),
+        }).catch((sourceVersionError) => {
+            secureError('[Canonica Workspace Profile] Failed to mark compiled context stale', sourceVersionError as Error, {
+                storeId: scope.storeId,
+                tenantId: scope.tenantId,
+            });
+        });
 
         secureLog('[Canonica Workspace Profile] Saved', {
             storeId: scope.storeId,

@@ -1,7 +1,7 @@
 # Canonica — External Workflow Integrations — Spec
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-09
+> **Version:** 1.1.1
+> **Last Updated:** 2026-05-24
 > **Audience:** CEO / PM / Clients
 > **Feature Flag:** `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS`
 
@@ -18,7 +18,7 @@ SaaS founders using Canonica need to know when:
 
 Today, these events are visible only inside the Canonica governance dashboard. Founders must log into Canonica to see them. This creates a monitoring burden that contradicts Canonica's "infrastructure that runs silently" identity.
 
-**The solution:** Push structured events into tools founders already use — Slack channels, email inboxes, Linear boards, GitHub issues.
+**The solution:** Push bounded digest and critical review events into tools founders already use — Slack channels and email inboxes. Linear/GitHub issue creation remains controlled rollout until per-tenant secret handling is self-service safe.
 
 ---
 
@@ -49,7 +49,7 @@ Only high-value governance events. Not raw signal noise.
 | `knowledge_gap_detected` | Nightly batch (Step 5) | 5+ recurring fallbacks for same entity, no canonical answer | High |
 | `coverage_drop` | Nightly batch (Step 4) | Canonical coverage KPI drops below 60% | Critical |
 | `article_approved` | Governance UI action | Mutation proposal approved → canonical answer created/updated | Medium |
-| `ai_failure_recurring` | Nightly batch analysis | Same entity fails AI resolution 10+ times in 7 days | High |
+| `ai_failure_recurring` | Nightly batch analysis | Tenant has repeated AI-generation/draft failures in a nightly run | High |
 | `nightly_summary` | End of nightly batch | Summary of all nightly actions (drift, proposals, coverage) | Low |
 
 **Event payload structure (universal):**
@@ -110,13 +110,13 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 - Real-time: critical events (coverage_drop, ai_failure_recurring)
 - Batch: nightly_summary delivered as digest email
 
-**Rate limit:** Max 20 integration emails per recipient per day (same as existing notification system).
+**Rate limit:** Max 50 deliveries per tenant/adapter/day plus max 20 integration emails per recipient/day.
 
-### 4.3 — Linear (Tier B — Valuable)
+### 4.3 — Linear (Tier B — Controlled Rollout)
 
 **Purpose:** Convert friction signals into engineering backlog items.
 
-**Delivery method:** Linear GraphQL API (issue creation).
+**Delivery method:** Linear GraphQL API (issue creation), not exposed in owner settings until the credential lifecycle is production-ready.
 
 **Trigger events:** `mutation_proposed`, `knowledge_gap_detected`, `ai_failure_recurring`
 
@@ -126,11 +126,11 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 - Priority: Mapped from severity (critical → urgent, high → high, medium → normal)
 - Labels: `canonica`, `knowledge-gap` or `drift`
 
-### 4.4 — GitHub (Tier B — Valuable)
+### 4.4 — GitHub (Tier B — Controlled Rollout)
 
 **Purpose:** Convert product friction into engineering issues.
 
-**Delivery method:** GitHub REST API (issue creation).
+**Delivery method:** GitHub REST API (issue creation), not exposed in owner settings until the credential lifecycle is production-ready.
 
 **Trigger events:** Same as Linear.
 
@@ -148,11 +148,11 @@ Severity: HIGH | 2026-03-09 03:00 UTC
 
 > "As a SaaS founder, I want to configure which events go to which integration, so I'm not overwhelmed with notifications I don't care about."
 
-### 5.2 — Engineering Lead
+### 5.2 — Engineering Lead (Controlled Rollout)
 
-> "As an engineering lead, I want knowledge gap events to automatically create Linear issues, so recurring support friction becomes engineering backlog without manual triage."
+> "As an engineering lead in controlled rollout, I want knowledge gap events to create Linear issues after credential setup is approved, so recurring support friction can become engineering backlog without manual triage."
 
-> "As an engineering lead, I want to filter Linear issues to only `knowledge_gap_detected` and `ai_failure_recurring`, so my backlog isn't polluted with non-engineering events."
+> "As an engineering lead in controlled rollout, I want to filter issue creation to only `knowledge_gap_detected` and `ai_failure_recurring`, so my backlog isn't polluted with non-engineering events."
 
 ### 5.3 — Support Manager
 
@@ -170,14 +170,15 @@ Canonica Dashboard → Settings → Integrations tab
 
 Each integration card shows:
 - **Enable/Disable toggle**
-- **Connection details** (webhook URL for Slack, API key for Linear/GitHub, email for Email)
+- **Connection details** (webhook URL for Slack, recipients for Email)
 - **Event filter** — checkboxes for which event types to receive
-- **Test button** — sends a test event to verify connection
+- **Send Test Notification** — queues one controlled test event that honors the selected event filters
+- **Delivery health** — sanitized last success/failure/rate-limit status from the compact health summary
 
 ### 6.3 — Default Configuration
 
 When a founder enables an integration:
-- All event types enabled by default
+- `nightly_summary`, `coverage_drop`, and `ai_failure_recurring` are enabled by default
 - Founder can deselect event types they don't want
 - Minimum: at least 1 event type must remain enabled
 
@@ -193,6 +194,8 @@ When a founder enables an integration:
 | Payload sanitization | No PII in event payloads (no user emails, no ticket content) |
 | Circuit breaker | After 10 consecutive failures, disable integration + alert founder |
 | Delivery logging | Every attempt logged (success/failure/retry count/error) |
+| Retention | Events, delivery logs, and rate counters use Firestore TTL |
+| Cost cap | Nightly emits at most one digest plus one critical coverage event per active tenant by default |
 | Feature flag | `ENABLE_CANONICA_WORKFLOW_INTEGRATIONS` — enabled with caps, circuit breaker, and sanitized delivery |
 
 ---
@@ -217,9 +220,9 @@ Per Canonica Non-Goals Charter (doctrine/02):
 |--------|--------|-------------|
 | Integration adoption rate | 40% of active tenants enable ≥1 integration within 30 days | Config store query |
 | Event delivery success rate | >99% | Delivery log aggregation |
-| Mean time to awareness | <5 minutes for real-time events | Event timestamp vs delivery timestamp |
+| Mean time to awareness | <5 minutes after scheduler/test event emission | Event timestamp vs delivery timestamp |
 | Nightly digest open rate | >30% | Email tracking (if implemented) |
-| Linear/GitHub issue creation rate | >80% delivery success | Delivery logs for Linear/GitHub adapters |
+| Test notification success rate | >95% for configured Slack/email workspaces | Delivery health summary |
 
 ---
 
@@ -227,9 +230,8 @@ Per Canonica Non-Goals Charter (doctrine/02):
 
 | Phase | Scope | Timeline |
 |-------|-------|----------|
-| **Phase 1** | Event Bus + Slack + Email adapters | Implementation session 1 |
-| **Phase 2** | Linear + GitHub adapters | Implementation session 2 |
-| **Phase 3** | Nightly digest email (weekly summary) | After Phase 1 proven |
+| **Phase 1** | Event Bus + Slack + Email adapters + settings UI + test notification | Implemented |
+| **Controlled rollout** | Linear + GitHub adapters | Adapter code exists; self-service UI deferred for secret lifecycle |
 | **Future** | Notion adapter, custom webhook URLs | Only if demand proven |
 
 ---
@@ -238,4 +240,6 @@ Per Canonica Non-Goals Charter (doctrine/02):
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-24 | 1.1.1 | Aligned repeated-AI-failure trigger wording and daily adapter delivery caps with runtime. |
+| 2026-05-24 | 1.1.0 | Updated production scope to Slack/email, added test notification, health summary, TTL, digest-first event caps, and controlled-rollout status for issue trackers. |
 | 2026-03-09 | 1.0.0 | Initial spec from ChatGPT analysis + codebase audit + web research |

@@ -25,7 +25,7 @@
 
 ## Quick Reference
 
-### Pages and Public Agent Files (34 total)
+### Pages and Public Agent Files
 
 | Route | Page | Purpose |
 |-------|------|---------|
@@ -39,6 +39,8 @@
 | `/product/faq-management` | Product Feature | Standalone feature page for article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
 | `/product/changelog` | Product Feature | Standalone feature page for release notes connected to product surfaces, affected support answers, and drift review |
 | `/product/tickets` | Product Feature | Standalone feature page for fallback tickets, safe debugging context, and ticket-to-knowledge signal loops |
+| `/product/workflow-notifications` | Product Feature | Standalone feature page for Slack/email workflow notifications, digest-first governance alerts, test delivery, health summaries, and bounded delivery |
+| `/product/proactive-help` | Product Feature | Standalone feature page for configured page-aware proactive prompts backed by active triggers and approved support summaries |
 | `/use-cases` | Use Cases | AI-built SaaS and founder/operator scenarios by support problem |
 | `/use-cases/ai-built-saas` | Use Case | Support path for AI-built SaaS apps that launched before docs, tickets, and approved answers caught up |
 | `/use-cases/vibe-coded-saas` | Use Case Alias | Canonicalized campaign/search alias for the AI-built SaaS use case; do not use as the main navigation label |
@@ -51,6 +53,7 @@
 | `/support-widget-for-solo-founders` | SEO Landing | Solo-founder support widget page focused on launching support before hiring a team |
 | `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
 | `/install` | Widget Install | Widget script, allowed origins, blocked routes, hosted help domains such as help.yourapp.com, safe page context, and runtime verification |
+| `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
 | `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, widget install, governance, and safety |
 | `/updates` | Updates | Public product update timeline without using dashboard-owned changelog routes |
@@ -82,6 +85,8 @@
 | `src/app/sites/canonica/product/faq-management/page.tsx` | Product feature page for FAQ Management |
 | `src/app/sites/canonica/product/changelog/page.tsx` | Product feature page for Changelog |
 | `src/app/sites/canonica/product/tickets/page.tsx` | Product feature page for Tickets |
+| `src/app/sites/canonica/product/workflow-notifications/page.tsx` | Product feature page for Workflow Notifications |
+| `src/app/sites/canonica/product/proactive-help/page.tsx` | Product feature page for Proactive Help |
 | `src/app/sites/canonica/productFeatures.ts` | Shared product-feature route data, copy, and sitemap source |
 | `src/app/sites/canonica/use-cases/page.tsx` | Use-case page for AI-built SaaS and founder/operator support scenarios |
 | `src/app/sites/canonica/use-cases/ai-built-saas/page.tsx` | AI-built SaaS use-case landing page |
@@ -94,7 +99,7 @@
 | `src/app/sites/canonica/hosted-help-center-for-saas/page.tsx` | SEO landing page for hosted help-center search intent |
 | `src/app/sites/canonica/support-widget-for-solo-founders/page.tsx` | SEO landing page for solo-founder support search intent |
 | `src/app/sites/canonica/install/page.tsx` | Public widget install page |
-| `src/app/sites/canonica/integrations/page.tsx` | Redirect alias to `/install` for older links |
+| `src/app/sites/canonica/integrations/page.tsx` | Integrations landing page for Slack/email workflow notifications, test delivery, compact health, and controlled adapter boundaries |
 | `src/app/sites/canonica/resources/page.tsx` | Public resources hub |
 | `src/app/sites/canonica/updates/page.tsx` | Public website update log |
 | `src/app/sites/canonica/demo/page.tsx` | Static product demo route |
@@ -224,3 +229,4 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-24 | Converted reusable sequence diagrams from horizontal card strips into the same input column, logo center, and output column layout used by the source-map diagrams |
 | 2026-05-24 | Slowed the closed-loop ring and card-highlight animation to an 8.4-second loop-specific cycle while keeping the card highlights synchronized with the ring pulse |
 | 2026-05-24 | Added reusable proof blocks and applied them to fit qualification, widget states, homepage trust controls, use-case before/after examples, and security controls so text-heavy sections read as visual product proof |
+| 2026-05-24 | Added public Workflow Notifications and Proactive Help product-feature pages plus a real `/integrations` page now that Slack/email delivery, test notifications, compact health, proactive trigger gating, and bounded delivery are production-ready enough for buyer-facing claims |

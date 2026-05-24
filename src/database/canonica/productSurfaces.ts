@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, where } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { markCanonicaCompiledContextSourceChanged } from '@lib/canonica/compiledSourceVersionsClient';
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import {
     CANONICA_PRODUCT_SURFACE_LIMIT,
@@ -62,6 +63,11 @@ export const saveProductSurface = async (input: unknown) => {
             const docId = parsed.id || buildProductSurfaceDocId(scope.tId, scope.sId, parsed.key);
             const composedData = await canonicaRequestBodyComposer(parsed);
             await setDoc(getDocRef(docId), composedData, { merge: true });
+            await markCanonicaCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
+                reason: 'product_surface_save',
+                sourceId: docId,
+                sourceType: COLLECTION,
+            });
             return { ...composedData, id: docId } as CanonicaProductSurface;
         },
         input,
@@ -75,6 +81,12 @@ export const archiveProductSurface = async (surface: Pick<CanonicaProductSurface
             if (!surface.id) throw new Error('Surface ID is required.');
             const composedData = await canonicaRequestBodyComposer({ active: false });
             await setDoc(getDocRef(surface.id), composedData, { merge: true });
+            const scope = await requireScope();
+            await markCanonicaCompiledContextSourceChanged('surfaces', scope.tId, scope.sId, {
+                reason: 'product_surface_archive',
+                sourceId: surface.id,
+                sourceType: COLLECTION,
+            });
             return { id: surface.id, ...composedData };
         },
         surface,

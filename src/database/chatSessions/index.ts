@@ -3,7 +3,8 @@ import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
-import { canonicaFirebaseClient } from '@lib/firebase/canonicaFirebaseClient';
+import { canonicaFirebaseClient, canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
+import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { ChatSession } from '@type/chatSession';
 import { UserUploadedFileType } from '@type/common';
@@ -56,7 +57,9 @@ export const uploadChatImage = async (
 
                 // Upload to Firebase Storage
                 const uploadedUrl = await uploadBase64ToStorage({
+                    cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
                     fileId: imageId,
+                    storage: canonicaStorage,
                     url: base64String!,
                     path,
                     type: image.type || 'image/png'

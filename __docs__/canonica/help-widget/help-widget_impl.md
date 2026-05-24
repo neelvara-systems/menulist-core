@@ -487,6 +487,7 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 | `ENABLE_CANONICA_CANONICAL_ANSWERS` | Canonical-first retrieval (widget benefits automatically) |
 | `ENABLE_CANONICA_SIGNAL_MUTATION`   | Feedback signal → mutation pipeline (Phase 4)             |
 | `ENABLE_CANONICA_GUIDED_WORKFLOWS`  | Procedure-type answers in widget responses                |
+| `ENABLE_CANONICA_PREDICTIVE_SUPPORT` | Optional predictive help card requests after runtime config confirms active triggers |
 
 ---
 
@@ -494,7 +495,8 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-24 | 2.4.4   | Removed predictive support from the active widget runtime and docs; page context now only drives scoped search, related content, and guided procedure rendering. |
+| 2026-05-24 | 2.4.6   | Restored predictive support through a guarded runtime capability: widget config advertises predictive support only when active triggers exist, and runtime calls remain origin/context/rate/cooldown protected. |
+| 2026-05-24 | 2.4.4   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |
 | 2026-05-20 | 2.4.2   | Added saved and script-level blocked route support so client products can hide the widget on selected routes without extra Firebase reads. |
 | 2026-05-21 | 2.4.3   | Removed the temporary client-product-specific widget host and test-key route; widget embedding is now only through the generic public script plus Canonica-issued widget keys. |
 | 2026-05-19 | 2.3.1   | Widget Firebase cost hardening: hash-only Canonica auth path, 15-second positive widget auth cache, and context-scoped search cache keys. |

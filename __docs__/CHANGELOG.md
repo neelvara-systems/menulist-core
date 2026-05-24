@@ -6,14 +6,46 @@
 
 ---
 
+## May 24, 2026 — Canonica Compiled Context Distribution
+
+### Changed
+
+- **Canonica now has a compiled context serving layer** — Approved product, surface, entity, canonical, release, docs, and widget context can be compiled into versioned Firebase Storage bundles with `platformSummary/sourceVersions_*` and `platformSummary/bundleManifest_*` as the control plane.
+- **Runtime reads are bundle-first where safe** — Widget config now returns active public bundle pointers, public entities prefer the compiled server bundle, and MCP has gated read-only session/token tooling backed by private compiled bundles.
+- **Activation now exposes bundle readiness** — The Activation Command Center shows compiled context status, version, size, routes, errors, and a guarded manual rebuild action.
+- **Backend repair is source-version driven** — Canonica source changes mark bundles stale, KB/function writes update source versions, and the nightly Canonica scheduler repairs stale bundles with bounded source reads and immutable Storage writes.
+- **Storage and rules now enforce the bundle boundary** — Public bundles use opaque `pb_*` paths, private bundles are server-only, and client writes to compiled context objects are denied.
+
+---
+
+## May 24, 2026 — Canonica Website Workflow Notification Pages
+
+### Changed
+
+- **Workflow notifications are now public product content** — Canonica website now includes a real `/integrations` page plus `/product/workflow-notifications`, covering Slack/email destinations, digest-first delivery, test notification, compact health, and bounded delivery.
+- **Proactive help now has scoped buyer-facing copy** — `/product/proactive-help` explains configured page-aware prompts tied to active triggers and approved support summaries without implying always-on autonomous widget behavior.
+- **Website discovery stays aligned** — Resources, FAQ, updates, sitemap registry, LLM context, and Canonica website docs now include the new feature pages and keep broader adapters controlled rollout.
+
+## May 24, 2026 — Storage Cache Cost Hardening
+
+### Changed
+
+- **Versioned public uploads now carry immutable cache metadata** — Prepared media, OBP fallback images, PWA icon overrides, static asset previews, and public Canonica changelog assets now tell browsers/CDNs to reuse unchanged files.
+- **Internal source/support uploads use private immutable caching** — Public menu draft images, Canonica knowledge-source files, support ticket attachments, and chat images now allow browser reuse without shared public CDN caching.
+- **Canonica separated Storage paths are respected** — Canonica ticket, chat, changelog, and knowledge-source cleanup paths now use Canonica Storage when the product runs in separated Firebase mode.
+
 ## May 24, 2026 — Canonica Optional Expansions Restored
 
 ### Changed
 
 - **Canonica optional expansions restored and hardened** — Predictive support, external workflow integrations, and graph traversal are active code paths again because they support page-aware guidance, governance notifications, and deterministic retrieval quality.
 - **Workflow notifications are owner-configurable** — Product Details now includes Slack and email workflow notifications. Webhook URLs stay server-side, are never returned after save, and delivery payloads/errors are sanitized before logging.
+- **Workflow notifications now include test delivery and health** — Owners can queue one controlled Slack/email test notification, and settings show compact last delivery status without reading raw delivery logs.
+- **Workflow delivery is digest-first and TTL-backed** — Canonica emits one nightly summary plus critical coverage / repeated AI failure alerts for active tenants, uses persistent minute/day delivery caps, and lets Firestore TTL clean event/log/counter records.
 - **Predictive support now fails closed without cooldown storage** — The widget predictive endpoint keeps API-key scope, origin checks, rate limits, and hashed user cooldown keys; if Upstash cooldown storage is unavailable, proactive prompts are skipped instead of repeating.
+- **Predictive support is now summary-gated** — Widget config advertises predictive support only when active triggers exist, and nightly stores resolved suggestion snippets so runtime calls usually need no canonical-answer read.
 - **Graph traversal stays summary-backed** — Retrieval uses the precomputed `platformSummary/entityGraphIndex_{tId}_{sId}` document and reuses the loaded graph for suggestions to avoid duplicate reads per search.
+- **Graph summaries skip unchanged writes** — Nightly graph rebuilds compute a deterministic source hash and avoid rewriting `entityGraphIndex` when product structure has not changed.
 
 ## May 24, 2026 — Website Mobile Diagram Polish
 

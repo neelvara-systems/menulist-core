@@ -17,6 +17,8 @@ Canonica is:
 - owner-reviewed approved answers
 - stale-answer and support-gap review
 - hosted help, FAQ, changelog, and widget support surfaces
+- Slack and email workflow notifications for owner attention
+- configured proactive widget prompts where active triggers exist
 - a signal loop from fallback/tickets/feedback into reviewed knowledge work
 
 Canonica is not:
@@ -40,9 +42,12 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/product/faq-management — article-backed FAQs, owner review, surface-aware display, and source-linked refresh.
 - ${CANONICA_SITE_URL}/product/changelog — release notes connected to product surfaces and stale-answer review.
 - ${CANONICA_SITE_URL}/product/tickets — fallback tickets, safe debugging context, and ticket-to-knowledge signals.
+- ${CANONICA_SITE_URL}/product/workflow-notifications — Slack and email governance alerts, digest-first delivery, test notification, health summary, and bounded delivery.
+- ${CANONICA_SITE_URL}/product/proactive-help — configured page-aware prompts tied to active triggers and approved support summaries.
 - ${CANONICA_SITE_URL}/demo — static demo with no Firebase or AI calls.
 - ${CANONICA_SITE_URL}/use-cases/ai-built-saas — support path for AI-built SaaS apps and fast founder launches.
 - ${CANONICA_SITE_URL}/install — widget install, allowed origins, blocked routes, hosted help domains, safe page context, and verification.
+- ${CANONICA_SITE_URL}/integrations — Slack and email workflow notifications, test delivery, compact health, and controlled adapter boundaries.
 - ${CANONICA_SITE_URL}/resources — learning hub for launch, widget, support control, and governance.
 - ${CANONICA_SITE_URL}/updates — public product movement, not the customer workspace changelog.
 - ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, runtime limits, tenant isolation, and disclosure.
@@ -59,6 +64,8 @@ Canonica is not:
 - Fallback answers and missed questions become review signals; they do not overwrite canonical answers by themselves.
 - Hosted public help pages expose docs/FAQ/changelog content without authenticated ticket or workspace internals.
 - Public Canonica API routes exist behind rollout flags and API scope validation. Do not market them as generally available unless the website explicitly says so.
+- Slack and email workflow notifications are self-service. Broader workflow adapters should remain controlled rollout unless public pages explicitly say they are available.
+- Proactive help is configured and capability-gated; it should not be described as an always-on autonomous widget.
 
 ## Agent Reading Guidance
 

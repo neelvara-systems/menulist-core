@@ -91,6 +91,16 @@ service firebase.storage {
       allow delete: if isPlatformAdmin() || belongsToStore(tId, sId);
     }
 
+    match /canonica-context/public/{publicBundleId}/{version}/{filePath=**} {
+      allow read: if publicBundleId.matches('^pb_[A-Za-z0-9_-]{8,80}$')
+                  && version.matches('^v[0-9]+$');
+      allow write, delete: if false;
+    }
+
+    match /canonica-context/private/{tId}/{sId}/{version}/{filePath=**} {
+      allow read, write, delete: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -28,6 +28,10 @@ import { sanitizeIntegrationPayload } from './safety';
 // Track events emitted in current nightly run to enforce per-tenant cap
 const nightlyEventCounts = new Map<string, number>();
 
+function buildExpiry(days: number): Timestamp {
+    return Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
 /**
  * Reset nightly event counters. Called at the start of each nightly batch.
  */
@@ -65,6 +69,7 @@ export async function emitIntegrationEvent(params: {
         nightlyEventCounts.set(tenantKey, currentCount + 1);
 
         const event: IntegrationEvent = {
+            pId: 'CN',
             eventType: params.eventType,
             tId: params.tId,
             sId: params.sId,
@@ -72,6 +77,7 @@ export async function emitIntegrationEvent(params: {
             payload: sanitizeIntegrationPayload(params.payload),
             status: EVENT_STATUS.PENDING,
             createdAt: Timestamp.now(),
+            expiresAt: buildExpiry(INTEGRATION_LIMITS.EVENT_TTL_DAYS),
         };
 
         await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_EVENTS).add(event);

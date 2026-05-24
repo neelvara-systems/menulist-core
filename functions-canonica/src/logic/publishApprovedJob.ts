@@ -3,6 +3,7 @@ import { getFunctions } from "firebase-admin/functions";
 import * as functions from 'firebase-functions';
 import { HttpsError } from "firebase-functions/v2/https";
 import { CANONICA_CACHE_SOURCES, getCanonicaCacheVersionBumpData, getCanonicaCacheVersionDocId } from "../canonica/cacheVersionManifest";
+import { markCompiledContextSourceChanged } from "../canonica/compiledContextVersions";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { ARTICLE_RECONCILIATION_STATUS, ARTICLE_STATUS, CANONICA_CACHE_VERSIONS_COLLECTION, CANONICA_FAQS_COLLECTION, EmbedArticleType, INGESTION_JOB_COLLECTION, INGESTION_JOB_STATUS, IngestionJob, IngestionJobArticleToReview, IngestionJobCategoriesMap, KB_ARTICLES_COLLECTION, KB_CATEGORIES_COLLECTION, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from "../types";
 
@@ -189,6 +190,8 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
     // });
 
     const jobRef = firestoreAdmin.collection(INGESTION_JOB_COLLECTION).doc(jobId);
+    let publishedTenantId: number | null = null;
+    let publishedStoreId: number | null = null;
 
     try {
         await firestoreAdmin.runTransaction(async (transaction) => {
@@ -205,6 +208,8 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
 
             const tenantId = Number(job.tId);
             const storeId = Number(job.sId);
+            publishedTenantId = tenantId;
+            publishedStoreId = storeId;
 
             const categoriesDocId = getKnowledgeBaseCategoriesDocId(job.tId, job.sId);
             const categoriesDocRef = firestoreAdmin.collection(KB_CATEGORIES_COLLECTION).doc(categoriesDocId);
@@ -352,6 +357,21 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                 articlesEmbeddedCount: 0,
             });
         });
+
+        if (publishedTenantId && publishedStoreId) {
+            await Promise.all([
+                markCompiledContextSourceChanged(firestoreAdmin, 'kb', publishedTenantId, publishedStoreId, {
+                    reason: 'publish_approved_job',
+                    sourceId: jobId,
+                    sourceType: 'kb_generation_job',
+                }),
+                markCompiledContextSourceChanged(firestoreAdmin, 'docsNav', publishedTenantId, publishedStoreId, {
+                    reason: 'publish_approved_job',
+                    sourceId: jobId,
+                    sourceType: 'kb_generation_job',
+                }),
+            ]);
+        }
 
         // 7. Enqueue the slow work AFTER the transaction is successful
         if (articlesToReEmbed.length > 0) {

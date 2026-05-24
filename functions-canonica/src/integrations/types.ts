@@ -50,6 +50,7 @@ export type EventStatus = typeof EVENT_STATUS[keyof typeof EVENT_STATUS];
 
 export interface IntegrationEvent {
     eventId?: string;
+    pId?: 'CN';
     eventType: IntegrationEventType;
     tId: number;
     sId: number;
@@ -57,6 +58,7 @@ export interface IntegrationEvent {
     payload: Record<string, any>;
     status: EventStatus;
     createdAt: Timestamp;
+    expiresAt?: Timestamp;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -81,15 +83,32 @@ export interface DeliveryResult {
 
 export interface DeliveryLogEntry {
     eventId: string;
+    pId?: 'CN';
     tId: number;
     sId: number;
     adapter: AdapterType;
     attempt: number;
-    status: 'success' | 'failed';
+    status: 'success' | 'failed' | 'rate_limited';
     statusCode?: number | null;
     error?: string | null;
     durationMs: number;
     createdAt: Timestamp;
+    expiresAt?: Timestamp;
+}
+
+export interface IntegrationDeliveryHealth {
+    adapters: Partial<Record<AdapterType, {
+        lastStatus: 'success' | 'failed' | 'rate_limited';
+        lastAttemptAt: Timestamp;
+        lastSuccessAt?: Timestamp | null;
+        lastFailureAt?: Timestamp | null;
+        lastError?: string | null;
+        lastEventId?: string;
+        lastEventType?: IntegrationEventType;
+        statusCode?: number | null;
+        durationMs?: number;
+    }>>;
+    modifiedOn: Timestamp;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -163,6 +182,7 @@ export const INTEGRATION_LIMITS = {
     MAX_EVENTS_PER_NIGHTLY_RUN: 50,
     MAX_DELIVERY_ATTEMPTS: 3,
     MAX_EVENTS_PER_MINUTE_PER_ADAPTER: 20,
+    MAX_EVENTS_PER_DAY_PER_ADAPTER: 50,
     CIRCUIT_BREAKER_THRESHOLD: 10,
     CIRCUIT_BREAKER_COOLDOWN_MS: 24 * 60 * 60 * 1000, // 24 hours
     EVENT_TTL_DAYS: 90,

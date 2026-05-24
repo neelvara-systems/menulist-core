@@ -1,7 +1,7 @@
 # Canonica System Inventory
 
 > **Status:** Codebase-first inventory  
-> **Last Updated:** 2026-05-22
+> **Last Updated:** 2026-05-24
 > **Source of Truth:** Runtime code, routes, constants, data-access modules, Cloud Functions, Firebase rules/indexes, then existing docs  
 > **Product Boundary:** Canonica is a separate product. MenuList is only a client/test host and shared codebase neighbor.
 
@@ -73,6 +73,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Canonical answer engine | Implemented | `src/database/canonica/canonicalAnswers.ts`, `src/lib/canonica/canonicalRetrieval.ts`, `src/components/templates/canonica/governance/CanonicalAnswerEditor.tsx` | `canonica_canonicalAnswers`, entity search index, releases | Retrieves approved scoped answers before fallback. |
 | Guided workflow answer model | Implemented but rollout-gated | `src/lib/canonica/procedureValidation.ts`, canonical answer types | `canonica_canonicalAnswers.content.procedure` | Adds ordered procedures, prerequisites, warnings, and action metadata to canonical answers. |
 | Instant cache + freshness manifest | Implemented | `src/lib/canonica/instantCache.ts`, `src/lib/canonica/cacheFreshness.ts`, `src/lib/canonica/cacheVersion*.ts`, `functions-canonica/src/canonica/cacheVersionManifest.ts` | Upstash Redis when configured, `canonica_cacheVersions` | Caches repeated canonical hits while checking compact source versions instead of scanning source docs. |
+| Compiled context distribution | Implemented | `src/lib/canonica/contextBundleBuilderServer.ts`, `src/lib/canonica/compiledContext.ts`, `src/app/api/canonica/bundles/*`, `functions-canonica/src/canonica/contextBundleBuilder.ts` | `platformSummary/sourceVersions_*`, `platformSummary/bundleManifest_*`, Firebase Storage `canonica-context/*` | Compiles approved read-heavy context into immutable public/private JSON bundles for widget, public API, MCP, and scheduler-safe serving. |
 | Drift governance | Implemented | `src/lib/canonica/driftDetection.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/governance/DriftDashboard.tsx` | canonical answers, entities, releases, signals | Flags version mismatch, signal anomaly, scope conflict, and deprecated entity drift. |
 | Signal mutation engine | Implemented | `src/lib/canonica/signalEmitter.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/MutationProposalReview.tsx`; `src/lib/canonica/signalMutation.ts` is a reference/manual utility only | `canonica_signalEvents`, `canonica_mutationProposals` | Turns repeated tickets, negative feedback, fallback, and escalation signals into reviewable knowledge changes. Production clustering stays server-side for cost and access control. |
 | Auto knowledge drafts | Implemented with caps | `src/lib/canonica/draftGenerator.ts`, `functions-canonica/src/canonica/draftGenerator.ts`, `src/lib/canonica/draftPrompt.ts`, `src/components/templates/canonica/MutationProposalReview.tsx` | mutation proposals, entities, signals | Generates draft canonical answers for human review; queue UI supports publish, reject, and explicit generate/regenerate. Never auto-publishes authoritative content. |
@@ -116,6 +117,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 - `/widget/[apiKey]` hosts the iframe/widget app.
 - `/widget/canonica-widget.js` is the public embeddable script.
 - `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback` are public widget runtime endpoints protected by key hash and allowed-origin checks.
+- `/api/canonica/bundles/public/[...path]` proxies public-safe compiled bundle files from opaque Storage paths.
 
 ### Protected Canonica APIs
 
@@ -125,6 +127,9 @@ Management routes are gated by Canonica product scope or platform access. Client
 - `/api/canonica/widget-config`
 - `/api/canonica/widget-key`
 - `/api/canonica/product-surfaces/rebuild-summary`
+- `/api/canonica/bundles/rebuild`
+- `/api/canonica/mcp/session`
+- `/api/canonica/mcp`
 - `/api/canonica/tenant-summary`
 - `/api/canonica/translate`
 
@@ -147,6 +152,7 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 | `embedArticleWorker` | Cloud Tasks | Generates/stores KB article embeddings after article generation. | Async work, separated from UI. |
 | `regenerateEmbedding` | Callable | Manual article embedding regeneration. | Admin/protected callable; expensive only on demand. |
 | `publishApprovedJobFn` | Callable | Publishes reviewed KB generation job output. | Transactional publishing and cache version bump. |
+| `contextBundleBuilder` | Nightly task inside `canonicaNightly` plus owner-triggered API | Repairs stale compiled context bundles after source-version changes. | Reads bounded approved sources only when stale; runtime paths use Storage/server cache instead of collection fanout. |
 
 ---
 
@@ -187,6 +193,10 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 - `platformSummary/trustMetrics_{tId}_{sId}`
 - `platformSummary/frictionSnapshot_{tId}_{sId}`
 - `platformSummary/friction_{tId}_{sId}`
+- `platformSummary/sourceVersions_{tId}_{sId}`
+- `platformSummary/bundleManifest_{tId}_{sId}`
+- `platformSummary/bundleBuildLock_{tId}_{sId}`
+- `platformSummary/mcpSignal_{tId}_{sId}_{dateKey}`
 
 Dashboard and scheduler flows should prefer summary docs over scanning growing collections.
 
@@ -213,6 +223,10 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 - `ENABLE_CANONICA_FOUNDER_ONBOARDING`
 - `ENABLE_CANONICA_TRUST_METRICS`
+- `ENABLE_CANONICA_CONTEXT_BUNDLES`
+- `ENABLE_CANONICA_BUNDLE_BUILDER`
+- `ENABLE_CANONICA_WIDGET_BUNDLE_BOOTSTRAP`
+- `ENABLE_CANONICA_PUBLIC_API_BUNDLE_READS`
 
 ### Disabled / rollout-gated by default
 
@@ -222,6 +236,7 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_CANONICA_MULTI_LANGUAGE`
 - `ENABLE_CANONICA_GUIDED_WORKFLOWS`
 - `ENABLE_CANONICA_AI_ESCALATION`
+- `ENABLE_CANONICA_MCP`
 
 ### Enabled in Cloud Functions by default
 
@@ -231,6 +246,8 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_CANONICA_TICKET_KNOWLEDGE`
 - `ENABLE_CANONICA_TRUST_METRICS`
 - `ENABLE_CANONICA_FOUNDER_ONBOARDING`
+- `ENABLE_CANONICA_CONTEXT_BUNDLES`
+- `ENABLE_CANONICA_BUNDLE_BUILDER`
 
 Enabled nightly intelligence loops are capped and summary-backed. Predictive support, workflow notifications, and knowledge graph traversal are active expansion paths and must stay guarded by cooldown storage, event caps, sanitized delivery payloads, and compact `platformSummary` reads.
 
@@ -246,6 +263,7 @@ The Canonica website can safely claim these implemented capabilities:
 - Help center, KB, changelog/release notes, tickets, and widget as support surfaces.
 - Summary-backed coverage/readiness/trust metrics.
 - Cost-conscious scheduler and dashboard design using compact summary docs.
+- Compiled context bundles as the permanent read distribution layer for approved widget/API/MCP context.
 - Widget install, allowed origins, blocked routes, runtime verification, safe page context, and tenant-level widget branding as the default client integration path.
 - Ticket notification delivery readiness with test-send verification and Canonica-scoped failure logs.
 - Product friction intelligence and ticket-to-knowledge extraction as controlled, capped governance loops.
@@ -257,6 +275,7 @@ The website should not claim:
 - Fully automated publishing without owner review.
 - Always-on external workflow adapters as default package features.
 - Public API as a default package feature while its rollout flag remains disabled.
+- MCP as a default package feature while its rollout flag remains disabled.
 - MenuList-specific hardcoded behavior.
 
 ---
@@ -282,10 +301,12 @@ Core Canonica flows are implemented and documented enough for staging use:
 - signal mutation
 - trust metrics
 - nightly scheduler
+- compiled context distribution
 
 The following remain intentional rollout controls:
 
 - public API
+- MCP
 - multi-language
 - advanced cross-surface white-label branding
 

@@ -21,6 +21,7 @@ import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { canonicaFirebaseClient } from "@lib/firebase/canonicaFirebaseClient";
 import { markCanonicaTenantHasEntities } from '@lib/canonica/tenantSummaryClient';
+import { markCanonicaCompiledContextSourceChanged } from '@lib/canonica/compiledSourceVersionsClient';
 import { CanonicaEntity, CanonicaEntityRelation, CanonicaEntitySearchIndex } from "@type/canonica";
 
 // ═══════════════════════════════════════════════════════════════
@@ -37,6 +38,31 @@ const getRelationCollectionRef = () => collection(canonicaFirebaseClient, RELATI
 const getRelationDocRef = (docId: string) => doc(canonicaFirebaseClient, RELATION_COLLECTION, docId);
 const getSearchIndexCollectionRef = () => collection(canonicaFirebaseClient, SEARCH_INDEX_COLLECTION);
 const getSearchIndexDocRef = (docId: string) => doc(canonicaFirebaseClient, SEARCH_INDEX_COLLECTION, docId);
+
+const resolveEntityScope = async (
+    data?: Partial<CanonicaEntity> | null,
+    entityId?: string,
+) => {
+    const dataTId = Number(data?.tId);
+    const dataSId = Number(data?.sId);
+    if (Number.isFinite(dataTId) && dataTId > 0 && Number.isFinite(dataSId) && dataSId > 0) {
+        return { tId: dataTId, sId: dataSId };
+    }
+
+    if (entityId) {
+        const docSnap = await getDoc(getEntityDocRef(entityId));
+        if (docSnap.exists()) {
+            const existing = docSnap.data() as Partial<CanonicaEntity>;
+            const existingTId = Number(existing.tId);
+            const existingSId = Number(existing.sId);
+            if (Number.isFinite(existingTId) && existingTId > 0 && Number.isFinite(existingSId) && existingSId > 0) {
+                return { tId: existingTId, sId: existingSId };
+            }
+        }
+    }
+
+    return null;
+};
 
 /**
  * Get all entities for a tenant+store
@@ -126,6 +152,11 @@ export const addEntity = async (data: Omit<CanonicaEntity, 'id'>) => {
 
             const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getEntityCollectionRef(), submitData);
+            await markCanonicaCompiledContextSourceChanged('entities', data.tId, data.sId, {
+                reason: 'entity_create',
+                sourceId: docRef.id,
+                sourceType: ENTITY_COLLECTION,
+            });
             markCanonicaTenantHasEntities(data.tId, data.sId, 'entity_created').catch(() => undefined);
             return { ...submitData, id: docRef.id } as CanonicaEntity;
         },
@@ -144,6 +175,14 @@ export const updateEntity = async (data: Partial<CanonicaEntity> & { id: string 
             const { type, ...updateData } = data;
             const composedData = await canonicaRequestBodyComposer(updateData);
             await setDoc(getEntityDocRef(data.id), composedData, { merge: true });
+            const scope = await resolveEntityScope(composedData as Partial<CanonicaEntity>, data.id);
+            if (scope) {
+                await markCanonicaCompiledContextSourceChanged('entities', scope.tId, scope.sId, {
+                    reason: 'entity_update',
+                    sourceId: data.id,
+                    sourceType: ENTITY_COLLECTION,
+                });
+            }
             return composedData;
         },
         data,
@@ -183,6 +222,11 @@ export const deprecateEntity = async (entityId: string) => {
             // 3. Safe to deprecate
             const composedData = await canonicaRequestBodyComposer({ status: 'deprecated' });
             await setDoc(getEntityDocRef(entityId), composedData, { merge: true });
+            await markCanonicaCompiledContextSourceChanged('entities', entity.tId, entity.sId, {
+                reason: 'entity_deprecate',
+                sourceId: entityId,
+                sourceType: ENTITY_COLLECTION,
+            });
             return composedData;
         },
         { entityId },
@@ -249,6 +293,11 @@ export const addEntityRelation = async (data: Omit<CanonicaEntityRelation, 'id'>
         async () => {
             const submitData = await canonicaRequestBodyComposer(data);
             const docRef = await addDoc(getRelationCollectionRef(), submitData);
+            await markCanonicaCompiledContextSourceChanged('entityRelations', data.tId, data.sId, {
+                reason: 'entity_relation_create',
+                sourceId: docRef.id,
+                sourceType: RELATION_COLLECTION,
+            });
             return { ...submitData, id: docRef.id } as CanonicaEntityRelation;
         },
         data,
@@ -262,7 +311,16 @@ export const addEntityRelation = async (data: Omit<CanonicaEntityRelation, 'id'>
 export const deleteEntityRelation = async (relationId: string) => {
     return await apiCallComposer(
         async () => {
+            const relationSnap = await getDoc(getRelationDocRef(relationId));
+            const relation = relationSnap.exists() ? (relationSnap.data() as CanonicaEntityRelation) : null;
             await deleteDoc(getRelationDocRef(relationId));
+            if (relation) {
+                await markCanonicaCompiledContextSourceChanged('entityRelations', relation.tId, relation.sId, {
+                    reason: 'entity_relation_delete',
+                    sourceId: relationId,
+                    sourceType: RELATION_COLLECTION,
+                });
+            }
             return { id: relationId };
         },
         { relationId },
@@ -440,6 +498,16 @@ export const mergeEntities = async (
             // 6. Deprecate merged entity
             const deprecateData = await canonicaRequestBodyComposer({ status: 'deprecated' });
             await setDoc(getEntityDocRef(mergedId), deprecateData, { merge: true });
+            await markCanonicaCompiledContextSourceChanged('entities', tId, sId, {
+                reason: 'entity_merge',
+                sourceId: survivorId,
+                sourceType: ENTITY_COLLECTION,
+            });
+            await markCanonicaCompiledContextSourceChanged('entityRelations', tId, sId, {
+                reason: 'entity_merge_relations',
+                sourceId: survivorId,
+                sourceType: RELATION_COLLECTION,
+            });
 
             // 7. Audit log
             const { addAuditLog } = await import('@database/canonica/auditLogs');

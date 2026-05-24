@@ -11,11 +11,10 @@
 import { firebaseStorage } from '@lib/firebase/firebaseClient';
 import { getMediaFileExtension } from '@lib/media/mediaStorage';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
+import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { uploadPreparedMediaImage } from '@database/storage/uploadPreparedMediaImage';
 import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
-
-const OBP_PUBLIC_IMAGE_CACHE_CONTROL = 'public,max-age=31536000,immutable';
 
 function getPhotoExtension(mimeType?: string): string {
     return getMediaFileExtension(mimeType || 'image/jpeg');
@@ -57,7 +56,7 @@ export async function uploadOBPPhoto(
 
     const storageRef = ref(firebaseStorage, storagePath);
     const metadata = {
-        cacheControl: OBP_PUBLIC_IMAGE_CACHE_CONTROL,
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
         contentType: file.type || 'image/jpeg',
     };
 
@@ -108,7 +107,7 @@ export async function uploadOBPCover(
 
     const storageRef = ref(firebaseStorage, storagePath);
     const metadata = {
-        cacheControl: OBP_PUBLIC_IMAGE_CACHE_CONTROL,
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
         contentType: file.type || 'image/jpeg',
     };
 

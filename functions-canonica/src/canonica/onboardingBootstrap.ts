@@ -31,6 +31,7 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { markCompiledContextSourceChanged } from './compiledContextVersions';
 import { upsertCanonicaTenantSummary } from './tenantSummary';
 
 // ═══════════════════════════════════════════════════════════════
@@ -537,6 +538,16 @@ async function autoPromoteEntities(
     }
 
     if (result.promoted > 0) {
+        await markCompiledContextSourceChanged(db, 'entities', tId, sId, {
+            reason: 'onboarding_entities_promoted',
+            sourceType: 'canonica_entities',
+        }).catch(error => {
+            logger.warn('[Canonica Onboarding] Failed to mark compiled context stale after entity promotion', {
+                tId,
+                sId,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        });
         await upsertCanonicaTenantSummary(db, tId, sId, {
             source: 'onboarding_bootstrap',
             hasEntities: true,

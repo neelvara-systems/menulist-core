@@ -15,6 +15,7 @@ import {
     getCanonicaActivationSummaryDocId,
     shouldPersistActivationSummary,
 } from '@lib/canonica/activationSummary';
+import { getCanonicaBundleManifestDocId } from '@lib/canonica/compiledContext';
 import { getContextContentSummaryDocId } from '@lib/canonica/productSurfaceContent';
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
@@ -22,6 +23,39 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { secureError } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
+
+const buildCompiledContextReadiness = (manifest: Record<string, any> | null) => {
+    if (!manifest) {
+        return {
+            status: 'empty' as const,
+            bundleVersion: 0,
+            activeVersion: 0,
+            lastReadyVersion: 0,
+            publicBundleId: null,
+            lastBuildError: null,
+            staleReason: null,
+            publicBundlesReady: false,
+            privateBundlesReady: false,
+        };
+    }
+
+    const bundles = manifest.bundles && typeof manifest.bundles === 'object' ? manifest.bundles : {};
+    return {
+        status: manifest.status || 'empty',
+        bundleVersion: Number(manifest.bundleVersion || 0),
+        activeVersion: Number(manifest.activeVersion || 0),
+        lastReadyVersion: Number(manifest.lastReadyVersion || 0),
+        publicBundleId: manifest.publicBundleId || null,
+        generatedAt: manifest.generatedAt || null,
+        lastBuildCompletedAt: manifest.lastBuildCompletedAt || null,
+        lastBuildError: manifest.lastBuildError || null,
+        staleReason: manifest.staleReason || null,
+        stats: manifest.stats || {},
+        limits: manifest.limits || {},
+        publicBundlesReady: Object.keys(bundles).some(key => key.startsWith('public:')),
+        privateBundlesReady: Object.keys(bundles).some(key => key.startsWith('private:')),
+    };
+};
 
 const getCanonicaDb = () => {
     const db = canonicaFirestoreAdmin as any;
@@ -79,13 +113,15 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         const contextRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getContextContentSummaryDocId(tId, sId));
         const coverageRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`coverage_${tId}_${sId}`);
         const trustRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`trustMetrics_${tId}_${sId}`);
+        const bundleManifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getCanonicaBundleManifestDocId(tId, sId));
 
-        const [storeSnap, existingSummarySnap, contextSnap, coverageSnap, trustSnap] = await Promise.all([
+        const [storeSnap, existingSummarySnap, contextSnap, coverageSnap, trustSnap, bundleManifestSnap] = await Promise.all([
             storeRef.get(),
             summaryRef.get(),
             contextRef.get(),
             coverageRef.get(),
             trustRef.get(),
+            bundleManifestRef.get(),
         ]);
 
         if (!storeSnap.exists) {
@@ -111,6 +147,7 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             contextSummary: contextSnap.exists ? contextSnap.data() as any : null,
             coverage: coverageSnap.exists ? coverageSnap.data() as any : null,
             trustMetrics: trustSnap.exists ? trustSnap.data() as any : null,
+            compiledContext: buildCompiledContextReadiness(bundleManifestSnap.exists ? bundleManifestSnap.data() as any : null),
         });
 
         const existingSummary = existingSummarySnap.exists ? existingSummarySnap.data() || null : null;

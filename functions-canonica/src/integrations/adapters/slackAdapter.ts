@@ -48,6 +48,9 @@ const EVENT_TITLES: Record<string, string> = {
 
 function formatEventDetails(event: IntegrationEvent): string {
     const p = event.payload;
+    if (p.test) {
+        return '*Test notification:* Canonica workflow notifications are connected.';
+    }
 
     switch (event.eventType) {
         case INTEGRATION_EVENT_TYPES.DRIFT_DETECTED:

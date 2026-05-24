@@ -11,8 +11,22 @@ import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
-import { AdapterType, DeliveryLogEntry, DeliveryResult } from './types';
+import {
+    AdapterType,
+    DeliveryLogEntry,
+    DeliveryResult,
+    IntegrationEventType,
+    INTEGRATION_LIMITS,
+} from './types';
 import { sanitizeDeliveryError } from './safety';
+
+function buildExpiry(days: number): Timestamp {
+    return Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function getHealthDocId(tId: number, sId: number): string {
+    return `integrationHealth_${tId}_${sId}`;
+}
 
 /**
  * Log a delivery attempt (success or failure).
@@ -25,19 +39,22 @@ export async function logDeliveryAttempt(params: {
     adapter: AdapterType;
     attempt: number;
     result: DeliveryResult;
+    status?: DeliveryLogEntry['status'];
 }): Promise<void> {
     try {
         const entry: DeliveryLogEntry = {
             eventId: params.eventId,
+            pId: 'CN',
             tId: params.tId,
             sId: params.sId,
             adapter: params.adapter,
             attempt: params.attempt,
-            status: params.result.success ? 'success' : 'failed',
+            status: params.status || (params.result.success ? 'success' : 'failed'),
             statusCode: params.result.statusCode ?? null,
             error: params.result.error ? sanitizeDeliveryError(params.result.error) : null,
             durationMs: params.result.durationMs,
             createdAt: Timestamp.now(),
+            expiresAt: buildExpiry(INTEGRATION_LIMITS.DELIVERY_LOG_TTL_DAYS),
         };
 
         await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_DELIVERY_LOGS).add(entry);
@@ -69,54 +86,58 @@ export async function updateEventStatus(
 }
 
 /**
- * Cleanup expired events and delivery logs (90-day TTL).
- * Called from nightly batch.
+ * Update compact owner-facing delivery health.
+ * This avoids reading raw delivery logs in dashboard flows.
  */
-export async function cleanupExpiredIntegrationData(tId: number, sId: number): Promise<{ eventsDeleted: number; logsDeleted: number }> {
-    const result = { eventsDeleted: 0, logsDeleted: 0 };
-    const cutoff = Timestamp.fromMillis(Date.now() - 90 * 24 * 60 * 60 * 1000);
-
+export async function updateIntegrationHealth(params: {
+    eventId: string;
+    eventType: IntegrationEventType;
+    tId: number;
+    sId: number;
+    adapter: AdapterType;
+    status: 'success' | 'failed' | 'rate_limited';
+    result: DeliveryResult;
+}): Promise<void> {
     try {
-        // Delete expired events
-        const eventsSnap = await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_EVENTS)
-            .where('tId', '==', tId)
-            .where('sId', '==', sId)
-            .where('createdAt', '<', cutoff)
-            .limit(100)
-            .get();
+        const now = Timestamp.now();
+        const update: Record<string, any> = {
+            pId: 'CN',
+            tId: params.tId,
+            sId: params.sId,
+            [`adapters.${params.adapter}.lastStatus`]: params.status,
+            [`adapters.${params.adapter}.lastAttemptAt`]: now,
+            [`adapters.${params.adapter}.lastEventId`]: params.eventId,
+            [`adapters.${params.adapter}.lastEventType`]: params.eventType,
+            [`adapters.${params.adapter}.lastError`]: params.result.error ? sanitizeDeliveryError(params.result.error) : null,
+            [`adapters.${params.adapter}.statusCode`]: params.result.statusCode ?? null,
+            [`adapters.${params.adapter}.durationMs`]: params.result.durationMs,
+            modifiedOn: now,
+        };
 
-        if (!eventsSnap.empty) {
-            const eventsBatch = db.batch();
-            for (const doc of eventsSnap.docs) {
-                eventsBatch.delete(doc.ref);
-                result.eventsDeleted++;
-            }
-            await eventsBatch.commit();
+        if (params.status === 'success') {
+            update[`adapters.${params.adapter}.lastSuccessAt`] = now;
+        } else {
+            update[`adapters.${params.adapter}.lastFailureAt`] = now;
         }
 
-        // Delete expired delivery logs
-        const logsSnap = await db.collection(DB_COLLECTIONS.CANONICA_INTEGRATION_DELIVERY_LOGS)
-            .where('tId', '==', tId)
-            .where('sId', '==', sId)
-            .where('createdAt', '<', cutoff)
-            .limit(200)
-            .get();
-
-        if (!logsSnap.empty) {
-            const logsBatch = db.batch();
-            for (const doc of logsSnap.docs) {
-                logsBatch.delete(doc.ref);
-                result.logsDeleted++;
-            }
-            await logsBatch.commit();
-        }
+        await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(getHealthDocId(params.tId, params.sId))
+            .set(update, { merge: true });
     } catch (error) {
-        logger.warn('[Canonica Integration] TTL cleanup error', {
-            tId,
-            sId,
+        logger.warn('[Canonica Integration] Failed to update integration health', {
+            tId: params.tId,
+            sId: params.sId,
+            adapter: params.adapter,
             error: error instanceof Error ? error.message : String(error),
         });
     }
+}
 
-    return result;
+/**
+ * Cleanup expired events and delivery logs.
+ * Firestore TTL owns retention through expiresAt fields, so the scheduler does
+ * not run empty tenant-scoped cleanup queries.
+ */
+export async function cleanupExpiredIntegrationData(_tId: number, _sId: number): Promise<{ eventsDeleted: number; logsDeleted: number }> {
+    return { eventsDeleted: 0, logsDeleted: 0 };
 }

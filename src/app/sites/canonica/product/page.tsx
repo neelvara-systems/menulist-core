@@ -42,12 +42,13 @@ const FEATURES = [
         id: 'page-aware-support',
         badge: 'Support Control',
         title: 'Show help that matches the page the user is on',
-        description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help.',
+        description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help. Configured proactive prompts can appear only where active triggers exist.',
         capabilities: [
             'Widget install script with allowed-origin and blocked-route controls',
             'Hosted help center for docs, FAQ, and changelog on help/docs/support domains like help.yourapp.com',
             'Safe context payloads for page, feature, workflow, plan, and role hints',
             'Related articles, FAQs, and changelog entries filtered by product surface',
+            'Rule-based proactive help that skips backend calls when the feature is disabled or no active trigger exists',
             'Tickets as fallback when approved content is missing, with safe debugging context to reduce back-and-forth',
             'Mobile-first widget UI for end users inside client products',
         ],
@@ -75,7 +76,7 @@ const FEATURES = [
             'Changelog entries assigned to surfaces, tags, and affected answers',
             'Drift flags for stale or conflicting support knowledge',
             'Release impact checks without creating a separate scheduler',
-            'Weekly digest of what needs review next',
+            'Weekly digest and Slack/email notifications for support governance movement',
             'Summary-backed coverage, trust, and readiness metrics to avoid expensive dashboard scans',
         ],
     },
@@ -88,6 +89,7 @@ const FEATURES = [
             'Fire-and-forget signal writes with bounded payloads',
             'Signal-to-knowledge queue for recurring gaps',
             'Draft approved answers for owner review',
+            'Critical workflow notifications for coverage drops and repeated answer failures',
             'Ticket resolution extraction and safe ticket context when a support case teaches the product',
             'Cost-conscious summaries for dashboards, scheduler discovery, and product friction review',
         ],
@@ -179,7 +181,7 @@ export default function CanonicaProductPage() {
                                 Each Canonica support surface now explains its outcome, workflow, and how it connects back to approved answers.
                             </p>
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {CANONICA_SUPPORT_FEATURES.map((feature) => (
                                 <CanonicaLink
                                     key={feature.href}

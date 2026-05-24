@@ -14,6 +14,7 @@ export const DB_COLLECTIONS = {
     // Shared infrastructure (read by Canonica nightly for KPI aggregation)
     PLATFORM_SUMMARY: 'platformSummary',
     AI_SEARCH_HISTORY: 'aiSearchHistory',
+    STORES: 'stores',
 
     // Knowledge Base collections (live in Canonica Firestore)
     // Required by Founder Onboarding Bootstrap (Step 12)
@@ -21,6 +22,7 @@ export const DB_COLLECTIONS = {
     KB_ARTICLES: 'kb_articles',
     KB_GENERATION_JOBS: 'kb_generation_jobs',
     MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
+    CHANGELOG: 'changelog',
 
     // Canonica — Support Knowledge Control Plane
     // These collections live in CANONICA Firestore (separate project)
@@ -44,6 +46,7 @@ export const DB_COLLECTIONS = {
     // @see __docs__/canonica/workflow-integrations/
     CANONICA_INTEGRATION_EVENTS: 'canonica_integrationEvents',
     CANONICA_INTEGRATION_DELIVERY_LOGS: 'canonica_integrationDeliveryLogs',
+    CANONICA_INTEGRATION_RATE_LIMITS: 'canonica_integrationRateLimits',
 
     // Predictive Support (Expansion Item #12)
     // Rule-based proactive help triggers

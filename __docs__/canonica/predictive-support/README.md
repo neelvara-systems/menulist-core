@@ -1,7 +1,7 @@
 # Canonica — Predictive Support System
 
 > **Status:** ✅ IMPLEMENTED — Enabled with guards
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Created:** 2026-03-10
 > **Last Updated:** 2026-05-24
 > **Feature Flag:** `ENABLE_CANONICA_PREDICTIVE_SUPPORT` (enabled)
@@ -29,7 +29,8 @@ Predictive Help API (/api/canonica/predictive-help)
         ├─ Load trigger rules (cached in platformSummary)
         ├─ Evaluate conditions against context
         ├─ Check cooldown (Upstash Redis)
-        ├─ Resolve canonical answers for matched entities
+        ├─ Use pre-resolved suggestion snippets from summary
+        ├─ Fallback canonical-answer read only for stale summary docs
         │
         ▼
 Suggestion Payload → Widget renders contextual help
@@ -59,11 +60,21 @@ Suggestion Payload → Widget renders contextual help
 1. **Rule-based triggers only** — No ML, no behavior scoring, no predictive models. Deterministic.
 2. **Reuse existing infrastructure** — CanonicaContextPayload, friction stats, entity index, Upstash Redis, nightly batch.
 3. **1 new collection** — `canonica_predictiveTriggers` (trigger rules). Everything else uses existing infra.
-4. **Widget-initiated** — Widget/SDK calls predictive API on page entry. Server evaluates rules. No event streaming.
+4. **Widget-initiated only after capability gate** — The widget calls predictive API only when runtime config confirms active triggers. Server evaluates rules. No event streaming.
 5. **Non-blocking UI** — Context card pattern. Never blocks user workflow. Dismissible.
 6. **Nightly auto-suggestions** — Friction patterns auto-generate trigger rule suggestions (founder approves).
 7. **Fire-and-forget signals** — Suggestion interactions (shown/clicked/dismissed) logged to existing signal events.
 8. **Feature-flagged and enabled with guards** — `ENABLE_CANONICA_PREDICTIVE_SUPPORT` is active with API-key scope, origin checks, rate limits, Redis cooldowns, and fail-closed behavior when cooldown storage is unavailable.
+9. **Summary-backed runtime** — Nightly stores resolved suggestion snippets and source hashes so runtime calls usually avoid canonical-answer reads and cache writes are skipped when unchanged.
+
+---
+
+## Version History
+
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-05-24 | 1.1.0 | Added capability gating, summary-backed resolved suggestions, targeted answer lookup, unchanged-write skip, and Redis fail-closed notes. |
+| 2026-03-10 | 1.0.0 | Initial predictive support documentation. |
 
 ---
 
