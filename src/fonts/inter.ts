@@ -1,8 +1,13 @@
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 
-export const interFont = Inter({
-    subsets: ['latin'],
+export const interFont = localFont({
+    src: [
+        {
+            path: './local/inter-latin-variable.woff2',
+            weight: '100 900',
+            style: 'normal',
+        },
+    ],
     display: 'swap',
     variable: '--primary-font',
-    weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900']
 });
