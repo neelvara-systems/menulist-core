@@ -112,6 +112,8 @@ const getStoreIdsClaim = (dbUser: any): string[] => {
     return Array.from(new Set(storeIds));
 };
 
+const normalizeEmail = (value: unknown) => String(value || '').toLowerCase().trim();
+
 const canAccessStore = (dbUser: any, targetStoreId: number): boolean => {
     const storeIds = getStoreIdsClaim(dbUser);
     return storeIds.some((storeId) => Number(storeId) === Number(targetStoreId));
@@ -241,6 +243,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // If UID provided, set claims on existing user
         if (uid) {
+            const firebaseUser = await authAdmin.getUser(uid);
+            if (normalizeEmail(firebaseUser.email) !== normalizeEmail(session.user.email)) {
+                secureLog('[Auth] Rejected set-claims UID/email mismatch', {
+                    uid,
+                    sessionEmail: session.user.email,
+                });
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+
             await authAdmin.setCustomUserClaims(uid, customClaims);
             const customToken = await authAdmin.createCustomToken(uid, customClaims);
 

@@ -41,6 +41,10 @@ const validateLoginIdentifier = (value: string) => {
   return { valid: true };
 };
 
+const sameLoginEmail = (left?: string | null, right?: string | null) => (
+  String(left || '').toLowerCase().trim() === String(right || '').toLowerCase().trim()
+);
+
 const LOGIN_ERRORS = {
   "INVALID_CREAD": "invalid-login-credentials",
   "UNREGISTRED": "email-not-registred",
@@ -151,7 +155,7 @@ function LoginPage() {
             } catch (error) {
               console.error("Firebase Auth setup error:", error);
             }
-          } else {
+          } else if (sameLoginEmail(currentUser.email, sessionData.user.email)) {
             console.log("✅ Firebase Auth already active");
 
             // Ensure custom claims are set
@@ -170,6 +174,31 @@ function LoginPage() {
               }
             } catch (error) {
               console.warn('Custom claims check failed:', error);
+            }
+          } else {
+            console.log("Switching Firebase Auth to the current account...");
+
+            try {
+              const setClaimsResponse = await fetch('/api/auth/set-claims', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+              });
+
+              if (setClaimsResponse.ok) {
+                const data = await setClaimsResponse.json();
+
+                if (data.customToken) {
+                  const { signInWithCustomToken } = await import('firebase/auth');
+                  await signInWithCustomToken(firebaseAuth, data.customToken);
+                  await syncCanonicaAuthWithCustomToken(data.canonicaCustomToken);
+                  console.log('✅ Firebase Auth switched to current account');
+                }
+              } else {
+                console.warn('⚠️ Failed to switch Firebase Auth account');
+              }
+            } catch (error) {
+              console.warn('Firebase Auth account switch failed:', error);
             }
           }
         };

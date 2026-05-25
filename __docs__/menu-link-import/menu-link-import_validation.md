@@ -5,7 +5,8 @@
 ## Completed Checks
 
 - `npx tsc --noEmit` in `functions/` passed.
-- `npx tsc --noEmit --incremental false` at repo root passed.
+- `npx tsc --noEmit --incremental false` at repo root passed again after fresh tenant QA fixes.
+- `npm run lint` passed after fresh tenant QA fixes.
 - Targeted lint passed for:
   - `src/app/api/menu-link-imports/route.ts`
   - `src/lib/menu-link-import/sourceAcquisition.ts`
@@ -19,15 +20,47 @@
 - Temporary local server (`npx next dev -p 3010`) compiled `/projects` and redirected to `/signin` because no authenticated owner session was available in the in-app browser.
 - Temporary local server compiled `/api/menu-link-imports`; unauthenticated POST returned `401 Unauthorized` through the existing auth guard.
 - After enabling `ENABLE_MENU_LINK_IMPORT` in both app and functions config, `firebase deploy --only functions:processMenuImagesJob --project ecomsai` completed successfully.
-- Authenticated Chrome QA on `http://localhost:3000/projects` verified paste-link flow through review:
-  - pasted a public PDF URL,
+- Authenticated Chrome QA on `http://127.0.0.1:3000/projects` verified paste-link flow through review and apply:
+  - pasted `https://habibis.menulist.online/bar-menu`,
   - confirmed permission,
-  - created a `menu_link_import` job,
-  - worker accepted the job after the function flag deploy,
-  - job reached `preview_ready`,
-  - review modal showed 11 selected changes.
+  - created `menu_link_import` jobs,
+  - worker accepted the jobs after the function flag deploy,
+  - jobs reached `preview_ready`,
+  - review modal showed 40 selected changes with resolved category names,
+  - owner approval applied changes and moved jobs to `completed`.
 - Live apply surfaced a Firestore payload issue: optional extracted category fields could include nested `undefined`. `applyExtractionChanges` now sanitizes the final update payload before `updateDoc`.
-- Data contract replay after the fix verified the reviewed link import writes one source file, 5 categories, and 6 items with `undefinedPathCount: 0`; the job was marked completed and the stale intermediate preview job from the same validation pass was cancelled.
+- Data contract replay after the fix verified the reviewed link import writes source files without nested `undefined` values.
+- Existing-project Chrome QA verified image-upload data and link-import data can coexist in one project:
+  - project `Extraction QA 202605150548`,
+  - existing image source file retained 3 categories / 9 items,
+  - link import added a second `menu_link_import` text source file with 5 categories / 35 items,
+  - public URL `https://habibis.menulist.online/extraction-qa-202605150548` showed both original and imported sections.
+- New-project Chrome QA verified create-project → paste link → review → apply → public menu:
+  - project `Link Import QA 202605250322`,
+  - job `R6NZaeD3DMoWBdiasx1U`,
+  - artifact `Dw5ZP64sRZFJIJmBFo2i`,
+  - project stored one `menu_link_import` source file with 5 categories / 35 items,
+  - public URL `https://habibis.menulist.online/link-import-qa-202605250322` showed imported categories and items.
+- Empty-project Chrome QA also verified link-only import on `Link Import QA 202605250241`.
+- Fresh-tenant Chrome QA created a new QA tenant/store and verified link import end to end:
+  - tenant/store `45/52`,
+  - default project `45-default-52`,
+  - source link `https://habibis.menulist.online/bar-menu`,
+  - link job `kwuSIAEuC7cTpG6lIkte`,
+  - artifact `oh0PRujeGKGmjtSOPNqd`,
+  - review modal showed 5 categories / 35 items / 40 selected changes,
+  - approval wrote one `menu_link_import` text source file with 5 categories / 35 items,
+  - artifact metadata kept `storagePath` and set raw HTML storage fields to `null`,
+  - owner publish made the menu live at `https://fresh-link-qa-20260525040835-52.menulist.online/menu`.
+- Fresh-tenant image-after-link QA verified the adjacent upload path after link import:
+  - image job `QgdbNjKUKh8sXsjonsCE`,
+  - extraction reached `preview_ready` with `isFirstExtraction: false`,
+  - review modal showed the image-only additions as new items, not updates to unrelated existing items,
+  - approval wrote the uploaded image source file beside the link source file,
+  - project now stores two source files: `Imported menu link.txt` with 5 categories / 35 items and `habibis-menu-mobile.png` with 1 category / 4 items,
+  - original link-import prices remained unchanged after image approval,
+  - local public route with the fresh tenant host included Coke / Fresh Lime Water / Margarita / Diet Coke and deduplicated `0c1` to one structured-data section.
+- QA surfaced and fixed a stale-auth adjacent issue: `/api/auth/set-claims` now rejects a supplied Firebase UID when its Firebase Auth email does not match the active NextAuth session email, and login switches Firebase Auth accounts before setting claims.
 - Local revalidation API could not be called with a secret because `REVALIDATION_SECRET` was not present in the local `.env`.
 
 ## Manual Review
@@ -47,11 +80,20 @@
 - Existing file upload jobs keep current behavior.
 - Approval path creates the missing source file only when the owner saves review changes.
 - Imported source files include processing metadata and render as files, not assumed images.
+- Review apply/discard now exposes inline errors if Firestore rejects the action, instead of relying only on a transient toast.
+- Review apply now maps source-local `file_0` targets to actual job file UIDs for all single-store review jobs. It also fails instead of completing when approved mutations target a missing source file.
+- The comparison layer no longer trusts source-local extraction ids as cross-source stable item/category matches. This prevents later image/PDF uploads from updating unrelated link-import items when the model reuses numeric ids.
+- New reviewed items use source-scoped generated ids such as `0i1`, and matched category rows are copied into later source files so the editor renders link-first then image/PDF workflows per source file.
+- Firestore rules now allow the owning user to resolve a `preview_ready` review job only to `completed` or `cancelled`, with the update restricted to `status`, `completedAt`, `updatedAt`, and `currentStep`.
+- The multi-outlet project rule now explicitly handles projects that do not have `masterProjectId`; linked outlet protections still block `files` mutation.
+- The editor preview now branches by source MIME type. Image uploads keep the zoomable image tool; link-import text/PDF artifacts show a source-file panel and do not hit the image renderer.
+- Public structured data deduplicates categories by id before emitting Schema.org menu sections.
 - Desktop prevents overlapping link import and local photo/PDF upload jobs in the same project.
 - Desktop now exposes link import from the processed-menu editor action area as well as the upload view, so image/PDF-first projects can still import from a link later.
 - Mobile keeps link import and selected-file upload as separate sheet steps.
 - Public cache invalidation remains in `applyExtractionChanges`, so acquisition and extraction do not invalidate public output.
 
-## Remaining Manual Runtime Gap
+## Runtime Constraints
 
-- Browser apply was proven up to the review modal and initially failed on a real Firestore `undefined` payload. After the code fix, the local Chrome session required a fresh Google OAuth consent to restore NextAuth before re-clicking Apply. That consent was not completed in-browser; the fixed data contract was replayed with admin credentials against the QA project instead, then verified in Firestore.
+- The user-provided existing-account email `danny.tools.488@gmail.com` was not present in Firebase Auth or the `users` collection during the May 25, 2026 fresh QA pass. Existing tenant/store evidence above is from authenticated Chrome QA on the actual tenant/store test account available in this environment.
+- Chrome file-chooser automation still requires the Codex Chrome Extension file-access setting for physical local file selection. The image-after-link path was proven through the same live Storage → `menuImageProcessingJobs` → Cloud Function → review modal → apply flow using an uploaded QA image artifact.

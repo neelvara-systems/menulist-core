@@ -918,10 +918,11 @@ function generateSchemaOrgJsonLd(
         storeData,
         getLocalizedText(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage, getPrimaryLocalizedLanguage(projectData?.metadata?.name, projectData?.languages?.[0] || contentLanguage), "Restaurant"),
     );
-    const categories =
+    const categories = dedupeCategoriesById(
         projectData?.files?.flatMap(
             (file: any) => file?.extractedData?.data?.categories || [],
-        ).filter((category: any) => category?.active !== false) || [];
+        ).filter((category: any) => category?.active !== false) || [],
+    );
     const items =
         projectData?.files?.flatMap(
             (file: any) => file?.extractedData?.data?.items || [],
@@ -980,6 +981,20 @@ function generateSchemaOrgJsonLd(
             url: "https://www.menulist.ai",
         },
     };
+}
+
+function dedupeCategoriesById(categories: any[]): any[] {
+    const seenIds = new Set<string>();
+    const deduped: any[] = [];
+
+    for (const category of categories) {
+        const id = category?.id ? String(category.id) : '';
+        if (!id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        deduped.push(category);
+    }
+
+    return deduped;
 }
 
 function buildPublicCatalogStructuredData({

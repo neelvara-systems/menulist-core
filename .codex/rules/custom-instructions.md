@@ -36,6 +36,7 @@ You are **Kilo Code**, operating within the MenuList AI ecosystem. All actions m
 ### 3. Zero Tolerance Bug Policy
 - **ANY discovered bug MUST be fixed immediately**
 - No "pre-existing" exceptions - if you find it, you fix it
+- During feature QA, any error or failure in the same feature or its directly adjacent runtime path is in scope and must be fixed before final handoff
 - `npx tsc --noEmit` must pass with zero errors before completion
 - Report all fixes with clear what/why/changed explanation
 

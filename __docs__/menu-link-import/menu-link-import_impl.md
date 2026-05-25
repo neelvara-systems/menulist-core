@@ -48,9 +48,14 @@ The heuristic only chooses which same-origin page or linked PDF/image is most li
 - `functions/src/logic/processMenuImagesJob.ts`
 - `functions/src/logic/parallelProcessingPrompt.ts`
 - `src/lib/extraction/applyChanges.ts`
+- `src/lib/extraction/comparisonEngine.ts`
 - `src/components/templates/main-app/projects/index.tsx`
 - `src/components/templates/main-app/projects/FileList.tsx`
+- `src/components/templates/main-app/projects/editorView/components/FileImagePreview.tsx`
+- `src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewModal.tsx`
+- `src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx`
 - `src/components/mobile/sheets/MenuUploadSheet.tsx`
+- `firestore.rules`
 
 ## Why Not Gemini URL Context
 
@@ -78,10 +83,34 @@ This prevents blank-project auto-save from applying to link imports. Existing up
 - Existing processed menus expose link import next to the editor "Add Menu" file action, guarded by the same feature flag and the same active-job checks.
 - Approved link imports seed a normal processed source-file entry with processing metadata, so the project file list can render imported text/PDF/image artifacts without assuming every processed source is an image.
 - Later photo/PDF upload still filters only local base64 files for upload, so approved link source artifacts are ignored by future upload jobs.
+- Later photo/PDF review jobs map source-local `file_0`, `file_1`, etc. targets back to the actual uploaded file UIDs for all single-store review jobs, not only link-import jobs. This keeps link-first then image/PDF upload in the same project from completing without writing the uploaded source file.
+- Source-local extraction IDs are not trusted as stable cross-source item/category matches. Matching uses name/category similarity; new reviewed items receive source-scoped ids such as `0i1` so a later upload cannot update the wrong existing item just because Gemini reused `1`, `2`, `3`, etc.
+- If a later upload adds items into a category already present from another source file, the apply path copies that category row into the new source file with the same category id. The editor can then render the uploaded file coherently while public output deduplicates categories by id.
+
+## Review Resolution Rules
+
+The review screen resolves link-import and re-extraction jobs client-side after owner approval. Firestore rules allow only the owning user to move `preview_ready` jobs to:
+
+- `completed` with `currentStep: "Changes applied"`
+- `cancelled` with `currentStep: "Changes discarded by user"`
+
+The allowed job update fields are restricted to `status`, `completedAt`, `updatedAt`, and `currentStep`. Project data writes still go through the scoped `/projects/{tId}/{sId}/{projectId}` rules, and linked-outlet projects remain blocked from mutating `files`.
+
+## Review UI Behavior
+
+The review modal uses a viewport-bounded body and sticky action footer so Apply/Discard remain reachable on narrow desktop windows. Apply and discard failures render as an inline error alert in addition to the toast, which makes Firestore rule or data-contract failures visible during owner review.
+
+The comparison layer resolves item category names from the extracted category list before building preview rows. This keeps link-import previews readable even when the extraction payload stores `categoryId` but omits the optional `categoryName` display field.
+
+The editor source preview checks the source file MIME type before rendering the image zoom tool. Link-import text/PDF source files render as source-file panels with the original source link available, so the editor does not send `text/plain` or PDF artifact URLs through image rendering.
 
 ## Apply Safety
 
 `applyExtractionChanges` sanitizes the final Firestore update payload before `updateDoc`. This removes nested `undefined` values from extracted categories/items while preserving Firestore `Timestamp` values. This is required because link/PDF extraction can omit optional fields such as `orderIndex`, and Firestore rejects arrays or objects containing `undefined`.
+
+`applyExtractionChanges` now fails the owner approval action if a reviewed mutation targets a missing source file. This prevents the job from moving to `completed` while silently dropping approved categories/items.
+
+Public Schema.org JSON-LD deduplicates categories by id before building `MenuSection` / `OfferCatalog` output. This preserves source-file editor coherence without duplicating public structured-data sections when multiple source files share the same category id.
 
 ## Failure Cleanup
 

@@ -63,6 +63,10 @@ function needsExtractionIdAlias(
     return Boolean(extractedId) && entity.id !== extractedId && !hasExtractionIdAlias(entity, extractedId);
 }
 
+function getGeneratedItemId(extracted: ExtractedItemInput): string {
+    return `${extracted.sourceFileIndex ?? 0}i${extracted.id}`;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // DEDUPLICATION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -165,19 +169,6 @@ function matchCategory(
 ): MatchResult {
     const extractedName = getNormalizedNameFromObject(extracted.name, primaryLang);
 
-    // Re-extraction can generate fresh candidate IDs for the same menu entity.
-    // Persisted aliases keep master/outlet override keys stable across future runs.
-    for (const existing of existingCategories) {
-        if (existing.id === extracted.id || hasExtractionIdAlias(existing, extracted.id)) {
-            return {
-                matched: true,
-                existingId: existing.id,
-                score: 1.0,
-                matchType: 'exact',
-            };
-        }
-    }
-
     // Try exact match first
     for (const existing of existingCategories) {
         const existingName = getNormalizedNameFromObject(existing.name, primaryLang);
@@ -243,19 +234,6 @@ function matchItem(
     // Separate items by category
     const itemsInCategory = existingItems.filter(item => item.category === targetCategoryId);
     const itemsOutsideCategory = existingItems.filter(item => item.category !== targetCategoryId);
-
-    for (const existing of existingItems) {
-        if (existing.id === extracted.id || hasExtractionIdAlias(existing, extracted.id)) {
-            return {
-                matched: true,
-                existingId: existing.id,
-                score: 1.0,
-                matchType: 'exact',
-                isMasterItem: isMasterPool,
-                isLocalItem: isLocalPool,
-            };
-        }
-    }
 
     let bestMatch: { id: string; score: number; matchType: 'exact' | 'strong' | 'weak' | 'no_match'; inSameCategory: boolean } | null = null;
 
@@ -444,6 +422,7 @@ function processItemsSingleOrMaster(
                 targetFileUid: extracted.sourceFileIndex !== undefined
                     ? `file_${extracted.sourceFileIndex}`
                     : undefined,
+                generatedId: getGeneratedItemId(extracted),
             });
         }
 
@@ -933,6 +912,9 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
                 matchType: 'no_match',
                 approved: true,
                 generatedId,
+                targetFileUid: extractedCat.sourceFileIndex !== undefined
+                    ? `file_${extractedCat.sourceFileIndex}`
+                    : undefined,
             });
         }
     }

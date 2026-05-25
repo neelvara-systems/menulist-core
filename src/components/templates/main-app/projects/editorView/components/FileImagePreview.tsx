@@ -1,5 +1,5 @@
 import { Alert, Button, Divider, Flex, Popover, Space, theme, Tooltip, Typography } from 'antd';
-import { LuAlertTriangle, LuEye, LuHelpCircle, LuInfo, LuKeyboard, LuMinus, LuMousePointer2, LuMove, LuPlus, LuRotateCcw, LuTrash, LuXCircle } from 'react-icons/lu';
+import { LuAlertTriangle, LuExternalLink, LuEye, LuFileText, LuHelpCircle, LuInfo, LuKeyboard, LuMinus, LuMousePointer2, LuMove, LuPlus, LuRotateCcw, LuTrash, LuXCircle } from 'react-icons/lu';
 import { TbLanguageHiragana } from 'react-icons/tb';
 import { FileMessage, ProjectFileType } from '../../types';
 import { ZoomableImage } from '../ZoomableImage';
@@ -179,6 +179,103 @@ const ImageControlsHelp = () => {
     );
 };
 
+const getSourceUrl = (file: ProjectFileType): string | null => {
+    const sourceMetadata = (file as ProjectFileType & { sourceMetadata?: { sourceUrl?: unknown } }).sourceMetadata;
+    const sourceUrl = sourceMetadata?.sourceUrl;
+
+    return typeof sourceUrl === 'string' && sourceUrl.trim().length > 0 ? sourceUrl.trim() : null;
+};
+
+const SourceFilePreview = ({
+    file,
+    isLoading,
+    onRetryDescription,
+    onRetryTranslations,
+}: {
+    file: ProjectFileType;
+    isLoading: boolean;
+    onRetryDescription: (file: ProjectFileType) => void;
+    onRetryTranslations: (file: ProjectFileType) => void;
+}) => {
+    const { token } = theme.useToken();
+    const sourceUrl = getSourceUrl(file);
+    const source = (file as ProjectFileType & { source?: unknown }).source;
+    const sourceLabel = source === 'menu_link_import'
+        ? 'Imported menu link'
+        : file.type === 'application/pdf'
+            ? 'PDF source'
+            : 'Source file';
+
+    return (
+        <Flex gap={10} vertical style={{ position: 'relative', width: '100%', minWidth: 300, paddingRight: 10 }}>
+            <Flex
+                align="center"
+                justify="center"
+                vertical
+                gap={10}
+                style={{
+                    background: token.colorFillAlter,
+                    border: `1px dashed ${token.colorBorder}`,
+                    borderRadius: 8,
+                    color: token.colorTextSecondary,
+                    height: 400,
+                    minWidth: 300,
+                    padding: 24,
+                    position: 'relative',
+                    width: '100%',
+                }}
+            >
+                {isLoading && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: token.colorBgMask,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1,
+                        }}
+                    >
+                        <Text style={{ color: '#fff' }}>Reading source...</Text>
+                    </div>
+                )}
+                <LuFileText size={40} />
+                <Text strong>{sourceLabel}</Text>
+                {file.name ? (
+                    <Text type="secondary" style={{ maxWidth: 320, textAlign: 'center' }} ellipsis={{ tooltip: file.name }}>
+                        {file.name}
+                    </Text>
+                ) : null}
+                {sourceUrl ? (
+                    <Button
+                        icon={<LuExternalLink />}
+                        onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
+                    >
+                        Open source link
+                    </Button>
+                ) : null}
+            </Flex>
+            <ProcessingWarnings messages={file.extractedData?.processingMessages} />
+            <Flex gap={10}>
+                <Tooltip title="This will improve translations for all items from this source">
+                    <Button onClick={() => onRetryTranslations(file)} block icon={<TbLanguageHiragana />}>
+                        Fix Translations
+                    </Button>
+                </Tooltip>
+                <Tooltip title="This will create descriptions for items that do not have one">
+                    <Button onClick={() => onRetryDescription(file)} block icon={<LuInfo />}>
+                        Add Descriptions
+                    </Button>
+                </Tooltip>
+            </Flex>
+        </Flex>
+    );
+};
+
 interface FileImagePreviewProps {
     file: ProjectFileType;
     fileProcessingId: string | null;
@@ -196,6 +293,9 @@ export const FileImagePreview = ({
     onRetryTranslations,
     onRetryDescription
 }: FileImagePreviewProps) => {
+    const isImageFile = typeof file.type === 'string' && file.type.startsWith('image/');
+    const canPreviewImage = isImageFile && typeof file.url === 'string' && file.url.trim().length > 0;
+
     return (
         <div style={{ position: "relative", width: '100%', height: '100%' }}>
             {/* File name display */}
@@ -224,26 +324,30 @@ export const FileImagePreview = ({
             )}
             <div style={{ position: "absolute", top: 8, right: 18, zIndex: 1 }}>
                 <Flex gap={8}>
-                    <Popover
-                        content={<ImageControlsHelp />}
-                        title={null}
-                        trigger="click"
-                        placement="bottomRight"
-                        arrow={{ pointAtCenter: true }}
-                    >
-                        <Button
-                            icon={<LuHelpCircle style={{ fontSize: 16 }} />}
-                            shape="circle"
-                            type="default"
-                        />
-                    </Popover>
-                    <Tooltip title="View full image">
-                        <Button
-                            icon={<LuEye style={{ fontSize: 16 }} />}
-                            onClick={() => onPreview(file)}
-                            shape="circle"
-                        />
-                    </Tooltip>
+                    {canPreviewImage ? (
+                        <>
+                            <Popover
+                                content={<ImageControlsHelp />}
+                                title={null}
+                                trigger="click"
+                                placement="bottomRight"
+                                arrow={{ pointAtCenter: true }}
+                            >
+                                <Button
+                                    icon={<LuHelpCircle style={{ fontSize: 16 }} />}
+                                    shape="circle"
+                                    type="default"
+                                />
+                            </Popover>
+                            <Tooltip title="View full image">
+                                <Button
+                                    icon={<LuEye style={{ fontSize: 16 }} />}
+                                    onClick={() => onPreview(file)}
+                                    shape="circle"
+                                />
+                            </Tooltip>
+                        </>
+                    ) : null}
                     <Tooltip title={file.extractedData ? "Delete this file" : "Cannot delete until processed"}>
                         <Button
                             danger
@@ -259,15 +363,26 @@ export const FileImagePreview = ({
                 </Flex>
             </div>
             <Flex vertical style={{ width: '100%', overflow: 'auto' }}>
-                <ZoomableImage
-                    isLoading={fileProcessingId === file.uid}
-                    src={file.url}
-                    alt={file.name || 'Menu image'}
-                    retryTranslations={() => onRetryTranslations(file)}
-                    retryDescription={() => onRetryDescription(file)}
-                />
-                {/* Show processing warnings/errors for this file (Section 8.14) */}
-                <ProcessingWarnings messages={file.extractedData?.processingMessages} />
+                {canPreviewImage ? (
+                    <>
+                        <ZoomableImage
+                            isLoading={fileProcessingId === file.uid}
+                            src={file.url}
+                            alt={file.name || 'Menu image'}
+                            retryTranslations={() => onRetryTranslations(file)}
+                            retryDescription={() => onRetryDescription(file)}
+                        />
+                        {/* Show processing warnings/errors for this file (Section 8.14) */}
+                        <ProcessingWarnings messages={file.extractedData?.processingMessages} />
+                    </>
+                ) : (
+                    <SourceFilePreview
+                        file={file}
+                        isLoading={fileProcessingId === file.uid}
+                        onRetryDescription={onRetryDescription}
+                        onRetryTranslations={onRetryTranslations}
+                    />
+                )}
             </Flex>
         </div>
     );

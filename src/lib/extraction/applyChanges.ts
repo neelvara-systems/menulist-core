@@ -89,13 +89,9 @@ function findFileIndexByUid(
     return files.findIndex(f => f.uid === targetUid);
 }
 
-function isForcedReviewSourceJob(jobData: any): boolean {
-    return jobData?.forceReview === true || jobData?.source === 'menu_link_import';
-}
-
 function resolveReviewSourceFileUid(jobData: any, targetFileUid?: string): string {
     const files = Array.isArray(jobData?.files) ? jobData.files : [];
-    if (!isForcedReviewSourceJob(jobData) || files.length === 0) return targetFileUid || '';
+    if (files.length === 0) return targetFileUid || '';
 
     if (targetFileUid?.startsWith('file_')) {
         const index = Number(targetFileUid.replace('file_', ''));
@@ -110,8 +106,13 @@ function resolveReviewSourceFileUid(jobData: any, targetFileUid?: string): strin
 }
 
 function ensureReviewSourceFiles(files: any[], jobData: any, languages: any[] = []) {
-    if (!isForcedReviewSourceJob(jobData)) return;
     const jobFiles = Array.isArray(jobData?.files) ? jobData.files : [];
+    const source = typeof jobData?.source === 'string' && jobData.source.trim()
+        ? jobData.source.trim()
+        : null;
+    const sourceMetadata = jobData?.sourceMetadata && typeof jobData.sourceMetadata === 'object'
+        ? jobData.sourceMetadata
+        : null;
 
     for (const sourceFile of jobFiles) {
         if (!sourceFile?.uid || files.some(file => file?.uid === sourceFile.uid)) continue;
@@ -122,8 +123,8 @@ function ensureReviewSourceFiles(files: any[], jobData: any, languages: any[] = 
             type: sourceFile.type || 'text/plain',
             url: sourceFile.url || '',
             processingTime: jobData?.result?.processingTime || 0,
-            source: jobData?.source || 'menu_link_import',
-            sourceMetadata: jobData?.sourceMetadata || null,
+            ...(source ? { source } : {}),
+            ...(sourceMetadata ? { sourceMetadata } : {}),
             extractedData: {
                 data: {
                     categories: [],
@@ -138,6 +139,40 @@ function ensureReviewSourceFiles(files: any[], jobData: any, languages: any[] = 
 function findMutationFileIndex(files: any[], jobData: any, targetFileUid?: string): number {
     const resolvedUid = resolveReviewSourceFileUid(jobData, targetFileUid);
     return findFileIndexByUid(files, resolvedUid);
+}
+
+function ensureCategoryArray(file: any, languages: any[] = []) {
+    if (!file.extractedData) {
+        file.extractedData = { data: { categories: [], items: [], languages } };
+    }
+    if (!file.extractedData.data) {
+        file.extractedData.data = { categories: [], items: [], languages };
+    }
+    if (!Array.isArray(file.extractedData.data.categories)) {
+        file.extractedData.data.categories = [];
+    }
+    if (!Array.isArray(file.extractedData.data.languages)) {
+        file.extractedData.data.languages = languages;
+    }
+}
+
+function ensureItemCategoryInFile(files: any[], fileIndex: number, categoryId?: string, languages: any[] = []) {
+    if (!categoryId || fileIndex < 0 || !files[fileIndex]) return;
+
+    const targetFile = files[fileIndex];
+    ensureCategoryArray(targetFile, languages);
+
+    if (targetFile.extractedData.data.categories.some((category: any) => category?.id === categoryId)) {
+        return;
+    }
+
+    const sourceCategory = files
+        .flatMap((file) => file?.extractedData?.data?.categories || [])
+        .find((category: any) => category?.id === categoryId);
+
+    if (sourceCategory) {
+        targetFile.extractedData.data.categories.push(structuredClone(sourceCategory));
+    }
 }
 
 function getMenuDataFromFiles(files: any[]) {
@@ -301,7 +336,6 @@ export async function applyExtractionChanges(
         const projectData = projectSnap.data();
         const files = cloneFiles(projectData.files || []);
         const jobData = jobSnap.exists() ? jobSnap.data() : null;
-        ensureReviewSourceFiles(files, jobData, projectData.languages || []);
 
         // Single update payload — all mutations collected here, written once
         const updatePayload: Record<string, any> = {};
@@ -317,13 +351,15 @@ export async function applyExtractionChanges(
                 throw new Error('No project mutations in apply plan');
             }
 
+            ensureReviewSourceFiles(files, jobData, projectData.languages || []);
+
             // Process new categories — add to files in-memory
             for (const cat of mutations.upsertCategories) {
                 if (cat.newCategory) {
                     const fileIndex = findMutationFileIndex(files, jobData, cat.targetFileUid);
                     if (fileIndex === -1) {
                         console.warn(`[applyExtractionChanges] File not found for UID: ${cat.targetFileUid}`);
-                        continue;
+                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
                     }
                     if (!files[fileIndex].extractedData) {
                         files[fileIndex].extractedData = { data: { categories: [], items: [] } };
@@ -345,13 +381,19 @@ export async function applyExtractionChanges(
                     const fileIndex = findMutationFileIndex(files, jobData, item.targetFileUid);
                     if (fileIndex === -1) {
                         console.warn(`[applyExtractionChanges] File not found for UID: ${item.targetFileUid}`);
-                        continue;
+                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
                     }
                     if (!files[fileIndex].extractedData?.data?.items) {
                         files[fileIndex].extractedData = files[fileIndex].extractedData || {};
                         files[fileIndex].extractedData.data = files[fileIndex].extractedData.data || {};
                         files[fileIndex].extractedData.data.items = [];
                     }
+                    ensureItemCategoryInFile(
+                        files,
+                        fileIndex,
+                        item.newItem.category,
+                        projectData.languages || [],
+                    );
                     files[fileIndex].extractedData.data.items.push(item.newItem);
                     stats.itemsAdded++;
                 }
@@ -361,7 +403,10 @@ export async function applyExtractionChanges(
             for (const catPatch of mutations.upsertCategories) {
                 if (catPatch.categoryId && catPatch.patch) {
                     const fileIndex = findMutationFileIndex(files, jobData, catPatch.targetFileUid);
-                    if (fileIndex === -1) continue;
+                    if (fileIndex === -1) {
+                        console.warn(`[applyExtractionChanges] File not found for UID: ${catPatch.targetFileUid}`);
+                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
+                    }
 
                     const categories = files[fileIndex]?.extractedData?.data?.categories || [];
                     const catIndex = categories.findIndex((c: any) => c.id === catPatch.categoryId);
@@ -376,7 +421,10 @@ export async function applyExtractionChanges(
             for (const itemPatch of mutations.upsertItems) {
                 if (itemPatch.itemId && itemPatch.patch) {
                     const fileIndex = findMutationFileIndex(files, jobData, itemPatch.targetFileUid);
-                    if (fileIndex === -1) continue;
+                    if (fileIndex === -1) {
+                        console.warn(`[applyExtractionChanges] File not found for UID: ${itemPatch.targetFileUid}`);
+                        throw new Error('Could not apply changes because the source file is missing. Re-upload and try again.');
+                    }
 
                     const items = files[fileIndex]?.extractedData?.data?.items || [];
                     const itemIndex = items.findIndex((i: any) => i.id === itemPatch.itemId);
