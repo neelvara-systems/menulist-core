@@ -24,6 +24,7 @@ import { normalizeBusinessCategory, resolveBusinessCategory } from "../sharedDat
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
 import { hardenExtractedData } from "./extractionHardening";
+import { tryExtractMenuLinkTextFromJob } from "./menuLinkTextExtraction";
 import { processMenuImagesLogic } from "./processMenuImages";
 import { buildExistingCategoriesMap, processParallelResponse } from "./redistributeUtils";
 import { getProject, saveFilesToProject } from "./saveFilesToProject";
@@ -235,15 +236,17 @@ export async function processMenuImagesJobLogic(
             businessType: job.businessType,
         };
 
-        // Call existing AI processing logic
-        // Returns combined data with sourceFileIndex on each category/item
+        // Link imports can arrive as clean text artifacts after safe acquisition
+        // and browser rendering. Parse those directly when names/prices are
+        // already explicit; otherwise fall through to the normal AI extractor.
         logger.info(`[processMenuImagesJob] === STEP 2 AI PROCESSING START ===`, {
             jobId,
             step: 'AI_PROCESSING_START',
             timestamp: Date.now()
         });
 
-        const result = await processMenuImagesLogic(request);
+        const deterministicLinkResult = await tryExtractMenuLinkTextFromJob(jobId, job);
+        const result = deterministicLinkResult || await processMenuImagesLogic(request);
 
         logger.info(`[processMenuImagesJob] === STEP 2 AI PROCESSING COMPLETE ===`, {
             jobId,
@@ -254,6 +257,7 @@ export async function processMenuImagesJobLogic(
             qualityScore: result?.data?.qualityScore,
             categoriesCount: result?.data?.data?.categories?.length,
             itemsCount: result?.data?.data?.items?.length,
+            extractionProvider: deterministicLinkResult ? 'deterministic-text-parser' : 'ai',
             timestamp: Date.now()
         });
 

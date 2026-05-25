@@ -67,6 +67,28 @@ function getGeneratedItemId(extracted: ExtractedItemInput): string {
     return `${extracted.sourceFileIndex ?? 0}i${extracted.id}`;
 }
 
+function normalizeExtractedCategories(
+    categories: ExtractedCategoryInput[],
+): ExtractedCategoryInput[] {
+    return categories.map((category) => ({
+        ...category,
+        id: String(category.id),
+    }));
+}
+
+function normalizeExtractedItems(
+    items: ExtractedItemInput[],
+): ExtractedItemInput[] {
+    return items.map((item) => {
+        const rawCategoryId = item.categoryId ?? (item as ExtractedItemInput & { category?: string | number }).category;
+        return {
+            ...item,
+            id: String(item.id),
+            categoryId: rawCategoryId != null ? String(rawCategoryId) : '',
+        };
+    });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // DEDUPLICATION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -800,11 +822,13 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
 
     const threshold = matchConfig.similarityThreshold ?? DEFAULT_SIMILARITY_THRESHOLD;
     const weakThreshold = matchConfig.weakMatchThreshold ?? DEFAULT_WEAK_MATCH_THRESHOLD;
+    const extractedCategories = normalizeExtractedCategories(extracted.categories || []);
+    const normalizedExtractedItems = normalizeExtractedItems(extracted.items || []);
 
     console.log('[ComparisonEngine] Starting comparison', {
         mode,
-        extractedCategories: extracted.categories.length,
-        extractedItems: extracted.items.length,
+        extractedCategories: extractedCategories.length,
+        extractedItems: normalizedExtractedItems.length,
         existingCategories: storeProject.categories.length,
         existingItems: storeProject.items.length,
         hasMasterProject: !!masterProject,
@@ -816,8 +840,8 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
 
     // Initialize stats
     const stats: ComparisonStats = {
-        extractedCategories: extracted.categories.length,
-        extractedItems: extracted.items.length,
+        extractedCategories: extractedCategories.length,
+        extractedItems: normalizedExtractedItems.length,
         matchedCategories: 0,
         matchedItems: 0,
         newCategories: 0,
@@ -832,8 +856,8 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
 
     // Step 1: Deduplicate extracted items
     const extractedItems = resolveItemCategoryNames(
-        extracted.items,
-        extracted.categories,
+        normalizedExtractedItems,
+        extractedCategories,
         primaryLang,
     );
 
@@ -853,7 +877,7 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
         ? [...storeProject.categories, ...masterProject.categories]
         : storeProject.categories;
 
-    for (const extractedCat of extracted.categories) {
+    for (const extractedCat of extractedCategories) {
         const match = matchCategory(extractedCat, existingCategories, primaryLang, threshold);
 
         if (match.matched && match.existingId) {

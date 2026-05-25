@@ -1139,6 +1139,22 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_MENU_LINK_IMPORT: true,
 
+    /**
+     * Menu Link Import rendered-page fallback.
+     *
+     * Some owner-provided menu links are browser-routed apps, for example
+     * `/#/menu`, where the server response is only an app shell and the visible
+     * menu appears after client rendering. This fallback is bounded, server-only,
+     * and only runs after URL safety validation plus static acquisition failure.
+     *
+     * Runtime requirement:
+     * - Set MENU_LINK_IMPORT_CHROME_PATH when the host does not expose Chrome in
+     *   a standard path.
+     * - If no executable is available, the importer keeps the safe upload/manual
+     *   fallback instead of failing the request.
+     */
+    ENABLE_MENU_LINK_IMPORT_RENDER_FALLBACK: true,
+
     // ─────────────────────────────────────────────────────────────
     // AGENT DISCOVERY (Machine-Readable Business Truth)
     // @see __docs__/agent-readiness-strategy/

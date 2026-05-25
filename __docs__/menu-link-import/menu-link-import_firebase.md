@@ -17,7 +17,7 @@ Stores source acquisition metadata only.
   sourceUrl: string;
   finalUrl: string;
   contentType: string;
-  sourceKind: "html_text" | "plain_text" | "json_text" | "pdf" | "image";
+  sourceKind: "html_text" | "rendered_html_text" | "plain_text" | "json_text" | "pdf" | "image";
   storagePath: string;
   contentHash: string;
   size: number;
@@ -61,7 +61,10 @@ Artifacts are private and immutable. The extraction job receives a tokenized Fir
 - One Firestore write for artifact metadata.
 - One Firestore write for job creation.
 - One Storage write for the source artifact.
-- Existing extraction cost applies after job creation.
+- HTML/text/JSON link imports store a normalized text artifact only. Raw HTML is not stored separately.
+- Same-origin discovery can add bounded server fetches before artifact creation: up to 6 candidate URLs are considered and up to 4 high-confidence HTML pages can be combined into the single text artifact.
+- Rendered fallback adds bounded app-server Chrome CPU only when static acquisition cannot read a safe client-routed menu page. It does not add an extra Storage write beyond the final text artifact.
+- Deterministic text extraction can process high-confidence `html_text`, `rendered_html_text`, `plain_text`, and `json_text` artifacts with zero model charge. The existing AI extraction cost applies only when the deterministic parser cannot produce a reliable draft or when the artifact is PDF/image.
 - Failed job creation after Storage writes triggers best-effort cleanup of the new private artifact objects and artifact metadata.
 - No public cache invalidation until approved review write.
 

@@ -308,7 +308,7 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
                 const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);
                 const faqDrafts = buildPublishedFaqDraftsForArticle(articleDocs.get(articleId) || null, articleId, job, tenantId, storeId);
                 const faqIds = faqDrafts.map(faq => faq.id);
-                const updatePayload: Record<string, unknown> = {
+                const updatePayload: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
                     active: true,
                     lastReviewedOn: Timestamp.now(),
                     generatedFaqs: FieldValue.delete(),

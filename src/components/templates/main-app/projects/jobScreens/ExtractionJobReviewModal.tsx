@@ -39,8 +39,9 @@ export default function ExtractionJobReviewModal({
     return (
         <Modal
             destroyOnClose
+            closable={false}
             open={open}
-            onCancel={onDiscard}
+            maskClosable={false}
             footer={null}
             width="min(1200px, calc(100vw - 32px))"
             style={{ top: 16 }}

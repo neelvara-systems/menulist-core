@@ -22,6 +22,8 @@ Upload a photo/PDF of the menu or add the menu manually.
 ## Supported Sources
 
 - Public menu pages.
+- Business homepages that link to a public menu, service list, catalog, or rate card on the same website.
+- Menus split across a few pages on the same website.
 - Direct PDF links.
 - Direct image links.
 - Public QR menu destination links.
@@ -32,4 +34,4 @@ Upload a photo/PDF of the menu or add the menu manually.
 - Blocked pages.
 - Delivery app pages.
 - CAPTCHA pages.
-
+- Links where the menu is only available after choosing a location, signing in, or opening another company's website.

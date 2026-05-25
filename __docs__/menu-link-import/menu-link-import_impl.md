@@ -7,10 +7,10 @@ Menu Link Import reuses the existing extraction infrastructure instead of adding
 1. UI calls `POST /api/menu-link-imports`.
 2. The API validates auth, tenant/store access, feature flag, rate limit, permission confirmation, and URL safety.
 3. The API fetches the source directly with DNS/IP validation, pinned request lookup, redirect re-checks, size caps, and a bounded acquisition budget.
-4. HTML/text/JSON sources are converted into a text artifact; PDF/image sources are stored as-is. Low-confidence HTML can fall back to a bounded same-origin linked PDF/image catalog asset.
+4. HTML/text/JSON sources are converted into a text artifact; PDF/image sources are stored as-is. HTML acquisition can follow bounded same-origin menu/catalog links, Schema.org `hasMenu` URLs, linked PDF/image catalog assets, and rendered client-routed menu pages such as `/#/menu`; otherwise it is rejected before job creation.
 5. The API stores one private source artifact and writes a `menuLinkImportArtifacts` document.
 6. The API creates a `menuImageProcessingJobs` document with `source: "menu_link_import"` and `forceReview: true`.
-7. Cloud Functions process the job with the existing Gemini file extraction pipeline.
+7. Cloud Functions first try deterministic text extraction for link-import text artifacts that already contain structured names/prices. If that parser cannot produce a reliable draft, the job falls through to the existing Gemini file extraction pipeline.
 8. `forceReview` makes the job land in `preview_ready`.
 9. Existing review UI creates the apply plan.
 10. Existing `applyExtractionChanges` writes approved source file and menu data, then revalidates public cache through the current path.
@@ -25,7 +25,61 @@ Source scoring and same-origin candidate discovery are business-agnostic. They u
 - Service, retail, professional, creative, health, and specialty businesses use offer catalog terms such as services, products, pricing, rate cards, packages, treatments, classes, collections, appointments, rentals, and repairs.
 - If a project has no resolved business category, the importer uses the generic offering vocabulary plus bounded terms across supported categories.
 
-The heuristic only chooses which same-origin page or linked PDF/image is most likely to contain the owner-provided catalog. It does not publish anything and it does not change the extraction schema; Gemini still receives a text/PDF/image artifact and the existing forced-review flow remains the authority.
+The heuristic only chooses which same-origin page or linked PDF/image is most likely to contain the owner-provided catalog. It does not publish anything and it does not change the extraction schema; the extraction job still receives a text/PDF/image artifact and the existing forced-review flow remains the authority.
+
+Low-confidence HTML shells are not sent to extraction. If a page is mostly a client-rendered app shell, generic marketing page, or route template without enough visible offering/catalog content, the importer first looks for a same-origin PDF/image catalog. If none exists, the API returns the owner-safe fallback message instead of creating an empty review job.
+
+## Same-Origin Discovery Cases
+
+The importer is not a full crawler. It handles the common owner-provided cases with fixed bounds:
+
+1. Direct source URL:
+   - HTML/text/JSON becomes a normalized text artifact.
+   - PDF/JPEG/PNG/WebP is stored as the extraction artifact.
+2. Homepage or landing page with a visible menu/catalog link:
+   - Anchor links are scored with business-category-aware offering terms.
+   - Only same-origin HTTP/HTTPS links are considered.
+   - Hash fragments are removed before server fetches, but same-origin hash menu candidates are preserved for the rendered fallback.
+3. Homepage or landing page with Schema.org menu references:
+   - JSON-LD `hasMenu` / `menu` URLs are considered when they stay on the same origin.
+   - Menu-level URLs are followed; individual item URLs are not treated as source pages.
+4. Direct linked asset:
+   - Same-origin PDF/image links with strong menu/catalog/rate-card context can become the artifact.
+   - UI assets, logos, placeholders, QR images, and social/navigation images are filtered out.
+5. Split menu/catalog:
+   - Up to 6 same-origin candidate URLs are inspected.
+   - Up to 4 high-confidence HTML sources are combined into one text artifact.
+   - The combined artifact still goes through the same review pipeline and never writes public truth directly.
+
+Unsupported cases remain login-required pages, third-party marketplace crawling from a homepage, CAPTCHA/blocked pages, unlimited sitemap crawling, multi-location selectors, and cross-domain discovery.
+
+## Rendered Hash-Route Fallback
+
+Some owner-provided links point to a browser-routed app where the initial server response is only an app shell and the actual catalog is mounted after client rendering. The v1 fallback is intentionally narrow:
+
+- It is gated by `FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT_RENDER_FALLBACK`.
+- It runs only after URL safety validation and only after static HTML acquisition does not find usable catalog content.
+- It preserves the original URL hash only when the normalized safe URL has the same origin, path, and query.
+- It uses a bounded headless Chrome `--dump-dom` run with disabled extensions, disabled image loading, a temporary user data directory, output byte limits, and a fixed timeout.
+- It stores only the text artifact used for extraction. Raw HTML is not stored separately.
+- It still requires visible offering/catalog evidence such as structured data or prices before job creation.
+
+This means `https://demo2.godirekt.in/spark/app/#/menu` can create a review draft after rendering, while `https://demo2.godirekt.in/spark/app/#/mainpage` is rejected because it resolves to the app shell/navigation surface rather than the menu content.
+
+## Deterministic Link Text Extraction
+
+`functions/src/logic/menuLinkTextExtraction.ts` is the first extractor for `menu_link_import` jobs whose artifact source kind is `html_text`, `rendered_html_text`, `plain_text`, or `json_text`.
+
+The parser is business-agnostic. It looks for category/count boundaries, candidate offer names, and nearby price lines in the captured visible text; it does not use restaurant-only keyword allowlists. It returns the same `ExtractedMenuData` shape as the existing extraction pipeline:
+
+- `languages`
+- `categories`
+- `items`
+- `qualityScore`
+- `qualityDetails`
+- provenance with `promptVersion: "menu-link-text-parser-v1"` and `model: "deterministic-text-parser"`
+
+The deterministic path is accepted only when it finds structured sections and at least 75% priced items. Otherwise the existing AI extractor remains the fallback. This keeps dynamic text menus cheap and repeatable without changing PDF/image behavior.
 
 ## Files
 
@@ -100,7 +154,11 @@ The allowed job update fields are restricted to `status`, `completedAt`, `update
 
 The review modal uses a viewport-bounded body and sticky action footer so Apply/Discard remain reachable on narrow desktop windows. Apply and discard failures render as an inline error alert in addition to the toast, which makes Firestore rule or data-contract failures visible during owner review.
 
-The comparison layer resolves item category names from the extracted category list before building preview rows. This keeps link-import previews readable even when the extraction payload stores `categoryId` but omits the optional `categoryName` display field.
+The review modal cannot be dismissed through the shell close icon or mask. Owners must apply or discard, and the empty/no-change state uses the same discard path so the preview job is resolved instead of reopening.
+
+The comparison layer normalizes extracted category ids and item category references at the boundary. It accepts both `categoryId` and the existing extraction shape's `category`, then resolves readable category names before building preview rows. This keeps link-import previews readable and prevents `Unknown Category` rows for deterministic link-text payloads.
+
+When a preview job is restored from session storage after a reload, the projects page reselects the job's project before opening review. The review modal only renders when the active job, selected project, and loaded project all match, so an owner cannot accidentally apply a restored link-import job to a different menu.
 
 The editor source preview checks the source file MIME type before rendering the image zoom tool. Link-import text/PDF source files render as source-file panels with the original source link available, so the editor does not send `text/plain` or PDF artifact URLs through image rendering.
 

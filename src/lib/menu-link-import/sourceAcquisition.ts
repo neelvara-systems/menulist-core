@@ -1,14 +1,20 @@
 import crypto from 'crypto';
+import { FEATURE_FLAGS } from '@config/features';
 import {
     BUSINESS_CATEGORIES,
     BUSINESS_TYPES,
     normalizeBusinessCategory,
     resolveBusinessCategory,
 } from '@data/shared/businessTypes';
+import { spawn } from 'child_process';
 import { lookup } from 'dns/promises';
+import { constants as fsConstants } from 'fs';
+import { access, mkdtemp, rm } from 'fs/promises';
 import http, { IncomingMessage } from 'http';
 import https from 'https';
 import net from 'net';
+import os from 'os';
+import path from 'path';
 
 const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
 const MAX_TEXT_CHARS = 120_000;
@@ -17,7 +23,11 @@ const DNS_TIMEOUT_MS = 3_000;
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_ACQUISITION_MS = 20_000;
 const MAX_REDIRECTS = 2;
-const MENU_LINK_CANDIDATE_LIMIT = 3;
+const MIN_MENU_SOURCE_SCORE = 8;
+const MENU_LINK_CANDIDATE_LIMIT = 6;
+const MAX_COMBINED_HTML_SOURCES = 4;
+const RENDER_FALLBACK_TIMEOUT_MS = 18_000;
+const MAX_RENDERED_HTML_BYTES = 8 * 1024 * 1024;
 
 const UNSAFE_HOSTNAMES = new Set([
     'localhost',
@@ -35,7 +45,7 @@ const SUPPORTED_TEXT_TYPES = new Set([
     'application/xml',
 ]);
 
-type SourceKind = 'html_text' | 'plain_text' | 'json_text' | 'pdf' | 'image';
+type SourceKind = 'html_text' | 'rendered_html_text' | 'plain_text' | 'json_text' | 'pdf' | 'image';
 
 export type MenuLinkAcquisitionContext = {
     businessCategory?: string | null;
@@ -74,6 +84,16 @@ type SafeUrl = {
 type LookupAddress = {
     address: string;
     family: number;
+};
+
+type HtmlSourceCandidate = {
+    finalUrl: string;
+    jsonLd: string[];
+    rawHtml: string;
+    renderUrl?: string;
+    redirectCount: number;
+    score: number;
+    sourceText: string;
 };
 
 function escapeRegExp(value: string): string {
@@ -216,6 +236,20 @@ const SCHEMA_ORG_OFFERING_RE = new RegExp(
     `schema\\.org\\/(${SCHEMA_ORG_TYPES.map(escapeRegExp).join('|')})`,
     'i',
 );
+const PRICE_TEXT_RE = /(?:rs\.?|inr|₹|\$|usd|eur|£)\s?\d+|\d+(?:\.\d{2})?\s?(?:rs\.?|inr|₹|\$|usd|eur|£)/gi;
+const CLIENT_RENDERED_TEMPLATE_RE = /(?:\bng-(?:app|repeat|view|controller|if|show|hide|include|class|model)\b|angular\.module|{{[\s\S]*?}}|<app-root\b|<router-outlet\b|id=["'](?:root|app)["']|data-reactroot|__next_data__|v-(?:for|if|show)=)/i;
+const STRONG_LINKED_ASSET_RE = /(^|[^a-z0-9])(?:menu|menus|catalog|catalogue|price[\s/_-]*list|rate[\s/_-]*card|food[\s/_-]*menu|bar[\s/_-]*menu|service[\s/_-]*list|services[\s/_-]*list|product[\s/_-]*catalog)(?=$|[^a-z0-9])/i;
+const UI_ASSET_RE = /(^|[\/_\s.-])(?:arrow|avatar|background|banner|cart|checkout|close|filter|favicon|icon|loader|logo|nav|no[\s_-]*image|online[\s_-]*order|payment|placeholder|qr|search|social|spinner)(?=$|[\/_\s.-])/i;
+const CHROME_EXECUTABLE_CANDIDATES = [
+    process.env.MENU_LINK_IMPORT_CHROME_PATH,
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+].filter(Boolean) as string[];
+
+let cachedChromeExecutable: string | null | undefined;
 
 export class MenuLinkImportError extends Error {
     code: string;
@@ -247,6 +281,24 @@ function normalizeUrl(input: string): URL {
 
     url.hash = '';
     return url;
+}
+
+function buildRenderableUrl(input: string, safeHref: string): string {
+    try {
+        const original = new URL(input.trim().replace(/\\/g, '/'));
+        const safe = new URL(safeHref);
+        if (
+            original.origin === safe.origin &&
+            original.pathname === safe.pathname &&
+            original.search === safe.search &&
+            original.hash
+        ) {
+            safe.hash = original.hash;
+        }
+        return safe.href;
+    } catch {
+        return safeHref;
+    }
 }
 
 function parseIpv4(address: string): number[] | null {
@@ -585,15 +637,19 @@ function extractJsonLd(html: string): string[] {
 
 function extractVisibleText(html: string): string {
     const withoutNoise = html
+        .replace(/<!--[\s\S]*?-->/g, ' ')
         .replace(/<script[\s\S]*?<\/script>/gi, ' ')
         .replace(/<style[\s\S]*?<\/style>/gi, ' ')
         .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+        .replace(/{{[\s\S]*?}}/g, ' ')
         .replace(/<(br|\/p|\/li|\/tr|\/h[1-6]|\/div)>/gi, '\n')
         .replace(/<[^>]+>/g, ' ');
 
     return decodeHtmlEntities(withoutNoise)
         .replace(/\r/g, '\n')
         .replace(/[ \t]+/g, ' ')
+        .replace(/[ \t]+\n/g, '\n')
+        .replace(/\n[ \t]+/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
         .trim()
         .slice(0, MAX_TEXT_CHARS);
@@ -655,6 +711,112 @@ function looksOfferingRelated(text: string, context?: MenuLinkAcquisitionContext
     return buildOfferingTermRegex(context).test(text);
 }
 
+function normalizeSameOriginCandidateUrl(
+    value: string,
+    baseUrl: string,
+    options: { preserveHash?: boolean } = {},
+): string | null {
+    if (!value) return null;
+
+    let url: URL;
+    try {
+        url = new URL(value, baseUrl);
+    } catch {
+        return null;
+    }
+
+    const base = new URL(baseUrl);
+    if (url.origin !== base.origin) return null;
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+
+    if (!options.preserveHash) {
+        url.hash = '';
+    }
+    return url.href;
+}
+
+function addStructuredUrlCandidate(candidates: Set<string>, value: string, baseUrl: string) {
+    const normalized = normalizeSameOriginCandidateUrl(value, baseUrl);
+    if (normalized) {
+        candidates.add(normalized);
+    }
+}
+
+function getStructuredTypeNames(value: Record<string, unknown>): string[] {
+    const rawType = value['@type'];
+    const typeValues = Array.isArray(rawType) ? rawType : rawType ? [rawType] : [];
+    return typeValues.map((type) => String(type || '').toLowerCase());
+}
+
+function collectUrlLikeValue(value: unknown, baseUrl: string, candidates: Set<string>) {
+    if (typeof value === 'string') {
+        addStructuredUrlCandidate(candidates, value, baseUrl);
+        return;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach((entry) => collectUrlLikeValue(entry, baseUrl, candidates));
+        return;
+    }
+
+    if (!value || typeof value !== 'object') return;
+
+    const objectValue = value as Record<string, unknown>;
+    for (const key of ['url', '@id']) {
+        const nested = objectValue[key];
+        if (typeof nested === 'string') {
+            addStructuredUrlCandidate(candidates, nested, baseUrl);
+        }
+    }
+}
+
+function collectStructuredMenuUrls(node: unknown, baseUrl: string, candidates: Set<string>) {
+    if (Array.isArray(node)) {
+        node.forEach((entry) => collectStructuredMenuUrls(entry, baseUrl, candidates));
+        return;
+    }
+
+    if (!node || typeof node !== 'object') return;
+
+    const objectValue = node as Record<string, unknown>;
+    const typeNames = getStructuredTypeNames(objectValue);
+    const objectLooksLikeMenu = typeNames.some((type) => (
+        type === 'menu' ||
+        type === 'menusection' ||
+        type === 'offercatalog' ||
+        type === 'itemlist'
+    ));
+
+    for (const [key, value] of Object.entries(objectValue)) {
+        const normalizedKey = key.toLowerCase();
+        if (normalizedKey === 'hasmenu' || normalizedKey === 'menu') {
+            collectUrlLikeValue(value, baseUrl, candidates);
+        }
+
+        if (objectLooksLikeMenu && (normalizedKey === 'url' || normalizedKey === '@id')) {
+            collectUrlLikeValue(value, baseUrl, candidates);
+        }
+
+        if (value && typeof value === 'object') {
+            collectStructuredMenuUrls(value, baseUrl, candidates);
+        }
+    }
+}
+
+function extractStructuredMenuUrls(jsonLd: string[], baseUrl: string): string[] {
+    const candidates = new Set<string>();
+
+    for (const value of jsonLd) {
+        try {
+            collectStructuredMenuUrls(JSON.parse(value), baseUrl, candidates);
+        } catch {
+            // Invalid JSON-LD should not block visible-page extraction.
+        }
+    }
+
+    return Array.from(candidates).slice(0, MENU_LINK_CANDIDATE_LIMIT);
+}
+
 function extractCandidateMenuLinks(html: string, baseUrl: string, context?: MenuLinkAcquisitionContext): string[] {
     const base = new URL(baseUrl);
     const candidates = new Set<string>();
@@ -665,18 +827,12 @@ function extractCandidateMenuLinks(html: string, baseUrl: string, context?: Menu
         const label = extractVisibleText(match[2] || '').toLowerCase();
         if (!href) continue;
 
-        let url: URL;
-        try {
-            url = new URL(href, base.href);
-        } catch {
-            continue;
-        }
+        const normalizedUrl = normalizeSameOriginCandidateUrl(href, base.href, { preserveHash: true });
+        if (!normalizedUrl) continue;
+        const url = new URL(normalizedUrl);
 
-        if (url.origin !== base.origin) continue;
-
-        const haystack = `${url.pathname} ${url.search} ${label}`.toLowerCase();
+        const haystack = `${url.pathname} ${url.search} ${url.hash} ${label}`.toLowerCase();
         if (looksOfferingRelated(haystack, context)) {
-            url.hash = '';
             candidates.add(url.href);
         }
     }
@@ -713,12 +869,21 @@ function addCandidateUrl(
     const looksImportRelated = looksOfferingRelated(haystack, acquisitionContext);
     if (!isSupportedAsset || !looksImportRelated) return;
 
+    const isImageAsset = /\.(jpe?g|png|webp)(?:$|[?#])/i.test(url.href);
+    if (isImageAsset && (!STRONG_LINKED_ASSET_RE.test(haystack) || UI_ASSET_RE.test(haystack))) {
+        return;
+    }
+
     url.hash = '';
     candidates.add(url.href);
 }
 
 function extractCandidateAssetLinks(html: string, baseUrl: string, context?: MenuLinkAcquisitionContext): string[] {
     const candidates = new Set<string>();
+    for (const candidate of extractStructuredMenuUrls(extractJsonLd(html), baseUrl)) {
+        addCandidateUrl(candidates, candidate, baseUrl, 'structured menu catalog', context);
+    }
+
     const anchorTags = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
     for (const match of anchorTags) {
         addCandidateUrl(
@@ -748,10 +913,97 @@ function extractCandidateAssetLinks(html: string, baseUrl: string, context?: Men
 function scoreMenuText(text: string, context?: MenuLinkAcquisitionContext): number {
     let score = 0;
     score += Math.min(countOfferingTermMatches(text, context), 20);
-    const priceMatches = text.match(/(?:rs\.?|inr|₹|\$|usd|eur|£)\s?\d+|\d+(?:\.\d{2})?\s?(?:rs\.?|inr|₹|\$|usd|eur|£)/gi);
+    const priceMatches = text.match(PRICE_TEXT_RE);
     score += Math.min((priceMatches?.length || 0) * 2, 30);
     if (SCHEMA_ORG_OFFERING_RE.test(text)) score += 10;
     return score;
+}
+
+function countPriceMatches(text: string): number {
+    return text.match(PRICE_TEXT_RE)?.length || 0;
+}
+
+function hasStructuredOffering(jsonLd: string[]): boolean {
+    return jsonLd.some(value => SCHEMA_ORG_OFFERING_RE.test(value));
+}
+
+function isUsableHtmlSource(
+    candidate: HtmlSourceCandidate,
+    options: { isOriginal: boolean; originalIsHomepage: boolean },
+): boolean {
+    if (candidate.sourceText.length < 80 && candidate.jsonLd.length === 0) return false;
+    if (candidate.score < MIN_MENU_SOURCE_SCORE) return false;
+
+    if (options.isOriginal && options.originalIsHomepage) {
+        return hasStructuredOffering(candidate.jsonLd) || countPriceMatches(candidate.sourceText) >= 2;
+    }
+
+    return true;
+}
+
+function getSourceTextFingerprint(text: string): string {
+    return crypto
+        .createHash('sha256')
+        .update(text.replace(/\s+/g, ' ').trim().toLowerCase().slice(0, MAX_TEXT_CHARS))
+        .digest('hex');
+}
+
+function combineHtmlSources(sources: HtmlSourceCandidate[]): HtmlSourceCandidate {
+    const selected: HtmlSourceCandidate[] = [];
+    const seenText = new Set<string>();
+
+    for (const source of sources) {
+        const fingerprint = getSourceTextFingerprint(source.sourceText);
+        if (seenText.has(fingerprint)) continue;
+
+        selected.push(source);
+        seenText.add(fingerprint);
+
+        if (selected.length >= MAX_COMBINED_HTML_SOURCES) break;
+    }
+
+    if (selected.length === 1) return selected[0];
+
+    const seenJsonLd = new Set<string>();
+    const jsonLd: string[] = [];
+    const sourceTexts: string[] = [];
+
+    for (const source of selected) {
+        sourceTexts.push(source.sourceText);
+        for (const structuredData of source.jsonLd) {
+            if (seenJsonLd.has(structuredData)) continue;
+            seenJsonLd.add(structuredData);
+            jsonLd.push(structuredData);
+        }
+    }
+
+    return {
+        finalUrl: selected[0].finalUrl,
+        jsonLd: jsonLd.slice(0, 8),
+        rawHtml: selected.map((source) => source.rawHtml).join('\n'),
+        renderUrl: selected[0].renderUrl,
+        redirectCount: Math.max(...selected.map((source) => source.redirectCount)),
+        score: Math.max(...selected.map((source) => source.score)),
+        sourceText: sourceTexts.join('\n\n').slice(0, MAX_TEXT_CHARS),
+    };
+}
+
+function looksLikeUnresolvedClientRenderedShell(rawHtml: string, sourceText: string, jsonLd: string[]): boolean {
+    if (!CLIENT_RENDERED_TEMPLATE_RE.test(rawHtml)) return false;
+    if (hasStructuredOffering(jsonLd)) return false;
+    if (countPriceMatches(sourceText) > 0) return false;
+
+    const compactText = sourceText.replace(/\s+/g, ' ').trim().toLowerCase();
+    const appShellTerms = [
+        'toggle navigation',
+        'cloud kitchen',
+        'digital menu',
+        'online ordering',
+        'restaurant management software',
+    ];
+    const appShellTermMatches = appShellTerms.filter(term => compactText.includes(term)).length;
+
+    return appShellTermMatches >= 2 || countOfferingTermMatches(sourceText) >= 12;
 }
 
 function buildTextArtifact(params: {
@@ -777,18 +1029,11 @@ async function chooseBestHtmlSource(
     fetched: FetchedUrl,
     deadlineMs: number,
     context?: MenuLinkAcquisitionContext,
-): Promise<{
-    finalUrl: string;
-    jsonLd: string[];
-    rawHtml: string;
-    redirectCount: number;
-    score: number;
-    sourceText: string;
-}> {
+): Promise<HtmlSourceCandidate> {
     const initialHtml = fetched.buffer.toString('utf8');
     const initialText = extractVisibleText(initialHtml);
     const initialJsonLd = extractJsonLd(initialHtml);
-    let best = {
+    const initialSource = {
         finalUrl: fetched.finalUrl,
         jsonLd: initialJsonLd,
         rawHtml: initialHtml,
@@ -796,9 +1041,14 @@ async function chooseBestHtmlSource(
         score: scoreMenuText(`${initialJsonLd.join('\n')} ${initialText}`, context),
         sourceText: initialText,
     };
+    let best = initialSource;
+    const htmlSources: HtmlSourceCandidate[] = [initialSource];
 
-    const candidates = extractCandidateMenuLinks(initialHtml, fetched.finalUrl, context);
-    if ((best.score >= 8 && !isLikelyHomepage(fetched.finalUrl)) || candidates.length === 0) return best;
+    const candidates = Array.from(new Set([
+        ...extractStructuredMenuUrls(initialJsonLd, fetched.finalUrl),
+        ...extractCandidateMenuLinks(initialHtml, fetched.finalUrl, context),
+    ])).slice(0, MENU_LINK_CANDIDATE_LIMIT);
+    if (candidates.length === 0) return best;
 
     for (const candidate of candidates) {
         if (candidate === sourceUrl || candidate === fetched.finalUrl) continue;
@@ -810,22 +1060,184 @@ async function chooseBestHtmlSource(
             const sourceText = extractVisibleText(html);
             const jsonLd = extractJsonLd(html);
             const score = scoreMenuText(`${jsonLd.join('\n')} ${sourceText}`, context);
+            const htmlSource = {
+                finalUrl: candidateFetch.finalUrl,
+                jsonLd,
+                rawHtml: html,
+                renderUrl: candidate,
+                redirectCount: candidateFetch.redirectCount,
+                score,
+                sourceText,
+            };
+            htmlSources.push(htmlSource);
             if (score > best.score) {
-                best = {
-                    finalUrl: candidateFetch.finalUrl,
-                    jsonLd,
-                    rawHtml: html,
-                    redirectCount: candidateFetch.redirectCount,
-                    score,
-                    sourceText,
-                };
+                best = htmlSource;
             }
         } catch {
             // Ignore candidate failures; the original URL remains usable.
         }
     }
 
-    return best;
+    const originalIsHomepage = isLikelyHomepage(fetched.finalUrl);
+    const usableSources = htmlSources.filter((source, index) => (
+        isUsableHtmlSource(source, { isOriginal: index === 0, originalIsHomepage })
+    ));
+
+    if (usableSources.length > 1) {
+        return combineHtmlSources(usableSources.sort((left, right) => right.score - left.score));
+    }
+
+    return usableSources[0] || best;
+}
+
+async function resolveChromeExecutable(): Promise<string | null> {
+    if (cachedChromeExecutable !== undefined) return cachedChromeExecutable;
+
+    for (const candidate of CHROME_EXECUTABLE_CANDIDATES) {
+        try {
+            await access(candidate, fsConstants.X_OK);
+            cachedChromeExecutable = candidate;
+            return candidate;
+        } catch {
+            // Try the next known executable path.
+        }
+    }
+
+    cachedChromeExecutable = null;
+    return null;
+}
+
+function runChromeDumpDom(params: {
+    chromePath: string;
+    renderUrl: string;
+    timeoutMs: number;
+    userDataDir: string;
+}): Promise<string | null> {
+    return new Promise((resolve) => {
+        const stdoutChunks: Buffer[] = [];
+        let stdoutBytes = 0;
+        let settled = false;
+        const virtualTimeBudget = Math.max(4_000, Math.min(params.timeoutMs - 1_000, 14_000));
+        const args = [
+            '--headless=new',
+            '--disable-background-networking',
+            '--disable-component-update',
+            '--disable-default-apps',
+            '--disable-extensions',
+            '--disable-gpu',
+            '--disable-sync',
+            '--disable-translate',
+            '--hide-scrollbars',
+            '--no-default-browser-check',
+            '--no-first-run',
+            '--run-all-compositor-stages-before-draw',
+            '--blink-settings=imagesEnabled=false',
+            `--user-data-dir=${params.userDataDir}`,
+            `--virtual-time-budget=${virtualTimeBudget}`,
+            '--dump-dom',
+            params.renderUrl,
+        ];
+
+        if (process.env.MENU_LINK_IMPORT_CHROME_NO_SANDBOX === 'true') {
+            args.unshift('--no-sandbox');
+        }
+
+        const child = spawn(params.chromePath, args, {
+            stdio: ['ignore', 'pipe', 'ignore'],
+        });
+        let timer: ReturnType<typeof setTimeout>;
+
+        const finish = (value: string | null) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(value);
+        };
+
+        timer = setTimeout(() => {
+            child.kill('SIGKILL');
+            const html = Buffer.concat(stdoutChunks).toString('utf8');
+            finish(html.trim() ? html : null);
+        }, params.timeoutMs);
+
+        child.stdout.on('data', (chunk: Buffer) => {
+            if (stdoutBytes >= MAX_RENDERED_HTML_BYTES) return;
+            const remaining = MAX_RENDERED_HTML_BYTES - stdoutBytes;
+            const nextChunk = chunk.length > remaining ? chunk.subarray(0, remaining) : chunk;
+            stdoutChunks.push(nextChunk);
+            stdoutBytes += nextChunk.length;
+        });
+
+        child.on('error', () => finish(null));
+        child.on('close', () => {
+            const html = Buffer.concat(stdoutChunks).toString('utf8');
+            finish(html.trim() ? html : null);
+        });
+    });
+}
+
+async function tryRenderHtmlSource(
+    originalSourceUrl: string,
+    safeFinalUrl: string,
+    deadlineMs: number,
+    context?: MenuLinkAcquisitionContext,
+): Promise<MenuLinkAcquisitionResult | null> {
+    if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT_RENDER_FALLBACK) return null;
+
+    const chromePath = await resolveChromeExecutable();
+    if (!chromePath) return null;
+
+    const remainingMs = deadlineMs - Date.now();
+    if (remainingMs < 5_000) return null;
+
+    const timeoutMs = Math.max(5_000, Math.min(RENDER_FALLBACK_TIMEOUT_MS, remainingMs));
+    const renderUrl = buildRenderableUrl(originalSourceUrl, safeFinalUrl);
+    let userDataDir: string | null = null;
+
+    try {
+        userDataDir = await mkdtemp(path.join(os.tmpdir(), 'menulist-link-render-'));
+        const renderedHtml = await runChromeDumpDom({
+            chromePath,
+            renderUrl,
+            timeoutMs,
+            userDataDir,
+        });
+        if (!renderedHtml) return null;
+
+        const sourceText = extractVisibleText(renderedHtml);
+        const jsonLd = extractJsonLd(renderedHtml);
+        const score = scoreMenuText(`${jsonLd.join('\n')} ${sourceText}`, context);
+        const priceMatchCount = sourceText.match(PRICE_TEXT_RE)?.length || 0;
+        if (sourceText.length < 80 || score < 8 || (!hasStructuredOffering(jsonLd) && priceMatchCount < 2)) {
+            return null;
+        }
+
+        const artifactBuffer = buildTextArtifact({
+            finalUrl: renderUrl,
+            jsonLd,
+            sourceText,
+            sourceUrl: renderUrl,
+        });
+
+        return {
+            artifactBuffer,
+            artifactContentType: 'text/plain',
+            artifactExtension: 'txt',
+            contentHash: crypto.createHash('sha256').update(artifactBuffer).digest('hex'),
+            finalUrl: renderUrl,
+            redirectCount: 0,
+            sourceContentType: 'text/html',
+            sourceKind: 'rendered_html_text',
+            sourceTextPreview: sourceText.slice(0, 500),
+            size: artifactBuffer.byteLength,
+        };
+    } catch {
+        return null;
+    } finally {
+        if (userDataDir) {
+            await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
+        }
+    }
 }
 
 async function tryAcquireLinkedAsset(
@@ -882,9 +1294,60 @@ export async function acquireMenuLinkSource(
 
     if (contentType === 'text/html' || contentType === 'application/xhtml+xml') {
         const best = await chooseBestHtmlSource(normalizedSourceUrl, fetched, deadlineMs, context);
-        if (best.score < 8) {
+        const originalHtml = fetched.buffer.toString('utf8');
+        const originalLinkedAsset = async () => (
+            best.finalUrl === fetched.finalUrl
+                ? null
+                : tryAcquireLinkedAsset(originalHtml, fetched.finalUrl, deadlineMs, context)
+        );
+
+        if (
+            isLikelyHomepage(fetched.finalUrl) &&
+            best.finalUrl === fetched.finalUrl &&
+            !hasStructuredOffering(best.jsonLd) &&
+            countPriceMatches(best.sourceText) < 2
+        ) {
+            const linkedAsset = await tryAcquireLinkedAsset(originalHtml, fetched.finalUrl, deadlineMs, context);
+            if (linkedAsset) return linkedAsset;
+
+            const renderedSource = await tryRenderHtmlSource(best.renderUrl || sourceUrl, best.finalUrl, deadlineMs, context);
+            if (renderedSource) return renderedSource;
+
+            throw new MenuLinkImportError(
+                'NO_MENU_CONTENT_FOUND',
+                'We could not read this menu link. Upload a photo/PDF or add the menu manually.',
+            );
+        }
+
+        if (looksLikeUnresolvedClientRenderedShell(best.rawHtml, best.sourceText, best.jsonLd)) {
             const linkedAsset = await tryAcquireLinkedAsset(best.rawHtml, best.finalUrl, deadlineMs, context);
             if (linkedAsset) return linkedAsset;
+
+            const linkedOriginalAsset = await originalLinkedAsset();
+            if (linkedOriginalAsset) return linkedOriginalAsset;
+
+            const renderedSource = await tryRenderHtmlSource(best.renderUrl || sourceUrl, best.finalUrl, deadlineMs, context);
+            if (renderedSource) return renderedSource;
+
+            throw new MenuLinkImportError(
+                'NO_MENU_CONTENT_FOUND',
+                'We could not read this menu link. Upload a photo/PDF or add the menu manually.',
+            );
+        }
+        if (best.score < MIN_MENU_SOURCE_SCORE) {
+            const linkedAsset = await tryAcquireLinkedAsset(best.rawHtml, best.finalUrl, deadlineMs, context);
+            if (linkedAsset) return linkedAsset;
+
+            const linkedOriginalAsset = await originalLinkedAsset();
+            if (linkedOriginalAsset) return linkedOriginalAsset;
+
+            const renderedSource = await tryRenderHtmlSource(best.renderUrl || sourceUrl, best.finalUrl, deadlineMs, context);
+            if (renderedSource) return renderedSource;
+
+            throw new MenuLinkImportError(
+                'NO_MENU_CONTENT_FOUND',
+                'We could not read this menu link. Upload a photo/PDF or add the menu manually.',
+            );
         }
         if (best.sourceText.length < 80 && best.jsonLd.length === 0) {
             throw new MenuLinkImportError('NO_MENU_CONTENT_FOUND', 'We could not read this menu link.');

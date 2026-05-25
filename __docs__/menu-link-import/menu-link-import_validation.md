@@ -7,6 +7,13 @@
 - `npx tsc --noEmit` in `functions/` passed.
 - `npx tsc --noEmit --incremental false` at repo root passed again after fresh tenant QA fixes.
 - `npm run lint` passed after fresh tenant QA fixes.
+- `npx tsc --noEmit --incremental false` at repo root passed again after the `#/menu` rendered-fallback/project-guard fixes.
+- `npx tsc -p functions/tsconfig.json --noEmit` passed again after the deterministic text parser changes.
+- `npm run lint` passed again after the `#/menu` rendered-fallback/project-guard fixes.
+- `npx tsc --noEmit --incremental false` passed after bounded same-origin discovery and multi-page combination changes.
+- `npx tsc -p functions/tsconfig.json --noEmit` passed after the same discovery hardening pass.
+- `npm run lint` passed after bounded same-origin discovery and multi-page combination changes.
+- `npx tsc --noEmit --incremental false`, `npx tsc -p functions/tsconfig.json --noEmit`, `npm run lint`, and `git diff --check` passed again after same-origin hash candidate preservation and combined-page de-duplication.
 - Targeted lint passed for:
   - `src/app/api/menu-link-imports/route.ts`
   - `src/lib/menu-link-import/sourceAcquisition.ts`
@@ -17,6 +24,7 @@
   - `src/components/templates/main-app/projects/FileList.tsx`
   - `src/components/mobile/sheets/MenuUploadSheet.tsx`
 - `git diff --check` passed for the touched Menu Link Import runtime/docs/files.
+- `git diff --check` passed again after the final Godirekt docs/runtime updates.
 - Temporary local server (`npx next dev -p 3010`) compiled `/projects` and redirected to `/signin` because no authenticated owner session was available in the in-app browser.
 - Temporary local server compiled `/api/menu-link-imports`; unauthenticated POST returned `401 Unauthorized` through the existing auth guard.
 - After enabling `ENABLE_MENU_LINK_IMPORT` in both app and functions config, `firebase deploy --only functions:processMenuImagesJob --project ecomsai` completed successfully.
@@ -60,6 +68,40 @@
   - project now stores two source files: `Imported menu link.txt` with 5 categories / 35 items and `habibis-menu-mobile.png` with 1 category / 4 items,
   - original link-import prices remained unchanged after image approval,
   - local public route with the fresh tenant host included Coke / Fresh Lime Water / Margarita / Diet Coke and deduplicated `0c1` to one structured-data section.
+- Fresh-project QA for `https://demo2.godirekt.in/spark/app/#/mainpage` verified the unsupported client-rendered-app path:
+  - project `QA Godirekt 202605250746`,
+  - initial run created job `K65Dq8cehqg23ILZVk2e` and surfaced `No changes detected`,
+  - artifact preview showed only the Angular app shell / route template text, not resolved menu data,
+  - source acquisition now rejects low-confidence HTML after same-origin PDF/image fallback instead of creating an empty review job.
+- Post-fix fresh-project QA for the same Godirekt link used project `QA Godirekt Fresh 202605250804` (`45-mpkx7chu-52`):
+  - fresh project selected immediately after creation and link import button enabled without reload,
+  - API returned `NO_MENU_CONTENT_FOUND` / HTTP 400 with the owner fallback message,
+  - Firestore verification showed `files: 0`, `menuImageProcessingJobs: 0`, and `menuLinkImportArtifacts: 0` for the fresh project.
+- Corrected Godirekt menu-link QA used the actual menu route `https://demo2.godirekt.in/spark/app/#/menu` on existing tenant/store `14/15`:
+  - fresh project `QA Godirekt Dynamic 202605250938` (`14-mpl0kafq-15`) was created through the desktop UI,
+  - API created job `cqjMoYUykizMeWYYObpT` and artifact `ogchYS2iChbnVP0ix2Hs`,
+  - artifact metadata stored `sourceKind: "rendered_html_text"` and preserved final URL `https://demo2.godirekt.in/spark/app/#/menu`,
+  - deployed function used `model: "deterministic-text-parser"` / `promptVersion: "menu-link-text-parser-v1"` with zero model charge,
+  - job reached `preview_ready` with 70 categories and 488 items,
+  - review initially exposed `Unknown Category` rows because deterministic extraction persisted item `category` while the comparison preview expected `categoryId`; the comparison boundary now normalizes both shapes,
+  - reload QA exposed a restored-job project mismatch; the projects page now reselects the job project and only opens review when active job, selected project, and loaded project match,
+  - applying review wrote one source file `Imported menu link.txt`, 70 categories, and 488 items,
+  - owner publish succeeded through the normal publish warning path,
+  - copied share URL was `https://habibis.menulist.ai/qa-godirekt-dynamic-202605250938?entry_source=copy_link`,
+  - Chrome profile blocked the remote `habibis.menulist.ai` tab with `net::ERR_BLOCKED_BY_CLIENT`, but the local tenant-host route returned HTTP 200 and rendered imported menu content with title `QA Godirekt Dynamic 202605250938 | Grill Zilla`.
+- Direct source-acquisition smoke after the final fixes verified:
+  - `https://demo2.godirekt.in/spark/app/#/menu` returns `sourceKind: "rendered_html_text"` with final URL preserving `#/menu`,
+  - `https://demo2.godirekt.in/spark/app/#/mainpage` returns `NO_MENU_CONTENT_FOUND`,
+  - `https://habibis.menulist.online/bar-menu` still returns `sourceKind: "html_text"`.
+- Direct source-acquisition smoke after same-origin discovery hardening verified:
+  - `https://demo2.godirekt.in/spark/app/#/menu` still returns `sourceKind: "rendered_html_text"` and preserves final URL `#/menu`,
+  - `https://demo2.godirekt.in/spark/app/#/mainpage` still rejects with `NO_MENU_CONTENT_FOUND`,
+  - `https://habibis.menulist.online/bar-menu` still returns direct `html_text` without duplicated self/language variant text,
+  - `https://habibis.menulist.online` follows same-origin menu discovery and returns `html_text` with final URL `https://habibis.menulist.online/bar-menu?lang=en`.
+- Firestore verification for `projects/14/15/14-mpl0kafq-15` showed `files: 1`, `categories: 70`, `items: 488`, and `active: true`; the first category was `Chinese Soup (Veg` and the first item was `Cream Of Mushroom Soup` with price `45.00`.
+- Summary verification for `platformSummary/projects_15` showed project name `QA Godirekt Dynamic 202605250938`, slug `qa-godirekt-dynamic-202605250938`, and `active: true`.
+- No-change review QA surfaced and fixed a review-state issue: the empty review Close action now resolves the preview job through discard, and the modal cannot be dismissed through the shell close/mask path.
+- Fresh-project QA also surfaced and fixed a project-selection shape issue: newly created menus now attach the returned `projectId` to selected metadata and SWR cache immediately, so link import is enabled without requiring a reload or manual reselect.
 - QA surfaced and fixed a stale-auth adjacent issue: `/api/auth/set-claims` now rejects a supplied Firebase UID when its Firebase Auth email does not match the active NextAuth session email, and login switches Firebase Auth accounts before setting claims.
 - Local revalidation API could not be called with a secret because `REVALIDATION_SECRET` was not present in the local `.env`.
 
@@ -73,7 +115,11 @@
 - Source acquisition is bounded so candidate discovery cannot keep the API route open indefinitely.
 - Source acquisition scoring now uses business-category-aware menu/catalog/offering terms from the shared business-type model instead of restaurant-only keywords.
 - A direct acquisition smoke against a public non-food pricing HTML page returned a text artifact, while `127.0.0.1` remained blocked with `UNSAFE_IP`.
-- Low-confidence HTML can fall back to bounded same-origin linked PDF/image catalog assets.
+- Low-confidence HTML can fall back to bounded same-origin linked PDF/image catalog assets. If no usable asset is found, the importer rejects the link before job creation so client-rendered app shells do not produce empty review jobs.
+- Client-rendered hash routes can fall back to bounded Chrome text capture after static acquisition fails. The fallback preserves the original hash only when origin/path/query match the validated URL, stores only a text artifact, and still rejects pages without enough visible catalog/price evidence.
+- Homepage and landing-page imports can follow bounded same-origin menu/catalog links, Schema.org `hasMenu` URLs, and linked PDF/image catalog assets. The importer considers at most 6 candidates and combines at most 4 high-confidence HTML sources into the one extraction artifact.
+- Same-origin hash route candidates from homepage links preserve the hash only for rendered fallback. Static server fetches still strip hashes and run through DNS/IP safety checks.
+- Text link artifacts are parsed deterministically before Gemini when visible names, section boundaries, and prices are already explicit. This path is business-agnostic and avoids model cost for high-confidence rendered/text menu links.
 - Raw HTML is not stored separately; v1 stores only the artifact passed to extraction.
 - API cleanup removes newly created private artifacts when Firestore job creation fails before the job exists.
 - Link jobs set `forceReview: true`.
@@ -81,8 +127,10 @@
 - Approval path creates the missing source file only when the owner saves review changes.
 - Imported source files include processing metadata and render as files, not assumed images.
 - Review apply/discard now exposes inline errors if Firestore rejects the action, instead of relying only on a transient toast.
+- Empty/no-change reviews now resolve through the same discard path as normal review discards, so stale `preview_ready` jobs cannot keep reopening the modal.
 - Review apply now maps source-local `file_0` targets to actual job file UIDs for all single-store review jobs. It also fails instead of completing when approved mutations target a missing source file.
 - The comparison layer no longer trusts source-local extraction ids as cross-source stable item/category matches. This prevents later image/PDF uploads from updating unrelated link-import items when the model reuses numeric ids.
+- The comparison layer accepts both `categoryId` and the extraction pipeline's existing `category` field before preview rendering. This keeps deterministic text-import rows aligned with existing extraction data types.
 - New reviewed items use source-scoped generated ids such as `0i1`, and matched category rows are copied into later source files so the editor renders link-first then image/PDF workflows per source file.
 - Firestore rules now allow the owning user to resolve a `preview_ready` review job only to `completed` or `cancelled`, with the update restricted to `status`, `completedAt`, `updatedAt`, and `currentStep`.
 - The multi-outlet project rule now explicitly handles projects that do not have `masterProjectId`; linked outlet protections still block `files` mutation.
@@ -90,6 +138,8 @@
 - Public structured data deduplicates categories by id before emitting Schema.org menu sections.
 - Desktop prevents overlapping link import and local photo/PDF upload jobs in the same project.
 - Desktop now exposes link import from the processed-menu editor action area as well as the upload view, so image/PDF-first projects can still import from a link later.
+- Newly created desktop menus include `projectId` in selected project metadata immediately; link import can target the fresh project without a reload.
+- Restored active preview jobs must match the selected and loaded project before the review modal renders. If a persisted job id belongs to another project, the page reselects that project first.
 - Mobile keeps link import and selected-file upload as separate sheet steps.
 - Public cache invalidation remains in `applyExtractionChanges`, so acquisition and extraction do not invalidate public output.
 

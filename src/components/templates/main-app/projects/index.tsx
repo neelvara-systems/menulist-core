@@ -361,6 +361,7 @@ function ProjectsPage() {
             revalidateOnMount: true
         }
     );
+    const projectsList = useMemo(() => normalizeProjectsList(projectsData?.projects), [projectsData?.projects]);
 
     // Fetch individual project data with SWR
     const { data: activeProject, error: projectError, isLoading: projectLoading, mutate: mutateProject } = useSWR(
@@ -442,6 +443,23 @@ function ProjectsPage() {
         error: jobError,
         cancel: cancelJob,
     } = useMenuProcessingJob(activeProcessingJobId);
+    const activeJobProjectId = activeJob?.projectId ? String(activeJob.projectId) : null;
+    const activeJobMatchesActiveProject = Boolean(
+        activeJobProjectId &&
+        selectedProject?.projectId === activeJobProjectId &&
+        activeProject?.projectId === activeJobProjectId,
+    );
+
+    useEffect(() => {
+        if (!activeJobProjectId || selectedProject?.projectId === activeJobProjectId) return;
+
+        const matchingProject = projectsList.find((project) => project.projectId === activeJobProjectId);
+        if (!matchingProject) return;
+
+        setSelectedProject(matchingProject);
+        setShowReviewScreen(false);
+        setComparisonResult(null);
+    }, [activeJobProjectId, projectsList, selectedProject?.projectId]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // MASTER JOB MONITORING: For outlet projects, listen to master's active job
@@ -591,6 +609,9 @@ function ProjectsPage() {
         if (!activeProcessingJobId) {
             return;
         }
+        if (activeJobProjectId && !activeJobMatchesActiveProject) {
+            return;
+        }
 
         if (jobIsCompleted) {
             // Capture extraction stats from job result before clearing
@@ -689,7 +710,7 @@ function ProjectsPage() {
             setComparisonResult(null);
             message.info('Processing was cancelled');
         }
-    }, [activeProcessingJobId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
+    }, [activeProcessingJobId, activeJobMatchesActiveProject, activeJobProjectId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // EXTRACTION REVIEW SCREEN HANDLERS
@@ -969,7 +990,11 @@ function ProjectsPage() {
                     if (shouldBeDefault && otherDefault?.projectId) {
                         await updateProjectMetadata(otherDefault.projectId, { isDefault: false });
                     }
-                    setSelectedProject(newProject.summaryData);
+                    const projectMetadata = {
+                        ...newProject.summaryData,
+                        projectId: newProject.projectId,
+                    } as ProjectMetadata;
+                    setSelectedProject(projectMetadata);
                     // Update SWR cache (single source of truth)
                     mutateProjects(
                         (current) => current ? {
@@ -978,9 +1003,9 @@ function ProjectsPage() {
                                 ...normalizeProjectsList(current.projects).map((p) => shouldBeDefault && p.projectId === otherDefault?.projectId
                                     ? { ...p, isDefault: false }
                                     : p),
-                                newProject.summaryData,
+                                projectMetadata,
                             ]
-                        } : { projects: [newProject.summaryData], lastDoc: null },
+                        } : { projects: [projectMetadata], lastDoc: null },
                         { revalidate: false }
                     );
                     message.success(`${offeringName} created successfully`);
@@ -1343,9 +1368,6 @@ function ProjectsPage() {
             console.log('Cancel flag reset - ready for new uploads');
         }, 3000);
     };
-
-    // Derived projects list from SWR (single source of truth)
-    const projectsList = useMemo(() => normalizeProjectsList(projectsData?.projects), [projectsData?.projects]);
 
     // Auto-select first project + handle SWR errors
     useEffect(() => {
@@ -2726,10 +2748,10 @@ function ProjectsPage() {
                 )}
 
                 {/* Extraction Review Modal - shown when re-extraction needs user approval */}
-                {showReviewScreen && comparisonResult && activeProcessingJobId && selectedProject?.projectId && (
+                {showReviewScreen && comparisonResult && activeProcessingJobId && activeJobMatchesActiveProject && activeJobProjectId && (
                     <ExtractionJobReviewModal
                         open={showReviewScreen}
-                        projectId={selectedProject.projectId}
+                        projectId={activeJobProjectId}
                         jobId={activeProcessingJobId}
                         comparisonResult={comparisonResult}
                         primaryLang={activeProject?.languages?.[0] || 'en'}

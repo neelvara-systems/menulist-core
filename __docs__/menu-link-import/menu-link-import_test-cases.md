@@ -12,6 +12,12 @@
 - Unsupported content type is rejected.
 - Valid HTML menu creates `menuLinkImportArtifacts` and `menuImageProcessingJobs`.
 - Valid direct PDF/image creates a job with original content type.
+- Homepage with same-origin menu/catalog link follows bounded candidates and creates a text artifact from the selected page.
+- Homepage with Schema.org `hasMenu` URL follows the same-origin structured menu URL.
+- Homepage with direct same-origin menu PDF/image link creates a PDF/image artifact.
+- Menu split across multiple same-origin HTML pages combines only bounded high-confidence pages into one text artifact.
+- Homepage/menu index with only cross-domain menu candidates does not crawl those candidates automatically.
+- Non-menu app shell or mainpage route returns `NO_MENU_CONTENT_FOUND` and does not create a job.
 
 ## Desktop
 
@@ -21,6 +27,8 @@
 - Existing active job is reused.
 - Successful import sets active processing job.
 - Failed import shows owner-safe fallback copy.
+- Homepage import with a linked menu page still lands in the same processing/review UI.
+- Multi-page import still shows one review job and one imported source file.
 - Local selected files disable link import until the owner uploads or clears them.
 - An active link import disables Upload & Continue until the job finishes or review opens.
 - Approved non-image link source files render in the project file list without image preview assumptions.

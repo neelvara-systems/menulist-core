@@ -352,7 +352,7 @@ export function ExtractionJobReviewScreen({
                     description="No changes detected"
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                 >
-                    <Button onClick={onDiscard}>Close</Button>
+                    <Button loading={isDiscarding} onClick={handleDiscard}>Close</Button>
                 </Empty>
             </Card>
         );
