@@ -1,8 +1,9 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
+import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where } from "@firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc, where, type QueryConstraint } from "@firebase/firestore";
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -30,6 +31,61 @@ const getDocRef = (docId: string) => {
 }
 
 const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase()
+
+const isPlatformTicketSession = (session: any): boolean => {
+    const platformRole = String(
+        session?.platformRole
+        || session?.user?.platformRole
+        || session?.role
+        || session?.user?.role
+        || ''
+    ).toUpperCase();
+    return platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+};
+
+const getScopedTicketConstraints = (session: any): QueryConstraint[] => {
+    if (isPlatformTicketSession(session)) return [];
+
+    const tId = Number(session?.tId ?? session?.user?.tenantId);
+    const sId = Number(session?.sId ?? session?.user?.storeId);
+    if (!Number.isFinite(tId) || !Number.isFinite(sId)) {
+        throw new Error('Missing Canonica ticket scope');
+    }
+
+    return [
+        where("tId", "==", tId),
+        where("sId", "==", sId),
+    ];
+};
+
+const buildSupportTicketsQuery = async (
+    includeDeleted = false,
+    maxResults = PLATFORM_TICKETS_LIMIT,
+) => {
+    const session = await getActiveSession();
+    const constraints: QueryConstraint[] = [
+        ...getScopedTicketConstraints(session),
+    ];
+
+    if (!includeDeleted) {
+        constraints.push(where("deleted", "==", false));
+    }
+
+    constraints.push(orderBy("createdOn", "desc"), limit(maxResults));
+    return query(getCollectionRef(), ...constraints);
+};
+
+const buildDeletedSupportTicketsQuery = async (maxResults = 100) => {
+    const session = await getActiveSession();
+    const constraints: QueryConstraint[] = [
+        ...getScopedTicketConstraints(session),
+        where("deleted", "==", true),
+        orderBy("createdOn", "desc"),
+        limit(maxResults),
+    ];
+
+    return query(getCollectionRef(), ...constraints);
+};
 
 /**
  * Upload ticket file to Firebase Storage with tenant/store isolation
@@ -382,14 +438,7 @@ export const getStoresTickets = async (maxResults = STORE_TICKETS_LIMIT) => {
 export const getSupportTickets = async (includeDeleted = false) => {
     return await apiCallComposer(
         async () => {
-            const q = includeDeleted
-                ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(PLATFORM_TICKETS_LIMIT))
-                : query(
-                    getCollectionRef(),
-                    where("deleted", "==", false), // ✅ Filter at database level
-                    orderBy("createdOn", "desc"),
-                    limit(PLATFORM_TICKETS_LIMIT)
-                );
+            const q = await buildSupportTicketsQuery(includeDeleted, PLATFORM_TICKETS_LIMIT);
 
             const querySnapshot = await getDocs(q);
             const list = [];
@@ -405,12 +454,7 @@ export const getSupportTickets = async (includeDeleted = false) => {
 export const getDeletedSupportTickets = async (maxResults = 100) => {
     return await apiCallComposer(
         async () => {
-            const q = query(
-                getCollectionRef(),
-                where("deleted", "==", true),
-                orderBy("createdOn", "desc"),
-                limit(maxResults)
-            );
+            const q = await buildDeletedSupportTicketsQuery(maxResults);
 
             const querySnapshot = await getDocs(q);
             const list = [];
@@ -431,14 +475,7 @@ export const subscribeSupportTickets = async (
     includeDeleted = false
 ) => {
     try {
-        const q = includeDeleted
-            ? query(getCollectionRef(), orderBy("createdOn", "desc"), limit(PLATFORM_TICKETS_LIMIT))
-            : query(
-                getCollectionRef(),
-                where("deleted", "==", false), // ✅ Filter at database level
-                orderBy("createdOn", "desc"),
-                limit(PLATFORM_TICKETS_LIMIT)
-            );
+        const q = await buildSupportTicketsQuery(includeDeleted, PLATFORM_TICKETS_LIMIT);
 
         const unsubscribe = onSnapshot(
             q,

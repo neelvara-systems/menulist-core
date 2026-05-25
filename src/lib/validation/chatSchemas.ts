@@ -13,6 +13,8 @@
 
 import { z } from 'zod';
 
+const MAX_FIREBASE_STORAGE_URL_LENGTH = 2048;
+
 // Security: Detect potentially malicious patterns
 const containsMaliciousPattern = (str: string): boolean => {
     const maliciousPatterns = [
@@ -81,7 +83,7 @@ export const SearchRequestSchema = z.object({
     // Image URL validation (strict security - only Firebase Storage)
     imageUrl: z.string()
         .url('Invalid image URL format')
-        .max(500, 'Image URL too long')
+        .max(MAX_FIREBASE_STORAGE_URL_LENGTH, 'Image URL too long')
         .startsWith('https://', 'Image URL must use HTTPS')
         .refine(
             (val) => {

@@ -23,7 +23,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { getCanonicaBetaPlan, getCanonicaPlanById } from '@data/canonica/plans';
 import { getOwnerRoleId } from '@data/defaultRoles';
 import { CANONICA_PRODUCT_ACCOUNT_KEY } from '@lib/canonica/sessionScope';
-import { CANONICA_WIDGET_SCOPES } from '@lib/canonica/widgetConfig';
+import { buildCanonicaWidgetApiStateWithNewKey } from '@lib/canonica/widgetKeyManager';
 import {
     getContextContentSummaryDocId,
     parseProductSurfaceSaveInput,
@@ -726,16 +726,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // 7. Generate API key for the widget
         const apiKey = `cn_${randomUUID().replace(/-/g, '')}`;
+        const apiKeyHash = hashApiKey(apiKey);
+        const widgetKeyState = buildCanonicaWidgetApiStateWithNewKey({
+            apiKey,
+            keyHash: apiKeyHash,
+            name: 'Default widget key',
+        });
         await db.collection(DB_COLLECTIONS.STORES).doc(String(result.storeId)).update({
             canonicaSubscription: subscriptionSummary,
-            canonicaWidgetApi: {
-                apiKeyHash: hashApiKey(apiKey),
-                keyPrefix: apiKey.slice(0, 7),
-                createdAt: new Date().toISOString(),
-                productId: PRODUCT_IDS.CANONICA,
-                purpose: 'canonica_widget',
-                scopes: [...CANONICA_WIDGET_SCOPES],
-            },
+            canonicaWidgetApi: widgetKeyState.state,
         });
 
         await writeLogEntry({

@@ -33,7 +33,7 @@
 - **768-dimension embeddings** — Semantic understanding, not keyword matching
 - **Dual threshold** — High confidence (0.6) with fallback (0.4) for broader coverage
 - **Source citations** — Every answer shows which KB article it came from
-- **Image analysis** — Gemini 2.5 Pro understands screenshots and generates search queries
+- **Image analysis** — Gemini 2.5 Flash extracts bounded visual search context from screenshots
 - **Response caching** — ~60% of queries return instant cached results
 - **Embedding caching** — 40-60% fewer API calls, faster response times
 - **Streaming ready** — SSE streaming for real-time ChatGPT-like experience (feature-flagged)
@@ -54,7 +54,7 @@
 | Quality scoring | ✅ | ❌ | ❌ | ❌ |
 | Suggested questions | ✅ | ⚠️ | ❌ | ❌ |
 | Streaming responses | ✅ (flagged) | ✅ | ❌ | ❌ |
-| Cost | $0.18/mo (10 stores) | $0.99/resolution | $1/automated resolution | $0.50/session |
+| Cost | Firestore-light; AI cost depends on current provider pricing and cache hit rate | $0.99/resolution | $1/automated resolution | $0.50/session |
 
 ---
 

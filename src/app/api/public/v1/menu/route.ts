@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
     if (!apiKey) {
         return apiError('MISSING_API_KEY', 'Missing X-API-Key header', 401);
     }
+    if (!apiKey.trim().startsWith('ml_')) {
+        return apiError('INVALID_API_KEY', 'Invalid API key', 401);
+    }
 
     // Rate limit per API key
     const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);

@@ -33,13 +33,22 @@ const getProductAccounts = (sessionOrUser: any): Record<string, any> | undefined
     || sessionOrUser?.productAccounts
 );
 
+const normalizePathname = (pathname?: string | null): string => (
+    pathname === '/' ? '/' : String(pathname || '').replace(/\/+$/, '')
+);
+
 export const isCanonicaRuntimeRoute = (pathname?: string | null, hostname?: string | null): boolean => {
-    const normalizedPath = pathname === '/' ? '/' : String(pathname || '').replace(/\/+$/, '');
+    const normalizedPath = normalizePathname(pathname);
     return normalizedPath === '/canonica'
         || normalizedPath.startsWith('/canonica/')
         || normalizedPath === '/__canonica'
         || normalizedPath.startsWith('/__canonica/')
         || isCanonicaProductHostname(hostname);
+};
+
+export const isCanonicaSupportClientRoute = (pathname?: string | null): boolean => {
+    const normalizedPath = normalizePathname(pathname);
+    return normalizedPath === '/help-center' || normalizedPath.startsWith('/help-center/');
 };
 
 export function getCanonicaProductAccount(sessionOrUser: any): CanonicaProductAccount | null {
@@ -87,6 +96,15 @@ export function resolveCanonicaSessionScope(sessionOrUser: any): { tenantId: num
     };
 }
 
+export function shouldUseCanonicaClientScopeForRoute(
+    sessionOrUser: any,
+    pathname?: string | null,
+    hostname?: string | null,
+): boolean {
+    if (isCanonicaRuntimeRoute(pathname, hostname)) return true;
+    return isCanonicaSupportClientRoute(pathname) && Boolean(resolveCanonicaSessionScope(sessionOrUser));
+}
+
 export function getCanonicaScopedSession<T extends Record<string, any> | null | undefined>(session: T): T {
     if (!session) return session;
 
@@ -95,12 +113,30 @@ export function getCanonicaScopedSession<T extends Record<string, any> | null | 
 
     const account = getCanonicaProductAccount(session);
     const role = account?.role || (session as any)?.role || (session as any)?.user?.role || '';
+    const sourceProductId = normalizeProductId((session as any)?.pId)
+        || normalizeProductId((session as any)?.productId)
+        || normalizeProductId((session as any)?.user?.pId)
+        || normalizeProductId((session as any)?.user?.productId);
+    const sourceTenantId = normalizeNumber((session as any)?.tId ?? (session as any)?.tenantId ?? (session as any)?.user?.tenantId);
+    const sourceStoreId = normalizeNumber((session as any)?.sId ?? (session as any)?.storeId ?? (session as any)?.user?.storeId);
+    const sourceContext = (session as any)?.sourceContext || (
+        sourceProductId && sourceProductId !== PRODUCT_IDS.CANONICA
+            ? {
+                pId: sourceProductId,
+                ...(sourceTenantId ? { tId: sourceTenantId } : {}),
+                ...(sourceStoreId ? { sId: sourceStoreId } : {}),
+            }
+            : undefined
+    );
     const scopedSession = {
         ...(session as any),
         pId: PRODUCT_IDS.CANONICA,
+        productId: PRODUCT_IDS.CANONICA,
         tId: scope.tenantId,
         sId: scope.storeId,
         role,
+        ...(sourceContext ? { sourceContext } : {}),
+        ...(sourceProductId && sourceProductId !== PRODUCT_IDS.CANONICA ? { sourceProductId } : {}),
         user: {
             ...(session as any).user,
             tenantId: scope.tenantId,

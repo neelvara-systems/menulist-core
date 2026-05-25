@@ -8,11 +8,11 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, pricing, tickets, and data handling.',
+    description: 'Answers to common questions founders ask about Canonica setup, AI-built apps, page-aware support, screenshots, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | Canonica',
-        description: 'Answers to common questions about Canonica setup, AI-built apps, widget context, pricing, tickets, and data handling.',
+        description: 'Answers to common questions about Canonica setup, AI-built apps, widget context, screenshots, pricing, tickets, and data handling.',
         url: `${CANONICA_SITE_URL}/faq`,
     },
 };
@@ -65,6 +65,14 @@ const FAQS = [
     {
         question: 'What makes Canonica page-aware?',
         answer: 'Your product can pass safe route, page, feature, workflow, role, and plan hints to the Canonica widget. Canonica uses those hints to prefer support content connected to that product surface.',
+    },
+    {
+        question: 'Can users attach screenshots in the widget?',
+        answer: 'Yes. Users can upload or paste a screenshot with their question when visual context helps. Widget images are bounded by file type and size and are not stored as persistent files.',
+    },
+    {
+        question: 'Can Canonica capture screenshots automatically?',
+        answer: 'No. Canonica does not automatically capture the host app screen or scrape the DOM. Runtime visual context stays explicit and user-initiated.',
     },
     {
         question: 'Does Canonica answer every question automatically?',
@@ -128,7 +136,7 @@ const FAQS = [
     },
     {
         question: 'Does Canonica use MenuList data?',
-        answer: 'No. MenuList is a separate product and one client/test-host use case. Canonica workspaces, dashboard, widget, scheduler, and Firebase data stay under Canonica product boundaries.',
+        answer: 'No. MenuList is a separate product and one independent client integration. Canonica workspaces, dashboard, widget, scheduler, and Firebase data stay under Canonica product boundaries.',
     },
 ];
 
@@ -158,7 +166,7 @@ export default function CanonicaFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding Canonica.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, AI-built apps, page-aware support, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, AI-built apps, page-aware support, screenshots, pricing, data handling, and fallback tickets.
                         </p>
                     </div>
                 </section>

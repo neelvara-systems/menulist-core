@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
 import { DB_COLLECTIONS } from '@constant/database';
+import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import { shouldUseSharedCanonicaFirebase } from '@lib/firebase/canonicaConfig';
 import { canonicaAdminApp, canonicaAuthAdmin, canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
@@ -145,6 +146,11 @@ const normalizeProductId = (value: unknown): ProductId => {
         : DEFAULT_PRODUCT_ID;
 };
 
+const isPlatformSupportRole = (value: unknown): boolean => {
+    const normalized = String(value || '').toUpperCase();
+    return normalized === ECOMSAI_PLATFORM_USER_ROLE || normalized === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+};
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
@@ -182,17 +188,46 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const requestedProductId = normalizeProductId(validation.data.productId);
         const shouldUseCanonicaUserContext = requestedProductId === PRODUCT_IDS.CANONICA && !shouldUseSharedCanonicaFirebase;
 
-        // Get user from the product-specific auth profile. Canonica has its own
-        // Firebase project, so Canonica dashboard claims must be built from the
-        // Canonica user document, not from the user's MenuList tenant/store.
-        let dbUser: any = shouldUseCanonicaUserContext
+        const defaultDbUser = shouldUseCanonicaUserContext
+            ? await getAuthUserByEmail(session.user.email)
+            : null;
+        const hasDefaultPlatformAccess = isPlatformSupportRole((defaultDbUser as any)?.platformRole)
+            || isPlatformSupportRole((session as any)?.platformRole)
+            || isPlatformSupportRole((session as any)?.user?.platformRole);
+
+        const canonicaDbUser = shouldUseCanonicaUserContext
             ? await getCanonicaAuthUserByEmail(session.user.email)
-            : await getAuthUserByEmail(session.user.email);
+            : null;
+        const canonicaUserMatchesRequestedStore = canonicaDbUser && (
+            !targetStoreId || canAccessStore(canonicaDbUser, targetStoreId)
+        );
+
+        // Get user from the product-specific auth profile. Canonica has its own
+        // Firebase project, so tenant/store claims must come from the Canonica
+        // user doc when one exists. Platform/support access is preserved as a
+        // platformRole overlay, not as a reason to mint Canonica tokens for the
+        // default MenuList tenant.
+        let dbUser: any = shouldUseCanonicaUserContext && hasDefaultPlatformAccess && canonicaUserMatchesRequestedStore
+            ? {
+                ...canonicaDbUser,
+                platformRole: (defaultDbUser as any)?.platformRole || (canonicaDbUser as any)?.platformRole,
+                pId: PRODUCT_IDS.CANONICA,
+                productId: PRODUCT_IDS.CANONICA,
+            }
+            : shouldUseCanonicaUserContext && hasDefaultPlatformAccess && defaultDbUser
+                ? {
+                    ...defaultDbUser,
+                    pId: PRODUCT_IDS.CANONICA,
+                    productId: PRODUCT_IDS.CANONICA,
+                }
+                : shouldUseCanonicaUserContext
+                    ? canonicaDbUser
+                    : await getAuthUserByEmail(session.user.email);
 
         if (!dbUser && shouldUseCanonicaUserContext) {
-            const fallbackDbUser: any = await getAuthUserByEmail(session.user.email);
+            const fallbackDbUser: any = defaultDbUser || await getAuthUserByEmail(session.user.email);
             const fallbackPlatformRole = String(fallbackDbUser?.platformRole || '').toUpperCase();
-            if (fallbackPlatformRole === 'PLATFORM' || fallbackPlatformRole === 'PLATFORM_SUPPORT') {
+            if (isPlatformSupportRole(fallbackPlatformRole)) {
                 dbUser = {
                     ...fallbackDbUser,
                     pId: PRODUCT_IDS.CANONICA,
@@ -208,14 +243,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        if (targetStoreId && !canAccessStore(dbUser, targetStoreId)) {
+        if (targetStoreId && !hasDefaultPlatformAccess && !canAccessStore(dbUser, targetStoreId)) {
             secureLog('[Auth] Rejected set-claims store switch outside user stores', {
                 requestedStoreId: targetStoreId,
                 userId: dbUser.id,
             });
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        const claimStoreId = resolveClaimStoreId(dbUser, targetStoreId);
+        const claimStoreId = hasDefaultPlatformAccess && shouldUseCanonicaUserContext
+            ? Number(dbUser?.storeId)
+            : resolveClaimStoreId(dbUser, targetStoreId);
 
         // Get user's current-store role. Older/platform records may still carry
         // a top-level role, so keep that as the compatibility fallback.

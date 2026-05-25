@@ -30,11 +30,11 @@ The AI assistant searches your knowledge base and gives you a clear answer with 
 If you're seeing something on screen that you need help with:
 
 1. Click the image icon next to the search bar
-2. Upload your screenshot
+2. Upload a JPEG, PNG, WebP, or GIF screenshot up to 5 MB
 3. Type your question about what you see
-4. The AI analyzes the image and finds relevant help articles
+4. The assistant extracts safe visual context and finds relevant help articles
 
-Screenshots are especially useful for error messages, unusual layouts, or visual issues.
+Screenshots are especially useful for error messages, unusual layouts, or visual issues. Do not upload screenshots that contain passwords, payment data, tokens, or private customer information.
 
 ---
 

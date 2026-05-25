@@ -10,7 +10,7 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
+    description: 'Security for Canonica page-aware support: safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | Canonica',
@@ -35,6 +35,10 @@ const CONTROLS = [
     {
         title: 'Safe widget context',
         body: 'Widget context is designed for page, route, feature, workflow, role, and plan hints. It is bounded and should not include secrets, tokens, passwords, payment card data, or unrelated personal information.',
+    },
+    {
+        title: 'Explicit screenshot attachments',
+        body: 'Users can attach or paste screenshots when visual context helps. Canonica does not automatically capture the host page, scrape the DOM, or write widget images to persistent storage.',
     },
     {
         title: 'Origin and route controls',
@@ -69,8 +73,9 @@ const CONTROLS = [
 const SECURITY_FACTS = [
     { label: 'Product data boundary', value: 'Canonica workspace scope' },
     { label: 'Runtime database', value: 'Canonica Firebase project' },
-    { label: 'Widget key storage', value: 'Hashed key, shown once' },
+    { label: 'Widget key storage', value: 'Hashed; encrypted recovery when configured' },
     { label: 'Widget placement', value: 'Allowed origins + blocked routes' },
+    { label: 'Screenshot input', value: 'Manual attachment only' },
     { label: 'Hosted help', value: 'Registry-scoped domains' },
     { label: 'Ticket context', value: 'Capped and sanitized' },
     { label: 'Answer authority', value: 'Owner-reviewed approved answers' },
@@ -125,6 +130,15 @@ const TRUST_AREAS = [
             'Context should describe page, route, feature, workflow, role, or plan.',
             'Secrets, tokens, passwords, payment card data, and unrelated personal data should not be sent.',
             'Server-side validation keeps tenant scope separate from client-provided context.',
+        ],
+    },
+    {
+        title: 'Explicit visual context',
+        body: 'Screenshots can help explain a broken screen, but they should remain a deliberate user action instead of background collection.',
+        points: [
+            'Users upload or paste screenshots only when they want to include visual context.',
+            'The widget does not automatically capture the host app screen or scrape the DOM.',
+            'Image inputs are bounded by type and size, and widget images are not stored as persistent files.',
         ],
     },
     {
@@ -190,7 +204,7 @@ export default function CanonicaSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica uses safe page hints, allowed origins, blocked routes, compiled approved context, scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
+                            Canonica uses safe page hints, explicit screenshot attachments, allowed origins, blocked routes, compiled approved context, scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
                     </div>
                 </section>
@@ -199,7 +213,7 @@ export default function CanonicaSecurityPage() {
                     <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
-                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, serve approved runtime context from controlled bundles, and approve support answers before they become official.
+                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, keep screenshots user-initiated, serve approved runtime context from controlled bundles, and approve support answers before they become official.
                         </p>
                         <CanonicaLink
                             basePath={basePath}
@@ -272,6 +286,7 @@ export default function CanonicaSecurityPage() {
                                 status: [
                                     'scope',
                                     'context',
+                                    'image',
                                     'route',
                                     'public help',
                                     'ticket',
@@ -282,7 +297,7 @@ export default function CanonicaSecurityPage() {
                                 ][index] ?? 'control',
                                 title: control.title,
                                 detail: control.body,
-                                tone: index === 1 || index === 7 ? 'caution' as const : index === 0 || index === 5 || index === 6 ? 'good' as const : 'neutral' as const,
+                                tone: index === 1 || index === 2 || index === 8 ? 'caution' as const : index === 0 || index === 6 || index === 7 ? 'good' as const : 'neutral' as const,
                             }))}
                         />
                     </div>
@@ -293,7 +308,7 @@ export default function CanonicaSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Page context boundary</p>
                         <h2 className="text-2xl font-bold text-white">Do not send secrets through page context.</h2>
                         <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">
-                            Use page, route, feature, workflow, role, plan, or state names. Do not send passwords, tokens, payment data, private customer records, or unrelated personal data.
+                            Use page, route, feature, workflow, role, plan, or state names. Do not send passwords, tokens, payment data, private customer records, or unrelated personal data. If users attach a screenshot, keep it deliberate and avoid pages that show secrets.
                         </p>
                     </div>
                 </section>

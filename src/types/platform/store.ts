@@ -518,7 +518,8 @@ export type StoreDataType = {
      * Public API configuration for external system access.
      * Owner generates a read-only API key in Business Settings or a Canonica widget key.
      * External systems use X-API-Key header to pull data.
-     * Raw keys are legacy-only; new keys are stored as SHA-256 hashes and shown once.
+     * Raw public API keys are legacy-only; new public API keys are stored as SHA-256 hashes and shown once.
+     * Canonica widget keys use the dedicated `canonicaWidgetApi` manager below.
      *
      * Feature flags: ENABLE_PUBLIC_API, ENABLE_CANONICA_WIDGET
      */
@@ -538,9 +539,30 @@ export type StoreDataType = {
      * broader Canonica public API routes.
      */
     canonicaWidgetApi?: {
+        schemaVersion?: 'canonica.widgetKeys.v1';
+        activeKeyHash?: string | null;
+        keyHashes?: string[];
+        keysByHash?: Record<string, {
+            id: string;
+            name: string;
+            keyPrefix: string;
+            keySuffix?: string | null;
+            encryptedKey?: string | null;
+            encryptionVersion?: string | null;
+            status: 'active' | 'revoked';
+            productId?: 'CN' | string;
+            purpose?: 'canonica_widget' | string;
+            scopes?: string[];
+            createdAt?: string;
+            updatedAt?: string | null;
+            revokedAt?: string | null;
+            legacy?: boolean;
+        }>;
+        // Legacy/current active key fields retained for backward compatibility.
         apiKeyHash?: string;
         keyPrefix?: string;
         createdAt?: string;
+        updatedAt?: string | null;
         productId?: 'CN' | string;
         purpose?: 'canonica_widget' | string;
         scopes?: string[];

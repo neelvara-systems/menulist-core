@@ -53,6 +53,16 @@ const WIDGET_STATES = [
         ] as Array<[string, string]>,
     },
     {
+        status: 'visual',
+        title: 'Attach screenshots explicitly',
+        detail: 'Users can upload or paste a screenshot when visual context helps, without automatic page capture.',
+        tone: 'neutral' as const,
+        rows: [
+            ['input', 'user attached'],
+            ['storage', 'not persisted'],
+        ] as Array<[string, string]>,
+    },
+    {
         status: 'review',
         title: 'Review support gaps',
         detail: 'Fallbacks, tickets, safe debugging context, and negative feedback become review work.',
@@ -83,7 +93,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                         Put help inside the screen where users are stuck.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Users ask from inside your app. Canonica reads safe page hints, finds approved answers and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing.
+                        Users ask from inside your app. Canonica reads safe page hints, accepts explicit screenshot attachments when needed, finds approved answers and related docs, can show configured prompts, and opens ticket fallback only when coverage is missing.
                     </p>
                     <CanonicaLink
                         basePath={basePath}
@@ -113,7 +123,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                                         The widget opens inside the client product, detects safe billing context, and prefers approved invoice answers or configured prompts before fallback.
                                     </p>
                         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                        {['Canonical answer', 'Related FAQ', 'Proactive prompt', 'Ticket fallback'].map((label) => (
+                                        {['Canonical answer', 'Related FAQ', 'Screenshot context', 'Proactive prompt', 'Ticket fallback'].map((label) => (
                                             <span key={label} className="rounded-xl border border-white/[0.08] bg-[#0f0f23] px-4 py-3 text-sm font-semibold text-[#d6d6ef]">
                                                 {label}
                                             </span>
@@ -135,6 +145,7 @@ export default function WidgetSection({ basePath = '' }: { basePath?: string }) 
                                         ['Blocked route', '/billing/cards/*'],
                                         ['Hosted help', 'help.yourapp.com'],
                                         ['Context key', 'billing_invoices'],
+                                        ['Image input', 'manual only'],
                                     ].map(([label, value]) => (
                                         <div key={label} className="rounded-xl border border-white/[0.08] bg-[#0f0f23] p-3">
                                             <div className="text-[11px] font-semibold uppercase tracking-widest text-[#8f8faa]">{label}</div>

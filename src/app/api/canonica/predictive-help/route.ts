@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
             includeCanonicaWidgetApi: true,
+            includePublicApi: false,
             preferCanonicaWidgetApi: true,
         });
         if (!authResult) {

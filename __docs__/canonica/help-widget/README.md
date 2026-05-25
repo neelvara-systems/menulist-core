@@ -4,7 +4,7 @@
 > **Status:** v2 IMPLEMENTED
 > **Date:** 2026-05-12
 > **Feature Flags:** `ENABLE_CANONICA_WIDGET` (core), `ENABLE_CANONICA_CONTEXT_AWARE` (context layer), `ENABLE_CANONICA_GUIDED_WORKFLOWS` (procedure rendering)
-> **Auth:** API key via `X-API-Key` header. Raw keys are returned once and stored as `canonicaWidgetApi.apiKeyHash` with a display-only `keyPrefix`.
+> **Auth:** API key via `X-API-Key` header. Widget keys live on `stores/{sId}.canonicaWidgetApi` as bounded named keys (`keyHashes` + `keysByHash`), validate by SHA-256 hash, and are copyable later only when encrypted key storage is configured.
 
 ---
 
@@ -77,10 +77,11 @@ Route blocklists are stored in the same dashboard config and evaluated inside th
 
 Widget keys are stored separately from broader Canonica public API credentials:
 
-- `canonicaWidgetApi` — embeddable widget credential with `widget:*` scopes.
+- `canonicaWidgetApi` — bounded embeddable widget key manager with `widget:*` scopes, name/rename/copy/delete actions, hash lookup, and optional encrypted key recovery.
 - `publicApi` — Canonica public API credential with public API scope.
 
-Legacy widget keys still stored under `publicApi.purpose = "canonica_widget"` remain accepted by widget runtime routes, but they no longer authorize Canonica public API routes.
+Widget runtime routes opt into `canonicaWidgetApi` only. Canonica public API routes continue to use `publicApi` and reject widget-only keys.
+Set `CANONICA_WIDGET_KEY_ENCRYPTION_SECRET` in each Canonica runtime environment to make newly generated widget keys copyable later. Without that secret, new keys still validate by hash and are returned after creation, but existing raw keys cannot be recovered.
 
 ---
 
@@ -95,7 +96,7 @@ Legacy widget keys still stored under `publicApi.purpose = "canonica_widget"` re
 | 5   | **SDK-first context collection**                 | SaaS developer passes structured context using `CanonicaWidget.setContext()` or `CanonicaWidget.page()`. More reliable than DOM scraping.     |
 | 6   | **Widget UI stays zero-dependency**              | No antd, no framer-motion, no SCSS. 248 lines of inline-styled React. Critical for iframe bundle size.                                       |
 | 7   | **Canonical-first always**                       | Widget never bypasses canonical retrieval. Context assists retrieval, never replaces it. Knowledge must always come from canonical articles. |
-| 8   | **One-time-visible keys**                        | Settings and onboarding never persist raw widget keys. Existing keys can only be identified by prefix; regenerate to copy again.              |
+| 8   | **Bounded named keys on store doc**              | Up to 10 active widget keys per workspace live on the existing store document. Validation remains one indexed store lookup; no key collection is added. |
 | 9   | **Transient widget history only**                | The widget can keep an in-memory page session for follow-up context, but never writes anonymous widget chat history to Firestore/localStorage. |
 | 10  | **Dashboard-backed runtime config**              | Installed snippets read saved public config through `/api/widget/config`; no realtime listeners or page-load writes.                          |
 
@@ -109,12 +110,12 @@ Legacy widget keys still stored under `publicApi.purpose = "canonica_widget"` re
 | Context-aware support  | Feature-flagged, schema exists            | Full SDK integration, context boosts entity matching                                                                                                          |
 | Launcher customization | Position + color + text                   | Shape, display mode, size, offset                                                                                                                             |
 | Session memory         | None (stateless)                          | In-memory page session (last 5 messages), explicit clear, optional `data-history="forget"` clear-on-close mode. No persistence.                              |
-| Query telemetry        | Via `aiSearchHistory` (from `coreSearch`) | Same, enriched with mountContext                                                                                                                              |
+| Query telemetry        | Via `aiSearchHistory` (from `coreSearch`) | Same, enriched with `mountContext`; `/canonica/widget` shows recent widget questions for dashboard verification.                                              |
 | Feedback signals       | None                                      | Thumbs up/down → signal mutation pipeline                                                                                                                     |
 | Origin allowlist       | None (any domain)                         | Per-tenant allowed domains                                                                                                                                    |
 | Conversation context   | None                                      | Assistant mode with conversation history                                                                                                                      |
 | Reference deep linking | Title only                                | Article ID + section anchor                                                                                                                                   |
-| Image upload           | None                                      | User-initiated screenshot/image upload. Reuses coreSearch Stage 2 (Gemini Pro query gen + Gemini Flash visual context). Base64 inline, no persistent storage. |
+| Image upload           | None                                      | User-initiated screenshot/image upload. Reuses `coreSearch()` visual context extraction with the shared 5MB JPEG/PNG/WebP/GIF policy. Base64 inline, no persistent storage. |
 
 ---
 
@@ -148,6 +149,7 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-25 | 2.4.9   | Replaced the single widget key surface with a bounded Google-style key manager on the store doc: named keys, rename, delete, copy for encrypted widget keys, legacy hash-only compatibility, and no new collections. |
 | 2026-05-22 | 2.4.4   | Added launch-grade widget branding controls for header title, accent color propagation, greeting, and powered-by visibility without adding runtime Firestore reads. |
 | 2026-05-24 | 2.4.6   | Restored predictive support as a guarded runtime capability. The widget calls predictive help only when config confirms active triggers, allowed origin, safe context, rate limits, and cooldown storage are in place. |
 | 2026-05-24 | 2.4.5   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |

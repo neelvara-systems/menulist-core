@@ -1,7 +1,7 @@
 # Help Center — Product Specification
 
-> **Version:** 1.1.0
-> **Last Updated:** 2026-03-04
+> **Version:** 1.1.1
+> **Last Updated:** 2026-05-25
 > **Audience:** CEO, PM, Clients, Strategy
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -29,6 +29,8 @@ It is NOT a standalone support tool. It is deeply integrated with MenuList's aut
 - FAQ page
 - Contact Us
 - What's New (changelog viewer)
+
+**Not shown here:** Canonica Governance, Signal-to-Knowledge Queue, Entity Candidates, drift review, and canonical coverage metrics. Those are owner/admin governance surfaces and must stay in Canonica dashboard/governance routes, not the Help Center experience.
 
 ### 2.2 Platform Administrator
 
@@ -323,3 +325,11 @@ See `help-center_firebase.md` for detailed cost breakdown.
 ### Industry Comparison (Sources: Userpilot, Zendesk, Intercom, Beamer, Featurebase)
 
 All standard SaaS help center patterns covered: prominent search, category navigation, AI chatbot, KB, tickets with SLA, changelog, feedback, recently viewed, trending topics, mobile support, tab navigation.
+
+---
+
+## 8. Boundary Fix (2026-05-25)
+
+- Removed Canonica governance work queues from the Help Center landing.
+- Removed the Governance tab from the Help Center tab config.
+- Kept Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, and drift/answer governance scoped to Canonica owner/admin routes.

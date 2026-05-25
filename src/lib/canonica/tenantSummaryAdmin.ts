@@ -1,6 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
+import * as admin from 'firebase-admin';
 
 export const CANONICA_TENANT_SUMMARY_DOC_ID = 'canonicaTenantsSummary';
 

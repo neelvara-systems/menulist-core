@@ -8,7 +8,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Widget Install',
-    description: 'Install Canonica support with one script, allowed origins, blocked routes, hosted help domains, runtime verification, and safe page context.',
+    description: 'Install Canonica support with one script, allowed origins, blocked routes, hosted help domains, runtime verification, safe page context, and explicit screenshot attachments.',
     alternates: { canonical: '/install' },
 };
 
@@ -40,6 +40,10 @@ const INSTALL_STEPS = [
     {
         title: 'Pass safe page context',
         detail: 'Send route, feature, workflow, role, or plan hints. Do not send secrets, tokens, card data, or unrelated personal information.',
+    },
+    {
+        title: 'Keep visual context user-initiated',
+        detail: 'Users can attach or paste a screenshot when it helps explain an issue. The widget does not automatically capture the host app screen.',
     },
     {
         title: 'Verify runtime status',
@@ -88,6 +92,7 @@ const VERIFICATION_ITEMS = [
     ['Allowed origin', 'Current product origin matched dashboard config'],
     ['Blocked route', 'Current route allowed or hidden as configured'],
     ['Context marker', 'Last received context key such as billing_invoices'],
+    ['Image input', 'Optional user attachment only; no automatic capture'],
     ['Hosted help', 'Domain registry and public route status checked'],
 ];
 
@@ -105,7 +110,7 @@ export default function CanonicaInstallPage() {
                         Install support with one script.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Add Canonica to your app shell, allow the domains where it can run, block sensitive routes, and send safe page hints such as feature, workflow, role, or plan.
+                        Add Canonica to your app shell, allow the domains where it can run, block sensitive routes, send safe page hints such as feature, workflow, role, or plan, and keep screenshots user-initiated.
                     </p>
                 </section>
 
@@ -257,6 +262,10 @@ export default function CanonicaInstallPage() {
                                 {
                                     title: 'Safe page context',
                                     detail: 'Feature, workflow, role, and plan hints guide answers without sending secrets.',
+                                },
+                                {
+                                    title: 'Manual screenshots',
+                                    detail: 'Visual context comes from user upload or paste, not automatic runtime capture.',
                                 },
                             ]}
                             outputs={[

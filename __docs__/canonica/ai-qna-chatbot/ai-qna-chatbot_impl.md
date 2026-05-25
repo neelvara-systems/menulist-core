@@ -102,7 +102,7 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
 
 | File                                            | Lines | Purpose                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------- | :---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/vectorEmbeddings/index.ts`             |  290  | **RAG Core** — `callGeminiEmbedding()` (text-embedding-004), `generateSearchQueryFromImage()` (gemini-2.5-pro), `callGeminiChat()` (gemini-2.5-flash, JSON output), `callGeminiChatStream()` (SSE streaming). Builds system instructions per mode (QnA/Assistant/Image). Conversation context from last 5 messages. Temperature=0.0, TopP=0.9, TopK=40. |
+| `src/lib/vectorEmbeddings/index.ts`             |  290  | **RAG Core** — `callGeminiEmbedding()` (`gemini-embedding-001`), `generateSearchQueryFromImage()` (`gemini-2.5-flash` vision context extraction), `callGeminiChat()` (`gemini-2.5-flash`, JSON output). Builds system instructions per mode (QnA/Assistant/Image). Conversation context from last 5 messages. Temperature=0.0, TopP=0.9, TopK=40. |
 | `src/lib/vectorEmbeddings/articleEmbeddings.ts` |  19   | `extractPlainTextFromEditorContent()` — Recursive TipTap JSON → plain text. `extractEditortextForComparison()` — Lowercase + strip non-alphanumeric.                                                                                                                                                                                                    |
 | `src/lib/validation/chatSchemas.ts`             |  147  | Zod schemas — `SearchRequestSchema` validates: query (1-2000 chars, XSS patterns), imageUrl (HTTPS, Firebase host), mode (qna/assistant), context (max 5 messages, alternating roles). 7 malicious pattern detections.                                                                                                                                  |
 
@@ -170,7 +170,7 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
    b. Fetch with timeout    → 10s timeout, AbortController
    c. Validate size         → 10MB max
    d. Convert to base64
-   e. Generate search query → generateSearchQueryFromImage() [Gemini 2.5 Pro]
+   e. Generate bounded visual search context → generateSearchQueryFromImage() [Gemini 2.5 Flash]
 6. Build cache key          → normalizeQuery(query) + optional ::IMAGE::hash(imageUrl)
 7. Response cache check     → findCachedSearchByCacheKey(key, session)
    → HIT: Return cached response immediately
@@ -188,7 +188,7 @@ The AI QnA Chatbot is a **hybrid client-server feature**:
                                })
 10. Similarity filter       → Primary: >0.6, Fallback: >0.4
 11. Prepare Gemini payload  → Extract plain text from TipTap JSON per article
-12. Answer generation       → callGeminiChat(query, docs, image?, conversationHistory?)
+12. Answer generation       → callGeminiChat(query, docs, imageContext?, conversationHistory?)
     → Model: gemini-2.5-flash
     → Temperature: 0.0
     → Output: JSON { craftedAnswer, references[], suggestedQuestions[] }
@@ -241,7 +241,7 @@ useChatHandlers.onSendMessage(content, image?, targetMode?)
 
 ### 4.1 Embedding Model
 
-- **Model:** `text-embedding-004`
+- **Model:** `gemini-embedding-001`
 - **Dimensions:** 768
 - **Input format:** Plain text (extracted from TipTap JSON)
 - **Article embedding input:** `Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}`
@@ -257,8 +257,8 @@ useChatHandlers.onSendMessage(content, image?, targetMode?)
 
 ### 4.3 Image Model
 
-- **Model:** `gemini-2.5-pro`
-- **Purpose:** Generate keyword-rich search query from user question + uploaded image
+- **Model:** `gemini-2.5-flash`
+- **Purpose:** Generate bounded keyword-rich visual search context from user question + uploaded image
 - **Input:** Text prompt + inline image (base64)
 
 ### 4.4 System Instructions (3 variants)
@@ -273,7 +273,7 @@ useChatHandlers.onSendMessage(content, image?, targetMode?)
 
 **Image Mode:**
 
-> "A user has provided an image and a question. Answer ONLY using the provided documents, using the image as crucial context."
+> "A user has provided an image and a question. Answer ONLY using the provided documents, using the image context only to interpret the user's situation."
 
 All variants include:
 
@@ -315,7 +315,7 @@ All variants include:
 | #   | Issue                                                   | Severity | File:Line                                                                       | Notes                          |
 | --- | ------------------------------------------------------- | -------- | ------------------------------------------------------------------------------- | ------------------------------ |
 | 1   | No `withAuth()` on search API routes                    | Medium   | `search-kb/route.ts`, `search-kb-stream/route.ts`, `article-embedding/route.ts` | Relies on `getActiveSession()` |
-| 2   | `console.error` used instead of `secureError`           | Low      | `search-kb/route.ts:353`, `vectorEmbeddings/index.ts:69`                        | Should use secure logger       |
+| 2   | `console.error` used instead of structured logging      | Resolved | `search-kb/route.ts`, `vectorEmbeddings/index.ts`                               | Image query errors use `writeLogEntry` and degrade gracefully |
 | 3   | Query embedding cache has no TTL                        | Low      | `queryEmbeddings/index.ts`                                                      | Grows indefinitely             |
 | 4   | No conversation length limit                            | Low      | `useChatHandlers.ts`                                                            | Messages array grows unbounded |
 | 5   | `updateMessageFeedback` is read-then-write (not atomic) | Low      | `chatSessions/index.ts:192`                                                     | Concurrent updates could drift |
@@ -347,7 +347,7 @@ All variants include:
 | Flow                             | Start → End                                                                                                                    | Verified |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | :------: |
 | User types question → AI answers | ChatInput → useChatHandlers.onSendMessage → api.ts → search-kb/route.ts → vectorEmbeddings → Gemini → response → MessageBubble |    ✅    |
-| Image query                      | ChatInput (image) → uploadChatImage → search-kb (imageUrl) → generateSearchQueryFromImage → vector search → answer             |    ✅    |
+| Image query                      | ChatInput (image) → uploadChatImage → search-kb (tenant-scoped imageUrl) → generateSearchQueryFromImage → vector search → answer with bounded visual context |    ✅    |
 | Feedback up                      | MessageActions → handleFeedbackUp → submitSearchFeedback → updateMessageFeedback                                               |    ✅    |
 | Feedback down                    | MessageActions → handleFeedbackDown → FeedbackModal → handleFeedbackSubmit → submitSearchFeedback                              |    ✅    |
 | Regenerate                       | MessageActions → handleRegenerate → onRetry (regenerate mode) → search API → replace message                                   |    ✅    |

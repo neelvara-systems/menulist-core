@@ -11,6 +11,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { getCanonicaWidgetKeyRecordByHash } from "@lib/canonica/widgetKeyManager";
 import { canonicaFirestoreAdmin } from "@lib/firebase/canonicaFirebaseAdmin";
 import { shouldUseSharedCanonicaFirebase } from "@lib/firebase/canonicaConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
@@ -180,16 +181,14 @@ export async function validatePublicApiKey(
     const normalizedApiKey = normalizePublicApiKey(apiKey);
     if (!normalizedApiKey) return null;
 
-    const db = admin.firestore();
     const keyHash = hashApiKey(normalizedApiKey);
 
     let credentialSource: PublicApiCredentialSource = 'publicApi';
     const allowLegacyRawFallback = options.allowLegacyRawFallback !== false;
     const includePublicApi = options.includePublicApi !== false;
     const includeCanonicaWidgetApi = Boolean(options.includeCanonicaWidgetApi);
-    const dedicatedCanonicaDb = !shouldUseSharedCanonicaFirebase
-        && normalizedApiKey.startsWith('cn_')
-        && includeCanonicaWidgetApi
+    const shouldUseCanonicaDb = !shouldUseSharedCanonicaFirebase && normalizedApiKey.startsWith('cn_');
+    const dedicatedCanonicaDb = shouldUseCanonicaDb
         && canonicaFirestoreAdmin
         && typeof (canonicaFirestoreAdmin as any).collection === 'function'
         ? canonicaFirestoreAdmin
@@ -215,9 +214,31 @@ export async function validatePublicApiKey(
         }
     }
 
+    if (shouldUseCanonicaDb && !dedicatedCanonicaDb) {
+        secureLog('[Public API] Canonica API key validation failed closed because Canonica Firestore Admin is not configured');
+        if (cacheKey && cacheTtl) {
+            validationCache.set(cacheKey, {
+                expiresAt: Date.now() + cacheTtl,
+                result: null,
+            });
+        }
+        return null;
+    }
+
+    const getCredentialDb = () => shouldUseCanonicaDb
+        ? dedicatedCanonicaDb!
+        : admin.firestore();
+
     const queryCanonicaWidgetApi = async () => {
-        const primaryDb = dedicatedCanonicaDb || db;
-        return primaryDb
+        const multiKeySnapshot = await getCredentialDb()
+            .collection(DB_COLLECTIONS.STORES)
+            .where('canonicaWidgetApi.keyHashes', 'array-contains', keyHash)
+            .limit(1)
+            .get();
+
+        if (!multiKeySnapshot.empty) return multiKeySnapshot;
+
+        return getCredentialDb()
             .collection(DB_COLLECTIONS.STORES)
             .where('canonicaWidgetApi.apiKeyHash', '==', keyHash)
             .limit(1)
@@ -229,8 +250,10 @@ export async function validatePublicApiKey(
         if (!widgetSnapshot.empty) {
             const doc = widgetSnapshot.docs[0];
             const storeData = doc.data();
+            const widgetCredential = getCanonicaWidgetKeyRecordByHash(storeData.canonicaWidgetApi, keyHash)
+                || storeData.canonicaWidgetApi;
             const result: PublicApiKeyValidationResult = {
-                credential: storeData.canonicaWidgetApi,
+                credential: widgetCredential,
                 credentialSource: 'canonicaWidgetApi',
                 storeData,
                 storeId: doc.id,
@@ -249,7 +272,7 @@ export async function validatePublicApiKey(
 
     if (includePublicApi) {
         // Primary: lookup by hash (secure)
-        snapshot = await db
+        snapshot = await getCredentialDb()
             .collection(DB_COLLECTIONS.STORES)
             .where('publicApi.apiKeyHash', '==', keyHash)
             .limit(1)
@@ -257,7 +280,7 @@ export async function validatePublicApiKey(
 
         // Fallback: lookup by raw key (backward compat for pre-migration keys)
         if (snapshot.empty && allowLegacyRawFallback) {
-            snapshot = await db
+            snapshot = await getCredentialDb()
                 .collection(DB_COLLECTIONS.STORES)
                 .where('publicApi.apiKey', '==', normalizedApiKey)
                 .limit(1)
@@ -288,10 +311,13 @@ export async function validatePublicApiKey(
 
     const doc = snapshot.docs[0];
     const storeData = doc.data();
+    const widgetCredential = credentialSource === 'canonicaWidgetApi'
+        ? getCanonicaWidgetKeyRecordByHash(storeData.canonicaWidgetApi, keyHash) || storeData.canonicaWidgetApi
+        : undefined;
     const result: PublicApiKeyValidationResult = {
         credential: credentialSource === 'publicApi'
             ? storeData.publicApi
-            : storeData.canonicaWidgetApi,
+            : widgetCredential,
         credentialSource,
         storeData,
         storeId: doc.id,

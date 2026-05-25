@@ -69,10 +69,10 @@ The AI QnA Chatbot is MenuList's **RAG-powered conversational support system** �
 
 ```
 User Query → Zod Validation → Rate Limit → SAFE_MODE Check
-  → [Image?] → Gemini 2.5 Pro: image → search query
+  → [Image?] → Gemini 2.5 Flash: image → bounded visual search context
   → Response Cache Check (aiSearchHistory)
   → Embedding Cache Check (queryEmbeddings)
-  → [Miss] Gemini text-embedding-004 → 768-dim vector
+  → [Miss] Gemini gemini-embedding-001 → 768-dim vector
   → Firestore Vector Search (COSINE, limit 12, status=published)
   → Similarity Filter (threshold 0.4-0.6)
   → Gemini 2.5 Flash → JSON answer with references + suggested questions

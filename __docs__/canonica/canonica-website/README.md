@@ -48,17 +48,17 @@
 | `/use-cases/support-teams` | Use Case | Reduce repeated tickets while keeping owner-approved answer control |
 | `/use-cases/product-teams` | Use Case | Product-surface drift, release review, and support friction visibility |
 | `/use-cases/engineering` | Use Case | Safe widget install, route context, and governed retrieval for engineering teams |
-| `/page-aware-support-widget` | SEO Landing | Page-aware support widget page with concrete before/after support example |
+| `/page-aware-support-widget` | SEO Landing | Page-aware support widget page with concrete before/after support example and manual screenshot boundary |
 | `/hosted-help-center-for-saas` | SEO Landing | Hosted SaaS help center page for docs, FAQ, and changelog on support domains |
-| `/support-widget-for-solo-founders` | SEO Landing | Solo-founder support widget page focused on launching support before hiring a team |
+| `/support-widget-for-solo-founders` | SEO Landing | Solo-founder support widget page focused on launching support before hiring a team, including optional user-attached visual context |
 | `/demo` | Demo | Static page-aware support demo with no Firebase or AI calls |
-| `/install` | Widget Install | Widget script, allowed origins, blocked routes, hosted help domains such as help.yourapp.com, safe page context, and runtime verification |
+| `/install` | Widget Install | Widget script, allowed origins, blocked routes, hosted help domains such as help.yourapp.com, safe page context, manual screenshot input, and runtime verification |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR Starter/Growth/Studio packaging, beta setup, and support-credit top-up explanation |
 | `/resources` | Resources | Canonica learning hub for AI-built SaaS evaluation, setup, widget install, governance, and safety |
 | `/updates` | Updates | Public product update timeline without using dashboard-owned changelog routes |
-| `/security` | Security | Trust controls for widget context, hosted help domains, safe ticket debugging context, tenant separation, owner-approved answers, runtime limits, and responsible disclosure |
-| `/faq` | FAQ | Founder questions about setup, widget context, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
+| `/security` | Security | Trust controls for widget context, user-initiated screenshots, hosted help domains, safe ticket debugging context, tenant separation, owner-approved answers, runtime limits, and responsible disclosure |
+| `/faq` | FAQ | Founder questions about setup, widget context, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, and data handling |
 | `/about` | About | Company beliefs + team origin |
 | `/contact` | Contact | Email contacts for questions, setup help, and partnerships |
 | `/get-started` | Get Started | Self-service onboarding for a new Canonica workspace |
@@ -223,6 +223,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-05-23 | Added Canonica-specific viewport reveal effects across public pages and card/link panels through the shared website layout, preserving reduced-motion behavior and product separation from MenuList website styling |
 | 2026-05-23 | Added a support knowledge map to the homepage and Product page so buyers can understand docs, releases, tickets, feedback, and page context flowing into Canonica, then out to widget, hosted help, approved answers, and review queues |
 | 2026-05-25 | Added a day-one launch-pack section to homepage and Product so the completed quickstarts, starter surfaces, import starter pack, install verifier, ROI/proof, and security one-pager are visible from the main buyer path without creating another public page |
+| 2026-05-25 | Updated existing widget, install, quickstart, security, FAQ, SEO, updates, metadata, and LLM-context pages so user-initiated screenshot upload/paste is presented accurately without adding a separate screenshot page or claiming automatic screen capture |
 | 2026-05-23 | Added Canonica-specific PWA startup images and loader branding so Canonica website/dashboard installs no longer inherit MenuList splash screens or loader identity |
 | 2026-05-23 | Added Canonica-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read Canonica as a support knowledge control plane, not as MenuList business truth, a helpdesk replacement, or an AI autopilot |
 | 2026-05-23 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public Canonica routes, route-registry Website graph references, explicit AI/search crawler robots rules, and `verify:agent-readiness` checks |

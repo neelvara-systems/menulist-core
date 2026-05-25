@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 const LLMS_FULL_TXT = `# Canonica — Extended LLM Context
 
-> Canonica is the support layer for AI-built SaaS apps. It governs approved page-aware answers, hosted help, ticket fallback, stale-answer review, repeated-question signals, compiled runtime context, and widget context.
+> Canonica is the support layer for AI-built SaaS apps. It governs approved page-aware answers, hosted help, ticket fallback, stale-answer review, repeated-question signals, compiled runtime context, widget context, and explicit user-attached screenshot context.
 
 ## Product Definition
 
@@ -17,6 +17,7 @@ Canonica is:
 - owner-reviewed approved answers
 - stale-answer and support-gap review
 - hosted help, FAQ, changelog, and widget support surfaces
+- user-initiated screenshot upload or paste for visual support context
 - Slack and email workflow notifications for owner attention
 - configured proactive widget prompts where active triggers exist
 - typed browser SDK helper for init, page context, open/close, and safe context validation
@@ -38,7 +39,7 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/ — overview, demo path, product proof, fit/not-fit, setup, day-one launch pack, trust, pricing preview, and CTA.
 - ${CANONICA_SITE_URL}/product — product overview, major product-area links, and day-one launch-pack resources.
 - ${CANONICA_SITE_URL}/product/launch-setup — setup, product details, starter knowledge, app pages, widget key, and readiness.
-- ${CANONICA_SITE_URL}/product/page-aware-widget — widget runtime, safe page context, allowed origins, blocked routes, and approved-answer behavior.
+- ${CANONICA_SITE_URL}/product/page-aware-widget — widget runtime, safe page context, optional user-attached screenshots, allowed origins, blocked routes, and approved-answer behavior.
 - ${CANONICA_SITE_URL}/product/support-control — hosted help, docs, FAQ, changelog, tickets, conversations, and weekly support review.
 - ${CANONICA_SITE_URL}/product/knowledge-governance — product structure, approved answers, stale-answer review, repeated-question queue, coverage, and trust metrics.
 - ${CANONICA_SITE_URL}/product/knowledge-base — reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing.
@@ -49,14 +50,14 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/product/proactive-help — configured page-aware prompts tied to active triggers and approved support summaries.
 - ${CANONICA_SITE_URL}/demo — static demo with no Firebase or AI calls.
 - ${CANONICA_SITE_URL}/use-cases/ai-built-saas — support path for AI-built SaaS apps and fast founder launches.
-- ${CANONICA_SITE_URL}/install — widget install, allowed origins, blocked routes, hosted help domains, safe page context, and verification.
+- ${CANONICA_SITE_URL}/install — widget install, allowed origins, blocked routes, hosted help domains, safe page context, explicit screenshot attachments, and verification.
 - ${CANONICA_SITE_URL}/quickstarts — Next.js App Router, React SPA, Vue/Nuxt, vanilla script, and typed SDK examples.
 - ${CANONICA_SITE_URL}/integrations — Slack and email workflow notifications, test delivery, compact health, and controlled adapter boundaries.
 - ${CANONICA_SITE_URL}/roi-calculator — static repeated-question and support-time planning calculator.
 - ${CANONICA_SITE_URL}/proof — example launch, release, and studio workloads for evaluating Canonica operationally.
 - ${CANONICA_SITE_URL}/resources — learning hub for launch, widget, support control, and governance.
 - ${CANONICA_SITE_URL}/updates — public product movement, not the customer workspace changelog.
-- ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, runtime limits, tenant isolation, and disclosure.
+- ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, screenshot boundaries, runtime limits, tenant isolation, and disclosure.
 - ${CANONICA_SITE_URL}/security-one-pager — shareable security and operations summary for install reviews.
 - Runtime scaling is explained inside /product, /security, /resources, and /updates rather than as a standalone public MCP page.
 - ${CANONICA_SITE_URL}/faq — common buyer questions with FAQ structured data.
@@ -71,6 +72,7 @@ Canonica is not:
 - Canonical answers are owner-approved before becoming authoritative.
 - Fallback answers and missed questions become review signals; they do not overwrite canonical answers by themselves.
 - Hosted public help pages expose docs/FAQ/changelog content without authenticated ticket or workspace internals.
+- Widget screenshot support is user-initiated upload or paste only. Canonica should not be described as automatically capturing the host app screen or scraping DOM.
 - Approved runtime context can be compiled into versioned bundles for widget and authenticated server reads; drafts, tickets, audit logs, API keys, raw signals, and billing internals are not public bundle content.
 - Daily governance is centralized and workspace-local: due work is evaluated by timezone and support-day end time, then source-version checks decide whether compiled context repair is needed.
 - Public Canonica API routes exist behind rollout flags and API scope validation. Do not market them as generally available unless the website explicitly says so.

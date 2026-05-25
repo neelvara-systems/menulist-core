@@ -59,7 +59,7 @@
 
 | Purpose | Path Pattern | Size |
 |---------|-------------|------|
-| Chat images | `chatSessions/chatimages/{tId}/{sId}/{timestamp}-{userId}` | 0-10 MB per image |
+| Chat images | `chatSessions/chatimages/{tId}/{sId}/{timestamp}-{randomId}` | 0-5 MB per image |
 
 ---
 
@@ -83,7 +83,7 @@
 | Session check | 0 | 0 | 0 |
 | Response cache lookup | 1 | 0 | 0 |
 | Embedding cache check | 1 | 1 (hitCount) | 0 |
-| Embedding generation (if miss) | 0 | 1 | 1 (text-embedding-004) |
+| Embedding generation (if miss) | 0 | 1 | 1 (`gemini-embedding-001`) |
 | Vector search (12 docs) | 12 | 0 | 0 |
 | Answer generation | 0 | 0 | 1 (gemini-2.5-flash) |
 | Save to search history | 0 | 1 | 0 |
@@ -96,7 +96,7 @@
 |------|:-----:|:------:|:------------:|
 | All of 3.2 above | 14 | 3-4 | 1-2 |
 | Image fetch (Firebase Storage) | 1 storage | 0 | 0 |
-| Image → search query | 0 | 0 | 1 (gemini-2.5-pro) |
+| Image → visual search context | 0 | 0 | 1 (`gemini-2.5-flash`) |
 | **Total** | **14 + 1 storage** | **3-4** | **2-3** |
 
 ### 3.4 Save Chat Session (New)
@@ -140,20 +140,20 @@
 
 ## 4. Gemini API Costs
 
-| Model | Cost (per 1M tokens) | Avg Tokens/Call | Calls/Search |
-|-------|---------------------|:---------------:|:------------:|
-| `text-embedding-004` | $0.00025/1K chars | ~500 chars | 1 (cache miss only) |
-| `gemini-2.5-flash` | Input: $0.15, Output: $0.60 | ~2K input, ~500 output | 1 |
-| `gemini-2.5-pro` | Input: $1.25, Output: $5.00 | ~1K input, ~200 output | 1 (image only) |
+| Model | Cost behavior | Avg Payload | Calls/Search |
+|-------|---------------|:-----------:|:------------:|
+| `gemini-embedding-001` | Charged only on embedding cache miss | ~500 chars | 1 (cache miss only) |
+| `gemini-2.5-flash` | Charged on answer generation cache miss | ~2K input, ~500 output | 1 |
+| `gemini-2.5-flash` vision | Charged only when an image is attached | One bounded image + prompt | 1 (image only) |
 
 ### Per-Search Cost Estimate
 
-| Scenario | Gemini Cost |
-|----------|------------|
-| Cache hit | $0.00 |
-| Text-only (embedding cached) | ~$0.0006 (flash only) |
-| Text-only (embedding miss) | ~$0.0007 (embedding + flash) |
-| With image (all miss) | ~$0.002 (pro + embedding + flash) |
+| Scenario | Gemini Cost Behavior |
+|----------|----------------------|
+| Cache hit | $0.00 provider cost |
+| Text-only (embedding cached) | One answer-generation call |
+| Text-only (embedding miss) | One embedding call + one answer-generation call |
+| With image (all miss) | One vision-context call + one embedding call + one answer-generation call. The answer pass receives text visual context, not the raw image, to avoid a second vision upload. |
 
 ---
 
@@ -171,12 +171,12 @@
 
 | Gemini Model | Calls/Day | Monthly Cost |
 |-------------|:---------:|:------------:|
-| text-embedding-004 | ~20 | ~$0.006 |
-| gemini-2.5-flash | ~20 | ~$0.09 |
-| gemini-2.5-pro (images) | ~2 | ~$0.03 |
-| **Gemini subtotal** | | **~$0.13/month** |
+| gemini-embedding-001 | ~20 | Check current provider pricing |
+| gemini-2.5-flash | ~20 | Check current provider pricing |
+| gemini-2.5-flash vision (images) | ~2 | Check current provider pricing |
+| **Gemini subtotal** | | Recalculate from current provider pricing before launch |
 
-**Total: ~$0.18/month for 10 stores**
+**Total:** Firestore estimate above plus current provider AI pricing. Recalculate before launch because provider pricing can change.
 
 ### Scale: 1,000 stores, 500 searches/day
 

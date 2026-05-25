@@ -1,6 +1,11 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
 import { canonicaRequestBodyComposer } from '@lib/canonica/documentComposer';
+import {
+    CANONICA_CHAT_IMAGE_MAX_BYTES,
+    isAllowedCanonicaChatImageMimeType,
+    normalizeCanonicaChatImageMimeType,
+} from '@lib/canonica/chatImagePolicy';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import { canonicaFirebaseClient, canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
@@ -43,8 +48,25 @@ export const uploadChatImage = async (
         async () => {
             // Check if image contains base64 data
             if (image.url?.includes('base64') || image.source?.includes('base64')) {
-                const userId = session.uId || session.user?.id || 'anonymous';
-                const imageId = `${Date.now()}-${userId}`;
+                const tenantId = Number(session?.tId);
+                const storeId = Number(session?.sId);
+                if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {
+                    throw new Error('Missing Canonica workspace context for chat image upload');
+                }
+
+                const imageType = normalizeCanonicaChatImageMimeType(image.type);
+                if (!isAllowedCanonicaChatImageMimeType(imageType)) {
+                    throw new Error('Unsupported chat image type');
+                }
+
+                if (Number(image.size || 0) <= 0 || Number(image.size || 0) > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error('Chat image size exceeds the supported limit');
+                }
+
+                const randomId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                    ? crypto.randomUUID()
+                    : Math.random().toString(36).slice(2);
+                const imageId = `${Date.now()}-${randomId}`;
                 const base64String = image.url || image.source;
 
                 // Generate tenant/store-scoped path for multi-tenancy isolation
@@ -52,17 +74,24 @@ export const uploadChatImage = async (
                     collection: COLLECTION,
                     fileType: 'chatimages',
                     session,
-                    fileId: imageId
+                    fileId: imageId,
+                    useDefaults: false
                 });
 
                 // Upload to Firebase Storage
                 const uploadedUrl = await uploadBase64ToStorage({
                     cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
+                    customMetadata: {
+                        product: 'canonica',
+                        sourceUse: 'help_center_chat_image',
+                        retentionPolicy: 'tied_to_chat_session',
+                        sourceMetadataPolicy: 'source_file_may_include_image_metadata',
+                    },
                     fileId: imageId,
                     storage: canonicaStorage,
                     url: base64String!,
                     path,
-                    type: image.type || 'image/png'
+                    type: imageType as any
                 }) as string;
 
                 // Return image with storage URL

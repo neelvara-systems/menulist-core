@@ -51,7 +51,8 @@ public/widget/canonica-widget.js           # Shape/display/size/offset config + 
 src/app/widget/[apiKey]/WidgetClient.tsx   # Session memory, feedback, image upload, context receiver, procedure rendering
 src/app/api/widget/search/route.ts        # Origin allowlist, conversation history, server-side image validation
 src/app/api/widget/feedback/route.ts      # Feedback endpoint with tenant-scoped searchHistory ownership check
-src/app/api/canonica/widget-key/route.ts  # Hash-only widget key generate/revoke endpoint
+src/app/api/canonica/widget-key/route.ts  # Store-doc widget key manager endpoint
+src/lib/canonica/widgetKeyManager.ts      # Hash lookup, bounded key state, encrypted copy support
 src/app/api/canonica/widget-config/route.ts # Protected dashboard load/save endpoint
 src/app/(canonica)/canonica/settings/page.tsx  # Thin page wrapper (dynamic import of template)
 src/app/(canonica)/canonica/widget/page.tsx    # Dedicated widget management route
@@ -86,10 +87,12 @@ Thin auth wrapper. Responsibilities:
 - API key rate limiting by hash before Firestore auth lookup
 - API key authentication (`validatePublicApiKey()`), with non-`cn_` key-shape rejection before Firestore lookup
 - Hash-only Canonica key validation: widget routes disable legacy raw-key fallback and use a short positive auth cache to avoid repeated `stores` reads during rapid widget search/feedback calls
+- Separated Firebase mode: `cn_` keys are validated against Canonica Firestore via `canonicaFirestoreAdmin`; widget runtime routes set `includePublicApi: false` so they do not fall back to MenuList `publicApi` credentials.
 - Positive `tId/sId` workspace validation before body parsing, image handling, or retrieval
 - Origin allowlist check (v2): configured origins are normalized; missing or unlisted `Origin` is rejected
 - Context validation via `CanonicaContextSchema`
 - Call `coreSearch()` with widget-specific params
+- Persist `aiSearchHistory` for widget answers, including KB-empty/no-result responses, so dashboard activity and feedback always have a row to reference
 - Format response: `craftedAnswer` → `answer`, compact references (id + title only)
 
 ### 3.3 Embed Script (`public/widget/canonica-widget.js`)
@@ -155,7 +158,7 @@ Context-aware support remains generic:
 
 `/canonica/widget` is the single source of truth for widget management:
 
-- Key create/regenerate/revoke through `POST /api/canonica/widget-key`.
+- Key create, rename, copy, and delete through `POST /api/canonica/widget-key`.
 - Config load/save through `GET`/`PUT /api/canonica/widget-config`.
 - Install snippets generated from `src/lib/canonica/widgetConfig.ts`.
 - Origin allowlist management.
@@ -171,15 +174,41 @@ Widget credentials use `stores/{sId}.canonicaWidgetApi`:
 
 ```json
 {
+  "schemaVersion": "canonica.widgetKeys.v1",
+  "activeKeyHash": "sha256...",
   "apiKeyHash": "sha256...",
   "keyPrefix": "cn_abcd",
+  "keyHashes": ["sha256..."],
+  "keysByHash": {
+    "sha256...": {
+      "id": "uuid",
+      "name": "Production widget",
+      "keyPrefix": "cn_abcd",
+      "keySuffix": "wxyz",
+      "encryptedKey": "v1:...",
+      "status": "active",
+      "productId": "CN",
+      "purpose": "canonica_widget",
+      "scopes": ["widget:config", "widget:search", "widget:feedback"]
+    }
+  },
   "productId": "CN",
   "purpose": "canonica_widget",
   "scopes": ["widget:config", "widget:search", "widget:feedback"]
 }
 ```
 
-`publicApi` remains reserved for Canonica public API credentials. `validatePublicApiKey()` supports both credential sources, but each route explicitly opts into only the sources and scopes it accepts. Legacy widget keys still stored under `publicApi.purpose = "canonica_widget"` remain accepted by widget runtime routes, but they no longer authorize Canonica public API routes.
+`keyHashes` is the active-key lookup array used by `validatePublicApiKey()` with `array-contains`, so runtime validation remains one indexed store lookup and returns the store data the widget routes already need. `keysByHash` carries metadata for the dashboard row and per-key scope check. `encryptedKey` is present only for widget publishable keys when `CANONICA_WIDGET_KEY_ENCRYPTION_SECRET` is configured; private/server API keys remain hash-only.
+
+Environment requirement for copy-anytime widget keys:
+
+```bash
+CANONICA_WIDGET_KEY_ENCRYPTION_SECRET=<strong random secret, separate per environment>
+```
+
+If the secret is missing, create still returns the raw key once for install, but later copy requests return a rotate/create-new-key message instead of weakening storage.
+
+`publicApi` remains reserved for Canonica public API credentials. `validatePublicApiKey()` supports both credential sources, but each route explicitly opts into only the sources and scopes it accepts. Widget runtime routes only accept `canonicaWidgetApi` credentials in separated Firebase mode and fail closed if Canonica Admin is unavailable. MenuList public API routes only accept `ml_` keys.
 
 ### 3.4 Widget Client (`src/app/widget/[apiKey]/WidgetClient.tsx`)
 
@@ -221,6 +250,17 @@ Implementation:
 - Writes feedback to the tenant-scoped `aiSearchHistory` document
 - If `isGood === false`, emits Canonica signal via `emitCanonicaSignal({ type: 'chat_negative' })` (feeds mutation pipeline)
 - Rate limited: prevent feedback spam
+
+### 3.6 Widget Activity Route (`src/app/api/canonica/widget-activity/route.ts`)
+
+Protected dashboard endpoint used by `/canonica/widget`.
+
+Implementation:
+
+- Uses `withAuth()` and `resolveCanonicaSessionScope()` to read only the active Canonica tenant/store.
+- Reads recent `aiSearchHistory` rows where `mountContext === "widget"` and returns only safe dashboard fields: question, answer preview, canonical flag, confidence, reference count, feedback state, and timestamp.
+- Falls back to a bounded recent-history scan if the composite index is still building, while preserving tenant/store filtering before responding.
+- Does not create a new collection and does not expose API keys, raw context payloads, or internal cache keys.
 
 ---
 
@@ -371,8 +411,8 @@ Widget Route
   ↓ passes inline image buffer to coreSearch
   ↓
 coreSearch({ imageBuffer })
-  ↓ Stage 2: Gemini generates search query from the inline image
-  ↓ Stage 7: Gemini Flash uses image as visual context for answer
+  ↓ Stage 2: Gemini Flash extracts bounded visual search context
+  ↓ Stage 7: Gemini Flash receives text visual context, not the raw image
   ↓
 Answer returned with imageProcessed: true
 ```
@@ -382,7 +422,7 @@ Answer returned with imageProcessed: true
 - **User-initiated only** — no automatic capture, no DOM scraping. User explicitly clicks upload button or pastes from clipboard.
 - **Text query required** — image is context, not the query. Same rule as Help Center (ChatInput.tsx line 59-60).
 - **5MB max** — same limit as Help Center. Validated client-side before sending.
-- **image/\* only** — same restriction as Help Center.
+- **JPEG/PNG/WebP/GIF only** — same restriction as Help Center.
 - **No temporary storage write** — widget route receives base64, validates MIME/size, and passes the inline image buffer directly to `coreSearch()`. The image is not written to Firebase Storage and requires no cleanup job.
 - **Graceful degradation** — if image processing fails at any stage, coreSearch falls back to text-only search silently. User still gets an answer.
 - **No image persistence in chat** — widget is stateless, images are not stored in chat sessions. They exist only for the duration of the query processing.
@@ -391,10 +431,10 @@ Answer returned with imageProcessed: true
 
 | Component                        | Source                      | Widget Usage                                                                     |
 | -------------------------------- | --------------------------- | -------------------------------------------------------------------------------- |
-| `coreSearch()` Stage 2           | `searchCore.ts`             | Image security validation, inline image handling, Gemini query generation        |
-| `generateSearchQueryFromImage()` | `vectorEmbeddings/index.ts` | Converts image + text prompt → keyword-rich search query                         |
-| `callGeminiChat()` with image    | `vectorEmbeddings/index.ts` | Passes image as `inlineData` to Gemini Flash for visual context                  |
-| Image size/type validation       | `ChatInput.tsx` pattern     | Same 5MB limit, image/\* only                                                    |
+| `coreSearch()` Stage 2           | `searchCore.ts`             | Image security validation, inline image handling, Gemini visual context extraction |
+| `generateSearchQueryFromImage()` | `vectorEmbeddings/index.ts` | Converts image + text prompt → bounded keyword-rich visual search context        |
+| `callGeminiChat()` with image context | `vectorEmbeddings/index.ts` | Passes text visual context to Gemini Flash so the raw image is not uploaded twice |
+| Image size/type validation       | `chatImagePolicy.ts`        | Same 5MB limit, JPEG/PNG/WebP/GIF only                                           |
 
 ### 5.6 Server Retrieval Boundary
 
@@ -406,7 +446,7 @@ The widget route is public/API-key based, but retrieval runs in Next.js API code
 
 ### Cost Impact
 
-Per image query: 1 additional Gemini image-to-query call for query generation. Same AI cost class as Help Center image queries, but without the former widget temp Storage write. See firebase doc for projections.
+Per image query: 1 additional bounded visual-context model call before normal retrieval/answering. Same AI cost class as Help Center image queries, but without the former widget temp Storage write. See firebase doc for projections.
 
 ---
 
@@ -440,7 +480,7 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 - Add image upload button to WidgetClient input area (file picker + paste support)
 - Image converted to base64 client-side, sent inline in request body as `imageBase64` + `imageMimeType`
 - Widget search route validates base64 and passes the inline image buffer directly to coreSearch (see §6.1)
-- `coreSearch()` already handles image processing in Stage 2 (Gemini Pro query generation + Gemini Flash answer context)
+- `coreSearch()` already handles image processing in Stage 2 (bounded visual search context + text-only answer context)
 
 ### Phase 4 — Feedback Signals
 
@@ -495,6 +535,8 @@ Per image query: 1 additional Gemini image-to-query call for query generation. S
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-25 | 2.4.9   | Added the store-doc widget key manager: bounded named keys, rename/delete/copy actions, encrypted recoverable widget-key storage when configured, `keyHashes` array lookup, and legacy single-key compatibility. |
+| 2026-05-25 | 2.4.8   | Hardened separated Firebase key validation so `cn_` widget keys resolve only through Canonica Firestore, widget runtime routes do not query MenuList `publicApi`, MenuList public API routes reject non-`ml_` keys, and widget questions appear in `/canonica/widget` activity. |
 | 2026-05-24 | 2.4.6   | Restored predictive support through a guarded runtime capability: widget config advertises predictive support only when active triggers exist, and runtime calls remain origin/context/rate/cooldown protected. |
 | 2026-05-24 | 2.4.4   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |
 | 2026-05-20 | 2.4.2   | Added saved and script-level blocked route support so client products can hide the widget on selected routes without extra Firebase reads. |

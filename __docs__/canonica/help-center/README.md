@@ -2,7 +2,7 @@
 
 > **Location:** `__docs__/canonica/help-center/`
 > **Purpose:** Documents the existing Help Center infrastructure that Canonica extends
-> **Last Updated:** 2026-03-01
+> **Last Updated:** 2026-05-25
 
 ---
 
@@ -36,3 +36,7 @@ For Canonica-specific documentation, see:
 - `__docs__/canonica/doctrine/` — Canonica doctrine and architecture
 - `__docs__/canonica/canonica-activation-clearance.md` — Audit clearance
 - `__docs__/canonica/canonica-activation-experiment.md` — Experiment framework
+
+## Boundary Note
+
+MenuList Help Center is a support surface for product users. Canonica Governance, Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, drift review, and canonical answer administration are owner/admin governance tools and are not mounted inside the Help Center tab list or landing page.

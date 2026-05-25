@@ -22,6 +22,15 @@ function getBasePath(): string {
 const UPDATES = [
     {
         date: 'May 25, 2026',
+        title: 'Widget screenshot support clarified across the website',
+        items: [
+            'The widget story now includes user-initiated screenshot upload or paste for visual support context.',
+            'Install, Security, FAQ, Quickstarts, and widget pages clarify that Canonica does not automatically capture the host app screen or scrape DOM.',
+            'Public copy keeps screenshot support inside the existing page-aware widget and safety story instead of adding a separate product page.',
+        ],
+    },
+    {
+        date: 'May 25, 2026',
         title: 'Compiled context and daily governance added to the public product story',
         items: [
             'Product and security pages now explain approved runtime context as versioned, cache-first bundles instead of repeated database scans.',

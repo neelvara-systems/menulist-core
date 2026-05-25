@@ -18,6 +18,10 @@ The Help Center is currently embedded within the MenuList dashboard as a feature
 
 This analysis scores the current architecture across 7 dimensions for decoupling readiness.
 
+### Current Client Boundary Note
+
+As of 2026-05-25, MenuList `/help-center` behaves as an independent Canonica client when the signed-in user has `productAccounts.CN`. The client route scopes Help Center search, tickets, changelog, and Firebase Auth to Canonica ownership while preserving the original MenuList product scope in `sourceContext`. This is a real product-account bridge, not a temporary client flag or hardcoded MenuList widget embed.
+
 ---
 
 ## 2. Readiness Scores
@@ -120,7 +124,7 @@ This analysis scores the current architecture across 7 dimensions for decoupling
 **Current MenuList references in Help Center code:**
 - `ContactUsView.tsx:11` — `partners@menulist.ai` email
 - `search-kb/route.ts:38` — Empty response mentions "Menu Management" in suggestions
-- Firebase Storage bucket: `ecomsai.appspot.com` in image validation
+- Historical note: image validation previously trusted only the MenuList Storage bucket. It now derives trusted bucket paths from configured MenuList and Canonica Firebase Storage env values, so Canonica QA/production image questions do not depend on `ecomsai`.
 
 **Everything else is brand-agnostic:**
 - UI components use Ant Design with no MenuList-specific styling

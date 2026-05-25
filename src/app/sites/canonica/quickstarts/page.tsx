@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Developer Quickstarts',
-    description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, and vanilla script installs.',
+    description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, safe context, and user-initiated screenshot support.',
     alternates: { canonical: '/quickstarts' },
 };
 
@@ -97,6 +97,7 @@ const QUICKSTARTS = [
 const SAFE_CONTEXT = [
     ['Send', 'page, route, feature, workflow, role, plan, state, entity hints'],
     ['Do not send', 'passwords, tokens, payment data, emails, phone numbers, raw customer records'],
+    ['Screenshots', 'user upload or paste only; no automatic page capture or DOM scraping'],
     ['Verify', 'widget loaded, origin allowed, route allowed, context received'],
 ];
 
@@ -119,7 +120,7 @@ export default function CanonicaQuickstartsPage() {
                 </section>
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-3">
+                    <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-4">
                         {SAFE_CONTEXT.map(([label, body]) => (
                             <article key={label} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
                                 <div className="text-xs font-semibold uppercase tracking-widest text-indigo-300">{label}</div>

@@ -23,7 +23,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - **Search History Cache** — Full response caching for repeated queries
 - **AI Intelligence Layer** — Cloud Functions for feedback intelligence, KB quality, weekly narratives
 
-Canonica is now maintained as a separate Support Knowledge Control Plane product. MenuList is only a client/test host for shared support surfaces; Canonica-owned dashboard, onboarding, widget, scheduler, and Firebase data stay under Canonica routes, constants, flags, and product-scoped session data.
+Canonica is now maintained as a separate Support Knowledge Control Plane product. MenuList is one independent client integration for shared support surfaces; Canonica-owned dashboard, onboarding, widget, scheduler, and Firebase data stay under Canonica routes, constants, flags, and product-scoped session data.
 
 ## Canonica Product Operating Model
 
@@ -152,7 +152,7 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 - `/sites/canonica/sitemap.xml`, `/sites/canonica/robots.txt` → Canonica product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are returned once and stored as hashes only; malformed keys short-circuit before Firestore lookup, rate-limit buckets use key hashes, and existing keys are shown by prefix, not raw value. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/activation`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `CanonicaWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.canonicaWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, and copy-anytime is available only for encrypted widget keys when the Canonica widget-key encryption secret is configured. The public site avoids exposing tenant/store ids and routes completed onboarding to `/canonica/activation`.
 
 ### API Routes
 
@@ -164,7 +164,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `GET/PUT /api/canonica/workspace-profile` — Product URL, support email, billing model, scheduler timezone/support-day end time, and initial surface profile
 - `GET/PUT /api/canonica/widget-config` — Protected widget configuration, allowed origins, blocked routes, and runtime status
 - `GET /api/canonica/operations/status` — Protected Activation Daily Governance status from compact scheduler summaries and capped run logs
-- `POST /api/canonica/widget-key` — Protected widget key generation/revocation
+- `POST /api/canonica/widget-key` — Protected widget key create/rename/copy/delete management
 - `POST /api/canonica/tenant-summary` — Authenticated server-side sync for `platformSummary/canonicaTenantsSummary` after client-side entity creation
 - `POST /api/canonica/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
 
@@ -318,19 +318,19 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 ```
 User Query → [Zod Validation] → [Rate Limit Check] → [SAFE_MODE Check]
     ↓
-[Image?] → [Gemini 2.5 Pro: Generate search query from image]
+[Image?] → [Gemini 2.5 Flash: extract bounded visual search context]
     ↓
 [Cache Check: aiSearchHistory] → [Hit?] → Return cached response
     ↓ (Miss)
 [Embedding Cache: queryEmbeddings] → [Hit?] → Use cached vector
     ↓ (Miss)
-[Gemini text-embedding-004] → Generate query vector → Cache it
+[Gemini gemini-embedding-001] → Generate query vector → Cache it
     ↓
 [Firestore Vector Search] → status + tId + sId filtered findNearest(embedding, COSINE, limit=12)
     ↓
 [Filter: status=published, similarityScore > 0.4-0.6]
     ↓
-[Gemini 2.5 Flash] → Generate answer with document context
+[Gemini 2.5 Flash] → Generate answer with document context and bounded visual context
     ↓
 [Save to aiSearchHistory] → Return response with references
 ```

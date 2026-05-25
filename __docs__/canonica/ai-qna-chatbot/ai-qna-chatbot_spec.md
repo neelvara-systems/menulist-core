@@ -62,9 +62,9 @@ Owner switches to Assistant mode (or clicks "Ask Follow-up")
 
 ```
 Owner attaches screenshot → Types question about it
-  → Gemini 2.5 Pro analyzes image → Generates keyword-rich search query
+  → Gemini 2.5 Flash analyzes image → Generates bounded visual search context
   → Normal RAG pipeline continues with enhanced query
-  → Answer references both image context and KB articles
+  → Answer uses visual context only when supported by KB articles
 ```
 
 ### 2.4 Feedback Flow
@@ -108,9 +108,9 @@ After the first Q&A exchange (exactly 2 messages), the input bar is replaced wit
 
 | Model                | Purpose                                         | When Called                  |
 | -------------------- | ----------------------------------------------- | ---------------------------- |
-| `text-embedding-004` | Generate 768-dimension query vectors            | Every new unique query       |
-| `gemini-2.5-flash`   | Generate answers from KB documents              | Every search (cached or not) |
-| `gemini-2.5-pro`     | Analyze uploaded images → generate search query | Only when user uploads image |
+| `gemini-embedding-001` | Generate 768-dimension query vectors          | Every new unique query       |
+| `gemini-2.5-flash`     | Generate answers from KB documents            | Cache miss only              |
+| `gemini-2.5-flash`     | Analyze uploaded images into search context   | Only when user uploads image |
 
 ---
 

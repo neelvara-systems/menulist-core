@@ -44,7 +44,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 | Store | `stores` | Product workspace, roles, widget key auto-generated |
 | User update | `users` | Canonica project user gets tenantId + storeId; default auth user gets `productAccounts.CN` bridge only |
 | Subscription | `subscriptions` | Beta: active immediately, 6-month window. Paid: Razorpay subscription starts as pending and activates through the existing payment webhook/reconciliation flow |
-| Widget key | store.canonicaWidgetApi | `cn_*` key returned once; `apiKeyHash`, `keyPrefix`, purpose, productId, and widget scopes persisted for widget authentication |
+| Widget key | store.canonicaWidgetApi | Initial `cn_*` widget key returned after onboarding; the store-doc key manager persists `keyHashes`, `keysByHash`, display prefix/suffix, purpose, productId, widget scopes, and encrypted copy material when configured |
 | Tenant summary | `platformSummary/canonicaTenantsSummary` | Tenant/store registry used by Canonica schedulers without scanning entity collections |
 
 ---
@@ -56,7 +56,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 - Rate limited: 3 onboarding attempts per user per hour
 - Validation: Company name required (min 2 chars)
 - Duplicate prevention: user with existing `productAccounts.CN` or Canonica-project user tenant/store is blocked from re-onboarding; a MenuList tenant alone does not block Canonica onboarding.
-- Widget key: Unique per store, cn_* prefix for Canonica identification
+- Widget key: Unique `cn_*` key per generated credential, capped under the store-doc widget key manager
 
 ---
 
@@ -64,6 +64,7 @@ Beta plan is the default during private beta. Paid plans activate when beta peri
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-05-25 | 1.2.1 | Updated onboarding widget-key contract to the bounded store-doc key manager shape. |
 | 2026-05-21 | 1.2.0 | Updated separate-product onboarding contract: default user bridge, Canonica tenant summary, and `canonicaWidgetApi` key storage |
 | 2026-05-16 | 1.1.0 | Paid plans wired to Razorpay subscription flow |
 | 2026-03-07 | 1.0.0 | Initial spec: beta plan, Google OAuth, self-service |

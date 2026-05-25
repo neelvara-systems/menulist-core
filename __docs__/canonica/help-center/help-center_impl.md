@@ -1,7 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-01
+> **Version:** 1.0.1
+> **Last Updated:** 2026-05-25
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -56,7 +56,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | File                         | Lines | Purpose                                                                               |
 | ---------------------------- | ----- | ------------------------------------------------------------------------------------- |
 | `index.tsx`                  | 58    | Main Help Center container with tab routing                                           |
-| `tabsConfig.tsx`             | 88    | Tab definitions: KB, Tickets, Feedback, FAQ, Contact, Changelog                       |
+| `tabsConfig.tsx`             | 88    | Tab definitions: KB, Tickets, Feedback, FAQ, Contact, Changelog. Governance tabs are intentionally excluded. |
 | `HeroSearchBar.tsx`          | —     | Search bar connecting to AI chat + tab navigation                                     |
 | `MainSectionTabs.tsx`        | —     | Tab grid navigation cards                                                             |
 | `ChangelogView.tsx`          | —     | Changelog viewer (reads from DAL)                                                     |
@@ -69,9 +69,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `TicketView.tsx`             | —     | Ticket submission and history (owner side)                                            |
 | `TicketItem.tsx`             | —     | Individual ticket card                                                                |
 | `TicketHistoryView.tsx`      | —     | Ticket detail with messages                                                           |
-| `CanonicaCoverageKPI.tsx`    | 97    | Canonical coverage KPI card (feature-flagged: `ENABLE_CANONICA_CANONICAL_ANSWERS`)    |
-| `MutationProposalReview.tsx` | 149   | Mutation proposal review queue (feature-flagged: `ENABLE_CANONICA_SIGNAL_MUTATION`)   |
-| `EntityCandidateReview.tsx`  | 162   | Entity candidate review + promote queue (feature-flagged: `ENABLE_CANONICA_ONTOLOGY`) |
+| Governance components        | —     | Not mounted in Help Center. `CanonicaCoverageKPI`, `MutationProposalReview`, `EntityCandidateReview`, and `GovernanceHub` belong to Canonica owner/admin routes. |
 
 **Landing subcomponents:** `landing/`
 
@@ -645,11 +643,17 @@ Alerts on negative feedback patterns.
 - `GettingStarted` component is imported but commented out in `helpCenter/index.tsx:35`
 - Commented-out vector search code in `search-kb/route.ts:252-266`
 
-### 8.5 Hardcoded Popular Feature Requests
+### 8.5 Governance Boundary
+
+- Help Center tab configuration intentionally excludes Canonica `GovernanceHub`.
+- Help Center landing intentionally excludes Canonica Coverage KPI, Signal-to-Knowledge Queue, and Entity Candidates.
+- Owner/admin governance review stays in `/canonica/governance` and related Canonica dashboard routes.
+
+### 8.6 Hardcoded Popular Feature Requests
 
 - `FeatureRequests.tsx` has 5 hardcoded popular requests. These are not configurable or fetched from Firestore.
 
-### 8.6 Missing `withAuth()` on API Routes
+### 8.7 Missing `withAuth()` on API Routes
 
 - None of the 3 helpCenter API routes use `withAuth()` middleware. They rely on `getActiveSession()` which returns null if not authenticated. The search routes handle this gracefully but there's no explicit 401 response for unauthenticated requests.
 

@@ -19,8 +19,8 @@ import { getCanonicaBundleManifestDocId } from '@lib/canonica/compiledContext';
 import { getContextContentSummaryDocId } from '@lib/canonica/productSurfaceContent';
 import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { secureError } from '@lib/security/secureLogger';
+import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 

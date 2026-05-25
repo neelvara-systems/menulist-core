@@ -13,15 +13,21 @@ import { markCanonicaCompiledContextSourceChangedAdmin } from '@lib/canonica/com
 import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/canonica/widgetRuntimeStatus';
 import {
+    CANONICA_WIDGET_KEY_LIMIT,
+    buildCanonicaWidgetKeySummaries,
+    getCanonicaWidgetKeyEncryptionReadiness,
+    normalizeCanonicaWidgetApiState,
+} from '@lib/canonica/widgetKeyManager';
+import {
     CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
     parseWidgetConfigSaveInput,
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
 } from '@lib/canonica/widgetConfig';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { secureError, secureLog } from '@lib/security/secureLogger';
+import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -45,12 +51,14 @@ const buildConfigResponse = (storeData: Record<string, any>) => ({
     schemaVersion: CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
     config: normalizeWidgetConfig(storeData.widgetConfig),
     allowedOrigins: normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins),
-    keyPrefix: storeData.canonicaWidgetApi?.keyPrefix || storeData.publicApi?.keyPrefix || null,
-    hasWidgetKey: Boolean(
-        storeData.canonicaWidgetApi?.apiKeyHash
-        || storeData.publicApi?.apiKeyHash
-        || storeData.publicApi?.apiKey
+    keyPrefix: normalizeCanonicaWidgetApiState(storeData.canonicaWidgetApi).keyPrefix || storeData.publicApi?.keyPrefix || null,
+    hasWidgetKey: (
+        normalizeCanonicaWidgetApiState(storeData.canonicaWidgetApi).keyHashes.length > 0
+        || Boolean(storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey)
     ),
+    keys: buildCanonicaWidgetKeySummaries(storeData.canonicaWidgetApi),
+    keyLimit: CANONICA_WIDGET_KEY_LIMIT,
+    encryptionConfigured: getCanonicaWidgetKeyEncryptionReadiness().configured,
     configVersion: Number(storeData.widgetConfigVersion || 0),
     runtimeStatus: getWidgetRuntimeStatusFromStoreData(storeData),
 });
@@ -179,12 +187,14 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             schemaVersion: CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
             config,
             allowedOrigins,
-            keyPrefix: storeData.canonicaWidgetApi?.keyPrefix || storeData.publicApi?.keyPrefix || null,
-            hasWidgetKey: Boolean(
-                storeData.canonicaWidgetApi?.apiKeyHash
-                || storeData.publicApi?.apiKeyHash
-                || storeData.publicApi?.apiKey
+            keyPrefix: normalizeCanonicaWidgetApiState(storeData.canonicaWidgetApi).keyPrefix || storeData.publicApi?.keyPrefix || null,
+            hasWidgetKey: (
+                normalizeCanonicaWidgetApiState(storeData.canonicaWidgetApi).keyHashes.length > 0
+                || Boolean(storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey)
             ),
+            keys: buildCanonicaWidgetKeySummaries(storeData.canonicaWidgetApi),
+            keyLimit: CANONICA_WIDGET_KEY_LIMIT,
+            encryptionConfigured: getCanonicaWidgetKeyEncryptionReadiness().configured,
             configVersion: Number(storeData.widgetConfigVersion || 0) + 1,
         });
     } catch (error) {

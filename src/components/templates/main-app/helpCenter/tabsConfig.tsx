@@ -1,10 +1,8 @@
-import { FEATURE_FLAGS } from '@config/features';
 import { ReactNode } from 'react';
-import { LuBookOpen, LuBug, LuHeartHandshake, LuHeartPulse, LuInfo, LuMail, LuShield } from 'react-icons/lu';
+import { LuBookOpen, LuBug, LuHeartHandshake, LuHeartPulse, LuInfo, LuMail } from 'react-icons/lu';
 
 import KnowledgeBaseExplorer from '@organisms/KnowledgeBaseExplorer';
 
-import GovernanceHub from '@template/canonica/governance';
 import ChangelogView from './ChangelogView';
 import ContactUsView from './ContactUsView';
 import FaqView from './FaqView';
@@ -83,16 +81,6 @@ export const HELP_CENTER_TABS: HelpCenterTabConfig[] = [
         icon: <LuHeartPulse style={iconStyle} />,
         render: <ChangelogView />,
     },
-    // Canonica Governance Hub — only visible when feature flag is ON
-    ...(FEATURE_FLAGS.ENABLE_CANONICA_GOVERNANCE_UI ? [{
-        key: 'governance',
-        title: 'Governance',
-        titleKey: 'governance',
-        description: 'Manage canonical answers, entities, drift detection, and knowledge health.',
-        descriptionKey: 'governanceDesc',
-        icon: <LuShield style={iconStyle} />,
-        render: <GovernanceHub />,
-    }] : []),
 ];
 
 export const HOME_TAB_KEY = 'home';

@@ -14,7 +14,7 @@
 | `platformSummary` | READ | 1 | Get current tenant/store counters |
 | `tenants` | WRITE | 1 | Create new tenant |
 | `stores` | WRITE | 1 | Create new store |
-| `stores` | WRITE | 1 | Set `canonicaWidgetApi.apiKeyHash`, keyPrefix, purpose, productId, and widget scopes |
+| `stores` | WRITE | 1 | Set initial `canonicaWidgetApi` key-manager state (`keyHashes`, `keysByHash`, active key metadata, purpose, productId, and widget scopes) |
 | `canonica_productSurfaces` | WRITE | 3-8 | Seed initial product surfaces selected during onboarding |
 | `platformSummary` | WRITE | 3 | Update counters, Canonica tenant scheduler registry, and compact context summary |
 | `storesSummary` | WRITE | 1 | Store summary used by scheduler/discovery flows |

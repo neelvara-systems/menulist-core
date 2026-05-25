@@ -17,7 +17,12 @@ import { LOG_FILES } from '@constant/logging';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import { getCanonicaScopedSession, isCanonicaRuntimeRoute, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import {
+    getCanonicaScopedSession,
+    isCanonicaRuntimeRoute,
+    isCanonicaSupportClientRoute,
+    resolveCanonicaSessionScope,
+} from '@lib/canonica/sessionScope';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { coreSearch } from '@lib/search/searchCore';
 import { SearchRequestSchema } from '@lib/validation/chatSchemas';
@@ -101,8 +106,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
         const isCanonicaRuntimeSearch = isCanonicaRuntimeRoute(refererUrl?.pathname, refererUrl?.hostname)
             || isCanonicaRuntimeRoute(null, host);
-        const searchSession = isCanonicaRuntimeSearch ? getCanonicaScopedSession(session) : session;
-        if (isCanonicaRuntimeSearch && !resolveCanonicaSessionScope(searchSession)) {
+        const isCanonicaClientSupportSearch = isCanonicaSupportClientRoute(refererUrl?.pathname)
+            && Boolean(resolveCanonicaSessionScope(session));
+        const shouldUseCanonicaScopedSearch = isCanonicaRuntimeSearch || isCanonicaClientSupportSearch;
+        const searchSession = shouldUseCanonicaScopedSearch ? getCanonicaScopedSession(session) : session;
+        if (shouldUseCanonicaScopedSearch && !resolveCanonicaSessionScope(searchSession)) {
             return NextResponse.json({ error: 'Canonica workspace is not available' }, { status: 403 });
         }
 

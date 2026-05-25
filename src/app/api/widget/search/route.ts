@@ -18,6 +18,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PRODUCT_IDS } from '@constant/product';
 import { recordAiOperation } from '@lib/ai/operationLog';
+import {
+    CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH,
+    CANONICA_CHAT_IMAGE_MAX_BYTES,
+    isAllowedCanonicaChatImageMimeType,
+    normalizeCanonicaChatImageMimeType,
+} from '@lib/canonica/chatImagePolicy';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -28,15 +34,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const MAX_QUERY_LENGTH = 500;
-const MAX_WIDGET_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_WIDGET_IMAGE_BASE64_LENGTH = Math.ceil((MAX_WIDGET_IMAGE_BYTES * 4) / 3) + 100;
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
-const ALLOWED_WIDGET_IMAGE_MIME_TYPES = new Set([
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-]);
 const WidgetSearchRequestSchema = z.object({
     query: z.string().trim().min(1).max(MAX_QUERY_LENGTH),
     context: z.unknown().optional(),
@@ -96,6 +94,7 @@ export async function POST(request: NextRequest) {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
             includeCanonicaWidgetApi: true,
+            includePublicApi: false,
             preferCanonicaWidgetApi: true,
         });
         if (!authResult) {
@@ -154,12 +153,12 @@ export async function POST(request: NextRequest) {
         if (body.imageBase64 && body.imageMimeType) {
             try {
                 const imageBase64 = typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
-                const imageMimeType = typeof body.imageMimeType === 'string' ? body.imageMimeType.toLowerCase() : '';
+                const imageMimeType = normalizeCanonicaChatImageMimeType(body.imageMimeType);
 
-                if (!ALLOWED_WIDGET_IMAGE_MIME_TYPES.has(imageMimeType)) {
+                if (!isAllowedCanonicaChatImageMimeType(imageMimeType)) {
                     throw new Error(`Unsupported widget image MIME type: ${imageMimeType || 'missing'}`);
                 }
-                if (!imageBase64 || imageBase64.length > MAX_WIDGET_IMAGE_BASE64_LENGTH) {
+                if (!imageBase64 || imageBase64.length > CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH) {
                     throw new Error('Widget image payload is empty or too large');
                 }
                 if (!isLikelyBase64(imageBase64)) {
@@ -167,8 +166,8 @@ export async function POST(request: NextRequest) {
                 }
 
                 const decodedImage = Buffer.from(imageBase64, 'base64');
-                if (!decodedImage.byteLength || decodedImage.byteLength > MAX_WIDGET_IMAGE_BYTES) {
-                    throw new Error(`Widget image exceeds ${MAX_WIDGET_IMAGE_BYTES / 1024 / 1024}MB limit`);
+                if (!decodedImage.byteLength || decodedImage.byteLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Widget image exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
                 }
                 imageBuffer = { imageBase64, mimeType: imageMimeType };
             } catch (error) {

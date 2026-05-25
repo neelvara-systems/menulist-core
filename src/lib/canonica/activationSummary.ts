@@ -1,5 +1,6 @@
 import { CANONICA_GOVERNANCE_TABS, CANONICA_ROUTES, getCanonicaGovernanceRoute } from '@constant/canonica/navigations';
 import { PRODUCT_IDS } from '@constant/product';
+import { buildCanonicaWidgetKeySummaries, normalizeCanonicaWidgetApiState } from '@lib/canonica/widgetKeyManager';
 import { getNotificationReadiness } from '@lib/notifications';
 import type {
     CanonicaActivationStage,
@@ -181,7 +182,9 @@ export function buildCanonicaActivationSummary(params: {
     const subscription = normalizeSubscription(storeData.canonicaSubscription || params.subscription);
     const runtimeStatus = (storeData.widgetRuntimeStatus || null) as CanonicaWidgetRuntimeStatus | null;
     const content = params.contextSummary || null;
-    const hasWidgetKey = Boolean(storeData.canonicaWidgetApi?.apiKeyHash || storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey);
+    const widgetKeyState = normalizeCanonicaWidgetApiState(storeData.canonicaWidgetApi);
+    const widgetKeySummaries = buildCanonicaWidgetKeySummaries(widgetKeyState);
+    const hasWidgetKey = widgetKeySummaries.length > 0 || Boolean(storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey);
     const allowedOrigins = Array.isArray(storeData.widgetAllowedOrigins) ? storeData.widgetAllowedOrigins : [];
     const subscriptionStatus = String(subscription?.status || '').toLowerCase();
     const licenseStatus: CanonicaActivationStepStatus = subscriptionStatus === 'active'
@@ -419,7 +422,7 @@ export function buildCanonicaActivationSummary(params: {
         subscription,
         widget: {
             hasWidgetKey,
-            keyPrefix: storeData.canonicaWidgetApi?.keyPrefix || storeData.publicApi?.keyPrefix || null,
+            keyPrefix: widgetKeyState.keyPrefix || storeData.publicApi?.keyPrefix || null,
             allowedOriginCount: allowedOrigins.length,
             configVersion: Number(storeData.widgetConfigVersion || 0),
             runtimeStatus,

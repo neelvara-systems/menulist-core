@@ -30,6 +30,13 @@ import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/article
 import { getCanonicaTimestampMillis, isCachedSearchResultFresh } from '@lib/canonica/cacheFreshness';
 import { CANONICA_CACHE_SOURCES, CanonicaCacheSourceVersions } from '@lib/canonica/cacheVersionManifest';
 import { getCanonicaCacheVersionServer } from '@lib/canonica/cacheVersionServer';
+import {
+    CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH,
+    CANONICA_CHAT_IMAGE_MAX_BYTES,
+    isAllowedCanonicaChatImageMimeType,
+    normalizeCanonicaChatImageMimeType,
+    stripDataUrlPrefix,
+} from '@lib/canonica/chatImagePolicy';
 import { hashString } from '@util/hash';
 import { writeLogEntry } from 'logs/utils';
 
@@ -37,11 +44,7 @@ import type { CoreSearchInput, CoreSearchResult, SearchPerfMetrics } from './typ
 
 // Image processing constants
 const TRUSTED_STORAGE_HOST = 'firebasestorage.googleapis.com';
-const TRUSTED_BUCKET_PATH = '/v0/b/ecomsai.appspot.com/o';
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-const MAX_IMAGE_BASE64_LENGTH = Math.ceil((MAX_IMAGE_SIZE_BYTES * 4) / 3) + 100;
 const FETCH_TIMEOUT_MS = 10000; // 10 seconds
-const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 const SIMILARITY_THRESHOLD = 0.6;
 const SIMILARITY_THRESHOLD_LOW = 0.4;
@@ -67,6 +70,103 @@ type TimedCacheEntry<T> = {
 
 const entitySearchIndexCache = new Map<string, TimedCacheEntry<any[]>>();
 const latestReleaseCache = new Map<string, TimedCacheEntry<any | null>>();
+
+const normalizeStorageBucket = (value?: string | null): string | null => {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return null;
+
+    try {
+        if (/^https?:\/\//i.test(trimmed)) {
+            return new URL(trimmed).hostname;
+        }
+        if (trimmed.startsWith('gs://')) {
+            return trimmed.slice('gs://'.length).split('/')[0] || null;
+        }
+    } catch {
+        return null;
+    }
+
+    return trimmed.replace(/^\/+|\/+$/g, '');
+};
+
+const getDefaultBucketForProject = (projectId?: string | null): string | null => {
+    const normalizedProjectId = String(projectId || '').trim();
+    return normalizedProjectId ? `${normalizedProjectId}.appspot.com` : null;
+};
+
+const getTrustedStorageBucketPaths = (): string[] => {
+    const buckets = [
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        process.env.FIREBASE_STORAGE_BUCKET,
+        getDefaultBucketForProject(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID),
+        process.env.NEXT_PUBLIC_CANONICA_FIREBASE_STORAGE_BUCKET,
+        process.env.CANONICA_FIREBASE_STORAGE_BUCKET,
+        getDefaultBucketForProject(process.env.NEXT_PUBLIC_CANONICA_FIREBASE_PROJECT_ID || process.env.CANONICA_FIREBASE_PROJECT_ID),
+    ]
+        .map(normalizeStorageBucket)
+        .filter((bucket): bucket is string => Boolean(bucket));
+
+    return Array.from(new Set(buckets)).map((bucket) => `/v0/b/${bucket}/o`);
+};
+
+const isTrustedFirebaseStorageImageUrl = (url: URL): boolean => (
+    url.protocol === 'https:'
+    && url.hostname === TRUSTED_STORAGE_HOST
+    && getTrustedStorageBucketPaths().some((bucketPath) => url.pathname.startsWith(bucketPath))
+);
+
+const getFirebaseStorageObjectPath = (url: URL): string | null => {
+    const marker = '/o/';
+    const markerIndex = url.pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+
+    const encodedPath = url.pathname.slice(markerIndex + marker.length);
+    if (!encodedPath) return null;
+
+    try {
+        return decodeURIComponent(encodedPath);
+    } catch {
+        return null;
+    }
+};
+
+const isTrustedCanonicaSearchImageUrl = (url: URL, tId: number, sId: number): boolean => {
+    if (!isTrustedFirebaseStorageImageUrl(url)) return false;
+
+    const objectPath = getFirebaseStorageObjectPath(url);
+    if (!objectPath) return false;
+
+    return objectPath.startsWith(`chatSessions/chatimages/${Number(tId)}/${Number(sId)}/`);
+};
+
+const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+
+const imageMimeMatchesBuffer = (buffer: Buffer, mimeType: string): boolean => {
+    if (mimeType === 'image/jpeg') {
+        return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    }
+    if (mimeType === 'image/png') {
+        const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+        return buffer.length >= png.length && png.every((byte, index) => buffer[index] === byte);
+    }
+    if (mimeType === 'image/gif') {
+        const signature = buffer.subarray(0, 6).toString('ascii');
+        return signature === 'GIF87a' || signature === 'GIF89a';
+    }
+    if (mimeType === 'image/webp') {
+        return buffer.length >= 12
+            && buffer.subarray(0, 4).toString('ascii') === 'RIFF'
+            && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    }
+    return false;
+};
+
+const detectImageMimeTypeFromBuffer = (buffer: Buffer): string | null => {
+    for (const mimeType of ['image/jpeg', 'image/png', 'image/webp', 'image/gif']) {
+        if (imageMimeMatchesBuffer(buffer, mimeType)) return mimeType;
+    }
+    return null;
+};
 
 const readTimedCache = <T>(cache: Map<string, TimedCacheEntry<T>>, key: string): T | undefined => {
     const cached = cache.get(key);
@@ -271,8 +371,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const { FEATURE_FLAGS } = await import('@config/features');
     if (FEATURE_FLAGS.ENABLE_COST_PROTECTION) {
         try {
-            const { getFirestore } = await import('firebase-admin/firestore');
-            const db = getFirestore();
+            const db = firestoreAdmin as any;
+            if (!db || typeof db.collection !== 'function') {
+                throw new Error('Canonica Firestore Admin is not configured');
+            }
             const doc = await db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system').get();
             if (doc.exists && doc.data()?.SAFE_MODE === true) {
                 return {
@@ -291,18 +393,21 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
         try {
             if (inlineImageBuffer) {
-                const mimeType = String(inlineImageBuffer.mimeType || '').toLowerCase();
-                const imageBase64 = String(inlineImageBuffer.imageBase64 || '');
-                if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType)) {
+                const mimeType = normalizeCanonicaChatImageMimeType(inlineImageBuffer.mimeType);
+                const imageBase64 = stripDataUrlPrefix(String(inlineImageBuffer.imageBase64 || ''));
+                if (!isAllowedCanonicaChatImageMimeType(mimeType)) {
                     throw new Error(`Unsupported image MIME type: ${mimeType || 'missing'}`);
                 }
-                if (!imageBase64 || imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
+                if (!imageBase64 || imageBase64.length > CANONICA_CHAT_IMAGE_MAX_BASE64_LENGTH || !isLikelyBase64(imageBase64)) {
                     throw new Error('Inline image payload is empty or too large');
                 }
 
                 const buffer = Buffer.from(imageBase64, 'base64');
-                if (!buffer.byteLength || buffer.byteLength > MAX_IMAGE_SIZE_BYTES) {
-                    throw new Error(`Inline image size exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`);
+                if (!buffer.byteLength || buffer.byteLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Inline image size exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                }
+                if (!imageMimeMatchesBuffer(buffer, mimeType)) {
+                    throw new Error('Inline image content does not match declared MIME type');
                 }
 
                 imageBufferForAi = { imageBase64, mimeType };
@@ -310,11 +415,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             } else if (imageUrl) {
                 // Security validation
                 const url = new URL(imageUrl);
-                if (
-                    url.protocol !== 'https:' ||
-                    url.hostname !== TRUSTED_STORAGE_HOST ||
-                    !url.pathname.includes(TRUSTED_BUCKET_PATH)
-                ) {
+                if (!isTrustedCanonicaSearchImageUrl(url, Number(tId), Number(sId))) {
                     throw new Error('Untrusted or invalid image URL');
                 }
 
@@ -322,21 +423,39 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-                const response = await fetch(imageUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
+                let response: Response;
+                try {
+                    response = await fetch(imageUrl, { signal: controller.signal });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
 
                 if (!response.ok) {
                     throw new Error(`Failed to fetch image: ${response.statusText}`);
                 }
 
-                const buffer = await response.arrayBuffer();
-
-                if (buffer.byteLength > MAX_IMAGE_SIZE_BYTES) {
-                    throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${MAX_IMAGE_SIZE_BYTES / 1024 / 1024}MB limit`);
+                const contentLength = Number(response.headers.get('content-length') || 0);
+                if (contentLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Image size (${contentLength} bytes) exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
                 }
 
-                const base64 = Buffer.from(buffer).toString('base64');
-                const mimeType = response.headers.get('content-type') || 'image/png';
+                const buffer = await response.arrayBuffer();
+
+                if (!buffer.byteLength || buffer.byteLength > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+                    throw new Error(`Image size (${buffer.byteLength} bytes) exceeds ${CANONICA_CHAT_IMAGE_MAX_BYTES / 1024 / 1024}MB limit`);
+                }
+
+                const nodeBuffer = Buffer.from(buffer);
+                const headerMimeType = normalizeCanonicaChatImageMimeType(response.headers.get('content-type'));
+                const mimeType = headerMimeType || detectImageMimeTypeFromBuffer(nodeBuffer) || '';
+                if (!isAllowedCanonicaChatImageMimeType(mimeType)) {
+                    throw new Error(`Unsupported fetched image MIME type: ${mimeType || 'missing'}`);
+                }
+                if (!imageMimeMatchesBuffer(nodeBuffer, mimeType)) {
+                    throw new Error('Fetched image content does not match declared MIME type');
+                }
+
+                const base64 = nodeBuffer.toString('base64');
                 imageBufferForAi = { imageBase64: base64, mimeType };
                 imageCacheToken = hashString(imageUrl);
             }
@@ -465,6 +584,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             tId,
                             sId,
                             uId,
+                            mountContext,
                             craftedAnswer: cached.craftedAnswer,
                             references: [],
                             canonical: true,
@@ -529,6 +649,31 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const cacheStart = Date.now();
     // Widget searches use a prefixed cache key to avoid collision, but hit same pipeline
     const effectiveCacheKey = `${EMBEDDING_CACHE_VERSION}:${mountContext === 'widget' ? `widget:${cacheLookupKey}` : cacheLookupKey}`;
+    const withSavedSearchHistory = async (result: CoreSearchResult): Promise<CoreSearchResult> => {
+        const savedHistory = await addAiSearchHistoryServer({
+            query: searchQuery,
+            cacheKey: cacheLookupKey,
+            tId,
+            sId,
+            uId,
+            mountContext,
+            generatedQueryFromImage,
+            imageUrl: imageUrl || undefined,
+            craftedAnswer: result.craftedAnswer,
+            references: result.references || [],
+            canonical: Boolean(result.canonical),
+            canonicalAnswerId: result.canonicalAnswerId,
+            confidence: result.confidence,
+            sourceVersions: kbCacheState.sourceVersion
+                ? { [CANONICA_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
+                : undefined,
+        });
+
+        return withAiProviderUsage({
+            ...result,
+            searchHistoryId: result.searchHistoryId || savedHistory?.id,
+        });
+    };
 
     // Cache lookup only for stateless authenticated Q&A.
     // Assistant-mode history and product context are part of the cache key so stale
@@ -632,6 +777,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             tId,
             sId,
             uId,
+            mountContext,
             craftedAnswer: answer.content.structuredSummary,
             references: [],
             canonical: true,
@@ -763,7 +909,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     // ===== STAGE 5: RAG FALLBACK (Vector Search) =====
@@ -814,13 +960,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
 
     if (snapshot.empty) {
-        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     const documentsFound = snapshot.docs.map(doc => {
@@ -842,7 +988,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     if (!documentsFound.length) {
-        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     if (!documentsMatched.length) {
@@ -860,7 +1006,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             }
         });
 
-        return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+        return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
     }
 
     const documentsForPrompt = documentsMatched.slice(0, RAG_CONTEXT_LIMIT);
@@ -902,8 +1048,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const geminiAnswer = await callGeminiChat(
         searchQuery,
         payloadToGemini,
-        imageBufferForAi,
-        conversationHistory
+        undefined,
+        conversationHistory,
+        generatedQueryFromImage
     );
     aiProviderOperations.add('answer_generation');
     perfMetrics.answerGeneration = Date.now() - answerStart;
@@ -924,7 +1071,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     mountContext,
                 }
             });
-            return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+            return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
         const craftedAnswer = typeof generatedData.craftedAnswer === 'string'
@@ -948,7 +1095,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 logType: 'ANSWER_EMPTY',
                 data: { query: searchQuery, mountContext }
             });
-            return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+            return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
         // Resolve reference IDs to full document objects
@@ -974,7 +1121,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     mountContext,
                 }
             });
-            return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+            return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
         }
 
         // Save search history
@@ -984,6 +1131,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             tId,
             sId,
             uId,
+            mountContext,
             generatedQueryFromImage,
             imageUrl: imageUrl || undefined,
             craftedAnswer,
@@ -1052,5 +1200,5 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     }
 
     // Gemini returned null — use shared empty escalation helper
-    return withAiProviderUsage({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation() });
+    return withSavedSearchHistory({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
 }

@@ -28,13 +28,23 @@
 | `canonica_signal_events` | 0-1 WRITE | Negative feedback → signal event (if ENABLE_CANONICA_SIGNAL_MUTATION ON) | $0.000054      |
 | `stores`                 | 0-1 READ  | Runtime config lookup through `/api/widget/config`; browser/server caches use the public 60-second TTL | Existing read pricing |
 | `stores`                 | 0-1 WRITE | Explicit dashboard save in `/canonica/widget`; unchanged saves skip the write | Existing write pricing |
-| `stores`                 | 1 WRITE   | Widget key generate/revoke updates `canonicaWidgetApi` only | Existing write pricing |
+| `stores`                 | 1 READ + 1 WRITE | Widget key create/rename/delete updates `canonicaWidgetApi` only | Existing read/write pricing |
+| `stores`                 | 1 READ | Widget key copy decrypts existing encrypted widget key material; no write | Existing read pricing |
+| `aiSearchHistory`        | up to 12 READS | `/api/canonica/widget-activity` recent widget questions panel in `/canonica/widget`; protected tenant/store read | Existing read pricing |
 
 ## No New Collections
 
 Widget v2 reuses ALL existing Canonica collections. Zero new Firestore collections created. The feedback route writes to `aiSearchHistory` (existing) and `canonica_signal_events` (existing).
 
-The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `canonicaWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
+The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `canonicaWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Widget keys use `canonicaWidgetApi.keyHashes` for one-query runtime lookup and `canonicaWidgetApi.keysByHash` for key names, prefixes/suffixes, scopes, status, and optional encrypted copy recovery. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
+
+## Widget Activity Index
+
+The dashboard recent-questions panel uses this composite index in Canonica Firebase:
+
+| Collection | Fields | Purpose |
+| ---------- | ------ | ------- |
+| `aiSearchHistory` | `tId ASC, sId ASC, mountContext ASC, createdOn DESC` | Recent widget questions for `/canonica/widget` |
 
 ---
 
@@ -50,7 +60,7 @@ The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `canonica
 | Runtime config load       | 0-1   | 0      | $0.00      | <$0.0001   |
 | Dashboard config save     | 0-1   | 0-1    | $0.00      | <$0.0001   |
 
-Note on image queries: Image queries add the image-to-query Gemini call. Expected volume: <10% of widget queries will include images (error screenshots). Widget images are validated and passed inline to `coreSearch()`; they are not written to Firebase Storage.
+Note on image queries: Image queries add one bounded visual-context model call before normal retrieval/answering. Expected volume: <10% of widget queries will include images (error screenshots). Widget images are validated and passed inline to `coreSearch()`; they are not written to Firebase Storage.
 
 ## Monthly Cost Projections
 
@@ -78,7 +88,7 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 9. **Origin allowlist reuses store document** — No additional read (checked during API key validation which already reads store)
 10. **No temp image storage for widget** — Image queries avoid Firebase Storage writes and cleanup work by passing validated inline payloads into the shared pipeline
 
-11. **Hash-only Canonica auth path** — Widget and Canonica public routes disable the legacy raw-key fallback because Canonica `cn_*` keys are stored hash-only.
+11. **Store-doc widget key lookup** — Widget routes validate active `cn_*` keys with `array-contains` on `canonicaWidgetApi.keyHashes`, falling back to the legacy single `apiKeyHash` field for old workspaces.
 12. **Short positive auth cache** — Widget search and feedback reuse a positive API-key validation result for up to 15 seconds per warm server instance. Revocation can take up to that short TTL to reflect on that instance.
 13. **Runtime config cache** — `/api/widget/config` uses short server caching and browser `sessionStorage`, so installed scripts do not re-read Firestore on every route render.
 14. **Explicit-save dashboard writes** — `/canonica/widget` keeps edits local until Save; no Firestore writes happen while typing, moving controls, or previewing.
@@ -118,6 +128,7 @@ The mutation engine (signal events from widget feedback → mutation proposals �
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-25 | 2.4.9   | Added store-doc multi-key cost model: no new collections, runtime validation stays one indexed store lookup, key create/rename/delete are bounded writes, and copy is a protected read/decrypt path. |
 | 2026-05-24 | 2.4.6   | Restored predictive support cost docs with summary-backed capability gating: one extra trigger-summary read only on widget config cache misses, and no predictive API calls when active triggers are absent. |
 | 2026-05-24 | 2.4.5   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |
 | 2026-05-22 | 2.4.4   | Added widget branding cost note: launch-grade branding rides existing runtime config and adds no Firestore reads/listeners. |

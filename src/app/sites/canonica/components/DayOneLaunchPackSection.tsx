@@ -44,9 +44,9 @@ const PACK_ITEMS: LaunchPackItem[] = [
     },
     {
         label: 'Install proof',
-        title: 'Verify widget, origin, route, and context',
+        title: 'Verify widget, origin, route, context, and image boundary',
         description:
-            'The Widget screen checks that the key exists, script loaded, origin is allowed, route is not blocked, and page context arrived.',
+            'The Widget screen checks that the key exists, script loaded, origin is allowed, route is not blocked, page context arrived, and screenshot input remains user-initiated.',
         href: '/install',
         cta: 'View install verifier',
         featured: true,
@@ -65,7 +65,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
         label: 'Safety handoff',
         title: 'Share the security and ops one-pager',
         description:
-            'Give buyers or developers the concise version of allowed origins, blocked routes, safe context, hashed keys, owner approval, and rate limits.',
+            'Give buyers or developers the concise version of allowed origins, blocked routes, safe context, manual screenshot input, hashed keys, owner approval, and rate limits.',
         href: '/security-one-pager',
         cta: 'Open one-pager',
     },

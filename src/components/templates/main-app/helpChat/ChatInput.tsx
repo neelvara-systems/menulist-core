@@ -1,6 +1,14 @@
 'use client'
 
 import { useDragAndDrop } from '@hook/useDragAndDrop';
+import {
+    CANONICA_CHAT_IMAGE_ACCEPT,
+    CANONICA_CHAT_IMAGE_ALLOWED_LABEL,
+    CANONICA_CHAT_IMAGE_ALLOWED_MIME_TYPES,
+    CANONICA_CHAT_IMAGE_MAX_BYTES,
+    isAllowedCanonicaChatImageMimeType,
+    normalizeCanonicaChatImageMimeType,
+} from '@lib/canonica/chatImagePolicy';
 import { UserUploadedFileType } from '@type/common';
 import { getBase64 } from '@util/utils';
 import { Button, Flex, Image, Input, message, Tag, theme, Tooltip, Typography, Upload } from 'antd';
@@ -12,7 +20,6 @@ import { ChatMode } from './types';
 const { TextArea } = Input;
 
 const MAX_INPUT_LENGTH = 2000; // Character limit for input (industry standard for chat apps)
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB file size limit
 
 interface ChatInputProps {
     onSendMessage: (message: string, image?: UserUploadedFileType) => void;
@@ -43,6 +50,24 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
     const draftKey = `chat-draft-${sessionId || 'new'}`;
     const imageDraftKey = `chat-draft-image-${sessionId || 'new'}`;
 
+    const validateImageFile = (file: File): { valid: boolean; error?: string } => {
+        if (file.size > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+            return {
+                valid: false,
+                error: `Image size must be less than ${CANONICA_CHAT_IMAGE_MAX_BYTES / (1024 * 1024)}MB`,
+            };
+        }
+
+        if (!isAllowedCanonicaChatImageMimeType(file.type)) {
+            return {
+                valid: false,
+                error: `Only ${CANONICA_CHAT_IMAGE_ALLOWED_LABEL} images are allowed`,
+            };
+        }
+
+        return { valid: true };
+    };
+
     // Drag & drop hook
     const { isDragging, dragHandlers } = useDragAndDrop({
         onFilesDrop: (files) => {
@@ -50,10 +75,11 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 handleImageUpload(files[0]);
             }
         },
-        accept: ['image/*'],
+        accept: [...CANONICA_CHAT_IMAGE_ALLOWED_MIME_TYPES],
         maxFiles: 1,
-        maxSize: MAX_IMAGE_SIZE,
-        disabled
+        maxSize: CANONICA_CHAT_IMAGE_MAX_BYTES,
+        disabled,
+        validateFile: (file) => validateImageFile(file),
     });
 
     const handleSend = () => {
@@ -101,26 +127,21 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
     };
 
     const handleImageUpload = async (file: File): Promise<boolean> => {
-        // Validate file size (for Upload button - drag & drop already validated by hook)
-        if (file.size > MAX_IMAGE_SIZE) {
-            message.error(`Image size must be less than ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`);
-            return false;
-        }
-
-        // Validate file type (for Upload button - drag & drop already validated by hook)
-        if (!file.type.startsWith('image/')) {
-            message.error('Only image files are allowed');
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            message.error(validation.error || 'Unsupported image');
             return false;
         }
 
         // Convert to base64 (same pattern as ticket flow)
         const base64 = await getBase64(file as RcFile);
+        const normalizedType = normalizeCanonicaChatImageMimeType(file.type);
         setSelectedImage({
             url: base64,  // Base64 string for both preview and sending
             source: base64,  // Alias for backward compatibility
             name: file.name,
             size: file.size,
-            type: file.type
+            type: normalizedType
         });
         onImageUpload?.(file);
 
@@ -215,12 +236,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
             }
 
             if (savedImage) {
-                try {
-                    const parsedImage = JSON.parse(savedImage);
-                    setSelectedImage(parsedImage);
-                } catch (e) {
-                    console.warn('Failed to parse saved image draft:', e);
-                }
+                localStorage.removeItem(imageDraftKey);
             }
         } catch (error) {
             console.warn('Failed to load draft from localStorage:', error);
@@ -242,31 +258,13 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
         }
     }, [inputValue, draftKey]);
 
-    // Auto-save image draft to localStorage when image changes
+    // Image screenshots can contain private customer data, so they are never
+    // persisted as base64 drafts. Keep a cleanup path for legacy drafts.
     useEffect(() => {
         try {
-            if (selectedImage) {
-                const imageData = JSON.stringify(selectedImage);
-                
-                // Check if size is too large (localStorage limit ~5-10MB, use 4MB safety margin)
-                const sizeInMB = imageData.length / (1024 * 1024);
-                if (sizeInMB > 4) {
-                    console.warn(`Image too large for localStorage draft (${sizeInMB.toFixed(2)}MB), skipping save`);
-                    message.warning('Image too large to save as draft. It will be cleared if you refresh.');
-                    return;
-                }
-                
-                localStorage.setItem(imageDraftKey, imageData);
-            } else {
-                localStorage.removeItem(imageDraftKey);
-            }
-        } catch (error) {
-            console.warn('Failed to save image draft to localStorage:', error);
-            
-            // Provide user feedback for quota errors
-            if (error.name === 'QuotaExceededError') {
-                message.error('Storage limit reached. Image draft cannot be saved.');
-            }
+            localStorage.removeItem(imageDraftKey);
+        } catch {
+            // Draft cleanup is best-effort only.
         }
     }, [selectedImage, imageDraftKey]);
 
@@ -471,9 +469,9 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                     gap: 4,
                     alignItems: 'center'
                 }}>
-                    <Tooltip title={`Upload image (max ${MAX_IMAGE_SIZE / (1024 * 1024)}MB)`}>
+                    <Tooltip title={`Upload ${CANONICA_CHAT_IMAGE_ALLOWED_LABEL} image (max ${CANONICA_CHAT_IMAGE_MAX_BYTES / (1024 * 1024)}MB)`}>
                         <Upload
-                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            accept={CANONICA_CHAT_IMAGE_ACCEPT}
                             beforeUpload={handleImageUpload}
                             showUploadList={false}
                             disabled={disabled}

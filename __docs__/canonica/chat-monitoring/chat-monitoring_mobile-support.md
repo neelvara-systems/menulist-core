@@ -20,7 +20,7 @@ These routes are operational product screens, not overview cards. They render th
 
 ## Product Boundary
 
-MenuList is only the first client/test host for Canonica. The chat monitoring screens remain Canonica/platform operator workflows and must not hard-code MenuList-only product assumptions beyond the host route that exposes them in the MenuList More tab.
+MenuList is only the first independent client integration for Canonica. The chat monitoring screens remain Canonica/platform operator workflows and must not hard-code MenuList-only product assumptions beyond the host route that exposes them in the MenuList More tab.
 
 ## Mobile Scope
 

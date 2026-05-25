@@ -80,7 +80,7 @@ canonica.app/get-started
 | Subscription model | Same `FirestoreSubscriptionDoc` type |
 | Rate limiting | Same Upstash rate limiter |
 | Default roles | Same `createDefaultRoles()` |
-| Widget key pattern | Canonica-scoped `store.canonicaWidgetApi`; current keys are stored as `apiKeyHash` + display-only `keyPrefix` |
+| Widget key pattern | Canonica-scoped `store.canonicaWidgetApi`; widget keys use the bounded store-doc key manager (`keyHashes` + `keysByHash`) with encrypted copy support when configured |
 
 ---
 

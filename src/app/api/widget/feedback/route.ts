@@ -16,11 +16,11 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
+import * as admin from 'firebase-admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
             allowLegacyRawFallback: false,
             cacheTtlMs: WIDGET_AUTH_CACHE_TTL_MS,
             includeCanonicaWidgetApi: true,
+            includePublicApi: false,
             preferCanonicaWidgetApi: true,
         });
         if (!authResult) {

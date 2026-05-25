@@ -27,4 +27,5 @@ export interface AiSearchHistory {
     matchedEntityIds?: string[];      // Entity IDs matched during retrieval
     confidence?: string;              // 'high' | 'medium' | 'low' | 'none'
     sourceVersions?: CanonicaCacheSourceVersions; // Source freshness manifest captured when cached
+    mountContext?: 'help_center' | 'widget' | 'api' | string; // Surface that initiated the search
 }

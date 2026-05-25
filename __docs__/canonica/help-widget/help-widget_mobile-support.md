@@ -13,7 +13,7 @@
 Reason:
 
 - Widget setup is not a daily mobile workflow, so duplicating the full management console would add maintenance cost.
-- Emergency actions such as revoke key, add origin, or confirm cache strategy should still be readable and usable on a phone.
+- Emergency actions such as copy/delete key, add origin, or confirm cache strategy should still be readable and usable on a phone.
 - The existing route already owns the single save path through `GET`/`PUT /api/canonica/widget-config` and `POST /api/canonica/widget-key`.
 
 ## Mobile Surface
@@ -22,7 +22,7 @@ The mobile route uses the same `CanonicaWidgetManagement` template as desktop:
 
 - UI Configuration tab: appearance, behavior, desktop/mobile preview.
 - Install & Embed tab: install snippets, route/context snippets, runtime update note.
-- Access & Security tab: key create/regenerate/revoke, origin allowlist, and blocked routes.
+- Access & Security tab: key create/copy/rename/delete, origin allowlist, and blocked routes.
 
 Client mobile apps may show an installed widget only when they explicitly embed the generic public widget script from their own runtime. Canonica core does not ship client-product-specific mobile hosts.
 

@@ -311,7 +311,7 @@ Build only when the work increases at least one of:
 - [ ] Related articles/changelogs/tickets are filtered by product surface context.
 - [ ] Weekly digest and governance queues use compact summary data.
 - [ ] Mobile dashboard works for activation, support control, widget settings, and governance review.
-- [ ] MenuList remains only a client/test host, not a hardcoded Canonica management surface.
+- [ ] MenuList remains an independent client integration, not a hardcoded Canonica management surface.
 
 ---
 

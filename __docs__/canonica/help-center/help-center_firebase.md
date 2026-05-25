@@ -298,6 +298,8 @@
 | Changelog files | `changelog/files/{tId}/{sId}/{fileId}` | ✅ |
 | KB source files | KB generation pipeline storage | By job |
 
+Chat images are capped at 5 MB by `storage-canonica.rules` and app-side validation. Current supported formats are JPEG, PNG, WebP, and GIF.
+
 ### 5.2 Storage Cost Estimate
 
 - Average file size: 500KB

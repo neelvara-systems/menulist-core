@@ -10,7 +10,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Resources',
-    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, runtime safety, pricing, and setup.',
+    description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, screenshot boundaries, runtime safety, pricing, and setup.',
     alternates: { canonical: '/resources' },
 };
 
@@ -31,7 +31,7 @@ const RESOURCE_GROUPS = [
             ['Pricing', '/pricing', 'See the current Starter, Growth, and Studio packaging.'],
             ['ROI calculator', '/roi-calculator', 'Estimate repeated-question time saved and plan fit.'],
             ['Proof pack', '/proof', 'Review example workloads for launch, release, and studio use.'],
-            ['FAQ', '/faq', 'Answers for setup, widget context, fallback, pricing, and data handling.'],
+            ['FAQ', '/faq', 'Answers for setup, widget context, screenshots, fallback, pricing, and data handling.'],
         ],
     },
     {
@@ -40,7 +40,7 @@ const RESOURCE_GROUPS = [
         items: [
             ['Use cases', '/use-cases', 'Map Canonica to billing, onboarding, settings, releases, and tickets.'],
             ['AI-built SaaS', '/use-cases/ai-built-saas', 'See the launch support path for apps built quickly with AI.'],
-            ['Page-aware support widget', '/page-aware-support-widget', 'See how product-page context changes the answer.'],
+            ['Page-aware support widget', '/page-aware-support-widget', 'See how product-page context and optional screenshots change the answer.'],
         ],
     },
     {
@@ -49,12 +49,12 @@ const RESOURCE_GROUPS = [
         items: [
             ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
             ['Import starter pack', '/product/knowledge-base', 'Bring Markdown docs, FAQ CSV content, changelogs, and ticket macros into the support layer.'],
-            ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
+            ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, context passing, and screenshot boundaries.'],
             ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, vanilla script, or the typed SDK helper.'],
             ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
             ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],
-            ['Security and runtime safety', '/security', 'Review tenant isolation, widget origin controls, compiled context boundaries, and owner-approved authority.'],
-            ['Security one-pager', '/security-one-pager', 'Share the concise security and ops summary with developers or buyers.'],
+            ['Security and runtime safety', '/security', 'Review tenant isolation, widget origin controls, screenshot input, compiled context boundaries, and owner-approved authority.'],
+            ['Security one-pager', '/security-one-pager', 'Share the concise security and ops summary with developers or buyers, including the manual screenshot boundary.'],
         ],
     },
     {
@@ -82,7 +82,7 @@ export default function CanonicaResourcesPage() {
                         Start here if you are launching support for an AI-built app.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Use the demo first, then check fit, install steps, runtime safety, pricing, and support-day governance.
+                        Use the demo first, then check fit, install steps, screenshot boundaries, runtime safety, pricing, and support-day governance.
                     </p>
                 </section>
 

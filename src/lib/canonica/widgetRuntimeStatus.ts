@@ -1,6 +1,6 @@
 import { normalizeSurfaceKey, normalizeSurfaceRoutePattern, normalizeSurfaceToken } from './productSurfaceContent';
 import type { CanonicaWidgetRuntimeStatus } from '@type/canonica';
-import { admin } from '@lib/firebase/firebaseAdmin';
+import * as admin from 'firebase-admin';
 import type { NextRequest } from 'next/server';
 
 const TELEMETRY_WRITE_INTERVAL_MS = 15 * 60 * 1000;

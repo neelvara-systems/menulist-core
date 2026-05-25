@@ -12,6 +12,8 @@ import {
     InputNumber,
     List,
     message,
+    Modal,
+    Popconfirm,
     Row,
     Segmented,
     Select,
@@ -19,6 +21,7 @@ import {
     Switch,
     Tag,
     Tabs,
+    Tooltip,
     Typography,
     theme,
 } from 'antd';
@@ -29,8 +32,10 @@ import {
     LuCopy,
     LuGlobe,
     LuKey,
+    LuMessageCircle,
     LuMonitor,
     LuPalette,
+    LuPencil,
     LuRefreshCw,
     LuSave,
     LuSettings,
@@ -72,7 +77,35 @@ type WidgetConfigResponse = {
     allowedOrigins?: string[];
     keyPrefix?: string | null;
     hasWidgetKey?: boolean;
+    keys?: WidgetKeySummary[];
+    keyLimit?: number;
+    encryptionConfigured?: boolean;
     runtimeStatus?: CanonicaWidgetRuntimeStatus | null;
+};
+
+type WidgetKeySummary = {
+    id: string;
+    name: string;
+    keyPrefix: string;
+    keySuffix?: string | null;
+    displayKey: string;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+    copyable: boolean;
+    legacy: boolean;
+    status: 'active' | 'revoked';
+    isActive: boolean;
+};
+
+type WidgetActivityItem = {
+    id: string;
+    query: string;
+    answerPreview?: string;
+    canonical?: boolean;
+    confidence?: string | null;
+    referenceCount?: number;
+    feedback?: 'good' | 'bad' | null;
+    createdAt?: string | null;
 };
 
 type HostedHelpSettingsResponse = {
@@ -144,8 +177,22 @@ const formatRuntimeDate = (value: any): string => {
         ? value.toDate()
         : typeof value?.seconds === 'number'
             ? new Date(value.seconds * 1000)
+            : typeof value?._seconds === 'number'
+                ? new Date(value._seconds * 1000)
             : new Date(value);
     if (Number.isNaN(date.getTime())) return 'Not seen yet';
+    return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+const formatActivityDate = (value?: string | null): string => {
+    if (!value) return 'Time not recorded';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Time not recorded';
     return date.toLocaleString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -179,9 +226,21 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
     const [newOrigin, setNewOrigin] = useState('');
     const [newBlockedRoute, setNewBlockedRoute] = useState('');
     const [apiKey, setApiKey] = useState<string | null>(null);
+    const [revealedKeys, setRevealedKeys] = useState<Record<string, string>>({});
     const [keyPrefix, setKeyPrefix] = useState<string | null>(null);
     const [hasWidgetKey, setHasWidgetKey] = useState(false);
+    const [widgetKeys, setWidgetKeys] = useState<WidgetKeySummary[]>([]);
+    const [keyLimit, setKeyLimit] = useState(10);
+    const [keyEncryptionConfigured, setKeyEncryptionConfigured] = useState(false);
+    const [copyingKeyId, setCopyingKeyId] = useState<string | null>(null);
+    const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
+    const [renameKey, setRenameKey] = useState<WidgetKeySummary | null>(null);
+    const [renameValue, setRenameValue] = useState('');
+    const [renamingKey, setRenamingKey] = useState(false);
     const [runtimeStatus, setRuntimeStatus] = useState<CanonicaWidgetRuntimeStatus | null>(null);
+    const [activityItems, setActivityItems] = useState<WidgetActivityItem[]>([]);
+    const [activityLoading, setActivityLoading] = useState(false);
+    const [activityError, setActivityError] = useState<string | null>(null);
     const [hostedHelpConfig, setHostedHelpConfig] = useState<CanonicaHostedHelpConfig>(DEFAULT_CANONICA_HOSTED_HELP_CONFIG);
     const [hostedHelpDomainStatuses, setHostedHelpDomainStatuses] = useState<HostedHelpDomainStatus[]>([]);
     const [newHostedDomain, setNewHostedDomain] = useState('');
@@ -209,6 +268,9 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
             setKeyPrefix(data.keyPrefix || null);
             setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setWidgetKeys(Array.isArray(data.keys) ? data.keys : []);
+            setKeyLimit(Number(data.keyLimit || 10));
+            setKeyEncryptionConfigured(Boolean(data.encryptionConfigured));
             setRuntimeStatus(data.runtimeStatus || null);
 
             const hostedRes = await fetch('/api/canonica/hosted-help-settings', { method: 'GET' });
@@ -227,9 +289,26 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         }
     }, []);
 
+    const loadWidgetActivity = useCallback(async () => {
+        setActivityLoading(true);
+        setActivityError(null);
+        try {
+            const res = await fetch('/api/canonica/widget-activity', { method: 'GET' });
+            const data: { items?: WidgetActivityItem[]; error?: string } = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to load widget activity');
+            setActivityItems(Array.isArray(data.items) ? data.items : []);
+        } catch (error) {
+            setActivityError(getCanonicaUiErrorMessage(error, 'Could not load widget activity'));
+            setActivityItems([]);
+        } finally {
+            setActivityLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         loadSettings();
-    }, [loadSettings]);
+        loadWidgetActivity();
+    }, [loadSettings, loadWidgetActivity]);
 
     const updateConfig = useCallback(<K extends keyof CanonicaWidgetConfig>(
         key: K,
@@ -251,6 +330,11 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             if (!res.ok) throw new Error((data as any).error || 'Failed to save widget settings');
             setConfig(normalizeWidgetConfig(data.config));
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
+            setKeyPrefix(data.keyPrefix || null);
+            setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys);
+            setKeyLimit(Number(data.keyLimit || keyLimit));
+            setKeyEncryptionConfigured(Boolean(data.encryptionConfigured));
             if ('runtimeStatus' in data) {
                 setRuntimeStatus(data.runtimeStatus || null);
             }
@@ -261,7 +345,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         } finally {
             setSaving(false);
         }
-    }, [config, origins]);
+    }, [config, origins, keyLimit, widgetKeys]);
 
     const handleGenerateKey = useCallback(async () => {
         setGeneratingKey(true);
@@ -269,38 +353,111 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             const res = await fetch('/api/canonica/widget-key', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'generate' }),
+                body: JSON.stringify({ action: 'generate', name: `Widget key ${widgetKeys.length + 1}` }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || !data.apiKey) throw new Error(data.error || 'Failed to create widget key');
             setApiKey(data.apiKey);
-            setKeyPrefix(data.keyPrefix || data.apiKey.slice(0, 7));
-            setHasWidgetKey(true);
+            if (data.key?.id) {
+                setRevealedKeys(prev => ({ ...prev, [data.key.id]: data.apiKey }));
+            }
+            setKeyPrefix(data.keyPrefix || data.key?.keyPrefix || data.apiKey.slice(0, 7));
+            setHasWidgetKey(Boolean(data.hasWidgetKey ?? true));
+            setWidgetKeys(Array.isArray(data.keys) ? data.keys : data.key ? [data.key, ...widgetKeys] : widgetKeys);
+            setKeyLimit(Number(data.keyLimit || keyLimit));
+            setKeyEncryptionConfigured(Boolean(data.encryptionConfigured));
             message.success('Widget key created');
         } catch (error) {
             message.error(getCanonicaUiErrorMessage(error, 'Could not create widget key'));
         } finally {
             setGeneratingKey(false);
         }
-    }, []);
+    }, [keyLimit, widgetKeys]);
 
-    const handleRevokeKey = useCallback(async () => {
+    const handleCopyKey = useCallback(async (key: WidgetKeySummary) => {
+        const revealedKey = revealedKeys[key.id];
+        if (revealedKey) {
+            copyText(revealedKey, 'Widget key copied');
+            setApiKey(revealedKey);
+            return;
+        }
+
+        setCopyingKeyId(key.id);
         try {
             const res = await fetch('/api/canonica/widget-key', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'revoke' }),
+                body: JSON.stringify({ action: 'copy', keyId: key.id }),
             });
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'Failed to revoke widget key');
-            setApiKey(null);
-            setKeyPrefix(null);
-            setHasWidgetKey(false);
-            message.success('Widget key revoked');
+            if (!res.ok || !data.apiKey) throw new Error(data.error || 'Failed to copy widget key');
+            setApiKey(data.apiKey);
+            setRevealedKeys(prev => ({ ...prev, [key.id]: data.apiKey }));
+            copyText(data.apiKey, 'Widget key copied');
         } catch (error) {
-            message.error(getCanonicaUiErrorMessage(error, 'Could not revoke widget key'));
+            message.error(getCanonicaUiErrorMessage(error, 'Could not copy this key'));
+        } finally {
+            setCopyingKeyId(null);
         }
+    }, [revealedKeys]);
+
+    const handleRenameKey = useCallback(async () => {
+        if (!renameKey) return;
+        setRenamingKey(true);
+        try {
+            const res = await fetch('/api/canonica/widget-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'rename', keyId: renameKey.id, name: renameValue }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to rename widget key');
+            setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys);
+            setKeyPrefix(data.keyPrefix || keyPrefix);
+            setHasWidgetKey(Boolean(data.hasWidgetKey ?? hasWidgetKey));
+            setRenameKey(null);
+            setRenameValue('');
+            message.success('Widget key renamed');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not rename widget key'));
+        } finally {
+            setRenamingKey(false);
+        }
+    }, [hasWidgetKey, keyPrefix, renameKey, renameValue, widgetKeys]);
+
+    const openRenameKey = useCallback((key: WidgetKeySummary) => {
+        setRenameKey(key);
+        setRenameValue(key.name);
     }, []);
+
+    const handleDeleteKey = useCallback(async (key: WidgetKeySummary) => {
+        setDeletingKeyId(key.id);
+        try {
+            const res = await fetch('/api/canonica/widget-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', keyId: key.id }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Failed to delete widget key');
+            setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys.filter(item => item.id !== key.id));
+            setKeyPrefix(data.keyPrefix || null);
+            setHasWidgetKey(Boolean(data.hasWidgetKey));
+            setRevealedKeys(prev => {
+                const next = { ...prev };
+                delete next[key.id];
+                return next;
+            });
+            if (revealedKeys[key.id] === apiKey) {
+                setApiKey(null);
+            }
+            message.success('Widget key deleted');
+        } catch (error) {
+            message.error(getCanonicaUiErrorMessage(error, 'Could not delete widget key'));
+        } finally {
+            setDeletingKeyId(null);
+        }
+    }, [apiKey, revealedKeys, widgetKeys]);
 
     const addOrigin = useCallback(() => {
         const normalized = normalizeWidgetAllowedOrigin(newOrigin);
@@ -523,6 +680,9 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         vanilla: vanillaSnippet,
     };
     const activeSnippet = snippetByType[snippetType];
+    const widgetKeyCount = widgetKeys.filter(key => key.status === 'active').length;
+    const canCreateWidgetKey = widgetKeyCount < keyLimit;
+    const primaryWidgetKey = widgetKeys.find(key => key.isActive) || widgetKeys[0] || null;
     const widgetSeen = Boolean(runtimeStatus?.lastSeenAt);
     const contextSeen = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
     const originRestricted = origins.length > 0;
@@ -533,7 +693,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
             label: 'Widget key',
             type: hasWidgetKey ? 'success' as const : 'warning' as const,
             message: hasWidgetKey ? 'Widget key ready' : 'Create a widget key',
-            description: hasWidgetKey ? `Stored key prefix: ${keyPrefix || 'available'}. Raw keys are shown once.` : 'Create the key before copying install code.',
+            description: hasWidgetKey ? `Active key prefix: ${primaryWidgetKey?.keyPrefix || keyPrefix || 'available'}.` : 'Create the key before copying install code.',
         },
         {
             label: 'Script loaded',
@@ -581,11 +741,17 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
         }
     }, []);
 
+    const handleRefresh = useCallback(() => {
+        loadSettings();
+        loadWidgetActivity();
+    }, [loadSettings, loadWidgetActivity]);
+
     if (loading) {
         return <Skeleton active paragraph={{ rows: 8 }} />;
     }
 
     return (
+        <>
         <Flex
             vertical
             gap={isMobile ? 14 : 20}
@@ -603,7 +769,7 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                     <Text type="secondary">Install, configure, and secure the Canonica help widget.</Text>
                 </div>
                 <Flex gap={8} wrap="wrap">
-                    <Button icon={<LuRefreshCw size={14} />} onClick={loadSettings}>
+                    <Button icon={<LuRefreshCw size={14} />} onClick={handleRefresh}>
                         Refresh
                     </Button>
                     <Button type="primary" icon={<LuSave size={14} />} loading={saving} onClick={handleSave}>
@@ -892,6 +1058,64 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                     </Flex>
                                                 </Flex>
                                             </Card>
+                                            <div style={{
+                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                borderRadius: 8,
+                                                padding: 12,
+                                                background: token.colorBgContainer,
+                                            }}>
+                                                <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={8} vertical={isMobile} style={{ marginBottom: 10 }}>
+                                                    <Flex align="center" gap={8}>
+                                                        <LuMessageCircle size={16} />
+                                                        <Text strong>Recent widget questions</Text>
+                                                    </Flex>
+                                                    <Button
+                                                        size="small"
+                                                        icon={<LuRefreshCw size={14} />}
+                                                        loading={activityLoading}
+                                                        onClick={loadWidgetActivity}
+                                                    >
+                                                        Refresh
+                                                    </Button>
+                                                </Flex>
+                                                {activityError ? (
+                                                    <Alert type="warning" showIcon message={activityError} />
+                                                ) : activityLoading ? (
+                                                    <Skeleton active paragraph={{ rows: 3 }} />
+                                                ) : activityItems.length === 0 ? (
+                                                    <Alert type="info" showIcon message="No widget questions recorded yet" />
+                                                ) : (
+                                                    <List
+                                                        size="small"
+                                                        dataSource={activityItems}
+                                                        renderItem={(item) => (
+                                                            <List.Item>
+                                                                <List.Item.Meta
+                                                                    title={(
+                                                                        <Flex gap={8} wrap="wrap" align="center">
+                                                                            <Text strong style={{ wordBreak: 'break-word' }}>{item.query}</Text>
+                                                                            {item.canonical ? <Tag color="success">Canonical</Tag> : <Tag>Fallback</Tag>}
+                                                                            {item.feedback ? <Tag color={item.feedback === 'good' ? 'success' : 'warning'}>{item.feedback === 'good' ? 'Useful' : 'Needs review'}</Tag> : null}
+                                                                        </Flex>
+                                                                    )}
+                                                                    description={(
+                                                                        <Flex vertical gap={4}>
+                                                                            <Text type="secondary">
+                                                                                {formatActivityDate(item.createdAt)}
+                                                                                {typeof item.referenceCount === 'number' ? ` - ${item.referenceCount} reference${item.referenceCount === 1 ? '' : 's'}` : ''}
+                                                                                {item.confidence ? ` - ${item.confidence} confidence` : ''}
+                                                                            </Text>
+                                                                            {item.answerPreview ? (
+                                                                                <Text type="secondary" style={{ wordBreak: 'break-word' }}>{item.answerPreview}</Text>
+                                                                            ) : null}
+                                                                        </Flex>
+                                                                    )}
+                                                                />
+                                                            </List.Item>
+                                                        )}
+                                                    />
+                                                )}
+                                            </div>
                                         </Flex>
                                     </Card>
                                 </Col>
@@ -1162,34 +1386,118 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                 <Col xs={24} lg={10}>
                                     <Card title={<Flex align="center" gap={8}><LuKey size={16} /> Widget Key</Flex>}>
                                         <Flex vertical gap={12}>
-                                            <Input.Password
-                                                value={apiKey || (keyPrefix ? `${keyPrefix}...stored securely` : '')}
-                                                placeholder="No widget key"
-                                                readOnly
-                                                style={{ fontFamily: 'monospace' }}
-                                            />
-                                            <Flex gap={8} wrap="wrap">
+                                            <Flex align="center" justify="space-between" gap={12} wrap="wrap">
+                                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                                    {widgetKeyCount}/{keyLimit} active keys
+                                                </Text>
                                                 <Button
                                                     type={hasWidgetKey ? 'default' : 'primary'}
                                                     icon={<LuKey size={14} />}
                                                     loading={generatingKey}
+                                                    disabled={!canCreateWidgetKey}
                                                     onClick={handleGenerateKey}
                                                 >
-                                                    {hasWidgetKey ? 'Regenerate' : 'Create Key'}
-                                                </Button>
-                                                <Button icon={<LuCopy size={14} />} disabled={!apiKey} onClick={() => copyText(apiKey || '', 'Widget key copied')}>
-                                                    Copy
-                                                </Button>
-                                                <Button danger icon={<LuTrash2 size={14} />} disabled={!hasWidgetKey} onClick={handleRevokeKey}>
-                                                    Revoke
+                                                    Create API key
                                                 </Button>
                                             </Flex>
-                                            {!apiKey && hasWidgetKey && (
+                                            {widgetKeys.length > 0 ? (
+                                                <List
+                                                    dataSource={widgetKeys}
+                                                    renderItem={(key) => (
+                                                        <List.Item
+                                                            actions={[
+                                                                <Tooltip title="Copy API key" key="copy">
+                                                                    <Button
+                                                                        aria-label="Copy API key"
+                                                                        icon={<LuCopy size={14} />}
+                                                                        loading={copyingKeyId === key.id}
+                                                                        disabled={!key.copyable && !revealedKeys[key.id]}
+                                                                        size="small"
+                                                                        type="text"
+                                                                        onClick={() => handleCopyKey(key)}
+                                                                    />
+                                                                </Tooltip>,
+                                                                <Tooltip title="Rename key" key="rename">
+                                                                    <Button
+                                                                        aria-label="Rename API key"
+                                                                        icon={<LuPencil size={14} />}
+                                                                        size="small"
+                                                                        type="text"
+                                                                        onClick={() => openRenameKey(key)}
+                                                                    />
+                                                                </Tooltip>,
+                                                                <Popconfirm
+                                                                    key="delete"
+                                                                    title="Delete widget key?"
+                                                                    description="Installed widgets using this key will stop working."
+                                                                    okText="Delete"
+                                                                    okButtonProps={{ danger: true }}
+                                                                    onConfirm={() => handleDeleteKey(key)}
+                                                                >
+                                                                    <Tooltip title="Delete key">
+                                                                        <Button
+                                                                            aria-label="Delete API key"
+                                                                            danger
+                                                                            icon={<LuTrash2 size={14} />}
+                                                                            loading={deletingKeyId === key.id}
+                                                                            size="small"
+                                                                            type="text"
+                                                                        />
+                                                                    </Tooltip>
+                                                                </Popconfirm>,
+                                                            ]}
+                                                        >
+                                                            <List.Item.Meta
+                                                                title={(
+                                                                    <Flex align="center" gap={8} wrap="wrap">
+                                                                        <Text strong>{key.name}</Text>
+                                                                        {key.isActive ? <Tag color="green">Active</Tag> : null}
+                                                                        {key.legacy ? <Tag>One-time</Tag> : null}
+                                                                    </Flex>
+                                                                )}
+                                                                description={(
+                                                                    <Flex vertical gap={2}>
+                                                                        <Text code>{revealedKeys[key.id] || key.displayKey}</Text>
+                                                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                                                            Created {key.createdAt ? formatRuntimeDate(key.createdAt) : 'recently'}
+                                                                        </Text>
+                                                                    </Flex>
+                                                                )}
+                                                            />
+                                                        </List.Item>
+                                                    )}
+                                                    size="small"
+                                                />
+                                            ) : (
+                                                <Alert
+                                                    type="warning"
+                                                    showIcon
+                                                    message="No widget key"
+                                                    description="Create a widget key before copying install code."
+                                                />
+                                            )}
+                                            {apiKey && (
+                                                <Alert
+                                                    type="success"
+                                                    showIcon
+                                                    message="Widget key copied into install snippets"
+                                                    description="Use the install tab now; refresh will clear the visible raw key from this browser."
+                                                />
+                                            )}
+                                            {!keyEncryptionConfigured && (
+                                                <Alert
+                                                    type="warning"
+                                                    showIcon
+                                                    message="Copy-anytime is not configured"
+                                                    description="New keys still work and are shown after creation, but existing keys cannot be copied again until the server encryption secret is configured."
+                                                />
+                                            )}
+                                            {!canCreateWidgetKey && (
                                                 <Alert
                                                     type="info"
                                                     showIcon
-                                                    message="Stored keys are only shown once"
-                                                    description="Regenerate when you need a fresh copy. Existing installs keep working until revoked."
+                                                    message="Key limit reached"
+                                                    description="Delete an unused key before creating another."
                                                 />
                                             )}
                                         </Flex>
@@ -1281,6 +1589,27 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                 </div>
             )}
         </Flex>
+        <Modal
+            title="Rename API key"
+            open={Boolean(renameKey)}
+            okText="Rename"
+            confirmLoading={renamingKey}
+            onOk={handleRenameKey}
+            onCancel={() => {
+                setRenameKey(null);
+                setRenameValue('');
+            }}
+            okButtonProps={{ disabled: !renameValue.trim() }}
+        >
+            <Input
+                value={renameValue}
+                maxLength={80}
+                onChange={(event) => setRenameValue(event.target.value)}
+                onPressEnter={handleRenameKey}
+                placeholder="Widget key name"
+            />
+        </Modal>
+        </>
     );
 }
 

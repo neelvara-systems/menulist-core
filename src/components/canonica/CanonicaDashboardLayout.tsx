@@ -18,10 +18,11 @@ import {
     normalizeCanonicaRoutePathname,
     toCanonicaDashboardRoute,
 } from '@constant/canonica/navigations';
+import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { canUseCanonicaManagement } from '@lib/canonica/sessionScope';
 import AntdThemeProvider from '@providers/antdThemeProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
-import { Drawer, Grid, Layout, theme } from 'antd';
+import { Alert, Drawer, Grid, Layout, Spin, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
@@ -52,6 +53,8 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
     const isMobile = !isDesktop;
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [appSettingsOpen, setAppSettingsOpen] = useState(false);
+    const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
+    const [firebaseAuthError, setFirebaseAuthError] = useState(false);
     const layoutBackground = token.colorBgLayout;
     const canUseManagementSurfaces = canUseCanonicaManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
@@ -66,6 +69,44 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
             router.replace(toCanonicaDashboardRoute(CANONICA_ROUTES.HELP, currentHostname));
         }
     }, [canUseManagementSurfaces, currentHostname, isAdminRoute, router, status]);
+
+    useEffect(() => {
+        if (status === 'loading') {
+            setFirebaseAuthReady(false);
+            setFirebaseAuthError(false);
+            return;
+        }
+        if (status !== 'authenticated' || !session?.user?.email) {
+            setFirebaseAuthReady(true);
+            setFirebaseAuthError(false);
+            return;
+        }
+
+        let cancelled = false;
+        setFirebaseAuthReady(false);
+        setFirebaseAuthError(false);
+        ensureFirebaseAuthForSession(session)
+            .then((result) => {
+                if (!cancelled) setFirebaseAuthReady(result.ready !== false);
+            })
+            .catch((error) => {
+                if (process.env.NODE_ENV !== 'production') {
+                    console.error('[Canonica] Firebase Auth sync failed', error);
+                }
+                if (!cancelled) {
+                    setFirebaseAuthError(true);
+                    setFirebaseAuthReady(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [pathname, session, status]);
+
+    const shouldRedirectAway = isAdminRoute && !canUseManagementSurfaces;
+    const shouldShowAuthError = !shouldRedirectAway && firebaseAuthError;
+    const shouldShowContentLoader = status === 'loading' || (!shouldRedirectAway && !firebaseAuthReady);
 
     return (
         <>
@@ -188,7 +229,17 @@ function CanonicaDashboardLayoutContent({ children }: { children: React.ReactNod
                                 WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
                             }}
                         >
-                            {status === 'loading' || (isAdminRoute && !canUseManagementSurfaces) ? null : children}
+                            {shouldRedirectAway ? null : shouldShowAuthError ? (
+                                <Alert
+                                    message="Canonica access could not be prepared."
+                                    showIcon
+                                    type="error"
+                                />
+                            ) : shouldShowContentLoader ? (
+                                <div style={{ display: 'grid', minHeight: 240, placeItems: 'center' }}>
+                                    <Spin />
+                                </div>
+                            ) : children}
                         </Content>
                     </Layout>
                 </Layout>

@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { admin } from '@lib/firebase/firebaseAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
+import * as admin from 'firebase-admin';
 import type {
     CanonicaProductSurface,
     CanonicaFaq,

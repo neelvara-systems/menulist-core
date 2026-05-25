@@ -3,7 +3,7 @@
 > **Status:** Codebase-first inventory  
 > **Last Updated:** 2026-05-25
 > **Source of Truth:** Runtime code, routes, constants, data-access modules, Cloud Functions, Firebase rules/indexes, then existing docs  
-> **Product Boundary:** Canonica is a separate product. MenuList is only a client/test host and shared codebase neighbor.
+> **Product Boundary:** Canonica is a separate product. MenuList is one independent client integration and shared codebase neighbor.
 
 ---
 
@@ -72,8 +72,8 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Surface Readiness matrix | Implemented | `src/components/templates/canonica/content/CanonicaSurfaceReadinessMatrix.tsx`, `src/lib/canonica/activationSummary.ts`, `/canonica/dashboard` | `platformSummary/contextContent_{tId}_{sId}` via activation summary | Shows which product areas are ready, missing mapping, missing content, or carrying open ticket signals using 0 extra dashboard reads. |
 | Test-as-Customer checklist | Implemented | `src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`, `/canonica/activation`, `/canonica/dashboard` | Activation summary read model | Gives product owners a launch-proof checklist for help center, widget, page context, ticket fallback, release notes, and Signal Queue. |
 | Context-aware support mounting | Implemented | `src/components/templates/main-app/helpCenter/HeroSearchBar.tsx`, `src/lib/canonica/productSurfaceContent.ts`, `src/app/api/helpCenter/search-kb/route.ts`, widget APIs | Safe context payload + product surface summary | Passes page/feature/workflow context into Canonica without trusting raw client data as tenant scope. |
-| Widget management | Implemented | `src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx`, `src/app/api/canonica/widget-config/route.ts`, `src/app/api/canonica/widget-key/route.ts`, `src/lib/canonica/widgetConfig.ts` | `stores/{sId}.canonicaWidgetConfig`, key hash fields, runtime status | Configure appearance, install snippet, allowed origins, blocked routes, history, mobile visibility, and runtime status. |
-| Embedded public widget runtime | Implemented | `public/widget/canonica-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/config/route.ts`, `src/app/api/widget/search/route.ts`, `src/app/api/widget/feedback/route.ts` | Store widget config, API key hash, AI search history, KB/canonical retrieval | Gives client products page-aware support through one embeddable script. |
+| Widget management | Implemented | `src/components/templates/canonica/widgetManagement/CanonicaWidgetManagement.tsx`, `src/app/api/canonica/widget-config/route.ts`, `src/app/api/canonica/widget-key/route.ts`, `src/app/api/canonica/widget-activity/route.ts`, `src/lib/canonica/widgetConfig.ts` | `stores/{sId}.canonicaWidgetConfig`, key hash fields, runtime status, `aiSearchHistory` widget rows | Configure appearance, install snippet, allowed origins, blocked routes, history, mobile visibility, runtime status, and recent widget questions. |
+| Embedded public widget runtime | Implemented | `public/widget/canonica-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/config/route.ts`, `src/app/api/widget/search/route.ts`, `src/app/api/widget/feedback/route.ts` | Store widget config, API key hash, AI search history with `mountContext`, KB/canonical retrieval | Gives client products page-aware support through one embeddable script. |
 | Help center | Implemented | `src/app/(main)/help-center/`, `src/components/templates/main-app/helpCenter/`, `/canonica/help` compatibility route, `/api/canonica/public-content` | Cached KB, FAQ, changelog, tickets, search history | Public/customer support home reused by client support surfaces. KB categories, article reads, FAQ lists, and changelog pages use tenant/store-tagged public cache with owner-write invalidation. |
 | Hosted public Help Center | Implemented | `src/app/canonica-hosted-help/`, `src/components/templates/canonica/hostedHelp/`, `src/app/api/canonica/hosted-help-settings/route.ts`, `src/lib/canonica/hostedHelpServer.ts` | `stores/{sId}.hostedHelpConfig`, `canonica_publicHelpSites/{domain}`, cached KB/FAQ/changelog | Renders anonymous docs, FAQ, changelog, sitemap, and robots on domains such as `help.example.com` without exposing authenticated tickets/chat/user data. |
 | Knowledge base explorer | Implemented | `src/app/(canonica)/canonica/docs/page.tsx`, `src/app/(canonica)/canonica/knowledge-base/page.tsx`, KB templates | `kb_categories`, `kb_articles` | Browse and manage support documentation. |
@@ -128,10 +128,19 @@ Management routes are gated by Canonica product scope or platform access. Client
 - `/widget/[apiKey]` hosts the iframe/widget app.
 - `/widget/canonica-widget.js` is the public embeddable script.
 - `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback` are public widget runtime endpoints protected by key hash and allowed-origin checks.
+- `/api/canonica/widget-activity` is the protected dashboard read for recent widget questions.
+- In separated Firebase mode, `cn_` widget/API key validation reads Canonica Firestore through `canonicaFirestoreAdmin` and fails closed if Canonica Admin credentials are missing. Widget runtime endpoints opt out of MenuList `publicApi` fallback, validate active keys through `stores.canonicaWidgetApi.keyHashes` with legacy `apiKeyHash` fallback, while MenuList public API endpoints only accept `ml_` keys.
 - `/api/canonica/bundles/public/[...path]` proxies public-safe compiled bundle files from opaque Storage paths.
+
+### MenuList Client Integration
+
+- MenuList `/help-center` acts as a Canonica client route only when the signed-in user has `productAccounts.CN`.
+- Client Help Center search, ticket creation, changelog/release-note reads, and Firebase Auth claim sync use the Canonica product account `tId/sId`; the originating MenuList product scope is retained in Canonica `sourceContext`.
+- This integration is product-account driven. There is no dedicated MenuList client-test flag, one-off widget host, or fallback to MenuList Firebase for Canonica-owned support data.
 
 ### Protected Canonica APIs
 
+- Canonica dashboard routes wait for `ensureFirebaseAuthForSession()` before mounting Firestore-backed children, so separate Firebase reads/listeners use Canonica Auth claims rather than stale MenuList/default Firebase Auth state. Platform/support users keep their platform claims even when the same email also has a tenant-level Canonica account.
 - `/api/canonica/onboard`
 - `/api/canonica/workspace-profile`
 - `/api/canonica/activation/summary`

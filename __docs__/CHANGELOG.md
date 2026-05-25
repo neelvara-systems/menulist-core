@@ -6,6 +6,55 @@
 
 ---
 
+## May 25, 2026 — Help Center Governance Boundary Fix
+
+### Fixed
+
+- **MenuList Help Center no longer shows Canonica governance work queues** — Removed Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, and the Governance tab from the Help Center landing and tab list.
+- **Governance stays in owner/admin surfaces** — Entity review, mutation proposal review, drift, and answer governance remain available through Canonica dashboard/governance routes instead of the end-user Help Center path.
+
+### Cost
+
+- **Firebase reads reduced when Help Center opens** — The Help Center no longer mounts the Canonica Coverage KPI card, so it avoids that governance summary read on Help Center landing load. No new reads, writes, listeners, or scheduled work were added.
+
+---
+
+## May 25, 2026 — Canonica Widget Image Support Website Refresh
+
+### Changed
+
+- **Canonica public pages now explain widget screenshot input accurately** — Homepage widget proof, In-App Help Widget, Install, Quickstarts, Security, Security One-Pager, FAQ, SEO widget pages, Updates, and LLM context now describe user-initiated screenshot upload or paste.
+- **Automatic capture stays out of scope** — Public copy explicitly avoids promising host-app screenshot capture, DOM scraping, or background visual collection.
+- **No new screenshot page was added** — The image feature is presented as part of the existing page-aware widget and safety model rather than a separate product category.
+
+### Cost
+
+- **No Firebase cost change** — These are static website and documentation changes only. Widget image queries still cost extra only when a user explicitly attaches an image.
+
+---
+
+## May 25, 2026 — Canonica Firebase Boundary Hardening
+
+### Changed
+
+- **Canonica widget/API keys now stay in Canonica Firebase** — In separated Firebase mode, `cn_` key validation reads Canonica Firestore and fails closed if Canonica Admin credentials are missing.
+- **Widget runtime no longer falls back to MenuList public API credentials** — `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback`, and predictive-help auth use Canonica widget credentials only.
+- **MenuList public API keys remain MenuList-only** — Menu and business public API routes reject non-`ml_` keys before credential lookup.
+- **Ticket dashboard reads are scoped** — Non-platform Canonica ticket reads/listeners require the active Canonica `tId/sId`, while platform support sessions keep the existing cross-tenant queue view.
+- **Canonica dashboard waits for Canonica Firebase Auth** — Dashboard child components mount after `ensureFirebaseAuthForSession()` resolves, and Canonica-route claim sync uses the Canonica tenant record while preserving platform/support access.
+- **Widget questions now reflect in Widget Management** — Widget search-history rows carry `mountContext`, and `/canonica/widget` shows recent widget questions from the active Canonica tenant/store.
+- **Canonica image search no longer trusts only MenuList Storage** — Help Center image-question validation now trusts configured Firebase Storage buckets for the active product, including Canonica QA/production buckets, instead of a hardcoded `ecomsai` bucket path.
+- **MenuList Help Center uses Canonica as an external client service** — When the signed-in MenuList user has a real Canonica product account, `/help-center` searches, tickets, changelog reads, and Firebase Auth sync use that Canonica `tId/sId` without a temporary client flag or hardcoded MenuList widget host.
+- **Cross-product source context is preserved** — Canonica-owned writes keep `pId: CN` while storing the originating product scope in `sourceContext`, so MenuList client activity remains auditable without routing Canonica data through MenuList Firebase.
+
+### Cost
+
+- **One bounded dashboard read was added** — `/canonica/widget` may read up to 12 recent `aiSearchHistory` rows when the widget activity panel loads or refreshes. Widget runtime query cost is unchanged.
+- **No extra search reads were added** — The Storage trust change only changes URL validation before an existing image fetch; it does not add Firestore reads, writes, or listeners.
+- **MenuList client scoping does not add new reads** — It reuses the session payload and existing Canonica reads/writes that the Help Center, tickets, changelog, and widget flows already perform.
+
+---
+
 ## May 25, 2026 — Environment Target Matrix
 
 ### Changed
@@ -310,6 +359,7 @@
 ### Changed
 
 - **Widget keys separated from public API keys** — Canonica widget credentials now use `canonicaWidgetApi` with widget scopes. Canonica public API routes continue to use `publicApi` and reject widget-only keys.
+- **Widget key manager moved to bounded named keys** — Canonica widget keys now stay on the existing store document with `keyHashes` and `keysByHash`, support create/rename/copy/delete in the dashboard, and avoid new key collections or extra runtime store reads.
 - **Settings now points to widget management** — `/canonica/settings` stays available and routes users to the dedicated widget management surface instead of duplicating widget save logic.
 
 ## May 18, 2026 — Staff and Permissions Completion

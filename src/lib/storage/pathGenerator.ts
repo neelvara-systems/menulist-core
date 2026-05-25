@@ -31,9 +31,9 @@ export interface StoragePathOptions {
  *     collection: 'chatSessions',
  *     fileType: 'chatimages',
  *     session: { tId: 5, sId: 12 },
- *     fileId: '1729833600000-user123'
+ *     fileId: '1729833600000-random'
  * })
- * // Returns: 'chatSessions/chatimages/5/12/1729833600000-user123'
+ * // Returns: 'chatSessions/chatimages/5/12/1729833600000-random'
  * ```
  */
 export function generateStoragePath(options: StoragePathOptions): string {
@@ -58,17 +58,7 @@ export function generateStoragePath(options: StoragePathOptions): string {
     }
 
     // Construct path
-    const path = `${collection}/${fileType}/${tenantId}/${storeId}/${fileId}`;
-    
-    // Log path generation for debugging (can be removed in production)
-    console.log('📁 Generated storage path:', path, {
-        collection,
-        fileType,
-        tId: tenantId,
-        sId: storeId
-    });
-    
-    return path;
+    return `${collection}/${fileType}/${tenantId}/${storeId}/${fileId}`;
 }
 
 /**
@@ -77,8 +67,8 @@ export function generateStoragePath(options: StoragePathOptions): string {
  * 
  * @example
  * ```typescript
- * parseStoragePath('chatSessions/chatimages/5/12/1729833600000-user123.jpeg')
- * // Returns: { collection: 'chatSessions', fileType: 'chatimages', tId: '5', sId: '12', fileId: '1729833600000-user123.jpeg' }
+ * parseStoragePath('chatSessions/chatimages/5/12/1729833600000-random.jpeg')
+ * // Returns: { collection: 'chatSessions', fileType: 'chatimages', tId: '5', sId: '12', fileId: '1729833600000-random.jpeg' }
  * ```
  */
 export function parseStoragePath(path: string): {
@@ -91,7 +81,6 @@ export function parseStoragePath(path: string): {
     const parts = path.split('/');
     
     if (parts.length < 5) {
-        console.warn('Invalid storage path format:', path);
         return null;
     }
 

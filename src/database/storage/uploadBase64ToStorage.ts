@@ -28,6 +28,7 @@ type SupportedFileType =
 
 interface UploadFileData {
     cacheControl?: string;      // Optional Cache-Control metadata for versioned/immutable paths
+    customMetadata?: Record<string, string>;
     fileId: string;              // Unique identifier for the file
     storage?: FirebaseStorage | null; // Optional Firebase Storage instance for separated products
     url: string;                 // Base64 encoded data URL or base64 string
@@ -158,9 +159,9 @@ function normalizeFileType(type?: SupportedFileType): FileTypeConfig {
  * @example
  * ```typescript
  * const downloadURL = await uploadBase64ToStorage({
- *     fileId: '1729833600000-user123',
+ *     fileId: '1729833600000-random',
  *     url: 'data:image/png;base64,iVBORw0KGgo...',
- *     path: 'chatSessions/chatimages/5/12/1729833600000-user123',
+ *     path: 'chatSessions/chatimages/5/12/1729833600000-random',
  *     type: 'image/png'
  * });
  * ```
@@ -178,6 +179,7 @@ const uploadBase64ToStorage = async (fileData: UploadFileData): Promise<string> 
             ...(fileData.cacheControl ? { cacheControl: fileData.cacheControl } : {}),
             contentType: typeConfig.contentType,
             customMetadata: {
+                ...(fileData.customMetadata || {}),
                 fileId: fileData.fileId,
                 uploadedAt: new Date().toISOString()
             }
@@ -197,21 +199,9 @@ const uploadBase64ToStorage = async (fileData: UploadFileData): Promise<string> 
         // Get download URL
         const downloadURL = await getDownloadURL(storageRef);
         
-        console.log('✅ File uploaded successfully:', {
-            path: fileName,
-            type: typeConfig.contentType,
-            url: downloadURL
-        });
-        
         return downloadURL;
         
     } catch (error) {
-        console.error('❌ Error uploading file to storage:', {
-            path: fileData.path,
-            type: fileData.type,
-            error: error instanceof Error ? error.message : String(error)
-        });
-        
         // Re-throw error so caller can handle it
         throw new Error(
             `Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`

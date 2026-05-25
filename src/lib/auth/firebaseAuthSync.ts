@@ -1,6 +1,10 @@
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { PRODUCT_IDS } from "@constant/product";
-import { getCanonicaScopedSession, isCanonicaRuntimeRoute } from "@lib/canonica/sessionScope";
+import {
+    getCanonicaScopedSession,
+    isCanonicaRuntimeRoute,
+    shouldUseCanonicaClientScopeForRoute,
+} from "@lib/canonica/sessionScope";
 import { syncCanonicaAuthWithCustomToken } from "@lib/firebase/syncCanonicaAuth";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
@@ -79,17 +83,20 @@ const sameEmail = (left?: string | null, right?: string | null) => (
     String(left || "").toLowerCase().trim() === String(right || "").toLowerCase().trim()
 );
 
-const shouldUseCanonicaScope = () => (
-    typeof window !== "undefined"
-    && isCanonicaRuntimeRoute(window.location.pathname, window.location.hostname)
-);
+const shouldUseCanonicaScope = (session?: any) => {
+    if (typeof window === "undefined") return false;
+    if (session) {
+        return shouldUseCanonicaClientScopeForRoute(session, window.location.pathname, window.location.hostname);
+    }
+    return isCanonicaRuntimeRoute(window.location.pathname, window.location.hostname);
+};
 
 const getEffectiveSessionForFirebaseAuth = (session: any) => {
     const outletScopedSession = typeof window === "undefined"
         ? session
         : applyActiveStoreContextToSession(session);
 
-    return shouldUseCanonicaScope()
+    return shouldUseCanonicaScope(outletScopedSession)
         ? getCanonicaScopedSession(outletScopedSession)
         : outletScopedSession;
 };
@@ -97,7 +104,7 @@ const getEffectiveSessionForFirebaseAuth = (session: any) => {
 async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
     if (!session?.user?.email) return { ready: false };
-    const isCanonicaScope = shouldUseCanonicaScope();
+    const isCanonicaScope = shouldUseCanonicaScope(session);
 
     const tenantId = getSessionTenantId(session);
     const storeId = getSessionStoreId(session);
@@ -129,7 +136,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
         body: JSON.stringify({
             ...(canRefreshCurrentUser && currentUser ? { uid: currentUser.uid } : {}),
             targetStoreId: Number(storeId),
-            ...(shouldUseCanonicaScope() ? { productId: PRODUCT_IDS.CANONICA } : {}),
+            ...(isCanonicaScope ? { productId: PRODUCT_IDS.CANONICA } : {}),
         }),
     });
 

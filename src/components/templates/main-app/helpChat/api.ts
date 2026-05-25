@@ -21,8 +21,9 @@ interface SearchKnowledgeBaseParams {
 }
 
 export async function searchKnowledgeBase({ query, mode, conversationHistory, image, productContext, sessionFailureCount }: SearchKnowledgeBaseParams): Promise<SearchAPIResponseType> {
-    // ✅ Strip unnecessary fields from conversation history before sending to AI
-    // Only send essential data: role, content/craftedAnswer, and image
+    // Strip unnecessary fields from conversation history before sending to AI.
+    // Prior image URLs are intentionally not replayed; each image is context for
+    // the single question it was attached to.
     // This reduces payload size, protects privacy, and saves tokens
     const cleanContext = mode === 'assistant' && conversationHistory
         ? conversationHistory.slice(-5).map(msg => ({
@@ -30,7 +31,6 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
             ...(msg.role === 'user'
                 ? { content: msg.content || '' }
                 : { craftedAnswer: msg.craftedAnswer || msg.content || '' }),
-            ...(msg.image?.url && { image: { url: msg.image.url } })
         }))
         : undefined;
 
@@ -42,7 +42,7 @@ export async function searchKnowledgeBase({ query, mode, conversationHistory, im
             mode,
             context: cleanContext, // Send cleaned conversation history
             productContext: productContext || undefined,
-            imageUrl: image?.url, // Send uploaded image URL to backend
+            imageUrl: image?.url?.startsWith('https://') ? image.url : undefined,
             sessionFailureCount, // AI Failure Escalation (Item #8) — S3 trigger
         })
     });

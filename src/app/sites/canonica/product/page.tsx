@@ -13,7 +13,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: starter surfaces, import pack, page-aware widget, hosted help, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: starter surfaces, import pack, page-aware widget with explicit screenshot input, hosted help, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -44,11 +44,12 @@ const FEATURES = [
         id: 'page-aware-support',
         badge: 'Support Control',
         title: 'Show help that matches the page the user is on',
-        description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help. Configured proactive prompts can appear only where active triggers exist.',
+        description: 'Canonica receives safe route and product-surface context from the widget, so billing, onboarding, settings, and release questions can resolve to different help. Users can attach screenshots explicitly when visual context helps. Configured proactive prompts can appear only where active triggers exist.',
         capabilities: [
             'Widget install script with allowed-origin and blocked-route controls',
             'Hosted help center for docs, FAQ, and changelog on help/docs/support domains like help.yourapp.com',
             'Safe context payloads for page, feature, workflow, plan, and role hints',
+            'User-initiated screenshot upload or paste for visual errors, without automatic screen capture',
             'Related articles, FAQs, and changelog entries filtered by product surface',
             'Rule-based proactive help that skips backend calls when the feature is disabled or no active trigger exists',
             'Tickets as fallback when approved content is missing, with safe debugging context to reduce back-and-forth',

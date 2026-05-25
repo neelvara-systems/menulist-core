@@ -305,6 +305,7 @@ Platform operator opens Canonica management
 | 12  | Owner shell not mobile-safe      | Canonica layout now uses mobile drawer navigation and no fixed-width content      |
 | 13  | Widget image previews assumed PNG | Widget messages now retain MIME type for uploaded images                          |
 | 14  | Help Center did not pass context-aware product context into AI search | `HeroSearchBar` now builds tab-aware `productContext`; `HelpChat` sends it as top-level request data |
+| 14a | Help Center image search could over-trust stored image URLs or replay image context | Chat image URLs are tenant/store path-checked, images are not saved as localStorage drafts, previous image URLs are not replayed in assistant context, and answer generation receives bounded visual context instead of a second raw image pass |
 | 15  | Server retrieval fast paths could depend on client Firebase DALs | Canonical retrieval, instant-cache search, and server signal writes now use Canonica Admin Firestore |
 | 16  | Widget context clearing could leave stale context inside iframe | `setContext(null)` now clears widget state and posts the cleared context to the iframe |
 | 17  | Graph suggestions could render non-string objects in the widget | Widget suggestions are normalized before rendering and before quick-question clicks |

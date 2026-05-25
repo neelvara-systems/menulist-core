@@ -53,12 +53,7 @@ const ChatFooter = ({
             <ChatInput
                 onSendMessage={onSendMessage}
                 onInputChange={(value) => onSearchQueryChange(value)}
-                onImageUpload={(file) => {
-                    // Image upload callback - handled internally by ChatInput
-                    if (process.env.NODE_ENV === 'development') {
-                        console.log('Image uploaded:', file.name, file.size);
-                    }
-                }}
+                onImageUpload={() => undefined}
                 mode={mode}
                 disabled={disabled}
                 sessionId={sessionId}

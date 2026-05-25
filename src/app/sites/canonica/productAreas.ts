@@ -7,7 +7,7 @@ export const CANONICA_PRODUCT_AREAS = [
     {
         label: 'In-app help widget',
         href: '/product/page-aware-widget',
-        description: 'Install one widget, pass safe page hints, control allowed domains, and answer users inside your app.',
+        description: 'Install one widget, pass safe page hints, accept explicit screenshot context, control allowed domains, and answer users inside your app.',
     },
     {
         label: 'Help center + tickets',

@@ -7,7 +7,7 @@ import CanonicaPageStructuredData from '../components/PageStructuredData';
 
 export const metadata: Metadata = {
     title: 'Security and Ops One-Pager',
-    description: 'A shareable Canonica security and operations summary covering allowed origins, blocked routes, safe context, hashed keys, approval, rate limits, and incident contact.',
+    description: 'A shareable Canonica security and operations summary covering allowed origins, blocked routes, safe context, manual screenshot attachments, hashed keys, approval, rate limits, and incident contact.',
     alternates: { canonical: '/security-one-pager' },
 };
 
@@ -23,7 +23,8 @@ const ONE_PAGER = [
     ['Allowed origins', 'Restrict widget runtime config to the product and staging domains where Canonica should run.'],
     ['Blocked routes', 'Hide the widget from auth, payment, admin, internal help, or other sensitive paths.'],
     ['Safe page context', 'Send page, route, feature, workflow, role, plan, state, and entity hints. Do not send secrets or raw customer records.'],
-    ['Widget key handling', 'Raw widget keys are shown once. Canonica stores hashes and later shows only a prefix for operator recognition.'],
+    ['Screenshot attachments', 'Screenshots are user-initiated upload or paste only. The widget does not automatically capture the host app screen or scrape the DOM.'],
+    ['Widget key handling', 'Canonica validates widget keys by hash and can copy recoverable widget keys only from encrypted server-side key material.'],
     ['Owner approval', 'Drafts, generated answers, and mutation proposals do not become official support truth until reviewed.'],
     ['Runtime rate limits', 'Public widget config, search, feedback, predictive, and API paths are bounded and validated before expensive work.'],
     ['Tenant scope', 'Dashboard and runtime reads resolve Canonica workspace scope server-side; client context is never trusted as tenant identity.'],
@@ -70,7 +71,7 @@ export default function CanonicaSecurityOnePagerPage() {
                         <article className="rounded-[1.5rem] border border-amber-300/20 bg-amber-300/[0.04] p-6">
                             <h2 className="text-2xl font-bold text-white">What not to send</h2>
                             <p className="mt-4 text-sm leading-relaxed text-[#d6d6ef]">
-                                Do not send passwords, auth tokens, card data, private customer records, raw database IDs, emails, phone numbers, or unrelated personal information.
+                                Do not send passwords, auth tokens, card data, private customer records, raw database IDs, emails, phone numbers, unrelated personal information, or screenshots of screens that reveal secrets.
                             </p>
                         </article>
                     </div>

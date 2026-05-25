@@ -61,13 +61,22 @@ const buildSourceContextFromSession = async () => {
     const email = session.user?.email;
     const name = session.user?.name || email;
     const phone = (session as any).phone || (session.user as any)?.phone;
+    const sessionSourceContext = (session as any).sourceContext && typeof (session as any).sourceContext === 'object'
+        ? (session as any).sourceContext
+        : undefined;
     const sourcePId =
-        normalizeProductId((session as any).sourceContext?.pId)
+        normalizeProductId(sessionSourceContext?.pId)
         || normalizeProductId((session as any).sourceProductId)
         || normalizeProductId((session as any).pId)
         || normalizeProductId((session.user as any)?.pId);
-    const sourceTId = normalizeNumber((session as any).tId);
-    const sourceSId = normalizeNumber((session as any).sId);
+    const sourceTId =
+        normalizeNumber(sessionSourceContext?.tId)
+        ?? normalizeNumber((session as any).sourceTenantId)
+        ?? normalizeNumber((session as any).tId);
+    const sourceSId =
+        normalizeNumber(sessionSourceContext?.sId)
+        ?? normalizeNumber((session as any).sourceStoreId)
+        ?? normalizeNumber((session as any).sId);
 
     if (!uId || !email || !name) return undefined;
     const includeCrossProductScope = Boolean(sourcePId && sourcePId !== PRODUCT_IDS.CANONICA);

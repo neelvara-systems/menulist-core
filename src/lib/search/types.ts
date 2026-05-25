@@ -43,7 +43,7 @@ export interface CoreSearchInput {
         craftedAnswer?: string;
     }>;
 
-    /** Image URL (Firebase Storage only) — authenticated help center uploads */
+    /** Tenant/store-scoped chat image URL (Firebase Storage only) — authenticated help center uploads */
     imageUrl?: string;
 
     /** Inline image payload — public widget uses this to avoid temporary storage writes */

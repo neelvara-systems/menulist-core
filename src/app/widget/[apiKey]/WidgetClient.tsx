@@ -17,8 +17,15 @@ import {
     LuThumbsUp,
     LuX,
 } from 'react-icons/lu';
+import {
+    CANONICA_CHAT_IMAGE_ACCEPT,
+    CANONICA_CHAT_IMAGE_ALLOWED_LABEL,
+    CANONICA_CHAT_IMAGE_MAX_BYTES,
+    isAllowedCanonicaChatImageMimeType,
+    normalizeCanonicaChatImageMimeType,
+    stripDataUrlPrefix,
+} from '@lib/canonica/chatImagePolicy';
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_SESSION_MESSAGES = 5;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
 
@@ -382,19 +389,32 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     // Image upload handler
     const handleImageSelect = (file: File) => {
-        if (file.size > MAX_IMAGE_SIZE) {
-            setError('Image must be less than 5MB');
+        const normalizedMimeType = normalizeCanonicaChatImageMimeType(file.type);
+        const maxImageSizeMb = Math.floor(CANONICA_CHAT_IMAGE_MAX_BYTES / (1024 * 1024));
+
+        if (file.size > CANONICA_CHAT_IMAGE_MAX_BYTES) {
+            setError(`Image must be less than ${maxImageSizeMb}MB`);
             return;
         }
-        if (!file.type.startsWith('image/')) {
-            setError('Only image files are allowed');
+
+        if (!isAllowedCanonicaChatImageMimeType(normalizedMimeType)) {
+            setError(`Only ${CANONICA_CHAT_IMAGE_ALLOWED_LABEL} images are allowed`);
             return;
         }
+
         const reader = new FileReader();
         reader.onload = () => {
-            const base64 = (reader.result as string).split(',')[1]; // Remove data:image/...;base64, prefix
-            setSelectedImage({ base64, mimeType: file.type, name: file.name });
+            const rawDataUrl = typeof reader.result === 'string' ? reader.result : '';
+            const base64 = stripDataUrlPrefix(rawDataUrl);
+            if (!base64) {
+                setError('Could not read image. Try a different file.');
+                return;
+            }
+
+            setError(null);
+            setSelectedImage({ base64, mimeType: normalizedMimeType, name: file.name });
         };
+        reader.onerror = () => setError('Could not read image. Try a different file.');
         reader.readAsDataURL(file);
     };
 
@@ -403,7 +423,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         const items = e.clipboardData?.items;
         if (!items) return;
         for (let i = 0; i < items.length; i++) {
-            if (items[i].type.startsWith('image/')) {
+            if (isAllowedCanonicaChatImageMimeType(items[i].type)) {
                 e.preventDefault();
                 const file = items[i].getAsFile();
                 if (file) handleImageSelect(file);
@@ -698,7 +718,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept={CANONICA_CHAT_IMAGE_ACCEPT}
                     style={{ display: 'none' }}
                     onChange={(e) => { if (e.target.files?.[0]) handleImageSelect(e.target.files[0]); e.target.value = ''; }}
                 />
@@ -706,7 +726,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     style={styles.imageBtn}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
-                    title="Attach screenshot"
+                    title={`Attach screenshot (${CANONICA_CHAT_IMAGE_ALLOWED_LABEL}, up to 5MB)`}
                     aria-label="Attach screenshot"
                 >
                     <LuImage size={18} aria-hidden />

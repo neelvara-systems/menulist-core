@@ -721,7 +721,7 @@ These are derived from existing performance logs — no new collection needed.
 | Phase | Action                                                              | Risk                        |
 | ----- | ------------------------------------------------------------------- | --------------------------- |
 | 1     | Implement + deploy with flag OFF                                    | Zero risk                   |
-| 2     | Enable flag for internal testing (MenuList = first Canonica client) | Low — internal only         |
+| 2     | Enable context-aware support for the first independent client integration (MenuList) | Low — internal only         |
 | 3     | Test with sample queries + context payloads                         | Low — verify boost behavior |
 | 4     | Monitor performance logs for context adoption + hit rate            | Zero risk — read-only       |
 | 5     | Enable for early adopter tenants                                    | Medium — gradual rollout    |
