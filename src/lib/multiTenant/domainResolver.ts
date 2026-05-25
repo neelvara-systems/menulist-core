@@ -34,6 +34,9 @@ export interface ResolvedDomain {
     isClient: boolean;
 }
 
+const isVercelDeploymentHost = (hostname: string): boolean =>
+    hostname === 'vercel.app' || hostname.endsWith('.vercel.app');
+
 /**
  * Parse hostname and determine domain type
  */
@@ -65,6 +68,18 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
 
     // Check if it's a platform domain (menulist.ai, app.menulist.ai, localhost, etc.)
     if (PLATFORM_DOMAINS.some(d => d.split(':')[0] === normalizedHost)) {
+        return {
+            type: 'platform',
+            hostname: normalizedHost,
+            isPlatform: true,
+            isClient: false,
+        };
+    }
+
+    // Vercel-generated deployment aliases are app hosts for QA/prod smoke,
+    // not tenant custom domains. Real customer routing still uses configured
+    // platform subdomains or explicitly mapped custom domains.
+    if (isVercelDeploymentHost(normalizedHost)) {
         return {
             type: 'platform',
             hostname: normalizedHost,
