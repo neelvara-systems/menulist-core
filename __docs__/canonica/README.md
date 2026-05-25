@@ -156,8 +156,9 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `POST /api/helpCenter/article-embedding` — Generate & store article embeddings
 - `GET /api/canonica/activation/summary` — Cost-optimized client readiness summary from compact store/platformSummary docs
 - `POST /api/canonica/onboard` — Self-service Canonica workspace provisioning
-- `GET/PUT /api/canonica/workspace-profile` — Product URL, support email, billing model, and initial surface profile
+- `GET/PUT /api/canonica/workspace-profile` — Product URL, support email, billing model, scheduler timezone/support-day end time, and initial surface profile
 - `GET/PUT /api/canonica/widget-config` — Protected widget configuration, allowed origins, blocked routes, and runtime status
+- `GET /api/canonica/operations/status` — Protected Activation Daily Governance status from compact scheduler summaries and capped run logs
 - `POST /api/canonica/widget-key` — Protected widget key generation/revocation
 - `POST /api/canonica/tenant-summary` — Authenticated server-side sync for `platformSummary/canonicaTenantsSummary` after client-side entity creation
 - `POST /api/canonica/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
@@ -189,7 +190,9 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 ### Cloud Functions
 
 - `functions-canonica/src/index.ts` — Canonica Cloud Functions entry point
-- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica nightly: summary-based tenant discovery, drift detection, signal mutation, signal resolution, coverage KPI, trust metrics, fallback detection, impact tracking, confidence adjustment, and signal TTL
+- `functions-canonica/src/canonica/canonicaMasterScheduler.ts` — Centralized Canonica scheduler: task registry, hourly EOD filtering, task lease, workspace/date locks, and master scheduler state
+- `functions-canonica/src/canonica/schedulerTime.ts` — Workspace timezone/support-day settlement helpers
+- `functions-canonica/src/canonica/canonicaNightly.ts` — Canonica governance batch: summary-based tenant discovery, drift detection, signal mutation, signal resolution, coverage KPI, trust metrics, fallback detection, impact tracking, confidence adjustment, and signal TTL
 - `functions-canonica/src/canonica/tenantSummary.ts` — Cost-optimized `platformSummary/canonicaTenantsSummary` registry used by the scheduler before legacy entity-scan fallback
 - `functions-canonica/src/canonica/canonicaNightly.ts` — Persists structured run logs to `canonica_schedulerRunLogs` with per-tenant task results and diagnostics
 - `functions-canonica/src/canonica/draftGenerator.ts` — Canonical answer draft generation

@@ -4,6 +4,7 @@ import { CANONICA_GOVERNANCE_TABS, CANONICA_ROUTES, getCanonicaGovernanceRoute, 
 import type { CanonicaActivationStep, CanonicaActivationSummary } from '@type/canonica';
 import CanonicaCustomerFlowChecklist from '@template/canonica/content/CanonicaCustomerFlowChecklist';
 import CanonicaContentWorkbench from '@template/canonica/content/CanonicaContentWorkbench';
+import CanonicaOperationsPanel from './CanonicaOperationsPanel';
 import {
     Alert,
     Button,
@@ -393,6 +394,10 @@ export default function CanonicaActivationCommandCenter() {
                 </Col>
                 <Col xs={24} lg={8}>
                     <Flex vertical gap={12}>
+                        <CanonicaOperationsPanel
+                            isMobile={isMobile}
+                            onOpenSettings={() => openRoute(CANONICA_ROUTES.SETTINGS)}
+                        />
                         <Card title="Widget Runtime">
                             <Space direction="vertical" size={10} style={{ width: '100%' }}>
                                 <Flex justify="space-between" gap={12}>

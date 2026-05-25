@@ -107,6 +107,14 @@ const FAQS = [
         answer: 'No. Proactive help is configured and page-aware. The widget should only request or show configured prompts when the workspace has active triggers and approved support summaries for that page context.',
     },
     {
+        question: 'Does every widget load scan all support data?',
+        answer: 'No. Canonica is designed around compact summaries, cache freshness checks, and compiled approved context so runtime paths can stay fast and cost-aware. Source data remains governed in Canonica, and public bundles do not include drafts, tickets, audit logs, API keys, or private workspace internals.',
+    },
+    {
+        question: 'Can coding agents use Canonica through MCP today?',
+        answer: 'MCP and agent-context tools stay rollout-gated. Canonica can prepare approved context for authenticated server paths, but public pages do not promise general MCP access or agent-side knowledge writes.',
+    },
+    {
         question: 'What happens when a product release changes an answer?',
         answer: 'Changelogs can be tied to product surfaces and affected answers. Drift and release-impact checks then show which support content needs review.',
     },

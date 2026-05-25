@@ -30,6 +30,13 @@ const TRUST_CONTROLS = [
         rows: [['official answer', 'owner approved']] as Array<[string, string]>,
     },
     {
+        status: 'compiled',
+        title: 'Serve approved context from bundles',
+        detail: 'Ready widget context can load from versioned, public-safe bundles instead of repeated database scans.',
+        tone: 'good' as const,
+        rows: [['runtime path', 'cache first']] as Array<[string, string]>,
+    },
+    {
         status: 'fallback',
         title: 'Unknown questions become gaps',
         detail: 'Ticket fallback and feedback become support gaps instead of hidden chat noise.',
@@ -53,7 +60,7 @@ export default function HomeTrustSection() {
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security at a glance</p>
                     <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Safe page context, not secret data.</h2>
                     <p className="mt-4 text-lg leading-relaxed text-[#a0a0c0]">
-                        Canonica only needs safe context like page, feature, workflow, plan, or role. Do not send passwords, tokens, card data, private customer records, or unrelated personal data.
+                        Canonica only needs safe context like page, feature, workflow, plan, or role. Approved runtime context can be served from compiled bundles, while secrets, tokens, card data, private customer records, and unrelated personal data stay out.
                     </p>
                 </div>
                 <CanonicaStatusBoard items={TRUST_CONTROLS} />

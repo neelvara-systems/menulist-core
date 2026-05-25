@@ -1,11 +1,13 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, uploadFile } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { updateStore } from '@database/stores';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -18,8 +20,8 @@ import type { UploadProps } from 'antd';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuFileText, LuTrash2, LuUpload } from 'react-icons/lu';
-import { Button, Card, Checkbox, Dialog, DotLoading, Flex, Image, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
+import { LuFileText, LuGlobe2, LuTrash2, LuUpload } from 'react-icons/lu';
+import { Button, Card, Checkbox, Dialog, DotLoading, Flex, Image, Input, NavBar, Popup, ProgressBar, Result, Tag, Text, Title, Toast, Upload } from '../antd';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 interface MenuUploadSheetProps {
@@ -115,6 +117,9 @@ export default function MenuUploadSheet({
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [linkUrl, setLinkUrl] = useState('');
+    const [linkPermissionConfirmed, setLinkPermissionConfirmed] = useState(false);
+    const [linkImporting, setLinkImporting] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -557,6 +562,70 @@ export default function MenuUploadSheet({
         t,
     ]);
 
+    const handleMenuLinkImport = useCallback(async () => {
+        if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) return;
+        if (!linkUrl.trim()) {
+            Toast.show({ content: 'Paste a public menu link.', duration: 1800 });
+            return;
+        }
+        if (!linkPermissionConfirmed) {
+            Toast.show({ content: 'Confirm you have permission to import this menu.', duration: 2200 });
+            return;
+        }
+
+        try {
+            setLinkImporting(true);
+            setStep('uploading');
+            setProgress(10);
+            setStatusText('Reading menu link');
+
+            let projectId = currentProjectId || null;
+            if (!projectId) {
+                if (!canCreateLocalProjects) {
+                    throw new Error('New local menus are not enabled for this location.');
+                }
+                setStatusText(t('menuUploadCreatingProject'));
+                const newProject = await addProject({
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
+                    name: t('myMenu'),
+                });
+                if (!newProject?.projectId) {
+                    throw new Error(t('menuUploadCreateProjectFailed'));
+                }
+                projectId = newProject.projectId;
+            }
+
+            setProgress(55);
+            setStatusText('Creating review draft');
+            const result = await createMenuLinkImportJob({
+                permissionConfirmed: linkPermissionConfirmed,
+                projectId,
+                url: linkUrl.trim(),
+            });
+
+            setProgress(100);
+            setLinkUrl('');
+            setLinkPermissionConfirmed(false);
+            onJobCreated({ jobId: result.jobId, projectId: result.projectId });
+        } catch (error: any) {
+            console.error('[MobileMenuUpload] Link import failed:', error);
+            setErrorMessage(error?.message || 'We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+            setStep('error');
+        } finally {
+            setLinkImporting(false);
+        }
+    }, [
+        canCreateLocalProjects,
+        currentProjectId,
+        linkPermissionConfirmed,
+        linkUrl,
+        onJobCreated,
+        storeDetails?.businessCategory,
+        storeDetails?.businessType,
+        t,
+    ]);
+
     return (
         <Popup
             bodyStyle={MENU_SHEET_BODY_STYLE}
@@ -576,6 +645,7 @@ export default function MenuUploadSheet({
 
                 <Flex gap={16} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 12px 12px' }} vertical>
                     {step === 'select' ? (
+                        <>
                         <Card
                             style={{
                                 background: `linear-gradient(165deg, ${token.colorBgContainer} 0%, ${token.colorFillAlter} 55%, ${token.colorBgElevated} 100%)`,
@@ -644,6 +714,66 @@ export default function MenuUploadSheet({
                                 </Flex>
                             </Flex>
                         </Card>
+                        {FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT ? (
+                            <Card
+                                style={{
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 18,
+                                }}
+                            >
+                                <Flex gap={12} vertical>
+                                    <Flex align="center" gap={10}>
+                                        <Flex
+                                            align="center"
+                                            justify="center"
+                                            style={{
+                                                backgroundColor: token.colorPrimaryBg,
+                                                border: `1px solid ${token.colorPrimaryBorder}`,
+                                                borderRadius: 14,
+                                                color: token.colorPrimary,
+                                                height: 44,
+                                                minWidth: 44,
+                                                width: 44,
+                                            }}
+                                        >
+                                            <LuGlobe2 size={20} />
+                                        </Flex>
+                                        <Flex gap={2} style={{ flex: 1 }} vertical>
+                                            <Text strong>Import from existing menu link</Text>
+                                            <Text style={{ color: token.colorTextSecondary }}>
+                                                We&apos;ll create a draft for review before anything is published.
+                                            </Text>
+                                        </Flex>
+                                    </Flex>
+                                    <Input
+                                        disabled={!canUploadToCurrentContext || linkImporting}
+                                        onChange={setLinkUrl}
+                                        placeholder="https://example.com/menu"
+                                        value={linkUrl}
+                                    />
+                                    <Checkbox
+                                        checked={linkPermissionConfirmed}
+                                        disabled={!canUploadToCurrentContext || linkImporting}
+                                        onChange={setLinkPermissionConfirmed}
+                                    >
+                                        I confirm this is my business menu or I have permission to import it.
+                                    </Checkbox>
+                                    <Button
+                                        block
+                                        color="primary"
+                                        disabled={!canUploadToCurrentContext || !linkUrl.trim() || !linkPermissionConfirmed}
+                                        icon={<LuGlobe2 size={18} />}
+                                        loading={linkImporting}
+                                        onClick={handleMenuLinkImport}
+                                        size="large"
+                                        style={{ borderRadius: 16, minHeight: 52 }}
+                                    >
+                                        Import link
+                                    </Button>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                        </>
                     ) : null}
 
                     {step === 'review' ? (

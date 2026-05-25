@@ -213,8 +213,8 @@ Functions deployed in `us-central1`:
 
 | Function | Trigger | Memory | Runtime |
 | --- | --- | --- | --- |
-| `canonicaNightly` | scheduled | 512 MiB | nodejs22 |
-| `triggerCanonicaNightly` | HTTPS | 512 MiB | nodejs22 |
+| `canonicaNightly` | scheduled hourly master scheduler alias | 512 MiB | nodejs22 |
+| `triggerCanonicaNightly` | HTTPS manual master scheduler trigger | 512 MiB | nodejs22 |
 | `processIntegrationEvent` | Firestore create | 256 MiB | nodejs22 |
 | `embedArticleWorker` | task queue | 1 GiB | nodejs22 |
 | `publishApprovedJobFn` | callable | 1 GiB | nodejs22 |
@@ -303,19 +303,27 @@ Expected QA result when the code default `ENABLE_CANONICA_NIGHTLY=true` is deplo
 
 ```json
 {
+  "scheduler": "canonicaMasterScheduler",
   "status": "skipped",
-  "enabled": true,
-  "trigger": "manual"
+  "trigger": "manual",
+  "tasks": [
+    {
+      "name": "governance_nightly",
+      "status": "success"
+    }
+  ]
 }
 ```
 
-The manual trigger must also write a matching document under `canonica_schedulerRunLogs/{runLogId}` with:
+When tenants are processed, the governance batch writes a matching document under `canonica_schedulerRunLogs/{runLogId}` with:
 
 - `product: "canonica"`
 - `trigger: "manual"`
 - `status: "skipped"` when no eligible tenants exist, otherwise `success` or `partial`
 - `phase: "completed"`
 - `enabled: true`
+
+The master scheduler state always updates `platformSummary/canonicaSchedulerState`; per-workspace settlement uses `platformSummary/canonicaNightlyState_*` and `platformSummary/canonicaNightlyLock_*`.
 
 ## Local Development Notes
 
@@ -362,5 +370,5 @@ Before production launch on `canonica.app`:
 - Do not reuse QA service account credentials in production.
 - Do not store service account JSON or secret values in docs or Git.
 - Do not point production Canonica at the MenuList Firebase project.
-- Do not add Canonica scheduled functions to MenuList functions; Canonica scheduled work stays in `functions-canonica/`.
+- Do not add Canonica scheduled functions to MenuList functions; Canonica scheduled work stays in `functions-canonica/` and should route through the centralized Canonica scheduler before adding a new scheduled export.
 - Do not send production customer traffic until manual trigger logs, tenant summary discovery, and cost expectations are verified in production.

@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 const LLMS_TXT = `# Canonica
 
-> Canonica is the support layer for AI-built SaaS apps. It helps founders keep page-aware answers, help content, release context, and support gaps connected to approved product knowledge.
+> Canonica is the support layer for AI-built SaaS apps. It helps founders keep page-aware answers, help content, release context, compiled runtime context, and support gaps connected to approved product knowledge.
 
 Canonica is not a helpdesk replacement, chatbot autopilot, or documentation CMS. The public website explains the product, demo, pricing, widget install path, hosted help center, security posture, and buyer resources.
 
@@ -16,7 +16,7 @@ Canonica is not a helpdesk replacement, chatbot autopilot, or documentation CMS.
 - [Install](${CANONICA_SITE_URL}/install): Widget script, allowed origins, blocked routes, safe page context, and hosted help-domain setup.
 - [Integrations](${CANONICA_SITE_URL}/integrations): Slack and email workflow notifications, test delivery, compact health, and bounded delivery.
 - [Pricing](${CANONICA_SITE_URL}/pricing): Starter, Growth, and Studio plan guidance.
-- [Security](${CANONICA_SITE_URL}/security): Widget context, tenant boundary, owner-approved answers, rate limits, and responsible disclosure.
+- [Security](${CANONICA_SITE_URL}/security): Widget context, tenant boundary, compiled context boundaries, owner-approved answers, rate limits, and responsible disclosure.
 - [Resources](${CANONICA_SITE_URL}/resources): Launch, widget, support-control, and governance resources.
 - [Updates](${CANONICA_SITE_URL}/updates): Public product website update timeline.
 - [Extended LLM Context](${CANONICA_SITE_URL}/llms-full.txt): More detailed agent-readable product context and boundaries.
@@ -37,6 +37,7 @@ Canonica is not a helpdesk replacement, chatbot autopilot, or documentation CMS.
 - Do not present Canonica as a helpdesk, full AI support agent, compliance engine, or autonomous publisher.
 - Use "AI-built SaaS" for the founder-facing buyer. Use "vibe-coded" only as an SEO/campaign phrase, not the primary category.
 - Treat public API and broad workflow-adapter claims as rollout-gated unless a public route or page explicitly says otherwise. Slack and email workflow notifications are the self-service public integration path.
+- Treat MCP and agent-context tools as rollout-gated unless a public page explicitly exposes them. Public copy may describe compiled approved context, not general agent write access.
 - Do not assume public visitors can mutate Canonica customer data. Owner-approved knowledge changes happen inside authenticated Canonica workflows.
 - For current website crawling, use sitemap.xml, robots.txt, page HTML, structured data, and this llms.txt context.
 `;

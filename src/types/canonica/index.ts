@@ -896,6 +896,80 @@ export interface CanonicaActivationSummary {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CANONICA OWNER OPERATIONS
+// Summary-backed scheduler status for Activation Command Center.
+// ═══════════════════════════════════════════════════════════════
+
+export type CanonicaOwnerOperationStatus =
+    | 'completed'
+    | 'success'
+    | 'partial'
+    | 'running'
+    | 'skipped'
+    | 'not_started'
+    | 'failed';
+
+export interface CanonicaOperationsScheduleSummary {
+    timeZone: string;
+    businessDayEndTime: string;
+    settlementLocalTime: string;
+    settlementBufferMinutes: number;
+    description: string;
+}
+
+export interface CanonicaOperationsTaskSummary {
+    lastStatus: CanonicaOwnerOperationStatus | null;
+    lastRunId: string | null;
+    lastAttemptAt: string | null;
+    lastFinishedAt: string | null;
+    lastDurationMs: number;
+    lastActivity: boolean;
+    lastError: string | null;
+    lastDetails: Record<string, any>;
+}
+
+export interface CanonicaOperationsWorkspaceSummary {
+    status: CanonicaOwnerOperationStatus;
+    lastAttemptedLocalDate: string | null;
+    lastAttemptedAt: string | null;
+    lastCompletedLocalDate: string | null;
+    lastCompletedAt: string | null;
+    lastFailedLocalDate: string | null;
+    lastFailedAt: string | null;
+    lastDetails: Record<string, any>;
+}
+
+export interface CanonicaOperationsRunSummary {
+    id: string;
+    status: CanonicaOwnerOperationStatus | null;
+    trigger: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    durationMs: number;
+    tenantStatus: CanonicaOwnerOperationStatus | null;
+    taskCount: number;
+    errorCount: number;
+    totals: Record<string, any>;
+}
+
+export interface CanonicaOperationsStatusSummary {
+    schedule: CanonicaOperationsScheduleSummary;
+    masterScheduler: {
+        schedulerName: string;
+        updatedAt: string | null;
+        governanceTask: CanonicaOperationsTaskSummary;
+    };
+    workspace: CanonicaOperationsWorkspaceSummary;
+    latestRuns: CanonicaOperationsRunSummary[];
+    readModel: {
+        firestoreReads: number;
+        source: string;
+        runLogReadCap: number;
+        workspaceRunMatches: number;
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // COMPILED CONTEXT DISTRIBUTION
 // Storage-backed approved context for widget, public API, and MCP runtimes.
 // Feature-flagged: ENABLE_CANONICA_CONTEXT_BUNDLES

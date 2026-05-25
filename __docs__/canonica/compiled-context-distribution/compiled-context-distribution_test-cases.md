@@ -28,12 +28,13 @@
 - Session endpoint returns a short-lived token for valid scoped `cn_*` keys.
 - JSON-RPC endpoint lists tools.
 - Read tools return context from private bundles.
-- `report_missing_context` writes one aggregated bucket update.
+- `report_missing_context` writes one aggregated bucket update even when no ready bundle exists.
 - Expired or tampered session tokens are rejected.
 
 ## Rules
 
-- Tenant members can read allowed `platformSummary` bundle/source docs.
+- Tenant members cannot directly read `sourceVersions_*` or `bundleManifest_*`; server APIs return sanitized owner summaries.
+- Tenant writes to `sourceVersions_*` and `bundleManifest_*` are limited to source counters and stale-marker fields.
 - Client writes to Storage bundles are denied.
 - Public Storage bundle reads use opaque `publicBundleId`.
 - Private MCP bundle reads are server-only.

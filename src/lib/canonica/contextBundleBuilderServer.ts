@@ -41,6 +41,7 @@ const MAX_FAQS_FOR_BUNDLE = 500;
 const MAX_CHANGELOG_PAGES_FOR_BUNDLE = 5;
 const MAX_BUNDLE_CACHE_ENTRIES = 200;
 const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
+const MANIFEST_CACHE_TTL_MS = 60 * 1000;
 const PUBLIC_BUNDLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const PRIVATE_BUNDLE_CACHE_CONTROL = 'private, max-age=300';
 
@@ -52,6 +53,7 @@ type BundleCacheEntry = {
 };
 
 const bundleObjectCache = new Map<string, BundleCacheEntry>();
+const bundleManifestCache = new Map<string, BundleCacheEntry>();
 
 const getDb = () => {
     if (!canonicaFirestoreAdmin || typeof canonicaFirestoreAdmin.collection !== 'function') {
@@ -584,13 +586,25 @@ const uploadBundleObject = async (path: string, value: any, cacheControl: string
 export const getCanonicaContextBundleManifestServer = async (
     tId: number,
     sId: number,
+    cacheTtlMs = MANIFEST_CACHE_TTL_MS,
 ): Promise<CanonicaContextBundleManifest | null> => {
     const { tenantId, storeId } = assertScope(tId, sId);
+    const cacheKey = `${tenantId}_${storeId}`;
+    const cached = bundleManifestCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value as CanonicaContextBundleManifest | null;
+    if (cached) bundleManifestCache.delete(cacheKey);
+
     const snap = await getDb()
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(getCanonicaBundleManifestDocId(tenantId, storeId))
         .get();
-    return snap.exists ? ({ ...snap.data(), id: snap.id } as CanonicaContextBundleManifest) : null;
+    const manifest = snap.exists ? ({ ...snap.data(), id: snap.id } as CanonicaContextBundleManifest) : null;
+    if (bundleManifestCache.size >= MAX_BUNDLE_CACHE_ENTRIES) {
+        const oldestKey = bundleManifestCache.keys().next().value;
+        if (oldestKey) bundleManifestCache.delete(oldestKey);
+    }
+    bundleManifestCache.set(cacheKey, { value: manifest, expiresAt: Date.now() + cacheTtlMs });
+    return manifest;
 };
 
 export const loadCanonicaBundleObjectServer = async <T = any>(
@@ -760,6 +774,10 @@ export const buildCanonicaContextBundleServer = async (params: {
             reason: params.reason || 'manual',
             requestedBy: params.requestedBy || 'system',
         }, { merge: true });
+        bundleManifestCache.set(`${tenantId}_${storeId}`, {
+            value: { ...manifest, id: manifestRef.id },
+            expiresAt: Date.now() + MANIFEST_CACHE_TTL_MS,
+        });
         await lockRef.set({
             status: 'released',
             completedAt: FieldValue.serverTimestamp(),
@@ -774,7 +792,7 @@ export const buildCanonicaContextBundleServer = async (params: {
             tId: tenantId,
             sId: storeId,
             status: existingManifest?.lastReadyVersion ? 'stale' : 'failed',
-            lastBuildError: message.slice(0, 500),
+            lastBuildError: 'build_failed',
             lastBuildCompletedAt: FieldValue.serverTimestamp(),
             staleReason: 'build_failed',
             activeVersion: Number(existingManifest?.activeVersion || 0),

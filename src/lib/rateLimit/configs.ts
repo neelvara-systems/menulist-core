@@ -280,6 +280,26 @@ export const RATE_LIMIT_CONFIGS = {
         limit: 3,
         window: 86400,  // 24 hours
         description: 'Public menu entry - 3 per 24 hours per IP'
+    },
+
+    // ─────────────────────────────────────────────────────────────
+    // MENU LINK IMPORT (Authenticated owner source acquisition)
+    // @see __docs__/menu-link-import/
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Menu Link Import — authenticated owner-provided URL acquisition.
+     * Used by: POST /api/menu-link-imports
+     *
+     * Why 5/10min per user/store:
+     * - Each accepted request triggers source fetch, Storage write, and AI job.
+     * - Authenticated owners may retry bad links, but repeated attempts need a
+     *   cost and SSRF-abuse ceiling.
+     */
+    MENU_LINK_IMPORT: {
+        limit: 5,
+        window: 600,
+        description: 'Menu link import - 5 per 10 minutes per user/store'
     }
 } as const;
 

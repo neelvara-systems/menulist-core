@@ -68,8 +68,20 @@ export interface MenuImageProcessingJob {
     businessType?: string;
     /** Server-only extraction path. Used by messaging onboarding to reuse AI extraction without writing a temp project. */
     skipProjectSave?: boolean;
+    /** Force preview/review even when the target project has no existing items. */
+    forceReview?: boolean;
     /** Optional source marker for cross-flow diagnostics. */
     source?: string;
+    /** Optional source metadata for importer/audit flows. */
+    sourceMetadata?: {
+        acquisitionProvider?: string;
+        artifactId?: string;
+        finalUrl?: string;
+        sourceKind?: string;
+        sourceUrl?: string;
+        storagePath?: string;
+        [key: string]: unknown;
+    };
 
     // ─────────────────────────────────────────────────────────────
     // OUTPUT (Populated on completion)

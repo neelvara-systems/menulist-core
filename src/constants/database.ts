@@ -63,6 +63,7 @@ export const DB_COLLECTIONS = {
     ASSETS: "assets",
     IMAGE_BATCH_PROCESSING_JOBS: "imageBatchProcessingJobs",
     MENU_IMAGE_PROCESSING_JOBS: "menuImageProcessingJobs", // AI menu extraction job queue
+    MENU_LINK_IMPORT_ARTIFACTS: "menuLinkImportArtifacts", // Owner-provided URL import source artifacts
 
     // Social Content / Campaigns
     CAMPAIGNS: "campaigns",

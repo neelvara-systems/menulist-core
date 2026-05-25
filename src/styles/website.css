@@ -3174,7 +3174,7 @@
   }
 
   .ws-workflow-map__stack--input {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .ws-workflow-map__stack--output {
@@ -3737,7 +3737,7 @@
   }
 
   .ws-page-source-map__stack:not(.ws-page-source-map__stack--outputs) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .ws-page-source-map__stack--outputs {

@@ -65,7 +65,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 activeVersion: manifest.activeVersion,
                 lastReadyVersion: manifest.lastReadyVersion,
                 stats: manifest.stats,
-                lastBuildError: manifest.lastBuildError || null,
+                lastBuildError: manifest.lastBuildError ? 'Compiled context rebuild failed. Check platform logs.' : null,
                 staleReason: manifest.staleReason || null,
             },
         });

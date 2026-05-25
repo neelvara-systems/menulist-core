@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.10 (Multi-location Homepage-Style Pulse)
+**Version:** 3.6.11 (Existing Menu Link Intake Alignment)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** May 24, 2026
+**Last Updated:** May 25, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,7 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.10** | **Multi-location Homepage-Style Pulse** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
+| **3.6.11** | **Existing Menu Link Intake Alignment** | **"Upload your current menu. Publish one official version customers can trust."** | **ACTIVE** |
 
 Version 3.5.0 keeps the official customer-source hero but compresses the homepage around a faster buyer path: Hero -> Problem -> Source-to-public bridge -> Setup relief -> Public surfaces -> Customer preview -> Real-world rollout -> FAQ -> CTA. Dense advanced proof sections such as analytics, search/AEO, POS Sync, staff access, and industry breadth remain available in supporting pages/components, but they are no longer part of the primary homepage scroll. The header now exposes a Demo path to the customer preview, public branding renders as `MenuList`, hero setup copy matches the 7-day setup pricing language, and security copy avoids absolute password-breach claims. Pricing, payment, subscription, Razorpay, auth, onboarding, and `/create-menu` runtime logic were not changed.
 
@@ -56,6 +56,8 @@ Version 3.6.8 rebuilds the multi-location pulse layer away from sequential outle
 Version 3.6.9 aligns the `/how-it-works` supporting source-map output connector origin with the homepage source-map pattern so output paths begin under the center logo/ring and visually emerge from the core boundary. It also strengthens the supporting source-map ring ripple in light mode while preserving the calmer dark-mode ring treatment. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
 
 Version 3.6.10 changes the multi-location diagram to use the same animated pulse-stroke pattern as the homepage source map instead of custom moving circle dots. The static dotted paths remain in place, the pulse path uses `ws-map-pulse-flow` with the same dash shape and duration as the homepage, and all outlet paths stay synchronized. Copy, route order, pricing/payment runtime, subscription behavior, auth behavior, owner-dashboard behavior, upload/extraction flow, and public customer menu runtime were not changed.
+
+Version 3.6.11 aligns the main website with production-ready Menu Link Import without adding a separate homepage section. The homepage workflow and `/how-it-works` source maps now include an owner-provided existing menu link as a source input beside photo, PDF, and typed text. Copy stays conservative: MenuList prepares an owner-reviewed version and does not claim generic scraping, marketplace import, or automatic publishing. Pricing, payment, subscription, Razorpay, auth, onboarding, public `/create-menu` runtime internals, and public customer menu runtime were not changed.
 
 Old runnable/source-code backups have been removed. Historical research and staged planning docs may remain as reasoning records, but they are not website versions and must not be used as restoration sources.
 

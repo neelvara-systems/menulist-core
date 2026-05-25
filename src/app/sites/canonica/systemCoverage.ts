@@ -79,15 +79,19 @@ export const CANONICA_SYSTEM_COVERAGE = [
     },
     {
         mode: 'Runtime Layer',
-        summary: 'The backend is built to stay useful without turning every dashboard into a collection scan.',
+        summary: 'The backend is built to serve approved support context quickly without turning runtime traffic into collection scans.',
         items: [
             {
                 title: 'Summary-backed dashboards',
                 detail: 'Coverage, trust, context content, widget status, and tenant discovery use compact summary documents.',
             },
             {
-                title: 'Nightly governance',
-                detail: 'A separate Canonica scheduler handles drift, signal mutation, trust metrics, and controlled expansion jobs.',
+                title: 'Compiled context bundles',
+                detail: 'Approved public widget context and private server context are generated into versioned bundles so runtime paths avoid repeated source-data fanout.',
+            },
+            {
+                title: 'Workspace-local governance',
+                detail: 'A centralized Canonica scheduler checks due workspaces by their local support-day end time, then repairs stale compiled context and governance summaries.',
             },
             {
                 title: 'Cache freshness',
@@ -95,7 +99,7 @@ export const CANONICA_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Runtime verification',
-                detail: 'Widget config, allowed origins, blocked routes, context checks, and install status stay visible to the owner.',
+                detail: 'Widget config, allowed origins, blocked routes, context checks, compiled bundle status, and install status stay visible to the owner.',
             },
             {
                 title: 'Separate Firebase mode',

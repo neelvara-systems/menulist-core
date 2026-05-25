@@ -8,13 +8,13 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: 'How MenuList Works — From Current Menu to Official Public Source',
-    description: 'Upload a menu photo or PDF. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page.',
+    description: 'Start from a menu photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page.',
     alternates: {
         canonical: '/how-it-works',
     },
     openGraph: {
         title: 'How MenuList Works — From Current Menu to Official Public Source',
-        description: 'Upload a menu photo or PDF. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page.',
+        description: 'Start from a menu photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page.',
         url: '/how-it-works',
     },
 };
@@ -25,7 +25,7 @@ export default function Page() {
             <WebsitePageStructuredData
                 path="/how-it-works"
                 title="How MenuList Works - From Current Menu to Official Public Source"
-                description="Upload a menu photo or PDF. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page."
+                description="Start from a menu photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version for QR, web, screens, PDF, and your official business page."
             />
             <Header />
             <ProductPage />

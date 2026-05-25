@@ -15,7 +15,7 @@ import {
     sanitizeWidgetRuntimeTelemetry,
     shouldUpdateWidgetRuntimeStatus,
 } from '@lib/canonica/widgetRuntimeStatus';
-import { getCanonicaBundleManifestDocId } from '@lib/canonica/compiledContext';
+import { getCanonicaContextBundleManifestServer } from '@lib/canonica/contextBundleBuilderServer';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import {
     CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,
@@ -119,20 +119,12 @@ const toIsoTimestamp = (value: any): string | null => {
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 };
 
-const getReadyPublicBundleConfig = async (
-    db: any,
-    tId: number,
-    sId: number,
-) => {
+const getReadyPublicBundleConfig = async (tId: number, sId: number) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_CONTEXT_BUNDLES || !FEATURE_FLAGS.ENABLE_CANONICA_WIDGET_BUNDLE_BOOTSTRAP) {
         return null;
     }
-    const snap = await db
-        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(getCanonicaBundleManifestDocId(tId, sId))
-        .get();
-    if (!snap.exists) return null;
-    const manifest = snap.data() || {};
+    const manifest = await getCanonicaContextBundleManifestServer(tId, sId);
+    if (!manifest) return null;
     if (manifest.status !== 'ready' || !manifest.publicBundleId || !manifest.activeVersion) return null;
     const basePath = `/api/canonica/bundles/public/${manifest.publicBundleId}/v${manifest.activeVersion}`;
     return {
@@ -253,7 +245,7 @@ export async function GET(request: NextRequest) {
 
         const [predictiveSupport, bundleConfig] = await Promise.all([
             hasActivePredictiveTriggers(db, tId, sId).catch(() => false),
-            getReadyPublicBundleConfig(db, tId, sId).catch(() => null),
+            getReadyPublicBundleConfig(tId, sId).catch(() => null),
         ]);
         const body = {
             schemaVersion: CANONICA_WIDGET_CONFIG_SCHEMA_VERSION,

@@ -647,7 +647,7 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             tId: tenantId,
             sId: storeId,
             status: existingManifest?.lastReadyVersion ? 'stale' : 'failed',
-            lastBuildError: message.slice(0, 500),
+            lastBuildError: 'build_failed',
             lastBuildCompletedAt: FieldValue.serverTimestamp(),
             staleReason: 'build_failed',
             activeVersion: Number(existingManifest?.activeVersion || 0),

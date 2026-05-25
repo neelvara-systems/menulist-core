@@ -17,7 +17,7 @@
 - `mcpPolicy`
 - `predictiveTriggers`
 
-`platformSummary/bundleManifest_{tId}_{sId}` stores the current active bundle pointer, status, source snapshot, file refs, stats, limits, and public opaque bundle ID.
+`platformSummary/bundleManifest_{tId}_{sId}` stores the current active bundle pointer, status, source snapshot, file refs, stats, limits, and public opaque bundle ID. It must not store raw exception text; owner-visible failures use a generic status and detailed diagnostics stay in platform logs / server-only build locks.
 
 ## Storage Paths
 
@@ -71,11 +71,11 @@ The builder:
 
 ## Owner Flow
 
-Activation summary includes bundle readiness. Owners can manually rebuild compiled context from Activation. The button calls `/api/canonica/bundles/rebuild`, which runs through authenticated Canonica scope and rate limiting.
+Activation summary includes bundle readiness. Owners can manually rebuild compiled context from Activation. The button calls `/api/canonica/bundles/rebuild`, which runs through authenticated Canonica management scope and rate limiting. Owner responses are `no-store` and do not expose raw build exceptions.
 
 ## Backend Repair Flow
 
-Source changes mark the manifest stale by updating `sourceVersions_*` and `bundleManifest_*`. The Canonica nightly scheduler runs `repairCompiledContextBundle` per active tenant/store and exits early when source versions already match the ready manifest.
+Source changes mark the manifest stale by updating `sourceVersions_*` and `bundleManifest_*`. The centralized Canonica scheduler runs hourly, filters workspaces by local timezone/support-day end time, and calls `runCanonicaNightly()` only for due workspaces. That batch runs `repairCompiledContextBundle` per due tenant/store and exits early when source versions already match the ready manifest.
 
 The repair builder keeps the same immutable Storage paths as the manual rebuild API, preserves the last ready bundle on failure, and records status/bytes/routes in the scheduler run log.
 
@@ -88,7 +88,7 @@ The repair builder keeps the same immutable Storage paths as the manual rebuild 
 - active bundle version
 - public bundle proxy URLs/paths when ready
 
-The widget can use bundle pointers for bootstrap and route context. Search remains server-mediated.
+The widget config path uses the server-side manifest cache before falling back to Firestore. Public bundle proxy responses also keep a bounded in-process cache before Firebase Storage, while immutable object paths and browser/CDN cache headers handle repeated browser loads. Search remains server-mediated.
 
 ## Public API Flow
 
@@ -116,4 +116,6 @@ Day-one tools:
 - `get_release_context`
 - `report_missing_context`
 
-Read tools use private Storage bundles. `report_missing_context` writes only an aggregated bucket, not one raw signal event per agent step.
+Read tools use private Storage bundles through a server manifest cache and object cache. `report_missing_context` does not require bundle hydration and writes only an aggregated bucket, not one raw signal event per agent step.
+
+MCP code is split for maintenance: `src/app/api/canonica/mcp/route.ts` owns JSON-RPC/session/rate-limit handling, `src/lib/canonica/mcpTools.ts` owns tool definitions and bundle-backed handlers, and `src/lib/canonica/mcpSession.ts` owns signed short-lived sessions.

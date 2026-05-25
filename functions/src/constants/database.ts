@@ -39,6 +39,7 @@ export const DB_COLLECTIONS = {
     MENU_INTELLIGENCE: 'menuIntelligence',      // Continuous Menu Intelligence state (per-project)
     OWNER_CONTROL_USAGE: 'ownerControlUsage',   // Authority Maturation tracking (owner control usage)
     MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
+    MENU_LINK_IMPORT_ARTIFACTS: 'menuLinkImportArtifacts',
 
     // Knowledge Base
     KNOWLEDGE_BASE: 'knowledgeBase',

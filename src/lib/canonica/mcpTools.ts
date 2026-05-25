@@ -113,6 +113,9 @@ const reportMissingContext = async (params: {
     }
     const dateKey = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const safeQuery = String(params.query || '').trim().slice(0, 500);
+    if (!safeQuery) {
+        return { recorded: false, error: 'query is required' };
+    }
     const hash = createHash('sha256')
         .update(`${safeQuery}:${params.routeKey || ''}:${params.entityId || ''}`)
         .digest('hex')
@@ -145,6 +148,16 @@ export async function handleCanonicaMcpToolCall(
     name: string,
     args: Record<string, any>,
 ) {
+    if (name === 'report_missing_context') {
+        return textResponse(await reportMissingContext({
+            tId,
+            sId,
+            query: String(args.query || ''),
+            routeKey: args.routeKey ? sanitizeSegment(args.routeKey) : undefined,
+            entityId: args.entityId ? sanitizeSegment(args.entityId) : undefined,
+        }));
+    }
+
     const { loadByKey } = await loadBundle(tId, sId);
 
     if (name === 'get_product_context') {
@@ -173,7 +186,7 @@ export async function handleCanonicaMcpToolCall(
     }
 
     if (name === 'search_canonical_context') {
-        const query = String(args.query || '').trim().toLowerCase();
+        const query = String(args.query || '').trim().toLowerCase().slice(0, 500);
         if (!query) return textResponse({ error: 'query is required' });
         const limit = Math.min(Math.max(Number(args.limit || 8), 1), 20);
         const canonical = await loadByKey<{ answers?: any[] }>('private:mcp/canonical-index.json');
@@ -196,16 +209,6 @@ export async function handleCanonicaMcpToolCall(
 
     if (name === 'get_release_context') {
         return textResponse(await loadByKey('private:mcp/release-context.json'));
-    }
-
-    if (name === 'report_missing_context') {
-        return textResponse(await reportMissingContext({
-            tId,
-            sId,
-            query: String(args.query || ''),
-            routeKey: args.routeKey ? String(args.routeKey).slice(0, 96) : undefined,
-            entityId: args.entityId ? String(args.entityId).slice(0, 160) : undefined,
-        }));
     }
 
     return textResponse({ error: `Unknown tool: ${name}` });

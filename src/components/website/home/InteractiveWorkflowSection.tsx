@@ -11,6 +11,7 @@ const stepNumbers = ['01', '02', '03', '04'];
 const inputItems = [
   { key: 'pipelinePhoto', Icon: LuCamera },
   { key: 'pipelinePdf', Icon: LuFileText },
+  { key: 'pipelineLink', Icon: LuLink },
   { key: 'pipelineText', Icon: LuType },
 ];
 const outputItems = [
@@ -55,31 +56,35 @@ export default function InteractiveWorkflowSection() {
         <div className="ws-workflow-map">
           <svg className="ws-workflow-map__paths ws-workflow-map__paths--desktop" viewBox="0 0 920 360" aria-hidden="true" focusable="false">
             <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 78 C260 78 260 176 420 176" />
-            <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 176 C270 176 285 176 420 176" />
-            <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 274 C260 274 260 176 420 176" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 145 C270 145 285 176 420 176" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 214 C270 214 285 176 420 176" />
+            <path className="ws-workflow-map__path ws-workflow-map__path--input" d="M150 282 C260 282 260 176 420 176" />
             <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C620 176 618 63 713 63" />
             <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C612 176 624 141 713 141" />
             <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C612 176 624 219 713 219" />
             <path className="ws-workflow-map__path ws-workflow-map__path--output" d="M500 176 C620 176 618 297 713 297" />
             <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M150 78 C260 78 260 176 420 176" />
-            <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M150 176 C270 176 285 176 420 176" />
-            <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M150 274 C260 274 260 176 420 176" />
+            <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M150 145 C270 145 285 176 420 176" />
+            <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M150 214 C270 214 285 176 420 176" />
+            <path className="ws-map-pulse ws-map-pulse-delay-3" pathLength={1} d="M150 282 C260 282 260 176 420 176" />
             <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M500 176 C620 176 618 63 713 63" />
             <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M500 176 C612 176 624 141 713 141" />
             <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M500 176 C612 176 624 219 713 219" />
             <path className="ws-map-pulse ws-map-pulse-output-3" pathLength={1} d="M500 176 C620 176 618 297 713 297" />
           </svg>
           <svg className="ws-workflow-map__paths ws-workflow-map__paths--mobile" viewBox="0 0 350 383" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-            <path className="ws-workflow-map__path" d="M67 102.5 C85 122 112 140 137 157" />
-            <path className="ws-workflow-map__path" d="M175 102.5 C175 116 175 128 175 138.5" />
-            <path className="ws-workflow-map__path" d="M283 102.5 C265 122 238 140 213 157" />
+            <path className="ws-workflow-map__path" d="M42 102.5 C74 126 103 143 137 157" />
+            <path className="ws-workflow-map__path" d="M131 102.5 C145 119 158 130 164 143.5" />
+            <path className="ws-workflow-map__path" d="M219 102.5 C205 119 192 130 186 143.5" />
+            <path className="ws-workflow-map__path" d="M308 102.5 C276 126 247 143 213 157" />
             <path className="ws-workflow-map__path" d="M103 235 C86 246 70 258 55 270.5" />
             <path className="ws-workflow-map__path" d="M145 246 C140 254 137 262 135 270.5" />
             <path className="ws-workflow-map__path" d="M205 246 C210 254 213 262 215 270.5" />
             <path className="ws-workflow-map__path" d="M247 235 C264 246 280 258 295 270.5" />
-            <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M67 102.5 C85 122 112 140 137 157" />
-            <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M175 102.5 C175 116 175 128 175 138.5" />
-            <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M283 102.5 C265 122 238 140 213 157" />
+            <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M42 102.5 C74 126 103 143 137 157" />
+            <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M131 102.5 C145 119 158 130 164 143.5" />
+            <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M219 102.5 C205 119 192 130 186 143.5" />
+            <path className="ws-map-pulse ws-map-pulse-delay-3" pathLength={1} d="M308 102.5 C276 126 247 143 213 157" />
             <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M103 235 C86 246 70 258 55 270.5" />
             <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M145 246 C140 254 137 262 135 270.5" />
             <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M205 246 C210 254 213 262 215 270.5" />

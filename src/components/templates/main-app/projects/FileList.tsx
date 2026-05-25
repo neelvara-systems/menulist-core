@@ -71,6 +71,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                     {files.map((file) => {
                         const isImage = file.type?.startsWith('image/');
                         const isProcessing = fileProcessingId !== null;
+                        const processingSeconds = Number(file.processingTime || 0) / 1000;
                         return (
                             <Card key={file.uid} styles={{ body: { padding: 0 } }}
                                 style={{
@@ -104,10 +105,10 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                     zIndex: 1
                                                 }}>
                                                 {Boolean(file.extractedData) && (
-                                                    <Tooltip title={`Processed in ${(file.processingTime! / 1000).toFixed(1)} seconds`}>
+                                                    <Tooltip title={`Processed in ${processingSeconds.toFixed(1)} seconds`}>
                                                         <Flex className='animate__animated animate__fadeInLeft animate__faster' vertical align='center' justify='center' gap={10}>
                                                             <CheckCircleFilled style={{ fontSize: 40, color: token.colorSuccess }} />
-                                                            <Tag color={token.colorSuccess}>{(file.processingTime! / 1000).toFixed(1)} s</Tag>
+                                                            <Tag color={token.colorSuccess}>{processingSeconds.toFixed(1)} s</Tag>
                                                             {/* <Tag color={token.colorPrimary}>{file.inputToken + file.inputToken} Tokens</Tag> */}
                                                         </Flex>
                                                     </Tooltip>
@@ -234,7 +235,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
 
             {/* Delete Single File Confirmation Modal */}
             <Modal
-                title="Delete Processed Image"
+                title="Delete Processed File"
                 open={deleteModalVisible}
                 onCancel={() => setDeleteModalVisible(false)}
                 footer={[
@@ -259,13 +260,13 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
             >
                 <Alert
                     message="This action cannot be undone"
-                    description="This image has already been processed and tokens have been used. Deleting it means you&apos;ll need to re-upload and process it again if needed."
+                    description="This file has already been processed and credits have been used. Deleting it means you'll need to re-upload and process it again if needed."
                     type="warning"
                     showIcon
                     style={{ marginBottom: 16 }}
                 />
                 <Flex vertical align='center' justify='center' gap={10}>
-                    {fileToDelete?.url && (
+                    {fileToDelete?.url && fileToDelete?.type?.startsWith('image/') && (
                         <Image
                             src={fileToDelete.url}
                             alt={fileToDelete.name || ''}

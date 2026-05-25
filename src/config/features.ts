@@ -1129,6 +1129,16 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_MENU_INTAKE_IDENTITY: true,
 
+    /**
+     * Menu Link Import — owner-provided public menu links.
+     *
+     * Creates a private source artifact and forces existing extraction review.
+     * OFF by default until tenant-level rollout is explicitly approved.
+     *
+     * @see __docs__/menu-link-import/
+     */
+    ENABLE_MENU_LINK_IMPORT: false,
+
     // ─────────────────────────────────────────────────────────────
     // AGENT DISCOVERY (Machine-Readable Business Truth)
     // @see __docs__/agent-readiness-strategy/

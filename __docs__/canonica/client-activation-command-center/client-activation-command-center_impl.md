@@ -23,6 +23,8 @@ The Test-as-Customer checklist (`src/components/templates/canonica/content/Canon
 
 Readiness Metrics also renders the Surface Readiness matrix (`src/components/templates/canonica/content/CanonicaSurfaceReadinessMatrix.tsx`). It uses compact `summary.content.surfaceReadiness` status/count fields, derived from the context summary, to show each mapped surface as Ready, Needs mapping, Needs content, or Open signals. UI recommendations and action labels stay in the component so the persisted activation snapshot does not duplicate long copy.
 
+The Daily Governance panel (`src/components/templates/canonica/activation/CanonicaOperationsPanel.tsx`) loads `GET /api/canonica/operations/status` separately from the activation summary. It shows scheduler status, workspace-local support-day timing, last completion, and recent workspace-filtered governance runs. It links to Settings for timezone/EOD edits and does not expose the full manual scheduler trigger.
+
 ## Server API
 
 `GET /api/canonica/activation/summary`:
@@ -40,6 +42,14 @@ Entity readiness and canonical-answer readiness are derived from `platformSummar
 Surface readiness is derived in `src/lib/canonica/activationSummary.ts` from the already-read `platformSummary/contextContent_{tId}_{sId}` document. The readiness signature includes the compact per-surface status so the persisted activation snapshot refreshes when a product area changes from missing content to ready, or when open ticket signals appear.
 
 Security note: the API must not fall back to the generic MenuList `session.user.tenantId/storeId`. A user needs a real Canonica product scope (`productAccounts.CN` or a native Canonica session) before any Canonica workspace summary is loaded.
+
+`GET /api/canonica/operations/status`:
+
+1. Resolves the same Canonica tenant/store scope.
+2. Reads `stores/{sId}` to verify workspace ownership and timezone settings.
+3. Reads `platformSummary/canonicaSchedulerState` and `platformSummary/canonicaNightlyState_{tId}_{sId}`.
+4. Reads five capped `canonica_schedulerRunLogs` and filters results to the current workspace.
+5. Returns Daily Governance status without scanning source collections or running scheduler work.
 
 ## Widget Runtime Telemetry
 

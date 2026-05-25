@@ -33,6 +33,7 @@ export default function ProductPage() {
   const flowInputs = [
     { key: 'flowPhoto', Icon: LuImage },
     { key: 'flowPdf', Icon: LuFileText },
+    { key: 'flowLink', Icon: LuLink },
     { key: 'flowTypedText', Icon: LuType },
   ];
   const flowOutputs = [
@@ -83,9 +84,10 @@ export default function ProductPage() {
           <AnimateOnScroll delay={0.08}>
             <div className="ws-page-source-map ws-page-source-map--surfaces">
               <svg className="ws-page-source-map__paths ws-page-source-map__paths--desktop" viewBox="0 0 980 360" aria-hidden="true" focusable="false">
-                <path className="ws-page-source-map__path" d="M190 84 C312 84 328 176 452 176" />
-                <path className="ws-page-source-map__path" d="M190 176 C312 176 328 176 452 176" />
-                <path className="ws-page-source-map__path" d="M190 268 C312 268 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M190 76 C312 76 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M190 142 C312 142 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M190 218 C312 218 328 176 452 176" />
+                <path className="ws-page-source-map__path" d="M190 284 C312 284 328 176 452 176" />
                 <path className="ws-page-source-map__path" d="M476 176 C552 176 552 106 576 106" />
                 <path className="ws-page-source-map__path" d="M476 176 C640 176 660 106 770 106" />
                 <path className="ws-page-source-map__path" d="M476 176 C548 176 554 180 576 180" />
@@ -95,9 +97,10 @@ export default function ProductPage() {
                 <path className="ws-page-source-map__path" d="M756 106 H770" />
                 <path className="ws-page-source-map__path" d="M756 180 H770" />
                 <path className="ws-page-source-map__path" d="M756 254 H770" />
-                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M190 84 C312 84 328 176 452 176" />
-                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M190 176 C312 176 328 176 452 176" />
-                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M190 268 C312 268 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M190 76 C312 76 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M190 142 C312 142 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M190 218 C312 218 328 176 452 176" />
+                <path className="ws-map-pulse ws-map-pulse-delay-3" pathLength={1} d="M190 284 C312 284 328 176 452 176" />
                 <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M476 176 C552 176 552 106 576 106" />
                 <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M476 176 C640 176 660 106 770 106" />
                 <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M476 176 C548 176 554 180 576 180" />
@@ -109,18 +112,20 @@ export default function ProductPage() {
                 <path className="ws-map-pulse ws-map-pulse-output-5" pathLength={1} d="M756 254 H770" />
               </svg>
               <svg className="ws-page-source-map__paths ws-page-source-map__paths--mobile" viewBox="0 0 350 491" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                <path className="ws-page-source-map__path" d="M67 107.5 C85 128 112 145 137 162" />
-                <path className="ws-page-source-map__path" d="M175 107.5 C175 122 175 135 175 143.5" />
-                <path className="ws-page-source-map__path" d="M283 107.5 C265 128 238 145 213 162" />
+                <path className="ws-page-source-map__path" d="M42 107.5 C74 131 103 148 137 162" />
+                <path className="ws-page-source-map__path" d="M131 107.5 C145 124 158 135 164 148.5" />
+                <path className="ws-page-source-map__path" d="M219 107.5 C205 124 192 135 186 148.5" />
+                <path className="ws-page-source-map__path" d="M308 107.5 C276 131 247 148 213 162" />
                 <path className="ws-page-source-map__path" d="M108 246 C96 258 82 266 68.5 275.5" />
                 <path className="ws-page-source-map__path" d="M175 251.5 C175 260 175 268 175 275.5" />
                 <path className="ws-page-source-map__path" d="M242 246 C254 258 268 266 281.5 275.5" />
                 <path className="ws-page-source-map__path" d="M125 251.5 C88 292 80 332 68.5 374" />
                 <path className="ws-page-source-map__path" d="M175 251.5 C175 300 175 335 175 374" />
                 <path className="ws-page-source-map__path" d="M225 251.5 C262 292 270 332 281.5 374" />
-                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M67 107.5 C85 128 112 145 137 162" />
-                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M175 107.5 C175 122 175 135 175 143.5" />
-                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M283 107.5 C265 128 238 145 213 162" />
+                <path className="ws-map-pulse ws-map-pulse-delay-0" pathLength={1} d="M42 107.5 C74 131 103 148 137 162" />
+                <path className="ws-map-pulse ws-map-pulse-delay-1" pathLength={1} d="M131 107.5 C145 124 158 135 164 148.5" />
+                <path className="ws-map-pulse ws-map-pulse-delay-2" pathLength={1} d="M219 107.5 C205 124 192 135 186 148.5" />
+                <path className="ws-map-pulse ws-map-pulse-delay-3" pathLength={1} d="M308 107.5 C276 131 247 148 213 162" />
                 <path className="ws-map-pulse ws-map-pulse-output-0" pathLength={1} d="M108 246 C96 258 82 266 68.5 275.5" />
                 <path className="ws-map-pulse ws-map-pulse-output-1" pathLength={1} d="M175 251.5 C175 260 175 268 175 275.5" />
                 <path className="ws-map-pulse ws-map-pulse-output-2" pathLength={1} d="M242 246 C254 258 268 266 281.5 275.5" />

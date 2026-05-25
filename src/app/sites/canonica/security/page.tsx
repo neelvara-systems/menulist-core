@@ -9,7 +9,7 @@ import { CANONICA_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'Security',
-    description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, scoped workspaces, and owner-approved answers.',
+    description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
     alternates: { canonical: '/security' },
     openGraph: {
         title: 'Security | Canonica',
@@ -52,6 +52,10 @@ const CONTROLS = [
         body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active approved answers.',
     },
     {
+        title: 'Compiled context boundary',
+        body: 'Ready runtime bundles contain approved public-safe context for the widget and server-only private context for authenticated paths. Drafts, tickets, audit logs, API keys, and raw signals stay out.',
+    },
+    {
         title: 'Bounded logging',
         body: 'Operational logs are meant for reliability, failure analysis, and abuse protection. Production flows should avoid storing raw sensitive payloads.',
     },
@@ -69,8 +73,9 @@ const SECURITY_FACTS = [
     { label: 'Hosted help', value: 'Registry-scoped domains' },
     { label: 'Ticket context', value: 'Capped and sanitized' },
     { label: 'Answer authority', value: 'Owner-reviewed approved answers' },
+    { label: 'Runtime context', value: 'Versioned approved bundles' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
-    { label: 'Scheduler output', value: 'Compact summary docs' },
+    { label: 'Scheduler output', value: 'Local EOD + compact summaries' },
     { label: 'MenuList relationship', value: 'Separate product boundary' },
 ];
 
@@ -136,8 +141,28 @@ const TRUST_AREAS = [
         points: [
             'Public widget config, search, and feedback endpoints are rate limited.',
             'Repeated canonical hits can use cache with freshness checks.',
+            'Ready widget context can be served through versioned bundles and server cache instead of raw collection fanout.',
             'Dashboards prefer summary documents over broad collection scans.',
             'Hosted help content uses cached public payloads and compact display fields.',
+        ],
+    },
+    {
+        title: 'Compiled context separation',
+        body: 'Canonica separates governed source data from runtime context so public and authenticated consumers receive only the approved fields they need.',
+        points: [
+            'Governed source records remain inside Canonica for drafts, tickets, signals, proposals, and audit state.',
+            'Public widget bundles include only public-safe product and support context.',
+            'Private server bundles stay behind authenticated Canonica APIs.',
+            'A stale or failed build does not replace the last ready bundle.',
+        ],
+    },
+    {
+        title: 'Scheduler cost boundary',
+        body: 'Daily governance work is centralized and workspace-aware rather than split into many scheduled functions.',
+        points: [
+            'The scheduler evaluates due workspaces by local timezone and support-day end time.',
+            'Source-version checks decide whether compiled context needs repair.',
+            'Summary documents keep owner dashboards readable without large scans.',
         ],
     },
     {
@@ -164,7 +189,7 @@ export default function CanonicaSecurityPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Security</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Security for page-aware support.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Canonica uses safe page hints, allowed origins, blocked routes, scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
+                            Canonica uses safe page hints, allowed origins, blocked routes, compiled approved context, scoped workspaces, and owner-approved answers so support can be helpful without collecting secrets.
                         </p>
                     </div>
                 </section>
@@ -173,7 +198,7 @@ export default function CanonicaSecurityPage() {
                     <div className="mx-auto mb-12 max-w-3xl rounded-2xl border border-indigo-400/20 bg-indigo-500/[0.055] p-6 text-center">
                         <h2 className="text-2xl font-bold text-white">What to remember</h2>
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
-                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, and approve support answers before they become official.
+                            Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, serve approved runtime context from controlled bundles, and approve support answers before they become official.
                         </p>
                     </div>
                     <div className="mx-auto mb-16 max-w-7xl">
@@ -214,6 +239,10 @@ export default function CanonicaSecurityPage() {
                                     title: 'Owner-approved authority',
                                     detail: 'Drafts and proposals require review before becoming official answers.',
                                 },
+                                {
+                                    title: 'Compiled context',
+                                    detail: 'Runtime bundles expose approved context, not raw tickets, drafts, audit logs, or API keys.',
+                                },
                             ]}
                         />
                     </div>
@@ -239,12 +268,13 @@ export default function CanonicaSecurityPage() {
                                     'public help',
                                     'ticket',
                                     'review',
+                                    'compiled',
                                     'logging',
                                     'separate product',
                                 ][index] ?? 'control',
                                 title: control.title,
                                 detail: control.body,
-                                tone: index === 1 || index === 6 ? 'caution' as const : index === 0 || index === 5 ? 'good' as const : 'neutral' as const,
+                                tone: index === 1 || index === 7 ? 'caution' as const : index === 0 || index === 5 || index === 6 ? 'good' as const : 'neutral' as const,
                             }))}
                         />
                     </div>

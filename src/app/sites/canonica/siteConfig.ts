@@ -3,7 +3,7 @@ import { CANONICA_SUPPORT_FEATURES } from './productFeatures';
 export const CANONICA_SITE_URL = 'https://canonica.app';
 
 export const CANONICA_SITE_DESCRIPTION =
-    'Canonica helps AI-built SaaS apps launch support without chaos: page-aware widget, hosted help, ticket fallback, approved answers, and reviewable fixes for missed questions.';
+    'Canonica helps AI-built SaaS apps launch support without chaos: page-aware widget, hosted help, approved answers, compiled support context, and reviewable fixes for missed questions.';
 
 export const CANONICA_PUBLIC_PAGES: Array<{
     path: string;
@@ -22,7 +22,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | Canonica',
-        description: 'Support layer for AI-built SaaS apps: setup, widget, hosted help, ticket fallback, approved answers, and support-gap review.',
+        description: 'Support layer for AI-built SaaS apps: setup, widget, hosted help, approved answers, compiled runtime context, and support-gap review.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -148,14 +148,14 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/resources',
         title: 'Resources | Canonica',
-        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, pricing, safety, and setup.',
+        description: 'Canonica resources for founders launching support for AI-built SaaS apps: demo, fit, install, runtime safety, pricing, and setup.',
         priority: 0.78,
         changeFrequency: 'weekly',
     },
     {
         path: '/updates',
         title: 'Updates | Canonica',
-        description: 'Recent Canonica product updates across launch setup, widget management, governance, and public website work.',
+        description: 'Recent Canonica product updates across launch setup, widget runtime, compiled context, governance, and public website work.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
@@ -176,7 +176,7 @@ export const CANONICA_PUBLIC_PAGES: Array<{
     {
         path: '/security',
         title: 'Security | Canonica',
-        description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, scoped workspaces, and owner-approved answers.',
+        description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },

@@ -17,7 +17,7 @@ import {
 } from '@lib/canonica/activationSummary';
 import { getCanonicaBundleManifestDocId } from '@lib/canonica/compiledContext';
 import { getContextContentSummaryDocId } from '@lib/canonica/productSurfaceContent';
-import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { secureError } from '@lib/security/secureLogger';
@@ -48,7 +48,7 @@ const buildCompiledContextReadiness = (manifest: Record<string, any> | null) => 
         publicBundleId: manifest.publicBundleId || null,
         generatedAt: manifest.generatedAt || null,
         lastBuildCompletedAt: manifest.lastBuildCompletedAt || null,
-        lastBuildError: manifest.lastBuildError || null,
+        lastBuildError: manifest.lastBuildError ? 'Compiled context rebuild failed. Check platform logs.' : null,
         staleReason: manifest.staleReason || null,
         stats: manifest.stats || {},
         limits: manifest.limits || {},
@@ -93,6 +93,9 @@ const readLegacySubscription = async (db: any, tId: number, sId: number) => {
 export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_ACTIVATION_COMMAND_CENTER) {
         return NextResponse.json({ error: 'Activation summary is not enabled.' }, { status: 403 });
+    }
+    if (!canUseCanonicaManagement(session)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const scope = resolveSessionScope(session);
@@ -159,17 +162,24 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             }, { merge: true });
         }
 
-        return NextResponse.json({
-            summary: {
-                ...summary,
-                readModel: {
-                    ...summary.readModel,
-                    firestoreReads: summary.readModel.firestoreReads + (usedLegacySubscriptionFallback ? 5 : 0),
-                    legacySubscriptionFallbackUsed: usedLegacySubscriptionFallback,
-                    legacySubscriptionFallbackReadCap: usedLegacySubscriptionFallback ? 5 : 0,
+        return NextResponse.json(
+            {
+                summary: {
+                    ...summary,
+                    readModel: {
+                        ...summary.readModel,
+                        firestoreReads: summary.readModel.firestoreReads + (usedLegacySubscriptionFallback ? 5 : 0),
+                        legacySubscriptionFallbackUsed: usedLegacySubscriptionFallback,
+                        legacySubscriptionFallbackReadCap: usedLegacySubscriptionFallback ? 5 : 0,
+                    },
                 },
             },
-        });
+            {
+                headers: {
+                    'Cache-Control': 'private, no-store',
+                },
+            },
+        );
     } catch (error) {
         secureError('[Canonica Activation] Failed to load summary', error as Error, { tId, sId });
         return NextResponse.json({ error: 'Failed to load activation summary' }, { status: 500 });

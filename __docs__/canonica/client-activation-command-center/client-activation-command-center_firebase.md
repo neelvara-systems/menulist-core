@@ -9,6 +9,7 @@
 | Load context content | `platformSummary/contextContent_{tId}_{sId}` | 1 | Articles, surfaces, changelog, ticket counts |
 | Load coverage | `platformSummary/coverage_{tId}_{sId}` | 1 | Optional governance KPI |
 | Load trust metrics | `platformSummary/trustMetrics_{tId}_{sId}` | 1 | Trust score, entity count, active canonical answer count |
+| Load Daily Governance | `stores/{sId}` + `platformSummary/canonicaSchedulerState` + `platformSummary/canonicaNightlyState_{tId}_{sId}` + 5 capped `canonica_schedulerRunLogs` | 8 | Separate owner status call; no source collection scans |
 | Legacy subscription fallback | `subscriptions where storeId == sId limit 5` | 0-5 | Only when store summary is missing; API reports a 5-read cap when used |
 | Notification readiness | Environment + feature flag | 0 | No Firestore read; computed server-side |
 | Surface readiness | Existing `platformSummary/contextContent_{tId}_{sId}` response | 0 additional | Derived in memory from the context summary already read for Activation/Readiness Metrics |
@@ -32,7 +33,7 @@ The screen intentionally uses summary docs instead of source collections. It avo
 - Signal event scans
 - Realtime listeners
 
-The internal API response keeps a `readModel` for platform cost audits. The product-owner UI shows activation and knowledge-health status only; it does not expose Firebase/cache implementation details to Canonica customers.
+The internal API response keeps a `readModel` for platform cost audits. The product-owner UI shows activation and knowledge-health status only; it does not expose Firebase/cache implementation details, raw scheduler errors, raw build exceptions, or global scheduler totals to Canonica customers.
 
 The added entity and canonical-answer readiness checks reuse the trust metrics summary. They do not add collection reads to Activation.
 
@@ -40,8 +41,10 @@ The notification readiness card does not expose raw Firebase/cache internals. It
 
 The Surface Readiness matrix and Test-as-Customer checklist are view-only projections of the activation summary. They add 0 reads, 0 writes, and no listeners on normal page load. Surface readiness stores compact status/count fields only; longer recommendations and action labels remain client-side UI copy.
 
+The Daily Governance panel is also summary-backed. It caps scheduler log reads to five, filters log entries to the current workspace before display, sanitizes workspace details to counts/statuses, and never calls the manual full-scheduler trigger from the owner UI.
+
 The ticket detail Knowledge Loop card also adds 0 reads and 0 writes. It uses the already-loaded ticket document to explain whether the current support reply is useful evidence for future knowledge proposals. Actual signal writes still happen only through the existing resolved-ticket signal path.
 
 ## Rules and Indexes
 
-No new Firestore collection is introduced. No new index is required for the primary path. The legacy fallback uses a bounded single-field `storeId` query.
+No new Firestore collection is introduced. No new index is required for the primary path. The legacy fallback uses a bounded single-field `storeId` query. The operations status API uses a single-field `startedAt desc` scheduler-log query with a five-document cap.

@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** May 24, 2026
+**Last Updated:** May 25, 2026
 
 ---
 
@@ -443,7 +443,7 @@ Rules:
 
 - Place it in `InteractiveWorkflowSection`, not the hero. The hero stays product/customer-output led.
 - Use the official `LogoMark` at the center.
-- Left stack shows source inputs: photo, PDF, typed text.
+- Left stack shows source inputs: photo, PDF, existing menu link, typed text.
 - Center keeps the owner-review gate visible.
 - Right stack shows public outputs: official page, menu link, QR code, print/PDF.
 - On mobile, use three rows: inputs spread horizontally, owner review centered, and outputs below. Keep separate mobile dotted paths aligned to those rows and anchored to card edges instead of reusing desktop path geometry.

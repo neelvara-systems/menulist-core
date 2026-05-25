@@ -73,6 +73,57 @@ function findFileIndexByUid(
     return files.findIndex(f => f.uid === targetUid);
 }
 
+function isForcedReviewSourceJob(jobData: any): boolean {
+    return jobData?.forceReview === true || jobData?.source === 'menu_link_import';
+}
+
+function resolveReviewSourceFileUid(jobData: any, targetFileUid?: string): string {
+    const files = Array.isArray(jobData?.files) ? jobData.files : [];
+    if (!isForcedReviewSourceJob(jobData) || files.length === 0) return targetFileUid || '';
+
+    if (targetFileUid?.startsWith('file_')) {
+        const index = Number(targetFileUid.replace('file_', ''));
+        return files[index]?.uid || targetFileUid;
+    }
+
+    if (!targetFileUid && files.length === 1) {
+        return files[0].uid || '';
+    }
+
+    return targetFileUid || '';
+}
+
+function ensureReviewSourceFiles(files: any[], jobData: any, languages: any[] = []) {
+    if (!isForcedReviewSourceJob(jobData)) return;
+    const jobFiles = Array.isArray(jobData?.files) ? jobData.files : [];
+
+    for (const sourceFile of jobFiles) {
+        if (!sourceFile?.uid || files.some(file => file?.uid === sourceFile.uid)) continue;
+        files.push({
+            uid: sourceFile.uid,
+            name: sourceFile.name || 'Imported menu link',
+            size: sourceFile.size || 0,
+            type: sourceFile.type || 'text/plain',
+            url: sourceFile.url || '',
+            processingTime: jobData?.result?.processingTime || 0,
+            source: jobData?.source || 'menu_link_import',
+            sourceMetadata: jobData?.sourceMetadata || null,
+            extractedData: {
+                data: {
+                    categories: [],
+                    items: [],
+                    languages,
+                },
+            },
+        });
+    }
+}
+
+function findMutationFileIndex(files: any[], jobData: any, targetFileUid?: string): number {
+    const resolvedUid = resolveReviewSourceFileUid(jobData, targetFileUid);
+    return findFileIndexByUid(files, resolvedUid);
+}
+
 function getMenuDataFromFiles(files: any[]) {
     return files.reduce<{ businessAttributeSuggestions: any[]; categories: any[]; items: any[] }>((menuData, file) => {
         const data = file?.extractedData?.data || {};
@@ -224,12 +275,17 @@ export async function applyExtractionChanges(
         // ═══════════════════════════════════════════════════════════
         // STEP 1: Read current project state ONCE
         // ═══════════════════════════════════════════════════════════
-        const projectSnap = await getDoc(projectRef);
+        const [projectSnap, jobSnap] = await Promise.all([
+            getDoc(projectRef),
+            getDoc(jobRef),
+        ]);
         if (!projectSnap.exists()) {
             throw new Error('Project not found');
         }
         const projectData = projectSnap.data();
         const files = cloneFiles(projectData.files || []);
+        const jobData = jobSnap.exists() ? jobSnap.data() : null;
+        ensureReviewSourceFiles(files, jobData, projectData.languages || []);
 
         // Single update payload — all mutations collected here, written once
         const updatePayload: Record<string, any> = {};
@@ -248,7 +304,7 @@ export async function applyExtractionChanges(
             // Process new categories — add to files in-memory
             for (const cat of mutations.upsertCategories) {
                 if (cat.newCategory) {
-                    const fileIndex = findFileIndexByUid(files, cat.targetFileUid);
+                    const fileIndex = findMutationFileIndex(files, jobData, cat.targetFileUid);
                     if (fileIndex === -1) {
                         console.warn(`[applyExtractionChanges] File not found for UID: ${cat.targetFileUid}`);
                         continue;
@@ -270,7 +326,7 @@ export async function applyExtractionChanges(
             // Process new items — add to files in-memory
             for (const item of mutations.upsertItems) {
                 if (item.newItem) {
-                    const fileIndex = findFileIndexByUid(files, item.targetFileUid);
+                    const fileIndex = findMutationFileIndex(files, jobData, item.targetFileUid);
                     if (fileIndex === -1) {
                         console.warn(`[applyExtractionChanges] File not found for UID: ${item.targetFileUid}`);
                         continue;
@@ -288,7 +344,7 @@ export async function applyExtractionChanges(
             // Process category patches — merge in-memory
             for (const catPatch of mutations.upsertCategories) {
                 if (catPatch.categoryId && catPatch.patch) {
-                    const fileIndex = findFileIndexByUid(files, catPatch.targetFileUid);
+                    const fileIndex = findMutationFileIndex(files, jobData, catPatch.targetFileUid);
                     if (fileIndex === -1) continue;
 
                     const categories = files[fileIndex]?.extractedData?.data?.categories || [];
@@ -303,7 +359,7 @@ export async function applyExtractionChanges(
             // Process item patches — merge in-memory
             for (const itemPatch of mutations.upsertItems) {
                 if (itemPatch.itemId && itemPatch.patch) {
-                    const fileIndex = findFileIndexByUid(files, itemPatch.targetFileUid);
+                    const fileIndex = findMutationFileIndex(files, jobData, itemPatch.targetFileUid);
                     if (fileIndex === -1) continue;
 
                     const items = files[fileIndex]?.extractedData?.data?.items || [];

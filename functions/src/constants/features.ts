@@ -264,6 +264,16 @@ export const FUNCTION_FLAGS = {
      */
     ENABLE_PUBLIC_MENU_ENTRY: true,
 
+    /**
+     * Menu Link Import — owner-provided public menu links.
+     *
+     * Function guard for jobs created through /api/menu-link-imports.
+     * Keep in sync with src/config/features.ts.
+     *
+     * @see __docs__/menu-link-import/
+     */
+    ENABLE_MENU_LINK_IMPORT: false,
+
 } as const;
 
 /**

@@ -18,6 +18,7 @@
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
+import { isFunctionFeatureEnabled } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { normalizeBusinessCategory, resolveBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
@@ -108,6 +109,20 @@ export async function processMenuImagesJobLogic(
     });
 
     try {
+        if (job.source === 'menu_link_import' && !isFunctionFeatureEnabled('ENABLE_MENU_LINK_IMPORT')) {
+            await jobRef.update({
+                status: MENU_PROCESSING_STATUS.FAILED,
+                completedAt: Timestamp.now(),
+                updatedAt: Timestamp.now(),
+                error: {
+                    code: 'FEATURE_DISABLED',
+                    message: 'Menu link import is not enabled.',
+                    retryable: false,
+                },
+            });
+            return;
+        }
+
         // ─────────────────────────────────────────────────────────────
         // Step 0: Validate tenant isolation (server-side defense-in-depth)
         // Ensures projectId is consistent with job's tId/sId
@@ -363,7 +378,8 @@ export async function processMenuImagesJobLogic(
         const isLinkedOutlet = !!existingProject?.masterProjectId;
 
         // Linked outlets always require review for safety
-        const requiresReview = skipProjectSave ? false : (hasExistingItems || isLinkedOutlet);
+        const forceReview = job.forceReview === true;
+        const requiresReview = skipProjectSave ? false : (forceReview || hasExistingItems || isLinkedOutlet);
         const isFirstExtraction = !requiresReview;
 
         logger.info(`[processMenuImagesJob] Extraction type detected`, {
@@ -371,6 +387,8 @@ export async function processMenuImagesJobLogic(
             isFirstExtraction,
             hasExistingItems,
             isLinkedOutlet,
+            forceReview,
+            source: job.source || null,
             existingFilesCount: existingProject?.files?.length || 0,
             masterProjectId: existingProject?.masterProjectId || null,
         });

@@ -21,6 +21,16 @@ function getBasePath(): string {
 
 const UPDATES = [
     {
+        date: 'May 25, 2026',
+        title: 'Compiled context and daily governance added to the public product story',
+        items: [
+            'Product and security pages now explain approved runtime context as versioned, cache-first bundles instead of repeated database scans.',
+            'The owner-facing readiness story now includes compiled context status, stale-state repair, and manual rebuild controls from Activation.',
+            'Daily governance is described as workspace-local and centralized, using each workspace timezone and support-day end time before repair or review work runs.',
+            'Agent context remains controlled rollout copy only; public pages do not promise general MCP access or agent-side knowledge writes.',
+        ],
+    },
+    {
         date: 'May 24, 2026',
         title: 'Workflow notifications and proactive help added to the public product story',
         items: [

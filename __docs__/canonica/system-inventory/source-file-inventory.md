@@ -129,6 +129,7 @@ Top-level Canonica docs included:
 - `src/app/api/canonica/mcp/route.ts`
 - `src/app/api/canonica/mcp/session/route.ts`
 - `src/app/api/canonica/onboard/route.ts`
+- `src/app/api/canonica/operations/status/route.ts`
 - `src/app/api/canonica/product-surfaces/rebuild-summary/route.ts`
 - `src/app/api/canonica/public/v1/answers/route.ts`
 - `src/app/api/canonica/public/v1/entities/route.ts`
@@ -158,6 +159,7 @@ Top-level Canonica docs included:
 - `src/components/templates/canonica/EntityCandidateReview.tsx`
 - `src/components/templates/canonica/MutationProposalReview.tsx`
 - `src/components/templates/canonica/activation/CanonicaActivationCommandCenter.tsx`
+- `src/components/templates/canonica/activation/CanonicaOperationsPanel.tsx`
 - `src/components/templates/canonica/clientPortal/CanonicaClientHome.tsx`
 - `src/components/templates/canonica/content/CanonicaContentWorkbench.tsx`
 - `src/components/templates/canonica/content/CanonicaCustomerFlowChecklist.tsx`
@@ -261,6 +263,7 @@ Top-level Canonica docs included:
 - `src/lib/canonica/sessionScope.ts`
 - `src/lib/canonica/signalEmitter.ts`
 - `src/lib/canonica/signalMutation.ts`
+- `src/lib/canonica/schedulerSettings.ts`
 - `src/lib/canonica/tenantSummaryAdmin.ts`
 - `src/lib/canonica/tenantSummaryClient.ts`
 - `src/lib/canonica/tokenizer.ts`
@@ -283,6 +286,7 @@ Top-level Canonica docs included:
 - `functions-canonica/src/utils/aiUtils.ts`
 - `functions-canonica/src/utils/tiptapUtils.ts`
 - `functions-canonica/src/canonica/cacheVersionManifest.ts`
+- `functions-canonica/src/canonica/canonicaMasterScheduler.ts`
 - `functions-canonica/src/canonica/canonicaNightly.ts`
 - `functions-canonica/src/canonica/compiledContextVersions.ts`
 - `functions-canonica/src/canonica/contextBundleBuilder.ts`
@@ -291,6 +295,7 @@ Top-level Canonica docs included:
 - `functions-canonica/src/canonica/frictionInsight.ts`
 - `functions-canonica/src/canonica/onboardingBootstrap.ts`
 - `functions-canonica/src/canonica/resolutionExtractor.ts`
+- `functions-canonica/src/canonica/schedulerTime.ts`
 - `functions-canonica/src/canonica/tenantSummary.ts`
 - `functions-canonica/src/canonica/ticketKnowledgePrompt.ts`
 - `functions-canonica/src/logic/embedArticleWorker.ts`

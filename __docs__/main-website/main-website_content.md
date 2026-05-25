@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** May 24, 2026
+**Last Updated:** May 25, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -52,13 +52,13 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Subline:**
 
-> Start with a photo, PDF, link, or typed menu. MenuList prepares the official customer-facing version from one owner-approved source.
+> Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares the official customer-facing version from one owner-approved source.
 
 **Primary CTA:** Upload your menu →
 **Secondary CTA:** See customer preview (`#customer-demo`)
 **Micro-trust line:** Start with a 7-day setup. Review the public menu before choosing a paid plan.
 
-**Proof strip:** Review before publishing · Upload before sign-in · No desktop required
+**Proof strip:** Review before publishing · Current menu accepted · No desktop required
 
 **Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and saved menu shortcut.
 
@@ -184,7 +184,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 **Workflow visual:**
 
-- Left side: current menu inputs (`Photo`, `PDF`, `Text`).
+- Left side: current menu inputs (`Photo`, `PDF`, `Existing link`, `Text`).
 - Center: official MenuList logo plus `Owner review`.
 - Right side: public customer outputs (`Official page`, `Menu link`, `QR code`, `Print/PDF`).
 - Mobile uses three rows so inputs spread horizontally, owner review stays centered, outputs sit below, and the dotted connector paths stay edge-anchored without using the desktop geometry.
@@ -196,7 +196,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 | Step | Title | Description |
 | --- | --- | --- |
-| 1 | Start with the menu you already use | Photo, PDF, or typed menu. The setup starts from the current source your business already trusts. |
+| 1 | Start with the menu you already use | Photo, PDF, existing menu link, or typed menu. The setup starts from the current source your business already trusts. |
 | 2 | Review the prepared source | Items, categories, prices, language, images, and business details become structured before they go public. |
 | 3 | Publish the official version | The official page and live menu become the customer-facing source for your menu and business information. |
 | 4 | Deploy it where customers look | QR, links, screens, and print send customers to the same current menu. |
@@ -521,7 +521,7 @@ Key FAQ topics:
 
 **Source map visual:**
 
-- Left side: menu inputs (`Photo`, `PDF`, `Typed text`).
+- Left side: menu inputs (`Photo`, `PDF`, `Existing link`, `Typed text`).
 - Center: official MenuList mark plus owner-review gate.
 - Right side: customer surfaces (`QR`, `Menu link`, `Screens`, `Print/PDF`, `Official page`, `Saved shortcut`).
 - Desktop output connector paths start under the center logo/ring and visually emerge from the core boundary, matching the homepage source-map alignment.
@@ -538,11 +538,11 @@ Key FAQ topics:
 
 **Body:**
 
-> Take a photo of your paper menu. Upload a PDF. Or type items directly. In a few minutes, everything is read, structured, and ready for you. No data entry. No formatting. No starting from scratch.
+> Take a photo of your paper menu, upload a PDF, paste an existing menu link, or type items directly. MenuList prepares the draft for owner review without manual formatting.
 
 **Key points:**
 
-- Works with any format — photo, PDF, or typed input
+- Works with photo, PDF, existing link, or typed input
 - Items, prices, and categories read for you — no manual entry
 - Handles multiple pages and handwritten menus
 - Edit anything before publishing — you stay in control, without the setup work

@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 const LLMS_FULL_TXT = `# Canonica — Extended LLM Context
 
-> Canonica is the support layer for AI-built SaaS apps. It governs approved page-aware answers, hosted help, ticket fallback, stale-answer review, repeated-question signals, and widget context.
+> Canonica is the support layer for AI-built SaaS apps. It governs approved page-aware answers, hosted help, ticket fallback, stale-answer review, repeated-question signals, compiled runtime context, and widget context.
 
 ## Product Definition
 
@@ -20,6 +20,7 @@ Canonica is:
 - Slack and email workflow notifications for owner attention
 - configured proactive widget prompts where active triggers exist
 - a signal loop from fallback/tickets/feedback into reviewed knowledge work
+- approved support context prepared into cache-first runtime bundles for widget and authenticated server paths
 
 Canonica is not:
 
@@ -51,6 +52,7 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/resources — learning hub for launch, widget, support control, and governance.
 - ${CANONICA_SITE_URL}/updates — public product movement, not the customer workspace changelog.
 - ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, runtime limits, tenant isolation, and disclosure.
+- Runtime scaling is explained inside /product, /security, /resources, and /updates rather than as a standalone public MCP page.
 - ${CANONICA_SITE_URL}/faq — common buyer questions with FAQ structured data.
 - ${CANONICA_SITE_URL}/pricing — INR pricing and support-credit guidance.
 - ${CANONICA_SITE_URL}/get-started — self-service workspace creation.
@@ -63,9 +65,12 @@ Canonica is not:
 - Canonical answers are owner-approved before becoming authoritative.
 - Fallback answers and missed questions become review signals; they do not overwrite canonical answers by themselves.
 - Hosted public help pages expose docs/FAQ/changelog content without authenticated ticket or workspace internals.
+- Approved runtime context can be compiled into versioned bundles for widget and authenticated server reads; drafts, tickets, audit logs, API keys, raw signals, and billing internals are not public bundle content.
+- Daily governance is centralized and workspace-local: due work is evaluated by timezone and support-day end time, then source-version checks decide whether compiled context repair is needed.
 - Public Canonica API routes exist behind rollout flags and API scope validation. Do not market them as generally available unless the website explicitly says so.
 - Slack and email workflow notifications are self-service. Broader workflow adapters should remain controlled rollout unless public pages explicitly say they are available.
 - Proactive help is configured and capability-gated; it should not be described as an always-on autonomous widget.
+- MCP and agent-context tools are rollout-gated. Do not describe public Canonica as offering general MCP access or agent-side knowledge writes unless a public route explicitly exposes that contract.
 
 ## Agent Reading Guidance
 
@@ -77,6 +82,7 @@ When answering product questions about Canonica:
 4. Avoid saying Canonica replaces helpdesks, human support teams, ticket systems, or documentation tools.
 5. Avoid saying Canonica automatically publishes final answers. Human approval is part of the authority model.
 6. Do not infer customer workspace details from public marketing pages.
+7. Describe compiled context as runtime reliability and cost control, not as a customer-downloadable product database.
 
 ## Agent Action Boundaries
 

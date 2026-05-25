@@ -1,7 +1,7 @@
 # Canonica Website — Spec
 
-> **Version:** 1.2.13
-> **Last Updated:** 2026-05-24
+> **Version:** 1.2.14
+> **Last Updated:** 2026-05-25
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -40,7 +40,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 7. **Best Fit / Not Fit** — Decision tiles that qualify solo founders and small SaaS teams while rejecting helpdesk replacement and auto-publish expectations
 8. **Setup Funnel** — Animated sequence for adding product, picking 2-5 stuck pages, importing docs/FAQs/changelogs, installing the widget, and reviewing first approved answers
 9. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, configured proactive prompts, and support-gap review
-10. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, owner-approval, and workspace-scope controls
+10. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, compiled approved context, owner-approval, and workspace-scope controls
 11. **Canonica Engine** — Animated sequence for product structure, approved answers, stale-answer review, and repeated-question queue
 12. **Product System** — Animated hub diagram for Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
 13. **How It Works** — Animated sequence for create workspace, import knowledge, map surfaces, install widget, govern gaps
@@ -66,6 +66,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
   - Title + description
   - 5 capability bullet points
 - Product page should frame custom help domains as buyer-visible value and ticket debugging context as support reliability, not as raw console logging.
+- Product page should include runtime readiness as a core reliability section: Firestore source of truth, approved public widget context, private server context, cache-first delivery, owner-visible bundle readiness, workspace-local governance, and controlled agent-context rollout. Do not create a standalone MCP page while MCP remains rollout-gated.
 - Bottom CTA
 
 Product-area subpages:
@@ -214,8 +215,9 @@ Rules:
 
 **Sections:**
 - Security-at-a-glance facts for data boundary, runtime database, widget key storage, widget placement, answer authority, expensive request limits, scheduler output, and MenuList product boundary
-- Animated security-boundary diagram for allowed origins, safe page context, blocked routes, workspace scope, hosted help boundary, and owner-approved authority
+- Animated security-boundary diagram for allowed origins, safe page context, blocked routes, workspace scope, hosted help boundary, compiled context boundary, and owner-approved authority
 - Status snapshots for workspace scope, safe context, origin/route controls, hosted help boundary, ticket context, owner approval, bounded logging, and product separation
+- Runtime context safety: public widget bundles contain only approved public-safe context; drafts, tickets, audit logs, API keys, raw signals, and billing internals stay out.
 - Tenant-scoped data and workspace isolation
 - Safe widget context that is bounded to support relevance and never treated as trusted identity
 - Origin and blocked-route controls for widget placement

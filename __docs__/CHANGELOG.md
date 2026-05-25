@@ -6,13 +6,64 @@
 
 ---
 
+## May 25, 2026 — Website Existing Menu Link Intake
+
+### Changed
+
+- **Main website source maps now include existing menu links** — The homepage and How It Works source maps show photo, PDF, existing link, and typed text as intake sources before owner review.
+- **Website copy stays inside the reviewed-draft boundary** — The updated homepage, How It Works, and Features copy says MenuList prepares an owner-reviewed version and avoids scraping, marketplace-import, and auto-publish claims.
+- **No website runtime or payment flow changed** — Pricing, payment, subscription, auth, onboarding, `/create-menu`, and public customer-menu runtime behavior were not changed.
+
+---
+
+## May 25, 2026 — Canonica Website Runtime Scaling Copy
+
+### Changed
+
+- **Canonica website now explains compiled context as runtime reliability** — Homepage/product proof, Product, Security, Resources, FAQ, Updates, and LLM context now describe approved context bundles, cache-first widget/runtime paths, and owner-visible readiness without creating a standalone MCP page.
+- **Daily governance is described from the buyer point of view** — Public copy now explains workspace-local support-day timing and centralized governance repair without exposing Cloud Scheduler, Firestore document IDs, or lock internals.
+- **Agent-context claims stay rollout-gated** — Public pages and agent-readable files clarify that MCP/agent-context tools are not general public access and do not allow agent-side knowledge writes.
+
+---
+
+## May 25, 2026 — Menu Link Import
+
+### Added
+
+- **Import from existing menu link is now implemented behind `ENABLE_MENU_LINK_IMPORT`** — Authenticated owners can paste a public menu link, confirm permission, and create a review draft without changing the existing photo/PDF upload flow.
+- **Link imports use the existing extraction review path** — Link sources create private artifacts and forced-review `menuImageProcessingJobs`; nothing is written to the public menu until the owner approves the review.
+- **Link import and file upload stay separated in the upload UI** — Desktop blocks link import while selected local files are waiting to upload and blocks Upload & Continue while a link import job is active; mobile keeps link import on the select step only.
+
+### Security
+
+- **Public URL acquisition is guarded before fetch** — The import route blocks non-HTTP schemes, localhost/private/link-local/metadata targets, unsafe redirects, oversized responses, unsupported content types, and rapid retry abuse, then pins outbound requests to validated public DNS answers.
+
+### Documentation
+
+- **Menu Link Import docs added** — Spec, implementation, Firebase, mobile support, website, marketing, helpdoc, test cases, and ChatGPT review notes now live under `__docs__/menu-link-import/`.
+
+---
+
+## May 25, 2026 — Canonica Centralized Scheduler
+
+### Changed
+
+- **Canonica scheduler work now routes through one master scheduler** — The deployed `canonicaNightly` export stays in place, but it now delegates to a centralized scheduler task registry instead of directly running every workspace.
+- **Scheduler timing is now workspace-local** — Canonica Settings stores workspace timezone and support-day end time, and scheduled work runs after that local day closes plus the settlement buffer.
+- **Duplicate scheduler runs are locked** — Scheduler state and per-workspace/date locks in `platformSummary` prevent scheduled/manual overlap from processing the same workspace date twice.
+- **MCP server code is split for maintenance** — Tool registration and compiled-bundle handlers now live outside the App Router JSON-RPC shell, with a tenant/store tool-call rate limit.
+- **Activation shows Daily Governance status** — Owners can see workspace-local scheduler status, support-day timing, last completed run, and recent workspace runs from compact summaries and capped run logs.
+- **Owner operations responses are sanitized and cache-safe** — Activation and Daily Governance APIs now avoid raw scheduler/build errors, global scheduler totals, and cached operational responses.
+
+---
+
 ## May 24, 2026 — Canonica Compiled Context Distribution
 
 ### Changed
 
 - **Canonica now has a compiled context serving layer** — Approved product, surface, entity, canonical, release, docs, and widget context can be compiled into versioned Firebase Storage bundles with `platformSummary/sourceVersions_*` and `platformSummary/bundleManifest_*` as the control plane.
-- **Runtime reads are bundle-first where safe** — Widget config now returns active public bundle pointers, public entities prefer the compiled server bundle, and MCP has gated read-only session/token tooling backed by private compiled bundles.
-- **Activation now exposes bundle readiness** — The Activation Command Center shows compiled context status, version, size, routes, errors, and a guarded manual rebuild action.
+- **Runtime reads are bundle-first where safe** — Widget config now returns active public bundle pointers, public entities prefer the compiled server bundle, public bundle proxy reads are server-cached, and MCP has gated read-only session/token tooling backed by private compiled bundles.
+- **Activation now exposes bundle readiness** — The Activation Command Center shows compiled context status, version, size, routes, and a guarded manual rebuild action.
 - **Backend repair is source-version driven** — Canonica source changes mark bundles stale, KB/function writes update source versions, and the nightly Canonica scheduler repairs stale bundles with bounded source reads and immutable Storage writes.
 - **Storage and rules now enforce the bundle boundary** — Public bundles use opaque `pb_*` paths, private bundles are server-only, and client writes to compiled context objects are denied.
 

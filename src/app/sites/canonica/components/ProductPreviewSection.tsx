@@ -61,6 +61,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Knowledge import', state: 'In review', detail: 'Docs, FAQ, release notes' },
             { title: 'Product surfaces', state: 'Live', detail: 'Billing, onboarding, team settings' },
             { title: 'Widget install', state: 'Verified', detail: 'Origin, route, context check' },
+            { title: 'Compiled context', state: 'Ready', detail: 'Public widget context generated for runtime' },
         ],
         rightEyebrow: 'End-user widget',
         rightTitle: 'Billing page support',
@@ -71,9 +72,9 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
         queueEyebrow: 'Signal-to-knowledge queue',
         queueTitle: 'Review what support exposed',
         queueRows: [
+            { title: 'Compiled context manifest', meta: 'Bundle v42', result: 'Ready' },
             { title: 'Billing downgrade question', meta: 'Signal cluster', result: 'Draft answer' },
             { title: 'Invoice retry confusion', meta: 'Ticket fallback', result: 'Needs review' },
-            { title: 'Webhook setup guide', meta: 'Article drift', result: 'Review copy' },
         ],
     },
     'Key app pages': {
@@ -119,6 +120,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Blocked routes', state: '5 rules', detail: 'Hide widget on auth, checkout, or sensitive pages' },
             { title: 'Appearance', state: 'Configured', detail: 'Launcher copy, color, placement, and mobile behavior' },
             { title: 'Safe context', state: 'Bounded', detail: 'Route, feature, workflow, role, and plan hints only' },
+            { title: 'Bundle bootstrap', state: 'Cache first', detail: 'Ready context pointers returned with config' },
         ],
         rightEyebrow: 'Widget result',
         rightTitle: 'Page-aware answer',
@@ -132,6 +134,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Script loaded', meta: 'Widget key prefix', result: 'Verified' },
             { title: 'Origin matched', meta: 'help.yourapp.com', result: 'Allowed' },
             { title: 'Context accepted', meta: 'Route payload', result: 'Sanitized' },
+            { title: 'Bundle path', meta: 'Versioned JSON', result: 'Cached' },
         ],
     },
     'Answer review': {
@@ -147,6 +150,7 @@ const PREVIEWS: Record<PreviewTab, PreviewConfig> = {
             { title: 'Canonical coverage', state: '82%', detail: 'Known questions resolved by approved answers' },
             { title: 'Drift pressure', state: 'Medium', detail: 'Release touched billing and usage-limit answers' },
             { title: 'Trust readiness', state: 'Ready', detail: 'Critical surfaces have reviewed fallback paths' },
+            { title: 'Support-day check', state: 'Due today', detail: 'Workspace timezone and EOD decide the governance window' },
             { title: 'Mutation proposals', state: '6 open', detail: 'Draft improvements waiting for owner review' },
         ],
         rightEyebrow: 'Canonical answer review',
@@ -214,7 +218,7 @@ export default function ProductPreviewSection() {
                         See what is ready before users rely on support.
                     </h2>
                     <p className="mt-4 text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                        Product profile, imported knowledge, mapped app pages, widget install, and first approved answers stay visible in one launch path.
+                        Product profile, imported knowledge, mapped app pages, widget install, compiled context readiness, and first approved answers stay visible in one launch path.
                     </p>
                 </div>
 
@@ -357,8 +361,8 @@ export default function ProductPreviewSection() {
                         <p className="mt-2">Missed questions become signals and draft improvements instead of disappearing into chat history.</p>
                     </div>
                     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-                        <div className="font-semibold text-white">Static website, no Firebase browse cost</div>
-                        <p className="mt-2">These public product scenes use local tab state and do not read Canonica data.</p>
+                        <div className="font-semibold text-white">Runtime paths stay cost-aware</div>
+                        <p className="mt-2">Compiled context and summaries reduce repeated reads in the real product; this website scene itself uses local tab state and no Canonica data.</p>
                     </div>
                 </div>
             </div>

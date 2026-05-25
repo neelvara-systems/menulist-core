@@ -10,21 +10,16 @@ service cloud.firestore {
     match /platformSummary/{document} {
       allow read: if isAuthenticated()
                   && (isPlatformAdmin()
-                      || (isCanonicaPlatformSummaryDoc(document) && isCanonicaTenantMember(resource.data)));
+                      || (
+                        isCanonicaPlatformSummaryClientReadableDoc(document)
+                        && isCanonicaTenantMember(resource.data)
+                      ));
       allow create: if isAuthenticated()
                     && isCanonicaPlatformSummaryDoc(document)
-                    && (isPlatformAdmin() || isCanonicaTenantMember(request.resource.data));
+                    && (isPlatformAdmin() || canCreateCanonicaPlatformSummaryDoc(document));
       allow update: if isAuthenticated()
                     && isCanonicaPlatformSummaryDoc(document)
-                    && (
-                      isPlatformAdmin()
-                      || (
-                        isCanonicaTenantMember(resource.data)
-                        && isCanonicaTenantMember(request.resource.data)
-                        && request.resource.data.tId == resource.data.tId
-                        && request.resource.data.sId == resource.data.sId
-                      )
-                    );
+                    && (isPlatformAdmin() || canUpdateCanonicaPlatformSummaryDoc(document));
       allow delete: if false;
     }
 
@@ -286,6 +281,104 @@ service cloud.firestore {
 
     function isCanonicaPlatformSummaryDoc(document) {
       return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|entityGraph|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+    }
+
+    function isCanonicaPlatformSummaryClientReadableDoc(document) {
+      return isCanonicaPlatformSummaryDoc(document)
+        && !document.matches('^(sourceVersions|bundleManifest)_.*$');
+    }
+
+    function isCanonicaSourceVersionsDoc(document) {
+      return document.matches('^sourceVersions_.*$');
+    }
+
+    function isCanonicaBundleManifestDoc(document) {
+      return document.matches('^bundleManifest_.*$');
+    }
+
+    function canonicaSourceVersionClientKeys() {
+      return [
+        'schemaVersion',
+        'pId',
+        'tId',
+        'sId',
+        'workspaceProfile',
+        'widgetConfig',
+        'kb',
+        'docsNav',
+        'entities',
+        'entityRelations',
+        'canonical',
+        'surfaces',
+        'releases',
+        'branding',
+        'mcpPolicy',
+        'predictiveTriggers',
+        'updatedAt',
+        'lastReason',
+        'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function canonicaBundleManifestClientKeys() {
+      return [
+        'schemaVersion',
+        'pId',
+        'tId',
+        'sId',
+        'status',
+        'staleReason',
+        'updatedAt',
+        'lastReason',
+        'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function isCanonicaTenantSummaryScopeStable() {
+      return isCanonicaTenantMember(resource.data)
+        && isCanonicaTenantMember(request.resource.data)
+        && request.resource.data.tId == resource.data.tId
+        && request.resource.data.sId == resource.data.sId;
+    }
+
+    function canCreateCanonicaPlatformSummaryDoc(document) {
+      return isCanonicaTenantMember(request.resource.data)
+        && (
+          (
+            isCanonicaSourceVersionsDoc(document)
+            && request.resource.data.keys().hasOnly(canonicaSourceVersionClientKeys())
+          )
+          || (
+            isCanonicaBundleManifestDoc(document)
+            && request.resource.data.keys().hasOnly(canonicaBundleManifestClientKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            !isCanonicaSourceVersionsDoc(document)
+            && !isCanonicaBundleManifestDoc(document)
+          )
+        );
+    }
+
+    function canUpdateCanonicaPlatformSummaryDoc(document) {
+      return isCanonicaTenantSummaryScopeStable()
+        && (
+          (
+            isCanonicaSourceVersionsDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(canonicaSourceVersionClientKeys())
+          )
+          || (
+            isCanonicaBundleManifestDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(canonicaBundleManifestClientKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            !isCanonicaSourceVersionsDoc(document)
+            && !isCanonicaBundleManifestDoc(document)
+          )
+        );
     }
 
     function isCanonicaTenantMember(data) {

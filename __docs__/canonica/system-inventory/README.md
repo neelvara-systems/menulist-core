@@ -74,6 +74,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 | Guided workflow answer model | Implemented but rollout-gated | `src/lib/canonica/procedureValidation.ts`, canonical answer types | `canonica_canonicalAnswers.content.procedure` | Adds ordered procedures, prerequisites, warnings, and action metadata to canonical answers. |
 | Instant cache + freshness manifest | Implemented | `src/lib/canonica/instantCache.ts`, `src/lib/canonica/cacheFreshness.ts`, `src/lib/canonica/cacheVersion*.ts`, `functions-canonica/src/canonica/cacheVersionManifest.ts` | Upstash Redis when configured, `canonica_cacheVersions` | Caches repeated canonical hits while checking compact source versions instead of scanning source docs. |
 | Compiled context distribution | Implemented | `src/lib/canonica/contextBundleBuilderServer.ts`, `src/lib/canonica/compiledContext.ts`, `src/app/api/canonica/bundles/*`, `functions-canonica/src/canonica/contextBundleBuilder.ts` | `platformSummary/sourceVersions_*`, `platformSummary/bundleManifest_*`, Firebase Storage `canonica-context/*` | Compiles approved read-heavy context into immutable public/private JSON bundles for widget, public API, MCP, and scheduler-safe serving. |
+| Centralized scheduler | Implemented | `functions-canonica/src/canonica/canonicaMasterScheduler.ts`, `functions-canonica/src/canonica/schedulerTime.ts`, `functions-canonica/src/canonica/canonicaNightly.ts` | `platformSummary/canonicaTenantsSummary`, `platformSummary/canonicaSchedulerState`, `platformSummary/canonicaNightlyState_*`, `platformSummary/canonicaNightlyLock_*` | Keeps one scheduled Canonica export while filtering workspaces by local timezone/support-day end time and locking each workspace/date. |
 | Drift governance | Implemented | `src/lib/canonica/driftDetection.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/governance/DriftDashboard.tsx` | canonical answers, entities, releases, signals | Flags version mismatch, signal anomaly, scope conflict, and deprecated entity drift. |
 | Signal mutation engine | Implemented | `src/lib/canonica/signalEmitter.ts`, `functions-canonica/src/canonica/canonicaNightly.ts`, `src/components/templates/canonica/MutationProposalReview.tsx`; `src/lib/canonica/signalMutation.ts` is a reference/manual utility only | `canonica_signalEvents`, `canonica_mutationProposals` | Turns repeated tickets, negative feedback, fallback, and escalation signals into reviewable knowledge changes. Production clustering stays server-side for cost and access control. |
 | Auto knowledge drafts | Implemented with caps | `src/lib/canonica/draftGenerator.ts`, `functions-canonica/src/canonica/draftGenerator.ts`, `src/lib/canonica/draftPrompt.ts`, `src/components/templates/canonica/MutationProposalReview.tsx` | mutation proposals, entities, signals | Generates draft canonical answers for human review; queue UI supports publish, reject, and explicit generate/regenerate. Never auto-publishes authoritative content. |
@@ -124,6 +125,7 @@ Management routes are gated by Canonica product scope or platform access. Client
 - `/api/canonica/onboard`
 - `/api/canonica/workspace-profile`
 - `/api/canonica/activation/summary`
+- `/api/canonica/operations/status`
 - `/api/canonica/widget-config`
 - `/api/canonica/widget-key`
 - `/api/canonica/product-surfaces/rebuild-summary`
@@ -147,8 +149,9 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 
 | Backend unit | Trigger | Purpose | Cost posture |
 | --- | --- | --- | --- |
-| `canonicaNightly` | Scheduled Cloud Function | Runs drift, signal mutation, coverage, trust metrics, optional friction, and optional ticket knowledge. | Uses `platformSummary/canonicaTenantsSummary` before legacy discovery; logs structured run results. |
-| `triggerCanonicaNightly` | HTTP manual trigger with secret | Manual backfill/recovery for scheduler work. | Supports tenant/store targeting and dry-run style diagnostics. |
+| `canonicaNightly` | Scheduled Cloud Function | Compatibility export for the centralized Canonica scheduler. Runs hourly and delegates to `runCanonicaMasterScheduler()`. | Reads `platformSummary/canonicaTenantsSummary`, filters by workspace-local EOD, then runs governance only for due tenants. |
+| `triggerCanonicaNightly` | HTTP manual trigger with secret | Manual recovery path for the same centralized scheduler. | Uses the same task registry and locks as scheduled runs, with force-all tenant processing for recovery. |
+| `/api/canonica/operations/status` | Protected owner API | Activation Daily Governance panel status. | Reads one store doc, two platformSummary docs, and five capped scheduler logs; filters run logs to the current workspace. |
 | `embedArticleWorker` | Cloud Tasks | Generates/stores KB article embeddings after article generation. | Async work, separated from UI. |
 | `regenerateEmbedding` | Callable | Manual article embedding regeneration. | Admin/protected callable; expensive only on demand. |
 | `publishApprovedJobFn` | Callable | Publishes reviewed KB generation job output. | Transactional publishing and cache version bump. |
@@ -171,6 +174,10 @@ These routes exist, validate API scope, and are controlled by `ENABLE_CANONICA_P
 - `canonica_entityCandidates`
 - `canonica_frictionDailyStats`
 - `canonica_schedulerRunLogs`
+- `platformSummary/canonicaSchedulerState`
+- `platformSummary/canonicaSchedulerTaskLock_*`
+- `platformSummary/canonicaNightlyState_*`
+- `platformSummary/canonicaNightlyLock_*`
 - `canonica_aiOperations`
 - `canonica_cacheVersions`
 - `canonica_notificationLogs`

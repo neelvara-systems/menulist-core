@@ -12,7 +12,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: page-aware widget, hosted help, ticket fallback, approved answers, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: page-aware widget, hosted help, approved answers, compiled runtime context, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -35,6 +35,7 @@ const FEATURES = [
             'Knowledge import for docs, FAQs, starter answers, and existing files',
             'Activation checklist for widget install, custom help domains, allowed origins, and first answer readiness',
             'Initial product surfaces so coverage is measured by page, not only by article count',
+            'Compiled context readiness so the widget can use cache-first product context after approval',
             'Human review before generated drafts become approved answers',
         ],
     },
@@ -63,7 +64,7 @@ const FEATURES = [
             'Owner-approved answer drafts and mutation proposals',
             'Article-backed FAQ generation and review for short support answers',
             'Coverage metrics by surface, entity, and answer readiness',
-            'Cache freshness checks so updated content does not serve stale answers',
+            'Compiled approved context for widget/runtime reads, with cache freshness checks so updates do not serve stale answers',
             'Audit trail for answer review and governance actions',
         ],
     },
@@ -75,7 +76,7 @@ const FEATURES = [
         capabilities: [
             'Changelog entries assigned to surfaces, tags, and affected answers',
             'Drift flags for stale or conflicting support knowledge',
-            'Release impact checks without creating a separate scheduler',
+            'Release impact checks inside the centralized workspace-local governance scheduler',
             'Weekly digest and Slack/email notifications for support governance movement',
             'Summary-backed coverage, trust, and readiness metrics to avoid expensive dashboard scans',
         ],
@@ -91,7 +92,7 @@ const FEATURES = [
             'Draft approved answers for owner review',
             'Critical workflow notifications for coverage drops and repeated answer failures',
             'Ticket resolution extraction and safe ticket context when a support case teaches the product',
-            'Cost-conscious summaries for dashboards, scheduler discovery, and product friction review',
+            'Cost-conscious summaries, compiled context repair, and product friction review without per-request collection scans',
         ],
     },
 ];
@@ -198,6 +199,33 @@ export default function CanonicaProductPage() {
                                         View feature page
                                     </span>
                                 </CanonicaLink>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-20">
+                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+                        <div>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-indigo-400">Runtime readiness</p>
+                            <h2 className="text-3xl font-bold leading-tight sm:text-4xl">
+                                Approved support context is prepared before runtime needs it.
+                            </h2>
+                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
+                                Canonica keeps governed source records separate, then prepares approved public widget context and private server context into versioned runtime bundles. That keeps user-facing support fast without exposing drafts, tickets, audit logs, or workspace internals.
+                            </p>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            {[
+                                ['Owner-visible readiness', 'Activation shows compiled context status, version, stale state, public/private readiness, and manual rebuild controls.'],
+                                ['Cache-first widget config', 'Ready widget context can return bundle pointers with runtime config, so browsers avoid repeated setup reads.'],
+                                ['Workspace-local governance', 'Daily governance runs by each workspace timezone and support-day end time, then repairs stale compiled context only when source versions changed.'],
+                                ['Agent context stays controlled', 'Authenticated agent-context endpoints stay rollout-gated; public pages do not promise agent-side knowledge writes.'],
+                            ].map(([title, detail]) => (
+                                <article key={title} className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5">
+                                    <h3 className="text-base font-semibold text-white">{title}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{detail}</p>
+                                </article>
                             ))}
                         </div>
                     </div>

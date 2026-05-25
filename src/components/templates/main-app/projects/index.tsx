@@ -20,6 +20,7 @@ import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage, hasMissingProjectPublicDraftContent } from '@lib/localization/projectContent';
 import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
@@ -31,7 +32,7 @@ import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { getBase64, removeObjRef } from '@util/utils';
-import { Button, Checkbox, Flex, Form, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Checkbox, Flex, Form, Input, message, Modal, Spin, theme, Tooltip, Typography, Upload } from 'antd';
 import type { UploadFileStatus, UploadProps } from 'antd/es/upload/interface';
 import DOMPurify from 'isomorphic-dompurify';
 import { useTranslations } from 'next-intl';
@@ -215,6 +216,9 @@ function ProjectsPage() {
     const [isFirstTime, setIsFirstTime] = useState(false);
     const [failedFiles, setFailedFiles] = useState<FailedFile[]>([]);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+    const [menuLinkUrl, setMenuLinkUrl] = useState('');
+    const [menuLinkPermissionConfirmed, setMenuLinkPermissionConfirmed] = useState(false);
+    const [menuLinkImporting, setMenuLinkImporting] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
 
     // Job Queue: Track active menu processing job
@@ -384,6 +388,9 @@ function ProjectsPage() {
             revalidateOnMount: true
         }
     );
+    const hasPendingLocalUploadFiles = Boolean(activeProject?.files?.some((file) => (
+        !file.extractedData && typeof file.url === 'string' && file.url.includes('base64')
+    )));
 
     useEffect(() => {
         setSelectedProject(null);
@@ -1666,6 +1673,48 @@ function ProjectsPage() {
         return { jobId, uploadedUrls, projectId: targetProjectId };
     };
 
+    const handleMenuLinkImport = useCallback(async () => {
+        if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) return;
+        if (!selectedProject?.projectId) {
+            message.info('Create a menu before importing from a link.');
+            return;
+        }
+        if (!menuLinkUrl.trim()) {
+            message.error('Paste a public menu link.');
+            return;
+        }
+        if (!menuLinkPermissionConfirmed) {
+            message.error('Confirm you have permission to import this menu.');
+            return;
+        }
+        if (hasPendingLocalUploadFiles) {
+            message.info('Upload or clear selected files before importing a link.');
+            return;
+        }
+        if (activeProcessingJobId) {
+            message.info('Wait for the current import to finish.');
+            return;
+        }
+
+        try {
+            setMenuLinkImporting(true);
+            const result = await createMenuLinkImportJob({
+                permissionConfirmed: menuLinkPermissionConfirmed,
+                projectId: selectedProject.projectId,
+                url: menuLinkUrl.trim(),
+            });
+
+            setActiveProcessingJobId(result.jobId);
+            setMenuLinkUrl('');
+            setMenuLinkPermissionConfirmed(false);
+            message.success(result.reusedExistingJob ? 'Existing import is still running.' : 'Menu link import started.');
+        } catch (error: any) {
+            message.error(error?.message || 'We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+        } finally {
+            setMenuLinkImporting(false);
+        }
+    }, [activeProcessingJobId, hasPendingLocalUploadFiles, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject?.projectId, setActiveProcessingJobId]);
+
     /**
      * Handle "Continue" button click
      * 
@@ -2009,6 +2058,58 @@ function ProjectsPage() {
         itemRender: (file) => null
     };
 
+    const menuLinkImportPanel = FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT ? (
+        <Flex
+            gap={10}
+            vertical
+            style={{
+                background: token.colorBgContainer,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 8,
+                padding: 16,
+                width: '100%',
+            }}
+        >
+            <Flex align="center" gap={10}>
+                <LuGlobe2 size={20} color={token.colorPrimary} />
+                <Typography.Text strong>Import from existing menu link</Typography.Text>
+            </Flex>
+            <Typography.Text type="secondary">
+                We&apos;ll create a draft for review before anything is published.
+            </Typography.Text>
+            {hasPendingLocalUploadFiles ? (
+                <Typography.Text type="secondary">
+                    Upload or clear selected files before importing a link.
+                </Typography.Text>
+            ) : null}
+            <Input
+                disabled={menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                onChange={(event) => setMenuLinkUrl(event.target.value)}
+                onPressEnter={handleMenuLinkImport}
+                placeholder="https://example.com/menu"
+                value={menuLinkUrl}
+            />
+            <Checkbox
+                checked={menuLinkPermissionConfirmed}
+                disabled={menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                onChange={(event) => setMenuLinkPermissionConfirmed(event.target.checked)}
+            >
+                I confirm this is my business menu or I have permission to import it.
+            </Checkbox>
+            <Flex justify="flex-end">
+                <Button
+                    disabled={!selectedProject?.projectId || !menuLinkUrl.trim() || !menuLinkPermissionConfirmed || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                    icon={<LuGlobe2 size={18} />}
+                    loading={menuLinkImporting}
+                    onClick={handleMenuLinkImport}
+                    type="primary"
+                >
+                    Import link
+                </Button>
+            </Flex>
+        </Flex>
+    ) : null;
+
     // Debug logging for job state
     // console.log('[ProjectsPage] Render state:', {
     //     fileProcessingId,
@@ -2086,37 +2187,40 @@ function ProjectsPage() {
 
                                 {/* When NO files: Show big prominent upload area */}
                                 {!activeProject?.files?.length && (
-                                    <Dragger {...uploadProps} style={{ minWidth: 700, width: "100%" }}>
-                                        <Flex vertical gap={16} align='center' justify='center' style={{ width: '100%', padding: '40px 20px' }}>
-                                            <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>{labels.uploadLabel}</Typography.Title>
-                                            <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '16px', maxWidth: 500 }}>
-                                                Drag and drop your {labels.offeringLower} photos or PDFs here, or click below to browse
-                                            </Typography.Text>
-                                            <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '13px', color: token.colorTextTertiary }}>
-                                                ⚡ We&apos;ll automatically extract items in ~3 minutes
-                                            </Typography.Text>
-                                            <Flex gap={20} align='center' justify='center'>
-                                                <Tooltip title="Upload JPG or PNG images">
-                                                    <Button shape='circle' type='text' size='large' icon={<TbFileTypeJpg size={32} />} style={{ height: 56, width: 56, color: token.colorPrimaryTextActive, backgroundColor: token.colorPrimaryBg || '#e6f7ff' }} />
-                                                </Tooltip>
-                                                <Tooltip title="Upload PDF documents">
-                                                    <Button shape='circle' type='text' size='large' icon={<TbFileTypePdf size={32} />} style={{ height: 56, width: 56, color: token.colorErrorTextActive, backgroundColor: token.colorErrorBg || '#fff1f0' }} />
-                                                </Tooltip>
+                                    <Flex gap={14} style={{ width: '100%' }} vertical>
+                                        <Dragger {...uploadProps} style={{ minWidth: 700, width: "100%" }}>
+                                            <Flex vertical gap={16} align='center' justify='center' style={{ width: '100%', padding: '40px 20px' }}>
+                                                <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>{labels.uploadLabel}</Typography.Title>
+                                                <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '16px', maxWidth: 500 }}>
+                                                    Drag and drop your {labels.offeringLower} photos or PDFs here, or click below to browse
+                                                </Typography.Text>
+                                                <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '13px', color: token.colorTextTertiary }}>
+                                                    We&apos;ll extract the items in a few minutes
+                                                </Typography.Text>
+                                                <Flex gap={20} align='center' justify='center'>
+                                                    <Tooltip title="Upload JPG or PNG images">
+                                                        <Button shape='circle' type='text' size='large' icon={<TbFileTypeJpg size={32} />} style={{ height: 56, width: 56, color: token.colorPrimaryTextActive, backgroundColor: token.colorPrimaryBg || '#e6f7ff' }} />
+                                                    </Tooltip>
+                                                    <Tooltip title="Upload PDF documents">
+                                                        <Button shape='circle' type='text' size='large' icon={<TbFileTypePdf size={32} />} style={{ height: 56, width: 56, color: token.colorErrorTextActive, backgroundColor: token.colorErrorBg || '#fff1f0' }} />
+                                                    </Tooltip>
+                                                </Flex>
+                                                <Button
+                                                    type="primary"
+                                                    ghost
+                                                    size="large"
+                                                    icon={<LuUpload size={20} />}
+                                                    style={{ paddingLeft: 32, paddingRight: 32, height: 48, fontSize: '16px', fontWeight: 500, marginTop: 8, borderRadius: 12 }}
+                                                >
+                                                    Choose Files to Upload
+                                                </Button>
                                             </Flex>
-                                            <Button
-                                                type="primary"
-                                                ghost
-                                                size="large"
-                                                icon={<LuUpload size={20} />}
-                                                style={{ paddingLeft: 32, paddingRight: 32, height: 48, fontSize: '16px', fontWeight: 500, marginTop: 8, borderRadius: 12 }}
-                                            >
-                                                Choose Files to Upload
-                                            </Button>
-                                        </Flex>
-                                        <Typography.Text type="secondary" style={{ fontSize: '13px', display: 'block', textAlign: 'center', padding: '16px 0 12px 0' }}>
-                                            Upload multiple files at once • Maximum 10MB per file
-                                        </Typography.Text>
-                                    </Dragger>
+                                            <Typography.Text type="secondary" style={{ fontSize: '13px', display: 'block', textAlign: 'center', padding: '16px 0 12px 0' }}>
+                                                Upload multiple files at once • Maximum 10MB per file
+                                            </Typography.Text>
+                                        </Dragger>
+                                        {menuLinkImportPanel}
+                                    </Flex>
                                 )}
 
                                 {/* Error Recovery: Show failed files with retry options */}
@@ -2146,6 +2250,7 @@ function ProjectsPage() {
                                             </Typography.Text>
                                         </Flex>
                                     </Dragger>
+                                    {menuLinkImportPanel}
 
                                     {/* Language Selector */}
                                     <LanguageSelector
@@ -2180,10 +2285,10 @@ function ProjectsPage() {
                                             icon={activeProject?.files?.some(file => !file.extractedData) ? <LuUpload size={20} /> : <LuArrowRight size={20} />}
                                             size='large'
                                             shape='round'
-                                            disabled={!selectedProject || fileProcessingId !== null}
-                                            loading={fileProcessingId !== null}
+                                            disabled={!selectedProject || fileProcessingId !== null || Boolean(activeProcessingJobId)}
+                                            loading={fileProcessingId !== null || Boolean(activeProcessingJobId)}
                                         >
-                                            {fileProcessingId !== null
+                                            {fileProcessingId !== null || Boolean(activeProcessingJobId)
                                                 ? 'Processing...'
                                                 : activeProject?.files?.some(file => !file.extractedData)
                                                     ? 'Upload & Continue'

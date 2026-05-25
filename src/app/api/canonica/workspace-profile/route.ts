@@ -8,7 +8,7 @@ import {
     normalizeCanonicaBusinessDayEndTime,
     normalizeCanonicaTimeZone,
 } from '@lib/canonica/schedulerSettings';
-import { resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
+import { canUseCanonicaManagement, resolveCanonicaSessionScope } from '@lib/canonica/sessionScope';
 import { upsertCanonicaTenantSummaryAdmin } from '@lib/canonica/tenantSummaryAdmin';
 import { canonicaFirestoreAdmin } from '@lib/firebase/canonicaFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdmin';
@@ -74,6 +74,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Canonica is not enabled.' }, { status: 403 });
     }
+    if (!canUseCanonicaManagement(session)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
@@ -88,7 +91,11 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         if (Number.isFinite(tenantId) && tenantId !== scope.tenantId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-        return NextResponse.json({ profile: buildProfileResponse(storeData) });
+        return NextResponse.json({ profile: buildProfileResponse(storeData) }, {
+            headers: {
+                'Cache-Control': 'private, no-store',
+            },
+        });
     } catch (error) {
         secureError('[Canonica Workspace Profile] Failed to load profile', error as Error, {
             storeId: scope.storeId,
@@ -101,6 +108,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
 export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_CANONICA_WIDGET) {
         return NextResponse.json({ error: 'Canonica is not enabled.' }, { status: 403 });
+    }
+    if (!canUseCanonicaManagement(session)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const scope = resolveSessionScope(session);
@@ -140,7 +150,11 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         };
         const currentProfile = buildProfileResponse(storeData);
         if (JSON.stringify(currentProfile) === JSON.stringify(nextProfile)) {
-            return NextResponse.json({ profile: currentProfile });
+            return NextResponse.json({ profile: currentProfile }, {
+                headers: {
+                    'Cache-Control': 'private, no-store',
+                },
+            });
         }
 
         await storeRef.set({
@@ -184,7 +198,11 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             primarySurfaceCount: primarySurfaces.length,
         });
 
-        return NextResponse.json({ profile: nextProfile });
+        return NextResponse.json({ profile: nextProfile }, {
+            headers: {
+                'Cache-Control': 'private, no-store',
+            },
+        });
     } catch (error) {
         if (error instanceof ZodError) {
             return NextResponse.json({ error: 'Invalid workspace profile' }, { status: 400 });

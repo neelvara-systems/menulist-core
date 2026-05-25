@@ -55,6 +55,11 @@ export interface CreateJobParams {
     retriedFromJobId?: string;
     /** Retry attempt number (0 = first attempt, 1 = first retry, etc.) */
     retryCount?: number;
+    /** Force review even if project has no existing menu items. */
+    forceReview?: boolean;
+    /** Optional source marker for non-upload intake flows. */
+    source?: string;
+    sourceMetadata?: Record<string, unknown>;
 }
 
 export interface MenuProcessingJobStatus {
@@ -69,6 +74,9 @@ export interface MenuProcessingJobStatus {
     isFirstExtraction?: boolean;
     /** TTL for unapproved preview_ready jobs */
     expiresAt?: any;
+    forceReview?: boolean;
+    source?: string;
+    sourceMetadata?: Record<string, unknown>;
     result?: {
         combinedData: any;
         qualityScore: number;
@@ -124,6 +132,9 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         jobMode = "SINGLE_STORE",
         retriedFromJobId,
         retryCount,
+        forceReview,
+        source,
+        sourceMetadata,
     } = params;
 
     // Get session for tenant context
@@ -152,6 +163,9 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         ...(businessCategory ? { businessCategory } : {}),
         ...(businessType ? { businessType } : {}),
         jobMode,
+        ...(forceReview ? { forceReview: true } : {}),
+        ...(source ? { source } : {}),
+        ...(sourceMetadata ? { sourceMetadata } : {}),
         status: 'pending',
         progress: 0,
         currentStep: 'Queued',

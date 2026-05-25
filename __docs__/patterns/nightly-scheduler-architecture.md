@@ -462,7 +462,7 @@ At 5k+ stores, the `storesSummary` document may become:
 
 ### Canonica Scheduler Scale
 
-Canonica scale is managed separately in `functions-canonica/`. If Canonica nightly becomes dense, add per-tenant caps or staggered Canonica sub-runs there. Do not use MenuList store timezone distribution to schedule Canonica work.
+Canonica scale is managed separately in `functions-canonica/`. It now has its own centralized scheduler (`functions-canonica/src/canonica/canonicaMasterScheduler.ts`) behind the existing `canonicaNightly` export. Canonica uses the same high-level discipline as MenuList: one scheduled export, tenant/workspace summary discovery, runtime timezone + EOD filtering, and per-workspace/date locks. It does not run inside the MenuList scheduler and does not use MenuList restaurant-specific defaults.
 
 ---
 
@@ -471,6 +471,7 @@ Canonica scale is managed separately in `functions-canonica/`. If Canonica night
 | Date       | Change                                                                                             |
 | ---------- | -------------------------------------------------------------------------------------------------- |
 | 2026-03-03 | DST-safe runtime timezone computation (replaces stored schedulerHour comparison)                   |
+| 2026-05-25 | Added Canonica centralized scheduler note: separate product scheduler with one scheduled export, timezone/EOD filtering, and workspace/date locks |
 | 2026-03-03 | Added store mismatch telemetry (expected vs processed count)                                       |
 | 2026-03-03 | Timezone-aware scheduling (hourly + store timezone filter)                                         |
 | 2026-03-03 | Merged masterScheduler tasks (feedback intelligence, KB quality, weekly narrative, health signals) |
