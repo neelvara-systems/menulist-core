@@ -6,6 +6,23 @@
 
 ---
 
+## May 25, 2026 — Canonica Developer Install Pack
+
+### Added
+
+- **Canonica now has a developer install pack** — Added a typed `@canonica/web` source package, public framework quickstarts, and dashboard install snippets for HTML, SDK, route context, Next.js, React, Vue/Nuxt, and vanilla setups.
+- **Widget install verification is clearer** — Widget Management now checks key readiness, script load, allowed-origin status, blocked-route status, and context arrival from the existing runtime status payload.
+- **Starter product surfaces are productized** — Product owners can seed Billing, Onboarding, Team Settings, Releases, Integrations, and Common Errors surfaces without creating unrelated canonical answers automatically.
+- **Knowledge import starters are available** — KB generation upload now includes Markdown docs, FAQ CSV, changelog, and ticket-macro starter templates while keeping URL crawling out of scope.
+- **Public buyer enablement pages were added** — Canonica now includes `/quickstarts`, `/roi-calculator`, `/proof`, and `/security-one-pager`, with Resources, Pricing, Install, sitemap, and LLM context updated.
+
+### Cost
+
+- **Static website additions have no Firebase cost** — Public quickstarts, ROI calculator, proof pack, and security one-pager are static/client-side pages.
+- **Dashboard additions are bounded** — The verifier reuses existing widget settings reads; surface templates only write when an owner applies them, capped at six starter surface writes plus one summary rebuild.
+
+---
+
 ## May 25, 2026 — Website Existing Menu Link Intake
 
 ### Changed

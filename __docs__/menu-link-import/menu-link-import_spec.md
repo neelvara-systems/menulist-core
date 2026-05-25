@@ -2,7 +2,7 @@
 
 ## Problem
 
-Owners often already have a menu on a website, direct PDF/image link, or QR destination. Existing MenuList intake accepts files, but asking owners to download and re-upload a public menu adds friction.
+Owners often already have a menu, service list, product catalog, rate card, or similar offering source on a website, direct PDF/image link, or QR destination. Existing MenuList intake accepts files, but asking owners to download and re-upload a public source adds friction.
 
 ## Product Decision
 
@@ -19,8 +19,8 @@ This is aligned with MenuList because it moves scattered public menu sources int
 - Authenticated owner pastes a public URL.
 - Owner confirms the source is their business menu or they have permission to import it.
 - Public HTML, text, JSON, direct PDF, and direct JPEG/PNG/WebP sources.
-- Shallow same-origin discovery when the pasted URL is a homepage and the page has likely menu links.
-- Bounded same-origin PDF/image fallback when a low-confidence HTML page links to a likely menu asset.
+- Shallow same-origin discovery when the pasted URL is a homepage and the page has likely menu/catalog/offering links.
+- Bounded same-origin PDF/image fallback when a low-confidence HTML page links to a likely menu/catalog/offering asset.
 - Private source artifact storage.
 - Existing AI extraction job queue.
 - Forced review before write.

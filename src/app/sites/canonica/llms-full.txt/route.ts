@@ -19,6 +19,8 @@ Canonica is:
 - hosted help, FAQ, changelog, and widget support surfaces
 - Slack and email workflow notifications for owner attention
 - configured proactive widget prompts where active triggers exist
+- typed browser SDK helper for init, page context, open/close, and safe context validation
+- framework quickstarts for common frontend stacks
 - a signal loop from fallback/tickets/feedback into reviewed knowledge work
 - approved support context prepared into cache-first runtime bundles for widget and authenticated server paths
 
@@ -48,10 +50,14 @@ Canonica is not:
 - ${CANONICA_SITE_URL}/demo — static demo with no Firebase or AI calls.
 - ${CANONICA_SITE_URL}/use-cases/ai-built-saas — support path for AI-built SaaS apps and fast founder launches.
 - ${CANONICA_SITE_URL}/install — widget install, allowed origins, blocked routes, hosted help domains, safe page context, and verification.
+- ${CANONICA_SITE_URL}/quickstarts — Next.js App Router, React SPA, Vue/Nuxt, vanilla script, and typed SDK examples.
 - ${CANONICA_SITE_URL}/integrations — Slack and email workflow notifications, test delivery, compact health, and controlled adapter boundaries.
+- ${CANONICA_SITE_URL}/roi-calculator — static repeated-question and support-time planning calculator.
+- ${CANONICA_SITE_URL}/proof — example launch, release, and studio workloads for evaluating Canonica operationally.
 - ${CANONICA_SITE_URL}/resources — learning hub for launch, widget, support control, and governance.
 - ${CANONICA_SITE_URL}/updates — public product movement, not the customer workspace changelog.
 - ${CANONICA_SITE_URL}/security — trust, data boundary, widget context, runtime limits, tenant isolation, and disclosure.
+- ${CANONICA_SITE_URL}/security-one-pager — shareable security and operations summary for install reviews.
 - Runtime scaling is explained inside /product, /security, /resources, and /updates rather than as a standalone public MCP page.
 - ${CANONICA_SITE_URL}/faq — common buyer questions with FAQ structured data.
 - ${CANONICA_SITE_URL}/pricing — INR pricing and support-credit guidance.
@@ -70,6 +76,7 @@ Canonica is not:
 - Public Canonica API routes exist behind rollout flags and API scope validation. Do not market them as generally available unless the website explicitly says so.
 - Slack and email workflow notifications are self-service. Broader workflow adapters should remain controlled rollout unless public pages explicitly say they are available.
 - Proactive help is configured and capability-gated; it should not be described as an always-on autonomous widget.
+- The typed web SDK is a browser wrapper around the widget runtime. It validates and sanitizes context shape, but server-side tenant/workspace scope still comes only from Canonica keys, sessions, and APIs. Public registry publishing is handled as a release operation.
 - MCP and agent-context tools are rollout-gated. Do not describe public Canonica as offering general MCP access or agent-side knowledge writes unless a public route explicitly exposes that contract.
 
 ## Agent Reading Guidance

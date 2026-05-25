@@ -58,6 +58,7 @@ The Activation Command Center reads compact summary docs only. Generated entity 
 | 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Canonica feature map, route map, Firebase map, file inventory, and website truth |
 | 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Canonica self-serve positioning, non-enterprise ICP, pricing direction, and execution task list |
 | 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
+| 16  | `developer-install-pack/`                        | Product/Sales/Dev | Typed SDK, quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
 
 ---
 
@@ -143,6 +144,10 @@ The mobile More tab does not route-hop to `/canonica/*`; it renders `src/compone
 - `/sites/canonica/demo` and `__canonica/demo` → static page-aware product demo
 - `/sites/canonica/get-started` → self-service onboarding
 - `/sites/canonica/product`, `/pricing`, `/security`, `/faq`, `/about`, `/contact` → public site pages
+- `/sites/canonica/quickstarts` → framework examples and typed web helper usage
+- `/sites/canonica/roi-calculator` → static repeated-question support planning calculator
+- `/sites/canonica/proof` → example Canonica workloads for buyer evaluation
+- `/sites/canonica/security-one-pager` → shareable security and operations summary
 - `/sites/canonica/privacy-policy`, `/sites/canonica/terms-of-service` → public legal/support policy pages
 - `/sites/canonica/sitemap.xml`, `/sites/canonica/robots.txt` → Canonica product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
@@ -186,6 +191,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `src/database/canonica/auditLogs.ts` — Governance audit trail
 - `src/database/canonica/coverageKPI.ts` — Coverage KPI reads
 - `src/database/canonica/productSurfaces.ts` — Product surface CRUD and compact related-content summary reads
+- `src/data/canonica/surfaceTemplates.ts` — Bounded starter surface templates for common SaaS pages
 
 ### Cloud Functions
 

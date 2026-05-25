@@ -139,6 +139,13 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         changeFrequency: 'monthly',
     },
     {
+        path: '/quickstarts',
+        title: 'Developer Quickstarts | Canonica',
+        description: 'Canonica widget quickstarts for Next.js App Router, React SPA, Vue/Nuxt, vanilla script installs, typed SDK usage, and safe context validation.',
+        priority: 0.78,
+        changeFrequency: 'monthly',
+    },
+    {
         path: '/integrations',
         title: 'Integrations | Canonica',
         description: 'Slack and email workflow notifications for Canonica support governance: digest-first alerts, test delivery, compact health, and bounded delivery.',
@@ -167,6 +174,20 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         changeFrequency: 'weekly',
     },
     {
+        path: '/roi-calculator',
+        title: 'Support ROI Calculator | Canonica',
+        description: 'Estimate repeated support questions, founder time saved, support value, and Canonica plan fit for AI-built SaaS support.',
+        priority: 0.76,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/proof',
+        title: 'Proof Pack | Canonica',
+        description: 'Example Canonica workloads for billing, onboarding, releases, errors, and support-gap review.',
+        priority: 0.74,
+        changeFrequency: 'monthly',
+    },
+    {
         path: '/get-started',
         title: 'Get Started | Canonica',
         description: 'Create your Canonica workspace, add your app, pick pages where users get stuck, and get a widget key for page-aware support.',
@@ -178,6 +199,13 @@ export const CANONICA_PUBLIC_PAGES: Array<{
         title: 'Security | Canonica',
         description: 'Security for Canonica page-aware support: safe page hints, allowed origins, blocked routes, compiled context, scoped workspaces, and owner-approved answers.',
         priority: 0.7,
+        changeFrequency: 'monthly',
+    },
+    {
+        path: '/security-one-pager',
+        title: 'Security and Ops One-Pager | Canonica',
+        description: 'Shareable Canonica security and operations summary for allowed origins, blocked routes, safe context, hashed keys, owner approval, and rate limits.',
+        priority: 0.68,
         changeFrequency: 'monthly',
     },
     {

@@ -268,11 +268,11 @@ export const FUNCTION_FLAGS = {
      * Menu Link Import — owner-provided public menu links.
      *
      * Function guard for jobs created through /api/menu-link-imports.
-     * Keep in sync with src/config/features.ts.
+     * Keep in sync with src/config/features.ts for rollback symmetry.
      *
      * @see __docs__/menu-link-import/
      */
-    ENABLE_MENU_LINK_IMPORT: false,
+    ENABLE_MENU_LINK_IMPORT: true,
 
 } as const;
 

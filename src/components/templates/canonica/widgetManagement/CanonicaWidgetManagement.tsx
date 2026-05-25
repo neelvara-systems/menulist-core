@@ -59,7 +59,7 @@ import type { CanonicaWidgetRuntimeStatus } from '@type/canonica';
 
 const { Title, Text, Paragraph } = Typography;
 
-type SnippetType = 'html' | 'spa' | 'next';
+type SnippetType = 'html' | 'sdk' | 'spa' | 'next' | 'react' | 'vue' | 'vanilla';
 
 type CanonicaWidgetManagementProps = {
     embeddedMobile?: boolean;
@@ -149,6 +149,18 @@ const formatRuntimeDate = (value: any): string => {
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+    });
+};
+
+const isRuntimePathBlocked = (path: string | null | undefined, blockedRoutes: string[]) => {
+    if (!path) return false;
+    return blockedRoutes.some((route) => {
+        if (route === '*') return true;
+        if (route.endsWith('/*')) {
+            const prefix = route.slice(0, -1);
+            return path === route.slice(0, -2) || path.startsWith(prefix);
+        }
+        return path === route;
     });
 };
 
@@ -397,30 +409,156 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
 
     const embedCode = useMemo(() => buildCanonicaWidgetEmbedCode({ apiKey, config, scriptSrc }), [apiKey, config, scriptSrc]);
     const spaSnippet = useMemo(() => buildCanonicaWidgetRouteSnippet(), []);
+    const sdkSnippet = useMemo(() => [
+        "import { createCanonicaWebClient } from '@canonica/web';",
+        '',
+        'const canonica = createCanonicaWebClient({',
+        `  apiKey: '${apiKey || 'YOUR_WIDGET_KEY'}',`,
+        `  scriptSrc: '${scriptSrc}',`,
+        '});',
+        '',
+        'await canonica.init();',
+        'canonica.page({',
+        "  contextKey: 'billing_invoices',",
+        "  feature: 'billing',",
+        "  page: 'invoices',",
+        "  workflow: 'manage_subscription',",
+        "  entityHints: ['invoice', 'subscription'],",
+        '});',
+    ].join('\n'), [apiKey, scriptSrc]);
     const nextSnippet = useMemo(() => [
         "'use client';",
         '',
         "import { useEffect } from 'react';",
         "import { usePathname } from 'next/navigation';",
+        "import { createCanonicaWebClient } from '@canonica/web';",
         '',
         'export function CanonicaRouteContext() {',
         '  const pathname = usePathname();',
         '  useEffect(() => {',
+        '    const canonica = createCanonicaWebClient({',
+        `      apiKey: '${apiKey || 'YOUR_WIDGET_KEY'}',`,
+        `      scriptSrc: '${scriptSrc}',`,
+        '    });',
         "    const contextKey = pathname.replace(/^\\//, '').replace(/\\//g, '_') || 'home';",
-        '    window.CanonicaWidget?.page({',
-        '      contextVersion: 1,',
-        '      contextKey,',
-        "      feature: pathname.split('/')[1] || 'app',",
-        "      page: contextKey,",
+        '    canonica.init({',
+        '      context: {',
+        '        contextKey,',
+        "        feature: pathname.split('/')[1] || 'app',",
+        '        page: contextKey,',
+        '      },',
         '    });',
         '  }, [pathname]);',
         '  return null;',
         '}',
-    ].join('\n'), []);
+    ].join('\n'), [apiKey, scriptSrc]);
+    const reactSnippet = useMemo(() => [
+        "import { useEffect } from 'react';",
+        "import { createCanonicaWebClient } from '@canonica/web';",
+        '',
+        'const canonica = createCanonicaWebClient({',
+        `  apiKey: '${apiKey || 'YOUR_WIDGET_KEY'}',`,
+        `  scriptSrc: '${scriptSrc}',`,
+        '});',
+        '',
+        'export function BillingPageHelp() {',
+        '  useEffect(() => {',
+        '    canonica.init();',
+        '    canonica.page({',
+        "      contextKey: 'billing_invoices',",
+        "      feature: 'billing',",
+        "      page: 'invoices',",
+        "      workflow: 'manage_subscription',",
+        '    });',
+        '  }, []);',
+        '  return null;',
+        '}',
+    ].join('\n'), [apiKey, scriptSrc]);
+    const vueSnippet = useMemo(() => [
+        '<script setup lang="ts">',
+        "import { onMounted } from 'vue';",
+        "import { createCanonicaWebClient } from '@canonica/web';",
+        '',
+        'const canonica = createCanonicaWebClient({',
+        `  apiKey: '${apiKey || 'YOUR_WIDGET_KEY'}',`,
+        `  scriptSrc: '${scriptSrc}',`,
+        '});',
+        '',
+        'onMounted(async () => {',
+        '  await canonica.init();',
+        '  canonica.page({',
+        "    contextKey: 'billing_invoices',",
+        "    feature: 'billing',",
+        "    page: 'invoices',",
+        "    workflow: 'manage_subscription',",
+        '  });',
+        '});',
+        '</script>',
+    ].join('\n'), [apiKey, scriptSrc]);
+    const vanillaSnippet = useMemo(() => [
+        embedCode,
+        '',
+        '<script>',
+        '  window.addEventListener("load", function () {',
+        '    window.CanonicaWidget?.page({',
+        "      contextKey: 'billing_invoices',",
+        "      feature: 'billing',",
+        "      page: 'invoices',",
+        "      workflow: 'manage_subscription',",
+        '    });',
+        '  });',
+        '</script>',
+    ].join('\n'), [embedCode]);
 
-    const activeSnippet = snippetType === 'html' ? embedCode : snippetType === 'spa' ? spaSnippet : nextSnippet;
+    const snippetByType: Record<SnippetType, string> = {
+        html: embedCode,
+        sdk: sdkSnippet,
+        spa: spaSnippet,
+        next: nextSnippet,
+        react: reactSnippet,
+        vue: vueSnippet,
+        vanilla: vanillaSnippet,
+    };
+    const activeSnippet = snippetByType[snippetType];
     const widgetSeen = Boolean(runtimeStatus?.lastSeenAt);
     const contextSeen = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
+    const originRestricted = origins.length > 0;
+    const lastOriginAllowed = Boolean(runtimeStatus?.lastOrigin && (!originRestricted || origins.includes(runtimeStatus.lastOrigin)));
+    const lastRouteBlocked = isRuntimePathBlocked(runtimeStatus?.lastPath, config.blockedRoutes);
+    const verifierItems = [
+        {
+            label: 'Widget key',
+            type: hasWidgetKey ? 'success' as const : 'warning' as const,
+            message: hasWidgetKey ? 'Widget key ready' : 'Create a widget key',
+            description: hasWidgetKey ? `Stored key prefix: ${keyPrefix || 'available'}. Raw keys are shown once.` : 'Create the key before copying install code.',
+        },
+        {
+            label: 'Script loaded',
+            type: widgetSeen ? 'success' as const : 'warning' as const,
+            message: widgetSeen ? 'Widget loaded recently' : 'Widget not seen yet',
+            description: widgetSeen ? `Last seen ${formatRuntimeDate(runtimeStatus?.lastSeenAt)}.` : 'Install the script and open your product once to verify the widget loads.',
+        },
+        {
+            label: 'Origin valid',
+            type: originRestricted ? (lastOriginAllowed ? 'success' as const : 'warning' as const) : 'warning' as const,
+            message: originRestricted ? (lastOriginAllowed ? 'Origin matched allowlist' : 'Waiting for allowlisted origin') : 'Add allowed origins',
+            description: originRestricted ? (runtimeStatus?.lastOrigin || 'Open your app after saving origins.') : 'Until you add allowed origins, runtime config is not restricted to known domains.',
+        },
+        {
+            label: 'Route allowed',
+            type: lastRouteBlocked ? 'error' as const : widgetSeen ? 'success' as const : 'info' as const,
+            message: lastRouteBlocked ? 'Last route is blocked' : 'Route can show support',
+            description: runtimeStatus?.lastPath || 'Last route not seen yet.',
+        },
+        {
+            label: 'Context arriving',
+            type: contextSeen ? 'success' as const : 'info' as const,
+            message: contextSeen ? 'Page context received' : 'Page context not received yet',
+            description: contextSeen
+                ? runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage || 'Context marker saved.'
+                : 'Add route context so Canonica can answer for the current screen.',
+        },
+    ];
     const hostedHelpUrl = hostedHelpConfig.primaryDomain || hostedHelpConfig.domains[0] || '';
     const hostedHelpStatusByDomain = useMemo(() => new Map(
         hostedHelpDomainStatuses.map(status => [status.domain, status]),
@@ -689,18 +827,22 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                 onChange={(value) => setSnippetType(value as SnippetType)}
                                                 options={[
                                                     { value: 'html', label: 'HTML' },
+                                                    { value: 'sdk', label: 'Typed SDK' },
                                                     { value: 'spa', label: 'Route Context' },
                                                     { value: 'next', label: 'Next.js' },
+                                                    { value: 'react', label: 'React' },
+                                                    { value: 'vue', label: 'Vue/Nuxt' },
+                                                    { value: 'vanilla', label: 'Vanilla' },
                                                 ]}
                                             />
                                             <Input.TextArea
                                                 value={activeSnippet}
                                                 readOnly
-                                                rows={snippetType === 'html' ? 8 : 11}
+                                                rows={snippetType === 'html' ? 8 : 15}
                                                 style={{ fontFamily: 'monospace', fontSize: 12, background: '#f9fafb', color: '#111827' }}
                                             />
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                The script reads saved dashboard settings automatically. Script attributes are still supported for environment-specific overrides.
+                                                The script reads saved dashboard settings automatically. The typed SDK validates safe page context before calling the widget runtime.
                                             </Text>
                                         </Flex>
                                     </Card>
@@ -708,28 +850,20 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
 
                                 <Col xs={24}>
                                     <Card title={<Flex align="center" gap={8}><LuShield size={16} /> Install Verification</Flex>}>
-                                        <Row gutter={[12, 12]}>
-                                            <Col xs={24} md={8}>
-                                                <Alert
-                                                    type={widgetSeen ? 'success' : 'warning'}
-                                                    showIcon
-                                                    message={widgetSeen ? 'Widget loaded recently' : 'Widget not seen yet'}
-                                                    description={widgetSeen
-                                                        ? `Last seen ${formatRuntimeDate(runtimeStatus?.lastSeenAt)}.`
-                                                        : 'Install the script and open your product once to verify the widget loads.'}
-                                                />
-                                            </Col>
-                                            <Col xs={24} md={8}>
-                                                <Alert
-                                                    type={contextSeen ? 'success' : 'info'}
-                                                    showIcon
-                                                    message={contextSeen ? 'Page context received' : 'Page context not received yet'}
-                                                    description={contextSeen
-                                                        ? runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage || 'Context marker saved.'
-                                                        : 'Add the route context snippet so Canonica can answer for the current screen.'}
-                                                />
-                                            </Col>
-                                            <Col xs={24} md={8}>
+                                        <Flex vertical gap={12}>
+                                            <Row gutter={[12, 12]}>
+                                                {verifierItems.map((item) => (
+                                                    <Col xs={24} md={12} xl={8} key={item.label}>
+                                                        <Alert
+                                                            type={item.type}
+                                                            showIcon
+                                                            message={item.message}
+                                                            description={item.description}
+                                                        />
+                                                    </Col>
+                                                ))}
+                                            </Row>
+                                            <Card size="small" title="Last runtime payload">
                                                 <Flex vertical gap={6}>
                                                     <Flex justify="space-between" gap={12}>
                                                         <Text type="secondary">Last route</Text>
@@ -744,8 +878,8 @@ export default function CanonicaWidgetManagement({ embeddedMobile = false }: Can
                                                         <Text strong>{runtimeStatus?.seenCount || 0}</Text>
                                                     </Flex>
                                                 </Flex>
-                                            </Col>
-                                        </Row>
+                                            </Card>
+                                        </Flex>
                                     </Card>
                                 </Col>
 

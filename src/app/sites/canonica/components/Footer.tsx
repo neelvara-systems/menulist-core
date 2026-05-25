@@ -18,13 +18,17 @@ const FOOTER_LINKS = {
     Resources: [
         { label: 'Resources', href: '/resources' },
         { label: 'Widget Install', href: '/install' },
+        { label: 'Developer Quickstarts', href: '/quickstarts' },
         { label: 'Integrations', href: '/integrations' },
+        { label: 'ROI Calculator', href: '/roi-calculator' },
+        { label: 'Proof Pack', href: '/proof' },
         { label: 'AI-built SaaS', href: '/use-cases/ai-built-saas' },
         { label: 'Page-Aware Widget', href: '/page-aware-support-widget' },
         { label: 'Hosted Help Center', href: '/hosted-help-center-for-saas' },
         { label: 'Updates', href: '/updates' },
         { label: 'FAQ', href: '/faq' },
         { label: 'Security', href: '/security' },
+        { label: 'Security One-Pager', href: '/security-one-pager' },
     ],
     Company: [
         { label: 'About', href: '/about' },

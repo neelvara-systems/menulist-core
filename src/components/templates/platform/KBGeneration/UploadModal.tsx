@@ -8,7 +8,7 @@ import { canonicaStorage } from '@lib/firebase/canonicaFirebaseClient';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
-import { Button, Image, Input, List, message, Modal, Progress, Typography, Upload, UploadProps } from 'antd';
+import { Alert, Button, Card, Image, Input, List, message, Modal, Progress, Space, Tag, Typography, Upload, UploadProps } from 'antd';
 import type { UploadMetadata } from 'firebase/storage';
 import React, { useMemo, useState } from 'react';
 import { LuTrash2, LuUploadCloud } from 'react-icons/lu';
@@ -18,6 +18,63 @@ const { Dragger } = Upload;
 const { Text } = Typography;
 const KNOWLEDGE_SOURCE_RETENTION_POLICY = 'delete_on_job_delete';
 const KNOWLEDGE_SOURCE_USE = 'knowledge_generation_only';
+
+const IMPORT_STARTER_PACKS = [
+  {
+    key: 'markdown-docs',
+    label: 'Markdown docs',
+    tag: '.md',
+    content: [
+      '# Billing and invoices',
+      '',
+      '## What users ask',
+      '- Why did my invoice fail?',
+      '- How do I update my payment method?',
+      '',
+      '## Approved source notes',
+      'Add the exact owner-reviewed answer here before generation.',
+    ].join('\n'),
+  },
+  {
+    key: 'faq-csv',
+    label: 'FAQ CSV',
+    tag: '.csv',
+    content: [
+      'question,answer,surface,tags',
+      '"How do I update billing?","Open Billing, update payment method, then retry the invoice.","billing_invoices","billing,invoice"',
+      '"Why did my import stop?","Check file format and retry. If processing fails again, open a ticket from Import.","onboarding_import","onboarding,import"',
+    ].join('\n'),
+  },
+  {
+    key: 'changelog',
+    label: 'Changelog entry',
+    tag: 'release',
+    content: [
+      '# Release note',
+      '',
+      'Title: Usage limit update',
+      'Affected surfaces: release_changes, billing_invoices',
+      'What changed: Describe the shipped change.',
+      'Support review: Which approved answers or FAQs should be checked?',
+    ].join('\n'),
+  },
+  {
+    key: 'ticket-macros',
+    label: 'Ticket macros',
+    tag: 'macro',
+    content: [
+      '# Support macros',
+      '',
+      'Macro: Failed invoice',
+      'Surface: billing_invoices',
+      'Owner-reviewed answer: Add the exact answer users should receive.',
+      '',
+      'Macro: Import failed',
+      'Surface: onboarding_import',
+      'Owner-reviewed answer: Add expected file formats and retry steps.',
+    ].join('\n'),
+  },
+];
 
 function sanitizeKnowledgeSourceFileName(fileName: string): string {
   const lastSegment = fileName.split(/[\\/]/).pop() || 'source-file';
@@ -74,6 +131,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
 
   const handleRemoveFile = (fileToRemove: any) => {
     setFileList((prevAttachments) => prevAttachments.filter((file) => file.uid !== fileToRemove.uid));
+  };
+
+  const appendStarterPack = (content: string) => {
+    setStarterAnswers((prev) => [prev.trim(), content].filter(Boolean).join('\n\n---\n\n'));
   };
 
   const handleStartGeneration = async () => {
@@ -196,7 +257,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
           </p>
           <p className="ant-upload-text">Click or drag files to this area to upload</p>
           <p className="ant-upload-hint">
-            Support for PDF, video, and other source file types for the knowledge base.
+            Support for PDF, Markdown, CSV, text, screenshots, and other source file types for the knowledge base.
           </p>
           <p className="ant-upload-hint">
             Source files stay with this generation job until the job is deleted.
@@ -206,6 +267,23 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
           </p>
         </Dragger>
       </PasteUpload>
+
+      <Alert
+        type="info"
+        showIcon
+        message="Importer starter pack"
+        description="Start with files, pasted docs URLs, FAQ CSV/Markdown, release notes, or support macros. URL crawling is not automatic here; pasted URLs are kept as source material for the generation job."
+      />
+
+      <Card size="small" title="Add a starter template" style={{ width: '100%' }}>
+        <Space size={[8, 8]} wrap>
+          {IMPORT_STARTER_PACKS.map((pack) => (
+            <Button key={pack.key} size="small" onClick={() => appendStarterPack(pack.content)}>
+              {pack.label} <Tag style={{ marginLeft: 6 }}>{pack.tag}</Tag>
+            </Button>
+          ))}
+        </Space>
+      </Card>
 
       <Input.TextArea
         value={sourceUrls}

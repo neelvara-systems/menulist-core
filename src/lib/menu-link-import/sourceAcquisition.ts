@@ -1,4 +1,10 @@
 import crypto from 'crypto';
+import {
+    BUSINESS_CATEGORIES,
+    BUSINESS_TYPES,
+    normalizeBusinessCategory,
+    resolveBusinessCategory,
+} from '@data/shared/businessTypes';
 import { lookup } from 'dns/promises';
 import http, { IncomingMessage } from 'http';
 import https from 'https';
@@ -31,6 +37,11 @@ const SUPPORTED_TEXT_TYPES = new Set([
 
 type SourceKind = 'html_text' | 'plain_text' | 'json_text' | 'pdf' | 'image';
 
+export type MenuLinkAcquisitionContext = {
+    businessCategory?: string | null;
+    businessType?: string | null;
+};
+
 export type MenuLinkAcquisitionResult = {
     artifactBuffer: Buffer;
     artifactContentType: string;
@@ -53,6 +64,7 @@ type FetchedUrl = {
 
 type SafeUrl = {
     address: string;
+    addresses: LookupAddress[];
     family: number;
     href: string;
     hostname: string;
@@ -63,6 +75,147 @@ type LookupAddress = {
     address: string;
     family: number;
 };
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Link discovery is catalog-kind aware: food menus are only one supported SMB category.
+const GENERIC_OFFERING_TERMS = [
+    'menu',
+    'menus',
+    'catalog',
+    'catalogue',
+    'catalogs',
+    'catalogues',
+    'offer catalog',
+    'offerings',
+    'offering',
+    'services',
+    'service',
+    'products',
+    'product',
+    'items',
+    'item list',
+    'pricing',
+    'prices',
+    'price',
+    'price list',
+    'rates',
+    'rate',
+    'rate card',
+    'rate-card',
+    'packages',
+    'package',
+    'plans',
+    'plan',
+    'specials',
+    'offers',
+    'deals',
+];
+
+const CATEGORY_OFFERING_TERMS: Record<string, string[]> = {
+    food: [
+        'starter',
+        'starters',
+        'appetizer',
+        'appetizers',
+        'main course',
+        'pizza',
+        'burger',
+        'sandwich',
+        'dessert',
+        'beverage',
+        'beverages',
+        'coffee',
+        'tea',
+        'drinks',
+        'salad',
+        'soup',
+        'order',
+        'ordering',
+    ],
+    service: [
+        'appointments',
+        'appointment',
+        'booking',
+        'book now',
+        'treatments',
+        'treatment',
+        'salon services',
+        'spa services',
+        'grooming',
+        'cleaning services',
+        'detailing',
+        'landscaping',
+    ],
+    retail: [
+        'shop',
+        'store',
+        'collection',
+        'collections',
+        'inventory',
+        'merchandise',
+        'new arrivals',
+        'best sellers',
+        'bestsellers',
+    ],
+    professional: [
+        'consultation',
+        'consultations',
+        'fees',
+        'service areas',
+        'case studies',
+    ],
+    creative: [
+        'portfolio',
+        'commissions',
+        'classes',
+        'workshops',
+        'gallery',
+        'collections',
+    ],
+    health: [
+        'classes',
+        'class schedule',
+        'sessions',
+        'session',
+        'treatments',
+        'programs',
+        'plans',
+        'appointments',
+        'booking',
+    ],
+    specialty: [
+        'rentals',
+        'rental',
+        'repairs',
+        'repair',
+        'services',
+        'products',
+        'rooms',
+        'plans',
+        'membership',
+        'memberships',
+    ],
+};
+
+const SCHEMA_ORG_TYPES = Array.from(new Set([
+    'Menu',
+    'MenuItem',
+    'Offer',
+    'OfferCatalog',
+    'ItemList',
+    'Product',
+    'Service',
+    'Restaurant',
+    ...BUSINESS_CATEGORIES.map(category => category.schemaOrgType),
+    ...(BUSINESS_TYPES.map(type => type.schemaOrgType).filter(Boolean) as string[]),
+]));
+const SCHEMA_ORG_OFFERING_RE = new RegExp(
+    `schema\\.org\\/(${SCHEMA_ORG_TYPES.map(escapeRegExp).join('|')})`,
+    'i',
+);
 
 export class MenuLinkImportError extends Error {
     code: string;
@@ -184,7 +337,9 @@ async function assertSafeUrl(input: string, deadlineMs = Date.now() + MAX_ACQUIS
         if (isUnsafeIp(hostname)) {
             throw new MenuLinkImportError('UNSAFE_IP', 'Use a public menu link.');
         }
-        return { address: hostname, family: net.isIP(hostname), href: url.href, hostname, protocol: url.protocol };
+        const family = net.isIP(hostname);
+        const addresses = [{ address: hostname, family }];
+        return { address: hostname, addresses, family, href: url.href, hostname, protocol: url.protocol };
     }
 
     let addresses: LookupAddress[];
@@ -198,9 +353,17 @@ async function assertSafeUrl(input: string, deadlineMs = Date.now() + MAX_ACQUIS
         throw new MenuLinkImportError('UNSAFE_RESOLVED_IP', 'Use a public menu link.');
     }
 
-    const selectedAddress = addresses[0];
+    const sortedAddresses = addresses
+        .filter(address => address.family === 4 || address.family === 6)
+        .sort((a, b) => (a.family === b.family ? 0 : a.family === 4 ? -1 : 1));
+    const selectedAddress = sortedAddresses[0];
+    if (!selectedAddress) {
+        throw new MenuLinkImportError('DNS_FAILED', 'We could not read this menu link.');
+    }
+
     return {
         address: selectedAddress.address,
+        addresses: sortedAddresses,
         family: selectedAddress.family,
         href: url.href,
         hostname,
@@ -255,8 +418,16 @@ async function requestPinnedUrl(safe: SafeUrl, timeoutMs: number): Promise<{
                 'User-Agent': 'MenuListLinkImport/1.0 (+https://menulist.ai)',
             },
             hostname: safe.hostname,
-            lookup: (_hostname, _options, callback) => {
-                callback(null, safe.address, safe.family);
+            lookup: (_hostname, options, callback) => {
+                const lookupCallback = typeof options === 'function' ? options : callback;
+                if (!lookupCallback) return;
+
+                if (typeof options === 'object' && options?.all) {
+                    lookupCallback(null, [{ address: safe.address, family: safe.family }]);
+                    return;
+                }
+
+                lookupCallback(null, safe.address, safe.family);
             },
             method: 'GET',
             path: `${parsed.pathname}${parsed.search}`,
@@ -311,10 +482,33 @@ async function requestPinnedUrl(safe: SafeUrl, timeoutMs: number): Promise<{
 
 async function fetchSafeUrl(input: string, redirectCount = 0, deadlineMs = Date.now() + MAX_ACQUISITION_MS): Promise<FetchedUrl> {
     const safe = await assertSafeUrl(input, deadlineMs);
-    const timeoutMs = getRemainingTimeout(deadlineMs);
 
     try {
-        const response = await requestPinnedUrl(safe, timeoutMs);
+        let response: Awaited<ReturnType<typeof requestPinnedUrl>> | null = null;
+        let lastError: MenuLinkImportError | null = null;
+
+        for (const candidate of safe.addresses) {
+            try {
+                response = await requestPinnedUrl(
+                    { ...safe, address: candidate.address, family: candidate.family },
+                    getRemainingTimeout(deadlineMs),
+                );
+                break;
+            } catch (error: any) {
+                if (
+                    error instanceof MenuLinkImportError &&
+                    (error.code === 'FETCH_FAILED' || error.code === 'FETCH_TIMEOUT')
+                ) {
+                    lastError = error;
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        if (!response) {
+            throw lastError || new MenuLinkImportError('FETCH_FAILED', 'We could not read this menu link.');
+        }
 
         if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
             if (redirectCount >= MAX_REDIRECTS) {
@@ -361,6 +555,15 @@ function inferContentType(contentType: string, url: string): string {
     return contentType || 'application/octet-stream';
 }
 
+function isLikelyHomepage(url: string): boolean {
+    try {
+        const pathname = new URL(url).pathname.replace(/\/+$/, '').toLowerCase();
+        return pathname === '' || pathname === '/home' || pathname === '/index' || pathname === '/index.html';
+    } catch {
+        return false;
+    }
+}
+
 function decodeHtmlEntities(input: string): string {
     return input
         .replace(/&nbsp;/gi, ' ')
@@ -396,7 +599,63 @@ function extractVisibleText(html: string): string {
         .slice(0, MAX_TEXT_CHARS);
 }
 
-function extractCandidateMenuLinks(html: string, baseUrl: string): string[] {
+function normalizeOfferingTerm(value: string): string {
+    return value.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+}
+
+function addTerms(target: Set<string>, values: string[]) {
+    for (const value of values) {
+        const normalized = normalizeOfferingTerm(value);
+        if (normalized.length >= 3) {
+            target.add(normalized);
+        }
+    }
+}
+
+function resolveAcquisitionCategory(context?: MenuLinkAcquisitionContext): string | undefined {
+    return (
+        resolveBusinessCategory(
+            context?.businessType || undefined,
+            context?.businessCategory || undefined,
+        ) ||
+        normalizeBusinessCategory(context?.businessCategory || undefined)
+    );
+}
+
+function buildOfferingTerms(context?: MenuLinkAcquisitionContext): string[] {
+    const terms = new Set<string>();
+    addTerms(terms, GENERIC_OFFERING_TERMS);
+
+    const resolvedCategory = resolveAcquisitionCategory(context);
+    if (resolvedCategory) {
+        addTerms(terms, CATEGORY_OFFERING_TERMS[resolvedCategory] || []);
+    } else {
+        for (const categoryTerms of Object.values(CATEGORY_OFFERING_TERMS)) {
+            addTerms(terms, categoryTerms);
+        }
+    }
+
+    return Array.from(terms);
+}
+
+function buildOfferingTermRegex(context?: MenuLinkAcquisitionContext): RegExp {
+    const patterns = buildOfferingTerms(context)
+        .map(term => term.split(/\s+/).map(escapeRegExp).join('[\\s/_-]+'))
+        .sort((left, right) => right.length - left.length);
+
+    return new RegExp(`(^|[^a-z0-9])(?:${patterns.join('|')})(?=$|[^a-z0-9])`, 'gi');
+}
+
+function countOfferingTermMatches(text: string, context?: MenuLinkAcquisitionContext): number {
+    const matches = text.match(buildOfferingTermRegex(context));
+    return matches?.length || 0;
+}
+
+function looksOfferingRelated(text: string, context?: MenuLinkAcquisitionContext): boolean {
+    return buildOfferingTermRegex(context).test(text);
+}
+
+function extractCandidateMenuLinks(html: string, baseUrl: string, context?: MenuLinkAcquisitionContext): string[] {
     const base = new URL(baseUrl);
     const candidates = new Set<string>();
     const links = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
@@ -416,7 +675,7 @@ function extractCandidateMenuLinks(html: string, baseUrl: string): string[] {
         if (url.origin !== base.origin) continue;
 
         const haystack = `${url.pathname} ${url.search} ${label}`.toLowerCase();
-        if (/(^|[-_/ .?=&])(menu|menus|food|drinks|order|price|prices|rate-card|catalog)([-_/ .?=&]|$)/i.test(haystack)) {
+        if (looksOfferingRelated(haystack, context)) {
             url.hash = '';
             candidates.add(url.href);
         }
@@ -430,7 +689,13 @@ function extractAttribute(tag: string, attribute: string): string {
     return decodeHtmlEntities(match?.[1] || '').trim();
 }
 
-function addCandidateUrl(candidates: Set<string>, value: string, baseUrl: string, context: string) {
+function addCandidateUrl(
+    candidates: Set<string>,
+    value: string,
+    baseUrl: string,
+    labelContext: string,
+    acquisitionContext?: MenuLinkAcquisitionContext,
+) {
     if (!value) return;
 
     let url: URL;
@@ -443,16 +708,16 @@ function addCandidateUrl(candidates: Set<string>, value: string, baseUrl: string
     const base = new URL(baseUrl);
     if (url.origin !== base.origin) return;
 
-    const haystack = `${url.pathname} ${url.search} ${context}`.toLowerCase();
+    const haystack = `${url.pathname} ${url.search} ${labelContext}`.toLowerCase();
     const isSupportedAsset = /\.(pdf|jpe?g|png|webp)(?:$|[?#])/i.test(url.href);
-    const looksMenuRelated = /(^|[-_/ .?=&])(menu|menus|food|drinks|price|prices|rate-card|catalog)([-_/ .?=&]|$)/i.test(haystack);
-    if (!isSupportedAsset || !looksMenuRelated) return;
+    const looksImportRelated = looksOfferingRelated(haystack, acquisitionContext);
+    if (!isSupportedAsset || !looksImportRelated) return;
 
     url.hash = '';
     candidates.add(url.href);
 }
 
-function extractCandidateAssetLinks(html: string, baseUrl: string): string[] {
+function extractCandidateAssetLinks(html: string, baseUrl: string, context?: MenuLinkAcquisitionContext): string[] {
     const candidates = new Set<string>();
     const anchorTags = Array.from(html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
     for (const match of anchorTags) {
@@ -461,6 +726,7 @@ function extractCandidateAssetLinks(html: string, baseUrl: string): string[] {
             match[1] || '',
             baseUrl,
             extractVisibleText(match[2] || ''),
+            context,
         );
     }
 
@@ -472,20 +738,19 @@ function extractCandidateAssetLinks(html: string, baseUrl: string): string[] {
             extractAttribute(tag, 'src') || extractAttribute(tag, 'data-src'),
             baseUrl,
             `${extractAttribute(tag, 'alt')} ${extractAttribute(tag, 'title')}`,
+            context,
         );
     }
 
     return Array.from(candidates).slice(0, MENU_LINK_CANDIDATE_LIMIT);
 }
 
-function scoreMenuText(text: string): number {
-    const lower = text.toLowerCase();
+function scoreMenuText(text: string, context?: MenuLinkAcquisitionContext): number {
     let score = 0;
-    const keywordMatches = lower.match(/\b(menu|starter|appetizer|main course|pizza|burger|sandwich|dessert|beverage|coffee|tea|drinks|salad|soup|price|specials)\b/g);
-    score += Math.min(keywordMatches?.length || 0, 20);
+    score += Math.min(countOfferingTermMatches(text, context), 20);
     const priceMatches = text.match(/(?:rs\.?|inr|₹|\$|usd|eur|£)\s?\d+|\d+(?:\.\d{2})?\s?(?:rs\.?|inr|₹|\$|usd|eur|£)/gi);
     score += Math.min((priceMatches?.length || 0) * 2, 30);
-    if (/schema\.org\/(Menu|MenuItem|Restaurant)/i.test(text)) score += 10;
+    if (SCHEMA_ORG_OFFERING_RE.test(text)) score += 10;
     return score;
 }
 
@@ -507,7 +772,12 @@ function buildTextArtifact(params: {
     return Buffer.from(sections.filter(section => section !== '').join('\n'), 'utf8');
 }
 
-async function chooseBestHtmlSource(sourceUrl: string, fetched: FetchedUrl, deadlineMs: number): Promise<{
+async function chooseBestHtmlSource(
+    sourceUrl: string,
+    fetched: FetchedUrl,
+    deadlineMs: number,
+    context?: MenuLinkAcquisitionContext,
+): Promise<{
     finalUrl: string;
     jsonLd: string[];
     rawHtml: string;
@@ -523,12 +793,12 @@ async function chooseBestHtmlSource(sourceUrl: string, fetched: FetchedUrl, dead
         jsonLd: initialJsonLd,
         rawHtml: initialHtml,
         redirectCount: fetched.redirectCount,
-        score: scoreMenuText(`${initialJsonLd.join('\n')} ${initialText}`),
+        score: scoreMenuText(`${initialJsonLd.join('\n')} ${initialText}`, context),
         sourceText: initialText,
     };
 
-    const candidates = extractCandidateMenuLinks(initialHtml, fetched.finalUrl);
-    if (best.score >= 8 || candidates.length === 0) return best;
+    const candidates = extractCandidateMenuLinks(initialHtml, fetched.finalUrl, context);
+    if ((best.score >= 8 && !isLikelyHomepage(fetched.finalUrl)) || candidates.length === 0) return best;
 
     for (const candidate of candidates) {
         if (candidate === sourceUrl || candidate === fetched.finalUrl) continue;
@@ -539,7 +809,7 @@ async function chooseBestHtmlSource(sourceUrl: string, fetched: FetchedUrl, dead
             const html = candidateFetch.buffer.toString('utf8');
             const sourceText = extractVisibleText(html);
             const jsonLd = extractJsonLd(html);
-            const score = scoreMenuText(`${jsonLd.join('\n')} ${sourceText}`);
+            const score = scoreMenuText(`${jsonLd.join('\n')} ${sourceText}`, context);
             if (score > best.score) {
                 best = {
                     finalUrl: candidateFetch.finalUrl,
@@ -558,8 +828,13 @@ async function chooseBestHtmlSource(sourceUrl: string, fetched: FetchedUrl, dead
     return best;
 }
 
-async function tryAcquireLinkedAsset(html: string, baseUrl: string, deadlineMs: number): Promise<MenuLinkAcquisitionResult | null> {
-    const candidates = extractCandidateAssetLinks(html, baseUrl);
+async function tryAcquireLinkedAsset(
+    html: string,
+    baseUrl: string,
+    deadlineMs: number,
+    context?: MenuLinkAcquisitionContext,
+): Promise<MenuLinkAcquisitionResult | null> {
+    const candidates = extractCandidateAssetLinks(html, baseUrl, context);
     for (const candidate of candidates) {
         try {
             const fetched = await fetchSafeUrl(candidate, 0, deadlineMs);
@@ -583,7 +858,10 @@ export async function validateMenuLinkImportUrl(input: string): Promise<string> 
     return safe.href;
 }
 
-export async function acquireMenuLinkSource(sourceUrl: string): Promise<MenuLinkAcquisitionResult> {
+export async function acquireMenuLinkSource(
+    sourceUrl: string,
+    context?: MenuLinkAcquisitionContext,
+): Promise<MenuLinkAcquisitionResult> {
     const deadlineMs = Date.now() + MAX_ACQUISITION_MS;
     const normalizedSourceUrl = (await assertSafeUrl(sourceUrl, deadlineMs)).href;
     const fetched = await fetchSafeUrl(normalizedSourceUrl, 0, deadlineMs);
@@ -603,9 +881,9 @@ export async function acquireMenuLinkSource(sourceUrl: string): Promise<MenuLink
     }
 
     if (contentType === 'text/html' || contentType === 'application/xhtml+xml') {
-        const best = await chooseBestHtmlSource(normalizedSourceUrl, fetched, deadlineMs);
+        const best = await chooseBestHtmlSource(normalizedSourceUrl, fetched, deadlineMs, context);
         if (best.score < 8) {
-            const linkedAsset = await tryAcquireLinkedAsset(best.rawHtml, best.finalUrl, deadlineMs);
+            const linkedAsset = await tryAcquireLinkedAsset(best.rawHtml, best.finalUrl, deadlineMs, context);
             if (linkedAsset) return linkedAsset;
         }
         if (best.sourceText.length < 80 && best.jsonLd.length === 0) {

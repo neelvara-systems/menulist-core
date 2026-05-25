@@ -446,7 +446,7 @@ Rules:
 - Left stack shows source inputs: photo, PDF, existing menu link, typed text.
 - Center keeps the owner-review gate visible.
 - Right stack shows public outputs: official page, menu link, QR code, print/PDF.
-- On mobile, use three rows: inputs spread horizontally, owner review centered, and outputs below. Keep separate mobile dotted paths aligned to those rows and anchored to card edges instead of reusing desktop path geometry.
+- On mobile/tablet, use three rows: inputs spread horizontally, owner review centered, and outputs below. Keep separate mobile dotted paths aligned to those rows and anchored to card edges instead of reusing desktop path geometry. On narrow phones, collapse input/output cards to two columns and hide decorative path lines so labels remain readable.
 - Theme behavior: light mode uses light surface/card/path tokens; dark mode uses dark surface/card/path tokens.
 - Keep static dotted paths as the base layer. A subtle pulse overlay may travel from inputs into MenuList, pause while the existing center rings keep a light always-on pulse, and then move from MenuList toward outputs. Destination cards may briefly highlight only their existing border on pulse arrival. Motion must stay calm and must be disabled under `prefers-reduced-motion`.
 - Use website tokens for all backgrounds, borders, lines, text, and icons so light and dark mode stay consistent.
@@ -460,7 +460,7 @@ Rules:
 - Do not animate the base dashed SVG lines. Supporting page diagrams should keep static dotted connectors and may use only the shared reduced-motion-aware pulse overlay.
 - `/how-it-works` uses source inputs -> MenuList owner review -> customer surfaces.
 - `/multi-location` uses approved master source -> linked outlet cards.
-- On mobile, `/how-it-works` uses three rows with horizontal inputs, centered owner review, customer outputs grouped into two rows of three cards, and separate static dotted paths aligned to the row flow and card edges; `/multi-location` shows three outlet cards in the master-to-outlet flow. Desktop keeps the full diagram layouts.
+- On mobile/tablet, `/how-it-works` uses three rows with horizontal inputs, centered owner review, customer outputs grouped into two rows of three cards, and separate static dotted paths aligned to the row flow and card edges; narrow phones use two-column source/output cards with decorative paths hidden. `/multi-location` shows three outlet cards in the master-to-outlet flow. Desktop keeps the full diagram layouts.
 - Supporting-page source maps must use the same theme behavior as the homepage workflow map. Light mode renders light diagram surfaces; dark mode renders the dark contrast treatment.
 - Pulse behavior: `/how-it-works` pulses from source inputs into MenuList, pauses while the center rings keep a light always-on pulse, then moves from MenuList toward customer outputs. `/multi-location` pulses from the approved master toward outlet cards using the same `ws-map-pulse-flow` animated pulse-stroke pattern as the homepage source map, with all outlet paths synchronized. Do not use custom moving circle dots for `/multi-location`. Destination cards may use the same pulse color for a brief border-only highlight when the moving pulse reaches them.
 - `/how-it-works` desktop output paths should follow the homepage source-map geometry: start inside the center core, roughly 40 viewBox pixels to the right of the core center, so the visible line appears to emerge from the logo/ring boundary instead of beginning outside the ring.

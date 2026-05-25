@@ -2131,11 +2131,13 @@
   }
 
   .ws-hero-official__copy {
+    min-width: 0;
     width: 100%;
     max-width: none;
   }
 
   .ws-hero-official__visual {
+    min-width: 0;
     width: 100%;
     max-width: none;
   }
@@ -2151,6 +2153,9 @@
 
   .ws-hero-official .ws-body {
     margin-top: var(--ws-space-5) !important;
+    max-width: 100% !important;
+    font-size: 1rem;
+    line-height: 1.62;
   }
 
   .ws-hero-surfaces {
@@ -2160,10 +2165,17 @@
   }
 
   .ws-hero-surface-pill {
+    min-width: 0;
     min-height: 2.375rem;
     justify-content: center;
     padding: 0.5rem 0.625rem;
     font-size: 0.75rem;
+  }
+
+  .ws-hero-surface-pill span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: center;
   }
 
   .ws-revenue-link-row {
@@ -3846,6 +3858,37 @@
     width: clamp(1.45rem, 5.8vw, 1.8rem);
     height: clamp(1.45rem, 5.8vw, 1.8rem);
     margin: 0 auto 0.4rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .ws-workflow-map__paths--mobile,
+  .ws-page-source-map__paths--mobile {
+    display: none;
+  }
+
+  .ws-workflow-map__stack--input,
+  .ws-workflow-map__stack--output,
+  .ws-page-source-map__stack:not(.ws-page-source-map__stack--outputs),
+  .ws-page-source-map__stack--outputs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ws-space-3);
+  }
+
+  .ws-workflow-map__stack--input .ws-workflow-map__item,
+  .ws-workflow-map__stack--output .ws-workflow-map__item,
+  .ws-page-source-map__stack:not(.ws-page-source-map__stack--outputs) .ws-page-source-map__item,
+  .ws-page-source-map__stack--outputs .ws-page-source-map__item {
+    min-height: 4.75rem;
+    padding: var(--ws-space-3) var(--ws-space-2);
+    overflow: hidden;
+  }
+
+  .ws-workflow-map__stack--input .ws-workflow-map__item > span:last-child,
+  .ws-workflow-map__stack--output .ws-workflow-map__item > span:last-child,
+  .ws-page-source-map__stack:not(.ws-page-source-map__stack--outputs) .ws-page-source-map__item > span:last-child,
+  .ws-page-source-map__stack--outputs .ws-page-source-map__item > span:last-child {
+    overflow-wrap: anywhere;
   }
 }
 

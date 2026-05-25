@@ -63,6 +63,22 @@ function cloneFiles(files: any[]): any[] {
     return structuredClone(files);
 }
 
+function sanitizeFirestoreValue<T>(value: T): T {
+    if (value === undefined) return null as T;
+    if (value === null || typeof value !== 'object') return value;
+    if (value instanceof Timestamp || value instanceof Date) return value;
+
+    if (Array.isArray(value)) {
+        return value.map(item => sanitizeFirestoreValue(item)) as T;
+    }
+
+    return Object.entries(value as Record<string, any>).reduce<Record<string, any>>((result, [key, nestedValue]) => {
+        if (nestedValue === undefined) return result;
+        result[key] = sanitizeFirestoreValue(nestedValue);
+        return result;
+    }, {}) as T;
+}
+
 /**
  * Find file index by UID in project files array
  */
@@ -460,7 +476,7 @@ export async function applyExtractionChanges(
         // STEP 2: SINGLE ATOMIC WRITE — all project mutations
         // ═══════════════════════════════════════════════════════════
         if (Object.keys(updatePayload).length > 0) {
-            await updateDoc(projectRef, updatePayload);
+            await updateDoc(projectRef, sanitizeFirestoreValue(updatePayload));
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
 
             try {

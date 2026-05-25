@@ -55,6 +55,7 @@ function verifyMenuListDiscovery() {
   const websiteLayout = read('src/app/(website)/layout.tsx');
   const homepage = read('src/app/(website)/page.tsx');
   const nextConfig = read('next.config.js');
+  const middleware = read('src/middleware.ts');
   if (exists('.env')) {
     assertIncludes(read('.env'), 'NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai', 'Local platform domain config');
   }
@@ -70,7 +71,10 @@ function verifyMenuListDiscovery() {
   assertNotIncludes(rootLayout, 'NEXT_PUBLIC_APP_URL', 'MenuList root layout metadata');
   assertNotIncludes(websiteLayout, 'NEXT_PUBLIC_APP_URL', 'MenuList website layout metadata');
   assertIncludes(schemaMarkup, 'JsonLdScript', 'MenuList schema markup');
-  assertIncludes(nextConfig, "source: '/product', destination: '/how-it-works', permanent: true", 'MenuList legacy product redirect');
+  assertNotIncludes(nextConfig, "source: '/product', destination: '/how-it-works', permanent: true", 'MenuList global redirects');
+  assertIncludes(middleware, "pathname === '/product'", 'MenuList legacy product redirect');
+  assertIncludes(middleware, "url.pathname = '/how-it-works'", 'MenuList legacy product redirect');
+  assertIncludes(middleware, "domainInfo.type === 'platform' || domainInfo.type === 'localhost'", 'MenuList legacy product redirect host guard');
 
   assertIncludes(robots, 'https://menulist.ai/llms.txt', 'MenuList robots');
   assertIncludes(robots, 'https://menulist.ai/llms-full.txt', 'MenuList robots');

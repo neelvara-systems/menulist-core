@@ -276,6 +276,15 @@ export function middleware(request: NextRequest) {
 
     }
 
+    // Legacy MenuList website route. Keep this out of next.config.js because
+    // Next redirects are hostname-agnostic and would also catch
+    // canonica.app/product before Canonica's product-domain rewrite.
+    if ((domainInfo.type === 'platform' || domainInfo.type === 'localhost') && pathname === '/product') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/how-it-works';
+        return NextResponse.redirect(url, 301);
+    }
+
     // ═══════════════════════════════════════════════════════════
     // Priority 2: Multi-Tenant Client Routing
     // ═══════════════════════════════════════════════════════════

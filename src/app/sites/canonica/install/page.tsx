@@ -62,10 +62,25 @@ const CONTEXT_SNIPPET = `window.CanonicaWidget?.page({
   workflow: 'invoice_review'
 });`;
 
+const SDK_SNIPPET = `import { createCanonicaWebClient } from '@canonica/web';
+
+const canonica = createCanonicaWebClient({
+  apiKey: 'cn_widget_key',
+});
+
+await canonica.init();
+canonica.page({
+  contextKey: 'billing_invoices',
+  feature: 'billing',
+  page: 'invoices',
+  workflow: 'invoice_review',
+});`;
+
 const FRAMEWORK_EXAMPLES = [
+    ['Typed SDK', 'Use the @canonica/web helper to validate safe context and wrap init, page, setContext, open, and close calls.'],
     ['Plain HTML', 'Paste the script before </body> and add optional page context after route changes.'],
     ['Next.js / React', 'Load the script once in the app shell, then call page context from route-aware components.'],
-    ['SPA routers', 'Update CanonicaWidget.page() when route, workflow, plan, or role changes.'],
+    ['Vue / Nuxt / SPA routers', 'Update CanonicaWidget.page() when route, workflow, plan, or role changes.'],
 ];
 
 const VERIFICATION_ITEMS = [
@@ -141,6 +156,16 @@ export default function CanonicaInstallPage() {
                         </article>
 
                         <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
+                            <h2 className="text-xl font-semibold text-white">Typed SDK helper</h2>
+                            <p className="mt-2 text-sm leading-relaxed text-[#808099]">
+                                The thin web helper wraps the widget runtime and validates safe context before it reaches the browser widget. Private beta installs can use the dashboard snippet while the package release is prepared.
+                            </p>
+                            <pre className="mt-5 overflow-x-auto rounded-xl border border-white/[0.06] bg-[#070714] p-4 text-xs leading-relaxed text-[#d6d6ef]">
+                                <code>{SDK_SNIPPET}</code>
+                            </pre>
+                        </article>
+
+                        <article className="rounded-2xl border border-white/[0.06] bg-[#101028] p-6">
                             <h2 className="text-xl font-semibold text-white">Hosted help domains</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">
                                 The Hosted Help tab maps a domain such as help.yourapp.com to published articles, FAQ, changelog, robots, and sitemap output.
@@ -172,6 +197,13 @@ export default function CanonicaInstallPage() {
                                     </article>
                                 ))}
                             </div>
+                            <CanonicaLink
+                                basePath={basePath}
+                                href="/quickstarts"
+                                className="mt-6 inline-block rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
+                            >
+                                Open framework quickstarts
+                            </CanonicaLink>
                         </div>
                         <div className="rounded-2xl border border-white/[0.08] bg-[#101028] p-5 shadow-2xl shadow-black/20">
                             <div className="mb-5 flex items-center justify-between gap-3 border-b border-white/[0.06] pb-4">

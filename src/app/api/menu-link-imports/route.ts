@@ -144,7 +144,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
         }
 
-        const acquisition = await acquireMenuLinkSource(url);
+        const projectData = projectDoc.data() || {};
+        const targetLanguages = resolveTargetLanguages(projectData);
+        const businessCategory = projectData.businessCategory || projectData.category || null;
+        const businessType = projectData.businessType || projectData.type || null;
+        const acquisition = await acquireMenuLinkSource(url, { businessCategory, businessType });
         const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
         const artifactRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS).doc();
         artifactRefForCleanup = artifactRef;
@@ -170,10 +174,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const fileName = `Imported menu link.${acquisition.artifactExtension}`;
         const fileUid = `link-${artifactRef.id}`;
         const artifactUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
-        const projectData = projectDoc.data() || {};
-        const targetLanguages = resolveTargetLanguages(projectData);
-        const businessCategory = projectData.businessCategory || projectData.category || null;
-        const businessType = projectData.businessType || projectData.type || null;
 
         await artifactRef.set({
             artifactId: artifactRef.id,

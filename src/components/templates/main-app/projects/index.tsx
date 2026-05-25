@@ -219,6 +219,7 @@ function ProjectsPage() {
     const [menuLinkUrl, setMenuLinkUrl] = useState('');
     const [menuLinkPermissionConfirmed, setMenuLinkPermissionConfirmed] = useState(false);
     const [menuLinkImporting, setMenuLinkImporting] = useState(false);
+    const [menuLinkImportModalOpen, setMenuLinkImportModalOpen] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
 
     // Job Queue: Track active menu processing job
@@ -1707,6 +1708,7 @@ function ProjectsPage() {
             setActiveProcessingJobId(result.jobId);
             setMenuLinkUrl('');
             setMenuLinkPermissionConfirmed(false);
+            setMenuLinkImportModalOpen(false);
             message.success(result.reusedExistingJob ? 'Existing import is still running.' : 'Menu link import started.');
         } catch (error: any) {
             message.error(error?.message || 'We could not read this menu link. Upload a photo/PDF or add the menu manually.');
@@ -2140,6 +2142,15 @@ function ProjectsPage() {
                         onSave={handlePdfSave}
                         onCancel={handlePdfCancel}
                     />
+                    <Modal
+                        destroyOnHidden
+                        footer={null}
+                        onCancel={() => setMenuLinkImportModalOpen(false)}
+                        open={menuLinkImportModalOpen}
+                        title="Import menu link"
+                    >
+                        {menuLinkImportPanel}
+                    </Modal>
 
                     {/* Master Updates Awareness: Banner + quiet history link for outlet projects */}
                     <MasterUpdateBanner />
@@ -2527,9 +2538,22 @@ function ProjectsPage() {
                                         selectedProject={selectedProject}
                                         onRemove={handleRemove}
                                         addFileButton={
-                                            <Upload {...uploadProps} id="quick-action-upload" onChange={(info) => onSelectFile(info, 'quick-action-upload')}>
-                                                <Button icon={<LuFilePlus />}>Add Menu</Button>
-                                            </Upload>
+                                            <Flex gap={8} align="center">
+                                                <Upload {...uploadProps} id="quick-action-upload" onChange={(info) => onSelectFile(info, 'quick-action-upload')}>
+                                                    <Button icon={<LuFilePlus />}>Add Menu</Button>
+                                                </Upload>
+                                                {FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT ? (
+                                                    <Tooltip title="Import from existing menu link">
+                                                        <Button
+                                                            disabled={menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                                                            icon={<LuGlobe2 />}
+                                                            onClick={() => setMenuLinkImportModalOpen(true)}
+                                                        >
+                                                            Import link
+                                                        </Button>
+                                                    </Tooltip>
+                                                ) : null}
+                                            </Flex>
                                         }
                                     />
                                 </Suspense>

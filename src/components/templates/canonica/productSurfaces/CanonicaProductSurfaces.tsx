@@ -9,6 +9,7 @@ import {
     rebuildProductSurfaceContentSummary,
     saveProductSurface,
 } from '@database/canonica/productSurfaces';
+import { CANONICA_SURFACE_TEMPLATES, type CanonicaSurfaceTemplate } from '@data/canonica/surfaceTemplates';
 import { buildSurfaceKeyFromLabel, normalizeSurfaceKey } from '@lib/canonica/productSurfaceContent';
 import type { CanonicaEntity, CanonicaProductSurface, CanonicaSurfaceContentItem, CanonicaSurfaceContentSummary } from '@type/canonica';
 import {
@@ -36,7 +37,7 @@ import {
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuArchive, LuBookOpen, LuHelpCircle, LuLayers, LuPlus, LuRefreshCw, LuSave, LuTicket } from 'react-icons/lu';
+import { LuArchive, LuBookOpen, LuHelpCircle, LuLayers, LuPlus, LuRefreshCw, LuSave, LuSparkles, LuTicket } from 'react-icons/lu';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 
 const { Paragraph, Text, Title } = Typography;
@@ -77,6 +78,7 @@ export default function CanonicaProductSurfaces() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [applyingTemplates, setApplyingTemplates] = useState(false);
     const [rebuilding, setRebuilding] = useState(false);
     const [surfaces, setSurfaces] = useState<CanonicaProductSurface[]>([]);
     const [entities, setEntities] = useState<CanonicaEntity[]>([]);
@@ -91,6 +93,11 @@ export default function CanonicaProductSurfaces() {
     const selectedSummary = useMemo(
         () => getSurfaceSummary(summary, selectedSurface),
         [selectedSurface, summary],
+    );
+
+    const existingTemplateKeys = useMemo(
+        () => new Set(surfaces.map(surface => surface.key)),
+        [surfaces],
     );
 
     const entityOptions = useMemo(
@@ -198,6 +205,44 @@ export default function CanonicaProductSurfaces() {
         }
     }, []);
 
+    const saveTemplates = useCallback(async (templates: CanonicaSurfaceTemplate[]) => {
+        const missingTemplates = templates.filter(template => !existingTemplateKeys.has(template.key));
+        if (missingTemplates.length === 0) {
+            message.info('Those starter surfaces already exist');
+            return;
+        }
+
+        setApplyingTemplates(true);
+        try {
+            const saved = [];
+            for (const template of missingTemplates) {
+                const result = await saveProductSurface({
+                    key: template.key,
+                    label: template.label,
+                    description: template.description,
+                    routePatterns: template.routePatterns,
+                    feature: template.feature,
+                    page: template.page,
+                    workflow: template.workflow,
+                    entityHints: template.entityHints,
+                    tags: template.tags,
+                    priority: template.priority,
+                    visibility: template.visibility,
+                    active: true,
+                });
+                saved.push(result);
+            }
+            await rebuildProductSurfaceContentSummary();
+            await loadData();
+            setSelectedSurfaceId(saved[0]?.id || null);
+            message.success(`${saved.length} starter surface${saved.length === 1 ? '' : 's'} added`);
+        } catch (error: any) {
+            message.error(error?.message || 'Failed to apply starter surfaces');
+        } finally {
+            setApplyingTemplates(false);
+        }
+    }, [existingTemplateKeys, loadData]);
+
     if (!FEATURE_FLAGS.ENABLE_CANONICA_PRODUCT_SURFACES) return null;
 
     return (
@@ -226,7 +271,62 @@ export default function CanonicaProductSurfaces() {
             {loading ? (
                 <Skeleton active paragraph={{ rows: 8 }} />
             ) : (
-                <Row gutter={[16, 16]}>
+                <>
+                    <Card
+                        title={<Flex align="center" gap={8}><LuSparkles /> Starter surface templates</Flex>}
+                        extra={(
+                            <Button
+                                size="small"
+                                icon={<LuSparkles />}
+                                loading={applyingTemplates}
+                                onClick={() => saveTemplates(CANONICA_SURFACE_TEMPLATES)}
+                            >
+                                Add missing templates
+                            </Button>
+                        )}
+                        style={{ marginBottom: 16 }}
+                    >
+                        <Paragraph type="secondary" style={{ marginTop: 0 }}>
+                            Seed the six product pages most SaaS apps support first. Templates create product surfaces only; starter questions stay as prompts for owner-reviewed articles, FAQs, and approved answers.
+                        </Paragraph>
+                        <Row gutter={[12, 12]}>
+                            {CANONICA_SURFACE_TEMPLATES.map((template) => {
+                                const exists = existingTemplateKeys.has(template.key);
+                                return (
+                                    <Col xs={24} md={12} xl={8} key={template.key}>
+                                        <Card
+                                            size="small"
+                                            title={template.label}
+                                            extra={<Tag color={exists ? 'success' : 'processing'}>{exists ? 'Added' : template.key}</Tag>}
+                                            actions={[
+                                                <Button
+                                                    key="apply"
+                                                    type="link"
+                                                    size="small"
+                                                    disabled={exists}
+                                                    loading={applyingTemplates}
+                                                    onClick={() => saveTemplates([template])}
+                                                >
+                                                    Add template
+                                                </Button>,
+                                            ]}
+                                        >
+                                            <Paragraph type="secondary" style={{ minHeight: 62 }}>
+                                                {template.description}
+                                            </Paragraph>
+                                            <Space size={[4, 4]} wrap>
+                                                {template.starterQuestions.slice(0, 2).map(question => (
+                                                    <Tag key={question}>{question}</Tag>
+                                                ))}
+                                            </Space>
+                                        </Card>
+                                    </Col>
+                                );
+                            })}
+                        </Row>
+                    </Card>
+
+                    <Row gutter={[16, 16]}>
                     <Col xs={24} lg={8}>
                         <Card title="Surface Directory" extra={<Tag>{surfaces.length}</Tag>} styles={{ body: { padding: 0 } }}>
                             {surfaces.length === 0 ? (
@@ -434,7 +534,8 @@ export default function CanonicaProductSurfaces() {
                             ]}
                         />
                     </Col>
-                </Row>
+                    </Row>
+                </>
             )}
         </div>
     );

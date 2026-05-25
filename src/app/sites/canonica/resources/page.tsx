@@ -29,6 +29,8 @@ const RESOURCE_GROUPS = [
         items: [
             ['See the demo', '/demo', 'Watch how the answer changes by page.'],
             ['Pricing', '/pricing', 'See the current Starter, Growth, and Studio packaging.'],
+            ['ROI calculator', '/roi-calculator', 'Estimate repeated-question time saved and plan fit.'],
+            ['Proof pack', '/proof', 'Review example workloads for launch, release, and studio use.'],
             ['FAQ', '/faq', 'Answers for setup, widget context, fallback, pricing, and data handling.'],
         ],
     },
@@ -46,9 +48,11 @@ const RESOURCE_GROUPS = [
         description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
         items: [
             ['Widget and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
+            ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, vanilla script, or the typed SDK helper.'],
             ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
             ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],
             ['Security and runtime safety', '/security', 'Review tenant isolation, widget origin controls, compiled context boundaries, and owner-approved authority.'],
+            ['Security one-pager', '/security-one-pager', 'Share the concise security and ops summary with developers or buyers.'],
         ],
     },
     {
