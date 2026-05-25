@@ -6,6 +6,20 @@
 
 ---
 
+## May 25, 2026 — MenuList Canonica Widget Client Embed
+
+### Changed
+
+- **MenuList owner routes can now load the Canonica widget as an external client** — The owner app layout includes an env-configured Canonica widget embed for `/projects` and adjacent dashboard routes.
+- **No widget key is hardcoded** — The embed renders only when `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY` is set to a Canonica-issued `cn_` key.
+- **Script host follows the environment matrix** — Local uses localhost, QA/Preview uses `ecomsai.com`, and Production uses `canonica.app`, with an optional script source override for temporary previews.
+
+### Cost
+
+- **No Firebase cost unless the widget key is configured** — With no key, the component returns `null`. With a key, page load performs the existing widget config lookup against Canonica Firebase only; it does not read MenuList Firebase.
+
+---
+
 ## May 25, 2026 — Help Center Governance Boundary Fix
 
 ### Fixed

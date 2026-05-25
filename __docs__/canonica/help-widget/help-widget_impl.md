@@ -208,6 +208,15 @@ CANONICA_WIDGET_KEY_ENCRYPTION_SECRET=<strong random secret, separate per enviro
 
 If the secret is missing, create still returns the raw key once for install, but later copy requests return a rotate/create-new-key message instead of weakening storage.
 
+MenuList external-client embed environment:
+
+```bash
+NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY=<cn_... widget key issued from Canonica>
+NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC=<optional override>
+```
+
+`src/components/canonica/MenuListCanonicaWidgetEmbed.tsx` is mounted from the MenuList owner layout and returns `null` when the key is absent. With the key present, it loads the public widget script, passes sanitized owner-route context (`projects`, `today`, `business-settings`, `billing`, and adjacent dashboard routes), and blocks `/help-center`, `/canonica`, and `/__canonica` paths. The route context does not include MenuList tenant IDs, store IDs, user IDs, or raw business records.
+
 `publicApi` remains reserved for Canonica public API credentials. `validatePublicApiKey()` supports both credential sources, but each route explicitly opts into only the sources and scopes it accepts. Widget runtime routes only accept `canonicaWidgetApi` credentials in separated Firebase mode and fail closed if Canonica Admin is unavailable. MenuList public API routes only accept `ml_` keys.
 
 ### 3.4 Widget Client (`src/app/widget/[apiKey]/WidgetClient.tsx`)
@@ -536,6 +545,7 @@ Per image query: 1 additional bounded visual-context model call before normal re
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-25 | 2.4.9   | Added the store-doc widget key manager: bounded named keys, rename/delete/copy actions, encrypted recoverable widget-key storage when configured, `keyHashes` array lookup, and legacy single-key compatibility. |
+| 2026-05-25 | 2.4.9   | Added MenuList owner-layout external-client embed behind `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY`; script source follows the local/QA/prod Canonica host matrix and no widget key is committed. |
 | 2026-05-25 | 2.4.8   | Hardened separated Firebase key validation so `cn_` widget keys resolve only through Canonica Firestore, widget runtime routes do not query MenuList `publicApi`, MenuList public API routes reject non-`ml_` keys, and widget questions appear in `/canonica/widget` activity. |
 | 2026-05-24 | 2.4.6   | Restored predictive support through a guarded runtime capability: widget config advertises predictive support only when active triggers exist, and runtime calls remain origin/context/rate/cooldown protected. |
 | 2026-05-24 | 2.4.4   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |

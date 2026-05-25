@@ -59,7 +59,9 @@ The widget sits entirely in Layer 4. It is a query entry point. The intelligence
 
 ## External Client Embeds
 
-Canonica does not mount its widget inside MenuList core. Client products embed the public script from their own runtime using a real `canonicaWidgetApi` key issued from the Canonica dashboard.
+Canonica does not mount management UI inside MenuList core. Client products embed the public script from their own runtime using a real `canonicaWidgetApi` key issued from the Canonica dashboard.
+
+MenuList is wired as a normal external client through `src/components/canonica/MenuListCanonicaWidgetEmbed.tsx`. The owner app layout loads the widget only when `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY` is configured. No widget key is hardcoded in source, and the embed does not read MenuList Firebase to resolve Canonica scope. Local development uses `http://localhost:3000/widget/canonica-widget.js`; QA/Preview MenuList uses `https://ecomsai.com/widget/canonica-widget.js`; production MenuList uses `https://canonica.app/widget/canonica-widget.js`. `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC` can override the script host for a temporary preview.
 
 Any client-specific context must be passed through the generic widget SDK or script attributes. Canonica accepts only sanitized page, feature, workflow, plan, role, and entity-hint context. Client tenant IDs, store IDs, user IDs, and raw business records are not required and must not be hardcoded into the Canonica runtime.
 
@@ -97,8 +99,9 @@ Set `CANONICA_WIDGET_KEY_ENCRYPTION_SECRET` in each Canonica runtime environment
 | 6   | **Widget UI stays zero-dependency**              | No antd, no framer-motion, no SCSS. 248 lines of inline-styled React. Critical for iframe bundle size.                                       |
 | 7   | **Canonical-first always**                       | Widget never bypasses canonical retrieval. Context assists retrieval, never replaces it. Knowledge must always come from canonical articles. |
 | 8   | **Bounded named keys on store doc**              | Up to 10 active widget keys per workspace live on the existing store document. Validation remains one indexed store lookup; no key collection is added. |
-| 9   | **Transient widget history only**                | The widget can keep an in-memory page session for follow-up context, but never writes anonymous widget chat history to Firestore/localStorage. |
-| 10  | **Dashboard-backed runtime config**              | Installed snippets read saved public config through `/api/widget/config`; no realtime listeners or page-load writes.                          |
+| 9   | **MenuList is an env-configured client**         | MenuList loads the same public script as any other client only when a Canonica-issued widget key is configured. No test-host flag or hardcoded key is used. |
+| 10  | **Transient widget history only**                | The widget can keep an in-memory page session for follow-up context, but never writes anonymous widget chat history to Firestore/localStorage. |
+| 11  | **Dashboard-backed runtime config**              | Installed snippets read saved public config through `/api/widget/config`; no realtime listeners or page-load writes.                          |
 
 ---
 
@@ -156,6 +159,7 @@ Canonica follows the durable parts of those patterns while preserving doctrine b
 | 2026-05-20 | 2.4.2   | Added route blocklist settings for hiding the widget on selected client routes without adding Firebase reads. |
 | 2026-05-20 | 2.4.1   | Split widget management into customer-understandable tabs and removed the standalone Cost & Cache customer-facing section. |
 | 2026-05-19 | 2.4.0   | Added dedicated `/canonica/widget` management console, scoped `canonicaWidgetApi` credentials, public runtime config endpoint, and dashboard-backed script config loading. |
+| 2026-05-25 | 2.4.9   | Added env-configured MenuList external-client widget embed for owner routes, with no hardcoded key and no MenuList Firebase fallback. |
 | 2026-05-21 | 2.4.3   | Removed the temporary MenuList widget host from runtime/docs; client products now integrate only through the generic public widget script and Canonica-issued widget keys. |
 | 2026-05-19 | 2.3.1   | Firebase cost hardening added: hash-only Canonica auth path, short widget auth cache, and context-scoped search cache keys. |
 | 2026-05-18 | 2.3.0   | Runtime widget contract updated: mount-time script context attributes, `data-history`, explicit clear-history API, and open/close events.                                                            |

@@ -1334,7 +1334,10 @@ function ProjectsPage() {
         }
     };
 
-    useImageBatchJobListener({ project: selectedProject, setActiveBatchImageJob });
+    useImageBatchJobListener({
+        project: selectedProjectMatchesStore ? (selectedProject as Project) : null,
+        setActiveBatchImageJob,
+    });
 
     const handleLanguageToggle = (newLanguages: string[]) => {
         if (!activeProject) return;

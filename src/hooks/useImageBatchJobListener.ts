@@ -9,7 +9,7 @@ import { useContext, useEffect, useRef } from "react";
 import { BatchImageGenerationJobType, Project } from '../components/templates/main-app/projects/types';
 
 interface UseImageBatchJobListenerProps {
-    project: Project;
+    project?: Project | null;
     setActiveBatchImageJob: any;
 }
 
@@ -18,28 +18,39 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const unsubscribeRef = useRef<(() => void) | null>(null);
     const projectId = project?.projectId;
+    const tenantId = Number(storeDetails?.tenantId);
+    const storeId = Number(storeDetails?.storeId);
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || !Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) {
+            if (unsubscribeRef.current) {
+                logger.debug('Cleaning up batch job listener without valid scope');
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            setActiveBatchImageJob(null);
+            return;
+        }
+
         logger.debug('Initializing batch job listener', {
             projectId,
-            tenantId: storeDetails?.tenantId,
-            storeId: storeDetails?.storeId
+            tenantId,
+            storeId
         });
 
-        if (!storeDetails || !projectId) return;
         // Clean up previous listener if it exists
         if (unsubscribeRef.current) {
             logger.debug('Cleaning up previous batch job listener');
             unsubscribeRef.current();
+            unsubscribeRef.current = null;
         }
 
         try {
-            logger.debug('Setting up batch jobs listener', { projectId });
+            logger.debug('Setting up batch jobs listener', { projectId, tenantId, storeId });
             dispatch(startLoader("Listening to batch jobs for project: " + projectId));
 
             // Get the collection reference
-            const jobsCollectionRef = getBatchImageJobCollectionRef({ tId: storeDetails.tenantId, sId: storeDetails.storeId }, projectId);
+            const jobsCollectionRef = getBatchImageJobCollectionRef({ tId: tenantId, sId: storeId }, projectId);
 
             // Set up the snapshot listener
             const unsubscribe = onSnapshot(
@@ -69,7 +80,7 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                     dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
                 },
                 (error) => {
-                    logger.error('Batch job listener error', error, { projectId });
+                    logger.error('Batch job listener error', error, { projectId, tenantId, storeId });
                     message.error("Failed to listen to batch job updates.");
                     dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
                 }
@@ -82,13 +93,14 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                 logger.debug('Cleaning up batch job listener', { projectId });
                 if (unsubscribeRef.current) {
                     unsubscribeRef.current();
+                    unsubscribeRef.current = null;
                 }
                 dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
             };
         } catch (error) {
-            logger.error('Failed to setup batch job listener', error, { projectId });
+            logger.error('Failed to setup batch job listener', error, { projectId, tenantId, storeId });
             message.error("Failed to set up batch job listener.");
             dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
         }
-    }, [projectId]);
+    }, [dispatch, projectId, setActiveBatchImageJob, storeId, tenantId]);
 };

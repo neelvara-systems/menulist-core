@@ -198,6 +198,7 @@ export default function SessionProvider({ children, session }: Props) {
             cancelled = true;
         };
     }, [
+        activeStoreContext,
         session?.user?.email,
         session?.user?.id,
         session?.user?.storeId,
@@ -553,6 +554,33 @@ export default function SessionProvider({ children, session }: Props) {
         storeDetails: loginStoreDetails || storeDetails,
         tenantDetails,
     });
+    const loginStoreId = Number(session?.user?.storeId);
+    const activeStoreContextId = Number(activeStoreContext);
+    const hasActiveStoreContext = Number.isFinite(activeStoreContextId)
+        && activeStoreContextId > 0
+        && activeStoreContextId !== loginStoreId;
+    const activeStoreContextMatchesTenant = Boolean(
+        loginStoreIsMaster
+        && hasActiveStoreContext
+        && tenantDetails?.storesList?.some((store: any) => Number(store?.storeId) === activeStoreContextId),
+    );
+    const hasStoreContextBootstrapData = Boolean(loginStoreDetails && tenantDetails?.storesList?.length);
+    const expectedStoreIdForRender = activeStoreContextMatchesTenant
+        ? activeStoreContextId
+        : loginStoreId;
+    const activeStoreContextIsResolving = Boolean(
+        hasActiveStoreContext
+        && !activeStoreContextMatchesTenant
+        && !hasStoreContextBootstrapData,
+    );
+    const isStoreContextReadyForRender = canRenderBeforeStoreData
+        || !session?.user?.storeId
+        || (
+            !activeStoreContextIsResolving
+            && Number.isFinite(expectedStoreIdForRender)
+            && expectedStoreIdForRender > 0
+            && Number(storeDetails?.storeId) === expectedStoreIdForRender
+        );
 
     return (
         <Provider
@@ -600,7 +628,7 @@ export default function SessionProvider({ children, session }: Props) {
                         page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"}
                         brand={isCanonicaRoute ? 'canonica' : 'menulist'}
                     />
-                ) : (session && !storeDetails && !canRenderBeforeStoreData) ? (
+                ) : (session && !isStoreContextReadyForRender) ? (
                     <ServerSidePageLoader page="Loading Store Data" brand={isCanonicaRoute ? 'canonica' : 'menulist'} />
                 ) : children}
             </PlatformGlobalDataProvider>

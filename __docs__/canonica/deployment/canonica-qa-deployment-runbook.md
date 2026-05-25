@@ -92,7 +92,7 @@ Current implementation:
 - Canonica widget config/key APIs use Canonica Firestore in separate mode.
 - Public widget runtime keys validate only against Canonica `canonicaWidgetApi` for widget routes.
 - Canonica AI operation logs write to `canonica_aiOperations` in the Canonica Firebase project.
-- MenuList owner navigation does not expose Canonica management by default and no longer mounts a Canonica widget host from the shared MenuList layout.
+- MenuList owner navigation does not expose Canonica management by default. MenuList can mount Canonica only as an env-configured external-client widget through the generic public script and a real `cn_` widget key.
 
 Verification performed:
 
@@ -164,11 +164,11 @@ Fix found during this pass:
 
 ## 2026-05-21 Client-Product Separation Cleanup
 
-The temporary client-product-specific widget host and changelog connector have been removed from runtime code. Canonica remains available through its own routes/domains, while client products integrate the widget only by embedding the generic public script with a real Canonica-issued `canonicaWidgetApi` key from their own codebase.
+The temporary client-product-specific widget host and changelog connector have been removed from runtime code. Canonica remains available through its own routes/domains, while client products integrate the widget only by embedding the generic public script with a real Canonica-issued `canonicaWidgetApi` key from their own codebase. MenuList follows that same model through `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY`; no key is committed and no test-host flag is used.
 
 Follow-up verification for this cleanup:
 
-- `/dashboard` remains the MenuList owner app and should not mount a Canonica widget from the shared layout.
+- `/dashboard` remains the MenuList owner app and should not expose Canonica management. A Canonica widget launcher appears there only if the MenuList client widget key environment variable is configured.
 - Canonica dashboard routes remain available through `/__canonica/*` locally and Canonica host rewrites in QA.
 - Widget runtime endpoints continue to accept only normal `canonicaWidgetApi` keys.
 

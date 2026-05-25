@@ -20,6 +20,8 @@ Do not use `menulist-dev` for the current local/preview path. Local and preview 
 
 Known product hostnames are stage-scoped. Middleware redirects a known QA hostname that reaches Production, or a known production hostname that reaches Preview, to the active hostname for that product instead of treating it as a custom tenant domain.
 
+MenuList can embed Canonica as an external client on owner routes only when `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY` is configured with a Canonica-issued `cn_` widget key. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://ecomsai.com`, and Production uses `https://canonica.app`. Use `NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
+
 ---
 
 ## ChatGPT Conversation Validation
@@ -278,6 +280,11 @@ CANONICA_FIREBASE_PROJECT_ID=
 CANONICA_FIREBASE_PRIVATE_KEY=
 CANONICA_FIREBASE_CLIENT_EMAIL=
 CANONICA_FIRESTORE_DATABASE_ID=
+CANONICA_WIDGET_KEY_ENCRYPTION_SECRET=
+
+# MenuList as Canonica external client (optional owner-app widget embed)
+NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_KEY=
+NEXT_PUBLIC_MENULIST_CANONICA_WIDGET_SCRIPT_SRC=
 ```
 
 ### DEAD Variables (Zero References — Do NOT Add)
