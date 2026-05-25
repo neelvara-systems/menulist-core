@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 const LLMS_TXT = `# Canonica
 
-> Canonica is the support layer for AI-built SaaS apps. It helps founders keep page-aware answers, help content, release context, compiled runtime context, and support gaps connected to approved product knowledge.
+> Canonica is the support layer for AI-built SaaS apps. It helps founders launch with starter surfaces, import packs, page-aware answers, help content, release context, compiled runtime context, and support gaps connected to approved product knowledge.
 
 Canonica is not a helpdesk replacement, chatbot autopilot, or documentation CMS. The public website explains the product, demo, pricing, widget install path, hosted help center, security posture, and buyer resources.
 

@@ -902,19 +902,10 @@ service cloud.firestore {
       // Update: Only allow cancellation from client
       // pending → cancelled or processing → cancelling
       allow update: if isAuthenticated()
+                    && isMenuProcessingJobOwner()
                     && (
-                      resource.data.uId == request.auth.uid
-                      || resource.data.uId == request.auth.token.uId
-                    )
-                    && (
-                      (
-                        request.resource.data.status == 'cancelling'
-                        && resource.data.status == 'processing'
-                      )
-                      || (
-                        request.resource.data.status == 'cancelled'
-                        && resource.data.status == 'pending'
-                      )
+                      isClientJobCancellationRequest()
+                      || isClientPreviewReviewResolution()
                     );
       
       // Delete: Not allowed from client (cleanup via scheduled function)
@@ -1096,6 +1087,45 @@ service cloud.firestore {
       return isAuthenticated()
         && (isPlatformAdmin() || isCanonicaTenantMember(resource.data));
     }
+
+    function isMenuProcessingJobOwner() {
+      return resource.data.uId == request.auth.uid
+        || resource.data.uId == request.auth.token.uId;
+    }
+
+    function isClientJobCancellationRequest() {
+      return (
+        request.resource.data.status == 'cancelling'
+        && resource.data.status == 'processing'
+      )
+      || (
+        request.resource.data.status == 'cancelled'
+        && resource.data.status == 'pending'
+      );
+    }
+
+    function isClientPreviewReviewResolution() {
+      return resource.data.status == 'preview_ready'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'completedAt',
+          'updatedAt',
+          'currentStep'
+        ])
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.currentStep is string
+        && (
+          (
+            request.resource.data.status == 'completed'
+            && request.resource.data.currentStep == 'Changes applied'
+          )
+          || (
+            request.resource.data.status == 'cancelled'
+            && request.resource.data.currentStep == 'Changes discarded by user'
+          )
+        );
+    }
     
     // Check if user owns subscription (for read access)
     function ownsSubscription() {
@@ -1119,7 +1149,8 @@ service cloud.firestore {
     // If project has masterProjectId, block writes to extractedData and files
     function isValidOutletUpdate() {
       // If NOT linked to master (no masterProjectId), allow all writes
-      let isLinkedToMaster = resource.data.masterProjectId != null;
+      let hasMasterProjectId = resource.data.keys().hasAny(['masterProjectId']);
+      let isLinkedToMaster = hasMasterProjectId && resource.data.masterProjectId != null;
       // If linked to master, only allow writes to safe fields:
       // - overrides (price, availability, active overrides)
       // - themeConfig (if permissions allow - checked in DAL)
@@ -1130,7 +1161,11 @@ service cloud.firestore {
       // - files[] (contains extractedData with master items)
       // - masterProjectId (cannot self-unlink)
       let filesUnchanged = !request.resource.data.diff(resource.data).affectedKeys().hasAny(['files']);
-      let masterIdUnchanged = request.resource.data.masterProjectId == resource.data.masterProjectId;
+      let masterIdUnchanged = !isLinkedToMaster
+        || (
+          request.resource.data.keys().hasAny(['masterProjectId'])
+          && request.resource.data.masterProjectId == resource.data.masterProjectId
+        );
       
       return !isLinkedToMaster || (filesUnchanged && masterIdUnchanged);
     }

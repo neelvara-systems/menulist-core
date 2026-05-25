@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import CanonicaLink from '../components/CanonicaLink';
+import DayOneLaunchPackSection from '../components/DayOneLaunchPackSection';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
@@ -12,7 +13,7 @@ import { CANONICA_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'Canonica is the support layer for AI-built SaaS apps: page-aware widget, hosted help, approved answers, compiled runtime context, and reviewable support gaps.',
+    description: 'Canonica is the support layer for AI-built SaaS apps: starter surfaces, import pack, page-aware widget, hosted help, approved answers, and reviewable support gaps.',
     alternates: { canonical: '/product' },
 };
 
@@ -168,6 +169,8 @@ export default function CanonicaProductPage() {
                         </div>
                     </div>
                 </section>
+
+                <DayOneLaunchPackSection basePath={basePath} context="product" />
 
                 <section className="border-t border-white/[0.06] px-6 py-20">
                     <div className="mx-auto max-w-6xl">

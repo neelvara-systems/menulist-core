@@ -4,6 +4,7 @@ import BestFitSection from './components/BestFitSection';
 import CTASection from './components/CTASection';
 import ClosedLoopSection from './components/ClosedLoopSection';
 import ComparisonSection from './components/ComparisonSection';
+import DayOneLaunchPackSection from './components/DayOneLaunchPackSection';
 import CanonicaFooter from './components/Footer';
 import CanonicaHeader from './components/Header';
 import HeroSection from './components/HeroSection';
@@ -64,6 +65,7 @@ export default function CanonicaHomePage() {
                 <ProductAreasSection basePath={basePath} />
                 <BestFitSection />
                 <SetupFunnelSection />
+                <DayOneLaunchPackSection basePath={basePath} />
                 <WidgetSection basePath={basePath} />
                 <HomeTrustSection />
                 <PillarsSection />

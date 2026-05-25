@@ -127,6 +127,29 @@ function countFields(item: ExtractedItemInput): number {
     return count;
 }
 
+function getCategoryName(
+    category: ExtractedCategoryInput,
+    primaryLang: string,
+): string {
+    return category.name?.[primaryLang] || Object.values(category.name || {})[0] || '';
+}
+
+function resolveItemCategoryNames(
+    items: ExtractedItemInput[],
+    categories: ExtractedCategoryInput[],
+    primaryLang: string,
+): ExtractedItemInput[] {
+    const categoryNameById = new Map(
+        categories.map((category) => [category.id, getCategoryName(category, primaryLang)]),
+    );
+
+    return items.map((item) => {
+        if (item.categoryName) return item;
+        const categoryName = categoryNameById.get(item.categoryId);
+        return categoryName ? { ...item, categoryName } : item;
+    });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CATEGORY MATCHING
 // ═══════════════════════════════════════════════════════════════════════════
@@ -829,8 +852,14 @@ export function runComparisonEngine(input: ComparisonEngineInput): ComparisonEng
     };
 
     // Step 1: Deduplicate extracted items
-    const { items: dedupedItems, duplicatesRemoved } = deduplicateExtractedItems(
+    const extractedItems = resolveItemCategoryNames(
         extracted.items,
+        extracted.categories,
+        primaryLang,
+    );
+
+    const { items: dedupedItems, duplicatesRemoved } = deduplicateExtractedItems(
+        extractedItems,
         primaryLang
     );
     stats.ignoredDuplicates = duplicatesRemoved.length;

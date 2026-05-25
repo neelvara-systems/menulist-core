@@ -47,7 +47,9 @@ const RESOURCE_GROUPS = [
         title: 'Plan the rollout',
         description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
         items: [
-            ['Widget and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
+            ['Starter surface templates', '/product/launch-setup', 'Seed billing, onboarding, settings, releases, integrations, and common-error pages before users arrive.'],
+            ['Import starter pack', '/product/knowledge-base', 'Bring Markdown docs, FAQ CSV content, changelogs, and ticket macros into the support layer.'],
+            ['Install verifier and hosted help', '/install', 'Understand the script, allowed origins, blocked routes, hosted help domains, runtime verification, and context passing.'],
             ['Developer quickstarts', '/quickstarts', 'Use Next.js, React, Vue/Nuxt, vanilla script, or the typed SDK helper.'],
             ['Integrations', '/integrations', 'Set up Slack or email workflow notifications, test delivery, and health review.'],
             ['Hosted help center for SaaS', '/hosted-help-center-for-saas', 'Publish docs, FAQ, and changelog on a support domain.'],

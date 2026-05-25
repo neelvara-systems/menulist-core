@@ -169,13 +169,22 @@ export default function CanonicaPricingPage() {
                             <p className="mt-3 text-sm leading-relaxed text-[#808099]">
                                 Top-ups are for launch spikes, large imports, or heavy review periods without forcing a plan change.
                             </p>
-                            <CanonicaLink
-                                basePath={basePath}
-                                href="/roi-calculator"
-                                className="mt-5 inline-block rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
-                            >
-                                Estimate support ROI
-                            </CanonicaLink>
+                            <div className="mt-5 flex flex-wrap gap-3">
+                                <CanonicaLink
+                                    basePath={basePath}
+                                    href="/roi-calculator"
+                                    className="inline-block rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
+                                >
+                                    Estimate support ROI
+                                </CanonicaLink>
+                                <CanonicaLink
+                                    basePath={basePath}
+                                    href="/proof"
+                                    className="inline-block rounded-xl border border-white/[0.12] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24]"
+                                >
+                                    Review proof pack
+                                </CanonicaLink>
+                            </div>
                         </div>
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
                             <div className="text-lg font-semibold text-white">{supportCreditPack.name}</div>

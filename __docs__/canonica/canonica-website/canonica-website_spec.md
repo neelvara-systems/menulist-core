@@ -1,6 +1,6 @@
 # Canonica Website — Spec
 
-> **Version:** 1.2.14
+> **Version:** 1.2.15
 > **Last Updated:** 2026-05-25
 > **Audience:** CEO / PM / Marketing
 
@@ -39,15 +39,16 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 6. **Product Areas** — Buyer navigation cards for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers so the product-suite structure is visible from the homepage
 7. **Best Fit / Not Fit** — Decision tiles that qualify solo founders and small SaaS teams while rejecting helpdesk replacement and auto-publish expectations
 8. **Setup Funnel** — Animated sequence for adding product, picking 2-5 stuck pages, importing docs/FAQs/changelogs, installing the widget, and reviewing first approved answers
-9. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, configured proactive prompts, and support-gap review
-10. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, compiled approved context, owner-approval, and workspace-scope controls
-11. **Canonica Engine** — Animated sequence for product structure, approved answers, stale-answer review, and repeated-question queue
-12. **Product System** — Animated hub diagram for Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
-13. **How It Works** — Animated sequence for create workspace, import knowledge, map surfaces, install widget, govern gaps
-14. **Comparison** — Contrasts AI chatbot, helpdesk, knowledge base, and Canonica without positioning Canonica as a helpdesk replacement
-15. **Pricing Preview** — Starter/Growth/Studio guidance and plain-language support-credit explanation
-16. **Objections** — Top buyer objections before final CTA
-17. **CTA** — Final conversion section with demo and start-free actions
+9. **Day-One Launch Pack** — Buyer-facing pack for framework quickstarts, typed browser helper, starter surface templates, import starter pack, install verifier, ROI calculator, proof pack, and security one-pager. This section links to existing pages instead of creating another route.
+10. **Widget Install** — Product-scene proof and status snapshots for page-aware widget, install script, allowed domains, blocked routes, hosted help domains such as help.yourapp.com, safe context, configured proactive prompts, and support-gap review
+11. **Security At A Glance** — Status snapshots for widget key, origin, blocked route, bounded context, compiled approved context, owner-approval, and workspace-scope controls
+12. **Canonica Engine** — Animated sequence for product structure, approved answers, stale-answer review, and repeated-question queue
+13. **Product System** — Animated hub diagram for Launch Setup, Support Control, Knowledge Governance, and Runtime Layer from implemented code
+14. **How It Works** — Animated sequence for create workspace, import knowledge, map surfaces, install widget, govern gaps
+15. **Comparison** — Contrasts AI chatbot, helpdesk, knowledge base, and Canonica without positioning Canonica as a helpdesk replacement
+16. **Pricing Preview** — Starter/Growth/Studio guidance and plain-language support-credit explanation
+17. **Objections** — Top buyer objections before final CTA
+18. **CTA** — Final conversion section with demo and start-free actions
 
 ### 2. Product (`/product`)
 **Goal:** Explain the product in founder/operator language while preserving the real Canonica architecture.
@@ -55,6 +56,7 @@ Public-facing marketing website for Canonica at `canonica.app`. Serves as the pr
 **Sections:**
 - Hero with AI-built SaaS support-layer promise
 - Product area cards that route to landing-style subpages for Set Up Support, In-App Help Widget, Help Center + Tickets, and Review Approved Answers
+- Day-One Launch Pack section that packages quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff as the practical first rollout layer
 - Product scene reused from the homepage so buyers see the owner workflow before the architecture deep dive
 - Canonica Engine section:
   - Your product structure
@@ -174,6 +176,7 @@ Rules:
 - Workflow notification guide
 - Proactive help guide
 - Cost and cache guide
+- Developer quickstarts, ROI calculator, proof pack, and security one-pager
 - Links into demo, product, pricing, and get-started
 
 ### 6. Updates (`/updates`)
@@ -434,3 +437,4 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-24 | 1.2.10 | Added non-diagram proof blocks for text compression: homepage fit decisions, widget state snapshots, trust controls, use-case before/after examples, and security status snapshots |
 | 2026-05-24 | 1.2.11 | Aligned reusable Canonica sequence-diagram endpoints and output-highlight timing with the MenuList homepage source-map reference while keeping the Canonica logo, ripple, and color treatment unchanged |
 | 2026-05-24 | 1.2.12 | Converted reusable workflow sequence diagrams into the same input column, logo center, and output column layout used by Canonica source-map diagrams |
+| 2026-05-25 | 1.2.15 | Added the day-one launch pack to homepage and Product so quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff are visible in the main buyer path without adding another public route |

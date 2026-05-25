@@ -46,23 +46,23 @@ export default function CanonicaRoiCalculator() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     <label className="text-sm font-semibold text-[#d6d6ef]">
                         Repeated questions / month
-                        <input className={inputClass} inputMode="numeric" value={questions} onChange={(event) => setQuestions(event.target.value)} />
+                        <input className={inputClass} inputMode="numeric" value={questions} onInput={(event) => setQuestions((event.target as HTMLInputElement).value)} onChange={(event) => setQuestions(event.target.value)} />
                     </label>
                     <label className="text-sm font-semibold text-[#d6d6ef]">
                         Minutes per manual reply
-                        <input className={inputClass} inputMode="numeric" value={minutes} onChange={(event) => setMinutes(event.target.value)} />
+                        <input className={inputClass} inputMode="numeric" value={minutes} onInput={(event) => setMinutes((event.target as HTMLInputElement).value)} onChange={(event) => setMinutes(event.target.value)} />
                     </label>
                     <label className="text-sm font-semibold text-[#d6d6ef]">
                         Support hourly cost
-                        <input className={inputClass} inputMode="numeric" value={hourlyCost} onChange={(event) => setHourlyCost(event.target.value)} />
+                        <input className={inputClass} inputMode="numeric" value={hourlyCost} onInput={(event) => setHourlyCost((event.target as HTMLInputElement).value)} onChange={(event) => setHourlyCost(event.target.value)} />
                     </label>
                     <label className="text-sm font-semibold text-[#d6d6ef]">
                         Questions covered by approved answers
-                        <input className={inputClass} inputMode="numeric" value={coverageRate} onChange={(event) => setCoverageRate(event.target.value)} />
+                        <input className={inputClass} inputMode="numeric" value={coverageRate} onInput={(event) => setCoverageRate((event.target as HTMLInputElement).value)} onChange={(event) => setCoverageRate(event.target.value)} />
                     </label>
                     <label className="text-sm font-semibold text-[#d6d6ef] sm:col-span-2">
                         Monthly Canonica plan estimate
-                        <input className={inputClass} inputMode="numeric" value={monthlyPlan} onChange={(event) => setMonthlyPlan(event.target.value)} />
+                        <input className={inputClass} inputMode="numeric" value={monthlyPlan} onInput={(event) => setMonthlyPlan((event.target as HTMLInputElement).value)} onChange={(event) => setMonthlyPlan(event.target.value)} />
                     </label>
                 </div>
                 <p className="mt-5 text-xs leading-relaxed text-[#6b6b8a]">

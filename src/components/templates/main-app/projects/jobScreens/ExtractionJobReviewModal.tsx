@@ -38,11 +38,19 @@ export default function ExtractionJobReviewModal({
 }: ExtractionJobReviewModalProps) {
     return (
         <Modal
+            destroyOnClose
             open={open}
             onCancel={onDiscard}
             footer={null}
-            width="90%"
-            style={{ top: 20, maxWidth: 1200 }}
+            width="min(1200px, calc(100vw - 32px))"
+            style={{ top: 16 }}
+            styles={{
+                body: {
+                    maxHeight: 'calc(100vh - 132px)',
+                    overflowY: 'auto',
+                    padding: 0,
+                },
+            }}
             title="Review Extracted Changes"
         >
             <ExtractionJobReviewScreen

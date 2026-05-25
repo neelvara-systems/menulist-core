@@ -6,6 +6,17 @@
 
 ---
 
+## May 25, 2026 — Canonica Website Day-One Launch Pack
+
+### Changed
+
+- **Canonica homepage and Product now package the first rollout** — Added a day-one launch-pack section linking developer quickstarts, starter surfaces, import templates, install verification, ROI/proof, and security handoff from the main buyer path.
+- **Rollout resources are easier to find** — Resources, Pricing, Get Started, Security, and LLM context now point buyers toward the existing quickstarts, proof pack, ROI calculator, and security one-pager without adding another public route.
+
+### Cost
+
+- **No Firebase cost change** — The new website sections and links are static public content. They do not add dashboard reads, widget calls, Firestore writes, or scheduler work.
+
 ## May 25, 2026 — Canonica Developer Install Pack
 
 ### Added

@@ -43,14 +43,12 @@ import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/com
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
-import { shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFilePlus, LuGlobe2, LuInfo, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
 import { TbFileTypeJpg, TbFileTypePdf } from 'react-icons/tb';
 import useSWR from 'swr';
-import { usePathname } from 'next/navigation';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
 import PreviewModal from './b2cView/previewModal';
 import ShareModal from './b2cView/shareModal';
@@ -174,8 +172,7 @@ function ProjectsPage() {
     // T4-N-04: divergence advisory modal (G-13) copy.
     const tDivergence = useTranslations('Projects.divergence');
     const loggedInSession = useClientAuthSession();
-    const { hasMounted, isMobile } = useDeviceType();
-    const pathname = usePathname();
+    const { hasMounted } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState(null)
     const [currentView, setCurrentView] = useState(1);
@@ -326,8 +323,7 @@ function ProjectsPage() {
         }
     };
 
-    const forceDesktop = shouldForceDesktopForPath(pathname);
-    const shouldEnableDesktopProjectsData = hasMounted && (!FEATURE_FLAGS.ENABLE_MOBILE_UI || !isMobile || forceDesktop);
+    const shouldEnableDesktopProjectsData = hasMounted;
 
     // SWR cache key for projects list
     const effectiveTenantId = storeDetails?.tenantId || loggedInSession?.tId;

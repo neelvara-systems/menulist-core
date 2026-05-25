@@ -505,6 +505,13 @@ Do not casually modify these files. If a task requires changes here, read the se
 
 ---
 
+### Menulist Demo Credentials for QA
+
+- email/username: danny.tools.4884@gmail.com
+- password: 123456
+
+---
+
 ## Communication Memory
 
 ### Canonical Phrases (Use These)

@@ -22,7 +22,7 @@ import {
     setAllPreviewApprovals,
     setSafePreviewApprovals,
 } from '@lib/extraction/reviewPreview';
-import { Button, Card, Checkbox, Divider, Empty, Flex, message, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Empty, Flex, message, Space, Tag, theme, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
 
@@ -231,9 +231,11 @@ export function ExtractionJobReviewScreen({
     onSaveComplete,
     onDiscard,
 }: ExtractionJobReviewScreenProps) {
+    const { token } = theme.useToken();
     const [preview, setPreview] = useState(comparisonResult.preview);
     const [isSaving, setIsSaving] = useState(false);
     const [isDiscarding, setIsDiscarding] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     // Calculate totals
     const totalChanges = useMemo(() => {
@@ -266,14 +268,17 @@ export function ExtractionJobReviewScreen({
 
     // Select all / deselect all
     const selectAll = useCallback(() => {
+        setActionError(null);
         setPreview(prev => setAllPreviewApprovals(prev, true));
     }, []);
 
     const deselectAll = useCallback(() => {
+        setActionError(null);
         setPreview(prev => setAllPreviewApprovals(prev, false));
     }, []);
 
     const selectSafeOnly = useCallback(() => {
+        setActionError(null);
         setPreview(prev => setSafePreviewApprovals(prev));
     }, []);
 
@@ -285,6 +290,7 @@ export function ExtractionJobReviewScreen({
         }
 
         setIsSaving(true);
+        setActionError(null);
         try {
             // Build updated apply plan from current preview state
             const updatedOutput: ComparisonEngineOutput = {
@@ -304,11 +310,15 @@ export function ExtractionJobReviewScreen({
                 message.success(`Applied ${totalChanges} changes`);
                 onSaveComplete();
             } else {
-                message.error(result.error || 'Failed to apply changes');
+                const errorMessage = result.error || 'Failed to apply changes';
+                setActionError(errorMessage);
+                message.error(errorMessage);
             }
         } catch (error: any) {
             console.error('[ExtractionJobReviewScreen] Save error:', error);
-            message.error(error.message || 'Failed to save changes');
+            const errorMessage = error.message || 'Failed to save changes';
+            setActionError(errorMessage);
+            message.error(errorMessage);
         } finally {
             setIsSaving(false);
         }
@@ -317,13 +327,16 @@ export function ExtractionJobReviewScreen({
     // Discard handler
     const handleDiscard = useCallback(async () => {
         setIsDiscarding(true);
+        setActionError(null);
         try {
             await discardExtractionChanges(jobId);
             message.info('Changes discarded');
             onDiscard();
         } catch (error: any) {
             console.error('[ExtractionJobReviewScreen] Discard error:', error);
-            message.error('Failed to discard changes');
+            const errorMessage = error.message || 'Failed to discard changes';
+            setActionError(errorMessage);
+            message.error(errorMessage);
         } finally {
             setIsDiscarding(false);
         }
@@ -362,6 +375,16 @@ export function ExtractionJobReviewScreen({
                     <Button size="small" onClick={deselectAll}>Deselect All</Button>
                 </Space>
             </Flex>
+
+            {actionError && (
+                <Alert
+                    showIcon
+                    type="error"
+                    message="Could not finish review"
+                    description={actionError}
+                    style={{ marginBottom: 16 }}
+                />
+            )}
 
             {/* Warnings */}
             {preview.warnings.length > 0 && (
@@ -489,8 +512,20 @@ export function ExtractionJobReviewScreen({
             )}
 
             {/* Actions */}
-            <Divider />
-            <Flex justify="flex-end" gap={12}>
+            <Flex
+                align="center"
+                gap={12}
+                justify="flex-end"
+                style={{
+                    background: token.colorBgElevated,
+                    borderTop: `1px solid ${token.colorBorderSecondary}`,
+                    bottom: 0,
+                    margin: '8px -16px -16px',
+                    padding: '12px 16px',
+                    position: 'sticky',
+                    zIndex: 2,
+                }}
+            >
                 <Button
                     onClick={handleDiscard}
                     loading={isDiscarding}

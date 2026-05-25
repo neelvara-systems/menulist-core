@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import CanonicaFooter from '../components/Footer';
 import CanonicaHeader from '../components/Header';
+import CanonicaLink from '../components/CanonicaLink';
 import { CanonicaHubDiagram } from '../components/CanonicaFlowDiagram';
 import { CanonicaStatusBoard } from '../components/CanonicaProofBlocks';
 import CanonicaPageStructuredData from '../components/PageStructuredData';
@@ -200,6 +201,13 @@ export default function CanonicaSecurityPage() {
                         <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">
                             Install the widget only on allowed domains, hide it from sensitive routes, send safe page context instead of secrets, serve approved runtime context from controlled bundles, and approve support answers before they become official.
                         </p>
+                        <CanonicaLink
+                            basePath={basePath}
+                            href="/security-one-pager"
+                            className="mt-5 inline-flex rounded-xl border border-white/[0.12] bg-white/[0.035] px-5 py-2.5 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.24] hover:text-white"
+                        >
+                            Open security one-pager
+                        </CanonicaLink>
                     </div>
                     <div className="mx-auto mb-16 max-w-7xl">
                         <div className="mb-8 text-center">

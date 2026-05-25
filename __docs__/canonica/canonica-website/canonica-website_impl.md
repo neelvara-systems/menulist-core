@@ -1,6 +1,6 @@
 # Canonica Website — Implementation
 
-> **Version:** 1.2.30
+> **Version:** 1.2.31
 > **Last Updated:** 2026-05-25
 > **Audience:** Developers
 
@@ -98,6 +98,7 @@ src/app/sites/canonica/
     ├── ProductPreviewSection.tsx  # Responsive dashboard/widget/governance product scene
     ├── ProductAreasSection.tsx    # Homepage product-suite cross-link section
     ├── SetupFunnelSection.tsx     # 10-minute setup visual sequence
+    ├── DayOneLaunchPackSection.tsx # Homepage/Product day-one launch pack links for quickstarts, starter surfaces, imports, verifier, proof, ROI, and security handoff
     ├── WidgetSection.tsx          # Homepage widget install, page-aware support scene, and status snapshots
     ├── HomeTrustSection.tsx       # Homepage trust/security status snapshots
     ├── PillarsSection.tsx         # Homepage Canonica engine pillar sequence diagram
@@ -167,6 +168,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 23 product-feature pass added standalone `/product/knowledge-base`, `/product/faq-management`, `/product/changelog`, and `/product/tickets` pages using a reusable outcome-hero, visual proof grid, workflow, connected-surfaces, FAQ, and CTA pattern inspired by modern feature-specific SaaS pages.
 - May 24 workflow notification/proactive help pass added standalone `/product/workflow-notifications` and `/product/proactive-help` pages, converted `/integrations` from an install redirect to a real Slack/email notification page, and updated sitemap/LLM context/resources/FAQ so public claims match the hardened runtime.
 - May 25 runtime-scaling pass updated the existing homepage, `/product`, `/security`, `/resources`, `/updates`, FAQ, and LLM context to explain compiled approved context, bundle readiness, workspace-local daily governance, and cache-first runtime delivery without adding a standalone MCP page or promising public agent write access.
+- May 25 day-one launch-pack pass added `DayOneLaunchPackSection.tsx` to the homepage and `/product`, then linked the existing `/quickstarts`, `/product/launch-setup`, `/product/knowledge-base`, `/install`, `/roi-calculator`, `/proof`, and `/security-one-pager` resources from the main buyer path instead of creating another public route.
 - May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with Canonica's dark surface, indigo, and cyan theme, and set the Canonica route stylesheet background so white body bleed does not appear around dark pages.
 - May 23 product-feature route hardening replaced the dynamic `[feature]` route with four explicit product-feature page files backed by `ProductFeatureRoutePage`, avoiding fragile Next dev static-path worker failures while keeping shared feature data and sitemap registry coverage.
 - May 23 dark-theme consistency pass removed remaining light-mode product mockups from the account-free demo, product capability landing template, and homepage widget section so newly added public pages stay visually consistent with Canonica's dark infrastructure theme.
@@ -390,3 +392,4 @@ Conversion analytics is client-side only:
 | 2026-05-24 | 1.2.28 | Slowed the closed-loop ring and card-highlight animation to an 8.4-second loop-specific cycle while keeping the highlights synchronized with the ring pulse |
 | 2026-05-24 | 1.2.29 | Added public Workflow Notifications and Proactive Help product-feature pages, converted `/integrations` from install alias to Slack/email notification page, and updated route registry, resources, FAQ, updates, LLM context, and docs for the hardened runtime scope |
 | 2026-05-25 | 1.2.30 | Added website runtime-scaling copy across existing high-intent pages: compiled approved context, owner-visible bundle readiness, workspace-local daily governance, cache-first runtime delivery, and rollout-gated MCP boundaries without adding a dedicated public MCP page |
+| 2026-05-25 | 1.2.31 | Added `DayOneLaunchPackSection` to homepage and Product, updated Resources/Pricing/Get Started/Security/LLM context, and kept the completed quickstarts, starter surfaces, import pack, install verifier, ROI/proof, and security one-pager as linked existing pages rather than new routes |

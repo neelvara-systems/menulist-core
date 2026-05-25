@@ -35,8 +35,8 @@ Canonica is not:
 
 ## Public Website Routes
 
-- ${CANONICA_SITE_URL}/ — overview, demo path, product proof, fit/not-fit, setup, trust, pricing preview, and CTA.
-- ${CANONICA_SITE_URL}/product — product overview and major product-area links.
+- ${CANONICA_SITE_URL}/ — overview, demo path, product proof, fit/not-fit, setup, day-one launch pack, trust, pricing preview, and CTA.
+- ${CANONICA_SITE_URL}/product — product overview, major product-area links, and day-one launch-pack resources.
 - ${CANONICA_SITE_URL}/product/launch-setup — setup, product details, starter knowledge, app pages, widget key, and readiness.
 - ${CANONICA_SITE_URL}/product/page-aware-widget — widget runtime, safe page context, allowed origins, blocked routes, and approved-answer behavior.
 - ${CANONICA_SITE_URL}/product/support-control — hosted help, docs, FAQ, changelog, tickets, conversations, and weekly support review.

@@ -32,9 +32,10 @@ const FIRST_SESSION = [
     'Add company and product name',
     'Create your Canonica workspace',
     'Get your widget key',
-    'Add your first support content',
-    'Map the first pages where users need help',
-    'Review your launch checklist',
+    'Seed starter surfaces for key app pages',
+    'Import first docs, FAQs, changelog, or support macros',
+    'Verify widget install and page context',
+    'Review the first approved answers',
 ];
 
 export default function CanonicaGetStartedPage() {
